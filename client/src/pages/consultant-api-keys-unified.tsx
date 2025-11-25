@@ -1,0 +1,3130 @@
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Bot, Key, Mail, MessageSquare, Server, Cloud, Sparkles, Save, 
+  AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
+  RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays
+} from "lucide-react";
+import Navbar from "@/components/navbar";
+import Sidebar from "@/components/sidebar";
+import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
+import { getAuthHeaders } from "@/lib/auth";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Link, useSearch } from "wouter";
+import {
+  useExternalApiConfigs,
+  useCreateExternalApiConfig,
+  useUpdateExternalApiConfig,
+  useTestConnection,
+  useManualImport,
+  useStartPolling,
+  useStopPolling,
+} from "@/hooks/useExternalApiConfig";
+import { useCampaigns } from "@/hooks/useCampaigns";
+import CalendarView from "@/components/calendar/CalendarView";
+import CalendarSettingsContent from "@/components/calendar/CalendarSettingsContent";
+
+interface SMTPSettings {
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName: string;
+  emailTone: "professionale" | "amichevole" | "motivazionale";
+  emailSignature: string;
+}
+
+interface WhatsAppSettings {
+  twilioAccountSid: string;
+  twilioAuthToken: string;
+  twilioWhatsappNumber: string;
+}
+
+interface CalendarOAuthSettings {
+  googleOAuthClientId: string;
+  googleOAuthClientSecret: string;
+  googleOAuthRedirectUri: string;
+  isConnected: boolean;
+  connectedEmail?: string;
+}
+
+interface ClientAIConfig {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  preferredAiProvider: "vertex_admin" | "google_studio" | "custom" | "vertex_self";
+  geminiApiKeys: string[];
+  geminiApiKeyIndex: number;
+  vertexSettings?: {
+    projectId: string;
+    location: string;
+    expiresAt: string | null;
+    enabled: boolean;
+  } | null;
+}
+
+function ClientAIConfigRow({ client, onSave }: { client: ClientAIConfig; onSave: () => void }) {
+  const { toast } = useToast();
+  const [provider, setProvider] = useState<"vertex_admin" | "google_studio" | "custom" | "vertex_self">(client.preferredAiProvider);
+  const [customKeys, setCustomKeys] = useState<string[]>(client.geminiApiKeys || []);
+  const [vertexConfig, setVertexConfig] = useState({
+    projectId: client.vertexSettings?.projectId || "",
+    location: client.vertexSettings?.location || "us-central1",
+    serviceAccountJson: "", // Always empty for security (consultant must re-enter if changing)
+  });
+  const [hasExistingVertex, setHasExistingVertex] = useState(!!client.vertexSettings?.projectId);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Sync state with props when client data updates
+  useEffect(() => {
+    setProvider(client.preferredAiProvider);
+    setCustomKeys(client.geminiApiKeys || []);
+    // hasExistingVertex = true if vertexSettings exist (even if disabled)
+    setHasExistingVertex(!!client.vertexSettings?.projectId);
+    setVertexConfig({
+      projectId: client.vertexSettings?.projectId || "",
+      location: client.vertexSettings?.location || "us-central1",
+      serviceAccountJson: "", // Always empty for security
+    });
+  }, [client]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const payload: any = {
+        preferredAiProvider: provider,
+      };
+
+      if (provider === "custom") {
+        payload.geminiApiKeys = customKeys.filter(k => k.trim());
+      } else if (provider === "vertex_self") {
+        // New setup: require all fields
+        if (!hasExistingVertex) {
+          if (!vertexConfig.projectId || !vertexConfig.location || !vertexConfig.serviceAccountJson.trim()) {
+            setIsSaving(false);
+            return toast({
+              title: "Campi mancanti",
+              description: "Per configurare Vertex AI sono necessari: Project ID, Location e Service Account JSON",
+              variant: "destructive",
+            });
+          }
+          payload.vertexProjectId = vertexConfig.projectId;
+          payload.vertexLocation = vertexConfig.location;
+          payload.vertexServiceAccountJson = vertexConfig.serviceAccountJson;
+        } else {
+          // Existing setup: only send if updating credentials (JSON provided)
+          if (vertexConfig.serviceAccountJson.trim()) {
+            payload.vertexProjectId = vertexConfig.projectId;
+            payload.vertexLocation = vertexConfig.location;
+            payload.vertexServiceAccountJson = vertexConfig.serviceAccountJson;
+          }
+          // If no JSON provided, just switch provider without touching credentials
+        }
+      }
+
+      const response = await fetch(`/api/consultant/client-ai-config/${client.id}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante il salvataggio");
+      }
+
+      toast({
+        title: "Successo",
+        description: `Configurazione AI per ${client.firstName} salvata`,
+      });
+
+      // Update local state after successful vertex_self save
+      if (provider === "vertex_self" && vertexConfig.serviceAccountJson.trim()) {
+        setHasExistingVertex(true); // Mark credentials as saved
+        setVertexConfig(prev => ({ ...prev, serviceAccountJson: "" })); // Clear JSON for security
+      }
+
+      onSave();
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const addKey = () => {
+    if (customKeys.length < 10) {
+      setCustomKeys([...customKeys, ""]);
+    }
+  };
+
+  const removeKey = (index: number) => {
+    setCustomKeys(customKeys.filter((_, i) => i !== index));
+  };
+
+  const updateKey = (index: number, value: string) => {
+    const newKeys = [...customKeys];
+    newKeys[index] = value;
+    setCustomKeys(newKeys);
+  };
+
+  return (
+    <Card className="border border-gray-200 hover:border-indigo-300 transition-colors">
+      <CardContent className="p-4">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-900">{client.firstName} {client.lastName}</p>
+              <p className="text-sm text-gray-500">{client.email}</p>
+            </div>
+            <Badge variant="outline" className={
+              provider === "vertex_admin" ? "bg-green-50 text-green-700 border-green-300" :
+              provider === "vertex_self" ? "bg-blue-50 text-blue-700 border-blue-300" :
+              provider === "google_studio" ? "bg-yellow-50 text-yellow-700 border-yellow-300" :
+              "bg-purple-50 text-purple-700 border-purple-300"
+            }>
+              {provider === "vertex_admin" ? "Vertex AI" : 
+               provider === "vertex_self" ? "Vertex AI (proprio)" :
+               provider === "google_studio" ? "Google Studio" : "Custom"}
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Provider AI</Label>
+              <Select value={provider} onValueChange={(val: any) => setProvider(val)}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vertex_admin">Vertex AI (predefinito)</SelectItem>
+                  <SelectItem value="vertex_self">Vertex AI (proprio)</SelectItem>
+                  <SelectItem value="google_studio">Google AI Studio</SelectItem>
+                  <SelectItem value="custom">Custom (API proprie)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                onClick={handleSave}
+                disabled={
+                  isSaving || 
+                  (provider === "custom" && customKeys.filter(k => k.trim()).length === 0) ||
+                  (provider === "vertex_self" && !hasExistingVertex && (!vertexConfig.projectId || !vertexConfig.location || !vertexConfig.serviceAccountJson))
+                }
+                className="w-full bg-indigo-600 hover:bg-indigo-700"
+              >
+                {isSaving ? "Salvataggio..." : "Salva"}
+              </Button>
+            </div>
+          </div>
+
+          {provider === "custom" && (
+            <div className="space-y-3 pt-3 border-t">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">API Keys Custom ({customKeys.length}/10)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addKey}
+                  disabled={customKeys.length >= 10}
+                  className="text-xs"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Aggiungi
+                </Button>
+              </div>
+
+              {customKeys.length === 0 ? (
+                <div className="text-sm text-gray-500 italic py-2 text-center border-2 border-dashed border-gray-200 rounded-lg">
+                  Nessuna API key. Clicca "Aggiungi" per iniziare.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {customKeys.map((key, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-500 w-6">#{index + 1}</span>
+                      <Input
+                        type="password"
+                        value={key}
+                        onChange={(e) => updateKey(index, e.target.value)}
+                        placeholder={`API Key ${index + 1}`}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeKey(index)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {provider === "vertex_self" && (
+            <div className="space-y-3 pt-3 border-t">
+              <Label className="text-sm font-semibold text-blue-700">Configurazione Vertex AI</Label>
+
+              <div>
+                <Label className="text-xs">Project ID</Label>
+                <Input
+                  value={vertexConfig.projectId}
+                  onChange={(e) => setVertexConfig({ ...vertexConfig, projectId: e.target.value })}
+                  placeholder="my-gcp-project-id"
+                  className="mt-1.5"
+                />
+              </div>
+
+              <div>
+                <Label className="text-xs">Location</Label>
+                <Select 
+                  value={vertexConfig.location} 
+                  onValueChange={(val) => setVertexConfig({ ...vertexConfig, location: val })}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="us-central1">US Central 1</SelectItem>
+                    <SelectItem value="us-east1">US East 1</SelectItem>
+                    <SelectItem value="europe-west1">Europe West 1</SelectItem>
+                    <SelectItem value="europe-west4">Europe West 4</SelectItem>
+                    <SelectItem value="asia-southeast1">Asia Southeast 1</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-xs">Service Account JSON</Label>
+                <Textarea
+                  value={vertexConfig.serviceAccountJson}
+                  onChange={(e) => setVertexConfig({ ...vertexConfig, serviceAccountJson: e.target.value })}
+                  placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", ...}'
+                  rows={6}
+                  className="mt-1.5 font-mono text-xs"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Incolla qui il JSON completo del service account Google Cloud
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function ConsultantApiKeysUnified() {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("ai");
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const searchParams = useSearch();
+
+  const [vertexFormData, setVertexFormData] = useState({
+    projectId: "",
+    location: "us-central1",
+    serviceAccountJson: "",
+    usageScope: "both" as "both" | "consultant_only" | "clients_only" | "selective",
+  });
+
+  const [geminiApiKeys, setGeminiApiKeys] = useState<string[]>([]);
+
+  const [smtpFormData, setSmtpFormData] = useState<SMTPSettings>({
+    host: "",
+    port: 587,
+    secure: true,
+    username: "",
+    password: "",
+    fromEmail: "",
+    fromName: "",
+    emailTone: "professionale",
+    emailSignature: "",
+  });
+
+  const [whatsappFormData, setWhatsappFormData] = useState<WhatsAppSettings>({
+    twilioAccountSid: "",
+    twilioAuthToken: "",
+    twilioWhatsappNumber: "",
+  });
+
+  const [calendarFormData, setCalendarFormData] = useState<CalendarOAuthSettings>({
+    googleOAuthClientId: "",
+    googleOAuthClientSecret: "",
+    googleOAuthRedirectUri: "",
+    isConnected: false,
+    connectedEmail: "",
+  });
+
+  // Lead Import state
+  const [showLeadApiKey, setShowLeadApiKey] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [leadImportConfigId, setLeadImportConfigId] = useState<string | null>(null);
+  const [leadImportFormData, setLeadImportFormData] = useState({
+    configName: "Importazione Lead",
+    apiKey: "",
+    baseUrl: "",
+    targetCampaignId: "",
+    leadType: "both" as "crm" | "marketing" | "both",
+    sourceFilter: "",
+    campaignFilter: "",
+    daysFilter: "",
+    pollingIntervalMinutes: 5,
+    pollingEnabled: false,
+    isActive: true,
+  });
+
+  const { data: vertexAiData, isLoading: isLoadingVertex } = useQuery({
+    queryKey: ["/api/vertex-ai/settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/vertex-ai/settings", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Failed to fetch Vertex AI settings");
+      }
+      return response.json();
+    },
+  });
+
+  const { data: consultant, isLoading: isLoadingConsultant } = useQuery({
+    queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      const response = await fetch("/api/auth/me", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch consultant data");
+      }
+      const data = await response.json();
+      setGeminiApiKeys(data.geminiApiKeys || []);
+      return data;
+    },
+  });
+
+  const { data: existingSMTP, isLoading: isLoadingSMTP } = useQuery({
+    queryKey: ["/api/consultant/smtp-settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/smtp-settings", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) throw new Error("Failed to fetch SMTP");
+      return response.json();
+    },
+  });
+
+  const { data: whatsappConfigs, isLoading: isLoadingWhatsapp } = useQuery({
+    queryKey: ["/api/whatsapp/configs"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/configs", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch WhatsApp configs");
+      return response.json();
+    },
+  });
+
+  const { data: activeProvider } = useQuery({
+    queryKey: ["/api/ai/active-provider"],
+    queryFn: async () => {
+      const response = await fetch("/api/ai/active-provider", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch active provider");
+      return response.json();
+    },
+    refetchInterval: 30000, // Refresh ogni 30s
+  });
+
+  const { data: clientsAiConfig, isLoading: isLoadingClientsAi } = useQuery<{ clients: ClientAIConfig[] }>({
+    queryKey: ["/api/consultant/client-ai-config"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/client-ai-config", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch clients AI config");
+      return response.json();
+    },
+  });
+
+  const { data: calendarSettings, isLoading: isLoadingCalendar } = useQuery({
+    queryKey: ["/api/calendar-settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/calendar-settings", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) throw new Error("Failed to fetch calendar settings");
+      if (response.status === 404) return null;
+      return response.json();
+    },
+  });
+
+  // Lead Import queries and mutations
+  const { data: leadImportConfigs } = useExternalApiConfigs();
+  const { data: campaignsData, isLoading: campaignsLoading } = useCampaigns();
+  const createLeadConfigMutation = useCreateExternalApiConfig();
+  const updateLeadConfigMutation = useUpdateExternalApiConfig(leadImportConfigId || "");
+  const testConnectionMutation = useTestConnection();
+  const manualImportMutation = useManualImport();
+  const startPollingMutation = useStartPolling();
+  const stopPollingMutation = useStopPolling();
+
+  const campaigns = campaignsData?.campaigns || [];
+  const existingLeadConfig = leadImportConfigs && leadImportConfigs.length > 0 ? leadImportConfigs[0] : null;
+
+  const { data: pendingLeads, isLoading: pendingLeadsLoading } = useQuery({
+    queryKey: ['/api/proactive-leads', { status: 'pending' }],
+    queryFn: async () => {
+      const response = await fetch('/api/proactive-leads?status=pending', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch pending leads');
+      const data = await response.json();
+      return data.leads || [];
+    },
+    refetchInterval: 30000
+  });
+
+  useEffect(() => {
+    if (vertexAiData?.settings) {
+      setVertexFormData({
+        projectId: vertexAiData.settings.projectId || "",
+        location: vertexAiData.settings.location || "us-central1",
+        serviceAccountJson: "",
+        usageScope: vertexAiData.settings.usageScope || "both",
+      });
+    }
+  }, [vertexAiData]);
+
+  useEffect(() => {
+    if (existingSMTP) {
+      setSmtpFormData({
+        host: existingSMTP.smtpHost || "",
+        port: existingSMTP.smtpPort || 587,
+        secure: existingSMTP.smtpSecure ?? true,
+        username: existingSMTP.smtpUser || "",
+        password: existingSMTP.smtpPassword || "",
+        fromEmail: existingSMTP.fromEmail || "",
+        fromName: existingSMTP.fromName || "",
+        emailTone: existingSMTP.emailTone || "professionale",
+        emailSignature: existingSMTP.emailSignature || "",
+      });
+    }
+  }, [existingSMTP]);
+
+  useEffect(() => {
+    if (existingLeadConfig) {
+      setLeadImportConfigId(existingLeadConfig.id);
+      setLeadImportFormData({
+        configName: existingLeadConfig.configName,
+        apiKey: "",
+        baseUrl: existingLeadConfig.baseUrl,
+        targetCampaignId: existingLeadConfig.targetCampaignId,
+        leadType: existingLeadConfig.leadType,
+        sourceFilter: existingLeadConfig.sourceFilter || "",
+        campaignFilter: existingLeadConfig.campaignFilter || "",
+        daysFilter: existingLeadConfig.daysFilter || "",
+        pollingIntervalMinutes: existingLeadConfig.pollingIntervalMinutes,
+        pollingEnabled: existingLeadConfig.pollingEnabled,
+        isActive: existingLeadConfig.isActive,
+      });
+    }
+  }, [existingLeadConfig]);
+
+  useEffect(() => {
+    if (whatsappConfigs && whatsappConfigs.length > 0) {
+      const config = whatsappConfigs[0];
+      setWhatsappFormData({
+        twilioAccountSid: config.twilioAccountSid || "",
+        twilioAuthToken: "",
+        twilioWhatsappNumber: config.twilioWhatsappNumber || "",
+      });
+    }
+  }, [whatsappConfigs]);
+
+  // WhatsApp AI Configuration State
+  const [whatsAppVertexFormData, setWhatsAppVertexFormData] = useState({
+    projectId: "",
+    location: "us-central1",
+    serviceAccountJson: "",
+  });
+
+  const [newWhatsAppApiKey, setNewWhatsAppApiKey] = useState("");
+
+  // WhatsApp Vertex AI Settings Query
+  const { data: whatsAppVertexData, isLoading: isLoadingWhatsAppVertex } = useQuery({
+    queryKey: ["/api/whatsapp/vertex-ai/settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/vertex-ai/settings", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Failed to fetch WhatsApp Vertex AI settings");
+      }
+      if (response.status === 404) return null;
+      return response.json();
+    },
+  });
+
+  // WhatsApp API Keys Query
+  const { data: whatsAppApiKeysData, isLoading: isLoadingWhatsAppKeys } = useQuery({
+    queryKey: ["/api/whatsapp/api-keys"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/api-keys", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Failed to fetch WhatsApp API keys");
+      }
+      if (response.status === 404) return { keys: [], count: 0, maxKeys: 50 };
+      return response.json();
+    },
+  });
+
+  const whatsAppApiKeys = whatsAppApiKeysData?.keys || [];
+  const whatsAppKeysCount = whatsAppApiKeysData?.count || 0;
+  const whatsAppMaxKeys = whatsAppApiKeysData?.maxKeys || 50;
+
+  // Sync WhatsApp Vertex AI form data when loaded
+  useEffect(() => {
+    if (whatsAppVertexData?.settings) {
+      setWhatsAppVertexFormData({
+        projectId: whatsAppVertexData.settings.projectId || "",
+        location: whatsAppVertexData.settings.location || "us-central1",
+        serviceAccountJson: "",
+      });
+    }
+  }, [whatsAppVertexData]);
+
+  const handleVertexSave = async () => {
+    try {
+      const response = await fetch("/api/vertex-ai/settings", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(vertexFormData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante il salvataggio");
+      }
+
+      toast({
+        title: "Successo",
+        description: "Vertex AI configurato con successo",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/vertex-ai/settings"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleVertexToggle = async (checked: boolean) => {
+    if (!vertexAiData?.settings?.id) return;
+
+    try {
+      const response = await fetch(`/api/vertex-ai/settings/${vertexAiData.settings.id}/toggle`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) throw new Error("Errore durante il toggle");
+
+      toast({
+        title: checked ? "Vertex AI abilitato" : "Vertex AI disabilitato",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/vertex-ai/settings"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddApiKey = () => {
+    if (geminiApiKeys.length < 10) {
+      setGeminiApiKeys(prev => [...prev, '']);
+    }
+  };
+
+  const handleRemoveApiKey = (index: number) => {
+    setGeminiApiKeys(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleApiKeyChange = (index: number, value: string) => {
+    setGeminiApiKeys(prev => {
+      const newKeys = [...prev];
+      newKeys[index] = value;
+      return newKeys;
+    });
+  };
+
+  const handleGeminiSave = async () => {
+    if (!consultant) return;
+
+    const validApiKeys = geminiApiKeys.filter(key => key.trim() !== '');
+
+    try {
+      const updateData = {
+        gemini_api_keys: validApiKeys
+      };
+
+      const response = await fetch(`/api/users/${consultant.id}`, {
+        method: 'PATCH',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore durante il salvataggio');
+      }
+
+      toast({
+        title: "Successo",
+        description: "API keys Google AI Studio aggiornate con successo",
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    } catch (error: any) {
+      console.error('Errore salvataggio API keys:', error);
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante il salvataggio",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSMTPSave = async () => {
+    try {
+      const response = await fetch("/api/consultant/smtp-settings", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(smtpFormData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to save SMTP");
+      }
+
+      toast({
+        title: "Successo",
+        description: "Configurazione SMTP salvata",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/smtp-settings"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleWhatsAppSave = async () => {
+    try {
+      const configId = whatsappConfigs?.[0]?.id;
+      const url = configId 
+        ? `/api/whatsapp/configs/${configId}` 
+        : `/api/whatsapp/configs`;
+
+      const method = configId ? "PUT" : "POST";
+
+      const body = {
+        agentName: "AI Agent WhatsApp",
+        ...whatsappFormData,
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to save WhatsApp");
+      }
+
+      toast({
+        title: "Successo",
+        description: "Configurazione WhatsApp salvata",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/configs"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // WhatsApp AI Handler Functions
+  const handleSaveWhatsAppVertexAI = async () => {
+    try {
+      const method = whatsAppVertexData?.settings ? "PUT" : "POST";
+
+      const response = await fetch("/api/whatsapp/vertex-ai/settings", {
+        method,
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(whatsAppVertexFormData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante il salvataggio");
+      }
+
+      toast({
+        title: "✅ Successo",
+        description: "Vertex AI per WhatsApp configurato con successo",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/vertex-ai/settings"] });
+
+      // Clear JSON for security
+      setWhatsAppVertexFormData(prev => ({ ...prev, serviceAccountJson: "" }));
+    } catch (error: any) {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteWhatsAppVertexAI = async () => {
+    if (!whatsAppVertexData?.settings?.id) return;
+
+    if (!confirm("Sei sicuro di voler rimuovere la configurazione Vertex AI per WhatsApp? Gli agenti useranno solo le Gemini API keys.")) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/whatsapp/vertex-ai/settings", {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante la rimozione");
+      }
+
+      toast({
+        title: "✅ Rimosso",
+        description: "Configurazione Vertex AI per WhatsApp rimossa",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/vertex-ai/settings"] });
+
+      // Reset form
+      setWhatsAppVertexFormData({
+        projectId: "",
+        location: "us-central1",
+        serviceAccountJson: "",
+      });
+    } catch (error: any) {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddWhatsAppGeminiKey = async () => {
+    if (!newWhatsAppApiKey.trim() || newWhatsAppApiKey.trim().length < 20) {
+      toast({
+        title: "⚠️ API Key non valida",
+        description: "Inserisci una API key Gemini valida (minimo 20 caratteri)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (whatsAppKeysCount >= whatsAppMaxKeys) {
+      toast({
+        title: "⚠️ Limite raggiunto",
+        description: `Hai già raggiunto il limite massimo di ${whatsAppMaxKeys} API keys`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/whatsapp/api-keys", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ apiKey: newWhatsAppApiKey.trim() }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante l'aggiunta");
+      }
+
+      toast({
+        title: "✅ API Key aggiunta",
+        description: "La chiave è stata aggiunta con successo al pool WhatsApp",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/api-keys"] });
+      setNewWhatsAppApiKey("");
+    } catch (error: any) {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteWhatsAppApiKey = async (keyId: string) => {
+    if (!confirm("Sei sicuro di voler rimuovere questa API key?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/whatsapp/api-keys/${keyId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante la rimozione");
+      }
+
+      toast({
+        title: "✅ API Key rimossa",
+        description: "La chiave è stata rimossa con successo",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/api-keys"] });
+    } catch (error: any) {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggleWhatsAppApiKey = async (keyId: string) => {
+    try {
+      const response = await fetch(`/api/whatsapp/api-keys/${keyId}/toggle`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante il toggle");
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/api-keys"] });
+    } catch (error: any) {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLeadInputChange = (field: string, value: any) => {
+    setLeadImportFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const validateLeadImportForm = () => {
+    if (!leadImportFormData.apiKey && !existingLeadConfig) {
+      toast({
+        title: "❌ Errore validazione",
+        description: "API Key è obbligatoria",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (leadImportFormData.apiKey && leadImportFormData.apiKey.length < 10) {
+      toast({
+        title: "❌ Errore validazione",
+        description: "API Key deve contenere almeno 10 caratteri",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!leadImportFormData.baseUrl) {
+      toast({
+        title: "❌ Errore validazione",
+        description: "Base URL è obbligatorio",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!leadImportFormData.baseUrl.startsWith("https://") && !leadImportFormData.baseUrl.startsWith("http://")) {
+      toast({
+        title: "❌ Errore validazione",
+        description: "Base URL deve iniziare con https:// o http://",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!leadImportFormData.targetCampaignId) {
+      toast({
+        title: "❌ Errore validazione",
+        description: "Campagna Marketing è obbligatoria",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (leadImportFormData.pollingIntervalMinutes < 1 || leadImportFormData.pollingIntervalMinutes > 1440) {
+      toast({
+        title: "❌ Errore validazione",
+        description: "Intervallo polling deve essere tra 1 e 1440 minuti",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleTestLeadConnection = async () => {
+    if (!leadImportConfigId) {
+      toast({
+        title: "❌ Errore",
+        description: "Devi prima salvare la configurazione prima di testarla",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    testConnectionMutation.mutate(leadImportConfigId);
+  };
+
+  const handleSaveLeadConfiguration = async () => {
+    if (!validateLeadImportForm()) return;
+
+    const dataToSave: any = {
+      configName: leadImportFormData.configName,
+      baseUrl: leadImportFormData.baseUrl,
+      targetCampaignId: leadImportFormData.targetCampaignId,
+      leadType: leadImportFormData.leadType,
+      sourceFilter: leadImportFormData.sourceFilter || null,
+      campaignFilter: leadImportFormData.campaignFilter || null,
+      daysFilter: leadImportFormData.daysFilter || null,
+      pollingIntervalMinutes: leadImportFormData.pollingIntervalMinutes,
+      pollingEnabled: leadImportFormData.pollingEnabled,
+      isActive: leadImportFormData.isActive,
+    };
+
+    if (leadImportFormData.apiKey) {
+      dataToSave.apiKey = leadImportFormData.apiKey;
+    }
+
+    if (leadImportConfigId) {
+      updateLeadConfigMutation.mutate(dataToSave);
+    } else {
+      if (!leadImportFormData.apiKey) {
+        toast({
+          title: "❌ Errore",
+          description: "API Key è obbligatoria per creare una nuova configurazione",
+          variant: "destructive",
+        });
+        return;
+      }
+      createLeadConfigMutation.mutate(dataToSave);
+    }
+  };
+
+  const handleManualLeadImport = async () => {
+    if (!leadImportConfigId) {
+      toast({
+        title: "❌ Errore",
+        description: "Devi prima salvare la configurazione prima di importare",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsImporting(true);
+    manualImportMutation.mutate(leadImportConfigId, {
+      onSettled: () => {
+        setIsImporting(false);
+      },
+    });
+  };
+
+  const handleToggleLeadPolling = async () => {
+    if (!leadImportConfigId) {
+      toast({
+        title: "❌ Errore",
+        description: "Devi prima salvare la configurazione",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (leadImportFormData.pollingEnabled) {
+      stopPollingMutation.mutate(leadImportConfigId, {
+        onSuccess: () => {
+          setLeadImportFormData((prev) => ({ ...prev, pollingEnabled: false }));
+        },
+      });
+    } else {
+      startPollingMutation.mutate(leadImportConfigId, {
+        onSuccess: () => {
+          setLeadImportFormData((prev) => ({ ...prev, pollingEnabled: true }));
+        },
+      });
+    }
+  };
+
+  const formatLastImport = (timestamp?: string | null) => {
+    if (!timestamp) return "Mai";
+    const date = new Date(timestamp);
+    return date.toLocaleString("it-IT");
+  };
+
+  const formatDate = (date: string | Date) => {
+    return new Date(date).toLocaleString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getTimeRemaining = (contactSchedule: string | Date) => {
+    const now = new Date();
+    const scheduled = new Date(contactSchedule);
+    const diffMs = scheduled.getTime() - now.getTime();
+
+    if (diffMs < 0) return 'In corso';
+
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) return `${diffDays}g ${diffHours % 24}h`;
+    if (diffHours > 0) return `${diffHours}h ${diffMins % 60}m`;
+    return `${diffMins}m`;
+  };
+
+  const getTimeRemainingColor = (contactSchedule: string | Date) => {
+    const now = new Date();
+    const scheduled = new Date(contactSchedule);
+    const diffMs = scheduled.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 0) return 'bg-red-100 text-red-800 border-red-300';
+    if (diffMins < 30) return 'bg-orange-100 text-orange-800 border-orange-300';
+    if (diffMins < 120) return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    return 'bg-green-100 text-green-800 border-green-300';
+  };
+
+  const getCampaignName = (campaignId: string | null) => {
+    if (!campaignId) return '-';
+    const campaign = campaigns?.find((c: any) => c.id === campaignId);
+    return campaign?.campaignName || '-';
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
+      <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+        <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
+          {/* Premium Header */}
+          <div className="mb-4 sm:mb-6 md:mb-8">
+            <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1 sm:space-y-2">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl">
+                      <Key className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">Impostazioni API</h1>
+                      <p className="text-blue-100 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">
+                        Gestisci tutte le tue chiavi API e connessioni in un unico posto
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active AI Provider Badge */}
+                {activeProvider && (
+                  <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-xl border-2 border-white/30">
+                    <div className={`w-3 h-3 rounded-full ${activeProvider.source === 'google' ? 'bg-yellow-400' : 'bg-green-400'} animate-pulse`} />
+                    <div className="text-right">
+                      <p className="text-xs font-semibold text-white/80">AI Attivo</p>
+                      <p className="text-sm font-bold">{activeProvider.provider}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Tabs Container */}
+          <div className="max-w-6xl mx-auto">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg">
+                <TabsTrigger value="ai" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
+                  <Bot className="h-4 w-4 mr-2" />
+                  AI (Gemini)
+                </TabsTrigger>
+                <TabsTrigger value="client-ai" className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700">
+                  <Users className="h-4 w-4 mr-2" />
+                  API Clienti
+                </TabsTrigger>
+                <TabsTrigger value="email" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email SMTP
+                </TabsTrigger>
+                <TabsTrigger value="whatsapp" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  WhatsApp
+                </TabsTrigger>
+                <TabsTrigger value="calendar" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Calendar
+                </TabsTrigger>
+                <TabsTrigger value="lead-import" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700">
+                  <Server className="h-4 w-4 mr-2" />
+                  Lead Import
+                </TabsTrigger>
+              </TabsList>
+
+              {/* AI Tab Content */}
+              <TabsContent value="ai" className="space-y-6">
+                <Alert className="mb-6 bg-purple-50 border-purple-200">
+                  <Bot className="h-5 w-5" />
+                  <AlertDescription className="text-sm">
+                    <strong>Come funziona il Sistema AI a 3 Livelli</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Livello 1: Vertex AI (priorità massima) - $300 gratis per 90 giorni, migliori performance</li>
+                      <li>Livello 2: Google AI Studio (fallback automatico) - fino a 10 API keys con rotazione LRU</li>
+                      <li>Livello 3: Errore se nessuno disponibile</li>
+                      <li>Sistema automatico: nessuna configurazione manuale necessaria</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
+                {/* Guida Setup Vertex AI */}
+                <Card className="border-2 border-purple-200 shadow-xl bg-gradient-to-br from-purple-50 to-blue-50">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-purple-600 rounded-xl">
+                        <Cloud className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-purple-900">📖 Guida Completa Setup Vertex AI</CardTitle>
+                        <CardDescription className="text-purple-700">
+                          Segui questi passaggi per attivare $300 di crediti gratuiti per 90 giorni
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        <strong>Perché Vertex AI?</strong> Ottieni $300 di crediti gratuiti per 90 giorni, modelli più avanzati (Gemini Pro 1.5), migliori limiti di rate e performance superiori rispetto a Google AI Studio.
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="space-y-4 pl-4 border-l-4 border-purple-300">
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            1
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-purple-900">Accedi a Google Cloud Console</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Vai su <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" className="text-purple-600 hover:text-purple-800 underline font-medium">console.cloud.google.com</a>
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">💡 Se è la prima volta, Google ti chiederà di attivare la fatturazione e ti darà $300 di crediti gratuiti validi 90 giorni</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            2
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-purple-900">Crea un nuovo progetto</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              • Clicca sul menu a tendina del progetto (in alto a sinistra)<br/>
+                              • Clicca "Nuovo Progetto"<br/>
+                              • Dai un nome al progetto (es: "AI Assistant Project")<br/>
+                              • Clicca "Crea"
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">💡 Annota il <strong>Project ID</strong> che verrà generato (es: "my-ai-project-123456")</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            3
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-purple-900">Abilita Vertex AI API</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              • Nel menu di navigazione (☰), vai su "API e servizi" → "Libreria"<br/>
+                              • Cerca "Vertex AI API"<br/>
+                              • Clicca su "Vertex AI API"<br/>
+                              • Clicca "Abilita"
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">⏳ L'attivazione richiede circa 1-2 minuti</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            4
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-purple-900">Crea un Service Account</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              • Vai direttamente su <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" rel="noopener" className="text-purple-600 hover:text-purple-800 underline font-medium">Service Accounts Console</a><br/>
+                              • Oppure: Nel menu (☰), vai su "IAM e amministrazione" → "Account di servizio"<br/>
+                              • Clicca "Crea account di servizio"<br/>
+                              • Nome: "vertex-ai-service-account" (o quello che preferisci)<br/>
+                              • Descrizione: "Service account per Vertex AI"<br/>
+                              • Clicca "Crea e continua"
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            5
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-purple-900">Assegna i ruoli necessari</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Nella sezione "Concedi a questo account di servizio l'accesso al progetto":<br/>
+                              • Clicca "Seleziona un ruolo"<br/>
+                              • Cerca e seleziona <strong>"Vertex AI User"</strong><br/>
+                              • Clicca "Aggiungi un altro ruolo"<br/>
+                              • Cerca e seleziona <strong>"Vertex AI Service Agent"</strong><br/>
+                              • Clicca "Aggiungi un altro ruolo"<br/>
+                              • Cerca e seleziona <strong>"Service Account Token Creator"</strong><br/>
+                              • Clicca "Continua" e poi "Fine"
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            6
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-purple-900">Genera la chiave JSON</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              • Trova il service account appena creato nella lista<br/>
+                              • Clicca sui tre puntini (⋮) a destra → "Gestisci chiavi"<br/>
+                              • Clicca "Aggiungi chiave" → "Crea nuova chiave"<br/>
+                              • Seleziona formato <strong>JSON</strong><br/>
+                              • Clicca "Crea"
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">⬇️ Il file JSON verrà scaricato automaticamente - conservalo al sicuro!</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            7
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-green-900">Configura qui sotto</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              • <strong>Project ID</strong>: Copia il Project ID del progetto Google Cloud<br/>
+                              • <strong>Location</strong>: Scegli la region più vicina (es: "europe-west1" per Europa)<br/>
+                              • <strong>Service Account JSON</strong>: Apri il file JSON scaricato, copia tutto il contenuto e incollalo nel campo qui sotto
+                            </p>
+                            <p className="text-xs text-green-700 mt-2 font-semibold">✅ Clicca "Salva Vertex AI" e il sistema è pronto!</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Alert className="bg-yellow-50 border-yellow-200 mt-4">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-sm text-yellow-800">
+                        <strong>⚠️ Importante:</strong> Mantieni il file JSON al sicuro e non condividerlo mai pubblicamente. Contiene credenziali che danno accesso al tuo progetto Google Cloud.
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-purple-100 to-blue-100 rounded-xl">
+                          <Cloud className="h-6 w-6 text-purple-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Vertex AI Settings (Consigliato)</CardTitle>
+                          <CardDescription>
+                            $300 gratuiti per 90 giorni · Migliori prestazioni
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {vertexAiData?.settings && (
+                        <Switch
+                          checked={vertexAiData.settings.enabled}
+                          onCheckedChange={handleVertexToggle}
+                        />
+                      )}
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-6">
+                    {vertexAiData?.settings && vertexAiData.settings.daysRemaining !== undefined && (
+                      <Alert className={vertexAiData.settings.daysRemaining < 7 ? "bg-red-50 border-red-200" : vertexAiData.settings.daysRemaining < 30 ? "bg-yellow-50 border-yellow-200" : "bg-blue-50 border-blue-200"}>
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          {vertexAiData.settings.daysRemaining < 0 ? (
+                            "⚠️ Vertex AI è scaduto! Aggiorna le credenziali."
+                          ) : vertexAiData.settings.daysRemaining < 7 ? (
+                            `⚠️ Vertex AI scade tra ${vertexAiData.settings.daysRemaining} giorni! Rinnova ora.`
+                          ) : vertexAiData.settings.daysRemaining < 30 ? (
+                            `Vertex AI scade tra ${vertexAiData.settings.daysRemaining} giorni.`
+                          ) : (
+                            `Attivo. Scade tra ${vertexAiData.settings.daysRemaining} giorni.`
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="vertex-project-id">Project ID *</Label>
+                        <Input
+                          id="vertex-project-id"
+                          value={vertexFormData.projectId}
+                          onChange={(e) => setVertexFormData({ ...vertexFormData, projectId: e.target.value })}
+                          placeholder="my-gcp-project-123"
+                          className="mt-1.5"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="vertex-location">Location *</Label>
+                        <Select
+                          value={vertexFormData.location}
+                          onValueChange={(value) => setVertexFormData({ ...vertexFormData, location: value })}
+                        >
+                          <SelectTrigger id="vertex-location" className="mt-1.5">
+                            <SelectValue placeholder="Seleziona location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="us-central1">US Central 1 (Iowa)</SelectItem>
+                            <SelectItem value="us-east1">US East 1 (South Carolina)</SelectItem>
+                            <SelectItem value="europe-west1">Europe West 1 (Belgium)</SelectItem>
+                            <SelectItem value="europe-west4">Europe West 4 (Netherlands)</SelectItem>
+                            <SelectItem value="asia-southeast1">Asia Southeast 1 (Singapore)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="vertex-usage-scope">Chi può usare questa configurazione? *</Label>
+                        <Select
+                          value={vertexFormData.usageScope}
+                          onValueChange={(value: "both" | "consultant_only" | "clients_only" | "selective") => 
+                            setVertexFormData({ ...vertexFormData, usageScope: value })
+                          }
+                        >
+                          <SelectTrigger id="vertex-usage-scope" className="mt-1.5">
+                            <SelectValue placeholder="Seleziona chi può usare Vertex AI" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="both">Tutti (consultant e clienti)</SelectItem>
+                            <SelectItem value="consultant_only">Solo io (consultant)</SelectItem>
+                            <SelectItem value="clients_only">Solo i clienti</SelectItem>
+                            <SelectItem value="selective">Clienti selezionati (configurare dopo il salvataggio)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Controlla chi può usare questa configurazione Vertex AI
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="vertex-service-account">Service Account JSON *</Label>
+                        <div className="mt-1.5">
+                          <Input
+                            id="vertex-service-account"
+                            type="file"
+                            accept=".json"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                try {
+                                  const text = await file.text();
+                                  const json = JSON.parse(text);
+                                  setVertexFormData({ ...vertexFormData, serviceAccountJson: JSON.stringify(json) });
+                                  toast({
+                                    title: "✅ File caricato",
+                                    description: `Service Account JSON caricato con successo (${file.name})`,
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    title: "❌ Errore",
+                                    description: "Il file non è un JSON valido",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }
+                            }}
+                            className="cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Carica il file JSON del Service Account di Google Cloud (salvato in chiaro nel database)
+                        </p>
+                      </div>
+                    </div>
+
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <CheckCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        Vertex AI offre $300 gratuiti per 90 giorni, modelli più avanzati e migliori limiti di rate. 
+                        Configuralo per ottenere la migliore esperienza!
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                      <Button
+                        onClick={handleVertexSave}
+                        disabled={!vertexFormData.projectId || !vertexFormData.location || !vertexFormData.serviceAccountJson}
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Salva Vertex AI
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl">
+                          <Key className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Google AI Studio</CardTitle>
+                          <CardDescription>
+                            Fallback automatico con rotazione API keys
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                        Fallback
+                      </Badge>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-6">
+                    {/* Alert info */}
+                    <Alert className="bg-amber-50 border-amber-200">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertDescription className="text-sm text-amber-800">
+                        Google AI Studio viene usato automaticamente come fallback se Vertex AI non è configurato o disabilitato.
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* API Keys management */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <Bot className="h-4 w-4 text-blue-600" />
+                          Le tue API Keys ({geminiApiKeys.length}/10)
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddApiKey}
+                          disabled={geminiApiKeys.length >= 10}
+                          className="text-xs"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Aggiungi Key
+                        </Button>
+                      </div>
+
+                      {geminiApiKeys.length === 0 ? (
+                        <div className="text-sm text-slate-500 italic py-8 text-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
+                          <Bot className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                          <p className="font-medium text-slate-600 mb-1">Nessuna API key configurata</p>
+                          <p className="text-xs">Clicca "Aggiungi Key" per iniziare</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {geminiApiKeys.map((apiKey, index) => (
+                            <div key={index} className="flex items-center gap-2 bg-slate-50 p-3 rounded-lg hover:bg-slate-100 transition-colors">
+                              <div className="flex-shrink-0 w-8 text-center">
+                                <span className="text-xs font-medium text-slate-500">#{index + 1}</span>
+                              </div>
+                              <Input
+                                type="password"
+                                value={apiKey}
+                                onChange={(e) => handleApiKeyChange(index, e.target.value)}
+                                className="flex-1 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                                placeholder={`API Key ${index + 1}`}
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveApiKey(index)}
+                                className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p className="text-xs text-blue-800 flex items-start gap-2">
+                          <Sparkles className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                          <span>
+                            Le API keys verranno ruotate automaticamente ad ogni interazione per distribuire il carico. 
+                            Puoi aggiungere fino a 10 keys per massimizzare la capacità.
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                      <Button
+                        onClick={handleGeminiSave}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Salva Modifiche
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Client AI Tab Content */}
+              <TabsContent value="client-ai">
+                <Alert className="mb-6 bg-indigo-50 border-indigo-200">
+                  <Users className="h-5 w-5" />
+                  <AlertDescription className="text-sm">
+                    <strong>Gestione Multi-Tenant per Clienti</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Ogni cliente può avere le proprie credenziali AI separate</li>
+                      <li>Default: usa le tue credenziali Vertex AI/Google Studio</li>
+                      <li>Custom: cliente usa le sue API keys personali (se registrato)</li>
+                      <li>Utile per separare i costi e i limiti di rate per cliente</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl">
+                        <Users className="h-6 w-6 text-indigo-600" />
+                      </div>
+                      <div>
+                        <CardTitle>Gestione API per Clienti</CardTitle>
+                        <CardDescription>
+                          Configura quale provider AI utilizzare per ogni cliente (default: Vertex AI)
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent>
+                    {isLoadingClientsAi ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-3" />
+                        <p className="text-sm text-gray-600">Caricamento clienti...</p>
+                      </div>
+                    ) : !clientsAiConfig?.clients || clientsAiConfig.clients.length === 0 ? (
+                      <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg">
+                        <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-600 font-medium">Nessun cliente trovato</p>
+                        <p className="text-sm text-gray-500 mt-1">Aggiungi clienti per gestire le loro API</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <Alert className="bg-indigo-50 border-indigo-200">
+                          <AlertCircle className="h-4 w-4 text-indigo-600" />
+                          <AlertDescription className="text-sm text-indigo-800">
+                            <strong>Vertex AI (default)</strong>: usa le tue credenziali Vertex AI · 
+                            <strong> Google Studio</strong>: usa le tue API keys Google AI Studio · 
+                            <strong> Custom</strong>: usa API keys specifiche del cliente
+                          </AlertDescription>
+                        </Alert>
+
+                        <div className="space-y-3">
+                          {clientsAiConfig.clients.map((client) => (
+                            <ClientAIConfigRow 
+                              key={client.id}
+                              client={client}
+                              onSave={() => queryClient.invalidateQueries({ queryKey: ["/api/consultant/client-ai-config"] })}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Email Tab Content */}
+              <TabsContent value="email">
+                <Alert className="mb-6 bg-blue-50 border-blue-200">
+                  <Mail className="h-5 w-5" />
+                  <AlertDescription className="text-sm">
+                    <strong>Configurazione Email Marketing Automatico</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Configura il tuo server SMTP per inviare email automatiche ai lead</li>
+                      <li>Supporta Gmail, Outlook, server custom</li>
+                      <li>L'AI genererà email personalizzate basate sul tono selezionato</li>
+                      <li>Testa prima con email personale per verificare la consegna</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl">
+                        <Mail className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <CardTitle>Configurazione Server SMTP</CardTitle>
+                        <CardDescription>
+                          Configura il server SMTP per l'invio automatico di email ai tuoi clienti
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-host">Host SMTP *</Label>
+                        <Input
+                          id="smtp-host"
+                          placeholder="smtp.gmail.com"
+                          value={smtpFormData.host}
+                          onChange={(e) => setSmtpFormData({ ...smtpFormData, host: e.target.value })}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-port">Porta *</Label>
+                        <Input
+                          id="smtp-port"
+                          type="number"
+                          placeholder="587"
+                          value={smtpFormData.port}
+                          onChange={(e) => setSmtpFormData({ ...smtpFormData, port: parseInt(e.target.value) })}
+                          className="mt-1.5"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="smtp-secure">Connessione Sicura (SSL/TLS)</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Abilita la crittografia SSL/TLS per la connessione
+                        </p>
+                      </div>
+                      <Switch
+                        id="smtp-secure"
+                        checked={smtpFormData.secure}
+                        onCheckedChange={(checked) => setSmtpFormData({ ...smtpFormData, secure: checked })}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-username">Username/Email *</Label>
+                        <Input
+                          id="smtp-username"
+                          placeholder="username@example.com"
+                          value={smtpFormData.username}
+                          onChange={(e) => setSmtpFormData({ ...smtpFormData, username: e.target.value })}
+                          className="mt-1.5"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-password">Password *</Label>
+                        <Input
+                          id="smtp-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={smtpFormData.password}
+                          onChange={(e) => setSmtpFormData({ ...smtpFormData, password: e.target.value })}
+                          className="mt-1.5"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Server className="h-5 w-5" />
+                        Impostazioni Email
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="smtp-from-email">Email Mittente *</Label>
+                          <Input
+                            id="smtp-from-email"
+                            type="email"
+                            placeholder="noreply@example.com"
+                            value={smtpFormData.fromEmail}
+                            onChange={(e) => setSmtpFormData({ ...smtpFormData, fromEmail: e.target.value })}
+                            className="mt-1.5"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="smtp-from-name">Nome Mittente *</Label>
+                          <Input
+                            id="smtp-from-name"
+                            placeholder="Il Tuo Nome"
+                            value={smtpFormData.fromName}
+                            onChange={(e) => setSmtpFormData({ ...smtpFormData, fromName: e.target.value })}
+                            className="mt-1.5"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-tone">Tono Email</Label>
+                        <Select
+                          value={smtpFormData.emailTone}
+                          onValueChange={(value: "professionale" | "amichevole" | "motivazionale") => setSmtpFormData({ ...smtpFormData, emailTone: value })}
+                        >
+                          <SelectTrigger id="smtp-tone" className="mt-1.5">
+                            <SelectValue placeholder="Seleziona il tono delle email" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="professionale">Professionale</SelectItem>
+                            <SelectItem value="amichevole">Amichevole</SelectItem>
+                            <SelectItem value="motivazionale">Motivazionale</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="smtp-signature">Firma Email</Label>
+                        <Textarea
+                          id="smtp-signature"
+                          placeholder="La tua firma personalizzata..."
+                          rows={4}
+                          value={smtpFormData.emailSignature}
+                          onChange={(e) => setSmtpFormData({ ...smtpFormData, emailSignature: e.target.value })}
+                          className="mt-1.5"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch("/api/consultant/smtp-settings/test", {
+                              method: "POST",
+                              headers: {
+                                ...getAuthHeaders(),
+                                "Content-Type": "application/json",
+                              },
+                              body: JSON.stringify(smtpFormData),
+                            });
+
+                            if (!response.ok) {
+                              const errorData = await response.json();
+                              throw new Error(errorData.message || "Test connessione fallito");
+                            }
+
+                            toast({
+                              title: "✅ Connessione Riuscita",
+                              description: "La connessione SMTP è stata verificata con successo",
+                            });
+                          } catch (error: any) {
+                            toast({
+                              title: "❌ Errore di Connessione",
+                              description: error.message || "Impossibile connettersi al server SMTP",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        variant="outline"
+                        className="w-full sm:w-auto"
+                      >
+                        Test Connessione
+                      </Button>
+                      <Button
+                        onClick={handleSMTPSave}
+                        disabled={!smtpFormData.host || !smtpFormData.username || !smtpFormData.password}
+                        className="w-full sm:flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        Salva SMTP
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* WhatsApp Tab Content */}
+              <TabsContent value="whatsapp">
+                <Alert className="mb-6 bg-green-50 border-green-200">
+                  <MessageSquare className="h-5 w-5" />
+                  <AlertDescription className="text-sm">
+                    <strong>Sistema AI Separato per Agenti WhatsApp</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Pool AI completamente separato dalle credenziali generali del consultant</li>
+                      <li>Sistema a 3 livelli: Vertex AI WhatsApp → Gemini Keys WhatsApp → Errore</li>
+                      <li>NON usa mai le credenziali del consultant generale</li>
+                      <li>Configura Vertex AI WhatsApp per $300 free credit dedicati agli agenti</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
+                {/* WhatsApp Vertex AI Configuration Card */}
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm mt-6">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl">
+                          <Cloud className="h-6 w-6 text-green-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Vertex AI - Pool Agenti WhatsApp</CardTitle>
+                          <CardDescription>
+                            Sistema AI separato per agenti WhatsApp con $300 free credit
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={
+                        whatsAppVertexData?.settings 
+                          ? "bg-green-50 text-green-700 border-green-300" 
+                          : "bg-gray-50 text-gray-700 border-gray-300"
+                      }>
+                        {whatsAppVertexData?.settings ? "Configurata" : "Non configurata"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-6">
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        <strong>Sistema AI separato per WhatsApp:</strong> Gli agenti WhatsApp useranno SOLO queste credenziali, 
+                        completamente separate da quelle del consultant. Offre $300 gratuiti per 90 giorni e migliori prestazioni.
+                      </AlertDescription>
+                    </Alert>
+
+                    {whatsAppVertexData?.settings && whatsAppVertexData.settings.daysRemaining !== undefined && (
+                      <Alert className={
+                        whatsAppVertexData.settings.daysRemaining < 7 ? "bg-red-50 border-red-200" : 
+                        whatsAppVertexData.settings.daysRemaining < 30 ? "bg-yellow-50 border-yellow-200" : 
+                        "bg-green-50 border-green-200"
+                      }>
+                        <Clock className="h-4 w-4" />
+                        <AlertDescription>
+                          {whatsAppVertexData.settings.daysRemaining < 0 ? (
+                            "⚠️ Vertex AI WhatsApp scaduto! Gli agenti useranno Gemini API keys."
+                          ) : whatsAppVertexData.settings.daysRemaining < 7 ? (
+                            `⚠️ Scade tra ${whatsAppVertexData.settings.daysRemaining} giorni! Rinnova ora.`
+                          ) : whatsAppVertexData.settings.daysRemaining < 30 ? (
+                            `Scade tra ${whatsAppVertexData.settings.daysRemaining} giorni.`
+                          ) : (
+                            `Attivo. Scade tra ${whatsAppVertexData.settings.daysRemaining} giorni.`
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="whatsapp-vertex-project-id">Project ID *</Label>
+                        <Input
+                          id="whatsapp-vertex-project-id"
+                          value={whatsAppVertexFormData.projectId}
+                          onChange={(e) => setWhatsAppVertexFormData({ ...whatsAppVertexFormData, projectId: e.target.value })}
+                          placeholder="whatsapp-ai-project-123"
+                          className="mt-1.5"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="whatsapp-vertex-location">Location *</Label>
+                        <Select
+                          value={whatsAppVertexFormData.location}
+                          onValueChange={(value) => setWhatsAppVertexFormData({ ...whatsAppVertexFormData, location: value })}
+                        >
+                          <SelectTrigger id="whatsapp-vertex-location" className="mt-1.5">
+                            <SelectValue placeholder="Seleziona location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="us-central1">US Central 1 (Iowa)</SelectItem>
+                            <SelectItem value="us-east1">US East 1 (South Carolina)</SelectItem>
+                            <SelectItem value="europe-west1">Europe West 1 (Belgium)</SelectItem>
+                            <SelectItem value="europe-west4">Europe West 4 (Netherlands)</SelectItem>
+                            <SelectItem value="asia-southeast1">Asia Southeast 1 (Singapore)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="whatsapp-vertex-service-account">Service Account JSON *</Label>
+                        <div className="mt-1.5">
+                          <Input
+                            id="whatsapp-vertex-service-account"
+                            type="file"
+                            accept=".json"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                try {
+                                  const text = await file.text();
+                                  const json = JSON.parse(text);
+                                  setWhatsAppVertexFormData({ ...whatsAppVertexFormData, serviceAccountJson: JSON.stringify(json) });
+                                  toast({
+                                    title: "✅ File caricato",
+                                    description: `Service Account JSON caricato con successo (${file.name})`,
+                                  });
+                                } catch (error) {
+                                  toast({
+                                    title: "❌ Errore",
+                                    description: "Il file non è un JSON valido",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }
+                            }}
+                            className="cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Carica il file JSON del Service Account Google Cloud per WhatsApp (salvato in chiaro nel database)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                      {whatsAppVertexData?.settings && (
+                        <Button
+                          variant="outline"
+                          onClick={handleDeleteWhatsAppVertexAI}
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Rimuovi
+                        </Button>
+                      )}
+                      <Button
+                        onClick={handleSaveWhatsAppVertexAI}
+                        disabled={!whatsAppVertexFormData.projectId || !whatsAppVertexFormData.location || !whatsAppVertexFormData.serviceAccountJson}
+                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                      >
+                        <Save className="h-4 w-4 mr-2" />
+                        {whatsAppVertexData?.settings ? "Aggiorna" : "Salva"} Vertex AI
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* WhatsApp Gemini API Keys Card */}
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm mt-6">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-xl">
+                          <Key className="h-6 w-6 text-yellow-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Gemini API Keys - Fallback Agenti WhatsApp</CardTitle>
+                          <CardDescription>
+                            Usate automaticamente quando Vertex AI non è disponibile
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                        {whatsAppKeysCount} / {whatsAppMaxKeys} keys
+                      </Badge>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-6">
+                    <Alert className="bg-amber-50 border-amber-200">
+                      <AlertCircle className="h-4 w-4 text-amber-600" />
+                      <AlertDescription className="text-sm text-amber-800">
+                        <strong>Rotazione automatica LRU:</strong> Le keys vengono utilizzate a rotazione (Least Recently Used). 
+                        Sistema separato dal pool del consultant - gli agenti WhatsApp non useranno mai le credenziali generali.
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* Progress Bar */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-600">Utilizzo Pool</span>
+                        <span className="font-semibold text-slate-900">
+                          {whatsAppKeysCount} / {whatsAppMaxKeys}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full transition-all ${
+                            whatsAppKeysCount >= whatsAppMaxKeys 
+                              ? "bg-red-500" 
+                              : whatsAppKeysCount >= whatsAppMaxKeys * 0.8 
+                              ? "bg-yellow-500" 
+                              : "bg-green-500"
+                          }`}
+                          style={{ width: `${(whatsAppKeysCount / whatsAppMaxKeys) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Add New Key */}
+                    <div className="space-y-3">
+                      <Label htmlFor="new-whatsapp-api-key">Aggiungi Nuova API Key</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="new-whatsapp-api-key"
+                          type="password"
+                          value={newWhatsAppApiKey}
+                          onChange={(e) => setNewWhatsAppApiKey(e.target.value)}
+                          placeholder="AIza..."
+                          className="flex-1"
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              handleAddWhatsAppGeminiKey();
+                            }
+                          }}
+                        />
+                        <Button
+                          onClick={handleAddWhatsAppGeminiKey}
+                          disabled={whatsAppKeysCount >= whatsAppMaxKeys || !newWhatsAppApiKey.trim()}
+                          className="bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Aggiungi
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Keys List */}
+                    {whatsAppApiKeys.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                        <Key className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <p className="text-sm">Nessuna API key configurata</p>
+                        <p className="text-xs mt-1">Aggiungi la prima key per abilitare il fallback</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        <Label className="text-sm font-medium">Le tue API Keys WhatsApp</Label>
+                        {whatsAppApiKeys.map((key: any, index: number) => (
+                          <div
+                            key={key.id}
+                            className={`p-3 rounded-lg border transition-all ${
+                              key.isActive 
+                                ? "border-green-200 bg-green-50/50" 
+                                : "border-gray-200 bg-gray-50/50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Badge variant="outline" className="font-mono text-xs">
+                                #{index + 1}
+                              </Badge>
+
+                              <div className="flex-1 min-w-0">
+                                <p className="font-mono text-xs text-gray-700 truncate">
+                                  {key.keyPreview || "AIza..."}
+                                </p>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                  <span>Utilizzi: {key.usageCount || 0}</span>
+                                  {key.lastUsedAt && (
+                                    <>
+                                      <span>•</span>
+                                      <span>Ultimo: {new Date(key.lastUsedAt).toLocaleString('it-IT')}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={key.isActive}
+                                  onCheckedChange={() => handleToggleWhatsAppApiKey(key.id)}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteWhatsAppApiKey(key.id)}
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <Alert className="bg-green-50 border-green-200">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <AlertDescription className="text-sm text-green-800">
+                        <strong>Sistema a 3 livelli per WhatsApp:</strong>
+                        <ol className="list-decimal list-inside mt-2 space-y-1">
+                          <li>Vertex AI WhatsApp (priorità massima, $300 free credit)</li>
+                          <li>Gemini API Keys WhatsApp (fallback automatico con rotazione LRU)</li>
+                          <li>Errore (mai usare le credenziali del consultant)</li>
+                        </ol>
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Calendar Tab Content */}
+              <TabsContent value="calendar" className="space-y-6">
+                <Alert className="mb-6 bg-cyan-50 border-cyan-200">
+                  <CalendarDays className="h-5 w-5" />
+                  <AlertDescription className="text-sm">
+                    <strong>Gestione Completa Calendar</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Visualizza il tuo Google Calendar integrato</li>
+                      <li>Configura disponibilità AI per risposte automatiche</li>
+                      <li>Imposta slot disponibili per prenotazioni appuntamenti</li>
+                      <li>Connetti OAuth per sincronizzazione automatica</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
+                <Tabs defaultValue={new URLSearchParams(searchParams).get('subtab') || "view"} className="space-y-6">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="view">
+                      <CalendarDays className="h-4 w-4 mr-2" />
+                      Google Calendar
+                    </TabsTrigger>
+                    <TabsTrigger value="availability">
+                      <Clock className="h-4 w-4 mr-2" />
+                      Disponibilità
+                    </TabsTrigger>
+                    <TabsTrigger value="oauth">
+                      <Key className="h-4 w-4 mr-2" />
+                      Connessione OAuth
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Tab 1: Google Calendar View */}
+                  <TabsContent value="view">
+                    <CalendarView />
+                  </TabsContent>
+
+                  {/* Tab 2: Availability Settings */}
+                  <TabsContent value="availability">
+                    <CalendarSettingsContent />
+                  </TabsContent>
+
+                  {/* Tab 3: OAuth Setup */}
+                  <TabsContent value="oauth">
+                    {/* OAuth Reconnection Warning Banner */}
+                {calendarSettings?.oauthNeedsReconnection && (
+                  <Alert className="mb-6 bg-red-50 border-red-300 shadow-lg">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                    <AlertDescription>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="font-semibold text-red-900 mb-2">
+                            ⚠️ Google Calendar Disconnesso
+                          </p>
+                          <p className="text-sm text-red-800 mb-3">
+                            {calendarSettings.oauthError || 'Il token OAuth è scaduto o revocato. Riconnetti per ripristinare la sincronizzazione.'}
+                          </p>
+                          <div className="bg-red-100 border border-red-200 rounded-lg p-3 text-xs text-red-900">
+                            <p className="font-semibold mb-1">💡 Problema Frequente: App in Modalità "Testing"</p>
+                            <p className="mb-2">
+                              Se Google Calendar si disconnette automaticamente ogni 7 giorni, la tua app Google Cloud è in modalità "Testing".
+                            </p>
+                            <p className="font-medium">
+                              📘 Soluzione: Passa l'app da "Testing" a "Production" nella Google Cloud Console per evitare scadenze automatiche.
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              const response = await fetch("/api/calendar-settings/oauth/start", {
+                                headers: getAuthHeaders(),
+                              });
+
+                              if (!response.ok) throw new Error("Failed to start OAuth");
+
+                              const { authUrl } = await response.json();
+                              window.open(authUrl, "_blank");
+
+                              toast({
+                                title: "✅ Autenticazione avviata",
+                                description: "Completa l'autorizzazione nella finestra aperta",
+                              });
+                            } catch (error: any) {
+                              toast({
+                                title: "Errore",
+                                description: error.message,
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="bg-red-600 hover:bg-red-700 text-white whitespace-nowrap"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Riconnetti Ora
+                        </Button>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* OAuth Testing vs Production Guide */}
+                <Card className="mb-6 border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-yellow-50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-orange-100 rounded-lg">
+                          <AlertCircle className="h-5 w-5 text-orange-600" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg text-orange-900">
+                            📘 Guida: Come Evitare la Disconnessione Automatica
+                          </CardTitle>
+                          <CardDescription className="text-orange-700">
+                            Passa da "Testing" a "Production" per token OAuth permanenti
+                          </CardDescription>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Problem Explanation */}
+                    <div className="bg-white rounded-lg p-4 border border-orange-200">
+                      <h4 className="font-semibold text-orange-900 mb-2 flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        Perché Google Calendar si disconnette ogni 7 giorni?
+                      </h4>
+                      <div className="text-sm text-gray-700 space-y-2">
+                        <p>
+                          <strong>Modalità "Testing"</strong>: I token OAuth scadono automaticamente dopo 7 giorni come misura di sicurezza di Google.
+                        </p>
+                        <p>
+                          <strong>Modalità "Production"</strong>: I token durano indefinitamente (se usati almeno 1 volta ogni 6 mesi).
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Step-by-Step Guide */}
+                    <div className="bg-white rounded-lg p-4 border border-orange-200">
+                      <h4 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4" />
+                        Come Passare da "Testing" a "Production"
+                      </h4>
+                      <ol className="list-decimal list-inside space-y-3 text-sm text-gray-700">
+                        <li className="pl-2">
+                          <strong>Vai su</strong> <a 
+                            href="https://console.cloud.google.com/apis/credentials/consent" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline font-medium"
+                          >
+                            Google Cloud Console → OAuth consent screen
+                          </a>
+                        </li>
+                        <li className="pl-2">
+                          <strong>Seleziona</strong> il progetto che stai usando per Google Calendar OAuth
+                        </li>
+                        <li className="pl-2">
+                          <strong>Clicca</strong> sul tab <Badge className="mx-1 bg-blue-100 text-blue-800">OAuth consent screen</Badge>
+                        </li>
+                        <li className="pl-2">
+                          <strong>Verifica</strong> lo stato dell'app:
+                          <div className="ml-6 mt-2 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                                Testing
+                              </Badge>
+                              <span className="text-xs">= Token scadono ogni 7 giorni ❌</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">
+                                In production
+                              </Badge>
+                              <span className="text-xs">= Token permanenti ✅</span>
+                            </div>
+                          </div>
+                        </li>
+                        <li className="pl-2">
+                          Se l'app è in <strong>Testing</strong>, clicca sul pulsante <Button variant="outline" size="sm" className="mx-1 pointer-events-none">PUBLISH APP</Button>
+                        </li>
+                        <li className="pl-2">
+                          <strong>Conferma</strong> la pubblicazione (non serve verifica Google per uso personale)
+                        </li>
+                        <li className="pl-2">
+                          <strong>Riconnetti</strong> Google Calendar usando il pulsante qui sotto
+                        </li>
+                      </ol>
+                    </div>
+
+                    {/* Important Notes */}
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <Sparkles className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        <strong>Note Importanti:</strong>
+                        <ul className="list-disc list-inside mt-2 space-y-1 ml-2">
+                          <li>La modalità "Production" è sicura anche per uso personale</li>
+                          <li>Non serve verificare l'app con Google se la usi solo tu</li>
+                          <li>Puoi sempre tornare a "Testing" se necessario</li>
+                          <li>Dopo il passaggio a Production, riconnetti Google Calendar una volta</li>
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* Quick Links */}
+                    <div className="flex flex-wrap gap-3 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open('https://console.cloud.google.com/apis/credentials/consent', '_blank')}
+                        className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Apri OAuth Consent Screen
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open('https://support.google.com/cloud/answer/10311615', '_blank')}
+                        className="text-gray-600 border-gray-300 hover:bg-gray-50"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Documentazione Google
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-cyan-100 to-blue-100 rounded-xl">
+                          <Calendar className="h-6 w-6 text-cyan-600" />
+                        </div>
+                        <div>
+                          <CardTitle>Google Calendar OAuth 2.0</CardTitle>
+                          <CardDescription>
+                            Collega il tuo Google Calendar per sincronizzare gli appuntamenti
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {calendarSettings?.googleCalendarConnected && !calendarSettings?.oauthNeedsReconnection && (
+                        <Badge variant="default" className="bg-green-500">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Connesso
+                        </Badge>
+                      )}
+                      {calendarSettings?.oauthNeedsReconnection && (
+                        <Badge variant="destructive" className="bg-red-500">
+                          <XCircle className="h-3 w-3 mr-1" />
+                          Disconnesso
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-6">
+                    {/* Setup Guide */}
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        <strong>📖 Guida Completa Setup OAuth 2.0</strong>
+                        <ol className="list-decimal list-inside space-y-2 mt-3">
+                          <li><strong>Vai su <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" className="underline font-medium text-blue-600 hover:text-blue-800">Google Cloud Console</a></strong></li>
+                          <li>Seleziona o crea un progetto</li>
+                          <li>Vai in <strong>API e servizi → Libreria</strong> e abilita <strong>Google Calendar API</strong></li>
+                          <li className="text-green-700">✅ Abilita Google Calendar API →</li>
+                          <li>Vai in <strong>API e servizi → Schermata consenso OAuth</strong></li>
+                          <li>Scegli <strong>Esterno</strong> come tipo di utente</li>
+                          <li>Compila le informazioni dell'app richieste</li>
+                          <li>In <strong>Utenti di test</strong>, aggiungi la tua email Gmail</li>
+                          <li>Vai in <strong>API e servizi → Credenziali</strong></li>
+                          <li>Clicca <strong>"Crea credenziali"</strong> → <strong>"ID client OAuth 2.0"</strong></li>
+                          <li>Tipo applicazione: <strong>Applicazione web</strong></li>
+                          <li>In <strong>URI di reindirizzamento autorizzati</strong>, aggiungi:
+                            <div className="bg-white p-2 rounded mt-1 font-mono text-xs break-all border border-blue-200">
+                              {window.location.origin}/api/calendar-settings/oauth/callback
+                            </div>
+                          </li>
+                          <li>Copia <strong>Client ID</strong> e <strong>Client Secret</strong></li>
+                          <li className="text-green-700 font-semibold">✅ Incollali nei campi qui sotto e clicca "Salva e Connetti"</li>
+                        </ol>
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* Credentials Form */}
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="calendar-client-id">Client ID *</Label>
+                        <Input
+                          id="calendar-client-id"
+                          placeholder="123456789-xxxxx.apps.googleusercontent.com"
+                          defaultValue={calendarSettings?.googleOAuthClientId || ""}
+                          className="mt-1.5 font-mono text-sm"
+                        />
+                        {calendarSettings?.googleOAuthClientId && (
+                          <p className="text-xs text-green-600 mt-1">✓ Client ID salvato</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label htmlFor="calendar-client-secret">Client Secret *</Label>
+                        <Input
+                          id="calendar-client-secret"
+                          type="password"
+                          placeholder={calendarSettings?.hasOAuthCredentials ? "••••••••••••••••" : "GOCSPX-xxxxxxxxxxxxx"}
+                          defaultValue=""
+                          className="mt-1.5 font-mono text-sm"
+                        />
+                        {calendarSettings?.hasOAuthCredentials ? (
+                          <p className="text-xs text-green-600 mt-1">✓ Client Secret salvato (lascia vuoto se non vuoi modificarlo)</p>
+                        ) : (
+                          <p className="text-xs text-slate-500 mt-1">Mantieni questo valore segreto</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <Label>Redirect URI (auto-generato)</Label>
+                        <div className="mt-1.5 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                          <code className="text-xs text-slate-700 break-all">
+                            {window.location.origin}/api/calendar-settings/oauth/callback
+                          </code>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Aggiungi questo URI nella console Google Cloud
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Connection Status */}
+                    {calendarSettings?.googleCalendarConnected && (
+                      <Alert className="bg-green-50 border-green-200">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-sm text-green-800">
+                          <strong>Google Calendar connesso!</strong> I tuoi appuntamenti sono sincronizzati.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex gap-3 pt-4 border-t">
+                      <Button
+                        onClick={async () => {
+                          try {
+                            const clientId = (document.getElementById('calendar-client-id') as HTMLInputElement)?.value;
+                            const clientSecret = (document.getElementById('calendar-client-secret') as HTMLInputElement)?.value;
+
+                            const finalClientId = clientId || calendarSettings?.googleOAuthClientId;
+                            const finalClientSecret = clientSecret || calendarSettings?.googleOAuthClientSecret;
+
+                            if (!finalClientId || !finalClientSecret) {
+                              toast({
+                                title: "Campi mancanti",
+                                description: "Inserisci Client ID e Client Secret",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+
+                            if (clientId || clientSecret) {
+                              const saveResponse = await fetch("/api/calendar-settings", {
+                                method: "POST",
+                                headers: {
+                                  ...getAuthHeaders(),
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                  googleOAuthClientId: finalClientId,
+                                  googleOAuthClientSecret: finalClientSecret,
+                                }),
+                              });
+
+                              if (!saveResponse.ok) throw new Error("Failed to save credentials");
+
+                              toast({
+                                title: "✅ Credenziali salvate",
+                                description: "Client ID e Client Secret salvati con successo",
+                              });
+
+                              queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings"] });
+                            }
+
+                            const response = await fetch("/api/calendar-settings/oauth/start", {
+                              headers: getAuthHeaders(),
+                            });
+
+                            if (!response.ok) throw new Error("Failed to start OAuth");
+
+                            const { authUrl } = await response.json();
+                            window.open(authUrl, "_blank");
+
+                            toast({
+                              title: "✅ Autenticazione avviata",
+                              description: "Completa l'autorizzazione nella finestra aperta",
+                            });
+                          } catch (error: any) {
+                            toast({
+                              title: "Errore",
+                              description: error.message,
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Salva e Connetti con Google
+                      </Button>
+
+                      {calendarSettings?.googleCalendarConnected && (
+                        <Button
+                          onClick={async () => {
+                            if (!confirm("Vuoi disconnettere Google Calendar?")) return;
+
+                            try {
+                              const response = await fetch("/api/calendar-settings/disconnect", {
+                                method: "POST",
+                                headers: getAuthHeaders(),
+                              });
+
+                              if (!response.ok) throw new Error("Errore durante la disconnessione");
+
+                              queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings"] });
+                              toast({
+                                title: "✅ Disconnesso",
+                                description: "Google Calendar disconnesso con successo",
+                              });
+                            } catch (error: any) {
+                              toast({
+                                title: "Errore",
+                                description: error.message,
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          variant="outline"
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          <XCircle className="h-4 w-4 mr-2" />
+                          Disconnetti
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+                  </TabsContent>
+                </Tabs>
+              </TabsContent>
+
+              {/* Lead Import Tab Content */}
+              <TabsContent value="lead-import">
+                <Alert className="mb-6 bg-orange-50 border-orange-200">
+                  <Server className="h-5 w-5" />
+                  <AlertDescription className="text-sm">
+                    <strong>Importazione Automatica Lead da API Esterna</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Connetti il tuo CRM/sistema esterno per importare lead automaticamente</li>
+                      <li>Polling automatico: controlla nuovi lead ogni X minuti</li>
+                      <li>Lead vengono schedulati per contatto WhatsApp proattivo</li>
+                      <li>Filtra per tipo, sorgente, campagna per importare solo lead rilevanti</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-4 sm:space-y-6">
+                  {/* Sezione 1: Stato Importazione */}
+                  <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-50 to-cyan-50 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <RefreshCw className="h-5 w-5 text-blue-600" />
+                        Stato Importazione
+                      </CardTitle>
+                      <CardDescription>Stato attuale del servizio di importazione lead</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <Label className="text-sm font-medium">Stato Polling:</Label>
+                          <Badge
+                            variant={leadImportFormData.pollingEnabled ? "default" : "secondary"}
+                            className={
+                              leadImportFormData.pollingEnabled
+                                ? "bg-green-500 hover:bg-green-600"
+                                : "bg-gray-500 hover:bg-gray-600"
+                            }
+                          >
+                            {leadImportFormData.pollingEnabled ? "Attivo" : "Inattivo"}
+                          </Badge>
+                          <Button
+                            variant={leadImportFormData.pollingEnabled ? "outline" : "default"}
+                            size="sm"
+                            onClick={handleToggleLeadPolling}
+                            disabled={
+                              !leadImportConfigId ||
+                              startPollingMutation.isPending ||
+                              stopPollingMutation.isPending
+                            }
+                          >
+                            {startPollingMutation.isPending || stopPollingMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : leadImportFormData.pollingEnabled ? (
+                              "Ferma"
+                            ) : (
+                              "Avvia"
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="font-medium">Ultima Importazione:</span>
+                        <span className="text-muted-foreground">
+                          {formatLastImport(existingLeadConfig?.lastImportAt)}
+                        </span>
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        onClick={handleManualLeadImport}
+                        disabled={!leadImportConfigId || isImporting || manualImportMutation.isPending}
+                        className="w-full sm:w-auto"
+                      >
+                        {isImporting || manualImportMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Importazione in corso...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Importazione Manuale
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Lead in Attesa Section */}
+                  <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="flex items-center gap-2">
+                            <Clock className="h-5 w-5 text-gray-600" />
+                            Lead in Attesa
+                          </CardTitle>
+                          <CardDescription>
+                            Lead importati schedulati per contatto WhatsApp
+                          </CardDescription>
+                        </div>
+                        <Badge variant="outline" className="text-lg">
+                          {pendingLeads?.length || 0} in coda
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {pendingLeadsLoading ? (
+                        <div className="flex justify-center p-8">
+                          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                        </div>
+                      ) : pendingLeads && pendingLeads.length > 0 ? (
+                        <div className="space-y-4">
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Nome</TableHead>
+                                  <TableHead>Telefono</TableHead>
+                                  <TableHead>Prossimo Contatto</TableHead>
+                                  <TableHead>Tempo Rimanente</TableHead>
+                                  <TableHead>Campagna</TableHead>
+                                  <TableHead>Status</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {pendingLeads.slice(0, 10).map((lead: any) => (
+                                  <TableRow key={lead.id}>
+                                    <TableCell className="font-medium">
+                                      {lead.firstName} {lead.lastName}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-sm">
+                                      {lead.phoneNumber}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-gray-400" />
+                                        {formatDate(lead.contactSchedule)}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline" className={getTimeRemainingColor(lead.contactSchedule)}>
+                                        {getTimeRemaining(lead.contactSchedule)}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-sm text-gray-600">
+                                      {getCampaignName(lead.campaignId)}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                                        In Attesa
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+
+                          {pendingLeads.length > 10 && (
+                            <div className="text-center pt-4 border-t">
+                              <p className="text-sm text-gray-600">
+                                Mostrati 10 di {pendingLeads.length} lead in attesa.{' '}
+                                <Link to="/consultant/proactive-leads" className="text-blue-600 hover:underline">
+                                  Vedi tutti →
+                                </Link>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center p-8 text-gray-500">
+                          <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                          <p>Nessun lead in attesa</p>
+                          <p className="text-sm mt-1">I lead importati appariranno qui</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Sezione 2: Configurazione API */}
+                  <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Server className="h-5 w-5 text-indigo-600" />
+                        Configurazione API
+                      </CardTitle>
+                      <CardDescription>Inserisci le credenziali API per l'integrazione</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* API Key */}
+                      <div className="space-y-2">
+                        <Label htmlFor="leadApiKey">API Key *</Label>
+                        <div className="relative">
+                          <Input
+                            id="leadApiKey"
+                            type={showLeadApiKey ? "text" : "password"}
+                            placeholder="crm_live_..."
+                            value={leadImportFormData.apiKey}
+                            onChange={(e) => handleLeadInputChange("apiKey", e.target.value)}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 -translate-y-1/2"
+                            onClick={() => setShowLeadApiKey(!showLeadApiKey)}
+                          >
+                            {showLeadApiKey ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Base URL */}
+                      <div className="space-y-2">
+                        <Label htmlFor="leadBaseUrl">Base URL *</Label>
+                        <Input
+                          id="leadBaseUrl"
+                          type="url"
+                          placeholder="https://..."
+                          value={leadImportFormData.baseUrl}
+                          onChange={(e) => handleLeadInputChange("baseUrl", e.target.value)}
+                        />
+                      </div>
+
+                      {/* Campagna Marketing */}
+                      <div className="space-y-2">
+                        <Label htmlFor="leadTargetCampaign">Campagna Marketing *</Label>
+                        <Select
+                          value={leadImportFormData.targetCampaignId}
+                          onValueChange={(value) => handleLeadInputChange("targetCampaignId", value)}
+                        >
+                          <SelectTrigger id="leadTargetCampaign">
+                            <SelectValue placeholder="Seleziona una campagna" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {campaignsLoading ? (
+                              <div className="p-2 text-sm text-muted-foreground">Caricamento...</div>
+                            ) : campaigns.length === 0 ? (
+                              <div className="p-2 text-sm text-muted-foreground">
+                                Nessuna campagna disponibile
+                              </div>
+                            ) : (
+                              campaigns.map((campaign: any) => (
+                                <SelectItem key={campaign.id} value={campaign.id}>
+                                  {campaign.campaignName}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Tipo Lead */}
+                      <div className="space-y-2">
+                        <Label htmlFor="leadLeadType">Tipo Lead</Label>
+                        <Select
+                          value={leadImportFormData.leadType}
+                          onValueChange={(value: any) => handleLeadInputChange("leadType", value)}
+                        >
+                          <SelectTrigger id="leadLeadType">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="both">Entrambi (CRM + Marketing)</SelectItem>
+                            <SelectItem value="crm">Solo CRM</SelectItem>
+                            <SelectItem value="marketing">Solo Marketing</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Filtri Opzionali */}
+                      <div className="space-y-4">
+                        <h3 className="text-sm font-semibold">Filtri Opzionali</h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="leadSourceFilter">Sorgente</Label>
+                            <Input
+                              id="leadSourceFilter"
+                              placeholder="es: facebook"
+                              value={leadImportFormData.sourceFilter}
+                              onChange={(e) => handleLeadInputChange("sourceFilter", e.target.value)}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="leadCampaignFilter">Campagna</Label>
+                            <Input
+                              id="leadCampaignFilter"
+                              placeholder="es: metodo-orbitale"
+                              value={leadImportFormData.campaignFilter}
+                              onChange={(e) => handleLeadInputChange("campaignFilter", e.target.value)}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="leadDaysFilter">Giorni</Label>
+                            <Input
+                              id="leadDaysFilter"
+                              placeholder="es: 7, 30, all"
+                              value={leadImportFormData.daysFilter}
+                              onChange={(e) => handleLeadInputChange("daysFilter", e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Intervallo Polling */}
+                      <div className="space-y-2">
+                        <Label htmlFor="leadPollingInterval">Intervallo Polling (minuti)</Label>
+                        <Input
+                          id="leadPollingInterval"
+                          type="number"
+                          min="1"
+                          max="1440"
+                          value={leadImportFormData.pollingIntervalMinutes}
+                          onChange={(e) =>
+                            handleLeadInputChange("pollingIntervalMinutes", parseInt(e.target.value) || 5)
+                          }
+                        />
+                      </div>
+
+                      {/* Abilita Importazione Automatica */}
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="leadPollingEnabled">Abilita Importazione Automatica</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Attiva il polling automatico dei lead
+                          </p>
+                        </div>
+                        <Switch
+                          id="leadPollingEnabled"
+                          checked={leadImportFormData.pollingEnabled}
+                          onCheckedChange={(checked) => handleLeadInputChange("pollingEnabled", checked)}
+                        />
+                      </div>
+
+                      {/* Buttons */}
+                      <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={handleTestLeadConnection}
+                          disabled={!leadImportConfigId || testConnectionMutation.isPending}
+                          className="w-full sm:w-auto"
+                        >
+                          {testConnectionMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Test in corso...
+                            </>
+                          ) : (
+                            "Testa Connessione"
+                          )}
+                        </Button>
+
+                        <Button
+                          onClick={handleSaveLeadConfiguration}
+                          disabled={createLeadConfigMutation.isPending || updateLeadConfigMutation.isPending}
+                          className="w-full sm:flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                        >
+                          {createLeadConfigMutation.isPending || updateLeadConfigMutation.isPending ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Salvataggio...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-2" />
+                              Salva Configurazione
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Assistant */}
+      <ConsultantAIAssistant />
+    </div>
+  );
+}

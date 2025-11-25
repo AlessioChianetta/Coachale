@@ -1,0 +1,1 @@
+ALTER TABLE "gemini_session_handles" ADD COLUMN "consultant_type" text;

@@ -1,0 +1,1 @@
+ALTER TABLE "consultant_whatsapp_config" ADD COLUMN "whatsapp_templates" jsonb;

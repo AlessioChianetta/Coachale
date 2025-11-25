@@ -1,0 +1,855 @@
+import { Router } from "express";
+import { authenticateToken, requireRole, type AuthRequest } from "../middleware/auth";
+import { storage } from "../storage";
+import { insertClientStateTrackingSchema, updateClientStateTrackingSchema } from "@shared/schema";
+import { z } from "zod";
+import { buildUserContext } from "../ai-context-builder";
+import { buildSystemPrompt } from "./ai-prompts";
+import { GoogleGenAI } from "@google/genai";
+import { db } from "../db";
+import { users } from "../../shared/schema";
+import { eq, sql as drizzleSql } from "drizzle-orm";
+
+const router = Router();
+
+// POST /api/clients/:id/state - Upsert client state (consultant only)
+router.post("/clients/:id/state", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const clientId = req.params.id;
+    
+    // Verify client exists
+    const client = await storage.getUser(clientId);
+    if (!client) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Client not found" 
+      });
+    }
+    
+    // Verify client is actually a client (not a consultant)
+    if (client.role !== "client") {
+      return res.status(400).json({ 
+        success: false, 
+        error: "User is not a client" 
+      });
+    }
+    
+    // Verify consultant has access to this client
+    if (client.consultantId !== req.user!.id) {
+      return res.status(403).json({ 
+        success: false, 
+        error: "Access denied - this is not your client" 
+      });
+    }
+    
+    // Validate and upsert state
+    const validatedData = insertClientStateTrackingSchema.parse({
+      ...req.body,
+      clientId,
+      consultantId: req.user!.id,
+    });
+    
+    const state = await storage.upsertClientState(validatedData);
+    
+    res.status(200).json({ 
+      success: true, 
+      data: state 
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Invalid data", 
+        details: error.errors 
+      });
+    }
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || "Failed to save client state" 
+    });
+  }
+});
+
+// GET /api/clients/:id/state - Get client state (client can see only their own, consultant can see all their clients)
+router.get("/clients/:id/state", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const clientId = req.params.id;
+    
+    // Verify client exists
+    const client = await storage.getUser(clientId);
+    if (!client) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Client not found" 
+      });
+    }
+    
+    // Verify client is actually a client (not a consultant)
+    if (client.role !== "client") {
+      return res.status(400).json({ 
+        success: false, 
+        error: "User is not a client" 
+      });
+    }
+    
+    // Check access: client can see only their own state, consultant can see their clients' states
+    let hasAccess = false;
+    let consultantId = "";
+    
+    if (req.user!.role === "client") {
+      // Client can only see their own state
+      hasAccess = clientId === req.user!.id;
+      if (hasAccess && client.consultantId) {
+        consultantId = client.consultantId;
+      }
+    } else if (req.user!.role === "consultant") {
+      // Consultant can see their clients' states
+      hasAccess = client.consultantId === req.user!.id;
+      consultantId = req.user!.id;
+    }
+    
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        success: false, 
+        error: "Access denied" 
+      });
+    }
+    
+    if (!consultantId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Client has no assigned consultant" 
+      });
+    }
+    
+    const state = await storage.getClientState(clientId, consultantId);
+    
+    if (!state) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Client state not found" 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      data: state 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || "Failed to fetch client state" 
+    });
+  }
+});
+
+// GET /api/clients/my/state - Get logged-in client's state
+router.get("/clients/my/state", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
+  try {
+    const clientId = req.user!.id;
+    
+    // Get client to find their consultant
+    const client = await storage.getUser(clientId);
+    if (!client) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Client not found" 
+      });
+    }
+    
+    if (!client.consultantId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "No consultant assigned to this client" 
+      });
+    }
+    
+    const state = await storage.getClientState(clientId, client.consultantId);
+    
+    if (!state) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Client state not found" 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      data: state 
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || "Failed to fetch client state" 
+    });
+  }
+});
+
+// GET /api/clients/state/statistics - Get client state statistics for consultant (consultant only)
+router.get("/clients/state/statistics", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    // Get all states for this consultant's clients
+    const states = await storage.getClientStatesByConsultant(consultantId);
+    
+    // Calculate statistics
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    const stats = {
+      totalClientsWithState: states.length,
+      averageMotivation: states.length > 0 
+        ? Math.round((states.reduce((sum, s) => sum + s.motivationLevel, 0) / states.length) * 10) / 10
+        : 0,
+      aiGenerated: 0, // This will be calculated by checking if state was created in same minute as AI generation
+      updatedToday: states.filter(s => {
+        const lastUpdated = new Date(s.lastUpdated);
+        return lastUpdated >= todayStart;
+      }).length,
+    };
+    
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error: any) {
+    console.error("❌ [STATS] Error fetching client state statistics:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch statistics",
+    });
+  }
+});
+
+// POST /api/clients/:id/state/ai-generate - AI auto-generates client state from full context (consultant only)
+router.post("/clients/:id/state/ai-generate", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const clientId = req.params.id;
+    const consultantId = req.user!.id;
+    
+    console.log(`🤖 [AI STATE] Generating client state for ${clientId} by consultant ${consultantId}`);
+    
+    // Verify client exists and belongs to this consultant
+    const client = await storage.getUser(clientId);
+    if (!client || client.role !== "client") {
+      return res.status(404).json({ success: false, error: "Client not found" });
+    }
+    
+    if (client.consultantId !== consultantId) {
+      return res.status(403).json({ success: false, error: "Access denied - this is not your client" });
+    }
+    
+    // Get client's API keys for Gemini (each client has their own keys managed by consultant)
+    const [clientUser] = await db.select().from(users).where(eq(users.id, clientId)).limit(1);
+    if (!clientUser) {
+      return res.status(404).json({ success: false, error: "Client user not found" });
+    }
+    
+    const apiKeys = clientUser.geminiApiKeys || [];
+    const currentIndex = clientUser.geminiApiKeyIndex || 0;
+    let apiKey: string;
+    let shouldRotate = false;
+    let apiKeysLength = 0;
+    
+    if (apiKeys.length > 0) {
+      const validIndex = currentIndex % apiKeys.length;
+      apiKey = apiKeys[validIndex];
+      shouldRotate = true;
+      apiKeysLength = apiKeys.length;
+    } else {
+      apiKey = process.env.GEMINI_API_KEY || "";
+      if (!apiKey) {
+        return res.status(500).json({ success: false, error: "Gemini API key not configured" });
+      }
+    }
+    
+    // Build full user context (like AI assistant does)
+    console.log(`🔍 [AI STATE] Building full 360° context for client...`);
+    const userContext = await buildUserContext(clientId);
+    
+    // Use the SAME system prompt as the AI Assistant (buildSystemPrompt)
+    // This ensures identical context and quality between consultant button and AI assistant
+    console.log(`🤖 [AI STATE] Building system prompt with full context...`);
+    const systemPrompt = buildSystemPrompt('consulente', 'finanziario', userContext);
+    
+    // User message with specific JSON extraction instructions
+    // NOTE: All the rich context is already in the system prompt (buildSystemPrompt)
+    // This message only needs to specify the JSON extraction format
+    const userMessage = `Crea un'analisi COMPLETA e PERSONALIZZATA del cliente estraendo i seguenti campi.
+
+🎯 IL TUO COMPITO:
+
+Analizza TUTTO il contesto che hai nel system prompt (dati finanziari, esercizi, lezioni, roadmap, ecc.) in modo PROFONDO e PERSONALIZZATO.
+Non limitarti a ripetere i dati - INTERPRETA e SINTETIZZA per capire:
+- Chi è veramente questo cliente
+- Cosa sta cercando di costruire/raggiungere
+- Dove si trova ora nel suo percorso
+- Cosa l'ha portato qui
+- Dove vuole arrivare
+
+Poi, da questa analisi completa, estrai i seguenti campi:
+
+1. **CURRENT_STATE** (Stato Attuale - 2-3 frasi):
+   Dove si trova ORA il cliente? Descrivi la sua situazione ATTUALE considerando:
+   - Professione/ruolo attuale
+   - Progetto/business che sta sviluppando (se presente)
+   - Livello di competenze acquisite fino ad ora
+   ${userContext.financeData ? `
+   - **IMPORTANTE**: INCLUDI i dati finanziari reali dal Software Orbitale:
+     * Entrate/Uscite mensili
+     * Tasso di risparmio
+     * Budget sforati o problemi specifici
+     * Liquidità disponibile
+   
+   Esempio OTTIMO con Software Orbitale: "Giusy è una studentessa con un forte desiderio di trasformazione personale e finanziaria. Attualmente si trova in una situazione finanziaria critica, con liquidità disponibile nel Software Orbitale di €-2415.13 e saldi molto bassi sui conti correnti. Le sue uscite mensili (€1120.00) sono inferiori alle entrate (€1400.00), ma i budget di ottobre e settembre mostrano sforamenti significativi..."
+   ` : ''}
+   
+   Esempio BUONO: "Dipendente nel settore finanziario che gestisce un portafoglio di €500K. Ha completato il 60% del percorso formativo in finanza personale e sta studiando strategie di investimento avanzate."
+   Esempio CATTIVO: "Sta completando gli esercizi" (troppo generico)
+
+2. **IDEAL_STATE** (Stato Ideale - 2-3 frasi):
+   Dove VUOLE ARRIVARE? Descrivi l'obiettivo finale basandoti su:
+   - Obiettivi espliciti che ha configurato
+   - Il percorso formativo che sta seguendo
+   - La direzione indicata dalle sue azioni
+   
+   Esempio: "Consulente finanziario indipendente con 15-20 clienti ricorrenti, fatturato €100K/anno, specializzato in pianificazione pensionistica per professionisti"
+
+3. **INTERNAL_BENEFIT** (Beneficio Interno - 1-2 frasi):
+   Perché questo cambiamento è importante per lui a livello PERSONALE/EMOTIVO?
+   Esempio: "Il beneficio interno principale è l'aumento dell'autostima e del senso di valore personale, dimostrando a se stessa di 'valere' e superando la percezione di 'non essere abbastanza'. Cerca pace mentale e libertà dall'ansia costante per i soldi."
+
+4. **EXTERNAL_BENEFIT** (Beneficio Esterno - 1-2 frasi):
+   Cosa significherà CONCRETAMENTE nella sua vita?
+   Esempio: "A livello esterno, mira alla stabilità finanziaria attraverso la riduzione e l'eliminazione dei debiti, e la creazione di entrate stabili e passive. Desidera concrete opportunità professionali e la capacità di supportare economicamente i suoi cari."
+
+5. **MAIN_OBSTACLE** (Ostacolo Principale - 1-2 frasi):
+   Qual è il PRINCIPALE blocco/sfida che deve superare?
+   Esempio: "Il suo principale ostacolo è l'attuale situazione di 'sovraindebitamento' e i 'finanziamenti che la uccidono' mensilmente. A questo si aggiunge una grave mancanza di liquidità disponibile e difficoltà oggettive nella gestione delle spese."
+
+6. **PAST_ATTEMPTS** (Cosa ha già provato - 2-3 frasi) - 🚨 OBBLIGATORIO - NON LASCIARE MAI VUOTO:
+   Basandoti sul suo percorso formativo e obiettivi, cosa potrebbe aver già tentato?
+   DEVI analizzare: corsi completati, esercizi fatti in passato, tentativi precedenti documentati
+   Esempio: "Giusy ha tentato in passato di gestire i suoi soldi da sola, ma ha trovato il processo 'difficile' e non è riuscita a mettere da parte 'poco o nulla'. Sta cercando di avviare un'attività di vendita di libri su Amazon, ma attende ancora risultati concreti."
+   ❌ NON lasciare vuoto - se non ci sono dati espliciti, scrivi: "Sta iniziando il percorso formativo, non ci sono tentativi precedenti documentati negli esercizi o nelle note"
+
+7. **CURRENT_ACTIONS** (Cosa sta facendo ORA - 2-3 frasi) - 🚨 OBBLIGATORIO - NON LASCIARE MAI VUOTO:
+   Quali azioni concrete sta compiendo ADESSO?
+   DEVI basarti su: esercizi in corso, lezioni che sta seguendo, obiettivi attivi, task di oggi
+   Esempio: "Giusy è attivamente impegnata nel percorso di formazione, avendo completato 7 esercizi (sebbene 3 siano ancora pendenti) e 4 lezioni. Sta dedicando del tempo agli esercizi, che le 'fanno pensare' e la 'aiutano a sbloccare il cervello'. Sta cercando 'di stringere i denti e trovare qualcosa d'altro da fare' oltre alla vendita dei libri."
+   ❌ NON lasciare vuoto - usa i dati dal context: esercizi completati, università, task attive
+
+8. **FUTURE_VISION** (Visione 3-5 anni - 2-3 frasi) - 🚨 OBBLIGATORIO - NON LASCIARE MAI VUOTO:
+   Dove si vede tra 3-5 anni? Estrapola basandoti sui suoi obiettivi e percorso
+   DEVI creare una visione concreta basata su: obiettivi configurati, percorso formativo, aspirazioni espresse negli esercizi
+   Esempio: "Giusy immagina un futuro in cui avrà superato tutti gli ostacoli passati, dimostrando il suo valore a se stessa. Entro i prossimi 5 anni, si vede con il suo studio di massaggi (forse due), collaboratori fidati, un partner amorevole, e piena 'libertà, serenità, sicurezza e potere'. Progetta di avere un patrimonio di €250.000 e entrate mensili significative."
+   ❌ NON lasciare vuoto - estrapola dai suoi obiettivi e aspirazioni
+
+9. **MOTIVATION_LEVEL** (1-10):
+   Quanto è motivato? Basati su:
+   - Costanza nel completare esercizi
+   - % completamento percorso formativo  
+   - Numero di obiettivi attivi
+   - Streak e attività recente
+
+⚠️ REGOLE CRITICHE:
+1. I campi pastAttempts, currentActions e futureVision sono OBBLIGATORI
+2. Se non hai dati espliciti, DEVI comunque scrivere qualcosa basandoti sul contesto
+3. Usa un tono EMPATICO, CALDO e PERSONALIZZATO (come negli esempi sopra)
+4. Includi citazioni dirette quando disponibili (es. "ergastolo finanziario", "valere", ecc.)
+5. Usa i dati del Software Orbitale quando disponibili, citando sempre la fonte
+
+Rispondi SOLO con JSON valido (nessun altro testo):
+{
+  "currentState": "...",
+  "idealState": "...",
+  "internalBenefit": "...",
+  "externalBenefit": "...",
+  "mainObstacle": "...",
+  "pastAttempts": "...",
+  "currentActions": "...",
+  "futureVision": "...",
+  "motivationLevel": 7
+}
+
+Genera l'analisi ORA:`;
+
+    // Call Gemini API with system prompt + user message
+    console.log(`🤖 [AI STATE] Calling Gemini API with buildSystemPrompt...`);
+    const genai = new GoogleGenAI({ apiKey });
+    const result = await genai.models.generateContent({
+      model: "gemini-2.5-flash",
+      config: {
+        temperature: 0.7,
+        maxOutputTokens: 250000,
+        responseMimeType: "application/json",
+        systemInstruction: systemPrompt, // 🔥 THIS IS THE KEY: Use buildSystemPrompt as system instruction
+      },
+      contents: [{ role: "user", parts: [{ text: userMessage }] }],
+    });
+    
+    const responseText = result.text || "";
+💰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${userContext.financeData?.dashboard ? `
+📊 DASHBOARD SOFTWARE ORBITALE - Panoramica Finanziaria Completa
+🔄 Fonte: Software Orbitale > Dashboard (con calcoli lato client)
+
+💰 METRICHE PRINCIPALI:
+- Entrate mensili: €${userContext.financeData.dashboard.monthlyIncome?.toFixed(2) || '0.00'}
+- Uscite mensili: €${userContext.financeData.dashboard.monthlyExpenses?.toFixed(2) || '0.00'}
+- Risparmio mensile: €${userContext.financeData.dashboard.availableMonthlyFlow?.toFixed(2) || '0.00'}
+- Tasso di risparmio: ${userContext.financeData.dashboard.savingsRate?.toFixed(2) || '0.00'}%
+
+📈 INDICATORI FINANZIARI AVANZATI:
+- Patrimonio netto: €${userContext.financeData.dashboard.netWorth?.toFixed(2) || '0.00'}
+- Liquidità disponibile: €${userContext.financeData.dashboard.availableLiquidity?.toFixed(2) || '0.00'}
+- Rapporto debito/attività: ${(userContext.financeData.dashboard as any).debtToAssetRatioFormatted || '0.00'}%
+- Percentuale liquidità: ${(userContext.financeData.dashboard as any).liquidityPercentageFormatted || 'N/A'}%
+` : ''}
+
+${userContext.financeData?.budgets?.budgets && Array.isArray(userContext.financeData.budgets.budgets) && userContext.financeData.budgets.budgets.length > 0 ? `
+💵 BUDGET CATEGORIE - Software Orbitale (${userContext.financeData.budgets.budgets.length} categorie)
+🔄 Fonte: Software Orbitale > Budget Categorie
+${userContext.financeData.budgets.budgets.map(b => 
+  `  - ${b?.category || 'N/A'}: €${b?.spentAmount?.toFixed(2) || '0.00'}/€${b?.budgetAmount?.toFixed(2) || '0.00'} (${b?.percentage?.toFixed(0) || '0'}%) - ${b?.status === 'exceeded' ? '⚠️ SFORATO' : b?.status === 'on_track' ? '✅ OK' : '✓ Sotto budget'}`
+).join('\n')}
+
+Totale budgetato: €${userContext.financeData.budgets.totalBudgeted?.toFixed(2) || '0.00'}
+Totale speso: €${userContext.financeData.budgets.totalSpent?.toFixed(2) || '0.00'}
+` : ''}
+
+${userContext.financeData?.budgetsByMonth && Object.keys(userContext.financeData.budgetsByMonth).length > 0 ? `
+📅 BUDGET PER MESE - Ultimi 6 mesi
+🔄 Fonte: Software Orbitale > Budget Categorie (storico)
+
+${Object.entries(userContext.financeData.budgetsByMonth).map(([monthName, budgets]: [string, any]) => {
+  const totalBudgeted = budgets.reduce((sum: number, b: any) => sum + parseFloat(b.monthlyBudget || '0'), 0);
+  const totalSpent = budgets.reduce((sum: number, b: any) => sum + parseFloat(b.spent || '0'), 0);
+  return `📆 ${monthName}:
+  - Totale budgetato: €${totalBudgeted.toFixed(2)}
+  - Totale speso: €${totalSpent.toFixed(2)}
+  - Budget disponibile: €${(totalBudgeted - totalSpent).toFixed(2)}
+  - Categorie con dati: ${budgets.length}`;
+}).join('\n\n')}
+
+⚠️ IMPORTANTE - Quando l'utente chiede "budget di [MESE]":
+- USA i dati da questa sezione "BUDGET PER MESE"
+- Esempio: "budget di ottobre" → cerca "ottobre" in questa lista
+- Mostra TUTTI i dettagli delle categorie per quel mese specifico
+` : ''}
+
+${userContext.financeData?.accounts?.accounts && Array.isArray(userContext.financeData.accounts.accounts) && userContext.financeData.accounts.accounts.length > 0 ? `
+🏦 CONTI BANCARI - Software Orbitale
+🔄 Fonte: Software Orbitale > Account Architecture
+
+${userContext.financeData.accounts.accounts.map(acc => {
+  const emoji = acc?.type === 'wealth' ? '💰' : 
+                acc?.type === 'income' ? '💳' : 
+                acc?.type === 'operating' ? '🏛️' : 
+                acc?.type === 'emergency' ? '🚨' : 
+                acc?.type === 'investment' ? '📈' : '💾';
+  const ibanDisplay = acc?.iban && acc.iban.length > 4 ? ` - IBAN: ${acc.iban.substring(0, 8)}...` : '';
+  return `  ${emoji} ${acc?.bank || 'N/A'} - ${acc?.name || 'N/A'}: €${acc?.balance?.toFixed(2) || '0.00'}${ibanDisplay}${acc?.monthlyAllocation && acc.monthlyAllocation > 0 ? ` (Allocazione: €${acc.monthlyAllocation.toFixed(2)}/mese)` : ''}`;
+}).join('\n')}
+
+Liquidità totale disponibile: €${userContext.financeData.accounts.totalLiquidity?.toFixed(2) || '0.00'}
+
+⚠️ IMPORTANTE - Quando l'utente chiede soldi su una BANCA specifica (es. "N26", "Revolut", "Intesa"):
+- Filtra per il campo "bank", NON per "name"
+- "bank" contiene il nome della banca (N26, Revolut, Intesa)
+- "name" contiene il tipo di conto (Conto Circolante, Conto Pila, ecc.)
+` : ''}
+
+${userContext.financeData?.investments?.investments && Array.isArray(userContext.financeData.investments.investments) && userContext.financeData.investments.investments.length > 0 ? `
+📈 PORTAFOGLIO INVESTIMENTI - Software Orbitale
+🔄 Fonte: Software Orbitale > Investimenti
+${userContext.financeData.investments.investments.map(inv => 
+  `  - ${inv?.name || 'N/A'}: €${inv?.value?.toFixed(2) || '0.00'} (Rendimento: ${inv?.return?.toFixed(2) || '0.00'}% = +€${inv?.returnAmount?.toFixed(2) || '0.00'})`
+).join('\n')}
+
+Valore totale: €${userContext.financeData.investments.totalValue?.toFixed(2) || '0.00'}
+Rendimento totale: ${userContext.financeData.investments.totalReturn?.toFixed(2) || '0.00'}% (+€${userContext.financeData.investments.totalReturnAmount?.toFixed(2) || '0.00'})
+` : ''}
+
+${userContext.financeData?.goals?.goals && Array.isArray(userContext.financeData.goals.goals) && userContext.financeData.goals.goals.length > 0 ? `
+🎯 OBIETTIVI FINANZIARI - Software Orbitale (${userContext.financeData.goals.goals.length} obiettivi)
+🔄 Fonte: Software Orbitale > Obiettivi (con analisi progresso)
+${userContext.financeData.goals.goals.map(goal => 
+  `  - ${goal?.name || 'N/A'}: €${goal?.currentAmount?.toFixed(2) || '0.00'}/€${goal?.targetAmount?.toFixed(2) || '0.00'} (${(((goal?.currentAmount || 0)/(goal?.targetAmount || 1))*100).toFixed(1)}%)
+    📊 Status: ${goal?.status === 'on_track' ? '✅ In linea' : goal?.status === 'ahead' ? '🚀 Avanti' : goal?.status === 'behind' ? '⚠️ Indietro' : '✓ Completato'}
+    💰 Contributo mensile: €${goal?.monthlyContribution?.toFixed(2) || '0.00'}
+    📅 Scadenza: ${goal?.deadline ? new Date(goal.deadline).toLocaleDateString('it-IT') : 'N/A'}`
+).join('\n')}
+
+📊 Riepilogo obiettivi:
+- Totale obiettivi: €${userContext.financeData.goals.totalGoalsAmount?.toFixed(2) || '0.00'}
+- Totale risparmiato: €${userContext.financeData.goals.totalSavedAmount?.toFixed(2) || '0.00'}
+- Obiettivi completati: ${userContext.financeData.goals.completedGoals || 0}
+- Obiettivi attivi: ${userContext.financeData.goals.activeGoals || 0}
+` : ''}
+
+${userContext.financeData?.transactions?.transactions && Array.isArray(userContext.financeData.transactions.transactions) && userContext.financeData.transactions.transactions.length > 0 ? `
+💳 TRANSAZIONI - Software Orbitale
+🔄 Fonte: Software Orbitale > Transazioni Complete
+📊 TOTALE TRANSAZIONI DISPONIBILI: ${userContext.financeData.transactions.transactions.length} (include Uscite, Entrate E Trasferimenti)
+📅 Range date: ${userContext.financeData.transactions.transactions[userContext.financeData.transactions.transactions.length - 1]?.date} → ${userContext.financeData.transactions.transactions[0]?.date}
+
+🔍 ELENCO COMPLETO DI TUTTE LE TRANSAZIONI (ordine cronologico inverso):
+${userContext.financeData.transactions.transactions.map(t => {
+  const typeEmoji = t?.type === 'expense' ? '💸' : t?.type === 'income' ? '💰' : '🔄';
+  const subcatDisplay = t?.subcategory ? ` > ${t.subcategory}` : '';
+  return `  ${typeEmoji} ${t?.date ? new Date(t.date).toLocaleDateString('it-IT') : 'N/A'}: ${t?.description || 'N/A'} - €${Math.abs(t?.amount || 0).toFixed(2)} (${t?.category || 'N/A'}${subcatDisplay})`;
+}).join('\n')}
+
+✅ HAI ACCESSO A TUTTE LE ${userContext.financeData.transactions.transactions.length} TRANSAZIONI SOPRA (inclusi Trasferimenti)
+
+⚠️ REGOLE SEMPLICI PER RISPONDERE:
+
+1️⃣ Richiesta con SOLO MESE (senza categoria specifica):
+   Esempio: "transazioni di ottobre", "spese del mese scorso", "movimenti di settembre"
+   ✅ MOSTRA **TUTTE LE CATEGORIE** di quel mese
+   ✅ Raggruppa per categoria: Alimentazione, Trasporti, Altro, ecc.
+   ✅ Ordine cronologico inverso (più recenti prima)
+   ✅ Esempio risposta:
+   "Ecco TUTTE le transazioni di ottobre 2025:
+   
+   📦 ALIMENTAZIONE (3 transazioni - €332.00)
+   💸 11/10/2025: Spesa - €104.00 (Alimentazione > Spesa alimentare)
+   💸 04/10/2025: Spesa - €71.00 (Alimentazione > Spesa alimentare)
+   
+   🚗 TRASPORTI (2 transazioni - €197.00)
+   💸 11/10/2025: Gasolio - €20.00 (Trasporti > Benzina)
+   
+   Totale: €1.252,00 (12 transazioni)"
+
+2️⃣ Richiesta con CATEGORIA SPECIFICA:
+   Esempio: "transazioni trasporti di ottobre", "spese cibo"
+   ✅ FILTRA per quella categoria specifica
+   ✅ Mostra solo transazioni di quella categoria
+
+3️⃣ Richiesta GENERICA ("mostra transazioni", "lista transazioni"):
+   ✅ SE contiene "tutte/tutto/completo/senza filtri" → MOSTRA TUTTO
+   ✅ ALTRIMENTI → Chiedi filtri: "Ho ${userContext.financeData.transactions.transactions.length} transazioni. Vuoi filtrarle per mese o categoria?"
+
+3️⃣ Budget per MESE SPECIFICO:
+   ✅ USA la sezione "BUDGET PER MESE" sopra
+   ✅ Cerca il mese nella lista (es. "ottobre 2025")
+   ✅ Mostra TUTTI i dettagli delle categorie di quel mese
+
+4️⃣ Formato OUTPUT standard PER MESE:
+   - Raggruppa per CATEGORIA (Alimentazione, Trasporti, Altro, ecc.)
+   - Per ogni categoria: mostra transazioni in ordine cronologico INVERSO
+   - Includi emoji categoria: 📦 Alimentazione, 🚗 Trasporti, 🏠 Casa, 💼 Altro
+   - Mostra totale per categoria: "📦 ALIMENTAZIONE (3 transazioni - €332.00)"
+   - Include sottocategoria: "Categoria > Sottocategoria"
+   - Alla fine: TOTALE GENERALE del mese
+   
+   Esempio completo:
+   "Ecco le transazioni di ottobre 2025:
+   
+   📦 ALIMENTAZIONE (3 transazioni - €332.00)
+   💸 11/10/2025: Spesa - €104.00 (Alimentazione > Spesa alimentare)
+   💸 04/10/2025: Spesa - €71.00 (Alimentazione > Spesa alimentare)
+   💸 01/10/2025: Spesa - €157.00 (Alimentazione > Spesa alimentare)
+   
+   🚗 TRASPORTI (2 transazioni - €197.00)
+   💸 11/10/2025: Gasolio - €20.00 (Trasporti > Benzina)
+   💸 08/10/2025: Hotel PARMA - €177.00 (Trasporti > Abbonamenti mezzi)
+   
+   💼 ALTRO (5 transazioni - €313.00)
+   💸 15/10/2025: Finanziamento - €164.00 (Altro > Altro)
+   ...
+   
+   📊 TOTALE OTTOBRE 2025: €1.252,00 (12 transazioni)"
+
+📋 ORDINAMENTO: Sempre cronologico inverso (più recenti prima) DENTRO ogni categoria
+` : ''}
+
+${userContext.financeData?.multiMonthAnalysis ? `
+📊━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 ANALISI STORICA ULTIMI 6 MESI - Software Orbitale
+📊━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 Fonte: Software Orbitale > Analisi Multi-Mese (calcoli lato client)
+
+📈 TREND GENERALE: ${userContext.financeData.multiMonthAnalysis.trends?.direction === 'improving' ? '🟢 IN MIGLIORAMENTO' : userContext.financeData.multiMonthAnalysis.trends?.direction === 'declining' ? '🔴 IN PEGGIORAMENTO' : '🟡 STABILE'}
+
+📉 VARIAZIONI RISPETTO A 6 MESI FA:
+- Entrate: ${userContext.financeData.multiMonthAnalysis.trends?.incomeChange || '0%'}
+- Uscite: ${userContext.financeData.multiMonthAnalysis.trends?.expensesChange || '0%'}
+- Risparmio: ${userContext.financeData.multiMonthAnalysis.trends?.savingsChange || '0%'}
+
+💰 MEDIE ULTIMI 6 MESI:
+- Entrate medie: €${userContext.financeData.multiMonthAnalysis.averages?.income?.toFixed(2) || '0.00'}
+- Uscite medie: €${userContext.financeData.multiMonthAnalysis.averages?.expenses?.toFixed(2) || '0.00'}
+- Risparmio medio: €${userContext.financeData.multiMonthAnalysis.averages?.savings?.toFixed(2) || '0.00'}
+- Tasso risparmio medio: ${userContext.financeData.multiMonthAnalysis.averages?.savingsRate?.toFixed(2) || '0'}%
+
+🏆 MESE MIGLIORE: ${userContext.financeData.multiMonthAnalysis.bestMonth?.month || 'N/A'} (Tasso risparmio: ${userContext.financeData.multiMonthAnalysis.bestMonth?.savingsRate?.toFixed(2) || '0'}%)
+⚠️ MESE PEGGIORE: ${userContext.financeData.multiMonthAnalysis.worstMonth?.month || 'N/A'} (Tasso risparmio: ${userContext.financeData.multiMonthAnalysis.worstMonth?.savingsRate?.toFixed(2) || '0'}%)
+
+📅 DETTAGLIO MENSILE:
+${userContext.financeData.multiMonthAnalysis.months?.map((m: any) => 
+  `  ${m.monthLabel}: Entrate €${m.income?.toFixed(2)}, Uscite €${m.expenses?.toFixed(2)}, Risparmio €${m.savings?.toFixed(2)} (${m.savingsRate?.toFixed(1)}%)`
+).join('\n') || ''}
+
+📊━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ FINE DATI SOFTWARE ORBITALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ REMINDER: Per QUALSIASI domanda finanziaria, usa QUESTI dati
+e menziona esplicitamente "Software Orbitale" come fonte.
+
+💡 CAPACITÀ ANALISI STORICA:
+- Hai accesso agli ultimi 6 mesi di dati finanziari completi
+- Puoi confrontare mesi, identificare trend, calcolare medie
+- Quando l'utente chiede "come andavo 3 mesi fa?" o "confronta questo mese con il precedente", usa i dati storici sopra
+- Identifica pattern: "Il tuo risparmio è migliorato del X% rispetto a Y mesi fa"
+- Suggerisci ottimizzazioni basate su trend reali: "Negli ultimi 3 mesi spendi in media €X per [categoria]"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 CONTESTO COMPLETO CLIENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+👤 INFORMAZIONI BASE:
+Nome: ${client.firstName} ${client.lastName}
+Email: ${client.email}
+Iscritto dal: ${userContext.user.enrolledAt ? new Date(userContext.user.enrolledAt).toLocaleDateString('it-IT') : 'N/A'}
+Livello: ${userContext.user.level}
+
+🎯 OBIETTIVI CONFIGURATI (${userContext.goals.length}):
+${userContext.goals.length > 0 ? userContext.goals.map(g => `  • ${g.title}: ${g.currentValue}/${g.targetValue} (${Math.round((parseFloat(g.currentValue || '0') / parseFloat(g.targetValue || '1')) * 100)}%)`).join('\n') : '  Nessun obiettivo configurato'}
+
+📚 PERCORSO FORMATIVO:
+Esercizi:
+- Totali: ${userContext.exercises.all.length}
+- Completati: ${userContext.exercises.all.filter(e => e.status === 'completed').length}
+- In corso: ${userContext.exercises.all.filter(e => e.status === 'in_progress').length}
+- Categorie principali: ${[...new Set(userContext.exercises.all.map(e => e.category))].slice(0, 5).join(', ')}
+
+Università:
+- Lezioni completate: ${completedLessons}/${totalLessons} (${totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0}%)
+${userContext.university.assignedYears.length > 0 ? `- Corsi: ${userContext.university.assignedYears.map(y => y.title).slice(0, 3).join(', ')}` : ''}
+
+📖 BIBLIOTECA:
+- Documenti letti: ${userContext.library.documents.filter(d => d.isRead).length}/${userContext.library.documents.length}
+${userContext.library.documents.length > 0 ? `- Categorie: ${[...new Set(userContext.library.documents.map(d => d.categoryName))].slice(0, 3).join(', ')}` : ''}
+
+${userContext.consultations && userContext.consultations.length > 0 ? `
+💼 CONSULENZE:
+- Totali: ${userContext.consultations.length}
+- Completate: ${userContext.consultations.filter(c => c.status === 'completed').length}
+` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 IL TUO COMPITO:
+
+Analizza TUTTO questo contesto in modo PROFONDO e PERSONALIZZATO (come faresti in una consulenza reale).
+Non limitarti a ripetere i dati - INTERPRETA e SINTETIZZA per capire:
+- Chi è veramente questo cliente
+- Cosa sta cercando di costruire/raggiungere
+- Dove si trova ora nel suo percorso
+- Cosa l'ha portato qui
+- Dove vuole arrivare
+
+Poi, da questa analisi completa, estrai i seguenti campi:
+
+1. **CURRENT_STATE** (Stato Attuale - 2-3 frasi):
+   Dove si trova ORA il cliente? Descrivi la sua situazione ATTUALE considerando:
+   - Professione/ruolo attuale
+   - Progetto/business che sta sviluppando (se presente)
+   - Livello di competenze acquisite fino ad ora
+   ${userContext.financeData ? `
+   - **IMPORTANTE**: INCLUDI i dati finanziari reali dal Software Orbitale:
+     * Entrate/Uscite mensili
+     * Tasso di risparmio
+     * Budget sforati o problemi specifici
+     * Liquidità disponibile
+   
+   Esempio OTTIMO con Software Orbitale: "Dipendente nel settore finanziario con entrate mensili di €2.800 e uscite di €2.100 (tasso risparmio 25%). Il Software Orbitale mostra 2 budget sforati (Alimentazione +45%, Trasporti +20%) e liquidità disponibile di €5.200. Ha completato il 60% del percorso formativo in finanza personale."
+   ` : ''}
+   
+   Esempio BUONO: "Dipendente nel settore finanziario che gestisce un portafoglio di €500K. Ha completato il 60% del percorso formativo in finanza personale e sta studiando strategie di investimento avanzate."
+   Esempio CATTIVO: "Sta completando gli esercizi" (troppo generico)
+
+2. **IDEAL_STATE** (Stato Ideale - 2-3 frasi):
+   Dove VUOLE ARRIVARE? Descrivi l'obiettivo finale basandoti su:
+   - Obiettivi espliciti che ha configurato
+   - Il percorso formativo che sta seguendo
+   - La direzione indicata dalle sue azioni
+   
+   Esempio: "Consulente finanziario indipendente con 15-20 clienti ricorrenti, fatturato €100K/anno, specializzato in pianificazione pensionistica per professionisti"
+
+3. **INTERNAL_BENEFIT** (Beneficio Interno - 1-2 frasi):
+   Perché questo cambiamento è importante per lui a livello PERSONALE/EMOTIVO?
+   Esempio: "Libertà professionale e autonomia decisionale, possibilità di lavorare secondo i propri valori"
+
+4. **EXTERNAL_BENEFIT** (Beneficio Esterno - 1-2 frasi):
+   Cosa significherà CONCRETAMENTE nella sua vita?
+   Esempio: "Reddito stabile di €100K/anno, flessibilità oraria per famiglia, riconoscimento professionale nel settore"
+
+5. **MAIN_OBSTACLE** (Ostacolo Principale - 1-2 frasi):
+   Qual è il PRINCIPALE blocco/sfida che deve superare?
+   Esempio: "Mancanza di clienti iniziali e paura di lasciare la sicurezza del lavoro dipendente"
+
+6. **PAST_ATTEMPTS** (Cosa ha già provato - 2-3 frasi) - ⚠️ OBBLIGATORIO:
+   Basandoti sul suo percorso formativo e obiettivi, cosa potrebbe aver già tentato?
+   DEVI analizzare: corsi completati, esercizi fatti in passato, tentativi precedenti
+   Esempio: "Ha già studiato finanza personale attraverso corsi online, completato diversi esercizi pratici su gestione portafogli, ma non ha ancora fatto il salto verso la consulenza indipendente"
+   ❌ NON lasciare vuoto - se non ci sono dati, scrivi: "Sta iniziando il percorso formativo, non ci sono tentativi precedenti documentati"
+
+7. **CURRENT_ACTIONS** (Cosa sta facendo ORA - 2-3 frasi) - ⚠️ OBBLIGATORIO:
+   Quali azioni concrete sta compiendo ADESSO?
+   DEVI basarti su: esercizi in corso, lezioni che sta seguendo, obiettivi attivi, task di oggi
+   Esempio: "Sta completando il percorso universitario su pianificazione finanziaria avanzata (60% completato), lavora su 3 esercizi pratici di analisi portafoglio, studia i documenti della biblioteca su consulenza fiscale"
+   ❌ NON lasciare vuoto - usa i dati forniti sopra (esercizi, università, task)
+
+8. **FUTURE_VISION** (Visione 3-5 anni - 2-3 frasi) - ⚠️ OBBLIGATORIO:
+   Dove si vede tra 3-5 anni? Estrapola basandoti sui suoi obiettivi e percorso
+   DEVI creare una visione concreta basata su: obiettivi configurati, percorso formativo, aspirazioni
+   Esempio: "Consulente affermato con studio proprio, team di 2-3 collaboratori junior, portfolio clienti consolidato di 25-30 famiglie ad alto reddito, riconosciuto come esperto nel settore pensionistico"
+   ❌ NON lasciare vuoto - estrapola dai dati disponibili
+
+9. **MOTIVATION_LEVEL** (1-10):
+   Quanto è motivato? Basati su:
+   - Costanza nel completare esercizi
+   - % completamento percorso formativo
+   - Numero di obiettivi attivi
+   - Streak e attività recente
+
+Rispondi SOLO con JSON valido (nessun altro testo):
+{
+  "currentState": "...",
+  "idealState": "...",
+  "internalBenefit": "...",
+  "externalBenefit": "...",
+  "mainObstacle": "...",
+  "pastAttempts": "...",
+  "currentActions": "...",
+  "futureVision": "...",
+  "motivationLevel": 7
+}
+
+Genera l'analisi ORA:`;
+
+    // Call Gemini API
+    console.log(`🤖 [AI STATE] Calling Gemini API...`);
+    const genai = new GoogleGenAI({ apiKey });
+    const result = await genai.models.generateContent({
+      model: "gemini-2.5-flash",
+      config: {
+        temperature: 0.7,
+        maxOutputTokens: 250000,
+        responseMimeType: "application/json",
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+    
+    const responseText = result.text || "";
+    console.log(`📝 [AI STATE] Raw response length: ${responseText.length} chars`);
+    
+    if (!responseText || responseText.trim().length === 0) {
+      throw new Error("Gemini API returned empty response");
+    }
+    
+    // Parse JSON response
+    let jsonText = responseText.trim();
+    
+    // Remove markdown code blocks if present
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```\n?/, '').replace(/\n?```$/, '');
+    }
+    
+    console.log(`📝 [AI STATE] Cleaned JSON text (first 200 chars): ${jsonText.substring(0, 200)}`);
+    
+    let aiAnalysis;
+    try {
+      aiAnalysis = JSON.parse(jsonText);
+    } catch (parseError: any) {
+      console.error(`❌ [AI STATE] JSON parse error:`, parseError.message);
+      console.error(`📝 [AI STATE] Failed JSON text:`, jsonText.substring(0, 500));
+      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
+    }
+    
+    // Validate structure
+    if (!aiAnalysis.currentState || !aiAnalysis.idealState || !aiAnalysis.motivationLevel) {
+      throw new Error("Invalid AI analysis structure");
+    }
+    
+    console.log(`✅ [AI STATE] AI analysis generated successfully`);
+    console.log(`   Campi generati: currentState, idealState, pastAttempts, currentActions, futureVision`);
+    
+    // Rotate API key if using client's keys
+    if (shouldRotate) {
+      await db.execute(
+        drizzleSql`UPDATE users 
+            SET gemini_api_key_index = (COALESCE(gemini_api_key_index, 0) + 1) % ${apiKeysLength}
+            WHERE id = ${clientId}`
+      );
+      console.log(`🔄 [AI STATE] Rotated API key for client ${clientId}`);
+    }
+    
+    // Validate that AI generated all required fields
+    if (!aiAnalysis.pastAttempts || !aiAnalysis.currentActions || !aiAnalysis.futureVision) {
+      console.warn(`⚠️ [AI STATE] AI response missing some fields:`, {
+        hasPastAttempts: !!aiAnalysis.pastAttempts,
+        hasCurrentActions: !!aiAnalysis.currentActions,
+        hasFutureVision: !!aiAnalysis.futureVision
+      });
+    }
+    
+    // Save to database
+    const stateData = {
+      clientId,
+      consultantId,
+      currentState: aiAnalysis.currentState,
+      idealState: aiAnalysis.idealState,
+      internalBenefit: aiAnalysis.internalBenefit || null,
+      externalBenefit: aiAnalysis.externalBenefit || null,
+      mainObstacle: aiAnalysis.mainObstacle || null,
+      pastAttempts: aiAnalysis.pastAttempts || null,
+      currentActions: aiAnalysis.currentActions || null,
+      futureVision: aiAnalysis.futureVision || null,
+      motivationLevel: Math.min(Math.max(parseInt(aiAnalysis.motivationLevel), 1), 10),
+    };
+    
+    console.log(`📝 [AI STATE] Saving data with fields:`, {
+      hasPastAttempts: !!stateData.pastAttempts,
+      hasCurrentActions: !!stateData.currentActions,
+      hasFutureVision: !!stateData.futureVision,
+      pastAttemptsLength: stateData.pastAttempts?.length || 0,
+      currentActionsLength: stateData.currentActions?.length || 0,
+      futureVisionLength: stateData.futureVision?.length || 0
+    });
+    
+    const savedState = await storage.upsertClientState(stateData);
+    
+    console.log(`💾 [AI STATE] State saved to database`);
+    
+    res.json({
+      success: true,
+      data: savedState,
+      message: "Client state generated successfully by AI"
+    });
+    
+  } catch (error: any) {
+    console.error("❌ [AI STATE] Error generating client state:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to generate client state with AI"
+    });
+  }
+});
+
+export default router;

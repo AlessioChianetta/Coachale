@@ -1,0 +1,159 @@
+rest-express@1.0.0 dev
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DB DEBUG] DATABASE_URL caricato dal .env:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   URL (password masked): postgresql:***MASKED***@helium/heliumdb?sslmode=disable
+   Lunghezza URL: 62 caratteri
+   Contiene "supabase.com"? false
+   Contiene "pooler"? false
+   Porta utilizzata: non trovata
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 [DB CONFIG] Configurazione rilevata:
+   isSupabase: false
+   hasQueryParams: true
+🔌 Database connection: PostgreSQL standard
+🔧 [DB CONFIG] Connection string finale (masked): postgresql:***MASKED***@helium/heliumdb?sslmode=disable
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [ENV DEBUG] File .env caricato. Variabili chiave:
+   DATABASE_URL definito? true
+   ENCRYPTION_KEY definito? true
+   SESSION_SECRET definito? true
+   NODE_ENV: development
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ All required environment variables are set
+✅ Encryption tests passed (legacy + per-consultant)
+✅ Encryption configuration verified successfully (per-consultant system active)
+🔧 Setting up Gemini Live WebSocket server...
+🔧 WebSocketServer instance created, attaching connection handler...
+✅ Gemini Live API WebSocket server setup on /ws/ai-voice
+3:38:21 PM [express] 📧 [PID:144 | RegID:cfxiid] Email scheduler enabled - ensuring cron job with schedule: 0 * * * *
+✅ [SCHEDULER REGISTRY] Registering new scheduler (ID: cfxiid)
+📧 [SCHEDULER REGISTRY] Email scheduler active with schedule: 0 * * * *
+3:38:21 PM [express] ✅ [PID:144 | RegID:cfxiid] Email scheduler registration completed
+3:38:21 PM [express] 📱 WhatsApp polling service enabled - starting polling...
+✅ [WHATSAPP POLLING] Starting polling service (ID: whatsapp-polling-1764085101425)
+📅 [WHATSAPP POLLING] Schedule: every 90 seconds
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+3:38:21 PM [express] ✅ WhatsApp polling service started
+3:38:21 PM [express] 🧹 Starting ghost conversation cleanup service...
+🧹 [CLEANUP] Starting ghost conversation cleanup (every 5 minutes)
+3:38:21 PM [express] ✅ Ghost conversation cleanup service started
+3:38:21 PM [express] 📅 Google Calendar sync service enabled - starting sync...
+✅ [CALENDAR SYNC] Starting calendar sync service (ID: calendar-sync-1764085101432)
+📅 [CALENDAR SYNC] Schedule: every 5 minute(s)
+3:38:21 PM [express] ✅ Google Calendar sync service started
+3:38:21 PM [express] 📤 Proactive outreach scheduler enabled - starting scheduler...
+🚀 Starting proactive outreach scheduler (every 5 minutes)
+✅ Proactive outreach scheduler started successfully (checking every 5 minutes)
+3:38:21 PM [express] ✅ Proactive outreach scheduler started
+3:38:21 PM [express] 📥 Lead polling scheduler enabled - initializing...
+🔄 Initializing lead polling scheduler...
+3:38:21 PM [express] serving on port 5000
+❌ [CLEANUP] Error cleaning up ghost conversations: error: relation "whatsapp_conversations" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async cleanupGhostConversations (/home/runner/workspace/server/whatsapp/cleanup-ghost-conversations.ts:23:29) {
+  length: 121,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '48',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1452',
+  routine: 'parserOpenTable'
+}
+Error fetching all polling configs: error: relation "users" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async LeadPollingScheduler.getAllPollingConfigs (/home/runner/workspace/server/services/lead-polling-scheduler.ts:209:27)
+    at async LeadPollingScheduler.initialize (/home/runner/workspace/server/services/lead-polling-scheduler.ts:20:26)
+    at async <anonymous> (/home/runner/workspace/server/index.ts:274:7) {
+  length: 105,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '267',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1452',
+  routine: 'parserOpenTable'
+}
+📋 Found 0 total configs across all consultants
+✅ Found 0 configs with polling enabled and active
+✅ Lead polling scheduler initialized successfully
+3:38:23 PM [express] ✅ Lead polling scheduler initialized
+3:38:23 PM [express] 📊 Training summary aggregator enabled - starting scheduler...
+✅ [TRAINING AGGREGATOR] Registering cron job (ID: nfedwt)
+📅 [TRAINING AGGREGATOR] Schedule: Daily at 3:00 AM
+⏰ [TRAINING AGGREGATOR] Timezone: UTC
+✅ [TRAINING AGGREGATOR] Cron job started successfully
+3:38:23 PM [express] ✅ Training summary aggregator started
+❌ [WHATSAPP POLLING] Error in poll cycle: error: relation "consultant_whatsapp_config" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async pollAllConsultants (/home/runner/workspace/server/whatsapp/polling-service.ts:333:17) {
+  length: 127,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '1190',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1452',
+  routine: 'parserOpenTable'
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ [CALENDAR SYNC] Error in sync cycle: error: relation "consultant_availability_settings" does not exist
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async syncAllConsultants (/home/runner/workspace/server/services/calendar-sync-service.ts:208:24) {
+  length: 131,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '29',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1452',
+  routine: 'parserOpenTable'

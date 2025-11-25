@@ -1,0 +1,972 @@
+import cron from 'node-cron';
+import { db } from '../db';
+import { 
+  proactiveLeads, 
+  users, 
+  consultantWhatsappConfig, 
+  whatsappConversations, 
+  whatsappMessages 
+} from '../../shared/schema';
+import { eq, lte, and, sql, gte } from 'drizzle-orm';
+import { 
+  getDaysSinceLastContact,
+  buildOpeningTemplateVariables,
+  buildGentleFollowUpTemplateVariables,
+  buildValueFollowUpTemplateVariables,
+  buildFinalFollowUpTemplateVariables
+} from './proactive-message-builder';
+import { sendWhatsAppMessage } from './twilio-client';
+import { findOrCreateConversation, normalizePhoneNumber } from './webhook-handler';
+import { storage } from '../storage';
+import { checkTemplateApprovalStatus } from '../services/whatsapp/template-approval-checker';
+
+let schedulerTask: cron.ScheduledTask | null = null;
+
+/**
+ * Replace template variables {{1}}, {{2}}, etc. with actual values
+ */
+function replaceTemplateVariables(
+  templateText: string, 
+  variables: Record<string, string>
+): string {
+  let result = templateText;
+  
+  // Replace each variable {{1}}, {{2}}, etc.
+  for (const [key, value] of Object.entries(variables)) {
+    const placeholder = `{{${key}}}`;
+    result = result.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
+  }
+  
+  return result;
+}
+
+/**
+ * Check if current time is within working hours
+ */
+function isWithinWorkingHours(config: any): boolean {
+  if (!config.workingHoursEnabled) {
+    return true; // Always available if working hours not enabled
+  }
+
+  if (!config.workingHoursStart || !config.workingHoursEnd || !config.workingDays) {
+    return true; // If not configured, assume always available
+  }
+
+  const now = new Date();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDay = dayNames[now.getDay()];
+
+  // Check if current day is in working days
+  if (!config.workingDays.includes(currentDay)) {
+    return false;
+  }
+
+  // Parse time strings (format: "HH:mm")
+  const [startHour, startMin] = config.workingHoursStart.split(':').map(Number);
+  const [endHour, endMin] = config.workingHoursEnd.split(':').map(Number);
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+
+  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+}
+
+// Import shared template approval checker
+import { checkTemplateApprovalStatus } from '../services/whatsapp/template-approval-checker';
+
+/**
+ * DEPRECATED: Moved to shared service module
+ * @see server/services/whatsapp/template-approval-checker.ts
+ */
+async function checkTemplateApprovalStatus_OLD(
+  twilioAccountSid: string,
+  twilioAuthToken: string,
+  contentSid: string
+): Promise<{ approved: boolean; status: string; reason?: string }> {
+  try {
+    const twilio = (await import('twilio')).default;
+    const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
+    
+    // STRATEGY 1: Fetch template content details from Twilio Content API
+    console.log(`🔍 [TEMPLATE VALIDATION] Fetching content details for ${contentSid}...`);
+    const content = await twilioClient.content.v1.contents(contentSid).fetch();
+    
+    // 🔥 DEBUG: Log the FULL API response to understand structure
+    console.log(`📋 [API RESPONSE] Full content object keys: ${Object.keys(content).join(', ')}`);
+    console.log(`📋 [API RESPONSE] approvalRequests type: ${typeof content.approvalRequests}`);
+    
+    if (content.approvalRequests) {
+      console.log(`📋 [API RESPONSE] approvalRequests keys: ${Object.keys(content.approvalRequests as any).join(', ')}`);
+      const approvalReq = content.approvalRequests as any;
+      if (approvalReq.whatsapp) {
+        console.log(`📋 [API RESPONSE] whatsapp approval object:`, JSON.stringify(approvalReq.whatsapp, null, 2));
+      }
+    }
+    
+    if (content.types) {
+      console.log(`📋 [API RESPONSE] types keys: ${Object.keys(content.types).join(', ')}`);
+    }
+    
+    let approvalStatus: string | null = null;
+    let rejectionReason: string | undefined;
+    
+    // PATH 1: Try content.approvalRequests.whatsapp.status (most common)
+    const approvalRequests = content.approvalRequests as any;
+    if (approvalRequests?.whatsapp?.status) {
+      approvalStatus = approvalRequests.whatsapp.status;
+      rejectionReason = approvalRequests.whatsapp.rejection_reason;
+      console.log(`✅ [PATH 1] Found status via approvalRequests.whatsapp.status: ${approvalStatus}`);
+    }
+    
+    // PATH 2: Try content.types['twilio/whatsapp'] structure
+    if (!approvalStatus && content.types) {
+      const types = content.types as any;
+      if (types['twilio/whatsapp']?.approval?.status) {
+        approvalStatus = types['twilio/whatsapp'].approval.status;
+        console.log(`✅ [PATH 2] Found status via types['twilio/whatsapp'].approval.status: ${approvalStatus}`);
+      } else if (types['twilio/whatsapp']?.status) {
+        approvalStatus = types['twilio/whatsapp'].status;
+        console.log(`✅ [PATH 2] Found status via types['twilio/whatsapp'].status: ${approvalStatus}`);
+      }
+    }
+    
+    // PATH 3: Try fetching from separate ApprovalRequests endpoint
+    if (!approvalStatus) {
+      try {
+        console.log(`🔄 [PATH 3] Trying separate ApprovalRequests endpoint...`);
+        const approvalFetch = await twilioClient.content.v1
+          .contents(contentSid)
+          .approvalFetch()
+          .fetch();
+        
+        console.log(`📋 [PATH 3 RESPONSE] Full approval object:`, JSON.stringify(approvalFetch, null, 2));
+        
+        const approvalData = approvalFetch as any;
+        if (approvalData.whatsapp?.status) {
+          approvalStatus = approvalData.whatsapp.status;
+          rejectionReason = approvalData.whatsapp.rejection_reason;
+          console.log(`✅ [PATH 3] Found status via ApprovalRequests endpoint: ${approvalStatus}`);
+        }
+      } catch (approvalError: any) {
+        console.warn(`⚠️  [PATH 3] ApprovalRequests endpoint failed: ${approvalError.message}`);
+      }
+    }
+    
+    // PATH 4: Check if template has never been submitted for approval
+    if (!approvalStatus) {
+      // If no approval info exists at all, template might not be submitted yet
+      console.warn(`⚠️  [PATH 4] No approval status found in any path - template may not be submitted for approval`);
+      approvalStatus = 'not_submitted';
+    }
+    
+    console.log(`🎯 [FINAL STATUS] Template ${contentSid} status: ${approvalStatus}`);
+    
+    // Interpret the status
+    // Possible values: 'approved', 'pending', 'received', 'rejected', 'paused', 'disabled'
+    if (approvalStatus === 'approved') {
+      return { approved: true, status: 'approved' };
+    } else if (approvalStatus === 'pending' || approvalStatus === 'received') {
+      // 'received' means Twilio received it and is forwarding to WhatsApp
+      return { 
+        approved: false, 
+        status: approvalStatus,
+        reason: 'Template è in attesa di approvazione WhatsApp. Controlla Twilio Console per lo status.' 
+      };
+    } else if (approvalStatus === 'rejected') {
+      return { 
+        approved: false, 
+        status: 'rejected',
+        reason: `Template rifiutato da WhatsApp. Motivo: ${rejectionReason || 'Nessun motivo fornito'}` 
+      };
+    } else if (approvalStatus === 'paused') {
+      return { 
+        approved: false, 
+        status: 'paused',
+        reason: 'Template in pausa (feedback negativo utenti) e non può essere usato' 
+      };
+    } else if (approvalStatus === 'disabled') {
+      return { 
+        approved: false, 
+        status: 'disabled',
+        reason: 'Template disabilitato da WhatsApp per violazioni ripetute' 
+      };
+    } else if (approvalStatus === 'not_submitted') {
+      return { 
+        approved: false, 
+        status: 'not_submitted',
+        reason: 'Template non ancora inviato per approvazione. Vai su Twilio Console e invia per approvazione.' 
+      };
+    } else {
+      return { 
+        approved: false, 
+        status: approvalStatus || 'unknown',
+        reason: `Status template sconosciuto: ${approvalStatus || 'unknown'}. Controlla Twilio Console manualmente.` 
+      };
+    }
+  } catch (error: any) {
+    console.error(`❌ [TEMPLATE VALIDATION ERROR] ${error.message}`);
+    console.error(`❌ Full error:`, error);
+    // If we can't check, assume not approved for safety
+    return { 
+      approved: false, 
+      status: 'error',
+      reason: `Errore nel verificare status template: ${error.message}` 
+    };
+  }
+}
+
+/**
+ * Process a single lead: send message and update database
+ */
+async function processLead(
+  lead: typeof proactiveLeads.$inferSelect,
+  consultant: typeof users.$inferSelect,
+  agentConfig: typeof consultantWhatsappConfig.$inferSelect
+): Promise<void> {
+  try {
+    console.log(`📤 Processing lead: ${lead.firstName} ${lead.lastName} (${lead.phoneNumber})`);
+
+    // Check working hours
+    if (!isWithinWorkingHours(agentConfig)) {
+      console.log(`⏰ Skipping lead ${lead.id} - outside working hours`);
+      return;
+    }
+
+    // Load campaign if associated (for template override)
+    let campaign = null;
+    if (lead.campaignId) {
+      campaign = await storage.getCampaign(lead.campaignId, consultant.id);
+      if (campaign) {
+        console.log(`\n📋 [CAMPAIGN INFO] Lead associated with campaign`);
+        console.log(`   Campaign ID: ${campaign.id}`);
+        console.log(`   Campaign Name: ${campaign.campaignName}`);
+        console.log(`   Campaign Type: ${campaign.campaignType}`);
+        console.log(`   Is Active: ${campaign.isActive}`);
+        console.log(`   Lead Category: ${lead.leadCategory || 'N/A'}`);
+        
+        // Log campaign defaults
+        console.log(`   Campaign Defaults:`);
+        console.log(`     - Obiettivi: ${campaign.defaultObiettivi || 'NOT SET'}`);
+        console.log(`     - Desideri: ${campaign.defaultDesideri || 'NOT SET'}`);
+        console.log(`     - Uncino: ${campaign.defaultUncino || 'NOT SET'}`);
+        console.log(`     - Stato Ideale: ${campaign.defaultIdealState || 'NOT SET'}`);
+        
+        // Log campaign template assignments
+        console.log(`   Campaign Template Overrides:`);
+        console.log(`     - Opening Template: ${campaign.openingTemplateId || 'NOT SET (using agent default)'}`);
+        console.log(`     - Gentle Follow-up: ${campaign.followupGentleTemplateId || 'NOT SET (using agent default)'}`);
+        console.log(`     - Value Follow-up: ${campaign.followupValueTemplateId || 'NOT SET (using agent default)'}`);
+        console.log(`     - Final Follow-up: ${campaign.followupFinalTemplateId || 'NOT SET (using agent default)'}\n`);
+      } else {
+        console.log(`⚠️  Campaign ID ${lead.campaignId} not found or not accessible for consultant ${consultant.id}`);
+      }
+    } else {
+      console.log(`ℹ️  Lead ${lead.id} has no campaign association - using agent defaults only`);
+    }
+
+    // Check if WhatsApp templates are configured
+    // Precedence: campaign templates > agent config templates
+    const agentTemplates = agentConfig.whatsappTemplates as {
+      openingMessageContentSid?: string;
+      followUpGentleContentSid?: string;
+      followUpValueContentSid?: string;
+      followUpFinalContentSid?: string;
+    } | null;
+
+    console.log(`\n🎯 [TEMPLATE PRECEDENCE] Resolving template assignment`);
+    console.log(`   Agent Templates (defaults):`);
+    console.log(`     - Opening: ${agentTemplates?.openingMessageContentSid || 'NOT SET'}`);
+    console.log(`     - Gentle: ${agentTemplates?.followUpGentleContentSid || 'NOT SET'}`);
+    console.log(`     - Value: ${agentTemplates?.followUpValueContentSid || 'NOT SET'}`);
+    console.log(`     - Final: ${agentTemplates?.followUpFinalContentSid || 'NOT SET'}`);
+    
+    if (campaign) {
+      console.log(`   Campaign Templates (override if set):`);
+      console.log(`     - Opening: ${campaign.openingTemplateId || 'NOT SET'}`);
+      console.log(`     - Gentle: ${campaign.followupGentleTemplateId || 'NOT SET'}`);
+      console.log(`     - Value: ${campaign.followupValueTemplateId || 'NOT SET'}`);
+      console.log(`     - Final: ${campaign.followupFinalTemplateId || 'NOT SET'}`);
+    }
+
+    const templates = {
+      openingMessageContentSid: campaign?.openingTemplateId || agentTemplates?.openingMessageContentSid,
+      followUpGentleContentSid: campaign?.followupGentleTemplateId || agentTemplates?.followUpGentleContentSid,
+      followUpValueContentSid: campaign?.followupValueTemplateId || agentTemplates?.followUpValueContentSid,
+      followUpFinalContentSid: campaign?.followupFinalTemplateId || agentTemplates?.followUpFinalContentSid,
+    };
+    
+    console.log(`   Final Templates (after precedence):`);
+    console.log(`     - Opening: ${templates.openingMessageContentSid || 'NOT SET'}`);
+    console.log(`     - Gentle: ${templates.followUpGentleContentSid || 'NOT SET'}`);
+    console.log(`     - Value: ${templates.followUpValueContentSid || 'NOT SET'}`);
+    console.log(`     - Final: ${templates.followUpFinalContentSid || 'NOT SET'}\n`);
+
+    const consultantInfo = {
+      id: consultant.id,
+      firstName: consultant.firstName,
+      lastName: consultant.lastName
+    };
+
+    const agentInfo = {
+      id: agentConfig.id,
+      agentName: agentConfig.agentName || `${consultant.firstName} ${consultant.lastName}`,
+      consultantDisplayName: agentConfig.consultantDisplayName,
+      businessName: agentConfig.businessName
+    };
+
+    // Determine message type and required template
+    const isFirstContact = lead.status === 'pending';
+    let messageType: string;
+    let contentSid: string | undefined;
+    let contentVariables: Record<string, string>;
+    let message: string;
+
+    if (isFirstContact) {
+      messageType = 'opening';
+      contentSid = templates?.openingMessageContentSid;
+      
+      // STRICT VALIDATION: Template MUST be assigned
+      if (!contentSid) {
+        console.error(`❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD`);
+        console.error(`   Agent ID: ${agentConfig.id}`);
+        console.error(`   Agent Name: ${agentConfig.agentName}`);
+        console.error(`   Lead ID: ${lead.id}`);
+        console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
+        console.error(`   Message Type: ${messageType}`);
+        console.error(`   Reason: No template assigned in "Assegnazione Template agli Agenti"`);
+        console.error(`   Action: Lead skipped, no message sent`);
+        return;
+      }
+      
+      contentVariables = buildOpeningTemplateVariables(lead, consultantInfo, agentInfo);
+      message = `TEMPLATE:${contentSid}`;
+    } else {
+      // Follow-up message
+      const daysSinceContact = getDaysSinceLastContact(lead);
+      
+      if (daysSinceContact <= 3) {
+        messageType = 'followup_gentle';
+        contentSid = templates?.followUpGentleContentSid;
+        
+        if (!contentSid) {
+          console.error(`❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD`);
+          console.error(`   Agent ID: ${agentConfig.id}`);
+          console.error(`   Agent Name: ${agentConfig.agentName}`);
+          console.error(`   Lead ID: ${lead.id}`);
+          console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
+          console.error(`   Message Type: ${messageType} (${daysSinceContact} days since contact)`);
+          console.error(`   Reason: No gentle follow-up template assigned`);
+          console.error(`   Action: Lead skipped, no message sent`);
+          return;
+        }
+        
+        contentVariables = buildGentleFollowUpTemplateVariables(lead, consultantInfo, agentInfo);
+      } else if (daysSinceContact <= 7) {
+        messageType = 'followup_value';
+        contentSid = templates?.followUpValueContentSid;
+        
+        if (!contentSid) {
+          console.error(`❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD`);
+          console.error(`   Agent ID: ${agentConfig.id}`);
+          console.error(`   Agent Name: ${agentConfig.agentName}`);
+          console.error(`   Lead ID: ${lead.id}`);
+          console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
+          console.error(`   Message Type: ${messageType} (${daysSinceContact} days since contact)`);
+          console.error(`   Reason: No value follow-up template assigned`);
+          console.error(`   Action: Lead skipped, no message sent`);
+          return;
+        }
+        
+        contentVariables = buildValueFollowUpTemplateVariables(lead, consultantInfo, agentInfo);
+      } else {
+        messageType = 'followup_final';
+        contentSid = templates?.followUpFinalContentSid;
+        
+        if (!contentSid) {
+          console.error(`❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD`);
+          console.error(`   Agent ID: ${agentConfig.id}`);
+          console.error(`   Agent Name: ${agentConfig.agentName}`);
+          console.error(`   Lead ID: ${lead.id}`);
+          console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
+          console.error(`   Message Type: ${messageType} (${daysSinceContact} days since contact)`);
+          console.error(`   Reason: No final follow-up template assigned`);
+          console.error(`   Action: Lead skipped, no message sent`);
+          return;
+        }
+        
+        contentVariables = buildFinalFollowUpTemplateVariables(lead);
+      }
+      
+      message = `TEMPLATE:${contentSid}`;
+    }
+
+    // Detailed logging before sending
+    console.log(`\n📋 [PROACTIVE OUTREACH] Sending template message:`);
+    console.log(`   Agent ID: ${agentConfig.id}`);
+    console.log(`   Agent Name: ${agentConfig.agentName}`);
+    console.log(`   Template SID: ${contentSid}`);
+    console.log(`   Message Type: ${messageType}`);
+    console.log(`   Lead ID: ${lead.id}`);
+    console.log(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
+    console.log(`   Template Variables:`);
+    Object.entries(contentVariables).forEach(([key, value]) => {
+      console.log(`     {{${key}}}: "${value}"`);
+    });
+    console.log(`   Dry Run: ${agentConfig.isDryRun ?? true}\n`);
+
+    // Check if agent is in dry run mode BEFORE validation/sending
+    const isDryRun = agentConfig.isDryRun ?? true;
+
+    // ✅ TEMPLATE APPROVAL VALIDATION: Check if template is approved before sending
+    // Only validate in production mode (skip in dry run for testing)
+    if (!isDryRun && agentConfig.twilioAccountSid && agentConfig.twilioAuthToken) {
+      console.log(`🔍 [TEMPLATE VALIDATION] Checking approval status for ${contentSid}...`);
+      
+      const approvalCheck = await checkTemplateApprovalStatus(
+        agentConfig.twilioAccountSid,
+        agentConfig.twilioAuthToken,
+        contentSid
+      );
+      
+      if (!approvalCheck.approved) {
+        console.error(`\n❌ [TEMPLATE NOT APPROVED] Cannot send message - template validation failed`);
+        console.error(`   Template SID: ${contentSid}`);
+        console.error(`   Status: ${approvalCheck.status}`);
+        console.error(`   Reason: ${approvalCheck.reason}`);
+        console.error(`   Lead ID: ${lead.id}`);
+        console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
+        console.error(`   Agent ID: ${agentConfig.id}`);
+        console.error(`   Agent Name: ${agentConfig.agentName}`);
+        console.error(`   Action: Lead skipped, no message sent\n`);
+        
+        // ✅ Salva messaggio errore in conversazione SOLO per errori DEFINITIVI
+        // Stati definitivi: rejected, paused, disabled (azioni bloccate da WhatsApp/Twilio)
+        // NON salvare per: unknown, not_submitted, error (potrebbero essere transitori)
+        const definiteErrorStatuses = ['rejected', 'paused', 'disabled'];
+        const shouldSaveToConversation = definiteErrorStatuses.includes(approvalCheck.status);
+        
+        if (shouldSaveToConversation) {
+          const normalizedPhone = normalizePhoneNumber(lead.phoneNumber);
+          const conversation = await findOrCreateConversation(
+            normalizedPhone,
+            lead.consultantId,
+            lead.agentConfigId,
+            true,
+            lead.id
+          );
+          
+          await db.insert(whatsappMessages).values({
+            conversationId: conversation.id,
+            messageText: `⚠️ Impossibile inviare messaggio template\n\nMotivo: ${approvalCheck.reason}\n\nTemplate ID: ${contentSid}\nStatus: ${approvalCheck.status}\n\n📝 Azione richiesta: Ottieni l'approvazione del template nella Twilio Console prima di poter inviare messaggi.`,
+            direction: 'outbound',
+            sender: 'system',
+            metadata: {
+              isError: true,
+              errorType: 'template_not_approved',
+              templateSid: contentSid,
+              templateStatus: approvalCheck.status,
+              templateReason: approvalCheck.reason,
+              messageType: messageType,
+              leadId: lead.id,
+            }
+          });
+          
+          console.log(`💾 Saved error message to conversation ${conversation.id} for DEFINITE error status: ${approvalCheck.status}`);
+        } else {
+          console.log(`⏭️  Skipping conversation error message for transient status: ${approvalCheck.status} (only save for rejected/paused/disabled)`);
+        }
+        
+        // ✅ LOG ERROR TO SYSTEM_ERRORS TABLE for UI visibility (sempre, anche per stati transitori)
+        const { logSystemError } = await import('../services/error-logger');
+        await logSystemError({
+          consultantId: lead.consultantId,
+          agentConfigId: agentConfig.id,
+          errorType: 'template_not_approved',
+          errorMessage: `Template ${contentSid} non approvato: ${approvalCheck.reason}`,
+          errorDetails: {
+            templateSid: contentSid,
+            templateStatus: approvalCheck.status,
+            templateReason: approvalCheck.reason,
+            leadId: lead.id,
+            leadName: `${lead.firstName} ${lead.lastName}`,
+            phoneNumber: lead.phoneNumber,
+            messageType,
+          }
+        });
+        
+        // ✅ IDEMPOTENCY FIX: Update lead status to prevent infinite retry loop
+        // Mark as 'lost' with error metadata so it won't be reprocessed
+        await db
+          .update(proactiveLeads)
+          .set({
+            status: 'lost',
+            lastContactedAt: new Date(),
+            updatedAt: new Date(),
+            metadata: {
+              ...(lead.metadata ?? {}), // ✅ NULL GUARD: spread only if metadata exists
+              templateApprovalError: true,
+              errorReason: approvalCheck.reason,
+              errorStatus: approvalCheck.status,
+              errorTimestamp: new Date().toISOString(),
+            }
+          })
+          .where(eq(proactiveLeads.id, lead.id));
+        
+        console.log(`⏭️  Skipping lead ${lead.id} - template not approved, marked as 'lost'\n`);
+        return; // Skip this lead
+      }
+      
+      console.log(`✅ [TEMPLATE VALIDATION] Template approved - proceeding with send\n`);
+    } else if (isDryRun) {
+      console.log(`🔒 [DRY RUN] Skipping template approval check (dry run mode)\n`);
+    }
+
+    // Normalize phone number (remove whatsapp: prefix for database)
+    const normalizedPhone = normalizePhoneNumber(lead.phoneNumber);
+    
+    // Format for Twilio API (add whatsapp: prefix)
+    const twilioFormattedPhone = normalizedPhone.startsWith('whatsapp:') 
+      ? normalizedPhone 
+      : `whatsapp:${normalizedPhone}`;
+
+    // Find or create conversation with proactive lead flags (using normalized number)
+    const conversation = await findOrCreateConversation(
+      normalizedPhone,
+      lead.consultantId,
+      lead.agentConfigId,
+      true, // isProactiveLead
+      lead.id // proactiveLeadId
+    );
+
+    // Ensure conversation is marked as lead and has correct agent
+    const conversationUpdates: any = {};
+    
+    if (!conversation.isLead) {
+      conversationUpdates.isLead = true;
+    }
+    
+    // Update agentConfigId if missing or different (fix "Unknown Agent" issue)
+    if (!conversation.agentConfigId || conversation.agentConfigId !== lead.agentConfigId) {
+      conversationUpdates.agentConfigId = lead.agentConfigId;
+      console.log(`📌 Updating conversation agent: ${conversation.agentConfigId || 'none'} → ${lead.agentConfigId}`);
+    }
+    
+    // Apply updates if needed
+    if (Object.keys(conversationUpdates).length > 0) {
+      await db
+        .update(whatsappConversations)
+        .set(conversationUpdates)
+        .where(eq(whatsappConversations.id, conversation.id));
+    }
+
+    // Get template bodies from agent config (cached)
+    let templateBodies = agentConfig.templateBodies as {
+      openingMessageBody?: string;
+      followUpGentleBody?: string;
+      followUpValueBody?: string;
+      followUpFinalBody?: string;
+    } | null;
+
+    // Helper to fetch template body from Twilio in real-time if not cached
+    const fetchTemplateBodyRealtime = async (sid: string): Promise<string | null> => {
+      if (!agentConfig.twilioAccountSid || !agentConfig.twilioAuthToken) {
+        return null;
+      }
+
+      try {
+        const twilio = (await import('twilio')).default;
+        const twilioClient = twilio(agentConfig.twilioAccountSid, agentConfig.twilioAuthToken);
+        
+        const content = await twilioClient.content.v1.contents(sid).fetch();
+        
+        // Extract body text
+        const bodyComponent = content.types?.['twilio/whatsapp']?.template?.components?.find(
+          (comp: any) => comp.type === 'BODY'
+        );
+        const bodyText = bodyComponent?.text || content.types?.['twilio/text']?.body || '';
+        
+        return bodyText || null;
+      } catch (error: any) {
+        console.warn(`⚠️  Could not fetch template ${sid} in real-time: ${error.message}`);
+        return null;
+      }
+    };
+
+    // Build a human-readable preview of the template message
+    const buildTemplatePreview = async (
+      vars: Record<string, string>, 
+      messageType: string
+    ): Promise<string> => {
+      // Try to get the template body text for this message type
+      let templateBody: string | undefined;
+      let bodyKey: string | undefined;
+      
+      switch (messageType) {
+        case 'opening':
+          templateBody = templateBodies?.openingMessageBody;
+          bodyKey = 'openingMessageBody';
+          break;
+        case 'followup_gentle':
+          templateBody = templateBodies?.followUpGentleBody;
+          bodyKey = 'followUpGentleBody';
+          break;
+        case 'followup_value':
+          templateBody = templateBodies?.followUpValueBody;
+          bodyKey = 'followUpValueBody';
+          break;
+        case 'followup_final':
+          templateBody = templateBodies?.followUpFinalBody;
+          bodyKey = 'followUpFinalBody';
+          break;
+      }
+
+      // If not cached, fetch in real-time from Twilio
+      if (!templateBody && contentSid) {
+        console.log(`📥 Template body not cached, fetching from Twilio in real-time...`);
+        const fetchedBody = await fetchTemplateBodyRealtime(contentSid);
+        
+        if (fetchedBody) {
+          templateBody = fetchedBody;
+          
+          // Cache it for next time
+          const updatedBodies = { ...(templateBodies || {}), [bodyKey!]: fetchedBody };
+          await db
+            .update(consultantWhatsappConfig)
+            .set({ templateBodies: updatedBodies })
+            .where(eq(consultantWhatsappConfig.id, agentConfig.id));
+          
+          console.log(`✅ Fetched and cached template body for ${bodyKey}`);
+        }
+      }
+
+      // If we have the template body, replace variables and show formatted message
+      if (templateBody) {
+        const formattedMessage = replaceTemplateVariables(templateBody, vars);
+        return `🧪 DRY RUN - Anteprima Messaggio\n\n${formattedMessage}\n\n───────────────────\nTemplate ID: ${contentSid}`;
+      }
+
+      // Fallback: show variable list (only if Twilio fetch also failed)
+      const varList = Object.entries(vars)
+        .map(([key, value]) => `{{${key}}}: "${value}"`)
+        .join('\n   ');
+      return `🧪 DRY RUN - Template Message\n\nVariabili del template:\n   ${varList}\n\nTemplate ID: ${contentSid}\n\n⚠️ Nota: Impossibile fetchare testo template da Twilio.`;
+    };
+
+    // Get formatted template body for metadata (used by frontend for display)
+    let formattedTemplateBody: string | undefined;
+    
+    if (contentSid && contentVariables) {
+      let templateBody: string | undefined;
+      let bodyKey: string | undefined;
+      
+      // Try to get cached template body
+      switch (messageType) {
+        case 'opening':
+          templateBody = templateBodies?.openingMessageBody;
+          bodyKey = 'openingMessageBody';
+          break;
+        case 'followup_gentle':
+          templateBody = templateBodies?.followUpGentleBody;
+          bodyKey = 'followUpGentleBody';
+          break;
+        case 'followup_value':
+          templateBody = templateBodies?.followUpValueBody;
+          bodyKey = 'followUpValueBody';
+          break;
+        case 'followup_final':
+          templateBody = templateBodies?.followUpFinalBody;
+          bodyKey = 'followUpFinalBody';
+          break;
+      }
+
+      // If not cached, fetch in real-time from Twilio and cache it
+      if (!templateBody && bodyKey) {
+        const fetchedBody = await fetchTemplateBodyRealtime(contentSid);
+        
+        if (fetchedBody) {
+          templateBody = fetchedBody;
+          
+          // Cache it for next time
+          const updatedBodies = { ...(templateBodies || {}), [bodyKey]: fetchedBody };
+          await db
+            .update(consultantWhatsappConfig)
+            .set({ templateBodies: updatedBodies })
+            .where(eq(consultantWhatsappConfig.id, agentConfig.id));
+          
+          // Update local reference to prevent duplicate fetch in buildTemplatePreview
+          templateBodies = updatedBodies;
+          
+          console.log(`✅ Fetched and cached template body for ${bodyKey}`);
+        }
+      }
+
+      // Replace variables to get final formatted text
+      if (templateBody) {
+        formattedTemplateBody = replaceTemplateVariables(templateBody, contentVariables);
+      }
+    }
+
+    // Save message to database (both in dry run and production mode)
+    // In dry run: show template preview with variables replaced
+    // In production: show template placeholder (will be replaced by Twilio)
+    let savedMessageId: string | undefined;
+    const messageTextToSave = isDryRun && contentSid && contentVariables
+      ? await buildTemplatePreview(contentVariables, messageType)
+      : message;
+    
+    console.log(`💾 [INSERT] Inserting message for lead ${lead.id} (${lead.firstName}) to conversation ${conversation.id}`);
+    console.log(`   Message text preview: "${messageTextToSave.substring(0, 100)}..."`);
+    console.log(`   Dry run: ${isDryRun}, Template SID: ${contentSid || 'none'}`);
+    
+    const [savedMessage] = await db
+      .insert(whatsappMessages)
+      .values({
+        conversationId: conversation.id,
+        messageText: messageTextToSave,
+        direction: 'outbound',
+        sender: 'ai',
+        mediaType: 'text',
+        metadata: isDryRun ? {
+          isDryRun: true,
+          templateSid: contentSid,
+          templateVariables: contentVariables,
+          messageType: messageType,
+          templateBody: formattedTemplateBody,
+        } : (contentSid ? {
+          templateSid: contentSid,
+          templateVariables: contentVariables,
+          messageType: messageType,
+          templateBody: formattedTemplateBody,
+        } : null),
+      })
+      .returning();
+    
+    savedMessageId = savedMessage.id;
+    
+    console.log(`✅ [INSERT] Message saved with ID: ${savedMessage.id}`);
+    if (isDryRun) {
+      console.log(`🔒 [DRY RUN] Saved simulated message to database: ${savedMessage.id}`);
+    }
+
+    // Update conversation with last message info
+    await db
+      .update(whatsappConversations)
+      .set({
+        lastMessageAt: new Date(),
+        lastMessageFrom: 'ai',
+        messageCount: conversation.messageCount + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(whatsappConversations.id, conversation.id));
+
+    // Send via Twilio (with template if available)
+    await sendWhatsAppMessage(
+      lead.consultantId,
+      twilioFormattedPhone,
+      message,
+      savedMessageId,
+      {
+        // ✅ FIX: Always pass routing options to prevent fallback agent warning
+        agentConfigId: agentConfig.id,
+        conversationId: conversation.id,
+        // Include template options only if template is used
+        ...(contentSid ? { contentSid, contentVariables } : {})
+      }
+    );
+
+    if (isDryRun) {
+      console.log(`🔒 [DRY RUN] Simulated message to ${lead.firstName} ${lead.lastName} - updating status to prevent duplicates`);
+      
+      // In dry run, update status AND metadata to prevent re-sending
+      await db
+        .update(proactiveLeads)
+        .set({
+          lastContactedAt: new Date(),
+          status: 'contacted',
+          lastMessageSent: message,
+          updatedAt: new Date(),
+          metadata: {
+            ...lead.metadata,
+            conversationId: conversation.id,
+            lastDryRunSimulation: new Date().toISOString(),
+            dryRunMessagePreview: message.substring(0, 100),
+            isDryRunTest: true
+          }
+        })
+        .where(eq(proactiveLeads.id, lead.id));
+      
+      console.log(`🔒 [DRY RUN] Lead ${lead.id} status updated to 'contacted' (prevents duplicate sends)`);
+    } else {
+      console.log(`✅ Sent message to ${lead.firstName} ${lead.lastName}`);
+      
+      // Update lead status only when actually sent
+      await db
+        .update(proactiveLeads)
+        .set({
+          lastContactedAt: new Date(),
+          status: 'contacted',
+          lastMessageSent: message,
+          updatedAt: new Date(),
+          metadata: {
+            ...lead.metadata,
+            conversationId: conversation.id
+          }
+        })
+        .where(eq(proactiveLeads.id, lead.id));
+
+      console.log(`✅ Updated lead ${lead.id} status to 'contacted'`);
+    }
+
+  } catch (error: any) {
+    console.error(`❌ Error processing lead ${lead.id}:`, error.message);
+    // Don't throw - continue processing other leads
+  }
+}
+
+/**
+ * Main cron job function - processes all leads
+ */
+export async function processProactiveOutreach(): Promise<void> {
+  const startTime = Date.now();
+  console.log(`\n🚀 [PROACTIVE OUTREACH] Starting scheduled run at ${new Date().toISOString()}`);
+
+  try {
+    // Query 1: Pending leads whose contact schedule has passed
+    // CRITICAL: Only process leads with proactive_setter agents
+    const pendingLeads = await db
+      .select({
+        lead: proactiveLeads,
+        consultant: users,
+        agentConfig: consultantWhatsappConfig
+      })
+      .from(proactiveLeads)
+      .innerJoin(users, eq(proactiveLeads.consultantId, users.id))
+      .innerJoin(consultantWhatsappConfig, eq(proactiveLeads.agentConfigId, consultantWhatsappConfig.id))
+      .where(
+        and(
+          eq(proactiveLeads.status, 'pending'),
+          lte(proactiveLeads.contactSchedule, new Date()),
+          eq(consultantWhatsappConfig.agentType, 'proactive_setter') // CRITICAL: Only proactive agents
+        )
+      );
+
+    console.log(`📋 Found ${pendingLeads.length} pending leads to contact`);
+
+    // Query 2: Contacted leads ready for follow-up
+    // (NOW() - last_contacted_at) >= contact_frequency days
+    // CRITICAL: Only process leads with proactive_setter agents
+    const followUpLeads = await db
+      .select({
+        lead: proactiveLeads,
+        consultant: users,
+        agentConfig: consultantWhatsappConfig
+      })
+      .from(proactiveLeads)
+      .innerJoin(users, eq(proactiveLeads.consultantId, users.id))
+      .innerJoin(consultantWhatsappConfig, eq(proactiveLeads.agentConfigId, consultantWhatsappConfig.id))
+      .where(
+        and(
+          eq(proactiveLeads.status, 'contacted'),
+          sql`${proactiveLeads.lastContactedAt} IS NOT NULL`,
+          sql`EXTRACT(EPOCH FROM (NOW() - ${proactiveLeads.lastContactedAt})) / 86400 >= ${proactiveLeads.contactFrequency}`,
+          eq(consultantWhatsappConfig.agentType, 'proactive_setter') // CRITICAL: Only proactive agents
+        )
+      );
+
+    console.log(`📋 Found ${followUpLeads.length} leads ready for follow-up`);
+
+    // Combine both lists
+    const allLeads = [...pendingLeads, ...followUpLeads];
+
+    if (allLeads.length === 0) {
+      console.log(`✅ No leads to process at this time`);
+      return;
+    }
+
+    // Process each lead
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const { lead, consultant, agentConfig } of allLeads) {
+      // Validate that we have all required data
+      if (!consultant) {
+        console.error(`❌ Skipping lead ${lead.id} - consultant not found`);
+        errorCount++;
+        continue;
+      }
+
+      if (!agentConfig) {
+        console.error(`❌ Skipping lead ${lead.id} - agent config not found`);
+        errorCount++;
+        continue;
+      }
+
+      // CRITICAL: Double-check agent type (defensive programming)
+      if (agentConfig.agentType !== 'proactive_setter') {
+        console.error(`❌ Skipping lead ${lead.id} - agent "${agentConfig.agentName}" is type "${agentConfig.agentType}" not "proactive_setter"`);
+        console.error(`   This should not happen - check database query filters!`);
+        errorCount++;
+        continue;
+      }
+
+      try {
+        await processLead(lead, consultant, agentConfig);
+        successCount++;
+      } catch (error: any) {
+        console.error(`❌ Failed to process lead ${lead.id}:`, error.message);
+        errorCount++;
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`\n✅ [PROACTIVE OUTREACH] Completed in ${duration}ms`);
+    console.log(`   📊 Results: ${successCount} success, ${errorCount} errors, ${allLeads.length} total`);
+
+  } catch (error: any) {
+    console.error(`❌ [PROACTIVE OUTREACH] Fatal error:`, error.message);
+    if (error.stack) {
+      console.error(error.stack);
+    }
+  }
+}
+
+/**
+ * Start the proactive outreach scheduler
+ * Runs every 5 minutes for faster response time
+ */
+export function startProactiveOutreachScheduler(): void {
+  if (schedulerTask) {
+    console.log(`⚠️ Proactive outreach scheduler already running`);
+    return;
+  }
+
+  console.log(`🚀 Starting proactive outreach scheduler (every 5 minutes)`);
+
+  // Schedule: Every 5 minutes (improved responsiveness from previous 30 min)
+  schedulerTask = cron.schedule('*/5 * * * *', async () => {
+    await processProactiveOutreach();
+  }, {
+    timezone: 'Europe/Rome' // Use Italian timezone for consistency
+  });
+
+  console.log(`✅ Proactive outreach scheduler started successfully (checking every 5 minutes)`);
+
+  // Run immediately on startup (optional - comment out if not desired)
+  // processProactiveOutreach().catch(error => {
+  //   console.error('❌ Initial proactive outreach run failed:', error);
+  // });
+}
+
+/**
+ * Stop the proactive outreach scheduler
+ */
+export function stopProactiveOutreachScheduler(): void {
+  if (schedulerTask) {
+    schedulerTask.stop();
+    schedulerTask = null;
+    console.log(`🛑 Proactive outreach scheduler stopped`);
+  } else {
+    console.log(`⚠️ Proactive outreach scheduler not running`);
+  }
+}

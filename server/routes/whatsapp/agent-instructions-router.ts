@@ -1,0 +1,725 @@
+import { Router } from "express";
+import { authenticateToken, requireRole, type AuthRequest } from "../../middleware/auth";
+import { z } from "zod";
+import { db } from "../../db";
+import { consultantWhatsappConfig } from "../../../shared/schema";
+import { eq, and } from "drizzle-orm";
+import { 
+  validateTemplateVariables, 
+  SUPPORTED_VARIABLES,
+  resolveInstructionVariables 
+} from "../../whatsapp/template-engine";
+
+
+const router = Router();
+
+/**
+ * Validation schema for agent instructions update
+ */
+const updateInstructionsSchema = z.object({
+  agentInstructions: z.string().min(100, "Template must be at least 100 characters").optional(),
+  agentInstructionsEnabled: z.boolean().optional(),
+  selectedTemplate: z.enum(["receptionist", "marco_setter", "informative_advisor", "custom"]).optional(),
+  businessHeaderMode: z.enum(["assistant", "direct_consultant", "direct_professional", "custom", "none"]).optional(),
+  professionalRole: z.string().optional(),
+  customBusinessHeader: z.string().optional(),
+});
+
+
+/**
+ * GET /api/whatsapp/config/:agentId/instructions
+ * Fetch current agent instructions configuration
+ */
+router.get(
+  "/whatsapp/config/:agentId/instructions",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { agentId } = req.params;
+      const consultantId = req.user!.id;
+
+      // Security: Verify agent belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Agent configuration not found or access denied",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          agentInstructions: agentConfig.agentInstructions || null,
+          agentInstructionsEnabled: agentConfig.agentInstructionsEnabled || false,
+          selectedTemplate: agentConfig.selectedTemplate || "receptionist",
+          businessHeaderMode: agentConfig.businessHeaderMode || "assistant",
+          professionalRole: agentConfig.professionalRole || null,
+          customBusinessHeader: agentConfig.customBusinessHeader || null,
+          bookingEnabled: agentConfig.bookingEnabled !== false,
+          agentName: agentConfig.agentName,
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [AGENT INSTRUCTIONS] Error fetching instructions:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch agent instructions",
+      });
+    }
+  }
+);
+
+/**
+ * PUT /api/whatsapp/config/:agentId/instructions
+ * Update agent instructions configuration with validation
+ */
+router.put(
+  "/whatsapp/config/:agentId/instructions",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { agentId } = req.params;
+      const consultantId = req.user!.id;
+
+      // Validate request body
+      const validationResult = updateInstructionsSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: validationResult.error.errors,
+        });
+      }
+
+      const data = validationResult.data;
+
+      console.log("🟢 [SERVER PUT /instructions] Richiesta ricevuta");
+      console.log("🟢 [SERVER PUT /instructions] Agent ID:", agentId);
+      console.log("🟢 [SERVER PUT /instructions] Consultant ID:", consultantId);
+      console.log("🟢 [SERVER PUT /instructions] Dati ricevuti:", JSON.stringify({
+        agentInstructionsEnabled: data.agentInstructionsEnabled,
+        selectedTemplate: data.selectedTemplate,
+        instructionsLength: data.agentInstructions?.length || 0,
+        instructionsPreview: data.agentInstructions?.substring(0, 100),
+        businessHeaderMode: data.businessHeaderMode,
+        professionalRole: data.professionalRole,
+        customBusinessHeader: data.customBusinessHeader,
+      }, null, 2));
+
+      // Security: Verify agent belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Agent configuration not found or access denied",
+        });
+      }
+
+      // Validate template variables if instructions provided
+      const warnings: string[] = [];
+      if (data.agentInstructions) {
+        const templateValidation = validateTemplateVariables(data.agentInstructions);
+        
+        if (!templateValidation.valid) {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid template variables detected",
+            invalidVariables: templateValidation.invalidVariables,
+            suggestions: templateValidation.suggestions,
+          });
+        }
+
+        // AUTO-CORRECT: Detect identity conflicts and fix businessHeaderMode
+        if (data.selectedTemplate === 'custom' && data.agentInstructions) {
+          const hasCustomIdentity = /Sei (il|un|una|lo|la|il Prof\.|la Prof\.ssa)/i.test(data.agentInstructions);
+          const currentBusinessHeaderMode = data.businessHeaderMode !== undefined ? data.businessHeaderMode : agentConfig.businessHeaderMode || 'assistant';
+          
+          if (hasCustomIdentity && currentBusinessHeaderMode !== 'none') {
+            // AUTO-CORRECT: Set businessHeaderMode to 'none' to avoid conflicts
+            data.businessHeaderMode = 'none';
+            warnings.push(
+              `Il template definisce un'identità personalizzata. Ho impostato automaticamente businessHeaderMode su "none" per evitare conflitti di identità.`
+            );
+            console.log(`⚙️ [AUTO-CORRECT] businessHeaderMode impostato su 'none' (rilevata identità personalizzata nel template)`);
+          }
+        }
+
+        // Add warnings for template length
+        if (data.agentInstructions.length > 5000) {
+          warnings.push("Template is quite long (>5000 chars) - consider keeping it concise for better AI performance");
+        }
+      }
+
+      // Update database with transaction safety
+      const [updatedConfig] = await db
+        .update(consultantWhatsappConfig)
+        .set({
+          agentInstructions: data.agentInstructions !== undefined ? data.agentInstructions : agentConfig.agentInstructions,
+          agentInstructionsEnabled: data.agentInstructionsEnabled !== undefined ? data.agentInstructionsEnabled : agentConfig.agentInstructionsEnabled,
+          selectedTemplate: data.selectedTemplate !== undefined ? data.selectedTemplate : agentConfig.selectedTemplate,
+          businessHeaderMode: data.businessHeaderMode !== undefined ? data.businessHeaderMode : agentConfig.businessHeaderMode,
+          professionalRole: data.professionalRole !== undefined ? data.professionalRole : agentConfig.professionalRole,
+          customBusinessHeader: data.customBusinessHeader !== undefined ? data.customBusinessHeader : agentConfig.customBusinessHeader,
+        })
+        .where(eq(consultantWhatsappConfig.id, agentId))
+        .returning();
+
+      console.log(`✅ [AGENT INSTRUCTIONS] Updated for agent ${agentId} (${updatedConfig.agentName})`);
+      console.log(`   - Enabled: ${updatedConfig.agentInstructionsEnabled}`);
+      console.log(`   - Template: ${updatedConfig.selectedTemplate}`);
+      console.log(`   - Instructions length: ${updatedConfig.agentInstructions?.length || 0} chars`);
+      console.log(`   - businessHeaderMode: ${updatedConfig.businessHeaderMode}`);
+      console.log(`   - professionalRole: ${updatedConfig.professionalRole}`);
+      console.log(`   - customBusinessHeader: ${updatedConfig.customBusinessHeader}`);
+
+      res.json({
+        success: true,
+        data: {
+          agentInstructions: updatedConfig.agentInstructions,
+          agentInstructionsEnabled: updatedConfig.agentInstructionsEnabled,
+          selectedTemplate: updatedConfig.selectedTemplate,
+          businessHeaderMode: updatedConfig.businessHeaderMode,
+          professionalRole: updatedConfig.professionalRole,
+          customBusinessHeader: updatedConfig.customBusinessHeader,
+          agentName: updatedConfig.agentName,
+        },
+        warnings,
+        message: "Agent instructions updated successfully",
+      });
+    } catch (error: any) {
+      console.error("❌ [AGENT INSTRUCTIONS] Error updating instructions:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to update agent instructions",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/whatsapp/config/:agentId/instructions/variables
+ * Get list of supported variables with examples
+ */
+router.get(
+  "/whatsapp/config/:agentId/instructions/variables",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { agentId } = req.params;
+      const consultantId = req.user!.id;
+
+      // Security: Verify agent belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Agent configuration not found or access denied",
+        });
+      }
+
+      // Return supported variables with descriptions and current values
+      const variablesWithExamples = [
+        { variable: "${businessName}", description: "Nome del business", currentValue: agentConfig.businessName || "il consulente" },
+        { variable: "${businessDescription}", description: "Descrizione del business", currentValue: agentConfig.businessDescription || "" },
+        { variable: "${consultantDisplayName}", description: "Nome del consulente da mostrare", currentValue: agentConfig.consultantDisplayName || agentConfig.businessName || "il consulente" },
+        { variable: "${consultantBio}", description: "Bio del consulente", currentValue: agentConfig.consultantBio || "" },
+        { variable: "${consultantName}", description: "Nome completo consulente", currentValue: agentConfig.consultantDisplayName || "" },
+        { variable: "${idealState}", description: "Obiettivo ideale del lead (es: libertà finanziaria)", currentValue: "dinamico dal lead" },
+        { variable: "${currentState}", description: "Situazione attuale del lead", currentValue: "dinamico dal lead" },
+        { variable: "${mainObstacle}", description: "Ostacolo principale del lead", currentValue: "dinamico dal lead" },
+        { variable: "${firstName}", description: "Nome del lead", currentValue: "dinamico dal lead" },
+        { variable: "${lastName}", description: "Cognome del lead", currentValue: "dinamico dal lead" },
+        { variable: "${uncino}", description: "Hook/uncino value proposition", currentValue: "il valore che possiamo offrirti" },
+        { variable: "${obiettivi}", description: "Obiettivi del lead", currentValue: "dinamico dal lead" },
+        { variable: "${desideri}", description: "Desideri del lead", currentValue: "dinamico dal lead" },
+        { variable: "${vision}", description: "Vision del business", currentValue: agentConfig.vision || "" },
+        { variable: "${mission}", description: "Mission del business", currentValue: agentConfig.mission || "" },
+        { variable: "${usp}", description: "Unique Selling Proposition", currentValue: agentConfig.usp || "" },
+        { variable: "${whoWeHelp}", description: "Chi aiutiamo (target)", currentValue: agentConfig.whoWeHelp || "" },
+        { variable: "${whatWeDo}", description: "Cosa facciamo", currentValue: agentConfig.whatWeDo || "" },
+        { variable: "${resultsGenerated}", description: "Risultati generati (social proof)", currentValue: agentConfig.resultsGenerated || "" },
+        { variable: "${clientsHelped}", description: "Numero clienti aiutati", currentValue: agentConfig.clientsHelped || "" },
+        { variable: "${yearsExperience}", description: "Anni di esperienza", currentValue: agentConfig.yearsExperience || "" },
+      ];
+
+      res.json({
+        success: true,
+        data: variablesWithExamples,
+        count: variablesWithExamples.length,
+      });
+    } catch (error: any) {
+      console.error("❌ [AGENT INSTRUCTIONS] Error fetching variables:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch variables",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/config/:agentId/instructions/preview
+ * Preview template with variables resolved using real data
+ */
+router.post(
+  "/whatsapp/config/:agentId/instructions/preview",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { agentId } = req.params;
+      const consultantId = req.user!.id;
+      const { template } = req.body;
+
+      if (!template || typeof template !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "Template is required",
+        });
+      }
+
+      // Security: Verify agent belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Agent configuration not found or access denied",
+        });
+      }
+
+      // Resolve variables with real consultant data + sample lead data
+      const resolvedTemplate = resolveInstructionVariables(template, {
+        consultantConfig: {
+          businessName: agentConfig.businessName,
+          businessDescription: agentConfig.businessDescription,
+          consultantDisplayName: agentConfig.consultantDisplayName,
+          consultantBio: agentConfig.consultantBio,
+          vision: agentConfig.vision,
+          mission: agentConfig.mission,
+          usp: agentConfig.usp,
+          whoWeHelp: agentConfig.whoWeHelp,
+          whatWeDo: agentConfig.whatWeDo,
+          resultsGenerated: agentConfig.resultsGenerated,
+          clientsHelped: agentConfig.clientsHelped,
+          yearsExperience: agentConfig.yearsExperience,
+        },
+        proactiveLead: {
+          firstName: "Mario",
+          lastName: "Rossi",
+          idealState: "libertà finanziaria",
+        },
+        clientState: {
+          currentState: "debiti eccessivi",
+          mainObstacle: "mancanza di pianificazione finanziaria",
+          idealState: "libertà finanziaria",
+        },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          original: template,
+          resolved: resolvedTemplate,
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [AGENT INSTRUCTIONS] Error previewing template:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to preview template",
+      });
+    }
+  }
+);
+
+/**
+ * Custom error types for proper HTTP status mapping
+ */
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ValidationError";
+  }
+}
+
+class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
+/**
+ * Helper function: Enhance instructions with AI
+ * Shared logic for both agent-scoped and create-mode enhancement
+ */
+async function enhanceInstructionsWithAI(
+  consultantId: string,
+  instructions: string,
+  agentId?: string,
+  bookingEnabled?: boolean,
+  mode: "enhance" | "simplify" | "expand" | "formalize" | "friendly" | "examples" | "whatsapp" = "enhance"
+): Promise<{
+  original: string;
+  enhanced: string;
+  originalLength: number;
+  enhancedLength: number;
+  provider: string;
+  mode: string;
+}> {
+  // Validate instructions
+  if (!instructions || typeof instructions !== "string") {
+    throw new ValidationError("Instructions text is required");
+  }
+
+  if (instructions.length < 50) {
+    throw new ValidationError("Instructions must be at least 50 characters to enhance");
+  }
+
+  let agentBookingEnabled = bookingEnabled;
+
+  // Security: If agentId provided, verify agent belongs to consultant
+  if (agentId) {
+    const [agentConfig] = await db
+      .select()
+      .from(consultantWhatsappConfig)
+      .where(
+        and(
+          eq(consultantWhatsappConfig.id, agentId),
+          eq(consultantWhatsappConfig.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!agentConfig) {
+      throw new NotFoundError("Agent configuration not found or access denied");
+    }
+
+    // Use agentConfig's bookingEnabled if not provided explicitly
+    if (agentBookingEnabled === undefined) {
+      agentBookingEnabled = agentConfig.bookingEnabled;
+    }
+  }
+
+  // Import AI provider (already uses Vertex AI as default with Gemini fallback)
+  const { getAIProvider } = await import("../../ai/provider-factory");
+  
+  // Get AI provider (Vertex AI first, then fallback to Gemini)
+  const providerResult = await getAIProvider(consultantId, consultantId);
+  
+  if (!providerResult || !providerResult.client) {
+    throw new Error("AI provider not available. Please configure your AI settings.");
+  }
+
+  console.log(`✅ [AI ENHANCEMENT] Using provider: ${providerResult.metadata.name}`);
+  console.log(`   - Booking enabled: ${agentBookingEnabled !== false ? 'YES' : 'NO'}`);
+  console.log(`   - Enhancement mode: ${mode}`);
+
+  // Build booking restriction text if bookingEnabled is false
+  const bookingRestriction = agentBookingEnabled === false 
+    ? `\n\n🚨 RESTRIZIONE IMPORTANTE - APPUNTAMENTI DISABILITATI:
+Questo agente NON può prendere appuntamenti. Se le istruzioni originali menzionano appuntamenti o booking, 
+DEVI aggiungere chiaramente questa restrizione nelle istruzioni migliorate:
+
+"⚠️ IMPORTANTE: Non sei autorizzato a prendere appuntamenti. Puoi solo fornire assistenza e rispondere alle domande tramite chat."
+
+Assicurati che questa limitazione sia EVIDENTE e posta all'inizio delle istruzioni migliorate.`
+    : '';
+
+  // Build mode-specific enhancement instructions
+  const modeInstructions: Record<typeof mode, string> = {
+    enhance: `Il tuo compito è migliorare queste istruzioni rendendole:
+1. **Più strutturate e chiare** - dividi in sezioni logiche con separatori visivi
+2. **Con esempi concreti** - aggiungi esempi di domande, risposte, e situazioni
+3. **Con checkpoint e obiettivi chiari** - definisci quando passare alla fase successiva
+4. **Più actionable** - aggiungi istruzioni specifiche su COSA fare e COME farlo
+5. **Mantenendo ESATTAMENTE l'intento originale** - non cambiare il significato, solo migliorare la struttura${bookingRestriction}`,
+
+    simplify: `Il tuo compito è SEMPLIFICARE queste istruzioni:
+1. **Elimina ridondanze** - rimuovi ripetizioni e informazioni superflue
+2. **Mantieni solo l'essenziale** - focalizzati sui concetti chiave
+3. **Frasi brevi e dirette** - ogni frase deve comunicare un solo concetto
+4. **Riduce la verbosità** - massimo 50% del testo originale se possibile
+5. **Mantieni chiarezza** - semplice non significa confuso
+6. **Preserva l'intento originale** - non cambiare il significato${bookingRestriction}`,
+
+    expand: `Il tuo compito è ESPANDERE queste istruzioni aggiungendo:
+1. **Dettagli pratici** - aggiungi specifiche operative e contestuali
+2. **Esempi concreti** - almeno 3-4 esempi di dialoghi reali per ogni fase
+3. **Casi d'uso** - descrivi scenari tipici e come gestirli
+4. **Troubleshooting** - aggiungi sezioni "Cosa fare se..." per situazioni problematiche
+5. **Best practices** - suggerimenti su come ottimizzare l'interazione
+6. **Varianti situazionali** - diverse risposte per diversi contesti${bookingRestriction}
+
+IMPORTANTE: Espandi in modo significativo (minimo 150% del testo originale), ma mantieni tutto rilevante.`,
+
+    formalize: `Il tuo compito è FORMALIZZARE queste istruzioni rendendole:
+1. **Tono professionale e corporate** - linguaggio formale e istituzionale
+2. **Terminologia tecnica** - usa termini precisi e professionali
+3. **Struttura rigorosa** - organizzazione metodica e sistematica
+4. **Evita colloquialismi** - elimina espressioni informali ed emoji eccessive
+5. **Stile protocollo aziendale** - come un manuale operativo professionale
+6. **Mantieni autorevolezza** - tono esperto ma cortese
+7. **Preserva l'efficacia** - formale non significa freddo${bookingRestriction}`,
+
+    friendly: `Il tuo compito è rendere queste istruzioni più AMICHEVOLI ed EMPATICHE:
+1. **Tono caldo e accogliente** - linguaggio umano e cordiale
+2. **Empatia visibile** - mostra comprensione dei problemi del lead
+3. **Emoji strategiche** - usa emoji per rendere il messaggio più caldo (senza esagerare)
+4. **Linguaggio positivo** - focus su opportunità piuttosto che problemi
+5. **Connessione umana** - crea feeling e fiducia
+6. **Approccio conversazionale** - come parlare con un amico professionale
+7. **Incoraggiamento** - includi frasi motivazionali dove appropriate${bookingRestriction}`,
+
+    examples: `Il tuo compito è arricchire queste istruzioni con DIALOGHI ESEMPIO:
+1. **Conversazioni tipo** - almeno 2-3 dialoghi completi per ogni fase principale
+2. **Esempi di domande** - mostra esattamente cosa chiedere in ogni situazione
+3. **Esempi di risposte** - mostra come rispondere a diverse tipologie di lead
+4. **Scenari realistici** - situazioni concrete che potrebbe affrontare l'agente
+5. **Gestione obiezioni** - esempi di come gestire dubbi e resistenze
+6. **Best/Worst case** - esempi di conversazioni ottime vs quelle da evitare
+7. **Formattazione chiara** - distingui chiaramente esempi dal resto del testo${bookingRestriction}
+
+IMPORTANTE: Gli esempi devono essere in italiano, realistici e vari.`,
+
+    whatsapp: `Il tuo compito è ottimizzare queste istruzioni specificamente per WHATSAPP:
+1. **Messaggi brevissimi** - massimo 2-3 righe per messaggio
+2. **Emoji misurate** - 1-2 emoji per messaggio (non di più!)
+3. **Stile chat** - linguaggio informale ma professionale
+4. **Separazione messaggi** - indica quando dividere in più messaggi
+5. **Timing ottimale** - suggerisci quando aspettare la risposta prima di continuare
+6. **Formattazione WhatsApp** - usa *grassetto*, _corsivo_ dove appropriato
+7. **Evita muri di testo** - nessun messaggio oltre 3 righe
+8. **Call-to-action chiari** - ogni messaggio con scopo preciso${bookingRestriction}
+
+IMPORTANTE: Pensa a come suonerebbe su WhatsApp mobile, non via email.`
+  };
+
+  // Build enhancement prompt with mode-specific instructions
+  const systemPrompt = `Sei un esperto di prompt engineering per agenti AI conversazionali WhatsApp.
+
+Il consulente ha scritto queste istruzioni per il suo agente WhatsApp:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISTRUZIONI ORIGINALI:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${instructions}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${modeInstructions[mode]}
+
+⚠️ REGOLE FONDAMENTALI SULLE VARIABILI:
+DEVI usare ESCLUSIVAMENTE queste variabili (NIENTE ALTRO):
+- \${businessName} - Nome del business
+- \${businessDescription} - Descrizione del business
+- \${consultantDisplayName} - Nome del consulente da mostrare
+- \${consultantBio} - Bio del consulente
+- \${consultantName} - Nome completo del consulente
+- \${idealState} - Obiettivo ideale del lead
+- \${currentState} - Situazione attuale del lead
+- \${mainObstacle} - Ostacolo principale del lead
+- \${firstName} - Nome del lead
+- \${lastName} - Cognome del lead
+- \${uncino} - Hook/value proposition
+- \${obiettivi} - Obiettivi del lead
+- \${desideri} - Desideri del lead
+- \${vision} - Vision del business
+- \${mission} - Mission del business
+
+NON INVENTARE MAI variabili diverse (es: \${nomeConsulente}, \${nomeBusiness}, ecc.)
+
+⚠️ REGOLE FONDAMENTALI SU FORMATTAZIONE:
+- Per grassetto usa **testo** (SENZA spazi interni, MAI ** testo **)
+- Per corsivo usa *testo* (SENZA spazi interni, MAI * testo *)
+- Usa separatori ━━━ per le sezioni principali
+- Usa emoji strategicamente per evidenziare concetti chiave (adatta all'intensità del mode)
+- NON aggiungere funzionalità non presenti nelle istruzioni originali
+- NON cambiare radicalmente il tono se non richiesto esplicitamente dal mode
+- Se le istruzioni menzionano appuntamenti E bookingEnabled=true, enfatizza quella parte
+
+Restituisci SOLO le istruzioni migliorate, senza commenti o spiegazioni aggiuntive.`;
+
+  // Call AI for enhancement using GeminiClient interface
+  const result = await providerResult.client.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: systemPrompt }]
+      }
+    ],
+  });
+
+  let enhancedInstructions = result.response.text();
+
+  // POST-PROCESSING: Fix markdown formatting issues
+  // Fix malformed bold: ** testo ** → **testo**
+  enhancedInstructions = enhancedInstructions.replace(/\*\*\s+([^\*]+?)\s+\*\*/g, '**$1**');
+  // Fix malformed italic: * testo * → *testo*
+  enhancedInstructions = enhancedInstructions.replace(/\*\s+([^\*]+?)\s+\*/g, '*$1*');
+
+  // POST-PROCESSING: Fix common variable mistakes (map incorrect to correct)
+  const variableMapping: Record<string, string> = {
+    '${nomeConsulente}': '${consultantDisplayName}',
+    '${nomeBusiness}': '${businessName}',
+    '${descrizioneConsulente}': '${consultantBio}',
+    '${descrizioneBusiness}': '${businessDescription}',
+    '${nome}': '${firstName}',
+    '${cognome}': '${lastName}',
+    '${statoAttuale}': '${currentState}',
+    '${statoIdeale}': '${idealState}',
+    '${ostacolo}': '${mainObstacle}',
+  };
+
+  // Replace all incorrect variables
+  for (const [incorrect, correct] of Object.entries(variableMapping)) {
+    enhancedInstructions = enhancedInstructions.replace(new RegExp(incorrect.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), correct);
+  }
+
+  console.log(`✅ [AGENT INSTRUCTIONS] Enhanced instructions${agentId ? ` for agent ${agentId}` : ' (create mode)'}`);
+  console.log(`   - Original length: ${instructions.length} chars`);
+  console.log(`   - Enhanced length: ${enhancedInstructions.length} chars`);
+  console.log(`   - Provider: ${providerResult.metadata.name}`);
+  console.log(`   - Mode: ${mode}`);
+  console.log(`   - Post-processing: markdown fixed, variables normalized`);
+
+  return {
+    original: instructions,
+    enhanced: enhancedInstructions,
+    originalLength: instructions.length,
+    enhancedLength: enhancedInstructions.length,
+    provider: providerResult.metadata.name,
+    mode: mode,
+  };
+}
+
+/**
+ * POST /api/whatsapp/config/instructions/enhance
+ * Enhance instructions without agentId (for create mode)
+ */
+router.post(
+  "/whatsapp/config/instructions/enhance",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { instructions, bookingEnabled, mode } = req.body;
+
+      const result = await enhanceInstructionsWithAI(
+        consultantId, 
+        instructions, 
+        undefined, 
+        bookingEnabled,
+        mode || "enhance"
+      );
+
+      res.json({
+        success: true,
+        data: result,
+        message: "Instructions enhanced successfully",
+      });
+    } catch (error: any) {
+      console.error("❌ [AGENT INSTRUCTIONS] Error enhancing instructions (create mode):", error);
+      
+      // Map custom errors to appropriate HTTP status codes
+      const statusCode = error instanceof ValidationError ? 400 
+                       : error instanceof NotFoundError ? 404 
+                       : 500;
+      
+      res.status(statusCode).json({
+        success: false,
+        error: error.message || "Failed to enhance instructions with AI",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/config/:agentId/instructions/enhance
+ * Use AI to enhance and improve user-written instructions (with agent verification)
+ */
+router.post(
+  "/whatsapp/config/:agentId/instructions/enhance",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { agentId } = req.params;
+      const consultantId = req.user!.id;
+      const { instructions, bookingEnabled, mode } = req.body;
+
+      const result = await enhanceInstructionsWithAI(
+        consultantId, 
+        instructions, 
+        agentId, 
+        bookingEnabled,
+        mode || "enhance"
+      );
+
+      res.json({
+        success: true,
+        data: result,
+        message: "Instructions enhanced successfully",
+      });
+    } catch (error: any) {
+      console.error("❌ [AGENT INSTRUCTIONS] Error enhancing instructions:", error);
+      
+      // Map custom errors to appropriate HTTP status codes
+      const statusCode = error instanceof ValidationError ? 400 
+                       : error instanceof NotFoundError ? 404 
+                       : 500;
+      
+      res.status(statusCode).json({
+        success: false,
+        error: error.message || "Failed to enhance instructions with AI",
+      });
+    }
+  }
+);
+
+export default router;

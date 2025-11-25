@@ -1,0 +1,1264 @@
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🎯 SALES SCRIPT TRACKER SERVICE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Tracks sales conversations in real-time by:
+// 1. Loading script structure from JSON
+// 2. Classifying AI/User messages semantically
+// 3. Identifying current phase, step, checkpoint
+// 4. Detecting ladder activations (3-5 PERCHÉ rule)
+// 5. Saving training data to database
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
+import { fileURLToPath } from 'url';
+import { nanoid } from 'nanoid';
+import { db } from '../db';
+import { salesConversationTraining, salesAgentTrainingSummary } from '@shared/schema';
+import { eq, sql as drizzleSql } from 'drizzle-orm';
+import { SalesScriptLogger } from './sales-script-logger';
+import { CheckpointDetector } from './checkpoint-detector';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TYPES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface Question {
+  text: string;
+  marker?: string;
+}
+
+interface Checkpoint {
+  id: string;
+  description: string;
+  verifications: string[];
+  lineNumber: number;
+}
+
+interface Step {
+  id: string;
+  number: number;
+  name: string;
+  objective: string;
+  questions: Question[];
+  hasLadder: boolean;
+  ladderLevels?: number;
+  lineNumber: number;
+}
+
+interface Phase {
+  id: string;
+  number: string;
+  name: string;
+  description: string;
+  semanticType: string;
+  steps: Step[];
+  checkpoints: Checkpoint[];
+  lineNumber: number;
+}
+
+interface ScriptStructure {
+  version: string;
+  lastExtracted: string;
+  sourceFile: string;
+  sourceContentHash?: string; // SHA-256 hash of source file content (optional for backward compatibility)
+  totalLines: number;
+  phases: Phase[];
+  metadata: {
+    totalPhases: number;
+    totalSteps: number;
+    totalCheckpoints: number;
+    scriptTypes: string[];
+  };
+}
+
+interface TrackingState {
+  currentPhase: string;
+  currentStep?: string;
+  phasesReached: string[];
+  phaseActivations: Array<{
+    phase: string; // phaseId (e.g., "phase_3")
+    timestamp: string;
+    trigger: "semantic_match" | "keyword_match" | "exact_match";
+    matchedQuestion?: string;
+    keywordsMatched?: string[];
+    similarity?: number;
+    messageId?: string;
+    excerpt?: string;
+    reasoning?: string;
+  }>;
+  checkpointsCompleted: Array<{
+    checkpointId: string;
+    status: "completed" | "pending" | "failed";
+    completedAt: string;
+    verifications: Array<{
+      requirement: string;
+      status: "verified" | "pending" | "failed";
+      evidence?: {
+        messageId: string;
+        excerpt: string;
+        matchedKeywords: string[];
+        timestamp: string;
+      };
+    }>;
+  }>;
+  semanticTypes: string[];
+  ladderActivations: Array<{
+    timestamp: string;
+    phase: string;
+    level: number;
+    question: string;
+    userResponse?: string;
+    wasVague: boolean;
+  }>;
+  contextualResponses: Array<{
+    timestamp: string;
+    phase: string;
+    prospectQuestion: string;
+    aiResponse: string;
+  }>;
+  questionsAsked: Array<{
+    timestamp: string;
+    phase: string;
+    stepId?: string;
+    question: string;
+    questionType?: string;
+  }>;
+  fullTranscript: Array<{
+    messageId: string;
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+    phase?: string;
+    checkpoint?: string;
+  }>;
+  aiReasoning: Array<{
+    timestamp: string;
+    phase: string;
+    decision: string;
+    reasoning: string;
+  }>;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SALES SCRIPT TRACKER CLASS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export class SalesScriptTracker {
+  private scriptStructure: ScriptStructure;
+  private conversationId: string;
+  private agentId: string;
+  private state: TrackingState;
+  private startTime: Date;
+  private lastLadderLevel: number = 0;
+  private logger: SalesScriptLogger | null = null;
+  private scriptOutdated: boolean = false; // Flag indicating script file was modified after JSON extraction
+  
+  // Ladder detection keywords
+  private readonly LADDER_KEYWORDS = [
+    'scava con me',
+    'cosa intendi esattamente',
+    'pensiamoci insieme',
+    'anche solo un esempio',
+    'aiutami a capire',
+    'dimmi tutto',
+    'e perché',
+    'interessante! cosa intendi',
+    'capisco. e perché',
+    'cosa succede veramente'
+  ];
+  
+  constructor(conversationId: string, agentId: string, initialPhase: string = 'phase_1_2', logger?: SalesScriptLogger) {
+    this.conversationId = conversationId;
+    this.agentId = agentId;
+    this.startTime = new Date();
+    this.logger = logger || null;
+    
+    // Load script structure from JSON
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const jsonPath = path.join(__dirname, 'sales-script-structure.json');
+    
+    try {
+      const jsonContent = fs.readFileSync(jsonPath, 'utf-8');
+      this.scriptStructure = JSON.parse(jsonContent);
+    } catch (error: any) {
+      console.error('❌ [TRACKER] Failed to load script structure:', error.message);
+      throw new Error(`Failed to load script structure: ${error.message}`);
+    }
+    
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // VERSION CHECK: Compare source file hash with extracted JSON hash
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    try {
+      const scriptPath = path.join(__dirname, 'sales-scripts-base.ts');
+      if (fs.existsSync(scriptPath) && this.scriptStructure.sourceContentHash) {
+        const currentContent = fs.readFileSync(scriptPath, 'utf-8');
+        const currentHash = crypto.createHash('sha256').update(currentContent).digest('hex');
+        
+        if (currentHash !== this.scriptStructure.sourceContentHash) {
+          this.scriptOutdated = true;
+          console.warn('⚠️  [TRACKER] SCRIPT OUTDATED - Source file has been modified!');
+          console.warn('   Re-run parser to update: tsx server/ai/sales-script-structure-parser.ts');
+        } else {
+          console.log('✅ [TRACKER] Script version is up-to-date');
+        }
+      }
+    } catch (error: any) {
+      console.warn('⚠️  [TRACKER] Failed to verify script version:', error.message);
+    }
+    
+    // Initialize state
+    this.state = {
+      currentPhase: initialPhase,
+      phasesReached: [initialPhase],
+      phaseActivations: [],
+      checkpointsCompleted: [],
+      semanticTypes: [],
+      ladderActivations: [],
+      contextualResponses: [],
+      questionsAsked: [],
+      fullTranscript: [],
+      aiReasoning: []
+    };
+    
+    console.log(`✅ [TRACKER] Initialized for conversation ${conversationId}`);
+    console.log(`   Script version: ${this.scriptStructure.version}`);
+    console.log(`   Total phases: ${this.scriptStructure.metadata.totalPhases}`);
+    console.log(`   Starting phase: ${initialPhase}`);
+    
+    // Log phase start if logger available
+    if (this.logger) {
+      const phase = this.getCurrentPhase();
+      if (phase) {
+        this.logger.logPhaseStart(phase.id, phase.name, phase.semanticType);
+      }
+    }
+  }
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // PUBLIC API
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  /**
+   * Track AI message - classify and identify phase/step/checkpoint
+   */
+  async trackAIMessage(message: string): Promise<void> {
+    const timestamp = new Date().toISOString();
+    const messageId = nanoid();
+    
+    // Add to transcript with unique messageId
+    this.state.fullTranscript.push({
+      messageId,
+      role: 'assistant',
+      content: message,
+      timestamp,
+      phase: this.state.currentPhase
+    });
+    
+    // Detect ladder activation
+    const ladderDetected = this.detectLadder(message);
+    if (ladderDetected) {
+      this.lastLadderLevel = ladderDetected.level;
+      this.state.ladderActivations.push({
+        timestamp,
+        phase: this.state.currentPhase,
+        level: ladderDetected.level,
+        question: message.substring(0, 200),
+        wasVague: ladderDetected.wasVague
+      });
+      
+      console.log(`🔍 [TRACKER] LADDER ACTIVATED - Level ${ladderDetected.level} in ${this.state.currentPhase}`);
+      
+      // Log ladder activation with structured logger
+      if (this.logger) {
+        this.logger.logLadderActivated(ladderDetected.level, this.state.currentPhase, message);
+      }
+    }
+    
+    // Match question to script
+    const matchedQuestion = this.matchQuestionToScript(message);
+    if (matchedQuestion) {
+      const previousPhase = this.state.currentPhase;
+      this.state.currentPhase = matchedQuestion.phaseId;
+      this.state.currentStep = matchedQuestion.stepId;
+      
+      // Track phase reached
+      const isNewPhase = !this.state.phasesReached.includes(matchedQuestion.phaseId);
+      if (isNewPhase) {
+        this.state.phasesReached.push(matchedQuestion.phaseId);
+        console.log(`🟢 [TRACKER] NEW PHASE REACHED: ${matchedQuestion.phaseId} - ${matchedQuestion.phaseName}`);
+        
+        // Save phase activation with evidence (flat structure for UI compatibility)
+        this.state.phaseActivations.push({
+          phase: matchedQuestion.phaseId,
+          timestamp,
+          trigger: matchedQuestion.similarity >= 0.8 ? 'semantic_match' : 'keyword_match',
+          matchedQuestion: matchedQuestion.matchedQuestion,
+          keywordsMatched: matchedQuestion.keywordsMatched,
+          similarity: matchedQuestion.similarity,
+          messageId,
+          excerpt: message.substring(0, 150),
+          reasoning: `Ho attivato questa fase perché l'AI ha detto una frase simile (${Math.round(matchedQuestion.similarity * 100)}%) a una domanda dello script: "${matchedQuestion.matchedQuestion.substring(0, 100)}...". Keywords trovate: ${matchedQuestion.keywordsMatched.join(', ')}.`
+        });
+        
+        console.log(`🎯 [TRACKER] PHASE ACTIVATION SAVED with evidence:`);
+        console.log(`   Similarity: ${Math.round(matchedQuestion.similarity * 100)}%`);
+        console.log(`   Keywords: ${matchedQuestion.keywordsMatched.join(', ')}`);
+        
+        // Log phase start with structured logger
+        if (this.logger) {
+          this.logger.logPhaseStart(matchedQuestion.phaseId, matchedQuestion.phaseName, matchedQuestion.semanticType);
+        }
+      } else if (previousPhase !== matchedQuestion.phaseId) {
+        // Returned to previous phase - log progress
+        if (this.logger) {
+          this.logger.logPhaseProgress(matchedQuestion.phaseId, matchedQuestion.stepName, message.substring(0, 100));
+        }
+      }
+      
+      // Track semantic type
+      if (!this.state.semanticTypes.includes(matchedQuestion.semanticType)) {
+        this.state.semanticTypes.push(matchedQuestion.semanticType);
+      }
+      
+      // Track question asked
+      this.state.questionsAsked.push({
+        timestamp,
+        phase: matchedQuestion.phaseId,
+        stepId: matchedQuestion.stepId,
+        question: message.substring(0, 200),
+        questionType: ladderDetected ? 'ladder' : matchedQuestion.semanticType
+      });
+      
+      console.log(`📍 [TRACKER] Question matched:`);
+      console.log(`   Phase: ${matchedQuestion.phaseId} - ${matchedQuestion.phaseName}`);
+      console.log(`   Step: ${matchedQuestion.stepId} - ${matchedQuestion.stepName}`);
+      console.log(`   Type: ${matchedQuestion.semanticType}`);
+    }
+    
+    // Save to DB
+    await this.saveToDatabase();
+  }
+  
+  /**
+   * Track user message - detect vague answers, checkpoint responses
+   */
+  async trackUserMessage(message: string): Promise<void> {
+    const timestamp = new Date().toISOString();
+    const messageId = nanoid();
+    
+    // Add to transcript with unique messageId
+    this.state.fullTranscript.push({
+      messageId,
+      role: 'user',
+      content: message,
+      timestamp,
+      phase: this.state.currentPhase
+    });
+    
+    // If we recently activated ladder, store user response
+    if (this.lastLadderLevel > 0 && this.state.ladderActivations.length > 0) {
+      const lastLadder = this.state.ladderActivations[this.state.ladderActivations.length - 1];
+      lastLadder.userResponse = message;
+      
+      // Check if response is still vague
+      const isVague = this.isResponseVague(message);
+      lastLadder.wasVague = isVague;
+      
+      if (isVague) {
+        console.log(`⚠️  [TRACKER] User response still VAGUE - Ladder should continue`);
+      } else {
+        console.log(`✅ [TRACKER] User response SPECIFIC - Ladder can stop`);
+        this.lastLadderLevel = 0; // Reset
+      }
+    }
+    
+    // Check for checkpoint verification keywords
+    const checkpointProgress = this.detectCheckpointProgress(message);
+    if (checkpointProgress) {
+      console.log(`✓ [TRACKER] Checkpoint progress detected: ${checkpointProgress}`);
+    }
+    
+    // 🎯 AUTO-DETECT CHECKPOINTS: Analyze transcript to auto-complete checkpoints
+    await this.autoDetectCheckpoints();
+    
+    // Save to DB
+    await this.saveToDatabase();
+  }
+  
+  /**
+   * Mark checkpoint as completed (legacy method - backward compatible)
+   */
+  async completeCheckpoint(checkpointId: string, verifications: string[]): Promise<void> {
+    const existing = this.state.checkpointsCompleted.find(cp => cp.checkpointId === checkpointId);
+    
+    if (!existing) {
+      // Convert old format to new structured format
+      const structuredVerifications = verifications.map(v => ({
+        requirement: v,
+        status: "verified" as const,
+        evidence: undefined
+      }));
+      
+      this.state.checkpointsCompleted.push({
+        checkpointId,
+        status: "completed",
+        completedAt: new Date().toISOString(),
+        verifications: structuredVerifications
+      });
+      
+      console.log(`✅ [TRACKER] CHECKPOINT COMPLETED: ${checkpointId}`);
+      console.log(`   Verifications: ${verifications.join(', ')}`);
+      
+      await this.saveToDatabase();
+    }
+  }
+  
+  /**
+   * Mark checkpoint as completed with structured evidence
+   */
+  async completeCheckpointWithEvidence(
+    checkpointId: string,
+    verifications: Array<{
+      requirement: string;
+      status: "verified" | "pending" | "failed";
+      evidence?: {
+        messageId: string;
+        excerpt: string;
+        matchedKeywords: string[];
+        timestamp: string;
+      };
+    }>
+  ): Promise<void> {
+    const existing = this.state.checkpointsCompleted.find(cp => cp.checkpointId === checkpointId);
+    
+    if (!existing) {
+      const allVerified = verifications.every(v => v.status === "verified");
+      const anyFailed = verifications.some(v => v.status === "failed");
+      
+      const status = anyFailed ? "failed" : (allVerified ? "completed" : "pending");
+      
+      this.state.checkpointsCompleted.push({
+        checkpointId,
+        status,
+        completedAt: new Date().toISOString(),
+        verifications
+      });
+      
+      console.log(`✅ [TRACKER] CHECKPOINT ${status.toUpperCase()}: ${checkpointId}`);
+      console.log(`   Verifications: ${verifications.length} total`);
+      verifications.forEach(v => {
+        console.log(`   - ${v.requirement}: ${v.status}`);
+        if (v.evidence) {
+          console.log(`     Evidence: "${v.evidence.excerpt.substring(0, 60)}..." (${v.evidence.matchedKeywords.join(', ')})`);
+        }
+      });
+      
+      await this.saveToDatabase();
+    }
+  }
+  
+  /**
+   * Auto-detect and complete checkpoints based on transcript evidence
+   * Called after each user message to check if any checkpoint requirements are met
+   */
+  private async autoDetectCheckpoints(): Promise<void> {
+    const currentPhase = this.getCurrentPhase();
+    if (!currentPhase || !currentPhase.checkpoints || currentPhase.checkpoints.length === 0) {
+      return; // No checkpoints in current phase
+    }
+    
+    console.log(`\n🎯 [AUTO-DETECT] Checking ${currentPhase.checkpoints.length} checkpoint(s) for ${currentPhase.id}`);
+    
+    // Get checkpoints that haven't been completed yet
+    const pendingCheckpoints = currentPhase.checkpoints.filter(cp => 
+      !this.state.checkpointsCompleted.some(completed => completed.checkpointId === cp.id)
+    );
+    
+    if (pendingCheckpoints.length === 0) {
+      console.log(`   ✅ All checkpoints already completed for ${currentPhase.id}`);
+      return;
+    }
+    
+    // Use CheckpointDetector to analyze transcript
+    const detectionResults = CheckpointDetector.detectCheckpoints(
+      pendingCheckpoints,
+      this.state.fullTranscript,
+      this.state.currentPhase
+    );
+    
+    // Process results and auto-complete verified checkpoints
+    for (const result of detectionResults) {
+      if (result.status === "completed") {
+        // Add to state with evidence
+        this.state.checkpointsCompleted.push(result);
+        
+        console.log(`\n✅ [AUTO-DETECT] CHECKPOINT AUTO-COMPLETED: ${result.checkpointId}`);
+        const verifiedCount = result.verifications.filter(v => v.status === "verified").length;
+        console.log(`   Verifications: ${verifiedCount}/${result.verifications.length} verified`);
+        
+        result.verifications.forEach(v => {
+          if (v.status === "verified" && v.evidence) {
+            console.log(`   ✓ ${v.requirement}`);
+            console.log(`     Evidence: "${v.evidence.excerpt.substring(0, 80)}..."`);
+            console.log(`     Keywords: ${v.evidence.matchedKeywords.join(', ')}`);
+          }
+        });
+      } else if (result.status === "pending") {
+        const verifiedCount = result.verifications.filter(v => v.status === "verified").length;
+        console.log(`   ⏳ ${result.checkpointId}: ${verifiedCount}/${result.verifications.length} verifications found (still pending)`);
+      }
+    }
+  }
+  
+  /**
+   * Add AI reasoning entry
+   */
+  async addReasoning(decision: string, reasoning: string): Promise<void> {
+    this.state.aiReasoning.push({
+      timestamp: new Date().toISOString(),
+      phase: this.state.currentPhase,
+      decision,
+      reasoning
+    });
+    
+    await this.saveToDatabase();
+  }
+  
+  /**
+   * Add contextual response event (Anti-Robot Mode)
+   * Called when AI responds to client's question before continuing script
+   */
+  async addContextualResponse(clientQuestion: string, aiAnswer: string): Promise<void> {
+    const timestamp = new Date().toISOString();
+    
+    // Add to contextualResponses array
+    this.state.contextualResponses.push({
+      timestamp,
+      phase: this.state.currentPhase,
+      prospectQuestion: clientQuestion.substring(0, 300),
+      aiResponse: aiAnswer.substring(0, 500)
+    });
+    
+    // Also add to aiReasoning for visibility
+    this.state.aiReasoning.push({
+      timestamp,
+      phase: this.state.currentPhase,
+      decision: 'contextual_response',
+      reasoning: `Prospect asked: "${clientQuestion.substring(0, 100)}..." - AI responded before continuing script (Anti-Robot Mode activated). Response: "${aiAnswer.substring(0, 150)}..."`
+    });
+    
+    console.log(`🤖➡️😊 [TRACKER] CONTEXTUAL RESPONSE logged in ${this.state.currentPhase}`);
+    console.log(`   Prospect Question: "${clientQuestion.substring(0, 80)}..."`);
+    console.log(`   AI Response: "${aiAnswer.substring(0, 80)}..."`);
+    
+    // Log with structured logger if available
+    if (this.logger) {
+      this.logger.logEvent('contextual_response', {
+        phase: this.state.currentPhase,
+        prospectQuestion: clientQuestion.substring(0, 100),
+        aiResponse: aiAnswer.substring(0, 100)
+      });
+    }
+    
+    await this.saveToDatabase();
+  }
+  
+  /**
+   * Get current tracking state
+   */
+  getState(): TrackingState {
+    return { ...this.state };
+  }
+  
+  /**
+   * Get current phase info
+   */
+  getCurrentPhase(): Phase | undefined {
+    return this.scriptStructure.phases.find(p => p.id === this.state.currentPhase);
+  }
+  
+  /**
+   * Get completion rate (0.0 to 1.0)
+   */
+  getCompletionRate(): number {
+    const totalPhases = this.scriptStructure.metadata.totalPhases;
+    const phasesReached = this.state.phasesReached.length;
+    return phasesReached / totalPhases;
+  }
+  
+  /**
+   * Check if script source file has been modified after JSON extraction
+   */
+  isScriptOutdated(): boolean {
+    return this.scriptOutdated;
+  }
+  
+  /**
+   * Get current phase number (e.g., "phase_3" -> 3, "phase_1_2" -> 1)
+   */
+  private getCurrentPhaseNumber(): number {
+    return this.getPhaseNumber(this.state.currentPhase);
+  }
+  
+  /**
+   * Extract phase number from phase ID (e.g., "phase_3" -> 3, "phase_1_2" -> 1)
+   */
+  private getPhaseNumber(phaseId: string): number {
+    // Extract first number after "phase_"
+    const match = phaseId.match(/phase_(\d+)/);
+    return match ? parseInt(match[1], 10) : 0;
+  }
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // PRIVATE METHODS - Detection & Matching
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  /**
+   * Match AI message to a question in the script
+   */
+  private matchQuestionToScript(message: string): {
+    phaseId: string;
+    phaseName: string;
+    stepId: string;
+    stepName: string;
+    semanticType: string;
+    matchedQuestion: string;
+    similarity: number;
+    keywordsMatched: string[];
+  } | null {
+    const messageLower = message.toLowerCase().trim();
+    
+    // 🚫 GENERIC MESSAGE FILTER: Reject too short or generic messages
+    if (this.isMessageTooGeneric(messageLower)) {
+      console.log(`🚫 [GENERIC-FILTER] Message too generic/short - skipping match`);
+      return null;
+    }
+    
+    // 🛡️ ANTI-REGRESSION: Get current phase number to prevent going backwards
+    const currentPhaseNum = this.getCurrentPhaseNumber();
+    
+    // Search through all phases and steps
+    let bestMatch: {
+      phaseId: string;
+      phaseName: string;
+      stepId: string;
+      stepName: string;
+      semanticType: string;
+      matchedQuestion: string;
+      similarity: number;
+      keywordsMatched: string[];
+    } | null = null;
+    
+    let bestSimilarity = 0;
+    
+    for (const phase of this.scriptStructure.phases) {
+      // Extract phase number (e.g., "phase_1_2" -> 1)
+      const phaseNum = this.getPhaseNumber(phase.id);
+      
+      for (const step of phase.steps) {
+        for (const question of step.questions) {
+          const questionLower = question.text.toLowerCase();
+          
+          // Remove placeholders for matching
+          const cleanQuestion = questionLower
+            .replace(/\[nome_prospect\]/gi, '')
+            .replace(/\[.*?\]/g, '')
+            .trim();
+          
+          const similarity = this.calculateSimilarity(messageLower, cleanQuestion);
+          
+          // 🎯 THRESHOLD INCREASED: From 0.6 to 0.85 for higher precision
+          // 🛡️ ANTI-REGRESSION: Only accept matches that don't go backwards
+          if (similarity > 0.85) {
+            // Check if this is a regression (going to earlier phase)
+            const isRegression = phaseNum < currentPhaseNum;
+            
+            if (isRegression) {
+              console.log(`🛡️ [ANTI-REGRESSION] Blocked match to ${phase.id} (phase ${phaseNum}) - currently at phase ${currentPhaseNum}`);
+              console.log(`   Similarity was ${(similarity * 100).toFixed(1)}% but rejected to prevent regression`);
+              continue; // Skip this match
+            }
+            
+            // Track best match
+            if (similarity > bestSimilarity) {
+              const messageWords = new Set(messageLower.split(/\s+/).filter(w => w.length > 3));
+              const questionWords = new Set(cleanQuestion.split(/\s+/).filter(w => w.length > 3));
+              const keywordsMatched = [...messageWords].filter(w => questionWords.has(w));
+              
+              bestSimilarity = similarity;
+              bestMatch = {
+                phaseId: phase.id,
+                phaseName: phase.name,
+                stepId: step.id,
+                stepName: step.name,
+                semanticType: phase.semanticType,
+                matchedQuestion: question.text,
+                similarity,
+                keywordsMatched
+              };
+            }
+          } else if (similarity > 0.6) {
+            // Log rejected matches that would have passed old threshold
+            console.log(`⚠️ [THRESHOLD] Rejected match (${(similarity * 100).toFixed(1)}%) - too low (need 85%+)`);
+          }
+        }
+      }
+    }
+    
+    // Return best match found (or null if none)
+    if (bestMatch) {
+      console.log(`✅ [MATCH] Found valid match with ${(bestMatch.similarity * 100).toFixed(1)}% similarity`);
+    }
+    
+    return bestMatch;
+  }
+  
+  /**
+   * Detect ladder activation (3-5 PERCHÉ rule)
+   */
+  private detectLadder(message: string): { level: number; wasVague: boolean } | null {
+    const messageLower = message.toLowerCase();
+    
+    // Check for ladder keywords
+    const hasLadderKeyword = this.LADDER_KEYWORDS.some(keyword => 
+      messageLower.includes(keyword.toLowerCase())
+    );
+    
+    if (!hasLadderKeyword) {
+      return null;
+    }
+    
+    // Determine ladder level based on keywords
+    let level = this.lastLadderLevel + 1;
+    
+    if (messageLower.includes('scava con me') || messageLower.includes('cosa intendi esattamente')) {
+      level = 1; // LIVELLO 1 - Chiarificazione
+    } else if (messageLower.includes('e perché') && messageLower.includes('ti preoccupa')) {
+      level = 2; // LIVELLO 2 - Primo scavo
+    } else if (messageLower.includes('cosa succede veramente')) {
+      level = 3; // LIVELLO 3 - Scavo profondo emotivo
+    } else if (messageLower.includes('livello pratico') || messageLower.includes('punto critico')) {
+      level = 4; // LIVELLO 4 - Tecnico
+    } else if (messageLower.includes('personalmente')) {
+      level = 5; // LIVELLO 5 - Emotivo finale
+    } else if (messageLower.includes('proprio adesso')) {
+      level = 6; // LIVELLO 6 - Evento scatenante
+    }
+    
+    // Cap at 6
+    if (level > 6) level = 6;
+    
+    return {
+      level,
+      wasVague: false // Will be updated when user responds
+    };
+  }
+  
+  /**
+   * Check if message is too generic to match (avoid false positives)
+   */
+  private isMessageTooGeneric(message: string): boolean {
+    const messageLower = message.toLowerCase();
+    
+    // 1. Too short (less than 10 characters)
+    if (message.length < 10) {
+      return true;
+    }
+    
+    // 2. Only contains generic greeting words
+    const genericPhrases = [
+      'ciao', 'buongiorno', 'buonasera', 'salve', 'piacere',
+      'ok', 'va bene', 'perfetto', 'grazie', 'prego', 
+      'sì', 'si', 'no', 'certo', 'esatto', 'capisco',
+      'dimmi', 'come va', 'tutto bene'
+    ];
+    
+    const words = messageLower.split(/\s+/).filter(w => w.length > 2);
+    const meaningfulWords = words.filter(w => 
+      !genericPhrases.some(phrase => phrase.includes(w) || w.includes(phrase))
+    );
+    
+    // If less than 3 meaningful words, too generic
+    if (meaningfulWords.length < 3) {
+      return true;
+    }
+    
+    // 3. Only filler words (interiezioni)
+    const fillerWords = ['eh', 'ah', 'oh', 'uhm', 'mmm', 'beh', 'mah', 'boh'];
+    const isOnlyFillers = words.every(w => fillerWords.includes(w));
+    
+    return isOnlyFillers;
+  }
+  
+  /**
+   * Detect if user response is vague (needs ladder continuation)
+   */
+  private isResponseVague(response: string): boolean {
+    const responseLower = response.toLowerCase();
+    
+    // Vague indicators
+    const vagueKeywords = [
+      'non lo so',
+      'boh',
+      'non sono sicuro',
+      'forse',
+      'problemi',
+      'cose',
+      'roba',
+      'tutto',
+      'niente',
+      'così così',
+      'più o meno'
+    ];
+    
+    const hasVagueKeyword = vagueKeywords.some(keyword => responseLower.includes(keyword));
+    
+    // Specific indicators
+    const hasNumbers = /\d/.test(response);
+    const hasSpecificNouns = /(facebook|google|instagram|vendita|cliente|soldi|euro|€)/.test(responseLower);
+    const isLongEnough = response.split(' ').length > 5;
+    
+    // Vague if has vague keywords OR lacks specificity
+    return hasVagueKeyword || !(hasNumbers || hasSpecificNouns || isLongEnough);
+  }
+  
+  /**
+   * Detect checkpoint progress based on user message
+   */
+  private detectCheckpointProgress(message: string): string | null {
+    const messageLower = message.toLowerCase();
+    
+    // Common checkpoint confirmation keywords
+    const confirmationKeywords = ['sì', 'si', 'ok', 'va bene', 'perfetto', 'd\'accordo', 'certo'];
+    
+    const hasConfirmation = confirmationKeywords.some(keyword => messageLower.includes(keyword));
+    
+    if (hasConfirmation) {
+      return `User confirmed in ${this.state.currentPhase}`;
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Calculate similarity between two strings (simple Jaccard index)
+   */
+  private calculateSimilarity(str1: string, str2: string): number {
+    const words1 = new Set(str1.split(/\s+/).filter(w => w.length > 2));
+    const words2 = new Set(str2.split(/\s+/).filter(w => w.length > 2));
+    
+    const intersection = new Set([...words1].filter(w => words2.has(w)));
+    const union = new Set([...words1, ...words2]);
+    
+    return union.size > 0 ? intersection.size / union.size : 0;
+  }
+  
+  /**
+   * Extract key phrases from question (for matching)
+   */
+  private extractKeyPhrases(question: string): string[] {
+    const phrases: string[] = [];
+    
+    // Extract question words
+    const questionWords = ['perché', 'come', 'cosa', 'quando', 'dove', 'quanto', 'chi'];
+    questionWords.forEach(word => {
+      if (question.includes(word)) {
+        phrases.push(word);
+      }
+    });
+    
+    // Extract unique 3-word combinations
+    const words = question.split(/\s+/).filter(w => w.length > 2);
+    for (let i = 0; i < words.length - 2; i++) {
+      const phrase = words.slice(i, i + 3).join(' ');
+      if (phrase.length > 10) {
+        phrases.push(phrase);
+      }
+    }
+    
+    return phrases;
+  }
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // DATABASE PERSISTENCE
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  /**
+   * Save current state to database (INSERT on first call, UPDATE after)
+   */
+  private async saveToDatabase(): Promise<void> {
+    try {
+      const duration = Math.floor((Date.now() - this.startTime.getTime()) / 1000);
+      const completionRate = this.getCompletionRate();
+      
+      const data = {
+        conversationId: this.conversationId,
+        agentId: this.agentId,
+        currentPhase: this.state.currentPhase,
+        phasesReached: this.state.phasesReached,
+        phaseActivations: this.state.phaseActivations, // ✅ Save phase activation evidence
+        checkpointsCompleted: this.state.checkpointsCompleted,
+        semanticTypes: this.state.semanticTypes,
+        aiReasoning: this.state.aiReasoning,
+        fullTranscript: this.state.fullTranscript,
+        ladderActivations: this.state.ladderActivations,
+        contextualResponses: this.state.contextualResponses,
+        questionsAsked: this.state.questionsAsked,
+        completionRate,
+        totalDuration: duration,
+        // Save script snapshot for historical comparison
+        scriptSnapshot: this.scriptStructure,
+        scriptVersion: this.scriptStructure.version,
+        updatedAt: new Date()
+      };
+      
+      // PostgreSQL UPSERT: INSERT ... ON CONFLICT DO UPDATE
+      await db.insert(salesConversationTraining)
+        .values(data)
+        .onConflictDoUpdate({
+          target: salesConversationTraining.conversationId,
+          set: data
+        });
+      
+      // console.log(`💾 [TRACKER] Saved to database (${duration}s, ${(completionRate * 100).toFixed(0)}% complete)`);
+    } catch (error: any) {
+      console.error(`❌ [TRACKER] Failed to save to database:`, error.message);
+    }
+  }
+  
+  /**
+   * Public method to save final state (called on disconnect)
+   */
+  public async saveFinalState(): Promise<void> {
+    console.log(`💾 [TRACKER] Saving final state for conversation ${this.conversationId}...`);
+    await this.saveToDatabase();
+  }
+  
+  /**
+   * Load existing state from database (called on reconnect)
+   */
+  public async loadFromDatabase(): Promise<boolean> {
+    try {
+      console.log(`📥 [TRACKER] Loading existing state from database for conversation ${this.conversationId}...`);
+      
+      const [existingData] = await db.select()
+        .from(salesConversationTraining)
+        .where(eq(salesConversationTraining.conversationId, this.conversationId))
+        .limit(1);
+      
+      if (!existingData) {
+        console.log(`ℹ️  [TRACKER] No existing data found - starting fresh`);
+        return false;
+      }
+      
+      // Restore state from database
+      this.state = {
+        currentPhase: existingData.currentPhase,
+        phasesReached: (existingData.phasesReached as string[]) || [],
+        phaseActivations: (existingData.phaseActivations as any[]) || [],
+        checkpointsCompleted: (existingData.checkpointsCompleted as any[]) || [],
+        semanticTypes: (existingData.semanticTypes as string[]) || [],
+        ladderActivations: (existingData.ladderActivations as any[]) || [],
+        contextualResponses: (existingData.contextualResponses as any[]) || [],
+        questionsAsked: (existingData.questionsAsked as any[]) || [],
+        fullTranscript: (existingData.fullTranscript as any[]) || [],
+        aiReasoning: (existingData.aiReasoning as any[]) || []
+      };
+      
+      console.log(`✅ [TRACKER] State restored successfully`);
+      console.log(`   - Current Phase: ${this.state.currentPhase}`);
+      console.log(`   - Phases Reached: ${this.state.phasesReached.length}`);
+      console.log(`   - Checkpoints: ${this.state.checkpointsCompleted.length}`);
+      console.log(`   - Ladder Activations: ${this.state.ladderActivations.length}`);
+      console.log(`   - Transcript Messages: ${this.state.fullTranscript.length}`);
+      
+      return true;
+    } catch (error: any) {
+      console.error(`❌ [TRACKER] Failed to load from database:`, error.message);
+      return false;
+    }
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // STATIC UTILITIES
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  /**
+   * Check if sales script source file has been modified after JSON extraction
+   * Returns true if script needs re-parsing
+   */
+  static checkScriptVersion(): boolean {
+    try {
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = path.dirname(__filename);
+      const jsonPath = path.join(__dirname, 'sales-script-structure.json');
+      const scriptPath = path.join(__dirname, 'sales-scripts-base.ts');
+      
+      if (!fs.existsSync(jsonPath) || !fs.existsSync(scriptPath)) {
+        return false; // Can't verify, assume up-to-date
+      }
+      
+      const jsonContent = fs.readFileSync(jsonPath, 'utf-8');
+      const structure = JSON.parse(jsonContent);
+      
+      if (!structure.sourceContentHash) {
+        return false; // No hash in JSON, can't verify
+      }
+      
+      // Calculate current hash of script file
+      const currentContent = fs.readFileSync(scriptPath, 'utf-8');
+      const currentHash = crypto.createHash('sha256').update(currentContent).digest('hex');
+      
+      // Compare: if different, script is outdated
+      const isOutdated = currentHash !== structure.sourceContentHash;
+      
+      if (isOutdated) {
+        console.log(`⚠️  [VERSION CHECK] Script outdated! Current hash: ${currentHash.substring(0, 8)}... vs JSON hash: ${structure.sourceContentHash.substring(0, 8)}...`);
+      }
+      
+      return isOutdated;
+    } catch (error: any) {
+      console.warn('⚠️  [VERSION CHECK] Failed to verify script version:', error.message);
+      return false; // Error = assume up-to-date
+    }
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // AGGREGATION - Calculate training summary for agent
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  /**
+   * Calculate aggregated training summary for an agent
+   * Analyzes all conversations and computes statistics
+   */
+  static async calculateAgentSummary(agentId: string): Promise<void> {
+    try {
+      console.log(`\n📊 [AGGREGATOR] Calculating training summary for agent ${agentId}...`);
+
+      // Fetch all conversations for this agent
+      const conversations = await db
+        .select()
+        .from(salesConversationTraining)
+        .where(eq(salesConversationTraining.agentId, agentId));
+
+      if (conversations.length === 0) {
+        console.log(`⚠️  [AGGREGATOR] No conversations found for agent ${agentId} - updating with zero metrics`);
+        
+        // Still upsert with zero metrics to keep summary table current
+        const emptyData = {
+          agentId,
+          totalConversations: 0,
+          avgConversionRate: 0,
+          phaseCompletionRates: {} as any,
+          commonFailPoints: [] as any,
+          checkpointCompletionRates: {} as any,
+          avgConversationDuration: 0,
+          ladderActivationRate: 0,
+          avgLadderDepth: 0,
+          bestPerformingPhases: [] as any,
+          worstPerformingPhases: [] as any,
+          lastStructureCheck: new Date(),
+          updatedAt: new Date(),
+        };
+        
+        await db
+          .insert(salesAgentTrainingSummary)
+          .values(emptyData)
+          .onConflictDoUpdate({
+            target: salesAgentTrainingSummary.agentId,
+            set: emptyData,
+          });
+        
+        console.log(`✅ [AGGREGATOR] Zero metrics recorded for agent ${agentId}`);
+        return;
+      }
+
+      console.log(`   Found ${conversations.length} conversation(s)`);
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // CALCULATE AGGREGATES
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      const totalConversations = conversations.length;
+
+      // Average completion rate
+      const avgCompletionRate =
+        conversations.reduce((sum, conv) => sum + (conv.completionRate || 0), 0) /
+        totalConversations;
+
+      // Average conversation duration
+      const avgConversationDuration = Math.floor(
+        conversations.reduce((sum, conv) => sum + (conv.totalDuration || 0), 0) /
+          totalConversations
+      );
+
+      // Phase completion rates: { phase_id: completion_rate }
+      // Defensive: Normalize phasesReached to array before counting
+      const phaseReachCounts: Record<string, number> = {};
+      conversations.forEach(conv => {
+        const phases = Array.isArray(conv.phasesReached) ? conv.phasesReached as string[] : [];
+        phases.forEach(phase => {
+          if (typeof phase === 'string') {
+            phaseReachCounts[phase] = (phaseReachCounts[phase] || 0) + 1;
+          }
+        });
+      });
+
+      const phaseCompletionRates: Record<string, number> = {};
+      Object.keys(phaseReachCounts).forEach(phaseId => {
+        phaseCompletionRates[phaseId] = phaseReachCounts[phaseId] / totalConversations;
+      });
+
+      // Checkpoint completion rates: { checkpoint_id: completion_rate }
+      // Defensive: Normalize checkpointsCompleted to array before counting
+      const checkpointCompleteCounts: Record<string, number> = {};
+      conversations.forEach(conv => {
+        const checkpoints = Array.isArray(conv.checkpointsCompleted)
+          ? (conv.checkpointsCompleted as Array<{ checkpointId: string }>)
+          : [];
+        
+        checkpoints.forEach(cp => {
+          if (cp && typeof cp.checkpointId === 'string') {
+            checkpointCompleteCounts[cp.checkpointId] =
+              (checkpointCompleteCounts[cp.checkpointId] || 0) + 1;
+          }
+        });
+      });
+
+      const checkpointCompletionRates: Record<string, number> = {};
+      Object.keys(checkpointCompleteCounts).forEach(cpId => {
+        checkpointCompletionRates[cpId] = checkpointCompleteCounts[cpId] / totalConversations;
+      });
+
+      // Ladder metrics
+      // Defensive: Normalize ladderActivations to array before counting
+      let totalLadderActivations = 0;
+      let totalLadderDepth = 0;
+      let conversationsWithLadder = 0;
+
+      conversations.forEach(conv => {
+        const ladders = Array.isArray(conv.ladderActivations)
+          ? (conv.ladderActivations as Array<{ level: number }>)
+          : [];
+        
+        if (ladders.length > 0) {
+          conversationsWithLadder++;
+          totalLadderActivations += ladders.length;
+          
+          // Max level reached in this conversation
+          const levels = ladders.map(l => l && typeof l.level === 'number' ? l.level : 0);
+          if (levels.length > 0) {
+            const maxLevel = Math.max(...levels);
+            totalLadderDepth += maxLevel;
+          }
+        }
+      });
+
+      const ladderActivationRate = conversationsWithLadder / totalConversations;
+      const avgLadderDepth = conversationsWithLadder > 0 
+        ? totalLadderDepth / conversationsWithLadder 
+        : 0;
+
+      // Best/Worst performing phases (top 3 and bottom 3 by completion rate)
+      const phaseRates = Object.entries(phaseCompletionRates)
+        .map(([phaseId, rate]) => ({ phaseId, rate }))
+        .sort((a, b) => b.rate - a.rate);
+
+      const bestPerformingPhases = phaseRates.slice(0, 3).map(p => p.phaseId);
+      const worstPerformingPhases = phaseRates.slice(-3).reverse().map(p => p.phaseId);
+
+      // Common fail points (phases/checkpoints where conversations drop off)
+      const failPoints: Array<{
+        phaseId: string;
+        checkpointId?: string;
+        failureCount: number;
+        failureRate: number;
+      }> = [];
+
+      // Count drop-offs at each phase (conversations that reached phase but didn't complete)
+      Object.entries(phaseReachCounts).forEach(([phaseId, reachCount]) => {
+        const notCompleted = totalConversations - reachCount;
+        if (notCompleted > 0) {
+          failPoints.push({
+            phaseId,
+            failureCount: notCompleted,
+            failureRate: notCompleted / totalConversations,
+          });
+        }
+      });
+
+      // Sort by failure rate descending and take top 5
+      failPoints.sort((a, b) => b.failureRate - a.failureRate);
+      const commonFailPoints = failPoints.slice(0, 5);
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // UPSERT TO DATABASE
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+      const summaryData = {
+        agentId,
+        totalConversations,
+        avgConversionRate: avgCompletionRate,
+        phaseCompletionRates: phaseCompletionRates as any,
+        commonFailPoints: commonFailPoints as any,
+        checkpointCompletionRates: checkpointCompletionRates as any,
+        avgConversationDuration,
+        ladderActivationRate,
+        avgLadderDepth,
+        bestPerformingPhases: bestPerformingPhases as any,
+        worstPerformingPhases: worstPerformingPhases as any,
+        lastStructureCheck: new Date(),
+        updatedAt: new Date(),
+      };
+
+      await db
+        .insert(salesAgentTrainingSummary)
+        .values(summaryData)
+        .onConflictDoUpdate({
+          target: salesAgentTrainingSummary.agentId,
+          set: summaryData,
+        });
+
+      console.log(`✅ [AGGREGATOR] Training summary updated for agent ${agentId}`);
+      console.log(`   Total Conversations: ${totalConversations}`);
+      console.log(`   Avg Completion Rate: ${(avgCompletionRate * 100).toFixed(1)}%`);
+      console.log(`   Avg Duration: ${Math.floor(avgConversationDuration / 60)}m`);
+      console.log(`   Ladder Activation Rate: ${(ladderActivationRate * 100).toFixed(1)}%`);
+      console.log(`   Best Phases: ${bestPerformingPhases.join(', ')}`);
+    } catch (error: any) {
+      console.error(`❌ [AGGREGATOR] Failed to calculate summary for agent ${agentId}:`, error.message);
+    }
+  }
+}
+
+/**
+ * Create or get existing tracker for a conversation
+ */
+const trackerInstances = new Map<string, SalesScriptTracker>();
+
+export async function getOrCreateTracker(conversationId: string, agentId: string, initialPhase?: string): Promise<SalesScriptTracker> {
+  let tracker = trackerInstances.get(conversationId);
+  
+  if (!tracker) {
+    tracker = new SalesScriptTracker(conversationId, agentId, initialPhase);
+    
+    // 🔄 RECONNECT FIX: Try to load existing state from database
+    const loaded = await tracker.loadFromDatabase();
+    if (loaded) {
+      console.log(`🔄 [TRACKER] Reconnected - state restored from database for ${conversationId}`);
+    } else {
+      console.log(`🆕 [TRACKER] New conversation - starting fresh for ${conversationId}`);
+    }
+    
+    trackerInstances.set(conversationId, tracker);
+  }
+  
+  return tracker;
+}
+
+export function removeTracker(conversationId: string): void {
+  trackerInstances.delete(conversationId);
+}
