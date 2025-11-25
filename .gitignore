@@ -11,7 +11,7 @@ vite.config.ts.*
 .env.*.local
 
 # Uploads
-uploads/
+# uploads/
 
 # Database files
 data/
