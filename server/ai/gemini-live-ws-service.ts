@@ -949,7 +949,7 @@ export function setupGeminiLiveWSService(server: Server) {
           salesTracker = await getOrCreateTracker(
             conversationId, 
             resolvedAgentId, 
-            'phase_1_2',
+            'phase_1',
             resolvedClientId || undefined,
             resolvedScriptType
           );

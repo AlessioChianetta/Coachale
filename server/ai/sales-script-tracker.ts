@@ -135,7 +135,7 @@ export class SalesScriptTracker {
    * Costruttore legacy sincrono (per backward compatibility)
    * Carica lo script da file JSON locale
    */
-  constructor(conversationId: string, agentId: string, initialPhase: string = 'phase_1_2', logger?: SalesScriptLogger) {
+  constructor(conversationId: string, agentId: string, initialPhase: string = 'phase_1', logger?: SalesScriptLogger) {
     this.conversationId = conversationId;
     this.agentId = agentId;
     this.startTime = new Date();
@@ -170,9 +170,12 @@ export class SalesScriptTracker {
       console.warn('⚠️  [TRACKER] Failed to verify script version:', error.message);
     }
     
-    // Initialize state
+    // Initialize state with currentStep set to first step of the phase
+    const initialStep = this.scriptStructure.phases[0]?.steps[0]?.id;
+    
     this.state = {
       currentPhase: initialPhase,
+      currentStep: initialStep,
       phasesReached: [initialPhase],
       phaseActivations: [],
       checkpointsCompleted: [],
@@ -188,6 +191,7 @@ export class SalesScriptTracker {
     console.log(`   Script version: ${this.scriptStructure.version}`);
     console.log(`   Total phases: ${this.scriptStructure.metadata.totalPhases}`);
     console.log(`   Starting phase: ${initialPhase}`);
+    console.log(`   Starting step: ${initialStep || 'N/A'}`);
     
     if (this.logger) {
       const phase = this.getCurrentPhase();
@@ -204,7 +208,7 @@ export class SalesScriptTracker {
   static async create(
     conversationId: string, 
     agentId: string, 
-    initialPhase: string = 'phase_1_2', 
+    initialPhase: string = 'phase_1', 
     logger?: SalesScriptLogger,
     clientId?: string,
     scriptType: 'discovery' | 'demo' | 'objections' = 'discovery'
@@ -241,8 +245,15 @@ export class SalesScriptTracker {
             version: activeScript.version || '1.0.0'
           };
           
+          // Aggiorna currentStep con il primo step dello script caricato dal DB
+          const firstStep = tracker.scriptStructure.phases[0]?.steps[0]?.id;
+          if (firstStep) {
+            tracker.state.currentStep = firstStep;
+          }
+          
           console.log(`✅ [TRACKER] Script loaded from DB: "${activeScript.name}" (ID: ${activeScript.id})`);
           console.log(`   Phases: ${tracker.scriptStructure.metadata.totalPhases}, Steps: ${tracker.scriptStructure.metadata.totalSteps}`);
+          console.log(`   Starting step: ${firstStep || 'N/A'}`);
         }
       } catch (error: any) {
         console.warn(`⚠️  [TRACKER] Failed to load script from database, using fallback JSON: ${error.message}`);
@@ -1464,7 +1475,7 @@ export class SalesScriptTracker {
  * Create or get existing tracker for a conversation
  * @param conversationId - ID della conversazione
  * @param agentId - ID dell'agente
- * @param initialPhase - Fase iniziale (default: phase_1_2)
+ * @param initialPhase - Fase iniziale (default: phase_1)
  * @param clientId - ID del cliente (opzionale, per caricare script dal DB)
  * @param scriptType - Tipo di script (default: discovery)
  */
@@ -1484,7 +1495,7 @@ export async function getOrCreateTracker(
     tracker = await SalesScriptTracker.create(
       conversationId, 
       agentId, 
-      initialPhase || 'phase_1_2',
+      initialPhase || 'phase_1',
       undefined, // logger
       clientId,
       scriptType
