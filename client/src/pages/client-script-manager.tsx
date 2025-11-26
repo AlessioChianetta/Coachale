@@ -143,6 +143,7 @@ export default function ClientScriptManager() {
   const [newScriptType, setNewScriptType] = useState<'discovery' | 'demo' | 'objections'>('discovery');
   const [newScriptName, setNewScriptName] = useState('');
   const [useTemplate, setUseTemplate] = useState(true);
+  const [showGuideDialog, setShowGuideDialog] = useState(false);
 
   // API Calls
   const { data: scripts = [], isLoading: isLoadingScripts } = useQuery<SalesScript[]>({
@@ -492,9 +493,102 @@ export default function ClientScriptManager() {
       <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between border-b px-4 py-2 bg-background z-10">
-            <h1 className="text-lg font-semibold flex items-center gap-2">
-                <Package className="h-5 w-5 text-primary" /> Script Manager
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg font-semibold flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" /> Script Manager
+              </h1>
+              <Dialog open={showGuideDialog} onOpenChange={setShowGuideDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
+                    <HelpCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline">Guida</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <BookOpen className="h-5 w-5 text-primary" />
+                      Come usare lo Script Manager
+                    </DialogTitle>
+                    <DialogDescription>
+                      Guida rapida per gestire i tuoi script di vendita
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6 py-4">
+                    <div className="space-y-3">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">1</span>
+                        Seleziona uno Script
+                      </h3>
+                      <p className="text-sm text-muted-foreground pl-8">
+                        Nella colonna sinistra, scegli tra <strong>Discovery</strong>, <strong>Demo</strong> o <strong>Obiezioni</strong>, 
+                        poi clicca sullo script che vuoi visualizzare o modificare.
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">2</span>
+                        Entra in Modalità Modifica
+                      </h3>
+                      <p className="text-sm text-muted-foreground pl-8">
+                        Clicca il pulsante <strong>"Modifica"</strong> in alto a destra per abilitare le modifiche.
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">3</span>
+                        Modifica Energia, Tono, Ladder
+                      </h3>
+                      <p className="text-sm text-muted-foreground pl-8">
+                        Clicca su una <strong>Fase</strong> o uno <strong>Step</strong> nella colonna centrale. 
+                        Nella colonna destra apparirà l'editor con:
+                      </p>
+                      <ul className="text-sm text-muted-foreground pl-8 space-y-1 list-disc list-inside">
+                        <li><strong>Impostazioni Energia</strong>: Livello, Tono, Volume, Ritmo, Lessico</li>
+                        <li><strong>Ladder dei Perché</strong>: 5 livelli di domande profonde (solo per Step)</li>
+                        <li><strong>Domande</strong>: Aggiungi, rimuovi e riordina domande (solo per Step)</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">4</span>
+                        Salva le Modifiche
+                      </h3>
+                      <p className="text-sm text-muted-foreground pl-8">
+                        Ogni sezione ha il suo pulsante <strong>"Salva"</strong>. Le modifiche vengono salvate automaticamente nel database.
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <h3 className="font-semibold flex items-center gap-2">
+                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">5</span>
+                        Attiva lo Script
+                      </h3>
+                      <p className="text-sm text-muted-foreground pl-8">
+                        Quando sei soddisfatto, clicca <strong>"Attiva"</strong> per far usare questo script all'AI Sales Agent.
+                      </p>
+                    </div>
+                    
+                    <div className="p-4 bg-muted/50 rounded-lg border">
+                      <h4 className="font-medium flex items-center gap-2 mb-2">
+                        <Lightbulb className="h-4 w-4 text-yellow-500" />
+                        Suggerimento
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        I badge colorati (<span className="text-red-500">🔴 ALTO</span>, <span className="text-yellow-500">🟡 MEDIO</span>, <span className="text-blue-500">🔵 BASSO</span>) 
+                        indicano il livello di energia. L'icona 🪜 indica che lo step ha un Ladder dei Perché attivo.
+                      </p>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={() => setShowGuideDialog(false)}>Ho capito!</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="flex items-center gap-2">
                 {isEditing ? (
                     <>

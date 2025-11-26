@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Sparkles, BookOpen, Target, Brain, MessageSquare, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Sparkles, BookOpen, Target, Brain, MessageSquare, ChevronRight, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -134,6 +134,8 @@ export function TrainingMapLayout({
   const observerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const effectiveScript = conversationDetail.scriptSnapshot || scriptStructure;
+  const isUsingSnapshot = !!conversationDetail.scriptSnapshot;
+  const snapshotVersionDiffers = isUsingSnapshot && conversationDetail.scriptSnapshot?.version !== scriptStructure.version;
 
   // Helper to safely get the score
   const getOverallScore = () => {
@@ -209,6 +211,17 @@ export function TrainingMapLayout({
                 <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300">
                   <Sparkles className="h-3 w-3 mr-1" />
                   AI Score: {overallScore}/100
+                </Badge>
+              )}
+              {snapshotVersionDiffers && (
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Script v{effectiveScript.version} (attuale: v{scriptStructure.version})
+                </Badge>
+              )}
+              {isUsingSnapshot && !snapshotVersionDiffers && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300">
+                  📜 Script storico v{effectiveScript.version}
                 </Badge>
               )}
             </div>

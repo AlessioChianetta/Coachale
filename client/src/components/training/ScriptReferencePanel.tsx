@@ -7,7 +7,8 @@ import {
 } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Circle, AlertCircle, XCircle, Clock, Eye, EyeOff } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CheckCircle, Circle, AlertCircle, XCircle, Clock, Eye, EyeOff, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -89,6 +90,8 @@ export function ScriptReferencePanel({
     return { color: 'bg-yellow-100 text-yellow-800', text: `${count}x` };
   };
 
+  const isHistoricalSnapshot = !!conversationDetail?.scriptSnapshot;
+
   return (
     <div className="h-full flex flex-col bg-muted/30">
       <div className="p-4 border-b bg-card space-y-2">
@@ -98,6 +101,12 @@ export function ScriptReferencePanel({
             <Badge variant="outline">
               v{scriptStructure.version}
             </Badge>
+            {isHistoricalSnapshot && (
+              <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">
+                <History className="h-3 w-3 mr-1" />
+                Storico
+              </Badge>
+            )}
           </h2>
           <Button
             variant="outline"
@@ -109,6 +118,14 @@ export function ScriptReferencePanel({
             {showDetails ? 'Nascondi domande' : 'Mostra domande'}
           </Button>
         </div>
+        {isHistoricalSnapshot && (
+          <Alert className="py-2 bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
+            <History className="h-3 w-3 text-amber-600" />
+            <AlertDescription className="text-xs text-amber-800 dark:text-amber-200">
+              Questo è lo script usato durante la conversazione, non quello attuale.
+            </AlertDescription>
+          </Alert>
+        )}
         <p className="text-xs text-muted-foreground">
           {scriptStructure.metadata.totalPhases} fasi • {scriptStructure.metadata.totalSteps} step •{' '}
           {scriptStructure.metadata.totalCheckpoints} checkpoint

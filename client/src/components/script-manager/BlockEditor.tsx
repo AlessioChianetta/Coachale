@@ -2,6 +2,12 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { ScriptBlockStructure, Phase, Step, Question, ScriptBlock } from '@shared/script-blocks';
 import { cn } from '@/lib/utils';
 import { Target, CheckSquare, MessageSquare, Plus, Trash2, Zap } from 'lucide-react';
@@ -66,10 +72,12 @@ export function BlockEditor({
   };
 
   return (
+    <TooltipProvider>
     <div className="space-y-4">
-      {structure.phases.map(phase => {
+      {structure.phases.map((phase, phaseIndex) => {
         const phaseEnergy = energySettings?.[phase.id];
         const hasCheckpoint = !!(phase.checkpoint);
+        const stepsCount = phase.steps?.length || 0;
         
         return (
           <Card
@@ -84,17 +92,49 @@ export function BlockEditor({
             <CardHeader>
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <CardTitle className="flex items-center gap-2 text-base">
+                  <CardTitle className="flex items-center gap-2 text-base flex-wrap">
                     <Target className="h-4 w-4" />
                     Fase {phase.number}: {phase.name}
+                    <Badge variant="outline" className="text-xs font-normal">
+                      {stepsCount} step
+                    </Badge>
                     {phaseEnergy && (
-                      <Badge className={cn('ml-2 text-xs', getEnergyColor(phaseEnergy.level))}>
-                        <Zap className="h-3 w-3 mr-1" />
-                        {phaseEnergy.level}
-                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge className={cn('text-xs cursor-help', getEnergyColor(phaseEnergy.level))}>
+                            <Zap className="h-3 w-3 mr-1" />
+                            {phaseEnergy.level}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <div className="space-y-1 text-xs">
+                            <p className="font-semibold">Impostazioni Energia</p>
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                              <span className="text-muted-foreground">Livello:</span>
+                              <span className="font-medium">{phaseEnergy.level}</span>
+                              {phaseEnergy.tone && <>
+                                <span className="text-muted-foreground">Tono:</span>
+                                <span className="font-medium">{phaseEnergy.tone}</span>
+                              </>}
+                              {phaseEnergy.volume && <>
+                                <span className="text-muted-foreground">Volume:</span>
+                                <span className="font-medium">{phaseEnergy.volume}</span>
+                              </>}
+                              {phaseEnergy.pace && <>
+                                <span className="text-muted-foreground">Ritmo:</span>
+                                <span className="font-medium">{phaseEnergy.pace}</span>
+                              </>}
+                              {phaseEnergy.vocabulary && <>
+                                <span className="text-muted-foreground">Lessico:</span>
+                                <span className="font-medium">{phaseEnergy.vocabulary}</span>
+                              </>}
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
                     )}
                     {hasCheckpoint && (
-                      <span className="ml-2 text-sm" title="Fase con checkpoint">⛔</span>
+                      <span className="text-sm" title="Fase con checkpoint">⛔</span>
                     )}
                   </CardTitle>
                   <CardDescription className="pt-1">{phase.description}</CardDescription>
@@ -107,12 +147,13 @@ export function BlockEditor({
               </div>
             </CardHeader>
             <CardContent className="space-y-3 pl-10">
-              {(phase.steps || []).map(step => {
+              {(phase.steps || []).map((step, stepIndex) => {
                 const stepEnergy = energySettings?.[step.id];
                 const stepLadder = ladderOverrides?.[step.id];
                 const stepQuestionsData = stepQuestions?.[step.id];
                 const questionsCount = stepQuestionsData?.length || (step.questions || []).length;
                 const hasLadder = stepLadder?.hasLadder || !!(step.ladder);
+                const ladderLevelsCount = stepLadder?.levels?.length || 5;
                 
                 return (
                   <Card
@@ -130,14 +171,53 @@ export function BlockEditor({
                           <CardTitle className="flex items-center gap-2 text-sm flex-wrap">
                             <CheckSquare className="h-4 w-4" />
                             <span>Step {step.number}: {step.name}</span>
+                            <Badge variant="outline" className="text-xs font-normal text-muted-foreground">
+                              {stepIndex + 1}/{stepsCount}
+                            </Badge>
                             {stepEnergy && (
-                              <Badge className={cn('text-xs', getEnergyColor(stepEnergy.level))}>
-                                <Zap className="h-3 w-3 mr-1" />
-                                {stepEnergy.level}
-                              </Badge>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge className={cn('text-xs cursor-help', getEnergyColor(stepEnergy.level))}>
+                                    <Zap className="h-3 w-3 mr-1" />
+                                    {stepEnergy.level}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-xs">
+                                  <div className="space-y-1 text-xs">
+                                    <p className="font-semibold">Energy Override Step</p>
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                                      <span className="text-muted-foreground">Livello:</span>
+                                      <span className="font-medium">{stepEnergy.level}</span>
+                                      {stepEnergy.tone && <>
+                                        <span className="text-muted-foreground">Tono:</span>
+                                        <span className="font-medium">{stepEnergy.tone}</span>
+                                      </>}
+                                      {stepEnergy.volume && <>
+                                        <span className="text-muted-foreground">Volume:</span>
+                                        <span className="font-medium">{stepEnergy.volume}</span>
+                                      </>}
+                                      {stepEnergy.pace && <>
+                                        <span className="text-muted-foreground">Ritmo:</span>
+                                        <span className="font-medium">{stepEnergy.pace}</span>
+                                      </>}
+                                      {stepEnergy.vocabulary && <>
+                                        <span className="text-muted-foreground">Lessico:</span>
+                                        <span className="font-medium">{stepEnergy.vocabulary}</span>
+                                      </>}
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                             {hasLadder && (
-                              <span className="text-sm" title="Ladder dei Perché">🪜</span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="text-sm cursor-help">🪜</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">Ladder dei Perché: {ladderLevelsCount} livelli</p>
+                                </TooltipContent>
+                              </Tooltip>
                             )}
                             {questionsCount > 0 && (
                               <Badge variant="secondary" className="text-xs">
@@ -204,5 +284,6 @@ export function BlockEditor({
         </Button>
       )}
     </div>
+    </TooltipProvider>
   );
 }

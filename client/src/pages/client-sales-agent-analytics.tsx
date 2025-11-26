@@ -45,7 +45,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Filter } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { getAuthHeaders } from '@/lib/auth';
 import { InvitesListTable } from '@/components/InvitesListTable';
 import Sidebar from '@/components/sidebar';
@@ -151,6 +158,7 @@ export default function ClientSalesAgentAnalytics() {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [preselectedConversationId, setPreselectedConversationId] = useState<string>('');
+  const [scriptTypeFilter, setScriptTypeFilter] = useState<'all' | 'discovery' | 'demo' | 'objections'>('all');
   const queryClient = useQueryClient();
   
   // Determine if we should enable real-time polling (only in training tab)
@@ -650,7 +658,7 @@ export default function ClientSalesAgentAnalytics() {
                 >
                   <Card className="bg-white dark:bg-gray-800 shadow-xl">
                     <CardHeader>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
                         <CardTitle className="text-2xl flex items-center gap-2">
                           <Brain className="h-6 w-6 text-blue-600" />
                           Conversazioni Tracciate
@@ -661,16 +669,35 @@ export default function ClientSalesAgentAnalytics() {
                             </Badge>
                           )}
                         </CardTitle>
-                        <Button
-                          onClick={handleRefresh}
-                          variant="outline"
-                          size="sm"
-                          disabled={isRefreshing}
-                          className="gap-2"
-                        >
-                          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                          Aggiorna
-                        </Button>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Filter className="h-4 w-4 text-muted-foreground" />
+                            <Select 
+                              value={scriptTypeFilter} 
+                              onValueChange={(value) => setScriptTypeFilter(value as 'all' | 'discovery' | 'demo' | 'objections')}
+                            >
+                              <SelectTrigger className="w-[160px]">
+                                <SelectValue placeholder="Tipo Script" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Tutti gli script</SelectItem>
+                                <SelectItem value="discovery">Discovery</SelectItem>
+                                <SelectItem value="demo">Demo</SelectItem>
+                                <SelectItem value="objections">Obiezioni</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button
+                            onClick={handleRefresh}
+                            variant="outline"
+                            size="sm"
+                            disabled={isRefreshing}
+                            className="gap-2"
+                          >
+                            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            Aggiorna
+                          </Button>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -721,7 +748,9 @@ export default function ClientSalesAgentAnalytics() {
                               </tr>
                             </thead>
                             <tbody>
-                              {trainingConversations.map((conv) => {
+                              {trainingConversations
+                                .filter(conv => scriptTypeFilter === 'all' || conv.usedScriptType === scriptTypeFilter)
+                                .map((conv) => {
                                 const isLive = isConversationLive(conv.createdAt);
                                 return (
                                 <tr
