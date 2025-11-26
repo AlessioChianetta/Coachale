@@ -2,17 +2,13 @@
 // 🎯 SALES SCRIPT TRACKER SERVICE
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Tracks sales conversations in real-time by:
-// 1. Loading script structure from JSON
+// 1. Loading script structure from DATABASE (Script Manager)
 // 2. Classifying AI/User messages semantically
 // 3. Identifying current phase, step, checkpoint
 // 4. Detecting ladder activations (3-5 PERCHÉ rule)
 // 5. Saving training data to database
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as crypto from 'crypto';
-import { fileURLToPath } from 'url';
 import { nanoid } from 'nanoid';
 import { db } from '../db';
 import { salesConversationTraining, salesAgentTrainingSummary, salesScripts, clientSalesAgents } from '@shared/schema';
@@ -1193,50 +1189,6 @@ export class SalesScriptTracker {
     } catch (error: any) {
       console.error(`❌ [TRACKER] Failed to load from database:`, error.message);
       return false;
-    }
-  }
-
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // STATIC UTILITIES
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  
-  /**
-   * Check if sales script source file has been modified after JSON extraction
-   * Returns true if script needs re-parsing
-   */
-  static checkScriptVersion(): boolean {
-    try {
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = path.dirname(__filename);
-      const jsonPath = path.join(__dirname, 'sales-script-structure.json');
-      const scriptPath = path.join(__dirname, 'sales-scripts-base.ts');
-      
-      if (!fs.existsSync(jsonPath) || !fs.existsSync(scriptPath)) {
-        return false; // Can't verify, assume up-to-date
-      }
-      
-      const jsonContent = fs.readFileSync(jsonPath, 'utf-8');
-      const structure = JSON.parse(jsonContent);
-      
-      if (!structure.sourceContentHash) {
-        return false; // No hash in JSON, can't verify
-      }
-      
-      // Calculate current hash of script file
-      const currentContent = fs.readFileSync(scriptPath, 'utf-8');
-      const currentHash = crypto.createHash('sha256').update(currentContent).digest('hex');
-      
-      // Compare: if different, script is outdated
-      const isOutdated = currentHash !== structure.sourceContentHash;
-      
-      if (isOutdated) {
-        console.log(`⚠️  [VERSION CHECK] Script outdated! Current hash: ${currentHash.substring(0, 8)}... vs JSON hash: ${structure.sourceContentHash.substring(0, 8)}...`);
-      }
-      
-      return isOutdated;
-    } catch (error: any) {
-      console.warn('⚠️  [VERSION CHECK] Failed to verify script version:', error.message);
-      return false; // Error = assume up-to-date
     }
   }
 

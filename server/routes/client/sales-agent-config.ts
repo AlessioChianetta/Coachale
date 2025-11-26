@@ -1120,8 +1120,8 @@ router.get("/:agentId/training/summary", authenticateToken, async (req: AuthRequ
       return res.status(403).json({ message: "Non hai i permessi per questo agente" });
     }
 
-    // Check if sales script has been modified after JSON extraction
-    const scriptOutdated = SalesScriptTracker.checkScriptVersion();
+    // Script versioning ora gestito dal database (Script Manager)
+    const scriptOutdated = false;
 
     // Try to get pre-calculated summary from database
     const summaryData = await db
