@@ -1,6 +1,22 @@
 # Overview
 This full-stack web application serves as a consultation platform, connecting consultants with clients for exercise assignment, progress tracking, and performance analytics. Its core ambition is to provide personalized financial insights through an integrated AI assistant, leveraging real-time financial data for context-aware advice, alongside advanced client management and communication tools.
 # Recent Changes
+## November 26, 2025 - Sales Script Sequential Navigation Fix
+- **Critical Bug Fix**: AI sales agent now follows scripts in strict sequential order (Phase 1 Step 1 → Step 2 → Checkpoint → Phase 2, etc.)
+- **Prompt-Side Guidance**:
+  - Created `ScriptPosition` interface for tracking exact position (phaseId, stepId, completedPhases)
+  - Added dynamic navigation map (`generateNavigationMap()`) showing progress with ✅/➡️ indicators
+  - Added next action instructions (`generateNextAction()`) with current step, objective, questions to ask
+  - Added META-INSTRUCTIONS "GUIDA RAPIDA" section at prompt start with script structure and rules
+  - Optimized prompt from 1318 to 944 lines (-28%) by consolidating duplicate rules
+- **Programmatic Enforcement**:
+  - Added `getScriptStructure()` public getter for type-safe access (replaced unsafe `as any` cast)
+  - Added `isValidStepTransition()` method to validate step/phase order
+  - Validation enforces: same-phase step progression (+1 only), phase transitions only from last step
+  - First utterance MUST match first step of current phase (blocks starting from step 2+)
+  - Blocked transitions logged with detailed reasons and recorded in tracker
+- **Files Modified**: `sales-agent-prompt-builder.ts`, `gemini-live-ws-service.ts`, `sales-script-tracker.ts`
+
 ## November 20, 2025 - AI Consultation System Enhancements
 - **Weekly AI Consultations**: Enhanced system for live AI voice consultations with Gemini Live API
   - **Backend Improvements**:
