@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { db } from '../db';
-import { salesScripts, salesScriptVersions, users } from '../../shared/schema';
+import { salesScripts, salesScriptVersions, users, clientSalesAgents, agentScriptAssignments } from '../../shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { getDiscoveryScript, getDemoScript, getObjectionsScript } from '../ai/sales-scripts-base';
 import { AuthRequest, requireRole } from '../middleware/auth';
@@ -220,12 +220,20 @@ router.put('/:id', requireClient, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/sales-scripts/:id/activate - Set script as active
+// POST /api/sales-scripts/:id/activate - Set script as active for a specific agent
+// Requires agentId in body - assigns script to that agent (1 agent = max 1 script per type)
 router.post('/:id/activate', requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const { agentId } = req.body;
     const clientId = req.user!.id;
     
+    // Validate agentId is provided
+    if (!agentId) {
+      return res.status(400).json({ error: 'agentId è obbligatorio. Seleziona un agente.' });
+    }
+    
+    // Verify script exists and belongs to client
     const [script] = await db
       .select()
       .from(salesScripts)
@@ -238,31 +246,155 @@ router.post('/:id/activate', requireClient, async (req: AuthRequest, res: Respon
       return res.status(404).json({ error: 'Script non trovato' });
     }
     
-    // Deactivate other scripts of same type
-    await db
-      .update(salesScripts)
-      .set({ isActive: false, updatedAt: new Date() })
+    // Verify agent exists and belongs to client
+    const [agent] = await db
+      .select()
+      .from(clientSalesAgents)
       .where(and(
-        eq(salesScripts.clientId, clientId),
-        eq(salesScripts.scriptType, script.scriptType),
-        eq(salesScripts.isActive, true)
+        eq(clientSalesAgents.id, agentId),
+        eq(clientSalesAgents.clientId, clientId)
       ));
     
-    // Activate this script
-    const [activatedScript] = await db
+    if (!agent) {
+      return res.status(404).json({ error: 'Agente non trovato' });
+    }
+    
+    // Remove any existing assignment for this agent + scriptType (upsert logic)
+    await db
+      .delete(agentScriptAssignments)
+      .where(and(
+        eq(agentScriptAssignments.agentId, agentId),
+        eq(agentScriptAssignments.scriptType, script.scriptType)
+      ));
+    
+    // Create new assignment
+    const [assignment] = await db
+      .insert(agentScriptAssignments)
+      .values({
+        agentId,
+        scriptId: id,
+        scriptType: script.scriptType,
+        assignedBy: clientId,
+      })
+      .returning();
+    
+    // Also mark script as active (for backward compatibility)
+    await db
       .update(salesScripts)
       .set({ isActive: true, updatedAt: new Date() })
-      .where(eq(salesScripts.id, id))
-      .returning();
+      .where(eq(salesScripts.id, id));
     
     // Clear script cache so AI uses the newly activated script
     clearScriptCache(clientId);
-    console.log(`🔄 [ScriptActivate] Cleared script cache for client ${clientId}`);
+    console.log(`🔄 [ScriptActivate] Script ${id} assigned to agent ${agentId} (type: ${script.scriptType})`);
     
-    res.json(activatedScript);
+    res.json({ 
+      success: true, 
+      assignment,
+      script,
+      agent: { id: agent.id, name: agent.agentName }
+    });
   } catch (error) {
     console.error('Error activating script:', error);
     res.status(500).json({ error: 'Errore nell\'attivazione dello script' });
+  }
+});
+
+// GET /api/sales-scripts/agents - Get all agents for the client with their script assignments
+router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    
+    // Get all agents for this client
+    const agents = await db
+      .select({
+        id: clientSalesAgents.id,
+        agentName: clientSalesAgents.agentName,
+        displayName: clientSalesAgents.displayName,
+        businessName: clientSalesAgents.businessName,
+        isActive: clientSalesAgents.isActive,
+      })
+      .from(clientSalesAgents)
+      .where(eq(clientSalesAgents.clientId, clientId));
+    
+    // Get all script assignments for these agents
+    const agentIds = agents.map(a => a.id);
+    
+    let assignments: Array<{
+      agentId: string;
+      scriptId: string;
+      scriptType: string;
+      scriptName?: string;
+    }> = [];
+    
+    if (agentIds.length > 0) {
+      // Get assignments with script names
+      const rawAssignments = await db
+        .select({
+          agentId: agentScriptAssignments.agentId,
+          scriptId: agentScriptAssignments.scriptId,
+          scriptType: agentScriptAssignments.scriptType,
+          scriptName: salesScripts.name,
+        })
+        .from(agentScriptAssignments)
+        .leftJoin(salesScripts, eq(agentScriptAssignments.scriptId, salesScripts.id));
+      
+      assignments = rawAssignments.filter(a => agentIds.includes(a.agentId));
+    }
+    
+    // Combine agents with their assignments
+    const agentsWithAssignments = agents.map(agent => ({
+      ...agent,
+      scriptAssignments: {
+        discovery: assignments.find(a => a.agentId === agent.id && a.scriptType === 'discovery') || null,
+        demo: assignments.find(a => a.agentId === agent.id && a.scriptType === 'demo') || null,
+        objections: assignments.find(a => a.agentId === agent.id && a.scriptType === 'objections') || null,
+      }
+    }));
+    
+    res.json(agentsWithAssignments);
+  } catch (error) {
+    console.error('Error fetching agents with assignments:', error);
+    res.status(500).json({ error: 'Errore nel recupero degli agenti' });
+  }
+});
+
+// GET /api/sales-scripts/:id/assignments - Get all agents assigned to a specific script
+router.get('/:id/assignments', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientId = req.user!.id;
+    
+    // Verify script belongs to client
+    const [script] = await db
+      .select()
+      .from(salesScripts)
+      .where(and(
+        eq(salesScripts.id, id),
+        eq(salesScripts.clientId, clientId)
+      ));
+    
+    if (!script) {
+      return res.status(404).json({ error: 'Script non trovato' });
+    }
+    
+    // Get all assignments for this script with agent details
+    const assignments = await db
+      .select({
+        assignmentId: agentScriptAssignments.id,
+        agentId: agentScriptAssignments.agentId,
+        assignedAt: agentScriptAssignments.assignedAt,
+        agentName: clientSalesAgents.agentName,
+        displayName: clientSalesAgents.displayName,
+      })
+      .from(agentScriptAssignments)
+      .leftJoin(clientSalesAgents, eq(agentScriptAssignments.agentId, clientSalesAgents.id))
+      .where(eq(agentScriptAssignments.scriptId, id));
+    
+    res.json(assignments);
+  } catch (error) {
+    console.error('Error fetching script assignments:', error);
+    res.status(500).json({ error: 'Errore nel recupero delle assegnazioni' });
   }
 });
 

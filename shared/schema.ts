@@ -3848,3 +3848,36 @@ export const salesScriptVersions = pgTable("sales_script_versions", {
 
 export type SalesScriptVersion = typeof salesScriptVersions.$inferSelect;
 export type InsertSalesScriptVersion = typeof salesScriptVersions.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Agent Script Assignments - Collega script specifici ad agenti specifici
+// Un agente può avere max 1 script per tipo (discovery, demo, objections)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const agentScriptAssignments = pgTable("agent_script_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Relazioni
+  agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull(),
+  scriptId: varchar("script_id").references(() => salesScripts.id, { onDelete: "cascade" }).notNull(),
+  
+  // Tipo script per vincolo unicità (1 agente = max 1 script per tipo)
+  scriptType: text("script_type").notNull().$type<"discovery" | "demo" | "objections">(),
+  
+  // Metadata
+  assignedAt: timestamp("assigned_at").default(sql`now()`).notNull(),
+  assignedBy: varchar("assigned_by").references(() => users.id), // Chi ha fatto l'assegnazione
+}, (table) => {
+  return {
+    // Vincolo unicità: 1 agente può avere solo 1 script per tipo
+    agentTypeUnique: index("agent_script_type_unique_idx").on(table.agentId, table.scriptType),
+  };
+});
+
+export type AgentScriptAssignment = typeof agentScriptAssignments.$inferSelect;
+export type InsertAgentScriptAssignment = typeof agentScriptAssignments.$inferInsert;
+
+export const insertAgentScriptAssignmentSchema = createInsertSchema(agentScriptAssignments).omit({
+  id: true,
+  assignedAt: true,
+});
