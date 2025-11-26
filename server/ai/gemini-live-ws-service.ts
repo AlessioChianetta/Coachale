@@ -2803,6 +2803,10 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 pendingUserTranscript.text = userTranscriptText;
                 if (isFinal) {
                   pendingUserTranscript.hasFinalChunk = true;
+                  
+                  // 🎤 VAD: Log solo quando la frase è completa (isFinal=true)
+                  console.log(`🎤 [${connectionId}] USER: "${userTranscriptText}"`);
+                  
                   // Track user message immediately when final chunk arrives
                   try {
                     await salesTracker.trackUserMessage(userTranscriptText);
@@ -2818,8 +2822,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                     // 🤖➡️😊 CONTEXTUAL RESPONSE DETECTION: Check if user is asking a question
                     if (isProspectQuestion(userTranscriptText)) {
                       lastProspectQuestion = userTranscriptText;
-                      console.log(`🤖➡️😊 [${connectionId}] PROSPECT QUESTION DETECTED: "${userTranscriptText.substring(0, 80)}..."`);
-                      console.log(`   → AI should respond to this before continuing script (Anti-Robot Mode)`);
+                      console.log(`❓ [${connectionId}] PROSPECT QUESTION: "${userTranscriptText.substring(0, 60)}..." → AI should respond first`);
                     }
                     
                     // Reset pending buffer
@@ -2830,24 +2833,13 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 }
               }
               
-              // 🎯 VAD DEBUG: Log evidenziato per capire quando Gemini VAD rileva l'inizio del parlato
-              console.log(`\n🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-              console.log(`🎤 [VAD DETECTION] Gemini rilevato parlato utente!`);
-              console.log(`   → Testo rilevato: "${userTranscriptText}"`);
-              console.log(`   → Timestamp: ${new Date().toISOString()}`);
-              console.log(`   → AI sta parlando? ${isAiSpeaking ? 'SÌ - INTERROMPO AUDIO!' : 'No'}`);
-              console.log(`🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-              
-              // 🔥 BARGE-IN FIX: Se AI sta parlando, FERMA IMMEDIATAMENTE l'audio client-side
+              // 🔥 BARGE-IN: Se AI sta parlando, ferma l'audio client-side
               if (isAiSpeaking) {
-                console.log(`🛑 [${connectionId}] BARGE-IN ATTIVATO - Invio stop_audio al client`);
                 clientWs.send(JSON.stringify({
                   type: 'stop_audio',
                   reason: 'user_speaking',
                   message: 'User is speaking - stop AI audio immediately'
                 }));
-                
-                // Reset flag - l'AI è stato interrotto
                 isAiSpeaking = false;
               }
               

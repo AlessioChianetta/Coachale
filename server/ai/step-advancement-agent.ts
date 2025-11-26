@@ -11,6 +11,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 import { getAIProvider, GeminiClient } from "./provider-factory";
+import { createLogger } from "./log-manager";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TYPES
@@ -75,35 +76,30 @@ export class StepAdvancementAgent {
    */
   static async analyze(params: StepAdvancementParams): Promise<StepAdvancementResult> {
     const startTime = Date.now();
+    const logger = createLogger('STEP-AGENT');
     
-    console.log(`\n🤖 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`🤖 [STEP-AGENT] Starting analysis`);
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`   📍 Current: ${params.currentPhaseId} / ${params.currentStepId || 'N/A'}`);
-    console.log(`   💬 Recent messages: ${params.recentMessages.length}`);
-    console.log(`   🔑 Using clientId: ${params.clientId?.substring(0, 8)}...`);
+    logger.info(`Analyzing ${params.currentPhaseId}/${params.currentStepId || 'N/A'} (${params.recentMessages.length} messages)`);
     
     try {
       // Ottieni il client AI usando il sistema a 3 livelli (Vertex client -> Vertex admin -> Google AI Studio)
-      console.log(`   📡 Getting AI provider...`);
+      logger.debug('Getting AI provider...');
       const providerStart = Date.now();
       const { client: aiClient, cleanup } = await getAIProvider(params.clientId, params.consultantId);
-      console.log(`   ✅ AI provider obtained in ${Date.now() - providerStart}ms`);
+      logger.debug(`AI provider obtained in ${Date.now() - providerStart}ms`);
       
       try {
         // Costruisci il prompt
         const prompt = this.buildPrompt(params);
-        console.log(`   📝 Prompt length: ${prompt.length} chars`);
+        logger.debug(`Prompt length: ${prompt.length} chars`);
         
-        // Log recent messages being analyzed
-        console.log(`   💬 Recent messages being analyzed:`);
-        params.recentMessages.slice(-4).forEach((msg, i) => {
-          const role = msg.role === 'user' ? 'PROSPECT' : 'AGENTE';
-          console.log(`      ${i + 1}. [${role}] "${msg.content.substring(0, 80)}${msg.content.length > 80 ? '...' : ''}"`);
-        });
+        // Log recent messages being analyzed (solo in DEBUG)
+        logger.debug('Recent messages:', params.recentMessages.slice(-4).map(m => ({
+          role: m.role === 'user' ? 'PROSPECT' : 'AGENTE',
+          text: m.content.substring(0, 60)
+        })));
         
         // Chiama Gemini con timeout
-        console.log(`   🚀 Calling Gemini ${this.MODEL}...`);
+        logger.debug(`Calling Gemini ${this.MODEL}...`);
         const geminiStart = Date.now();
         const response = await Promise.race([
           aiClient.generateContent({
@@ -116,11 +112,10 @@ export class StepAdvancementAgent {
           }),
           this.timeout(this.TIMEOUT_MS)
         ]);
-        console.log(`   ⏱️ Gemini responded in ${Date.now() - geminiStart}ms`);
+        logger.debug(`Gemini responded in ${Date.now() - geminiStart}ms`);
         
         if (!response || typeof response === 'string') {
-          console.warn('⚠️ [STEP-AGENT] Timeout or invalid response');
-          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          logger.warn('Timeout or invalid response');
           return this.createDefaultResult('Timeout');
         }
         
@@ -128,27 +123,19 @@ export class StepAdvancementAgent {
         let responseText = '';
         try {
           responseText = response.response.text();
-          console.log(`   📄 Raw response (first 300 chars): "${responseText.substring(0, 300)}${responseText.length > 300 ? '...' : ''}"`);
+          logger.debug(`Raw response: ${responseText.substring(0, 150)}...`);
         } catch (extractError: any) {
-          console.warn(`⚠️ [STEP-AGENT] Failed to extract text: ${extractError.message}`);
-          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          logger.warn(`Failed to extract text: ${extractError.message}`);
           return this.createDefaultResult('Failed to extract response text');
         }
         
         // Parse la risposta JSON
-        console.log(`   🔍 Parsing JSON response...`);
         const result = this.parseResponse(responseText, params);
-        
         const elapsed = Date.now() - startTime;
-        console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`🎯 [STEP-AGENT] Analysis completed in ${elapsed}ms`);
-        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-        console.log(`   → shouldAdvance: ${result.shouldAdvance}`);
-        console.log(`   → nextPhase: ${result.nextPhaseId || 'same'}`);
-        console.log(`   → nextStep: ${result.nextStepId || 'same'}`);
-        console.log(`   → confidence: ${(result.confidence * 100).toFixed(0)}%`);
-        console.log(`   → reasoning: ${result.reasoning}`);
-        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        
+        // Log compatto del risultato (sempre visibile)
+        logger.stepAgentResult(result.shouldAdvance, result.confidence, result.reasoning);
+        logger.debug(`Completed in ${elapsed}ms`);
         
         return result;
         
@@ -161,7 +148,7 @@ export class StepAdvancementAgent {
       
     } catch (error: any) {
       const elapsed = Date.now() - startTime;
-      console.error(`❌ [STEP-AGENT] Error after ${elapsed}ms:`, error.message);
+      logger.error(`Error after ${elapsed}ms: ${error.message}`);
       return this.createDefaultResult(`Error: ${error.message}`);
     }
   }
