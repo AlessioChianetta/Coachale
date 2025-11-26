@@ -548,83 +548,152 @@ export default function ClientScriptManager() {
                     <span className="hidden sm:inline">Guida</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       <BookOpen className="h-5 w-5 text-primary" />
-                      Come usare lo Script Manager
+                      Guida Completa allo Script Manager
                     </DialogTitle>
                     <DialogDescription>
-                      Guida rapida per gestire i tuoi script di vendita
+                      Tutto quello che devi sapere per creare script di vendita efficaci per il tuo AI Sales Agent
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-6 py-4">
-                    <div className="space-y-3">
-                      <h3 className="font-semibold flex items-center gap-2">
-                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">1</span>
-                        Seleziona uno Script
-                      </h3>
-                      <p className="text-sm text-muted-foreground pl-8">
-                        Nella colonna sinistra, scegli tra <strong>Discovery</strong>, <strong>Demo</strong> o <strong>Obiezioni</strong>, 
-                        poi clicca sullo script che vuoi visualizzare o modificare.
-                      </p>
+                    
+                    <div className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border border-primary/20">
+                      <h3 className="font-semibold text-lg mb-3">Struttura dello Script: FASI → STEP → DOMANDE</h3>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex items-start gap-3">
+                          <div className="bg-primary text-primary-foreground rounded px-2 py-1 font-mono text-xs">FASE</div>
+                          <p className="text-muted-foreground">
+                            Macro-sezione della conversazione (es. "Apertura", "Qualifica", "Presentazione"). 
+                            Ogni fase raggruppa step correlati e ha i suoi obiettivi specifici.
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-3 pl-6">
+                          <div className="bg-blue-500 text-white rounded px-2 py-1 font-mono text-xs">STEP</div>
+                          <p className="text-muted-foreground">
+                            Sotto-fase con un obiettivo preciso. Contiene le domande da fare e le istruzioni comportamentali.
+                            L'AI completa tutti gli step di una fase prima di passare alla successiva.
+                          </p>
+                        </div>
+                        <div className="flex items-start gap-3 pl-12">
+                          <div className="bg-green-500 text-white rounded px-2 py-1 font-mono text-xs">DOMANDA</div>
+                          <p className="text-muted-foreground">
+                            Domanda specifica da porre al prospect. L'AI le usa come guida ma le adatta al contesto della conversazione.
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     
-                    <div className="space-y-3">
-                      <h3 className="font-semibold flex items-center gap-2">
-                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">2</span>
-                        Entra in Modalità Modifica
+                    <div className="p-4 bg-muted/50 rounded-lg border">
+                      <h3 className="font-semibold flex items-center gap-2 mb-3">
+                        🤖 Come l'AI Usa lo Script
                       </h3>
-                      <p className="text-sm text-muted-foreground pl-8">
-                        Clicca il pulsante <strong>"Modifica"</strong> in alto a destra per abilitare le modifiche.
-                      </p>
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>L'AI Sales Agent riceve lo script completo nel suo contesto e lo usa per:</p>
+                        <ul className="space-y-2 pl-4">
+                          <li className="flex items-start gap-2">
+                            <span className="text-primary font-bold">→</span>
+                            <span><strong>Navigare la conversazione</strong>: Segue l'ordine FASE → STEP → DOMANDE senza saltare passaggi</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-primary font-bold">→</span>
+                            <span><strong>Adattare l'energia</strong>: Modifica tono, ritmo e volume in base alle impostazioni di ogni fase/step</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-primary font-bold">→</span>
+                            <span><strong>Attivare il Ladder</strong>: Quando il prospect dà risposte vaghe, l'AI scava più a fondo con i "Perché"</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-primary font-bold">→</span>
+                            <span><strong>Rispettare i Checkpoint</strong>: Verifica di avere le informazioni critiche prima di cambiare fase</span>
+                          </li>
+                        </ul>
+                      </div>
                     </div>
                     
-                    <div className="space-y-3">
-                      <h3 className="font-semibold flex items-center gap-2">
-                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">3</span>
-                        Modifica Energia, Tono, Ladder
+                    <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-900">
+                      <h3 className="font-semibold flex items-center gap-2 mb-3">
+                        📋 Legenda Simboli nello Script
                       </h3>
-                      <p className="text-sm text-muted-foreground pl-8">
-                        Clicca su una <strong>Fase</strong> o uno <strong>Step</strong> nella colonna centrale. 
-                        Nella colonna destra apparirà l'editor con:
-                      </p>
-                      <ul className="text-sm text-muted-foreground pl-8 space-y-1 list-disc list-inside">
-                        <li><strong>Impostazioni Energia</strong>: Livello, Tono, Volume, Ritmo, Lessico</li>
-                        <li><strong>Ladder dei Perché</strong>: 5 livelli di domande profonde (solo per Step)</li>
-                        <li><strong>Domande</strong>: Aggiungi, rimuovi e riordina domande (solo per Step)</li>
-                      </ul>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">⏸️</span>
+                          <span className="text-muted-foreground"><strong>PAUSA</strong> - Fermati e aspetta risposta</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🎧</span>
+                          <span className="text-muted-foreground"><strong>ASCOLTA</strong> - Attenzione alla risposta</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">💬</span>
+                          <span className="text-muted-foreground"><strong>REAGISCI</strong> - Mostra empatia</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🍪</span>
+                          <span className="text-muted-foreground"><strong>BISCOTTINO</strong> - Complimento breve</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">⛔</span>
+                          <span className="text-muted-foreground"><strong>CHECKPOINT</strong> - Verifica info critiche</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🔥</span>
+                          <span className="text-muted-foreground"><strong>LADDER</strong> - Scava con i "Perché"</span>
+                        </div>
+                      </div>
                     </div>
                     
-                    <div className="space-y-3">
-                      <h3 className="font-semibold flex items-center gap-2">
-                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">4</span>
-                        Salva le Modifiche
-                      </h3>
-                      <p className="text-sm text-muted-foreground pl-8">
-                        Ogni sezione ha il suo pulsante <strong>"Salva"</strong>. Le modifiche vengono salvate automaticamente nel database.
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <h3 className="font-semibold flex items-center gap-2">
-                        <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">5</span>
-                        Attiva lo Script
-                      </h3>
-                      <p className="text-sm text-muted-foreground pl-8">
-                        Quando sei soddisfatto, clicca <strong>"Attiva"</strong> per far usare questo script all'AI Sales Agent.
-                      </p>
+                    <div className="border-t pt-6">
+                      <h3 className="font-semibold text-lg mb-4">Come Usare lo Script Manager</h3>
+                      
+                      <div className="space-y-4">
+                        <div className="flex items-start gap-3">
+                          <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm shrink-0">1</span>
+                          <div>
+                            <p className="font-medium">Seleziona uno Script</p>
+                            <p className="text-sm text-muted-foreground">
+                              Scegli tra <strong>Discovery</strong>, <strong>Demo</strong> o <strong>Obiezioni</strong> nella sidebar, poi seleziona lo script.
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-3">
+                          <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm shrink-0">2</span>
+                          <div>
+                            <p className="font-medium">Modifica Energia, Tono, Ladder</p>
+                            <p className="text-sm text-muted-foreground">
+                              Clicca "Modifica", poi seleziona una Fase o Step. Nel pannello destro potrai configurare:
+                              energia, tono, volume, ritmo, lessico e il Ladder dei Perché.
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-3">
+                          <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm shrink-0">3</span>
+                          <div>
+                            <p className="font-medium">Attiva per un Agente</p>
+                            <p className="text-sm text-muted-foreground">
+                              Clicca "Attiva" e scegli per quale AI Sales Agent usare questo script. 
+                              <strong className="text-primary"> Ogni agente può avere un solo script per tipo</strong> (Discovery, Demo, Obiezioni).
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="p-4 bg-muted/50 rounded-lg border">
                       <h4 className="font-medium flex items-center gap-2 mb-2">
                         <Lightbulb className="h-4 w-4 text-yellow-500" />
-                        Suggerimento
+                        Suggerimenti
                       </h4>
-                      <p className="text-sm text-muted-foreground">
-                        I badge colorati (<span className="text-red-500">🔴 ALTO</span>, <span className="text-yellow-500">🟡 MEDIO</span>, <span className="text-blue-500">🔵 BASSO</span>) 
-                        indicano il livello di energia. L'icona 🪜 indica che lo step ha un Ladder dei Perché attivo.
-                      </p>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• I badge colorati (<span className="text-red-500">🔴 ALTO</span>, <span className="text-yellow-500">🟡 MEDIO</span>, <span className="text-blue-500">🔵 BASSO</span>) indicano il livello di energia</li>
+                        <li>• L'icona 🪜 indica che lo step ha un Ladder dei Perché attivo</li>
+                        <li>• Puoi creare più script dello stesso tipo e attivarli per agenti diversi</li>
+                        <li>• Le modifiche vengono salvate automaticamente nel database</li>
+                      </ul>
                     </div>
                   </div>
                   <DialogFooter>

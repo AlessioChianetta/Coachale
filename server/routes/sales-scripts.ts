@@ -55,6 +55,67 @@ router.get('/active', requireClient, async (req: AuthRequest, res: Response) => 
   }
 });
 
+// GET /api/sales-scripts/agents - Get all agents for the client with their script assignments
+// NOTE: This route MUST be before /:id to avoid being caught by the :id param
+router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    
+    // Get all agents for this client
+    const agents = await db
+      .select({
+        id: clientSalesAgents.id,
+        agentName: clientSalesAgents.agentName,
+        displayName: clientSalesAgents.displayName,
+        businessName: clientSalesAgents.businessName,
+        isActive: clientSalesAgents.isActive,
+      })
+      .from(clientSalesAgents)
+      .where(eq(clientSalesAgents.clientId, clientId));
+    
+    // Get all script assignments for these agents
+    const agentIds = agents.map(a => a.id);
+    
+    let assignments: Array<{
+      agentId: string;
+      scriptId: string;
+      scriptType: string;
+      scriptName?: string;
+    }> = [];
+    
+    if (agentIds.length > 0) {
+      // Get assignments with script names
+      const rawAssignments = await db
+        .select({
+          agentId: agentScriptAssignments.agentId,
+          scriptId: agentScriptAssignments.scriptId,
+          scriptType: agentScriptAssignments.scriptType,
+          scriptName: salesScripts.name,
+        })
+        .from(agentScriptAssignments)
+        .leftJoin(salesScripts, eq(agentScriptAssignments.scriptId, salesScripts.id));
+      
+      assignments = rawAssignments.filter(a => agentIds.includes(a.agentId));
+    }
+    
+    // Combine agents with their assignments
+    const agentsWithAssignments = agents.map(agent => ({
+      ...agent,
+      scriptAssignments: {
+        discovery: assignments.find(a => a.agentId === agent.id && a.scriptType === 'discovery') || null,
+        demo: assignments.find(a => a.agentId === agent.id && a.scriptType === 'demo') || null,
+        objections: assignments.find(a => a.agentId === agent.id && a.scriptType === 'objections') || null,
+      }
+    }));
+    
+    console.log(`[ScriptsAPI] Found ${agents.length} agents for client ${clientId}`);
+    res.json(agentsWithAssignments);
+  } catch (error) {
+    console.error('Error fetching agents with assignments:', error);
+    res.status(500).json({ error: 'Errore nel recupero degli agenti' });
+  }
+});
+
 // GET /api/sales-scripts/:id - Get single script with version history
 router.get('/:id', requireClient, async (req: AuthRequest, res: Response) => {
   try {
@@ -297,65 +358,6 @@ router.post('/:id/activate', requireClient, async (req: AuthRequest, res: Respon
   } catch (error) {
     console.error('Error activating script:', error);
     res.status(500).json({ error: 'Errore nell\'attivazione dello script' });
-  }
-});
-
-// GET /api/sales-scripts/agents - Get all agents for the client with their script assignments
-router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => {
-  try {
-    const clientId = req.user!.id;
-    
-    // Get all agents for this client
-    const agents = await db
-      .select({
-        id: clientSalesAgents.id,
-        agentName: clientSalesAgents.agentName,
-        displayName: clientSalesAgents.displayName,
-        businessName: clientSalesAgents.businessName,
-        isActive: clientSalesAgents.isActive,
-      })
-      .from(clientSalesAgents)
-      .where(eq(clientSalesAgents.clientId, clientId));
-    
-    // Get all script assignments for these agents
-    const agentIds = agents.map(a => a.id);
-    
-    let assignments: Array<{
-      agentId: string;
-      scriptId: string;
-      scriptType: string;
-      scriptName?: string;
-    }> = [];
-    
-    if (agentIds.length > 0) {
-      // Get assignments with script names
-      const rawAssignments = await db
-        .select({
-          agentId: agentScriptAssignments.agentId,
-          scriptId: agentScriptAssignments.scriptId,
-          scriptType: agentScriptAssignments.scriptType,
-          scriptName: salesScripts.name,
-        })
-        .from(agentScriptAssignments)
-        .leftJoin(salesScripts, eq(agentScriptAssignments.scriptId, salesScripts.id));
-      
-      assignments = rawAssignments.filter(a => agentIds.includes(a.agentId));
-    }
-    
-    // Combine agents with their assignments
-    const agentsWithAssignments = agents.map(agent => ({
-      ...agent,
-      scriptAssignments: {
-        discovery: assignments.find(a => a.agentId === agent.id && a.scriptType === 'discovery') || null,
-        demo: assignments.find(a => a.agentId === agent.id && a.scriptType === 'demo') || null,
-        objections: assignments.find(a => a.agentId === agent.id && a.scriptType === 'objections') || null,
-      }
-    }));
-    
-    res.json(agentsWithAssignments);
-  } catch (error) {
-    console.error('Error fetching agents with assignments:', error);
-    res.status(500).json({ error: 'Errore nel recupero degli agenti' });
   }
 });
 
