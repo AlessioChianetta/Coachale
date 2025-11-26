@@ -1,13 +1,13 @@
 {
   "version": "1.0.0",
-  "lastExtracted": "2025-11-25T01:49:01.539Z",
+  "lastExtracted": "2025-11-26T14:25:51.112Z",
   "sourceFile": "/home/runner/workspace/server/ai/sales-scripts-base.ts",
-  "sourceContentHash": "d2fa2d9ebcdc3e0f663a968459c85a2f86c5bc2100d85ce4af136b1c939b8f04",
-  "totalLines": 2899,
+  "sourceContentHash": "2244f1f89f5c1303e7f78ee773606855641effec33ee81b1c297a1a815a8f696",
+  "totalLines": 3543,
   "phases": [
     {
-      "id": "phase_1_2",
-      "number": "1 e #2",
+      "id": "phase_1",
+      "number": "1",
       "name": "APERTURA ED IMPOSTAZIONE",
       "description": "Avvia la chiamata e Imposta la Direzione della Conversazione",
       "semanticType": "opening",
@@ -17,16 +17,9 @@
           "number": 1,
           "name": "APERTURA ENTUSIASTA",
           "objective": "Creare connessione iniziale, rompere il ghiaccio e costruire rapport",
-          "questions": [
-            {
-              "text": "Ciao [NOME_PROSPECT]! Benvenuto/a in questa consulenza, come stai?"
-            },
-            {
-              "text": "Senti, da dove mi chiami?"
-            }
-          ],
+          "questions": [],
           "hasLadder": false,
-          "lineNumber": 78
+          "lineNumber": 85
         },
         {
           "id": "step_2",
@@ -35,65 +28,30 @@
           "objective": "Stabilire autorevolezza, aspettative chiare e creare scarsità",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 107
-        },
-        {
-          "id": "step_1",
-          "number": 1,
-          "name": "Riconosci (biscottino)",
-          "objective": "",
-          "questions": [],
-          "hasLadder": false,
-          "lineNumber": 150
-        },
-        {
-          "id": "step_2",
-          "number": 2,
-          "name": "Reframe con beneficio",
-          "objective": "",
-          "questions": [],
-          "hasLadder": false,
-          "lineNumber": 153
-        },
-        {
-          "id": "step_3",
-          "number": 3,
-          "name": "Aspetta conferma",
-          "objective": "",
-          "questions": [],
-          "hasLadder": false,
-          "lineNumber": 158
-        },
-        {
-          "id": "step_4",
-          "number": 4,
-          "name": "Procedi con energia",
-          "objective": "",
-          "questions": [],
-          "hasLadder": false,
-          "lineNumber": 161
+          "lineNumber": 108
         }
       ],
       "checkpoints": [
         {
-          "id": "checkpoint_1-2",
-          "description": "⛔ CHECKPOINT OBBLIGATORIO FASE #1-2 ⛔",
+          "id": "checkpoint_1",
+          "description": "⛔ CHECKPOINT FASE #1",
           "verifications": [
             "Hai salutato e chiesto \"come stai\"",
             "Hai chiesto \"da dove mi chiami\"",
             "Hai spiegato il processo della call",
-            "Il prospect ha detto \"OK\" / \"Sì\" / \"Va bene\" al processo"
+            "Il prospect ha detto \"OK\" / \"Sì\" / \"Va bene\" al processo",
+            "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
           ],
-          "lineNumber": 134
+          "lineNumber": 129
         }
       ],
-      "lineNumber": 53
+      "lineNumber": 66
     },
     {
-      "id": "phase_3",
-      "number": "3",
+      "id": "phase_2",
+      "number": "2",
       "name": "PAIN POINT DISCOVERY",
-      "description": "INTERESSATI PER CAPIRE COSA VUOLE, ASCOLTA ATTIVAMENTE",
+      "description": "Interessati per capire cosa vuole, ascolta attivamente",
       "semanticType": "discovery",
       "steps": [
         {
@@ -103,36 +61,14 @@
           "objective": "Capire il VERO motivo dietro la call e il problema PRINCIPALE da risolvere",
           "questions": [
             {
-              "text": "Dimmi, perché hai deciso di partecipare a questa call?"
-            },
-            {
-              "text": "E se dovessi scegliere UNA cosa, qual è IL problema principale?"
-            },
-            {
-              "text": "Scava con me: cosa intendi ESATTAMENTE per [ripeti sue parole]?"
-            },
-            {
-              "text": "Capisco. E perché [ripeti risposta] ti preoccupa così tanto?"
-            },
-            {
-              "text": "E questo cosa significa per te PERSONALMENTE?"
-            },
-            {
-              "text": "E cosa è scattato? Perché cercare una soluzione proprio ADESSO?"
-            },
-            {
               "text": "Sono bloccato\" → CHIEDI: \"Bloccato dove ESATTAMENTE? Cosa succede?"
             },
             {
               "text": "Aiutami a capire: se dovessi descriverlo a un amico, cosa diresti?"
-            },
-            {
-              "text": "Potresti riassumere in 1 frase il suo problema principale?"
             }
           ],
           "hasLadder": true,
-          "lineNumber": 192,
-          "ladderLevels": 6
+          "lineNumber": 173
         },
         {
           "id": "step_4",
@@ -141,49 +77,20 @@
           "objective": "Capire cosa hanno provato, perché ha FALLITO e creare contrasto",
           "questions": [
             {
-              "text": "E cosa hai già provato finora?"
-            },
-            {
-              "text": "E cosa hai già provato?"
-            },
-            {
-              "text": "E cosa ti ha convinto a provarla?"
-            },
-            {
-              "text": "E com'è andata? Risultati?"
-            },
-            {
-              "text": "E perché pensi non ha funzionato?"
-            },
-            {
               "text": "E secondo te cosa è mancato per raggiungere il risultato che volevi?"
-            },
-            {
-              "text": "E qual è stata LA cosa che proprio non andava?"
-            },
-            {
-              "text": "Ok perfetto. E da dove pensi di dover partire secondo te?"
             }
           ],
           "hasLadder": true,
-          "lineNumber": 346,
-          "ladderLevels": 5
+          "lineNumber": 276
         },
         {
           "id": "step_5",
           "number": 5,
           "name": "PERSISTENZA",
           "objective": "Capire da quanto tempo combatte questo problema (più tempo = più frustrazione)",
-          "questions": [
-            {
-              "text": "E da quanto tempo ci stai provando?"
-            },
-            {
-              "text": "E cosa è successo in quel periodo che ti ha fatto iniziare?"
-            }
-          ],
+          "questions": [],
           "hasLadder": false,
-          "lineNumber": 436
+          "lineNumber": 344
         },
         {
           "id": "step_6",
@@ -192,37 +99,37 @@
           "objective": "Capire investimenti passati (€, tempo, energie) per creare contrasto",
           "questions": [
             {
-              "text": "E quanto hai già investito finora? Tempo, soldi?"
-            },
-            {
-              "text": "E cosa ti ha convinto a investire in [soluzione]?"
+              "text": "Potresti riassumere in 1 frase il suo problema principale?"
             }
           ],
           "hasLadder": false,
-          "lineNumber": 456
+          "lineNumber": 359
         }
       ],
       "checkpoints": [
         {
-          "id": "checkpoint_3",
-          "description": "⛔ CHECKPOINT OBBLIGATORIO FASE #3 ⛔",
+          "id": "checkpoint_2",
+          "description": "⛔ CHECKPOINT FASE #2",
           "verifications": [
             "Sai IL problema principale che vuole risolvere",
             "È SPECIFICO e CONCRETO (non vago tipo \"crescere\" / \"problemi generici\")",
             "Sai di cosa si occupa (business/attività)",
             "Hai scavato con 3-5 perché se la risposta era vaga",
-            "Capisci il VERO dolore dietro il problema"
+            "Capisci il VERO dolore dietro il problema",
+            "Sai cosa hanno già provato e perché ha fallito",
+            "Sai da quanto tempo combattono il problema",
+            "Sai quanto hanno già investito"
           ],
-          "lineNumber": 309
+          "lineNumber": 376
         }
       ],
-      "lineNumber": 170
+      "lineNumber": 156
     },
     {
-      "id": "phase_4",
-      "number": "4",
+      "id": "phase_3",
+      "number": "3",
       "name": "INFO BUSINESS",
-      "description": "COMPRENDI IL BUSINESS (domande rapide e mirate)",
+      "description": "Comprendi il Business (domande rapide e mirate)",
       "semanticType": "business_info",
       "steps": [
         {
@@ -233,104 +140,49 @@
           "questions": [
             {
               "text": "Prima mi hai detto [info], puoi dirmi di più su...?"
-            },
-            {
-              "text": "Chi aiuti esattamente?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Modello di business? Ricorrente, una tantum, pacchetti?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Da quanti anni?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "B2B o B2C?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Quanti clienti hai ora?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Ticket medio?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Hai collaboratori? Commerciali?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Chi si occupa di marketing?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Come generi clienti in target adesso?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Sai il tuo CAC (costo acquisizione cliente)?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "E qual è il prodotto/servizio principale che genera più vendite?"
             }
           ],
           "hasLadder": false,
-          "lineNumber": 493
+          "lineNumber": 434
         }
       ],
       "checkpoints": [],
-      "lineNumber": 479
+      "lineNumber": 418
     },
     {
-      "id": "phase_5",
-      "number": "5",
-      "name": "Inquisitorio (Dottore) - Stretch The Gap Parte 1",
-      "description": "TONO: Tanto per sapere, casual ma curioso",
-      "semanticType": "gap_stretching",
+      "id": "phase_4",
+      "number": "4",
+      "name": "INQUISITORIO",
+      "description": "Domande diagnostiche per far emergere la gravità del problema",
+      "semanticType": "other",
       "steps": [
         {
           "id": "step_8",
           "number": 8,
           "name": "DOMANDE DIAGNOSTICHE",
-          "objective": "Far capire al futuro cliente che il problema è più grande di quanto pensino, e che è il momento di agire, come lo facciamo? lo facciamo con delle domande inquisitorie, servono per far capire che noi siamo esperti e loro non sanno rispondere alla domanda che gli stiamo facendo, l'obiettivo è che loro ci dicano NON LO SO, non spiegare se ti chiede, mi spieghi meglio tu, dici solamente, è proprio il motivo per il quale siamo in questa call, lo vediamo più avanti",
+          "objective": "Far capire al futuro cliente che il problema è più grande di quanto pensino,",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 556
+          "lineNumber": 521
         },
         {
           "id": "step_9",
           "number": 9,
           "name": "STATO ATTUALE (FATTURATO)",
           "objective": "Raccogliere il numero PRECISO del fatturato (FASE CRITICA!)",
-          "questions": [
-            {
-              "text": "Giusto per capire, a che livello di fatturato sei ora? Mensile o annuale?"
-            },
-            {
-              "text": "Ok, quindi più o meno siamo sui [numero calcolato] al mese, corretto?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Perfetto! Allora, più o meno a che livello sei?",
-              "marker": "pause_required"
-            }
-          ],
+          "questions": [],
           "hasLadder": false,
-          "lineNumber": 565
+          "lineNumber": 533
         }
       ],
       "checkpoints": [],
-      "lineNumber": 552
+      "lineNumber": 505
     },
     {
-      "id": "phase_6",
-      "number": "6",
-      "name": "STRETCH THE GAP (LA FASE PIÙ POTENTE!)",
-      "description": "Crea il GAP tra dove sono e dove vogliono arrivare",
+      "id": "phase_5",
+      "number": "5",
+      "name": "STRETCH THE GAP",
+      "description": "",
       "semanticType": "gap_stretching",
       "steps": [
         {
@@ -338,22 +190,9 @@
           "number": 10,
           "name": "STATO IDEALE (OBIETTIVO)",
           "objective": "Ottenere un numero SPECIFICO del loro obiettivo finanziario",
-          "questions": [
-            {
-              "text": "E ti fermeresti lì?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Nei prossimi 2-5 anni, dove vorresti arrivare?",
-              "marker": "pause_required"
-            },
-            {
-              "text": "Togliendo quello che pensi sia possibile, cosa VERAMENTE vorresti?",
-              "marker": "pause_required"
-            }
-          ],
+          "questions": [],
           "hasLadder": false,
-          "lineNumber": 652
+          "lineNumber": 595
         },
         {
           "id": "step_11",
@@ -362,33 +201,17 @@
           "objective": "Collegare il NUMERO alle EMOZIONI PROFONDE",
           "questions": [
             {
-              "text": "E perché proprio [numero]? Cosa rappresenta per te?"
-            },
-            {
-              "text": "E quando arrivi a [numero], cosa cambia nella tua vita?"
-            },
-            {
-              "text": "E come ti sentirai quando avrai raggiunto [obiettivo]? Quali emozioni proverai?"
-            },
-            {
-              "text": "E cosa diventa possibile grazie a quel risultato? Quali sogni realizzi?"
-            },
-            {
-              "text": "E perché è così importante per te?"
-            },
-            {
               "text": "Potresti dire: 'Vuole [numero] per [motivo emotivo specifico]'?"
             }
           ],
           "hasLadder": true,
-          "lineNumber": 679,
-          "ladderLevels": 6
+          "lineNumber": 623
         }
       ],
       "checkpoints": [
         {
-          "id": "checkpoint_6",
-          "description": "⛔ CHECKPOINT OBBLIGATORIO FASE #6 (CRITICO!) ⛔",
+          "id": "checkpoint_5",
+          "description": "⛔ CHECKPOINT FASE #5",
           "verifications": [
             "Hai un NUMERO SPECIFICO del loro obiettivo",
             "Sai PERCHÉ vogliono quel numero",
@@ -400,16 +223,16 @@
             "\"Vuole 100k/mese per dimostrare ai genitori che aveva ragione e renderli orgogliosi\"",
             "\"Vuole 30k/mese per libertà finanziaria e smettere di preoccuparsi delle bollette\""
           ],
-          "lineNumber": 767
+          "lineNumber": 694
         }
       ],
-      "lineNumber": 638
+      "lineNumber": 579
     },
     {
-      "id": "phase_7",
-      "number": "7",
-      "name": "QUALIFICAZIONE (I MAGICI 3)",
-      "description": "Identificare se hanno bisogno di aiuto ESTERNO",
+      "id": "phase_6",
+      "number": "6",
+      "name": "QUALIFICAZIONE",
+      "description": "Identificare se hanno bisogno di aiuto ESTERNO (I MAGICI 3)",
       "semanticType": "qualification",
       "steps": [
         {
@@ -419,17 +242,17 @@
           "objective": "Farli AMMETTERE che servono aiuto esterno (critico!)",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 804
+          "lineNumber": 739
         }
       ],
       "checkpoints": [],
-      "lineNumber": 796
+      "lineNumber": 723
     },
     {
-      "id": "phase_8",
-      "number": "8",
+      "id": "phase_7",
+      "number": "7",
       "name": "SERIETÀ E AUTOREVOLEZZA",
-      "description": "Chiusura Discovery - Urgenza e Budget",
+      "description": "Chiusura Discovery - Urgenza, Budget e Transizione alla Demo",
       "semanticType": "urgency_budget",
       "steps": [
         {
@@ -439,33 +262,25 @@
           "objective": "Far riflettere sul costo di restare fermi",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 846
+          "lineNumber": 782
         },
         {
           "id": "step_14",
           "number": 14,
           "name": "URGENZA",
           "objective": "Qualificare timing e creare urgenza",
-          "questions": [
-            {
-              "text": "Quando vuoi iniziare?"
-            }
-          ],
+          "questions": [],
           "hasLadder": false,
-          "lineNumber": 869
+          "lineNumber": 802
         },
         {
           "id": "step_15",
           "number": 15,
           "name": "BUDGET E DECISION MAKER",
           "objective": "Qualificare budget e decision maker",
-          "questions": [
-            {
-              "text": "Decidi tu o c'è qualcun altro?"
-            }
-          ],
+          "questions": [],
           "hasLadder": false,
-          "lineNumber": 901
+          "lineNumber": 827
         },
         {
           "id": "step_16",
@@ -478,8 +293,33 @@
             }
           ],
           "hasLadder": false,
-          "lineNumber": 940
-        },
+          "lineNumber": 843
+        }
+      ],
+      "checkpoints": [
+        {
+          "id": "checkpoint_FINALE",
+          "description": "⛔ CHECKPOINT FINALE DISCOVERY",
+          "verifications": [
+            "Ha detto uno dei MAGICI 3",
+            "Ha urgenza (6-10)",
+            "Ha budget disponibile",
+            "È lui che decide",
+            "Hai TUTTE le info per la demo (fatturato, obiettivo, emozioni, tentativi)",
+            "*REGOLE FONDAMENTALI DISCOVERY:**"
+          ],
+          "lineNumber": 859
+        }
+      ],
+      "lineNumber": 766
+    },
+    {
+      "id": "phase_1",
+      "number": "1",
+      "name": "UNCINO",
+      "description": "Aggancia l'attenzione mostrando la trasformazione possibile",
+      "semanticType": "other",
+      "steps": [
         {
           "id": "step_1",
           "number": 1,
@@ -487,21 +327,51 @@
           "objective": "Agganciare l'attenzione mostrando la trasformazione possibile",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1094
-        },
+          "lineNumber": 1028
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 1012
+    },
+    {
+      "id": "phase_2",
+      "number": "2",
+      "name": "SOCIAL PROOF",
+      "description": "Mostra risultati concreti di altri clienti per creare fiducia",
+      "semanticType": "other",
+      "steps": [
         {
           "id": "step_2",
           "number": 2,
           "name": "CASI DI STUDIO",
           "objective": "Social proof tramite risultati concreti di altri clienti",
-          "questions": [
-            {
-              "text": "[NOME_PROSPECT], quale di questi casi ti ha colpito di più?"
-            }
-          ],
+          "questions": [],
           "hasLadder": false,
-          "lineNumber": 1131
-        },
+          "lineNumber": 1069
+        }
+      ],
+      "checkpoints": [
+        {
+          "id": "checkpoint_1",
+          "description": "⛔ CHECKPOINT #1 - CASE STUDIES",
+          "verifications": [
+            "Ha visto almeno 2-3 case studies pertinenti",
+            "Ha mostrato segni di interesse/coinvolgimento",
+            "Ha fatto domande o commentato positivamente",
+            "SE È COINVOLTO: Procedi alla FASE #3"
+          ],
+          "lineNumber": 1093
+        }
+      ],
+      "lineNumber": 1053
+    },
+    {
+      "id": "phase_3",
+      "number": "3",
+      "name": "CREDIBILITÀ",
+      "description": "Costruisci autorità tramite la tua storia e background",
+      "semanticType": "other",
+      "steps": [
         {
           "id": "step_3",
           "number": 3,
@@ -509,8 +379,19 @@
           "objective": "Costruire credibilità e autorità tramite la tua storia",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1197
-        },
+          "lineNumber": 1146
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 1120
+    },
+    {
+      "id": "phase_4",
+      "number": "4",
+      "name": "METODO",
+      "description": "Spiega il \"come funziona\" connettendolo ai pain points della discovery",
+      "semanticType": "other",
+      "steps": [
         {
           "id": "step_4",
           "number": 4,
@@ -518,46 +399,80 @@
           "objective": "Spiegare il \"come funziona\" connettendolo ai pain points della discovery",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1262
+          "lineNumber": 1217
         },
         {
           "id": "step_5",
           "number": 5,
           "name": "CHECK",
           "objective": "Verificare comprensione prima di andare nel dettaglio strumenti",
-          "questions": [
-            {
-              "text": "Ok [NOME_PROSPECT], fermiamoci un secondo. È tutto chiaro ↗️ finora?"
-            }
-          ],
+          "questions": [],
           "hasLadder": false,
-          "lineNumber": 1341
-        },
+          "lineNumber": 1280
+        }
+      ],
+      "checkpoints": [
+        {
+          "id": "checkpoint_2",
+          "description": "🚨 CHECKPOINT #2 - METODO",
+          "verifications": [
+            "Ha capito come funziona il metodo",
+            "Vede la connessione tra metodo e suoi problemi specifici",
+            "Ha fatto domande di chiarimento",
+            "SE HA CAPITO: Procedi allo Step 5"
+          ],
+          "lineNumber": 1252
+        }
+      ],
+      "lineNumber": 1193
+    },
+    {
+      "id": "phase_5",
+      "number": "5",
+      "name": "CARATTERISTICHE",
+      "description": "Mostra gli strumenti concreti che userà",
+      "semanticType": "other",
+      "steps": [
         {
           "id": "step_6",
           "number": 6,
           "name": "CARATTERISTICHE",
           "objective": "Mostrare gli strumenti concreti che userà",
-          "questions": [
-            {
-              "text": "[NOME_PROSPECT], quale di questi strumenti ti entusiasma ↗️ di più?"
-            }
-          ],
+          "questions": [],
           "hasLadder": false,
-          "lineNumber": 1365
-        },
+          "lineNumber": 1322
+        }
+      ],
+      "checkpoints": [
+        {
+          "id": "checkpoint_3",
+          "description": "🚨 CHECKPOINT #3 - STRUMENTI",
+          "verifications": [
+            "Ha visto tutti gli strumenti principali",
+            "Ha capito il valore di ognuno",
+            "Sembra entusiasta o almeno interessato",
+            "SE È ENTUSIASTA: Procedi alla FASE #6"
+          ],
+          "lineNumber": 1339
+        }
+      ],
+      "lineNumber": 1302
+    },
+    {
+      "id": "phase_6",
+      "number": "6",
+      "name": "CHIUSURA",
+      "description": "Riepilogo, Value Stack, Gestione Domande, Pricing e Closing",
+      "semanticType": "closing",
+      "steps": [
         {
           "id": "step_7",
           "number": 7,
           "name": "RIEPILOGO",
           "objective": "Riepilogare la trasformazione completa",
-          "questions": [
-            {
-              "text": "Sinceramente [NOME_PROSPECT]... cosa ti piace di più ↗️ di questa soluzione?"
-            }
-          ],
+          "questions": [],
           "hasLadder": true,
-          "lineNumber": 1421
+          "lineNumber": 1372
         },
         {
           "id": "step_8",
@@ -566,16 +481,16 @@
           "objective": "Mostrare il valore totale prima del prezzo",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1479
+          "lineNumber": 1430
         },
         {
           "id": "step_9",
           "number": 9,
           "name": "GESTIONE DOMANDE",
-          "objective": "",
+          "objective": "Rispondere alle domande del cliente in modo conciso",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1564
+          "lineNumber": 1513
         },
         {
           "id": "step_10",
@@ -584,7 +499,7 @@
           "objective": "Presentare il prezzo con massima sicurezza",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1572
+          "lineNumber": 1522
         },
         {
           "id": "step_11",
@@ -600,59 +515,14 @@
             }
           ],
           "hasLadder": true,
-          "lineNumber": 1675,
+          "lineNumber": 1618,
           "ladderLevels": 4
         }
       ],
       "checkpoints": [
         {
-          "id": "checkpoint_FINALE",
-          "description": "⛔ CHECKPOINT FINALE DISCOVERY ⛔",
-          "verifications": [
-            "Ha detto uno dei MAGICI 3",
-            "Ha urgenza (6-10)",
-            "Ha budget disponibile",
-            "È lui che decide",
-            "Hai TUTTE le info per la demo (fatturato, obiettivo, emozioni, tentativi)"
-          ],
-          "lineNumber": 923
-        },
-        {
-          "id": "checkpoint_1",
-          "description": "🚨 CHECKPOINT OBBLIGATORIO #1 - CASE STUDIES:",
-          "verifications": [
-            "Ha visto almeno 2-3 case studies pertinenti",
-            "Ha mostrato segni di interesse/coinvolgimento",
-            "Ha fatto domande o commentato positivamente",
-            "SE È COINVOLTO: Procedi allo Step 3"
-          ],
-          "lineNumber": 1170
-        },
-        {
-          "id": "checkpoint_2",
-          "description": "🚨 CHECKPOINT OBBLIGATORIO #2 - METODO:",
-          "verifications": [
-            "Ha capito come funziona il metodo",
-            "Vede la connessione tra metodo e suoi problemi specifici",
-            "Ha fatto domande di chiarimento",
-            "SE HA CAPITO: Procedi allo Step 5"
-          ],
-          "lineNumber": 1312
-        },
-        {
-          "id": "checkpoint_3",
-          "description": "🚨 CHECKPOINT OBBLIGATORIO #3 - STRUMENTI:",
-          "verifications": [
-            "Ha visto tutti gli strumenti principali",
-            "Ha capito il valore di ognuno",
-            "Sembra entusiasta o almeno interessato",
-            "SE È ENTUSIASTA: Procedi allo Step 7"
-          ],
-          "lineNumber": 1394
-        },
-        {
           "id": "checkpoint_4",
-          "description": "🚨 CHECKPOINT OBBLIGATORIO #4 - FINALE PRE-PRICING:",
+          "description": "⛔ CHECKPOINT #4 - FINALE PRE-PRICING",
           "verifications": [
             "Ha visto i case studies e ne è rimasto colpito",
             "Ha capito il metodo e come funziona",
@@ -661,11 +531,768 @@
             "Visualizza sé stesso usando la soluzione",
             "SOLO SE TUTTE LE VERIFICHE SONO OK: Procedi al Pricing"
           ],
-          "lineNumber": 1540
+          "lineNumber": 1488
+        }
+      ],
+      "lineNumber": 1366
+    },
+    {
+      "id": "phase_1",
+      "number": "1",
+      "name": "OBIEZIONE \"È TROPPO COSTOSO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2044
         },
         {
+          "id": "step_2",
+          "number": 2,
+          "name": "LADDER",
+          "objective": "",
+          "questions": [],
+          "hasLadder": true,
+          "lineNumber": 2056
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2086
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2029
+    },
+    {
+      "id": "phase_2",
+      "number": "2",
+      "name": "OBIEZIONE \"DEVO PENSARCI\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2132
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "LADDER",
+          "objective": "",
+          "questions": [],
+          "hasLadder": true,
+          "lineNumber": 2143
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [
+            {
+              "text": "E cosa è cambiato nel frattempo ↘️?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 2173
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2117
+    },
+    {
+      "id": "phase_3",
+      "number": "3",
+      "name": "OBIEZIONE \"DEVO PARLARNE CON PARTNER/SOCIO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2219
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "LADDER",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2234
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2251
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2204
+    },
+    {
+      "id": "phase_4",
+      "number": "4",
+      "name": "OBIEZIONE \"NON È IL MOMENTO GIUSTO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2281
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2292
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2266
+    },
+    {
+      "id": "phase_5",
+      "number": "5",
+      "name": "OBIEZIONE \"HO BISOGNO DI PIÙ TEMPO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2334
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "LADDER",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2344
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2358
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2319
+    },
+    {
+      "id": "phase_6",
+      "number": "6",
+      "name": "OBIEZIONE \"STO GIÀ LAVORANDO CON QUALCUN ALTRO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2398
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "LADDER",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2409
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2423
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2383
+    },
+    {
+      "id": "phase_7",
+      "number": "7",
+      "name": "OBIEZIONE \"HO PROVATO COSE SIMILI E NON HANNO FUNZIONATO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2457
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2469
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2442
+    },
+    {
+      "id": "phase_8",
+      "number": "8",
+      "name": "OBIEZIONE \"NON SONO SICURO CHE FUNZIONI PER ME\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2509
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2521
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2494
+    },
+    {
+      "id": "phase_9",
+      "number": "9",
+      "name": "OBIEZIONE \"COSA SUCCEDE SE NON FUNZIONA?\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2564
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2574
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2549
+    },
+    {
+      "id": "phase_10",
+      "number": "10",
+      "name": "OBIEZIONE \"POSSO FARCELA DA SOLO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2613
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2627
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2598
+    },
+    {
+      "id": "phase_11",
+      "number": "11",
+      "name": "OBIEZIONE \"NON HO TEMPO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2671
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2682
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2656
+    },
+    {
+      "id": "phase_12",
+      "number": "12",
+      "name": "OBIEZIONE \"MANDAMI PIÙ INFORMAZIONI\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2727
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "LADDER",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2738
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2761
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2712
+    },
+    {
+      "id": "phase_13",
+      "number": "13",
+      "name": "OBIEZIONE \"È TROPPO COMPLICATO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2789
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2799
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2774
+    },
+    {
+      "id": "phase_14",
+      "number": "14",
+      "name": "OBIEZIONE \"NON VOGLIO IMPEGNARMI ADESSO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2843
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "LADDER",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2854
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2868
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2828
+    },
+    {
+      "id": "phase_15",
+      "number": "15",
+      "name": "OBIEZIONE \"VOGLIO UNA GARANZIA\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2906
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2914
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2891
+    },
+    {
+      "id": "phase_16",
+      "number": "16",
+      "name": "OBIEZIONE \"LA CONCORRENZA OFFRE PREZZI MIGLIORI\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2959
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 2970
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 2944
+    },
+    {
+      "id": "phase_17",
+      "number": "17",
+      "name": "OBIEZIONE \"NON MI FIDO DEI CONSULENTI\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3017
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3028
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 3002
+    },
+    {
+      "id": "phase_18",
+      "number": "18",
+      "name": "OBIEZIONE \"NON SONO CONVINTO DEL ROI\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3078
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3087
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 3063
+    },
+    {
+      "id": "phase_19",
+      "number": "19",
+      "name": "OBIEZIONE \"HO PAURA DI FARE LA SCELTA SBAGLIATA\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3139
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3153
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 3124
+    },
+    {
+      "id": "phase_20",
+      "number": "20",
+      "name": "OBIEZIONE \"NON VOGLIO RISCHIARE\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3206
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [
+            {
+              "text": "Ok, allora non è il rischio il vero problema. Cosa ti frena veramente?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 3217
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 3191
+    },
+    {
+      "id": "phase_21",
+      "number": "21",
+      "name": "OBIEZIONE \"È TROPPO BELLO PER ESSERE VERO\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3272
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3282
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 3257
+    },
+    {
+      "id": "phase_22",
+      "number": "22",
+      "name": "OBIEZIONE \"VOGLIO PARLARE CON ALTRI TUOI CLIENTI\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3338
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "LADDER",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3353
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3372
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 3323
+    },
+    {
+      "id": "phase_23",
+      "number": "23",
+      "name": "OBIEZIONE \"NON SONO IL DECISORE FINALE\"",
+      "description": "Come gestire questa obiezione",
+      "semanticType": "other",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "CHIARIFICA",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3403
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "LADDER",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3414
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "REFRAME",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 3425
+        }
+      ],
+      "checkpoints": [
+        {
           "id": "checkpoint_FINALE",
-          "description": "🚨 CHECKPOINT FINALE - QUALIFICA DEFINITIVA",
+          "description": "⛔ CHECKPOINT FINALE OBIEZIONI",
           "verifications": [
             "Ha visto il valore completo nella demo",
             "Ha capito come funziona il metodo",
@@ -673,15 +1300,15 @@
             "Ha visualizzato sé stesso usando la soluzione",
             "Ha accettato il prezzo (con o senza obiezioni gestite)"
           ],
-          "lineNumber": 2796
+          "lineNumber": 3459
         }
       ],
-      "lineNumber": 838
+      "lineNumber": 3388
     }
   ],
   "metadata": {
-    "totalPhases": 7,
-    "totalSteps": 31,
+    "totalPhases": 36,
+    "totalSteps": 82,
     "totalCheckpoints": 9,
     "scriptTypes": [
       "discovery",
