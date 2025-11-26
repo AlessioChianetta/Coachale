@@ -3563,6 +3563,12 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
   scriptSnapshot: jsonb("script_snapshot").$type<any>(), // Snapshot of sales-script-structure.json at conversation time (nullable)
   scriptVersion: text("script_version"), // Version of the script (e.g., "1.0.0") (nullable)
   
+  // Used Script tracking - quale script dal DB era attivo durante questa conversazione
+  // Nota: Non può usare .references() perché salesScripts è definita dopo questa tabella
+  usedScriptId: varchar("used_script_id"), // ID dello script usato (FK logica a sales_scripts.id)
+  usedScriptName: text("used_script_name"), // Nome dello script per display facile (es. "Discovery Call v2.0")
+  usedScriptType: text("used_script_type").$type<"discovery" | "demo" | "objections">(), // Tipo di script usato
+  
   // AI Analysis Result (Gemini 2.5 Pro analysis for this specific conversation)
   aiAnalysisResult: jsonb("ai_analysis_result").$type<{
     insights: Array<{ category: string; text: string; priority: string }>;
@@ -3755,6 +3761,48 @@ export const salesScripts = pgTable("sales_scripts", {
   // Statistiche
   usageCount: integer("usage_count").default(0), // Quante volte è stato usato
   lastUsedAt: timestamp("last_used_at"),
+  
+  // Energy Settings per fase/step - Override personalizzati
+  energySettings: jsonb("energy_settings").$type<{
+    [phaseOrStepId: string]: {
+      level: "BASSO" | "MEDIO" | "ALTO";
+      tone: "CALMO" | "SICURO" | "CONFIDENZIALE" | "ENTUSIASTA";
+      volume: "SOFT" | "NORMAL" | "LOUD";
+      pace: "LENTO" | "MODERATO" | "VELOCE";
+      vocabulary: "FORMALE" | "COLLOQUIALE" | "TECNICO";
+      reason?: string;
+    };
+  }>().default(sql`'{}'::jsonb`),
+  
+  // Ladder Levels Override - I 5 livelli del perché personalizzati per step
+  ladderOverrides: jsonb("ladder_overrides").$type<{
+    [stepId: string]: {
+      hasLadder: boolean;
+      levels: Array<{
+        level: number; // 1-5
+        text: string;
+        purpose: string;
+      }>;
+    };
+  }>().default(sql`'{}'::jsonb`),
+  
+  // Step Questions Override - Domande chiave personalizzate per step
+  stepQuestions: jsonb("step_questions").$type<{
+    [stepId: string]: Array<{
+      id: string;
+      text: string;
+      order: number;
+      type?: string; // "opening", "discovery", "closing", etc.
+    }>;
+  }>().default(sql`'{}'::jsonb`),
+  
+  // Biscottini Override - Piccole vittorie/cookies per step
+  stepBiscottini: jsonb("step_biscottini").$type<{
+    [stepId: string]: Array<{
+      text: string;
+      type: "rapport" | "value" | "agreement" | "other";
+    }>;
+  }>().default(sql`'{}'::jsonb`),
   
   // Timestamp
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
