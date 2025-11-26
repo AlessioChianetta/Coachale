@@ -1,0 +1,106 @@
+modules = ["nodejs-20", "web", "python-3.11", "postgresql-16"]
+run = "npm run dev"
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+
+[nix]
+channel = "stable-24_05"
+packages = ["ffmpeg"]
+
+[deployment]
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
+
+[env]
+PORT = "5000"
+
+[agent]
+integrations = ["javascript_mem_db:1.0.0", "javascript_database:1.0.0", "javascript_gemini:1.0.0", "web_scraper:1.0.0"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "NODE_ENV=development tsx --require ./server/loadEnv.cjs server/index.ts"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 34123
+externalPort = 6800
+
+[[ports]]
+localPort = 36463
+externalPort = 3002
+
+[[ports]]
+localPort = 36953
+externalPort = 8080
+
+[[ports]]
+localPort = 37121
+externalPort = 8081
+
+[[ports]]
+localPort = 37353
+externalPort = 8008
+
+[[ports]]
+localPort = 39421
+externalPort = 4200
+
+[[ports]]
+localPort = 40143
+externalPort = 3003
+
+[[ports]]
+localPort = 40367
+externalPort = 3001
+
+[[ports]]
+localPort = 40865
+externalPort = 3000
+
+[[ports]]
+localPort = 40895
+externalPort = 5173
+
+[[ports]]
+localPort = 41271
+externalPort = 8099
+
+[[ports]]
+localPort = 42891
+externalPort = 8000
+
+[[ports]]
+localPort = 43341
+externalPort = 9000
+
+[[ports]]
+localPort = 45207
+externalPort = 5000
+
+[[ports]]
+localPort = 45789
+externalPort = 6000

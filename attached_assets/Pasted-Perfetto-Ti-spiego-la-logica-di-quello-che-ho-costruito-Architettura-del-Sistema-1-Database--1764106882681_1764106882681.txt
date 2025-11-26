@@ -1,0 +1,178 @@
+Perfetto! Ti spiego la logica di quello che ho costruito:
+
+Architettura del Sistema
+1. Database (Backend)
+sales_scripts table
+├── Salva i 3 tipi di script (discovery, demo, objections)
+├── Traccia versioni (v1.0.0, v1.1.0, ecc.)
+├── isActive = flag per dire quale script usa l'AI
+└── Possiede la struttura JSON con fasi, step, domande
+
+2. API Backend (/api/sales-scripts)
+GET → Lista tutti i tuoi script
+POST → Crea nuovo script
+PUT → Modifica script e crea versione
+POST /activate → Attiva uno script (disattiva gli altri dello stesso tipo)
+POST /seed-defaults → Carica gli script base nel database
+3. Script Cache (Ottimizzazione)
+Prima volta che l'AI serve uno script → lo carica dal DB e lo cachea
+Se modifichi uno script → la cache viene ripulita automaticamente
+Questo riduce le query al database durante le conversazioni
+4. AI Integration (Core Logic)
+Quando uno dei tuoi agenti inizia una call:
+1. Il WebSocket Gemini si connette
+2. Carica il config dell'agente dal DB
+3. **Chiama fetchClientScripts()** → legge gli script ATTIVI dal DB
+4. Se trova script personalizzati → li usa
+5. Se non trova nulla → usa gli script hardcoded come fallback
+6. Invia tutto a Gemini nel prompt
+
+Cosa Testare (Step by Step)
+Test 1: Carica Script di Default
+Vai su /client/sales-agents/{agentId}/scripts
+Clicca "Carica Script Base"
+Dovresti vedere 3 script apparire (Discovery, Demo, Objections)
+Test 2: Visualizza Struttura
+Clicca su uno script (es. "Discovery Call - Base")
+A sinistra: dovresti vedere le Fasi (Phase 1, 2, 3...) con step e domande
+A destra: il contenuto testo completo dello script
+Test 3: Modifica e Salva
+Clicca "Modifica" in alto
+Cambia qualcosa nel testo (es. una domanda)
+Clicca "Salva" (aggiorna la versione attuale)
+Oppure clicca "Salva Nuova Versione" (crea v1.1.0)
+Test 4: Attiva uno Script
+Crea un nuovo script o duplica uno esistente
+Clicca "Attiva"
+Vedrai che gli altri dello stesso tipo si disattivano
+Importante: Quando l'AI fa una nuova call, userà QUESTO script
+Test 5: AI Usa il Nuovo Script
+Una volta attivato uno script personalizzato
+Avvia una nuova conversazione (una call con l'AI)
+Nei logs del server dovresti vedere:
+📚 [ScriptLoader] Fetching scripts from database...
+📚 [ScriptLoader] Found 1 active scripts for client XXX
+
+Questo significa che l'AI ha caricato il TUO script dal DB
+Flusso Completo (Technical)
+FRONTEND (Script Manager)
+    ↓ (POST/PUT/DELETE)
+API Routes (/api/sales-scripts)
+    ↓ (salva nel DB)
+Database (sales_scripts table)
+    ↓ (legge quando serve)
+AI (gemini-live-ws-service.ts)
+    ↓ (chiama buildFullSalesAgentContextAsync)
+prompt-builder.ts
+    ↓ (chiama fetchClientScripts)
+Script Cache → se miss → legge dal DB
+    ↓
+AI Prompt con gli script personalizzati
+    ↓
+Gemini risponde usando TUO script
+
+Cosa Significa se Vedi Questi Log
+✅ Buono: 📚 [ScriptLoader] Found 3 active scripts for client...
+
+L'AI ha caricato i tuoi script dal database
+⚠️ Fallback: ℹ️ [ScriptLoader] No custom scripts found, using default scripts
+
+Non hai script attivi nel DB, usa gli hardcoded
+🔄 Cache: 🗑️ [ScriptLoader] Cleared cache for client...
+
+Hai modificato/attivato uno script, cache ripulita per usare quello nuovo
+
+
+
+Ottima domanda! Ti spiego la struttura:
+
+🎯 Architettura Corretta
+Gli script sono a livello di CLIENTE (Account), non di singolo agente.
+
+CLIENTE (es. "Marco Rossi - Entrepreneur")
+│
+├── Script Manager (condiviso)
+│   ├── Discovery Call v1.0 (ATTIVO)
+│   ├── Discovery Call v1.1 (non attivo)
+│   ├── Demo Call v1.0 (ATTIVO)
+│   └── Objections v1.0 (ATTIVO)
+│
+└── Tutti gli Agenti del Cliente usano QUESTI script
+    ├── Agent1: "Marco AI Sales Agent" → usa Discovery v1.0, Demo v1.0, Objections v1.0
+    ├── Agent2: "Marco Alternative Agent" → usa gli STESSI script
+    └── Agent3: "Backup Agent" → usa gli STESSI script
+
+📌 Come Funziona
+Scenario Pratico:
+
+Tu crei 2 Sales Agent (entrambi tuoi, stesso cliente):
+
+"Agent A" - per lead qualificati
+"Agent B" - per follow-up
+Carica script di default → vanno in DB con clientId = tuo_id
+
+Se modifichi il Discovery Script:
+
+PUT /api/sales-scripts/{scriptId}
+↓
+Script aggiornato in DB
+↓
+Cache ripulita
+↓
+TUTTI i tuoi agent usano subito il nuovo script
+
+Se attivi una nuova versione:
+
+"Salva Nuova Versione" (v1.0 → v1.1)
+Clicchi "Attiva"
+Entrambi Agent A e Agent B usano v1.1
+⚙️ Flusso Tecnico
+Agent A inizia call
+    ↓ (WebSocket connect)
+Legge: agentConfig.clientId = "client-123"
+    ↓
+fetchClientScripts("client-123")
+    ↓
+SELECT * FROM sales_scripts 
+WHERE clientId = "client-123" AND isActive = true
+    ↓
+Trova: Discovery v1.0, Demo v1.0, Objections v1.0
+    ↓
+Agent A usa questi script
+
+Agent B inizia call (stesso cliente)
+    ↓ (WebSocket connect)
+Legge: agentConfig.clientId = "client-123"
+    ↓
+fetchClientScripts("client-123")
+    ↓
+Trova: Discovery v1.0, Demo v1.0, Objections v1.0
+    ↓
+Agent B usa gli STESSI script
+
+🔄 Implicazioni
+✅ Pro:
+
+Un solo Script Manager per gestire tutti gli agent
+Cambi uno script → è immediato per tutti
+Versionamento centralizzato
+Meno complessità
+❌ Se volessi script diversi per agent:
+
+Dovremmo aggiungere agentId alla tabella sales_scripts
+Ogni agent avrebbe script propri
+Più complesso da gestire
+📋 Cosa Testare Sapendo Questo
+Carica script → vanno nel DB del cliente
+Crea 2 agent dello stesso cliente (o usa quelli che hai)
+Modifica uno script → ripulisci cache
+Avvia call da Agent A → usa il nuovo script
+Avvia call da Agent B → usa lo STESSO nuovo script
+Se nei log vedi:
+
+📚 [ScriptLoader] Fetching scripts from database for client abc123...
+📚 [ScriptLoader] Found 3 active scripts for client abc123
+
+Significa che TUTTI i tuoi agent stanno usando gli stessi 3 script dal DB.
+
+Chiaro? O vuoi che cambio il sistema affinché ogni agent abbia script propri?

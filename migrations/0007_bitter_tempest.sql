@@ -1,0 +1,1 @@
+ALTER TABLE "whatsapp_custom_templates" ADD COLUMN "archived_at" timestamp;

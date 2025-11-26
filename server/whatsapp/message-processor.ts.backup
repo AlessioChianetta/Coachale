@@ -1,0 +1,2756 @@
+import { db } from "../db";
+import {
+  whatsappPendingMessages,
+  whatsappMessages,
+  whatsappConversations,
+  whatsappGlobalApiKeys,
+  consultantWhatsappConfig,
+  users,
+  appointmentBookings,
+  consultantAvailabilitySettings,
+  proposedAppointmentSlots,
+} from "../../shared/schema";
+import { eq, isNull, and, desc, asc, sql } from "drizzle-orm";
+import { buildUserContext, detectIntent } from "../ai-context-builder";
+import { buildSystemPrompt } from "../ai-prompts";
+import { GoogleGenAI } from "@google/genai";
+import { sendWhatsAppMessage } from "./twilio-client";
+import { nanoid } from "nanoid";
+import { handleIncomingMedia } from "./media-handler";
+import { detectObjection, trackObjection, getConversationObjections } from "../objection-detector";
+import { getOrCreateProfile, updateClientProfile } from "../client-profiler";
+import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent } from "../google-calendar-service";
+
+const DEBOUNCE_DELAY = 4000;
+const MAX_RETRIES = 3;
+const INITIAL_BACKOFF = 1000; // 1 second
+
+// Queue system per consultant
+interface QueueTask {
+  phoneNumber: string;
+  consultantId: string;
+}
+
+const pendingTimers = new Map<string, NodeJS.Timeout>();
+const consultantQueues = new Map<string, QueueTask[]>();
+const processingConsultants = new Set<string>();
+
+function isWithinWorkingHours(settings: any): boolean {
+  // If no working hours configured, always allow (24/7)
+  if (!settings?.workingHours || Object.keys(settings.workingHours).length === 0) {
+    return true;
+  }
+
+  const nowItaly = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+  
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDay = dayNames[nowItaly.getDay()];
+  
+  const dayConfig = settings.workingHours[currentDay];
+  
+  // If day not configured or not enabled, return false (not working)
+  if (!dayConfig || !dayConfig.enabled) {
+    return false;
+  }
+
+  const currentTime = nowItaly.getHours() * 60 + nowItaly.getMinutes();
+  
+  const [startHour, startMin] = dayConfig.start.split(':').map(Number);
+  const [endHour, endMin] = dayConfig.end.split(':').map(Number);
+  
+  const startTime = startHour * 60 + startMin;
+  const endTime = endHour * 60 + endMin;
+  
+  return currentTime >= startTime && currentTime <= endTime;
+}
+
+function isWithinAiWorkingHours(aiAvailability: any, timezone: string = "Europe/Rome"): boolean {
+  // If AI is explicitly disabled, return false
+  if (aiAvailability.enabled === false) {
+    return false;
+  }
+
+  // If no working days configured, AI is available 24/7
+  if (!aiAvailability.workingDays || Object.keys(aiAvailability.workingDays).length === 0) {
+    return true;
+  }
+
+  // Use consultant's configured timezone with robust error handling
+  let now: Date;
+  let effectiveTimezone = timezone;
+  
+  try {
+    now = new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
+  } catch (error) {
+    // Invalid timezone - fallback to Europe/Rome
+    console.warn(`⚠️ Invalid timezone "${timezone}" - falling back to Europe/Rome. Error: ${error}`);
+    effectiveTimezone = "Europe/Rome";
+    now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+  }
+  
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDay = dayNames[now.getDay()];
+  
+  const dayConfig = aiAvailability.workingDays[currentDay];
+  
+  // If day not configured or not enabled, AI is not available
+  if (!dayConfig || !dayConfig.enabled) {
+    return false;
+  }
+
+  const currentTime = now.getHours() * 60 + now.getMinutes();
+  
+  const [startHour, startMin] = dayConfig.start.split(':').map(Number);
+  const [endHour, endMin] = dayConfig.end.split(':').map(Number);
+  
+  const startTime = startHour * 60 + startMin;
+  const endTime = endHour * 60 + endMin;
+  
+  const isWithin = currentTime >= startTime && currentTime <= endTime;
+  
+  console.log(`🕐 AI Hours Check [${effectiveTimezone}]: Day=${currentDay}, Time=${now.getHours()}:${now.getMinutes()}, Range=${dayConfig.start}-${dayConfig.end}, Within=${isWithin}`);
+  
+  return isWithin;
+}
+
+export function scheduleMessageProcessing(phoneNumber: string, consultantId: string) {
+  const key = `${phoneNumber}_${consultantId}`;
+
+  // Clear existing timer for this specific conversation
+  if (pendingTimers.has(key)) {
+    clearTimeout(pendingTimers.get(key)!);
+  }
+
+  // Schedule debounced processing
+  const timer = setTimeout(async () => {
+    pendingTimers.delete(key);
+    await enqueueProcessing(phoneNumber, consultantId);
+  }, DEBOUNCE_DELAY);
+
+  pendingTimers.set(key, timer);
+}
+
+async function enqueueProcessing(phoneNumber: string, consultantId: string) {
+  // Add to consultant's queue
+  if (!consultantQueues.has(consultantId)) {
+    consultantQueues.set(consultantId, []);
+  }
+
+  const queue = consultantQueues.get(consultantId)!;
+  queue.push({ phoneNumber, consultantId });
+
+  // Process queue if not already processing
+  if (!processingConsultants.has(consultantId)) {
+    await processConsultantQueue(consultantId);
+  }
+}
+
+async function processConsultantQueue(consultantId: string) {
+  if (processingConsultants.has(consultantId)) {
+    return; // Already processing this consultant
+  }
+
+  processingConsultants.add(consultantId);
+
+  try {
+    const queue = consultantQueues.get(consultantId);
+    if (!queue) {
+      return;
+    }
+
+    while (queue.length > 0) {
+      const task = queue.shift();
+      if (!task) break;
+
+      try {
+        await processPendingMessagesWithRetry(task.phoneNumber, task.consultantId);
+      } catch (error) {
+        console.error(`❌ Failed to process messages for ${task.phoneNumber} after retries:`, error);
+      }
+    }
+  } finally {
+    processingConsultants.delete(consultantId);
+  }
+}
+
+async function processPendingMessagesWithRetry(
+  phoneNumber: string,
+  consultantId: string,
+  retryCount = 0
+): Promise<void> {
+  try {
+    await processPendingMessages(phoneNumber, consultantId);
+  } catch (error: any) {
+    // Check if error is DB-related
+    const errorCode = typeof error?.code === 'string' ? error.code : String(error?.code || '');
+    const isDbError = error?.message?.includes("connection") || 
+                      error?.message?.includes("timeout") ||
+                      error?.message?.includes("pool") ||
+                      errorCode.includes("ECONNREFUSED");
+
+    if (isDbError && retryCount < MAX_RETRIES) {
+      const backoffTime = INITIAL_BACKOFF * Math.pow(2, retryCount);
+      console.warn(
+        `⚠️ DB error, retrying in ${backoffTime}ms (attempt ${retryCount + 1}/${MAX_RETRIES}):`,
+        error.message
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, backoffTime));
+      return processPendingMessagesWithRetry(phoneNumber, consultantId, retryCount + 1);
+    }
+
+    throw error;
+  }
+}
+
+async function processPendingMessages(phoneNumber: string, consultantId: string) {
+  try {
+    // Step 1: Fetch conversation
+    const [conversation] = await db
+      .select()
+      .from(whatsappConversations)
+      .where(
+        and(
+          eq(whatsappConversations.phoneNumber, phoneNumber),
+          eq(whatsappConversations.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!conversation) {
+      console.error("❌ Conversation not found for processing");
+      return;
+    }
+
+    // Step 2: Fetch pending messages
+    const pending = await db
+      .select()
+      .from(whatsappPendingMessages)
+      .where(
+        and(
+          eq(whatsappPendingMessages.conversationId, conversation.id),
+          isNull(whatsappPendingMessages.processedAt)
+        )
+      )
+      .orderBy(asc(whatsappPendingMessages.receivedAt));
+
+    if (pending.length === 0) return;
+
+    // Step 2.5: Check AI availability using aiAvailability field
+    const [calendarSettings] = await db
+      .select()
+      .from(consultantAvailabilitySettings)
+      .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+      .limit(1);
+
+    // Also get WhatsApp config for afterHoursMessage
+    const [consultantConfig] = await db
+      .select()
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.consultantId, consultantId))
+      .limit(1);
+
+    // Check if AI is enabled
+    if (calendarSettings?.aiAvailability?.enabled === false) {
+      console.log(`🤖 AI is DISABLED for consultant ${consultantId} - storing messages but not responding`);
+      
+      // STEP 1: Save inbound messages to conversation history
+      for (const msg of pending) {
+        await db.insert(whatsappMessages).values({
+          conversationId: conversation.id,
+          messageText: msg.messageText,
+          direction: "inbound",
+          sender: "client",
+          mediaUrl: msg.mediaUrl,
+          mediaType: msg.mediaType || "text",
+          mediaContentType: msg.mediaContentType,
+        });
+      }
+      
+      // STEP 2: Mark as processed
+      await db
+        .update(whatsappPendingMessages)
+        .set({ processedAt: new Date() })
+        .where(
+          eq(
+            whatsappPendingMessages.id,
+            sql`ANY(ARRAY[${sql.join(
+              pending.map((p) => p.id),
+              sql`, `
+            )}]::varchar[])`
+          )
+        );
+      
+      console.log(`✅ Stored ${pending.length} inbound message(s) without AI response (AI disabled)`);
+      return;
+    }
+
+    // Check if within AI working hours
+    // Guard against null/undefined timezone - use Europe/Rome as fallback
+    const consultantTimezone = calendarSettings.timezone || "Europe/Rome";
+    if (calendarSettings?.aiAvailability && !isWithinAiWorkingHours(calendarSettings.aiAvailability, consultantTimezone)) {
+      console.log(`⏰ Outside AI working hours for consultant ${consultantId}`);
+      
+      // STEP 1: Save inbound messages to conversation history
+      for (const msg of pending) {
+        await db.insert(whatsappMessages).values({
+          conversationId: conversation.id,
+          messageText: msg.messageText,
+          direction: "inbound",
+          sender: "client",
+          mediaUrl: msg.mediaUrl,
+          mediaType: msg.mediaType || "text",
+          mediaContentType: msg.mediaContentType,
+        });
+      }
+      
+      // STEP 2: Send after-hours message
+      const defaultMessage = "Ciao! L'assistente AI è attualmente non disponibile. Ti risponderò appena possibile.";
+      const afterHoursMsg = consultantConfig?.afterHoursMessage || defaultMessage;
+
+      const [savedMessage] = await db
+        .insert(whatsappMessages)
+        .values({
+          conversationId: conversation.id,
+          messageText: afterHoursMsg,
+          direction: "outbound",
+          sender: "ai",
+        })
+        .returning();
+
+      await sendWhatsAppMessage(
+        consultantId,
+        phoneNumber,
+        afterHoursMsg,
+        savedMessage.id
+      );
+
+      // STEP 3: Mark as processed
+      await db
+        .update(whatsappPendingMessages)
+        .set({ processedAt: new Date() })
+        .where(
+          eq(
+            whatsappPendingMessages.id,
+            sql`ANY(ARRAY[${sql.join(
+              pending.map((p) => p.id),
+              sql`, `
+            )}]::varchar[])`
+          )
+        );
+
+      console.log(`✅ Stored ${pending.length} inbound message(s) and sent after-hours message`);
+      return;
+    }
+
+    console.log(`✅ AI is ENABLED and within working hours for consultant ${consultantId} - proceeding with AI response`);
+
+    const batchedText = pending.map((p) => p.messageText).join(". ");
+    const batchId = nanoid();
+
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`🔑 [STEP 3] Selecting Gemini API Key`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`🆔 Conversation ID: ${conversation.id}`);
+    console.log(`👤 User Type: ${conversation.userId ? 'CLIENT' : 'LEAD'}`);
+    
+    // Step 3: Select API key
+    const keyInfo = await selectApiKey(conversation);
+    const apiKey = keyInfo.apiKey;
+    
+    // Mask API key for security (show first 10 and last 4 chars)
+    const maskedKey = apiKey.length > 20 
+      ? `${apiKey.substring(0, 10)}...${apiKey.substring(apiKey.length - 4)}`
+      : '***masked***';
+    console.log(`🔐 Selected API Key: ${maskedKey}`);
+    console.log(`🆔 Key ID: ${keyInfo.keyId.substring(0, 8)}...`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    console.log(`💾 [STEP 4] Saving ${pending.length} inbound message(s) to database`);
+    // Step 4: Save inbound messages sequentially (fixes TypeScript error)
+    const inboundMessages = [];
+    for (const p of pending) {
+      const messageData = {
+        conversationId: conversation.id,
+        messageText: p.messageText,
+        direction: "inbound" as const,
+        sender: "client" as const,
+        mediaType: (p.mediaType || "text") as "text" | "image" | "document" | "audio" | "video",
+        mediaUrl: p.mediaUrl || null,
+        mediaContentType: p.mediaContentType || null,
+        isBatched: pending.length > 1,
+        batchId: pending.length > 1 ? batchId : null,
+      };
+
+      const savedMessages = await db
+        .insert(whatsappMessages)
+        .values(messageData)
+        .returning();
+
+      const savedMsg = savedMessages[0];
+      inboundMessages.push(savedMsg);
+      console.log(`✅ [STEP 4] Saved inbound message ${savedMsg.id}: "${p.messageText.substring(0, 50)}..."`);
+
+      // Process media if present
+      if (p.mediaUrl && p.mediaContentType) {
+        console.log(`📸 Processing media for message ${savedMsg.id}`);
+        await handleIncomingMedia(
+          savedMsg.id,
+          p.mediaUrl,
+          p.mediaContentType,
+          conversation.consultantId,
+          apiKey
+        );
+      }
+    }
+
+    console.log(`📸 [STEP 5] Building media context (${inboundMessages.length} messages)`);
+    // Step 5: Build media context for AI
+    let mediaContext = "";
+    for (const msg of inboundMessages) {
+      if (msg.mediaType !== "text") {
+        // Reload message to get updated metadata after media processing
+        const [updatedMsg] = await db
+          .select()
+          .from(whatsappMessages)
+          .where(eq(whatsappMessages.id, msg.id))
+          .limit(1);
+
+        if (updatedMsg?.metadata) {
+          if (updatedMsg.metadata.aiVisionAnalysis) {
+            mediaContext += `\n\n[IMMAGINE RICEVUTA - Analisi AI Vision]: ${updatedMsg.metadata.aiVisionAnalysis}`;
+          }
+          if (updatedMsg.metadata.extractedText) {
+            mediaContext += `\n\n[TESTO ESTRATTO]: ${updatedMsg.metadata.extractedText.substring(0, 1000)}`;
+          }
+          if (updatedMsg.metadata.audioTranscript) {
+            mediaContext += `\n\n[AUDIO TRASCRITTO]: ${updatedMsg.metadata.audioTranscript}`;
+          }
+        }
+      }
+    }
+
+    // Determina userId effettivo considerando il test mode
+    let effectiveUserId = conversation.userId;
+    let effectiveIsLead = conversation.isLead;
+    
+    if (conversation.testModeOverride) {
+      console.log(`🧪 [TEST MODE] Override attivo: ${conversation.testModeOverride}`);
+      if (conversation.testModeOverride === "client" && conversation.testModeUserId) {
+        effectiveUserId = conversation.testModeUserId;
+        effectiveIsLead = false;
+        console.log(`🧪 [TEST MODE] Usando userId: ${effectiveUserId}`);
+      } else if (conversation.testModeOverride === "lead") {
+        effectiveUserId = null;
+        effectiveIsLead = true;
+        console.log(`🧪 [TEST MODE] Simulando lead`);
+      }
+    }
+
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`🤖 [STEP 6] Building AI System Prompt`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`👤 User Type: ${effectiveUserId ? 'CLIENT' : 'LEAD'}`);
+    console.log(`💬 Message: "${batchedText.substring(0, 80)}${batchedText.length > 80 ? '...' : ''}"`);
+    
+    // Step 6: Build system prompt
+    let systemPrompt: string;
+    let objectionDetection: any = null;
+    let clientProfile: any = null;
+    let recentObjections: any[] = [];
+    
+    if (effectiveUserId) {
+      console.log(`\n🔍 Detecting intent for client message...`);
+      const intent = detectIntent(batchedText);
+      console.log(`✅ Intent detected: ${intent}`);
+      
+      console.log(`📚 Building user context...`);
+      const userContext = await buildUserContext(effectiveUserId, {
+        message: batchedText,
+        intent,
+      });
+      console.log(`✅ User context built successfully`);
+
+      console.log(`📝 Building system prompt for client...`);
+      systemPrompt = buildSystemPrompt(
+        "assistenza",
+        "finanziario",
+        userContext
+      );
+      console.log(`✅ System prompt ready`);
+    } else {
+      // For leads, detect intent for appointment booking
+      console.log(`\n🔍 Detecting intent for lead message...`);
+      const leadIntent = detectIntent(batchedText);
+      console.log(`✅ Intent detected: ${leadIntent}`);
+      
+      // For leads, detect objections and get profile with retry + key rotation
+      console.log(`\n🚨 Detecting objections in message...`);
+      const maxObjectionRetries = 3;
+      let objectionKeyId = keyInfo.keyId;
+      let objectionAttempt = 0;
+      
+      while (objectionAttempt < maxObjectionRetries) {
+        objectionAttempt++;
+        try {
+          console.log(`🔄 [OBJECTION] Attempt ${objectionAttempt}/${maxObjectionRetries}${objectionAttempt > 1 ? ' with rotated API key' : ''}`);
+          
+          // Rotate API key if retry (attempt > 1)
+          let objectionApiKey = apiKey;
+          if (objectionAttempt > 1) {
+            console.log(`🔄 [OBJECTION] Previous key failed (${objectionKeyId.substring(0, 8)}...), rotating to new key...`);
+            const newKeyInfo = await selectApiKey(conversation, objectionKeyId);
+            objectionApiKey = newKeyInfo.apiKey;
+            objectionKeyId = newKeyInfo.keyId;
+            console.log(`🔑 [OBJECTION] Rotated to new API key: ${objectionKeyId.substring(0, 8)}...`);
+          } else {
+            console.log(`🔑 [OBJECTION] Using current API key: ${objectionKeyId.substring(0, 8)}...`);
+          }
+          
+          console.log(`🤖 [OBJECTION] Calling detectObjection() with key ${objectionKeyId.substring(0, 8)}...`);
+          objectionDetection = await detectObjection(batchedText, objectionApiKey);
+          
+          if (objectionDetection?.hasObjection) {
+            console.log(`⚠️ [OBJECTION] ✅ SUCCESS - Objection detected: ${objectionDetection.objectionType} (confidence: ${objectionDetection.confidence})`);
+          } else {
+            console.log(`✅ [OBJECTION] ✅ SUCCESS - No objections detected`);
+          }
+          break; // Success - exit retry loop
+          
+        } catch (objectionError: any) {
+          const is503 = objectionError.status === 503 || 
+                        objectionError.message?.includes('overloaded') ||
+                        objectionError.message?.includes('UNAVAILABLE');
+          
+          console.log(`❌ [OBJECTION] Error on attempt ${objectionAttempt}:`, objectionError.message || objectionError);
+          
+          if (is503 && objectionAttempt < maxObjectionRetries) {
+            console.log(`⚠️ [OBJECTION] API overloaded (503) - marking key as failed`);
+            await markKeyAsFailed(objectionKeyId);
+            
+            const backoffMs = Math.min(1000 * Math.pow(2, objectionAttempt - 1), 5000);
+            console.log(`⏱️ [OBJECTION] Waiting ${backoffMs}ms before rotating to new key...`);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+            console.log(`✅ [OBJECTION] Backoff complete - will retry with new key on attempt ${objectionAttempt + 1}`);
+          } else {
+            // Final attempt or non-503 error - continue without objection detection
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.error(`⚠️ [OBJECTION] Detection failed after ${objectionAttempt} attempt(s)`);
+            console.error(`   Error type: ${is503 ? '503 (all keys exhausted)' : 'Non-503 error'}`);
+            console.error(`   Error: ${objectionError.message || objectionError}`);
+            console.log(`   ➡️ Continuing without objection detection...`);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            objectionDetection = null;
+            break;
+          }
+        }
+      }
+      
+      // Get or create client profile
+      console.log(`👤 Fetching/creating lead profile...`);
+      clientProfile = await getOrCreateProfile(undefined, conversation.phoneNumber);
+      console.log(`✅ Lead profile: ${clientProfile.profileType} (difficulty: ${clientProfile.difficultyScore}/10)`);
+      
+      // Get recent objections for context
+      console.log(`📋 Fetching recent objections...`);
+      recentObjections = await getConversationObjections(conversation.id);
+      console.log(`✅ Found ${recentObjections.length} recent objection(s)`);
+      
+      // APPOINTMENT CONTEXT MANAGEMENT - Maintain context across messages
+      let availableSlots: any[] = [];
+      
+      // STEP 1: Check if we already have slots saved in database (maintains context)
+      // This happens BEFORE intent detection so context is preserved even when
+      // lead responds with generic messages like "certo", "pomeriggio", etc.
+      console.log('📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...');
+      try {
+        const [savedSlots] = await db
+          .select()
+          .from(proposedAppointmentSlots)
+          .where(
+            and(
+              eq(proposedAppointmentSlots.conversationId, conversation.id),
+              eq(proposedAppointmentSlots.usedForBooking, false),
+              sql`${proposedAppointmentSlots.expiresAt} > NOW()`
+            )
+          )
+          .orderBy(desc(proposedAppointmentSlots.proposedAt))
+          .limit(1);
+        
+        if (savedSlots && savedSlots.slots) {
+          availableSlots = savedSlots.slots as any[];
+          console.log(`💾 [APPOINTMENT CONTEXT] Retrieved ${availableSlots.length} saved slots from database`);
+          console.log(`📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow`);
+        } else {
+          console.log('📅 [APPOINTMENT CONTEXT] No saved slots found - will fetch from calendar...');
+        }
+      } catch (error) {
+        console.error('❌ [APPOINTMENT CONTEXT] Error retrieving saved slots:', error);
+      }
+      
+      // STEP 2: If no saved slots, ALWAYS fetch new slots (not just on appointment_request)
+      // This way slots are ALWAYS available for the AI to propose
+      if (availableSlots.length === 0) {
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔍 [STEP 1] Fetching Available Appointment Slots');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(`📅 New appointment request detected for consultant: ${conversation.consultantId}`);
+        try {
+          // Calculate date range (next 7 days)
+          const startDate = new Date();
+          const endDate = new Date();
+          endDate.setDate(endDate.getDate() + 7);
+          
+          console.log(`📆 Search range: ${startDate.toLocaleDateString('it-IT')} → ${endDate.toLocaleDateString('it-IT')} (7 days)`);
+          console.log(`🌐 Calling API: /api/calendar/available-slots`);
+          
+          // Call available slots endpoint
+          const slotsResponse = await fetch(
+            `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
+            `consultantId=${conversation.consultantId}&` +
+            `startDate=${startDate.toISOString()}&` +
+            `endDate=${endDate.toISOString()}`
+          );
+          
+          if (slotsResponse.ok) {
+            const slotsData = await slotsResponse.json();
+            availableSlots = slotsData.slots || [];
+            console.log(`\n✅ Found ${availableSlots.length} available slots!`);
+            if (availableSlots.length > 0) {
+              // Group slots by date for better visualization
+              const slotsByDate = availableSlots.reduce((acc: any, slot: any) => {
+                if (!acc[slot.date]) {
+                  acc[slot.date] = [];
+                }
+                acc[slot.date].push(slot);
+                return acc;
+              }, {});
+              
+              console.log(`\n📅 Available Slots by Day:\n`);
+              Object.keys(slotsByDate).sort().forEach(date => {
+                const daySlots = slotsByDate[date];
+                const dayOfWeek = daySlots[0].dayOfWeek;
+                console.log(`   📆 ${dayOfWeek} ${date} (${daySlots.length} slots)`);
+                daySlots.forEach((slot: any, i: number) => {
+                  console.log(`      ${i+1}. ${slot.time}`);
+                });
+                console.log('');
+              });
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            } else {
+              console.log(`⚠️ No available slots found in the next 7 days`);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            }
+            
+            // PERSIST SLOTS: Save to database for future messages (maintains context)
+            if (availableSlots.length > 0) {
+              const expiresAt = new Date();
+              expiresAt.setHours(expiresAt.getHours() + 48); // Slots valid for 48 hours
+              
+              // Check if slots already exist for this conversation
+              const [existing] = await db
+                .select()
+                .from(proposedAppointmentSlots)
+                .where(
+                  and(
+                    eq(proposedAppointmentSlots.conversationId, conversation.id),
+                    eq(proposedAppointmentSlots.consultantId, conversation.consultantId)
+                  )
+                )
+                .limit(1);
+              
+              if (existing) {
+                // Update existing slots
+                await db
+                  .update(proposedAppointmentSlots)
+                  .set({
+                    slots: availableSlots,
+                    proposedAt: new Date(),
+                    expiresAt,
+                    usedForBooking: false,
+                  })
+                  .where(eq(proposedAppointmentSlots.id, existing.id));
+                
+                console.log(`💾 [APPOINTMENT] Updated ${availableSlots.length} existing slots in database (expires in 48h)`);
+              } else {
+                // Insert new slots
+                await db
+                  .insert(proposedAppointmentSlots)
+                  .values({
+                    conversationId: conversation.id,
+                    consultantId: conversation.consultantId,
+                    slots: availableSlots,
+                    proposedAt: new Date(),
+                    expiresAt,
+                    usedForBooking: false,
+                  });
+                
+                console.log(`💾 Saved ${availableSlots.length} slots to database (valid for 48 hours)`);
+                console.log(`✅ Slots ready to propose to lead via AI`);
+              }
+            }
+          } else {
+            const errorText = await slotsResponse.text();
+            console.error(`\n❌ Failed to fetch slots from API`);
+            console.error(`   Response status: ${slotsResponse.status}`);
+            console.error(`   Error: ${errorText}`);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+          }
+        } catch (error: any) {
+          console.error(`\n❌ Error fetching available slots`);
+          console.error(`   ${error.message || error}`);
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        }
+      }
+      
+      // Log final state for debugging
+      if (availableSlots.length > 0) {
+        console.log(`✅ [APPOINTMENT CONTEXT] Final state: ${availableSlots.length} slots available for AI prompt`);
+      } else {
+        console.log(`📭 [APPOINTMENT CONTEXT] Final state: No slots available (not in appointment flow)`);
+      }
+      
+      // Check for existing confirmed appointment to pass to AI prompt
+      const [existingBooking] = await db
+        .select()
+        .from(appointmentBookings)
+        .where(
+          and(
+            eq(appointmentBookings.conversationId, conversation.id),
+            eq(appointmentBookings.status, 'confirmed')
+          )
+        )
+        .limit(1);
+      
+      let existingAppointmentInfo = undefined;
+      if (existingBooking) {
+        existingAppointmentInfo = {
+          id: existingBooking.id,
+          date: existingBooking.appointmentDate,
+          time: existingBooking.appointmentTime,
+          email: existingBooking.clientEmail,
+          phone: existingBooking.clientPhone,
+        };
+        console.log(`📅 [EXISTING APPOINTMENT] Found confirmed appointment for this conversation`);
+        console.log(`   Date: ${existingBooking.appointmentDate} ${existingBooking.appointmentTime}`);
+        console.log(`   Email: ${existingBooking.clientEmail}`);
+      }
+      
+      // Build prompt with objection context, available slots, and existing appointment
+      systemPrompt = buildLeadSystemPrompt(
+        consultantConfig,
+        clientProfile ? {
+          difficultyScore: clientProfile.difficultyScore,
+          totalObjections: clientProfile.totalObjections,
+          profileType: clientProfile.profileType,
+          escalationRequired: clientProfile.escalationRequired,
+        } : undefined,
+        recentObjections.map(obj => ({
+          objectionType: obj.objectionType,
+          objectionText: obj.objectionText,
+          wasResolved: obj.wasResolved,
+        })),
+        availableSlots,
+        consultantTimezone,
+        existingAppointmentInfo
+      );
+    }
+
+    console.log(`📚 [STEP 7] Checking for reset request and fetching message history`);
+    // Step 7: Check for reset request
+    const resetKeywords = ['ricominciamo', 'reset', 'ripartiamo da capo', 'ricomincia', 'riparti da capo', 'ricominciare'];
+    const isResetRequest = resetKeywords.some(keyword => batchedText.toLowerCase().includes(keyword));
+    
+    let geminiMessages: Array<{role: "user" | "model", parts: Array<{text: string}>}> = [];
+    
+    if (isResetRequest) {
+      console.log(`🔄 [STEP 7] Reset requested - clearing ALL conversation data`);
+      
+      // STEP 1: Delete proposed appointment slots for this conversation
+      const deletedSlots = await db
+        .delete(proposedAppointmentSlots)
+        .where(eq(proposedAppointmentSlots.conversationId, conversation.id))
+        .returning();
+      
+      if (deletedSlots.length > 0) {
+        console.log(`🗑️  Deleted ${deletedSlots.length} proposed appointment slots`);
+      }
+      
+      // STEP 2: Delete unconfirmed appointments (those without confirmedAt)
+      const deletedAppointments = await db
+        .delete(appointmentBookings)
+        .where(
+          and(
+            eq(appointmentBookings.phoneNumber, phoneNumber),
+            eq(appointmentBookings.consultantId, conversation.consultantId),
+            isNull(appointmentBookings.confirmedAt)
+          )
+        )
+        .returning();
+      
+      if (deletedAppointments.length > 0) {
+        console.log(`🗑️  Deleted ${deletedAppointments.length} unconfirmed appointments`);
+      }
+      
+      // STEP 3: Update conversation with reset timestamp
+      await db
+        .update(whatsappConversations)
+        .set({ 
+          lastResetAt: new Date(),
+          // Reset lead conversion status if it was a lead
+          leadConvertedAt: null
+        })
+        .where(eq(whatsappConversations.id, conversation.id));
+      
+      console.log(`✅ Reset data: timestamp updated, conversation reset to initial state`);
+      
+      // STEP 4: Save reset acknowledgment message directly (bypass AI for consistency)
+      const resetMessage = "Certo! Nessun problema, ricominciamo da capo. 👋\nCosa ti ha spinto a scriverci oggi?";
+      
+      const [savedResetMsg] = await db
+        .insert(whatsappMessages)
+        .values({
+          conversationId: conversation.id,
+          messageText: resetMessage,
+          direction: "outbound",
+          sender: "ai",
+        })
+        .returning();
+      
+      await sendWhatsAppMessage(
+        conversation.consultantId,
+        phoneNumber,
+        resetMessage,
+        savedResetMsg.id
+      );
+      
+      // STEP 5: Mark pending as processed
+      await db
+        .update(whatsappPendingMessages)
+        .set({ processedAt: new Date() })
+        .where(
+          eq(
+            whatsappPendingMessages.id,
+            sql`ANY(ARRAY[${sql.join(
+              pending.map((p) => p.id),
+              sql`, `
+            )}]::varchar[])`
+          )
+        );
+      
+      console.log(`✅ Reset conversation complete - sent acknowledgment and cleared all temporary data`);
+      return; // Exit early, no need to call AI
+    }
+    
+    // Load history, filtering by lastResetAt if it exists
+    const historyConditions = [eq(whatsappMessages.conversationId, conversation.id)];
+    
+    if (conversation.lastResetAt) {
+      console.log(`🔄 Filtering history after last reset: ${conversation.lastResetAt}`);
+      historyConditions.push(sql`${whatsappMessages.createdAt} > ${conversation.lastResetAt}`);
+    }
+    
+    const history = await db
+      .select()
+      .from(whatsappMessages)
+      .where(and(...historyConditions))
+      .orderBy(desc(whatsappMessages.createdAt))
+      .limit(20);
+
+    geminiMessages = history.reverse().map((m) => ({
+      role: m.sender === "client" ? ("user" as const) : ("model" as const),
+      parts: [{ text: m.messageText }],
+    }));
+    console.log(`📚 [STEP 7] Found ${history.length} historical messages${conversation.lastResetAt ? ' (after reset)' : ''}`);
+
+    console.log(`🧠 [STEP 8] Calling Gemini AI (model: gemini-2.5-flash)`);
+    
+    // Step 8: Generate AI response with retry logic
+    const userMessage = mediaContext ? `${batchedText}\n${mediaContext}` : batchedText;
+    
+    // Estimate tokens before API call
+    const systemPromptChars = systemPrompt.length;
+    const userMessageChars = userMessage.length;
+    const historyChars = geminiMessages.reduce((sum, msg) => sum + msg.parts[0].text.length, 0);
+    
+    const estimatedSystemTokens = Math.ceil(systemPromptChars / 4);
+    const estimatedUserTokens = Math.ceil(userMessageChars / 4);
+    const estimatedHistoryTokens = Math.ceil(historyChars / 4);
+    const estimatedTotalInput = estimatedSystemTokens + estimatedUserTokens + estimatedHistoryTokens;
+    
+    console.log(`\n📊 [GEMINI TOKENS] Stima PRIMA della chiamata:`);
+    console.log(`   📝 System Prompt: ~${estimatedSystemTokens.toLocaleString()} tokens (${systemPromptChars.toLocaleString()} chars)`);
+    console.log(`   💬 User Message: ~${estimatedUserTokens.toLocaleString()} tokens (${userMessageChars.toLocaleString()} chars)`);
+    console.log(`   📜 History: ~${estimatedHistoryTokens.toLocaleString()} tokens (${historyChars.toLocaleString()} chars)`);
+    console.log(`   🔢 TOTALE INPUT: ~${estimatedTotalInput.toLocaleString()} tokens\n`);
+    
+    // Retry logic with exponential backoff and API key rotation
+    const maxRetries = 3;
+    let lastError: any;
+    let currentKeyId = keyInfo.keyId;
+    let response: any;
+    let startTime: number;
+    let endTime: number;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 [RETRY] Attempt ${attempt}/${maxRetries}${attempt > 1 ? ' with new API key' : ''}`);
+        
+        // Get fresh API key if this is a retry (rotate after 503 error)
+        let currentApiKey = apiKey;
+        if (attempt > 1) {
+          const newKeyInfo = await selectApiKey(conversation, currentKeyId);
+          currentApiKey = newKeyInfo.apiKey;
+          currentKeyId = newKeyInfo.keyId;
+          console.log(`🔑 [RETRY] Rotated to new API key: ${currentKeyId.substring(0, 8)}...`);
+        }
+        
+        const ai = new GoogleGenAI({ apiKey: currentApiKey });
+        
+        startTime = Date.now();
+        response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          config: {
+            systemInstruction: systemPrompt,
+          },
+          contents: [
+            ...geminiMessages,
+            {
+              role: "user",
+              parts: [{ text: userMessage }],
+            },
+          ],
+        });
+        endTime = Date.now();
+        
+        // Success - break retry loop
+        console.log(`✅ [RETRY] Success on attempt ${attempt}!`);
+        break;
+        
+      } catch (error: any) {
+        lastError = error;
+        
+        // Check if it's a 503 error (overloaded)
+        const is503 = error.status === 503 || 
+                      error.message?.includes('overloaded') ||
+                      error.message?.includes('UNAVAILABLE');
+        
+        if (is503) {
+          console.log(`⚠️ [RETRY] API overloaded (503) on attempt ${attempt}`);
+          
+          // Mark this key as failed
+          await markKeyAsFailed(currentKeyId);
+          
+          // If not last attempt, wait with exponential backoff before rotating
+          if (attempt < maxRetries) {
+            const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10s
+            console.log(`⏱️ [RETRY] Waiting ${backoffMs}ms before rotating to new key...`);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+          } else {
+            console.log(`❌ [RETRY] All ${maxRetries} attempts failed with 503 errors`);
+            throw new Error(`Gemini API overloaded after ${maxRetries} attempts with different keys. Please try again later.`);
+          }
+        } else {
+          // Not a 503 error - throw immediately (no retry for other errors)
+          console.log(`❌ [RETRY] Non-503 error on attempt ${attempt}: ${error.message}`);
+          throw error;
+        }
+      }
+    }
+    
+    if (!response) {
+      throw lastError || new Error('Failed to get response from Gemini API');
+    }
+
+    const aiResponse = response.text || "Mi dispiace, non ho potuto generare una risposta.";
+    
+    // Calculate actual tokens used
+    const responseChars = aiResponse.length;
+    const estimatedOutputTokens = Math.ceil(responseChars / 4);
+    const estimatedTotalTokens = estimatedTotalInput + estimatedOutputTokens;
+    const responseTime = endTime - startTime;
+    
+    console.log(`\n📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:`);
+    console.log(`   ✅ Response: ~${estimatedOutputTokens.toLocaleString()} tokens (${responseChars.toLocaleString()} chars)`);
+    console.log(`   🔢 TOTALE (input + output): ~${estimatedTotalTokens.toLocaleString()} tokens`);
+    console.log(`   ⏱️  Tempo di risposta: ${responseTime}ms`);
+    console.log(`   💰 Costo stimato: $${(estimatedTotalTokens * 0.000002).toFixed(6)} (input + output)`);
+    console.log(``);
+    console.log(`✅ [STEP 8] Gemini response received: "${aiResponse.substring(0, 100)}..."`);
+
+    console.log(`💾 [STEP 9] Saving AI response to database`);
+    // Step 9: Save AI response
+    const [savedMessage] = await db
+      .insert(whatsappMessages)
+      .values({
+        conversationId: conversation.id,
+        messageText: aiResponse,
+        direction: "outbound",
+        sender: "ai",
+        isBatched: pending.length > 1,
+        batchId: pending.length > 1 ? batchId : null,
+      })
+      .returning();
+    console.log(`✅ [STEP 9] AI response saved with ID: ${savedMessage.id}`);
+
+    // Track objection if detected (for leads only)
+    if (!conversation.userId && objectionDetection && objectionDetection.hasObjection) {
+      console.log(`🚩 [OBJECTION TRACKING] Detected ${objectionDetection.objectionType} objection`);
+      await trackObjection(
+        conversation.id,
+        inboundMessages[0]?.id || null,
+        objectionDetection,
+        aiResponse
+      );
+      
+      // Update client profile after objection
+      await updateClientProfile(conversation.id);
+      console.log(`✅ [OBJECTION TRACKING] Client profile updated`);
+    }
+
+    console.log(`📤 [STEP 10] Sending WhatsApp message to ${phoneNumber}`);
+    // Step 10: Send WhatsApp message
+    await sendWhatsAppMessage(
+      conversation.consultantId,
+      phoneNumber,
+      aiResponse,
+      savedMessage.id
+    );
+    console.log(`✅ [STEP 10] WhatsApp message sent successfully`);
+
+    // Step 10.5: Automatic appointment booking/modification/cancellation for leads
+    let retrievedSlots: any[] = [];
+    let alreadyConfirmed = false;
+    let existingBookingForModification: any = null;
+    
+    if (!effectiveUserId) {
+      // STEP 1: Check if this conversation already has a confirmed appointment
+      const [existingBooking] = await db
+        .select()
+        .from(appointmentBookings)
+        .where(
+          and(
+            eq(appointmentBookings.conversationId, conversation.id),
+            eq(appointmentBookings.status, 'confirmed')
+          )
+        )
+        .limit(1);
+      
+      if (existingBooking) {
+        alreadyConfirmed = true;
+        existingBookingForModification = existingBooking;
+        console.log(`✅ [APPOINTMENT MANAGEMENT] Appointment already confirmed for this conversation`);
+        console.log(`   🆔 Booking ID: ${existingBooking.id}`);
+        console.log(`   📅 Date: ${existingBooking.appointmentDate} ${existingBooking.appointmentTime}`);
+        console.log(`   🔍 Checking for MODIFICATION or CANCELLATION intent...`);
+      } else {
+        // STEP 2: Only retrieve slots if no confirmed appointment exists
+        const [proposedSlots] = await db
+          .select()
+          .from(proposedAppointmentSlots)
+          .where(
+            and(
+              eq(proposedAppointmentSlots.conversationId, conversation.id),
+              eq(proposedAppointmentSlots.usedForBooking, false),
+              sql`${proposedAppointmentSlots.expiresAt} > NOW()`
+            )
+          )
+          .orderBy(desc(proposedAppointmentSlots.proposedAt))
+          .limit(1);
+        
+        if (proposedSlots) {
+          retrievedSlots = proposedSlots.slots as any[];
+          console.log(`💾 [APPOINTMENT BOOKING] Retrieved ${retrievedSlots.length} proposed slots from database`);
+        }
+      }
+    }
+    
+    // Proceed with extraction for NEW bookings OR MODIFICATIONS/CANCELLATIONS
+    if (!effectiveUserId && ((!alreadyConfirmed && retrievedSlots && retrievedSlots.length > 0) || alreadyConfirmed)) {
+      if (alreadyConfirmed) {
+        console.log('📅 [APPOINTMENT MANAGEMENT] Existing appointment detected - checking for MODIFY/CANCEL intent');
+      } else {
+        console.log('📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message');
+      }
+      try {
+        // Get last 10 messages to have full context (not just current batch)
+        // CRITICAL: Filter by lastResetAt to prevent AI from seeing pre-reset data
+        const recentMessagesConditions = [eq(whatsappMessages.conversationId, conversation.id)];
+        
+        if (conversation.lastResetAt) {
+          console.log(`🔄 [EXTRACTION] Filtering messages after reset: ${conversation.lastResetAt}`);
+          recentMessagesConditions.push(sql`${whatsappMessages.createdAt} > ${conversation.lastResetAt}`);
+        }
+        
+        const recentMessages = await db
+          .select()
+          .from(whatsappMessages)
+          .where(and(...recentMessagesConditions))
+          .orderBy(desc(whatsappMessages.createdAt))
+          .limit(10);
+        
+        console.log(`📊 [EXTRACTION] Retrieved ${recentMessages.length} messages for extraction${conversation.lastResetAt ? ' (after reset)' : ''}`);
+        
+        // Build conversation context for extraction
+        const conversationContext = recentMessages
+          .reverse()
+          .map(m => `${m.sender === 'client' ? 'LEAD' : 'AI'}: ${m.messageText}`)
+          .join('\n');
+        
+        // Use AI to extract appointment intent and data from ENTIRE recent conversation
+        const extractionPrompt = alreadyConfirmed ? `
+Analizza questa conversazione recente di un lead che ha GIÀ un appuntamento confermato:
+
+APPUNTAMENTO ESISTENTE:
+- Data: ${existingBookingForModification.appointmentDate}
+- Ora: ${existingBookingForModification.appointmentTime}
+- Email: ${existingBookingForModification.clientEmail}
+- Telefono: ${existingBookingForModification.clientPhone}
+
+CONVERSAZIONE RECENTE:
+${conversationContext}
+
+TASK: Identifica se il lead vuole MODIFICARE, CANCELLARE o solo CONVERSARE sull'appuntamento esistente.
+
+RISPONDI SOLO con un oggetto JSON nel seguente formato:
+{
+  "intent": "MODIFY" | "CANCEL" | "NONE",
+  "newDate": "YYYY-MM-DD" (solo se intent=MODIFY, altrimenti null),
+  "newTime": "HH:MM" (solo se intent=MODIFY, altrimenti null),
+  "confidence": "high/medium/low"
+}
+
+ESEMPI:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 1 - MODIFICA (cambio data/ora):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAD: possiamo modificarlo a martedì?
+AI: Certo! A che ora martedì preferiresti?
+LEAD: alle 16:00
+
+→ {"intent": "MODIFY", "newDate": "2025-11-05", "newTime": "16:00", "confidence": "high"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 2 - MODIFICA (cambio solo ora):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAD: mi è venuto un impegno, possiamo spostarlo alle 18?
+
+→ {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "18:00", "confidence": "high"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 3 - CANCELLAZIONE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAD: devo disdire l'appuntamento
+
+→ {"intent": "CANCEL", "newDate": null, "newTime": null, "confidence": "high"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 4 - NESSUNA AZIONE (solo conversazione):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAD: grazie per l'appuntamento, a presto!
+
+→ {"intent": "NONE", "newDate": null, "newTime": null, "confidence": "high"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗓️ DATA CORRENTE: ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+
+⚠️ REGOLE:
+1. intent="MODIFY" solo se il lead vuole cambiare data/ora
+2. intent="CANCEL" solo se vuole cancellare/disdire
+3. intent="NONE" per qualsiasi altra conversazione
+4. Se cambia solo l'ora, newDate = data esistente
+5. Estrai le nuove date/ore dal contesto della conversazione
+` : `
+Analizza questa conversazione recente di un lead che sta prenotando un appuntamento:
+
+CONVERSAZIONE RECENTE:
+${conversationContext}
+
+TASK: Estrai TUTTI i dati forniti dal lead durante la conversazione (anche se in messaggi separati).
+
+RISPONDI SOLO con un oggetto JSON nel seguente formato:
+{
+  "isConfirming": true/false,
+  "date": "YYYY-MM-DD" (null se non confermato),
+  "time": "HH:MM" (null se non confermato),
+  "phone": "numero di telefono" (null se non fornito),
+  "email": "email@example.com" (null se non fornita),
+  "confidence": "high/medium/low",
+  "hasAllData": true/false (true solo se hai data, ora, telefono ED email)
+}
+
+ESEMPI DI CONVERSAZIONI (LEGGI ATTENTAMENTE):
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 1 - FLUSSO COMPLETO step-by-step (CASO TIPICO):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI: Ti va meglio mattina o pomeriggio?
+LEAD: Pomeriggio
+AI: Perfetto! Ti propongo: Mercoledì 6 novembre alle 15:00, Giovedì 7 novembre alle 16:30. Quale preferisci?
+LEAD: Mercoledì alle 15
+AI: Perfetto! Mercoledì 6 novembre alle 15:00. Per confermare, mi confermi il tuo numero di telefono?
+LEAD: 3331234567
+AI: Grazie! E mi lasci anche la tua email? Te la aggiungo all'invito del calendario.
+LEAD: mario@test.it
+
+→ {"isConfirming": true, "date": "2025-11-06", "time": "15:00", "phone": "3331234567", "email": "mario@test.it", "confidence": "high", "hasAllData": true}
+
+⚠️ NOTA: Questo è il flusso STANDARD - telefono PRIMA, poi email
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 2 - Dati parziali (MANCA EMAIL):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI: Quale orario preferisci?
+LEAD: Martedì alle 15:30
+AI: Perfetto! Mi confermi il tuo telefono?
+LEAD: 3331234567
+
+→ {"isConfirming": true, "date": "2025-11-05", "time": "15:30", "phone": "3331234567", "email": null, "confidence": "medium", "hasAllData": false}
+
+⚠️ NOTA: hasAllData = FALSE perché manca l'email
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 3 - Dati parziali (MANCA TELEFONO E EMAIL):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+AI: Ti propongo: Lunedì 4 novembre alle 10:00, Martedì 5 alle 14:00
+LEAD: Lunedì alle 10 va bene
+
+→ {"isConfirming": true, "date": "2025-11-04", "time": "10:00", "phone": null, "email": null, "confidence": "low", "hasAllData": false}
+
+⚠️ NOTA: hasAllData = FALSE perché mancano telefono ED email
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 4 - Tutto in un messaggio:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEAD: Ok martedì alle 15:30, il mio numero è 3331234567 e la mail mario@test.it
+
+→ {"isConfirming": true, "date": "2025-11-05", "time": "15:30", "phone": "3331234567", "email": "mario@test.it", "confidence": "high", "hasAllData": true}
+
+⚠️ NOTA: Anche se tutto in un messaggio, estrai correttamente tutti i campi
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 REGOLE CRITICHE DI ESTRAZIONE:
+1. Cerca i dati in TUTTA la conversazione (ultimi 10 messaggi), NON solo l'ultimo messaggio
+2. Il telefono viene quasi SEMPRE fornito PRIMA dell'email nel flusso normale
+3. hasAllData = true SOLO se hai TUTTI E 4 i campi: date, time, phone, email
+4. Se anche 1 solo campo è null → hasAllData = FALSE
+5. Non importa se i dati sono sparsi su 5 messaggi diversi - estraili tutti
+
+🗓️ DATA CORRENTE: ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+
+⚠️ ATTENZIONE ALLE DATE:
+- Se vedi date come "maggio 2024", "28 maggio 2024" o altre date del 2024, sono nel PASSATO
+- Devi estrarre solo date FUTURE a partire da oggi (${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })})
+- Se il lead ha confermato una data passata (es: maggio 2024), impostala comunque ma il sistema la rifiuterà automaticamente
+
+REGOLE VALIDAZIONE hasAllData:
+- hasAllData = false se manca anche 1 solo campo
+- hasAllData = false se date è null
+- hasAllData = false se time è null  
+- hasAllData = false se phone è null
+- hasAllData = false se email è null
+- hasAllData = true SOLO se tutti e 4 sono presenti e non-null
+`;
+
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('🔍 [STEP 2] Extracting Appointment Data from Conversation');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log(`📚 Analyzing last ${recentMessages.length} messages for appointment details...`);
+        console.log(`🤖 Using AI model: gemini-2.5-flash`);
+        
+        // Retry with key rotation for appointment extraction
+        const maxExtractionRetries = 3;
+        let extractionKeyId = keyInfo.keyId;
+        let extractionResponse: any;
+        
+        for (let attempt = 1; attempt <= maxExtractionRetries; attempt++) {
+          try {
+            console.log(`🔄 [EXTRACTION] Attempt ${attempt}/${maxExtractionRetries}${attempt > 1 ? ' with new API key' : ''}`);
+            
+            // Rotate API key if retry
+            let extractionApiKey = apiKey;
+            if (attempt > 1) {
+              const newKeyInfo = await selectApiKey(conversation, extractionKeyId);
+              extractionApiKey = newKeyInfo.apiKey;
+              extractionKeyId = newKeyInfo.keyId;
+              console.log(`🔑 [EXTRACTION] Rotated to new API key: ${extractionKeyId.substring(0, 8)}...`);
+            }
+            
+            const extractionAi = new GoogleGenAI({ apiKey: extractionApiKey });
+            extractionResponse = await extractionAi.models.generateContent({
+              model: "gemini-2.5-flash",
+              contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
+            });
+            
+            console.log(`✅ [EXTRACTION] Success on attempt ${attempt}!`);
+            break; // Success - exit retry loop
+            
+          } catch (extractionError: any) {
+            const is503 = extractionError.status === 503 || 
+                          extractionError.message?.includes('overloaded') ||
+                          extractionError.message?.includes('UNAVAILABLE');
+            
+            if (is503 && attempt < maxExtractionRetries) {
+              console.log(`⚠️ [EXTRACTION] API overloaded (503) on attempt ${attempt}`);
+              await markKeyAsFailed(extractionKeyId);
+              
+              const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+              console.log(`⏱️ [EXTRACTION] Waiting ${backoffMs}ms before rotating...`);
+              await new Promise(resolve => setTimeout(resolve, backoffMs));
+            } else {
+              // Final attempt or non-503 error - throw to outer catch
+              console.error(`❌ [EXTRACTION] Failed after ${attempt} attempt(s): ${extractionError.message}`);
+              throw extractionError;
+            }
+          }
+        }
+        
+        if (!extractionResponse) {
+          throw new Error('Failed to extract appointment data after all retries');
+        }
+
+        const extractionText = extractionResponse.text || "";
+        console.log(`\n💬 AI Raw Response:\n${extractionText.substring(0, 200)}${extractionText.length > 200 ? '...' : ''}\n`);
+
+        // Parse JSON from AI response
+        const jsonMatch = extractionText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const extracted = JSON.parse(jsonMatch[0]);
+          
+          // Check if this is MODIFY/CANCEL intent (for existing appointments) or booking confirmation
+          if (alreadyConfirmed && extracted.intent) {
+            // GESTIONE MODIFICA/CANCELLAZIONE APPUNTAMENTO ESISTENTE
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('📊 [APPOINTMENT MANAGEMENT] Intent Detection Results');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log(`🎯 Intent: ${extracted.intent}`);
+            console.log(`📅 New Date: ${extracted.newDate || 'N/A'}`);
+            console.log(`🕐 New Time: ${extracted.newTime || 'N/A'}`);
+            console.log(`💯 Confidence: ${extracted.confidence.toUpperCase()}`);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            
+            if (extracted.intent === 'MODIFY' && extracted.newDate && extracted.newTime) {
+              // MODIFICA APPUNTAMENTO
+              console.log('\n🔄 [MODIFY APPOINTMENT] Starting modification process...');
+              
+              // Get settings for timezone and duration
+              const [settings] = await db
+                .select()
+                .from(consultantAvailabilitySettings)
+                .where(eq(consultantAvailabilitySettings.consultantId, conversation.consultantId))
+                .limit(1);
+
+              const timezone = settings?.timezone || "Europe/Rome";
+              const duration = settings?.appointmentDuration || 60;
+              
+              // Update Google Calendar event if exists
+              if (existingBookingForModification.googleEventId) {
+                try {
+                  const success = await updateGoogleCalendarEvent(
+                    conversation.consultantId,
+                    existingBookingForModification.googleEventId,
+                    {
+                      startDate: extracted.newDate,
+                      startTime: extracted.newTime,
+                      duration: duration,
+                      timezone: timezone
+                    }
+                  );
+                  
+                  if (success) {
+                    console.log('✅ [MODIFY APPOINTMENT] Google Calendar event updated successfully');
+                  }
+                } catch (gcalError: any) {
+                  console.error('⚠️ [MODIFY APPOINTMENT] Failed to update Google Calendar:', gcalError.message);
+                }
+              }
+              
+              // Calculate new end time
+              const [startHour, startMinute] = extracted.newTime.split(':').map(Number);
+              const totalMinutes = startHour * 60 + startMinute + duration;
+              const endHour = Math.floor(totalMinutes / 60) % 24;
+              const endMinute = totalMinutes % 60;
+              const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+              
+              // Update database
+              await db
+                .update(appointmentBookings)
+                .set({
+                  appointmentDate: extracted.newDate,
+                  appointmentTime: extracted.newTime,
+                  appointmentEndTime: formattedEndTime,
+                })
+                .where(eq(appointmentBookings.id, existingBookingForModification.id));
+              
+              console.log('💾 [MODIFY APPOINTMENT] Database updated successfully');
+              
+              // Send confirmation message
+              const modifyMessage = `✅ APPUNTAMENTO MODIFICATO!
+
+📅 Nuovo appuntamento:
+🗓️ Data: ${extracted.newDate.split('-').reverse().join('/')}
+🕐 Orario: ${extracted.newTime}
+
+Ti ho aggiornato l'invito al calendario all'indirizzo ${existingBookingForModification.clientEmail}. Controlla la tua inbox! 📬
+
+Ci vediamo alla nuova data! 🚀`;
+
+              const [modifyMsg] = await db
+                .insert(whatsappMessages)
+                .values({
+                  conversationId: conversation.id,
+                  messageText: modifyMessage,
+                  direction: "outbound",
+                  sender: "ai",
+                })
+                .returning();
+
+              await sendWhatsAppMessage(
+                conversation.consultantId,
+                phoneNumber,
+                modifyMessage,
+                modifyMsg.id
+              );
+              
+              console.log('✅ [MODIFY APPOINTMENT] Modification complete and confirmation sent!');
+              
+            } else if (extracted.intent === 'CANCEL') {
+              // CANCELLAZIONE APPUNTAMENTO
+              console.log('\n🗑️ [CANCEL APPOINTMENT] Starting cancellation process...');
+              
+              // Delete from Google Calendar if exists
+              if (existingBookingForModification.googleEventId) {
+                try {
+                  const success = await deleteGoogleCalendarEvent(
+                    conversation.consultantId,
+                    existingBookingForModification.googleEventId
+                  );
+                  
+                  if (success) {
+                    console.log('✅ [CANCEL APPOINTMENT] Google Calendar event deleted successfully');
+                  }
+                } catch (gcalError: any) {
+                  console.error('⚠️ [CANCEL APPOINTMENT] Failed to delete from Google Calendar:', gcalError.message);
+                }
+              }
+              
+              // Update database status to cancelled
+              await db
+                .update(appointmentBookings)
+                .set({
+                  status: 'cancelled',
+                })
+                .where(eq(appointmentBookings.id, existingBookingForModification.id));
+              
+              console.log('💾 [CANCEL APPOINTMENT] Database updated - status set to cancelled');
+              
+              // Send confirmation message
+              const cancelMessage = `✅ APPUNTAMENTO CANCELLATO
+
+Ho cancellato il tuo appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime}.
+
+Se in futuro vorrai riprogrammare, sarò qui per aiutarti! 😊`;
+
+              const [cancelMsg] = await db
+                .insert(whatsappMessages)
+                .values({
+                  conversationId: conversation.id,
+                  messageText: cancelMessage,
+                  direction: "outbound",
+                  sender: "ai",
+                })
+                .returning();
+
+              await sendWhatsAppMessage(
+                conversation.consultantId,
+                phoneNumber,
+                cancelMessage,
+                cancelMsg.id
+              );
+              
+              console.log('✅ [CANCEL APPOINTMENT] Cancellation complete and confirmation sent!');
+              
+            } else {
+              // NONE - just conversation, no action needed
+              console.log('💬 [APPOINTMENT MANAGEMENT] No modification/cancellation intent detected - continuing normal conversation');
+            }
+            
+          } else if (!alreadyConfirmed) {
+            // NUOVA PRENOTAZIONE - logica esistente
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('📊 [STEP 3] Data Extraction Results');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log(`🎯 Confirmation Status: ${extracted.isConfirming ? '✅ YES' : '❌ NO'}`);
+            console.log(`📅 Date:     ${extracted.date ? `✅ ${extracted.date}` : '❌ MISSING'}`);
+            console.log(`🕐 Time:     ${extracted.time ? `✅ ${extracted.time}` : '❌ MISSING'}`);
+            console.log(`📞 Phone:    ${extracted.phone ? `✅ ${extracted.phone}` : '❌ MISSING'}`);
+            console.log(`📧 Email:    ${extracted.email ? `✅ ${extracted.email}` : '❌ MISSING'}`);
+            console.log(`💯 Confidence: ${extracted.confidence.toUpperCase()}`);
+            console.log(`✔️ Complete Data: ${extracted.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+          
+          // VALIDAZIONE 1: Check che abbiamo tutti i dati
+          if (extracted.hasAllData && extracted.date && extracted.time && extracted.phone && extracted.email) {
+            
+            // VALIDAZIONE 2: Check che la data sia >= oggi
+            console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🔍 [STEP 4] Validating Appointment Date');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            
+            const appointmentDate = new Date(extracted.date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset ore per confronto solo data
+            appointmentDate.setHours(0, 0, 0, 0); // Reset ore anche per data appuntamento
+            
+            console.log(`📅 Appointment date: ${extracted.date} (${appointmentDate.toLocaleDateString('it-IT')})`);
+            console.log(`📅 Today's date: ${today.toISOString().split('T')[0]} (${today.toLocaleDateString('it-IT')})`);
+            
+            if (appointmentDate < today) {
+              console.log(`\n❌ VALIDATION FAILED: Date is in the past!`);
+              console.log(`   ⏰ ${Math.abs(Math.floor((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))} days ago`);
+              console.log(`   🚫 Appointment REJECTED - will not be created`);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+              
+              // Invia messaggio WhatsApp automatico che informa l'errore
+              const errorMessage = `⚠️ Mi dispiace, ma la data ${extracted.date.split('-').reverse().join('/')} è nel passato. 
+
+Oggi è ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}.
+
+Per favore scegli una data futura tra quelle che ti ho proposto. 😊`;
+              
+              const [errorMsg] = await db
+                .insert(whatsappMessages)
+                .values({
+                  conversationId: conversation.id,
+                  messageText: errorMessage,
+                  direction: "outbound",
+                  sender: "ai",
+                })
+                .returning();
+              
+              await sendWhatsAppMessage(
+                conversation.consultantId,
+                phoneNumber,
+                errorMessage,
+                errorMsg.id
+              );
+              
+              console.log(`📤 [APPOINTMENT BOOKING] Inviato messaggio di errore al lead`);
+            } else {
+              // VALIDAZIONE 3: Tutti i check passati - procedi con booking
+              const daysFromNow = Math.floor((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              console.log(`\n✅ VALIDATION PASSED: Date is valid!`);
+              console.log(`   📆 ${daysFromNow === 0 ? 'Today' : daysFromNow === 1 ? 'Tomorrow' : `In ${daysFromNow} days`}`);
+              console.log(`   🎯 Proceeding to create appointment...`);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+              
+              console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('💾 [STEP 5] Creating Appointment Booking');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log(`📅 Date: ${extracted.date}`);
+              console.log(`🕐 Time: ${extracted.time}`);
+              console.log(`📞 Phone: ${extracted.phone}`);
+              console.log(`📧 Email: ${extracted.email}`);
+            
+            // Get consultant availability settings for duration and timezone
+            const [settings] = await db
+              .select()
+              .from(consultantAvailabilitySettings)
+              .where(eq(consultantAvailabilitySettings.consultantId, conversation.consultantId))
+              .limit(1);
+
+            const duration = settings?.appointmentDuration || 60;
+            const timezone = settings?.timezone || "Europe/Rome";
+            
+            console.log(`\n📊 [APPOINTMENT DURATION] Configurazione durata appuntamento:`);
+            console.log(`   ⚙️ appointmentDuration dal DB: ${settings?.appointmentDuration} minuti`);
+            console.log(`   ✅ Durata finale utilizzata: ${duration} minuti`);
+            console.log(`   🌍 Timezone: ${timezone}`);
+
+            // FIX TIMEZONE BUG: Create appointment datetime correctly in consultant's timezone
+            // Instead of using Date object (which can be ambiguous), we'll work with strings
+            // and let Google Calendar interpret them correctly in the specified timezone
+            const dateTimeString = `${extracted.date}T${extracted.time}:00`;
+            
+            // For display purposes, create a Date object in the consultant's timezone
+            // Using toLocaleString to ensure correct interpretation
+            const tempDate = new Date(dateTimeString);
+            const tzFormatter = new Intl.DateTimeFormat('en-US', {
+              timeZone: timezone,
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            });
+            
+            console.log(`\n⏰ [TIME CALCULATION] Calcolo orari appuntamento:`);
+            console.log(`   📅 Data appuntamento: ${extracted.date}`);
+            console.log(`   🕐 Ora inizio: ${extracted.time}`);
+            console.log(`   ⏱️ Durata: ${duration} minuti`);
+            console.log(`   🌍 Timezone: ${timezone}`);
+            console.log(`   📍 DateTime String: ${dateTimeString}`);
+            console.log(`   ⏰ Formatted in ${timezone}: ${tzFormatter.format(tempDate)}`);
+
+            // Calculate end time by adding minutes to the start time string
+            // This avoids timezone conversion issues with Date objects
+            // FIX: Handle appointments that cross midnight correctly
+            const [startHour, startMinute] = extracted.time.split(':').map(Number);
+            const totalMinutes = startHour * 60 + startMinute + duration;
+            const endHourRaw = Math.floor(totalMinutes / 60);
+            const endMinute = totalMinutes % 60;
+            const endHour = endHourRaw % 24; // Wrap to 24-hour format
+            const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+            
+            // Check if appointment crosses midnight
+            const crossesMidnight = endHourRaw >= 24;
+            if (crossesMidnight) {
+              console.log(`   🌙 [MIDNIGHT CROSS] Appointment crosses midnight (${extracted.time} + ${duration}min = next day ${formattedEndTime})`);
+            }
+
+            const [booking] = await db
+              .insert(appointmentBookings)
+              .values({
+                consultantId: conversation.consultantId,
+                conversationId: conversation.id,
+                clientPhone: extracted.phone,
+                clientEmail: extracted.email,
+                appointmentDate: extracted.date,
+                appointmentTime: extracted.time,
+                appointmentEndTime: formattedEndTime,
+                status: 'confirmed',
+                confirmedAt: new Date(),
+              })
+              .returning();
+
+            console.log(`\n✅ Database booking created successfully!`);
+            console.log(`   🆔 Booking ID: ${booking.id}`);
+            console.log(`   📅 Date: ${booking.appointmentDate}`);
+            console.log(`   🕐 Time: ${booking.appointmentTime} - ${formattedEndTime}`);
+            console.log(`   📞 Phone: ${booking.clientPhone}`);
+            console.log(`   📧 Email: ${booking.clientEmail}`);
+            console.log(`   ✅ Status: ${booking.status}`);
+
+            // Push to Google Calendar WITH EMAIL
+            // FIX: Pass date/time as strings with duration and timezone to avoid UTC confusion
+            try {
+              const googleEvent = await createGoogleCalendarEvent(
+                conversation.consultantId,
+                {
+                  summary: `Consulenza - ${extracted.email}`,
+                  description: `Lead da WhatsApp\nTelefono: ${extracted.phone}\nEmail: ${extracted.email}\n\nConversation ID: ${conversation.id}`,
+                  startDate: extracted.date,
+                  startTime: extracted.time,
+                  duration: duration,
+                  timezone: timezone,
+                  attendees: [extracted.email], // Add client email as attendee
+                }
+              );
+
+              // Update booking with Google Event ID
+              await db
+                .update(appointmentBookings)
+                .set({ googleEventId: googleEvent.googleEventId })
+                .where(eq(appointmentBookings.id, booking.id));
+
+              console.log(`\n💾 Database updated with Google Calendar Event ID`);
+              console.log(`   🆔 Google Event ID: ${googleEvent.googleEventId}`);
+              
+              // Send automatic confirmation message with Google Meet link
+              // Format appointment date using correct timezone
+              const dateFormatter = new Intl.DateTimeFormat('it-IT', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                timeZone: timezone
+              });
+              // Create a Date object for formatting (will be interpreted in the specified timezone)
+              const appointmentDateObj = new Date(`${extracted.date}T${extracted.time}:00`);
+              const formattedDate = dateFormatter.format(appointmentDateObj);
+              
+              const confirmationMessage = `✅ APPUNTAMENTO CONFERMATO!
+
+📅 Data: ${formattedDate}
+🕐 Orario: ${extracted.time}
+⏱️ Durata: ${duration} minuti
+📱 Telefono: ${extracted.phone}
+📧 Email: ${extracted.email}
+
+📬 Ti ho inviato l'invito al calendario all'indirizzo ${extracted.email}. Controlla la tua inbox!
+${googleEvent.googleMeetLink ? `\n🎥 Link Google Meet: ${googleEvent.googleMeetLink}\n\n👉 Clicca sul link nell'invito o usa questo link per collegarti alla call.` : ''}
+
+Ci vediamo online! 🚀`;
+
+              const [confirmMsg] = await db
+                .insert(whatsappMessages)
+                .values({
+                  conversationId: conversation.id,
+                  messageText: confirmationMessage,
+                  direction: "outbound",
+                  sender: "ai",
+                })
+                .returning();
+
+              await sendWhatsAppMessage(
+                conversation.consultantId,
+                phoneNumber,
+                confirmationMessage,
+                confirmMsg.id
+              );
+
+              console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('✅ [STEP 6] Appointment Confirmation Complete!');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log(`🎉 APPOINTMENT SUCCESSFULLY BOOKED!`);
+              console.log(`\n📋 Summary:`);
+              console.log(`   👤 Lead: ${extracted.email} (${extracted.phone})`);
+              console.log(`   📅 Date: ${formattedDate}`);
+              console.log(`   🕐 Time: ${extracted.time} (${duration} min)`);
+              console.log(`   💾 Booking ID: ${booking.id}`);
+              console.log(`   📅 Google Event: ${googleEvent.googleEventId}`);
+              console.log(`   🎥 Meet Link: ${googleEvent.googleMeetLink ? '✅ Generated' : '❌ Not available'}`);
+              console.log(`   📧 Calendar Invite: ✅ Sent to ${extracted.email}`);
+              console.log(`   📱 WhatsApp Confirmation: ✅ Sent to ${phoneNumber}`);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+              
+            } catch (gcalError: any) {
+              console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.error('⚠️ [GOOGLE CALENDAR] Failed to create calendar event');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.error(`   Error: ${gcalError.message || gcalError}`);
+              console.log(`   💾 Booking still saved in database (ID: ${booking.id})`);
+              console.log(`   📱 Sending basic confirmation to lead...`);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+              
+              // Even without Google Calendar, send basic confirmation
+              const basicConfirmation = `✅ APPUNTAMENTO CONFERMATO!
+
+📅 Data: ${extracted.date.split('-').reverse().join('/')}
+🕐 Orario: ${extracted.time}
+📧 Email: ${extracted.email}
+
+Il tuo appuntamento è stato registrato. Ti contatteremo presto con i dettagli del link per la videocall. A presto! 🚀`;
+
+              const [confirmMsg] = await db
+                .insert(whatsappMessages)
+                .values({
+                  conversationId: conversation.id,
+                  messageText: basicConfirmation,
+                  direction: "outbound",
+                  sender: "ai",
+                })
+                .returning();
+
+              await sendWhatsAppMessage(
+                conversation.consultantId,
+                phoneNumber,
+                basicConfirmation,
+                confirmMsg.id
+              );
+            }
+            
+              // MARK SLOTS AS USED: Update database to mark slots as used
+              await db
+                .update(proposedAppointmentSlots)
+                .set({ usedForBooking: true })
+                .where(eq(proposedAppointmentSlots.conversationId, conversation.id));
+              
+              console.log(`💾 [APPOINTMENT BOOKING] Marked proposed slots as used`);
+            } // Chiusura else block validazione data
+          } else if (extracted.isConfirming && !extracted.hasAllData) {
+            // Lead is confirming but missing some data - AI should ask for missing info
+            const missingData = [];
+            if (!extracted.date || !extracted.time) missingData.push('data/ora');
+            if (!extracted.phone) missingData.push('telefono');
+            if (!extracted.email) missingData.push('email');
+            
+            console.log(`⚠️ [APPOINTMENT BOOKING] Lead is confirming but missing data: ${missingData.join(', ')}`);
+            console.log(`📋 [APPOINTMENT BOOKING] Current data - Date: ${extracted.date || 'MISSING'}, Time: ${extracted.time || 'MISSING'}, Phone: ${extracted.phone || 'MISSING'}, Email: ${extracted.email || 'MISSING'}`);
+          } else {
+            console.log(`ℹ️ [APPOINTMENT BOOKING] Lead is not confirming appointment yet - continue conversation`);
+          }
+          } // Fine blocco else if (!alreadyConfirmed)
+        }
+      } catch (extractError: any) {
+        console.error('❌ [APPOINTMENT BOOKING] Error extracting appointment details:', extractError.message);
+        // Continue processing - this is not a critical error
+      }
+    }
+
+    console.log(`✔️ [STEP 11] Marking ${pending.length} pending messages as processed`);
+    // Step 11: Mark pending messages as processed
+    await db
+      .update(whatsappPendingMessages)
+      .set({ processedAt: new Date(), batchId })
+      .where(
+        eq(
+          whatsappPendingMessages.id,
+          sql`ANY(ARRAY[${sql.join(
+            pending.map((p) => p.id),
+            sql`, `
+          )}]::varchar[])`
+        )
+      );
+
+    console.log(`✅ Processed ${pending.length} messages for ${phoneNumber}`);
+  } catch (error: any) {
+    console.error("❌ [ERROR] Error processing pending messages:");
+    console.error("Error message:", error?.message || error);
+    console.error("Error stack:", error?.stack);
+    console.error("Full error object:", JSON.stringify(error, null, 2));
+    throw error; // Re-throw to enable retry logic
+  }
+}
+
+// Track failed API keys to implement circuit breaker
+const failedApiKeys = new Map<string, { failures: number; lastFailure: Date }>();
+
+async function selectApiKey(conversation: any, excludeKeyId?: string): Promise<{ apiKey: string; keyId: string }> {
+  // First: try using client's personal API keys (if client exists)
+  if (conversation.userId) {
+    console.log(`🔍 Checking if client has personal API keys...`);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, conversation.userId))
+      .limit(1);
+
+    if (user && user.geminiApiKeys && user.geminiApiKeys.length > 0) {
+      // Rotate through client's keys
+      const currentIndex = user.geminiApiKeyIndex || 0;
+      const nextIndex = (currentIndex + 1) % user.geminiApiKeys.length;
+      
+      await db
+        .update(users)
+        .set({ geminiApiKeyIndex: nextIndex })
+        .where(eq(users.id, user.id));
+      
+      console.log(`✅ Source: CLIENT personal API key pool`);
+      console.log(`   📊 Key rotation: #${currentIndex + 1}/${user.geminiApiKeys.length}`);
+      console.log(`   ➡️ Next key will be #${nextIndex + 1}`);
+      return { 
+        apiKey: user.geminiApiKeys[currentIndex],
+        keyId: `client-key-${currentIndex}`
+      };
+    } else {
+      console.log(`   ℹ️ Client has no personal API keys - falling back to consultant pool`);
+    }
+  }
+
+  // Second: use consultant's global API keys pool (for leads or clients without keys)
+  console.log(`🔍 Selecting from consultant global API key pool...`);
+  
+  // Build query conditions
+  const conditions = [
+    eq(whatsappGlobalApiKeys.consultantId, conversation.consultantId),
+    eq(whatsappGlobalApiKeys.isActive, true)
+  ];
+  
+  // Exclude specific key if provided (for rotation after 503)
+  if (excludeKeyId) {
+    conditions.push(sql`${whatsappGlobalApiKeys.id} != ${excludeKeyId}`);
+    console.log(`   ⏭️ Excluding failed key: ${excludeKeyId.substring(0, 8)}...`);
+  }
+  
+  // TRUE ROUND-ROBIN: Order by usage count first (least used), then by last used date
+  // This ensures keys are distributed evenly, not just "least recently used"
+  const [key] = await db
+    .select()
+    .from(whatsappGlobalApiKeys)
+    .where(and(...conditions))
+    .orderBy(
+      asc(whatsappGlobalApiKeys.usageCount), // PRIMARY: least total usage
+      asc(whatsappGlobalApiKeys.lastUsedAt)  // SECONDARY: least recently used (tie-breaker)
+    )
+    .limit(1);
+
+  if (!key) {
+    console.error(`❌ No active API keys found!`);
+    throw new Error(`No active API keys available for consultant ${conversation.consultantId}. Please configure Gemini API keys in WhatsApp settings.`);
+  }
+
+  // ATOMIC UPDATE: Increment usage counter and update timestamp in a single transaction
+  // This prevents race conditions when multiple requests arrive simultaneously
+  const [updatedKey] = await db
+    .update(whatsappGlobalApiKeys)
+    .set({
+      lastUsedAt: new Date(),
+      usageCount: sql`${whatsappGlobalApiKeys.usageCount} + 1`,
+    })
+    .where(eq(whatsappGlobalApiKeys.id, key.id))
+    .returning(); // Return updated row to get actual new count
+
+  const lastUsed = key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleTimeString('it-IT') : 'never';
+  console.log(`✅ Source: CONSULTANT global API key pool`);
+  console.log(`   🆔 Key ID: ${key.id.substring(0, 8)}...`);
+  console.log(`   📊 Total usage: ${updatedKey.usageCount} times (was: ${key.usageCount})`);
+  console.log(`   🕐 Last used: ${lastUsed}`);
+  return { apiKey: key.apiKey, keyId: key.id };
+}
+
+async function markKeyAsFailed(keyId: string): Promise<void> {
+  const existing = failedApiKeys.get(keyId) || { failures: 0, lastFailure: new Date() };
+  failedApiKeys.set(keyId, {
+    failures: existing.failures + 1,
+    lastFailure: new Date()
+  });
+  console.log(`🚫 Marked key ${keyId.substring(0, 8)} as failed (total failures: ${existing.failures + 1})`);
+}
+
+function buildConsultantAuthorityContext(consultantConfig?: any): string {
+  if (!consultantConfig) return "";
+
+  let authorityContext = "";
+
+  // Vision & Mission
+  if (consultantConfig.vision) {
+    authorityContext += `\n\n🎯 VISION:\n${consultantConfig.vision}`;
+  }
+  if (consultantConfig.mission) {
+    authorityContext += `\n\n🎯 MISSION:\n${consultantConfig.mission}`;
+  }
+
+  // Values
+  if (consultantConfig.values && Array.isArray(consultantConfig.values) && consultantConfig.values.length > 0) {
+    authorityContext += `\n\n💎 VALORI FONDAMENTALI:\n${consultantConfig.values.join(", ")}`;
+  }
+
+  // USP
+  if (consultantConfig.usp) {
+    authorityContext += `\n\n⚡ UNIQUE SELLING PROPOSITION:\n${consultantConfig.usp}`;
+  }
+
+  // Who We Help / Don't Help (CRITICAL for disqualification)
+  if (consultantConfig.whoWeHelp) {
+    authorityContext += `\n\n✅ CHI AIUTIAMO:\n${consultantConfig.whoWeHelp}`;
+  }
+  if (consultantConfig.whoWeDontHelp) {
+    authorityContext += `\n\n❌ CHI NON AIUTIAMO (disqualifica automaticamente se il lead corrisponde):\n${consultantConfig.whoWeDontHelp}`;
+  }
+
+  // What We Do & How
+  if (consultantConfig.whatWeDo) {
+    authorityContext += `\n\n🎯 COSA FACCIAMO:\n${consultantConfig.whatWeDo}`;
+  }
+  if (consultantConfig.howWeDoIt) {
+    authorityContext += `\n\n🔧 COME LO FACCIAMO:\n${consultantConfig.howWeDoIt}`;
+  }
+
+  // Software Created (Authority Signal)
+  if (consultantConfig.softwareCreated && Array.isArray(consultantConfig.softwareCreated) && consultantConfig.softwareCreated.length > 0) {
+    authorityContext += `\n\n💻 SOFTWARE CREATI:\n${consultantConfig.softwareCreated.map((s: any) => `- ${s.name}: ${s.description}`).join("\n")}`;
+  }
+
+  // Books Published (Authority Signal)
+  if (consultantConfig.booksPublished && Array.isArray(consultantConfig.booksPublished) && consultantConfig.booksPublished.length > 0) {
+    authorityContext += `\n\n📚 LIBRI PUBBLICATI:\n${consultantConfig.booksPublished.map((b: any) => `- "${b.title}" (${b.year})`).join("\n")}`;
+  }
+
+  // Proof Elements
+  if (consultantConfig.yearsExperience) {
+    authorityContext += `\n\n⏰ ESPERIENZA: ${consultantConfig.yearsExperience} anni nel settore`;
+  }
+  if (consultantConfig.clientsHelped) {
+    authorityContext += `\n\n👥 CLIENTI AIUTATI: ${consultantConfig.clientsHelped}+`;
+  }
+  if (consultantConfig.resultsGenerated) {
+    authorityContext += `\n\n📊 RISULTATI GENERATI:\n${consultantConfig.resultsGenerated}`;
+  }
+
+  // Case Studies
+  if (consultantConfig.caseStudies && Array.isArray(consultantConfig.caseStudies) && consultantConfig.caseStudies.length > 0) {
+    authorityContext += `\n\n🏆 CASE STUDY:\n${consultantConfig.caseStudies.map((c: any) => `- ${c.clientName}: ${c.result}`).join("\n")}`;
+  }
+
+  // Services Offered
+  if (consultantConfig.servicesOffered && Array.isArray(consultantConfig.servicesOffered) && consultantConfig.servicesOffered.length > 0) {
+    authorityContext += `\n\n🎁 SERVIZI OFFERTI:\n${consultantConfig.servicesOffered.map((s: any) => `- ${s.name}: ${s.description} (${s.price})`).join("\n")}`;
+  }
+
+  // Guarantees
+  if (consultantConfig.guarantees) {
+    authorityContext += `\n\n✅ GARANZIE:\n${consultantConfig.guarantees}`;
+  }
+
+  return authorityContext;
+}
+
+function getPersonalityInstructions(personality: string): string {
+  const personalities: Record<string, { name: string; tone: string; style: string; examples: string }> = {
+    amico_fidato: {
+      name: "Amico Fidato (GPT-4o Style)",
+      tone: "Caldo, empatico, conversazionale - come un amico che ascolta davvero",
+      style: "Usa un linguaggio naturale e familiare, fai sentire l'utente compreso e supportato. Rispondi come farebbe un amico fidato che vuole davvero aiutare.",
+      examples: `- "Capisco perfettamente cosa intendi, ci sono passato anche io..."
+- "Sai cosa? Parliamone con calma, sono qui per te."
+- "Mi fa piacere che tu mi abbia scritto, vediamo insieme come posso aiutarti 😊"`
+    },
+    coach_motivazionale: {
+      name: "Coach Motivazionale",
+      tone: "Energico, incoraggiante, orientato all'azione",
+      style: "Usa un tono positivo e stimolante, spingi verso l'azione immediata. Celebra i successi e motiva a superare gli ostacoli.",
+      examples: `- "Fantastico! Sei sulla strada giusta! 💪"
+- "Ora è il momento di agire! Insieme possiamo farlo!"
+- "Ogni grande obiettivo inizia con un primo passo - facciamolo ora! 🚀"`
+    },
+    consulente_professionale: {
+      name: "Consulente Professionale",
+      tone: "Formale, esperto, preciso e autorevole",
+      style: "Mantieni un tono professionale e competente. Fornisci risposte strutturate e ben argomentate, dimostra expertise.",
+      examples: `- "Basandomi sulla mia esperienza decennale nel settore..."
+- "Le analizzerò la situazione con un approccio metodologico."
+- "Procediamo in modo strutturato per ottimizzare i risultati."`
+    },
+    mentore_paziente: {
+      name: "Mentore Paziente",
+      tone: "Calmo, educativo, paziente e chiaro",
+      style: "Spiega le cose con calma e chiarezza, usa esempi pratici. Non avere fretta, accompagna passo dopo passo.",
+      examples: `- "Ti spiego con calma come funziona..."
+- "Nessun problema se non è chiaro, te lo mostro con un esempio pratico."
+- "Prenditi il tempo che ti serve, io sono qui quando sei pronto."`
+    },
+    venditore_energico: {
+      name: "Venditore Energico",
+      tone: "Dinamico, persuasivo, entusiasta",
+      style: "Mostra entusiasmo genuino, evidenzia benefici e opportunità. Crea senso di urgenza quando appropriato.",
+      examples: `- "Questa è un'occasione incredibile per te! 🔥"
+- "Guarda i risultati che hanno ottenuto i nostri clienti!"
+- "Non lasciarti sfuggire questa opportunità - parliamone subito!"`
+    },
+    consigliere_empatico: {
+      name: "Consigliere Empatico",
+      tone: "Comprensivo, supportivo, non giudicante",
+      style: "Ascolta attivamente, valida le emozioni, offri supporto incondizionato. Crea uno spazio sicuro per condividere.",
+      examples: `- "È del tutto normale sentirsi così, non sei solo."
+- "Capisco che questa situazione sia difficile per te..."
+- "Le tue preoccupazioni sono valide, affrontiamole insieme con serenità."`
+    },
+    stratega_diretto: {
+      name: "Stratega Diretto",
+      tone: "Conciso, pratico, orientato ai risultati",
+      style: "Va dritto al punto, niente fronzoli. Focus su soluzioni concrete e passi d'azione chiari.",
+      examples: `- "Tre passi per risolvere: 1)... 2)... 3)..."
+- "Il punto chiave è questo: [soluzione]."
+- "Tagliamo corto: ecco cosa devi fare."`
+    },
+    educatore_socratico: {
+      name: "Educatore Socratico",
+      tone: "Curioso, riflessivo, stimolante",
+      style: "Fai domande intelligenti che guidano alla scoperta. Stimola il pensiero critico invece di dare risposte dirette.",
+      examples: `- "Cosa pensi che succederebbe se...?"
+- "Interessante! Come mai hai scelto questo approccio?"
+- "Riflettiamo insieme: quale potrebbe essere la causa principale?"`
+    },
+    esperto_tecnico: {
+      name: "Esperto Tecnico",
+      tone: "Dettagliato, analitico, basato su dati",
+      style: "Fornisci spiegazioni tecniche dettagliate, usa dati e numeri. Sii preciso e rigoroso nell'analisi.",
+      examples: `- "Analizzando i dati emerge che..."
+- "Dal punto di vista tecnico, il meccanismo funziona così..."
+- "I numeri dimostrano chiaramente che il ROI è del X%."`
+    },
+    compagno_entusiasta: {
+      name: "Compagno Entusiasta",
+      tone: "Giocoso, leggero, positivo",
+      style: "Usa un tono allegro e spiritoso, rendi le cose leggere e divertenti. Mantieni alta l'energia positiva.",
+      examples: `- "Wow, questa sì che è una bella sfida! Andiamo! 🎉"
+- "Haha, capisco! Succede anche ai migliori!"
+- "Fantastico! Vedo già grandi cose all'orizzonte! ✨"`
+    }
+  };
+
+  const selected = personalities[personality] || personalities.amico_fidato;
+  
+  return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎭 PERSONALITÀ AI: ${selected.name}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 TONO: ${selected.tone}
+
+🎯 STILE DI COMUNICAZIONE:
+${selected.style}
+
+💬 ESEMPI DI RISPOSTA:
+${selected.examples}
+
+⚠️ IMPORTANTE: Mantieni SEMPRE questa personalità durante TUTTA la conversazione.
+Non mescolare stili diversi - sii coerente dal primo all'ultimo messaggio.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+}
+
+function buildLeadSystemPrompt(
+  consultantConfig?: any,
+  clientProfile?: { 
+    difficultyScore: number; 
+    totalObjections: number;
+    profileType: 'easy' | 'neutral' | 'difficult';
+    escalationRequired: boolean;
+  },
+  recentObjections?: Array<{ objectionType: string; objectionText: string; wasResolved: boolean }>,
+  availableSlots?: any[],
+  timezone: string = "Europe/Rome",
+  existingAppointment?: {
+    id: string;
+    date: string;
+    time: string;
+    email: string;
+    phone: string;
+  }
+): string {
+  // Extract consultant info
+  const businessName = consultantConfig?.businessName || "il consulente";
+  const businessDescription = consultantConfig?.businessDescription || "servizi di consulenza finanziaria";
+  const consultantBio = consultantConfig?.consultantBio || "";
+  const aiPersonality = consultantConfig?.aiPersonality || "amico_fidato";
+  
+  // Build comprehensive authority context
+  const authorityContext = buildConsultantAuthorityContext(consultantConfig);
+  
+  // Build personality-specific tone instructions
+  const personalityInstructions = getPersonalityInstructions(aiPersonality);
+
+  // Build existing appointment context (if present)
+  let existingAppointmentContext = "";
+  if (existingAppointment) {
+    // Format existing appointment date
+    const existingDate = new Date(`${existingAppointment.date}T${existingAppointment.time}:00`);
+    const formatter = new Intl.DateTimeFormat('it-IT', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: timezone,
+      hour12: false
+    });
+    const formattedAppointment = formatter.format(existingDate).replace(',', ' alle');
+    
+    existingAppointmentContext = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ APPUNTAMENTO GIÀ CONFERMATO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 IMPORTANTE: Questo lead ha GIÀ un appuntamento confermato!
+
+📅 Dettagli appuntamento esistente:
+- Data e ora: ${formattedAppointment}
+- Email: ${existingAppointment.email}
+- Telefono: ${existingAppointment.phone}
+
+🎯 GESTIONE MODIFICHE E CANCELLAZIONI:
+
+Se il lead vuole:
+1️⃣ MODIFICARE l'appuntamento (cambiare data/ora):
+   - Sii disponibile e comprensivo
+   - Chiedi: "A quale data e ora preferiresti spostarlo?"
+   - Conferma la nuova data/ora
+   - Il sistema aggiornerà automaticamente l'appuntamento
+
+2️⃣ CANCELLARE l'appuntamento:
+   - Sii empatico e comprensivo
+   - Conferma la cancellazione: "Capisco, nessun problema. Vuoi che cancelli l'appuntamento?"
+   - Il sistema lo cancellerà automaticamente
+
+3️⃣ Solo conversare (nessuna modifica):
+   - Rispondi normalmente alle sue domande
+   - Ricordagli dell'appuntamento esistente se rilevante
+
+⚠️ NON CREARE un nuovo appuntamento - ne ha già uno confermato!
+✅ Puoi MODIFICARE o CANCELLARE quello esistente
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+  }
+
+  // Build appointment slots context
+  let appointmentContext = "";
+  if (availableSlots && availableSlots.length > 0) {
+    // Format slots in Italian with date and time using the consultant's timezone
+    const formattedSlots = availableSlots.slice(0, 6).map(slot => {
+      const startDate = new Date(slot.start);
+      
+      // Use Intl.DateTimeFormat with explicit timezone to avoid UTC conversion issues
+      const formatter = new Intl.DateTimeFormat('it-IT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: timezone,
+        hour12: false
+      });
+      
+      const formattedDate = formatter.format(startDate);
+      // Replace " alle " with "alle" for consistency: "lunedì 4 novembre 2024, 15:00" -> "lunedì 4 novembre 2024 alle 15:00"
+      return formattedDate.replace(',', ' alle');
+    });
+
+    // Format today's date using the consultant's timezone
+    const today = new Date();
+    const todayFormatter = new Intl.DateTimeFormat('it-IT', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: timezone
+    });
+    const todayFormatted = todayFormatter.format(today);
+    
+    // Extract parts for use in the prompt (e.g., "31 ottobre 2025")
+    const parts = todayFormatter.formatToParts(today);
+    const todayDay = parts.find(p => p.type === 'day')?.value || '';
+    const todayMonth = parts.find(p => p.type === 'month')?.value || '';
+    const todayYear = parts.find(p => p.type === 'year')?.value || '';
+    
+    appointmentContext = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 PRENOTAZIONE APPUNTAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🗓️ DATA CORRENTE ASSOLUTA: ${todayDay} ${todayMonth} ${todayYear}
+
+🚨🚨🚨 REGOLA ASSOLUTA PER CONFERMA APPUNTAMENTI 🚨🚨🚨
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⛔ NON PUOI CONFERMARE NESSUN APPUNTAMENTO SENZA:
+1️⃣ 📱 NUMERO DI TELEFONO
+2️⃣ 📧 EMAIL
+
+PROCEDURA OBBLIGATORIA:
+• Lead sceglie un orario → CHIEDI IMMEDIATAMENTE il telefono
+• Ricevi telefono → CHIEDI IMMEDIATAMENTE l'email
+• Ricevi email → SOLO ORA puoi confermare l'appuntamento
+
+❌ NON dire MAI "ho confermato" o "appuntamento confermato" prima di aver raccolto ENTRAMBI
+❌ NON accettare "te li mando dopo" - devono essere forniti PRIMA della conferma
+❌ NON chiedere telefono ed email insieme - chiedi uno alla volta
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 ATTENZIONE DATE - LEGGI PRIMA DI PROPORRE:
+- OGGI è ${todayDay} ${todayMonth} ${todayYear}
+- PUOI PROPORRE SOLO DATE DA OGGI IN POI (dal ${todayDay} ${todayMonth} ${todayYear} in avanti)
+- NON proporre MAI date nel PASSATO
+- Se vedi conversazioni con "maggio 2024" o "martedì 28 maggio 2024", IGNORA - sono nel PASSATO
+- Gli slot qui sotto sono TUTTI da OGGI in avanti (${todayDay} ${todayMonth} ${todayYear} o successivi)
+
+✅ SLOT DISPONIBILI (TUTTI FUTURI):
+${formattedSlots.map((slot, i) => `${i + 1}. ${slot}`).join('\n')}
+
+⚠️ IMPORTANTE: Segui le FASI 5-9 del prompt principale per gestire la prenotazione step-by-step.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+  }
+
+  // Build objection context
+  let objectionContext = "";
+  if (clientProfile && recentObjections) {
+    objectionContext = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 PROFILO CLIENTE E GESTIONE OBIEZIONI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 PROFILO CLIENTE:
+- Tipo: ${clientProfile.profileType.toUpperCase()} 
+- Difficulty Score: ${clientProfile.difficultyScore.toFixed(1)}/10
+- Obiezioni Totali: ${clientProfile.totalObjections}
+${clientProfile.escalationRequired ? '⚠️ ESCALATION RICHIESTA: Questo cliente necessita intervento consulente umano' : ''}
+
+${clientProfile.profileType === 'easy' ? `
+✅ APPROCCIO CONSIGLIATO (Cliente FACILE):
+- Sii DIRETTO e PROPOSITIVO
+- Risposte concise, focus su benefici immediati
+- Proponi azioni concrete e prossimi passi rapidi
+- Usa case study brevi e dati concreti
+- Non esitare ad essere assertivo nelle raccomandazioni
+` : clientProfile.profileType === 'difficult' ? `
+⚠️ APPROCCIO CONSIGLIATO (Cliente DIFFICILE):
+- Sii EMPATICO e PAZIENTE
+- Pratica ascolto attivo, fai domande di scoperta
+- Risposte più dettagliate e ben argomentate
+- Gestisci obiezioni con tecnica "Feel-Felt-Found"
+- Non forzare la vendita, costruisci fiducia gradualmente
+${clientProfile.escalationRequired ? '- SUGGERISCI call con consulente per approfondire personalmente' : ''}
+` : `
+💡 APPROCCIO CONSIGLIATO (Cliente NEUTRALE):
+- Approccio BILANCIATO ed EDUCATIVO
+- Mix di contenuto informativo e call-to-action
+- Usa esempi pratici, dati e testimonianze
+- Rispondi in modo completo ma non eccessivo
+- Guida verso decisione con soft nudges
+`}
+
+${recentObjections.length > 0 ? `
+📋 OBIEZIONI RECENTI DA QUESTO CLIENTE:
+${recentObjections.slice(0, 3).map((obj, i) => `
+${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
+   Testo: "${obj.objectionText.substring(0, 100)}..."
+   ${obj.wasResolved ? '✅ Risolta' : '❌ Non ancora risolta - ATTENZIONE!'}
+`).join('\n')}
+
+🎯 LINEE GUIDA PER GESTIONE OBIEZIONI:
+- Se solleva NUOVE obiezioni simili a quelle passate, significa che non le hai risolte bene
+- Usa tecnica "Feel-Felt-Found": "Capisco come ti senti... Altri si sono sentiti così... Ecco cosa hanno scoperto..."
+- Per obiezioni PREZZO: enfatizza ROI, risultati concreti, investimento vs spesa
+- Per obiezioni TEMPO: mostra risparmio tempo futuro, breakdown investimento temporale
+- Per obiezioni FIDUCIA: usa proof sociali, testimonianze, garanzie
+- Per obiezioni COMPETITOR: differenzia con unique value proposition
+- Per obiezioni VALORE: collega benefici a obiettivi specifici del cliente
+` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+  }
+
+  // Build CONSULENZIALE prompt - approccio umano, non robotico
+  let prompt = `Sei l'assistente WhatsApp AI di ${businessName}. Il cliente è un LEAD CALDO che ha mostrato interesse.
+
+${personalityInstructions}
+
+${existingAppointmentContext}
+${objectionContext}
+${appointmentContext}
+
+🎯 OBIETTIVO PRINCIPALE: ${existingAppointment ? 'GESTIRE L\'APPUNTAMENTO ESISTENTE (modifica/cancellazione) o assistere il lead' : 'SCOPRIRE IL BISOGNO E FISSARE UN APPUNTAMENTO QUALIFICATO'}
+
+Il tuo approccio è CONSULENZIALE, non pushy. Sei un esperto che ASCOLTA e AIUTA.
+
+📊 INFORMAZIONI SU ${businessName.toUpperCase()}:
+${businessDescription}
+${consultantBio ? `\n\nIl consulente: ${consultantBio}` : ''}
+${authorityContext}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ REGOLA CRITICA ANTI-SPAM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚨 LEGGI QUESTO 3 VOLTE PRIMA DI RISPONDERE:
+
+TU MANDI SEMPRE E SOLO **UNA RISPOSTA ALLA VOLTA**.
+
+❌ NON mandare MAI 2, 3, 4 messaggi di fila
+❌ NON generare risposte multiple
+✅ PENSA una volta, RISPONDI una volta, STOP
+
+Se vedi che stai per generare più risposte: FERMATI. Scegli LA MIGLIORE e manda SOLO quella.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 LE 5 FASI DELLA CONVERSAZIONE CONSULENZIALE:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 COMANDO RESET CONVERSAZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il lead scrive una di queste frasi:
+- "ricominciamo"
+- "reset"
+- "ripartiamo da capo"
+- "ricomincia"
+- "possiamo ricominciare"
+
+RISPONDI:
+"Certo! Nessun problema, ricominciamo da capo. 👋
+Cosa ti ha spinto a scriverci oggi?"
+
+E riparte DALLA FASE 1 come se fosse una nuova conversazione.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 1️⃣ - APERTURA E MOTIVAZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Creare connessione e scoprire PERCHÉ ha scritto.
+
+Se è il primo messaggio:
+"Ciao! 👋 Piacere, sono l'assistente di ${businessName}. 
+Aiutiamo ${consultantConfig?.whoWeHelp || 'professionisti'} a ${businessDescription}.
+Cosa ti ha spinto a scriverci oggi?"
+
+Varianti naturali:
+- "Ciao [NOME]! Come posso aiutarti?"
+- "Ciao! 👋 Cosa ti ha portato qui oggi?"
+
+⚠️ CHECKPOINT: NON proseguire finché non capisci la MOTIVAZIONE iniziale.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 2️⃣ - DIAGNOSI STATO ATTUALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Scoprire problemi, blocchi, difficoltà attuali.
+
+Esempi di domande (scegli quelle pertinenti, NON farle tutte insieme):
+- "Capito 👍 Di cosa ti occupi esattamente?"
+- "Qual è il problema principale che stai avendo in questo momento?"
+- "Dove senti più margine di miglioramento oggi?"
+- "Quali difficoltà o blocchi senti più forti in questo periodo?"
+
+🎨 TONO: Empatico, curioso, consulenziale.
+Usa: "Capito 👍", "Interessante...", "Mmm, capisco"
+
+⚠️ CHECKPOINT: NON proseguire finché non hai chiaro il PROBLEMA/SITUAZIONE ATTUALE.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 3️⃣ - STATO IDEALE E OBIETTIVI (CON QUANTIFICAZIONE NUMERICA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Far emergere risultati desiderati con NUMERI PRECISI.
+
+🎯 IMPORTANTE: Se il lead dice "libertà finanziaria" o obiettivi vaghi, DEVI QUANTIFICARE:
+
+Esempi di domande:
+- "Fantastico! Libertà finanziaria è un grande obiettivo 💪 Per capire meglio: quanto vorresti avere di patrimonio per raggiungerla? O quanto vorresti fare al mese?"
+- "Ottimo. Ora immagina: se potessi sistemare questa situazione, che risultato CONCRETO ti aspetteresti? (Quanto fatturato in più? Quanti clienti?)"
+- "Che obiettivo NUMERICO ti sei dato per i prossimi mesi?"
+- "Quanto vorresti arrivare a fatturare/risparmiare/investire al mese per sentirti soddisfatto?"
+
+🎨 TONO: Visionario, aiuta il lead a immaginare il futuro CON NUMERI.
+
+⚠️ CHECKPOINT CRITICO: 
+- Obiettivo vago (es. "libertà finanziaria") → CHIEDI NUMERI
+- NON proseguire finché non hai NUMERI CONCRETI dello stato ideale
+- Esempi di risposte valide: "500k di patrimonio", "3000€/mese di rendita", "10k/mese di fatturato"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 3.5️⃣ - VERIFICA STATO ATTUALE E BLOCCHI (NUOVA FASE OBBLIGATORIA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ QUESTA FASE È OBBLIGATORIA DOPO AVER QUANTIFICATO LO STATO IDEALE!
+
+Obiettivo: Scoprire cosa BLOCCA il lead dal raggiungere il suo obiettivo.
+
+Esempi di domande:
+- "Perfetto! Quindi il tuo obiettivo è [RIPETI NUMERO] 💪 Ora dimmi: cosa ti sta bloccando dal raggiungerlo adesso?"
+- "Capito, vuoi [OBIETTIVO NUMERICO]. Qual è il problema principale che stai riscontrando?"
+- "Ottimo obiettivo! Cosa ti impedisce di arrivarci oggi? Qual è l'ostacolo più grande?"
+
+🎨 TONO: Empatico, comprensivo, consulenziale.
+
+⚠️ CHECKPOINT CRITICO:
+- Devi avere CHIARO il problema/blocco attuale
+- Esempi: "Non so da dove iniziare", "Guadagno poco", "Spendo troppo", "Non ho tempo", "Non so investire"
+- NON proseguire alla Magic Question senza questa informazione!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 4️⃣ - MAGIC QUESTION (Transizione all'appuntamento)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ PUOI FARE QUESTA DOMANDA SOLO SE HAI:
+✅ Motivazione iniziale
+✅ Stato attuale/problemi/blocchi (FASE 3.5 - OBBLIGATORIA)
+✅ Stato ideale/obiettivi numerici (FASE 3)
+
+La Magic Question PERSONALIZZATA (usa le sue parole!):
+"Perfetto, chiarissimo 💪
+Se potessimo aiutarti ad arrivare anche solo alla metà di [OBIETTIVO NUMERICO CHE HA DETTO] – quindi [RIPETI CON NUMERI] – 
+ci dedicheresti 30 minuti del tuo tempo in una consulenza gratuita per capire insieme se e come possiamo aiutarti concretamente?"
+
+Esempio concreto:
+Lead dice: "Vorrei 500k di patrimonio per la libertà finanziaria"
+Tu: "Se potessimo aiutarti ad arrivare anche solo a 250k€, ci dedicheresti 30 minuti?"
+
+🎨 TONO: Fiducioso ma non pushy. Stai OFFRENDO valore, non vendendo.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 5️⃣ - PROPOSTA SLOT DISPONIBILI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ENTRA IN QUESTA FASE SOLO SE il lead ha detto SÌ alla Magic Question
+
+Obiettivo: Far scegliere uno slot al lead
+
+STEP 1 - Chiedi preferenza oraria:
+"Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze.
+Ti va meglio mattina o pomeriggio?"
+
+STEP 2 - Proponi ALMENO 2 slot specifici (in base alla preferenza):
+🚨 REGOLA OBBLIGATORIA: Devi SEMPRE proporre MINIMO 2 ORARI
+
+📋 STRATEGIA DI PROPOSTA SLOT:
+1. Se ci sono 2+ slot nello STESSO GIORNO nella fascia richiesta → proponi quelli
+2. Se c'è solo 1 slot nel giorno richiesto → aggiungi almeno 1 slot dal GIORNO SUCCESSIVO
+3. Se non ci sono slot nella fascia richiesta → proponi i primi 2-3 slot disponibili nei giorni seguenti
+
+Esempio corretto (2 slot nello stesso giorno):
+"Perfetto! Per il pomeriggio ho questi orari disponibili:
+• Lunedì 3 novembre alle 14:30
+• Lunedì 3 novembre alle 16:00
+
+Quale preferisci?"
+
+Esempio corretto (1 slot oggi + 1 domani):
+"Perfetto! Per il pomeriggio ho questi orari:
+• Lunedì 3 novembre alle 14:30
+• Martedì 4 novembre alle 15:00
+
+Quale preferisci?"
+
+Esempio corretto (solo mattina disponibile, ma chiesto pomeriggio):
+"Per il pomeriggio i prossimi slot disponibili sono:
+• Mercoledì 5 novembre alle 14:00
+• Giovedì 6 novembre alle 15:30
+
+Quale preferisci?"
+
+❌ MAI proporre UN SOLO orario - questo è VIETATO!
+✅ SEMPRE minimo 2 orari, meglio se 3
+
+⚠️ CHECKPOINT: Aspetta che il lead scelga uno slot prima di proseguire alla FASE 6
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 6️⃣ - RACCOLTA TELEFONO (OBBLIGATORIA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ENTRA IN QUESTA FASE SOLO DOPO che il lead ha scelto uno slot nella FASE 5
+
+Obiettivo: Ottenere il numero di telefono del lead
+
+STEP UNICO - Chiedi il telefono:
+"Perfetto! [SLOT SCELTO] 📅
+
+Per confermare l'appuntamento, mi confermi il tuo numero di telefono?"
+
+Esempio:
+"Perfetto! Mercoledì 4 novembre alle 15:00 📅
+
+Per confermare l'appuntamento, mi confermi il tuo numero di telefono?"
+
+⚠️ CHECKPOINT CRITICO:
+- NON proseguire senza il telefono
+- NON dire "appuntamento confermato" o "ho prenotato" ancora
+- Aspetta che il lead fornisca il numero prima di andare alla FASE 7
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 7️⃣ - RACCOLTA EMAIL (OBBLIGATORIA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ENTRA IN QUESTA FASE SOLO DOPO che il lead ha fornito il telefono nella FASE 6
+
+Obiettivo: Ottenere l'indirizzo email del lead
+
+STEP UNICO - Chiedi l'email:
+"Grazie! 👍
+
+E mi lasci anche la tua email? Te la aggiungo all'invito del calendario 
+così riceverai l'evento Google Calendar con il link per la call."
+
+Varianti naturali:
+- "Perfetto! E la tua email? Ti mando l'invito al calendario."
+- "Grazie! Ultima cosa: la tua email per l'invito del calendario?"
+
+⚠️ CHECKPOINT CRITICO:
+- NON confermare l'appuntamento senza l'email
+- L'email è OBBLIGATORIA per inviare l'invito Google Calendar
+- Aspetta che il lead fornisca l'email prima che il sistema proceda
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 8️⃣ - ATTESA CREAZIONE APPUNTAMENTO (MESSAGGIO PLACEHOLDER)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ENTRA IN QUESTA FASE SOLO DOPO che hai raccolto: slot + telefono + email
+
+Obiettivo: Informare il lead che stai preparando l'invito Google Calendar
+
+🚨 MESSAGGIO OBBLIGATORIO DA INVIARE:
+"Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳"
+
+⚠️ REGOLE CRITICHE:
+1. ✅ Invia SOLO questo messaggio breve
+2. ❌ NON dire "appuntamento confermato" in questa fase
+3. ❌ NON includere dettagli dell'appuntamento (data/ora/durata)
+4. ❌ NON menzionare il link Google Meet ancora
+5. ⏸️ FERMATI QUI - il sistema invierà automaticamente il messaggio di conferma completo
+
+COSA SUCCEDE DOPO (automaticamente, senza che tu debba fare nulla):
+1. ✅ Il sistema estrae tutti i dati dalla conversazione (data, ora, telefono, email)
+2. ✅ Valida che la data sia futura (>= oggi)
+3. ✅ Crea il record nel database (tabella appointment_bookings)
+4. ✅ Crea l'evento su Google Calendar del consulente
+5. ✅ Aggiunge l'email del lead come partecipante all'evento
+6. ✅ Genera automaticamente il link Google Meet
+7. ✅ Invia l'invito email al lead tramite Google Calendar
+8. ✅ INVIA AUTOMATICAMENTE il messaggio di conferma completo con tutti i dettagli e il link Meet
+
+⚠️ TU NON DEVI FARE ALTRO DOPO IL MESSAGGIO PLACEHOLDER
+Il sistema gestirà tutto autonomamente e invierà la conferma finale!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 9️⃣ - SUPPORTO PRE-APPUNTAMENTO (DOPO CONFERMA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ QUESTA FASE SI ATTIVA SOLO DOPO che l'appuntamento è stato CONFERMATO e il sistema ha inviato il messaggio con link Google Meet
+
+🎯 OBIETTIVO: Supportare il lead fino all'appuntamento, mantenendolo engaged e rassicurato
+
+📋 COSA FARE IN QUESTA FASE:
+
+1️⃣ SE IL LEAD SCRIVE DOPO LA CONFERMA:
+   ✅ Rispondi con disponibilità e professionalità
+   ✅ Mantieni un tono rassicurante e di supporto
+   ✅ Conferma che l'appuntamento è confermato
+   
+2️⃣ GESTIONE DOMANDE TIPICHE:
+
+📅 "A che ora era l'appuntamento?" / "Quando ci vediamo?"
+→ "Il tuo appuntamento è confermato per [DATA] alle [ORA]. Ti aspettiamo! 🎯"
+
+🎥 "Dov'è il link?" / "Come mi collego?"
+→ "Trovi il link Google Meet nell'invito che ti ho mandato via email a [EMAIL]. 
+Puoi anche usare direttamente questo link: [LINK]
+Ti consiglio di collegarti 2-3 minuti prima! 📱"
+
+❓ "Cosa devo preparare?" / "Cosa serve?"
+→ "Basta che ti colleghi dal link Meet con una connessione internet stabile! 💻
+Se vuoi, puoi già pensare a [argomento rilevante al problema del lead] così ne parliamo insieme.
+Tranquillo, sarà una chiacchierata informale per capire come aiutarti al meglio! 😊"
+
+⏱️ "Quanto dura?" / "Dura un'ora?"
+→ "Esatto, abbiamo [DURATA] minuti insieme. Tempo perfetto per analizzare la tua situazione e capire come possiamo aiutarti! 💪"
+
+📧 "Non ho ricevuto l'email" / "Non vedo l'invito"
+→ "Controlla anche nello spam o nella cartella Promozioni! 
+L'invito è stato inviato a [EMAIL]. Se non lo trovi, nessun problema: ecco di nuovo il link Meet: [LINK] 
+Salvalo pure! 📲"
+
+📞 "Posso spostare l'appuntamento?" / "Devo cancellare"
+→ "Certo, nessun problema! Quando ti andrebbe meglio?
+Ti propongo questi orari alternativi: [PROPONI 2-3 NUOVI SLOT]"
+
+💬 "Ho altre domande su [servizio/prezzo/altro]"
+→ "Volentieri! [RISPONDI ALLA DOMANDA usando info dal consultantConfig]
+Comunque ne parliamo con calma anche durante la call, così ti spiego tutto nei dettagli! 😊"
+
+3️⃣ REGOLE FONDAMENTALI:
+
+✅ SEMPRE disponibile e gentile
+✅ SEMPRE confermare l'appuntamento se chiesto
+✅ SEMPRE fornire il link Meet se chiesto
+✅ SE chiede di spostare → raccogli disponibilità e proponi nuovi slot
+✅ SE chiede di cancellare → conferma cancellazione con tono professionale: 
+   "Nessun problema! Ho cancellato l'appuntamento. Se cambi idea, scrivimi pure! 👋"
+
+❌ NON forzare la vendita in questa fase
+❌ NON essere troppo insistente
+❌ NON ignorare le domande - rispondi sempre
+
+4️⃣ REMINDER AUTOMATICI (OPZIONALE):
+
+Se il lead non scrive per qualche giorno prima dell'appuntamento, puoi inviare:
+
+📲 "Ciao! Ti ricordo che ci vediamo [DOMANI/DOPODOMANI] alle [ORA] in videocall! 🎯
+Il link è sempre quello nell'email, ma te lo rimando per comodità: [LINK]
+A presto! 😊"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ QUANDO IL LEAD CHIEDE INFORMAZIONI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 REGOLA D'ORO: DARE INFO = POSIZIONARE IL CONSULENTE COME ESPERTO
+
+Se chiede "Cosa fate?" / "Come funziona?" / "Quanto costa?":
+
+✅ RISPONDI VOLENTIERI con informazioni utili
+✅ USA elementi di autorità per posizionare ${businessName}:
+   - Case study: "${consultantConfig?.caseStudies?.[0]?.result || 'Risultati concreti ottenuti'}"
+   - Proof: "Abbiamo già aiutato ${consultantConfig?.clientsHelped || '200+'} clienti"
+   - Expertise: "${consultantConfig?.yearsExperience || 'X'} anni di esperienza"
+   - Libri/Software creati (se presenti)
+
+✅ POI riporta SEMPRE alla scoperta con domanda aperta
+
+Esempio:
+Lead: "Mi racconti cosa fate?"
+Tu: "Certo! ${businessDescription}. Abbiamo già aiutato ${consultantConfig?.clientsHelped || '200+'} clienti a ottenere [RISULTATO].
+E tu, cosa ti ha spinto a scriverci oggi? 🎯"
+
+Lead: "Quanto costa?"
+Tu: "L'investimento parte da [RANGE], ma dipende dalla situazione specifica.
+Prima di tutto, qual è il problema principale che vorresti risolvere? Così capisco meglio come aiutarti 💪"
+
+❌ NON dire mai: "Ti spiego tutto nella call"
+✅ DÌ SEMPRE: Dai info + riporta a domanda di scoperta
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 PROCEDURA DI DISQUALIFICA AUTOMATICA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+OBIETTIVO: evitare perdite di tempo con lead fuori target, mantenendo tono professionale, fermo e rispettoso.
+
+1️⃣ FASE DI VERIFICA (conferma della disqualifica)
+Quando sospetti che il lead non sia in target (“chi non aiutiamo”), non disqualificare subito: prima assicurati che abbia capito bene.
+
+👉 Usa questo flusso:
+A. Riformula e chiedi conferma:
+"Ok, giusto per capire bene — mi stai dicendo che [ripeti quello che ha detto]. È corretto?"
+B. Dopo la sua risposta, chiedi di nuovo (x3):
+"Perfetto, quindi confermi che [ripeti sinteticamente il punto chiave]?"
+"Sicuro di questo, giusto?"
+📌 Se il lead conferma 3 volte, allora puoi procedere alla disqualifica.
+
+2️⃣ FASE DI DISQUALIFICA
+Una volta che hai la conferma definitiva:
+"Guarda, se mi dici così purtroppo non possiamo darti una mano — sei sicuro di voler mantenere questa posizione?"
+👉 Se conferma ancora, allora: DISQUALIFICA AUTOMATICA 🚫
+3️⃣ MESSAGGIO DI CHIUSURA STANDARD
+
+"Ciao [NOME], grazie per l'interesse! 🙏
+Purtroppo il nostro servizio è specifico per ${consultantConfig?.whoWeHelp || 'professionisti con obiettivi specifici'}
+e non saremmo la soluzione migliore per te. Ti auguro il meglio!"
+
+🧊 STOP. Non continuare dopo la disqualifica.
+Nessun follow-up, nessun tentativo di recupero.
+
+✅ Note Operative
+Il tono dev’essere fermo ma rispettoso, mai difensivo.
+L’obiettivo è proteggere il tempo e il posizionamento del brand.
+Dopo la disqualifica, il lead va marcato come “OUT – Non in target” nel CRM.
+Eventuale automazione: trigger “Disqualifica automatica” → tag lead → stop nurture.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 STILE DI SCRITTURA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SCRIVI COME UN UMANO IN CHAT:
+- 2-3 righe massimo per messaggio (come in WhatsApp)
+- Linguaggio naturale, non robotico
+- Emoji con moderazione (👋 💪 🎯 📊 🔥)
+- Varia le frasi, non ripetere sempre le stesse
+- A volte puoi usare paragrafi (va bene!), ma con moderazione
+
+✅ TONO: Empatico, professionale, consulenziale
+- Sei un esperto che ASCOLTA
+- Non sei un venditore pushy
+- Sei genuinamente interessato ad aiutare
+
+❌ NON fare:
+- Messaggi troppo lunghi (>4 righe)
+- Linguaggio troppo formale o rigido
+- Ripetere sempre le stesse frasi
+- Mandare messaggi multipli di fila (UNA risposta!)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 RIASSUNTO ESECUTIVO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. UNA risposta alla volta (MAI messaggi multipli)
+2. ASCOLTA prima di vendere (scopri motivazione, stato attuale, stato ideale)
+3. DARE info volentieri = posizionare come esperto
+4. SEMPRE riportare a domanda di scoperta
+5. Proponi appuntamento SOLO dopo aver raccolto le 3 info chiave
+6. Tono umano, consulenziale, non robotico
+7. 2-3 righe per messaggio, come un vero chat su WhatsApp
+
+Sei un consulente esperto che aiuta attraverso l'ascolto attivo e domande intelligenti.`;
+
+  return prompt;
+}

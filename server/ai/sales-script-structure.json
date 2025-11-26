@@ -1,0 +1,692 @@
+{
+  "version": "1.0.0",
+  "lastExtracted": "2025-11-25T01:49:01.539Z",
+  "sourceFile": "/home/runner/workspace/server/ai/sales-scripts-base.ts",
+  "sourceContentHash": "d2fa2d9ebcdc3e0f663a968459c85a2f86c5bc2100d85ce4af136b1c939b8f04",
+  "totalLines": 2899,
+  "phases": [
+    {
+      "id": "phase_1_2",
+      "number": "1 e #2",
+      "name": "APERTURA ED IMPOSTAZIONE",
+      "description": "Avvia la chiamata e Imposta la Direzione della Conversazione",
+      "semanticType": "opening",
+      "steps": [
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "APERTURA ENTUSIASTA",
+          "objective": "Creare connessione iniziale, rompere il ghiaccio e costruire rapport",
+          "questions": [
+            {
+              "text": "Ciao [NOME_PROSPECT]! Benvenuto/a in questa consulenza, come stai?"
+            },
+            {
+              "text": "Senti, da dove mi chiami?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 78
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "SPIEGA IL PROCESSO",
+          "objective": "Stabilire autorevolezza, aspettative chiare e creare scarsità",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 107
+        },
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "Riconosci (biscottino)",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 150
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "Reframe con beneficio",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 153
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "Aspetta conferma",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 158
+        },
+        {
+          "id": "step_4",
+          "number": 4,
+          "name": "Procedi con energia",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 161
+        }
+      ],
+      "checkpoints": [
+        {
+          "id": "checkpoint_1-2",
+          "description": "⛔ CHECKPOINT OBBLIGATORIO FASE #1-2 ⛔",
+          "verifications": [
+            "Hai salutato e chiesto \"come stai\"",
+            "Hai chiesto \"da dove mi chiami\"",
+            "Hai spiegato il processo della call",
+            "Il prospect ha detto \"OK\" / \"Sì\" / \"Va bene\" al processo"
+          ],
+          "lineNumber": 134
+        }
+      ],
+      "lineNumber": 53
+    },
+    {
+      "id": "phase_3",
+      "number": "3",
+      "name": "PAIN POINT DISCOVERY",
+      "description": "INTERESSATI PER CAPIRE COSA VUOLE, ASCOLTA ATTIVAMENTE",
+      "semanticType": "discovery",
+      "steps": [
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "TROVA IL PAIN POINT PRINCIPALE",
+          "objective": "Capire il VERO motivo dietro la call e il problema PRINCIPALE da risolvere",
+          "questions": [
+            {
+              "text": "Dimmi, perché hai deciso di partecipare a questa call?"
+            },
+            {
+              "text": "E se dovessi scegliere UNA cosa, qual è IL problema principale?"
+            },
+            {
+              "text": "Scava con me: cosa intendi ESATTAMENTE per [ripeti sue parole]?"
+            },
+            {
+              "text": "Capisco. E perché [ripeti risposta] ti preoccupa così tanto?"
+            },
+            {
+              "text": "E questo cosa significa per te PERSONALMENTE?"
+            },
+            {
+              "text": "E cosa è scattato? Perché cercare una soluzione proprio ADESSO?"
+            },
+            {
+              "text": "Sono bloccato\" → CHIEDI: \"Bloccato dove ESATTAMENTE? Cosa succede?"
+            },
+            {
+              "text": "Aiutami a capire: se dovessi descriverlo a un amico, cosa diresti?"
+            },
+            {
+              "text": "Potresti riassumere in 1 frase il suo problema principale?"
+            }
+          ],
+          "hasLadder": true,
+          "lineNumber": 192,
+          "ladderLevels": 6
+        },
+        {
+          "id": "step_4",
+          "number": 4,
+          "name": "TENTATIVI PASSATI",
+          "objective": "Capire cosa hanno provato, perché ha FALLITO e creare contrasto",
+          "questions": [
+            {
+              "text": "E cosa hai già provato finora?"
+            },
+            {
+              "text": "E cosa hai già provato?"
+            },
+            {
+              "text": "E cosa ti ha convinto a provarla?"
+            },
+            {
+              "text": "E com'è andata? Risultati?"
+            },
+            {
+              "text": "E perché pensi non ha funzionato?"
+            },
+            {
+              "text": "E secondo te cosa è mancato per raggiungere il risultato che volevi?"
+            },
+            {
+              "text": "E qual è stata LA cosa che proprio non andava?"
+            },
+            {
+              "text": "Ok perfetto. E da dove pensi di dover partire secondo te?"
+            }
+          ],
+          "hasLadder": true,
+          "lineNumber": 346,
+          "ladderLevels": 5
+        },
+        {
+          "id": "step_5",
+          "number": 5,
+          "name": "PERSISTENZA",
+          "objective": "Capire da quanto tempo combatte questo problema (più tempo = più frustrazione)",
+          "questions": [
+            {
+              "text": "E da quanto tempo ci stai provando?"
+            },
+            {
+              "text": "E cosa è successo in quel periodo che ti ha fatto iniziare?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 436
+        },
+        {
+          "id": "step_6",
+          "number": 6,
+          "name": "INVESTIMENTI",
+          "objective": "Capire investimenti passati (€, tempo, energie) per creare contrasto",
+          "questions": [
+            {
+              "text": "E quanto hai già investito finora? Tempo, soldi?"
+            },
+            {
+              "text": "E cosa ti ha convinto a investire in [soluzione]?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 456
+        }
+      ],
+      "checkpoints": [
+        {
+          "id": "checkpoint_3",
+          "description": "⛔ CHECKPOINT OBBLIGATORIO FASE #3 ⛔",
+          "verifications": [
+            "Sai IL problema principale che vuole risolvere",
+            "È SPECIFICO e CONCRETO (non vago tipo \"crescere\" / \"problemi generici\")",
+            "Sai di cosa si occupa (business/attività)",
+            "Hai scavato con 3-5 perché se la risposta era vaga",
+            "Capisci il VERO dolore dietro il problema"
+          ],
+          "lineNumber": 309
+        }
+      ],
+      "lineNumber": 170
+    },
+    {
+      "id": "phase_4",
+      "number": "4",
+      "name": "INFO BUSINESS",
+      "description": "COMPRENDI IL BUSINESS (domande rapide e mirate)",
+      "semanticType": "business_info",
+      "steps": [
+        {
+          "id": "step_7",
+          "number": 7,
+          "name": "RACCOGLI INFO BUSINESS",
+          "objective": "Comprendere attività, modello business e numeri chiave",
+          "questions": [
+            {
+              "text": "Prima mi hai detto [info], puoi dirmi di più su...?"
+            },
+            {
+              "text": "Chi aiuti esattamente?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Modello di business? Ricorrente, una tantum, pacchetti?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Da quanti anni?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "B2B o B2C?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Quanti clienti hai ora?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Ticket medio?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Hai collaboratori? Commerciali?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Chi si occupa di marketing?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Come generi clienti in target adesso?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Sai il tuo CAC (costo acquisizione cliente)?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "E qual è il prodotto/servizio principale che genera più vendite?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 493
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 479
+    },
+    {
+      "id": "phase_5",
+      "number": "5",
+      "name": "Inquisitorio (Dottore) - Stretch The Gap Parte 1",
+      "description": "TONO: Tanto per sapere, casual ma curioso",
+      "semanticType": "gap_stretching",
+      "steps": [
+        {
+          "id": "step_8",
+          "number": 8,
+          "name": "DOMANDE DIAGNOSTICHE",
+          "objective": "Far capire al futuro cliente che il problema è più grande di quanto pensino, e che è il momento di agire, come lo facciamo? lo facciamo con delle domande inquisitorie, servono per far capire che noi siamo esperti e loro non sanno rispondere alla domanda che gli stiamo facendo, l'obiettivo è che loro ci dicano NON LO SO, non spiegare se ti chiede, mi spieghi meglio tu, dici solamente, è proprio il motivo per il quale siamo in questa call, lo vediamo più avanti",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 556
+        },
+        {
+          "id": "step_9",
+          "number": 9,
+          "name": "STATO ATTUALE (FATTURATO)",
+          "objective": "Raccogliere il numero PRECISO del fatturato (FASE CRITICA!)",
+          "questions": [
+            {
+              "text": "Giusto per capire, a che livello di fatturato sei ora? Mensile o annuale?"
+            },
+            {
+              "text": "Ok, quindi più o meno siamo sui [numero calcolato] al mese, corretto?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Perfetto! Allora, più o meno a che livello sei?",
+              "marker": "pause_required"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 565
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 552
+    },
+    {
+      "id": "phase_6",
+      "number": "6",
+      "name": "STRETCH THE GAP (LA FASE PIÙ POTENTE!)",
+      "description": "Crea il GAP tra dove sono e dove vogliono arrivare",
+      "semanticType": "gap_stretching",
+      "steps": [
+        {
+          "id": "step_10",
+          "number": 10,
+          "name": "STATO IDEALE (OBIETTIVO)",
+          "objective": "Ottenere un numero SPECIFICO del loro obiettivo finanziario",
+          "questions": [
+            {
+              "text": "E ti fermeresti lì?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Nei prossimi 2-5 anni, dove vorresti arrivare?",
+              "marker": "pause_required"
+            },
+            {
+              "text": "Togliendo quello che pensi sia possibile, cosa VERAMENTE vorresti?",
+              "marker": "pause_required"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 652
+        },
+        {
+          "id": "step_11",
+          "number": 11,
+          "name": "EMOZIONI (LA FASE PIÙ IMPORTANTE! 💎)",
+          "objective": "Collegare il NUMERO alle EMOZIONI PROFONDE",
+          "questions": [
+            {
+              "text": "E perché proprio [numero]? Cosa rappresenta per te?"
+            },
+            {
+              "text": "E quando arrivi a [numero], cosa cambia nella tua vita?"
+            },
+            {
+              "text": "E come ti sentirai quando avrai raggiunto [obiettivo]? Quali emozioni proverai?"
+            },
+            {
+              "text": "E cosa diventa possibile grazie a quel risultato? Quali sogni realizzi?"
+            },
+            {
+              "text": "E perché è così importante per te?"
+            },
+            {
+              "text": "Potresti dire: 'Vuole [numero] per [motivo emotivo specifico]'?"
+            }
+          ],
+          "hasLadder": true,
+          "lineNumber": 679,
+          "ladderLevels": 6
+        }
+      ],
+      "checkpoints": [
+        {
+          "id": "checkpoint_6",
+          "description": "⛔ CHECKPOINT OBBLIGATORIO FASE #6 (CRITICO!) ⛔",
+          "verifications": [
+            "Hai un NUMERO SPECIFICO del loro obiettivo",
+            "Sai PERCHÉ vogliono quel numero",
+            "Hai collegato il numero alle EMOZIONI PROFONDE",
+            "Hai fatto 3-5 perché sulle emozioni",
+            "Sai LA cosa PIÙ IMPORTANTE che cambierà per loro",
+            "Hai MEMORIZZATO le loro parole esatte sulle emozioni",
+            "\"Vuole 50k/mese per passare più tempo con i figli e non dover più lavorare 70h/settimana\"",
+            "\"Vuole 100k/mese per dimostrare ai genitori che aveva ragione e renderli orgogliosi\"",
+            "\"Vuole 30k/mese per libertà finanziaria e smettere di preoccuparsi delle bollette\""
+          ],
+          "lineNumber": 767
+        }
+      ],
+      "lineNumber": 638
+    },
+    {
+      "id": "phase_7",
+      "number": "7",
+      "name": "QUALIFICAZIONE (I MAGICI 3)",
+      "description": "Identificare se hanno bisogno di aiuto ESTERNO",
+      "semanticType": "qualification",
+      "steps": [
+        {
+          "id": "step_12",
+          "number": 12,
+          "name": "QUALIFICA (I MAGICI 3)",
+          "objective": "Farli AMMETTERE che servono aiuto esterno (critico!)",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 804
+        }
+      ],
+      "checkpoints": [],
+      "lineNumber": 796
+    },
+    {
+      "id": "phase_8",
+      "number": "8",
+      "name": "SERIETÀ E AUTOREVOLEZZA",
+      "description": "Chiusura Discovery - Urgenza e Budget",
+      "semanticType": "urgency_budget",
+      "steps": [
+        {
+          "id": "step_13",
+          "number": 13,
+          "name": "COSTO DI NON AGIRE",
+          "objective": "Far riflettere sul costo di restare fermi",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 846
+        },
+        {
+          "id": "step_14",
+          "number": 14,
+          "name": "URGENZA",
+          "objective": "Qualificare timing e creare urgenza",
+          "questions": [
+            {
+              "text": "Quando vuoi iniziare?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 869
+        },
+        {
+          "id": "step_15",
+          "number": 15,
+          "name": "BUDGET E DECISION MAKER",
+          "objective": "Qualificare budget e decision maker",
+          "questions": [
+            {
+              "text": "Decidi tu o c'è qualcun altro?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 901
+        },
+        {
+          "id": "step_16",
+          "number": 16,
+          "name": "TRANSIZIONE ALLA DEMO",
+          "objective": "Chiudere la discovery e passare alla demo",
+          "questions": [
+            {
+              "text": "Vedi come questo, da solo, può cambiare le carte in tavola per te?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 940
+        },
+        {
+          "id": "step_1",
+          "number": 1,
+          "name": "UNCINO",
+          "objective": "Agganciare l'attenzione mostrando la trasformazione possibile",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 1094
+        },
+        {
+          "id": "step_2",
+          "number": 2,
+          "name": "CASI DI STUDIO",
+          "objective": "Social proof tramite risultati concreti di altri clienti",
+          "questions": [
+            {
+              "text": "[NOME_PROSPECT], quale di questi casi ti ha colpito di più?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 1131
+        },
+        {
+          "id": "step_3",
+          "number": 3,
+          "name": "STORIA E BACKGROUND",
+          "objective": "Costruire credibilità e autorità tramite la tua storia",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 1197
+        },
+        {
+          "id": "step_4",
+          "number": 4,
+          "name": "METODO: SISTEMA DOPPIO MOTORE",
+          "objective": "Spiegare il \"come funziona\" connettendolo ai pain points della discovery",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 1262
+        },
+        {
+          "id": "step_5",
+          "number": 5,
+          "name": "CHECK",
+          "objective": "Verificare comprensione prima di andare nel dettaglio strumenti",
+          "questions": [
+            {
+              "text": "Ok [NOME_PROSPECT], fermiamoci un secondo. È tutto chiaro ↗️ finora?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 1341
+        },
+        {
+          "id": "step_6",
+          "number": 6,
+          "name": "CARATTERISTICHE",
+          "objective": "Mostrare gli strumenti concreti che userà",
+          "questions": [
+            {
+              "text": "[NOME_PROSPECT], quale di questi strumenti ti entusiasma ↗️ di più?"
+            }
+          ],
+          "hasLadder": false,
+          "lineNumber": 1365
+        },
+        {
+          "id": "step_7",
+          "number": 7,
+          "name": "RIEPILOGO",
+          "objective": "Riepilogare la trasformazione completa",
+          "questions": [
+            {
+              "text": "Sinceramente [NOME_PROSPECT]... cosa ti piace di più ↗️ di questa soluzione?"
+            }
+          ],
+          "hasLadder": true,
+          "lineNumber": 1421
+        },
+        {
+          "id": "step_8",
+          "number": 8,
+          "name": "VALUE STACK",
+          "objective": "Mostrare il valore totale prima del prezzo",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 1479
+        },
+        {
+          "id": "step_9",
+          "number": 9,
+          "name": "GESTIONE DOMANDE",
+          "objective": "",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 1564
+        },
+        {
+          "id": "step_10",
+          "number": 10,
+          "name": "PRICING - L'AVE MARIA 🙏",
+          "objective": "Presentare il prezzo con massima sicurezza",
+          "questions": [],
+          "hasLadder": false,
+          "lineNumber": 1572
+        },
+        {
+          "id": "step_11",
+          "number": 11,
+          "name": "CLOSING",
+          "objective": "Chiudere con CTA assumptive",
+          "questions": [
+            {
+              "text": "Perfetto ↘️. E dimmi: se [RISOLVO QUESTO], partiamo ↘️?"
+            },
+            {
+              "text": "E cosa è cambiato nel frattempo ↘️?"
+            }
+          ],
+          "hasLadder": true,
+          "lineNumber": 1675,
+          "ladderLevels": 4
+        }
+      ],
+      "checkpoints": [
+        {
+          "id": "checkpoint_FINALE",
+          "description": "⛔ CHECKPOINT FINALE DISCOVERY ⛔",
+          "verifications": [
+            "Ha detto uno dei MAGICI 3",
+            "Ha urgenza (6-10)",
+            "Ha budget disponibile",
+            "È lui che decide",
+            "Hai TUTTE le info per la demo (fatturato, obiettivo, emozioni, tentativi)"
+          ],
+          "lineNumber": 923
+        },
+        {
+          "id": "checkpoint_1",
+          "description": "🚨 CHECKPOINT OBBLIGATORIO #1 - CASE STUDIES:",
+          "verifications": [
+            "Ha visto almeno 2-3 case studies pertinenti",
+            "Ha mostrato segni di interesse/coinvolgimento",
+            "Ha fatto domande o commentato positivamente",
+            "SE È COINVOLTO: Procedi allo Step 3"
+          ],
+          "lineNumber": 1170
+        },
+        {
+          "id": "checkpoint_2",
+          "description": "🚨 CHECKPOINT OBBLIGATORIO #2 - METODO:",
+          "verifications": [
+            "Ha capito come funziona il metodo",
+            "Vede la connessione tra metodo e suoi problemi specifici",
+            "Ha fatto domande di chiarimento",
+            "SE HA CAPITO: Procedi allo Step 5"
+          ],
+          "lineNumber": 1312
+        },
+        {
+          "id": "checkpoint_3",
+          "description": "🚨 CHECKPOINT OBBLIGATORIO #3 - STRUMENTI:",
+          "verifications": [
+            "Ha visto tutti gli strumenti principali",
+            "Ha capito il valore di ognuno",
+            "Sembra entusiasta o almeno interessato",
+            "SE È ENTUSIASTA: Procedi allo Step 7"
+          ],
+          "lineNumber": 1394
+        },
+        {
+          "id": "checkpoint_4",
+          "description": "🚨 CHECKPOINT OBBLIGATORIO #4 - FINALE PRE-PRICING:",
+          "verifications": [
+            "Ha visto i case studies e ne è rimasto colpito",
+            "Ha capito il metodo e come funziona",
+            "Ha visto il valore degli strumenti",
+            "Ha risposto SÌ alla domanda \"può fare al caso tuo\"",
+            "Visualizza sé stesso usando la soluzione",
+            "SOLO SE TUTTE LE VERIFICHE SONO OK: Procedi al Pricing"
+          ],
+          "lineNumber": 1540
+        },
+        {
+          "id": "checkpoint_FINALE",
+          "description": "🚨 CHECKPOINT FINALE - QUALIFICA DEFINITIVA",
+          "verifications": [
+            "Ha visto il valore completo nella demo",
+            "Ha capito come funziona il metodo",
+            "Hai risolto TUTTE le sue obiezioni principali",
+            "Ha visualizzato sé stesso usando la soluzione",
+            "Ha accettato il prezzo (con o senza obiezioni gestite)"
+          ],
+          "lineNumber": 2796
+        }
+      ],
+      "lineNumber": 838
+    }
+  ],
+  "metadata": {
+    "totalPhases": 7,
+    "totalSteps": 31,
+    "totalCheckpoints": 9,
+    "scriptTypes": [
+      "discovery",
+      "demo",
+      "objections"
+    ]
+  }
+}

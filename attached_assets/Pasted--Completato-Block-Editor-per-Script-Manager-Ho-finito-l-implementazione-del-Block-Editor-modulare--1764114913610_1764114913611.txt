@@ -1,0 +1,55 @@
+✅ Completato! Block Editor per Script Manager
+Ho finito l'implementazione del Block Editor modulare per gestire gli script di vendita. Ecco cosa è stato fatto:
+
+📦 Cosa è Stato Creato
+1. Interfaccia TypeScript (shared/script-blocks.ts)
+17 tipi di blocchi identificati dagli script reali
+Colori, icone e label per ogni blocco
+Struttura completa per metadata, regole, fasi, step, domande, checkpoint, ladder, obiezioni
+2. Componenti React (client/src/components/script-blocks/)
+BlockContainer: Wrapper generico con expand/collapse
+BlockPhase: Contenitore fasi
+BlockStep: Step con domande
+BlockQuestion: Domande editabili con istruzioni
+BlockEnergy: Energia & Tonalità
+BlockCheckpoint: Checkpoint con checklist
+BlockLadder: Ladder dei Perché
+BlockBiscottino: Biscottino di recupero
+BlockGlobalRule: Regole globali
+3. Parser Intelligente (shared/script-parser.ts)
+parseTextToBlocks(): Converte script testo → blocchi strutturati
+blocksToText(): Riconverte blocchi → testo formattato
+Supporta tutti i 3 tipi di script (Discovery, Demo, Obiezioni)
+4. Editor Integrato (aggiornato client-script-manager.tsx)
+Toggle Blocchi/Testo: Scegli come editare
+Modalità Blocchi: Modifica strutturata e visuale
+Modalità Testo: Editor classico per backup
+Salva automaticamente convertendo tra formati
+5. Training Map Compatibile
+Già usa effectiveScript.phases - perfettamente compatibile con la nuova struttura
+6. Guida Completa (SCRIPT_BLOCKS_GUIDE.md)
+250+ righe di documentazione pratica
+Spiegazioni di ogni blocco
+Esempi step-by-step
+FAQ e best practices
+🎯 Come Iniziare
+Per l'Utente:
+Vai a Sales Agents AI → Script Manager
+Seleziona uno script (Discovery, Demo, Obiezioni)
+Clicca Modifica
+Scegli 🧩 Blocchi (default)
+Clicca su un blocco per espandere e modificare
+Vantaggi:
+✅ Niente più errori di formattazione
+✅ Modifica strutturata e logica
+✅ Ogni componente indipendente
+✅ Fallback al testo classico sempre disponibile
+✅ Compatible con Training Map e AI Agent
+
+📖 Per Capire Meglio
+La guida completa è in SCRIPT_BLOCKS_GUIDE.md nel progetto. Contiene:
+
+Cos'è ogni blocco
+Come accedere all'editor
+Esempi pratici
+FAQ e troubleshooting

@@ -1,0 +1,1812 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  MessageSquare, 
+  Server, 
+  Key, 
+  Phone,
+  CheckCircle, 
+  XCircle, 
+  AlertCircle,
+  Loader2,
+  Save,
+  ExternalLink,
+  Plus,
+  Trash2,
+  Sparkles,
+  Eye,
+  EyeOff,
+  Clock,
+  Building2,
+  FileText,
+  User
+} from "lucide-react";
+import Navbar from "@/components/navbar";
+import Sidebar from "@/components/sidebar";
+import { getAuthHeaders } from "@/lib/auth";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+interface WhatsAppConfig {
+  twilioAccountSid: string;
+  twilioAuthToken: string;
+  twilioWhatsappNumber: string;
+  autoResponseEnabled: boolean;
+  workingHoursEnabled?: boolean;
+  workingHoursStart?: string;
+  workingHoursEnd?: string;
+  workingDays?: string[];
+  afterHoursMessage?: string;
+  businessName?: string;
+  businessDescription?: string;
+  consultantBio?: string;
+  salesScript?: string;
+  vision?: string;
+  mission?: string;
+  values?: string[];
+  usp?: string;
+  whoWeHelp?: string;
+  whoWeDontHelp?: string;
+  whatWeDo?: string;
+  howWeDoIt?: string;
+  softwareCreated?: Array<{ name: string; description: string }>;
+  booksPublished?: Array<{ title: string; year: string }>;
+  yearsExperience?: number;
+  clientsHelped?: number;
+  resultsGenerated?: string;
+  caseStudies?: Array<{ clientName: string; result: string }>;
+  servicesOffered?: Array<{ name: string; description: string; price: string }>;
+  guarantees?: string;
+  aiPersonality?: "amico_fidato" | "coach_motivazionale" | "consulente_professionale" | "mentore_paziente" | "venditore_energico" | "consigliere_empatico" | "stratega_diretto" | "educatore_socratico" | "esperto_tecnico" | "compagno_entusiasta";
+}
+
+type ConnectionStatus = "not-configured" | "active" | "error" | "saving";
+
+export default function ConsultantWhatsAppPage() {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("not-configured");
+  const [showAuthToken, setShowAuthToken] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [formData, setFormData] = useState<WhatsAppConfig>({
+    twilioAccountSid: "",
+    twilioAuthToken: "",
+    twilioWhatsappNumber: "",
+    autoResponseEnabled: true,
+    workingHoursEnabled: false,
+    workingHoursStart: "09:00",
+    workingHoursEnd: "18:00",
+    workingDays: ["monday", "tuesday", "wednesday", "thursday", "friday"],
+    afterHoursMessage: "Ciao! Ti risponderò durante i miei orari di lavoro.",
+    businessName: "",
+    businessDescription: "",
+    consultantBio: "",
+    salesScript: "",
+    vision: "",
+    mission: "",
+    values: [],
+    usp: "",
+    whoWeHelp: "",
+    whoWeDontHelp: "",
+    whatWeDo: "",
+    howWeDoIt: "",
+    softwareCreated: [],
+    booksPublished: [],
+    yearsExperience: undefined,
+    clientsHelped: undefined,
+    resultsGenerated: "",
+    caseStudies: [],
+    servicesOffered: [],
+    guarantees: "",
+    aiPersonality: "amico_fidato",
+  });
+
+  const [newApiKey, setNewApiKey] = useState("");
+
+  // Load existing WhatsApp config
+  const { data: existingConfig, isLoading } = useQuery({
+    queryKey: ["/api/whatsapp/config"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/config", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        if (response.status === 404) return null;
+        throw new Error("Failed to fetch WhatsApp config");
+      }
+      const data = await response.json();
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (existingConfig && existingConfig.configured) {
+      setFormData({
+        twilioAccountSid: "",
+        twilioAuthToken: "",
+        twilioWhatsappNumber: existingConfig.config.twilioWhatsappNumber || "",
+        autoResponseEnabled: existingConfig.config.autoResponseEnabled ?? true,
+        workingHoursEnabled: existingConfig.config.workingHoursEnabled ?? false,
+        workingHoursStart: existingConfig.config.workingHoursStart || "09:00",
+        workingHoursEnd: existingConfig.config.workingHoursEnd || "18:00",
+        workingDays: existingConfig.config.workingDays || ["monday", "tuesday", "wednesday", "thursday", "friday"],
+        afterHoursMessage: existingConfig.config.afterHoursMessage || "Ciao! Ti risponderò durante i miei orari di lavoro.",
+        businessName: existingConfig.config.businessName || "",
+        businessDescription: existingConfig.config.businessDescription || "",
+        consultantBio: existingConfig.config.consultantBio || "",
+        salesScript: existingConfig.config.salesScript || "",
+        vision: existingConfig.config.vision || "",
+        mission: existingConfig.config.mission || "",
+        values: existingConfig.config.values || [],
+        usp: existingConfig.config.usp || "",
+        whoWeHelp: existingConfig.config.whoWeHelp || "",
+        whoWeDontHelp: existingConfig.config.whoWeDontHelp || "",
+        whatWeDo: existingConfig.config.whatWeDo || "",
+        howWeDoIt: existingConfig.config.howWeDoIt || "",
+        softwareCreated: existingConfig.config.softwareCreated || [],
+        booksPublished: existingConfig.config.booksPublished || [],
+        yearsExperience: existingConfig.config.yearsExperience || undefined,
+        clientsHelped: existingConfig.config.clientsHelped || undefined,
+        resultsGenerated: existingConfig.config.resultsGenerated || "",
+        caseStudies: existingConfig.config.caseStudies || [],
+        servicesOffered: existingConfig.config.servicesOffered || [],
+        guarantees: existingConfig.config.guarantees || "",
+        aiPersonality: existingConfig.config.aiPersonality || "amico_fidato",
+      });
+      setConnectionStatus("active");
+    }
+  }, [existingConfig]);
+
+  // Save WhatsApp config mutation
+  const saveMutation = useMutation({
+    mutationFn: async (config: WhatsAppConfig) => {
+      const response = await fetch("/api/whatsapp/config", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(config),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to save WhatsApp configuration");
+      }
+
+      return response.json();
+    },
+    onMutate: () => {
+      setConnectionStatus("saving");
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/config"] });
+      setConnectionStatus("active");
+      toast({
+        title: "✅ Configurazione salvata",
+        description: "Le credenziali Twilio WhatsApp sono state salvate correttamente.",
+      });
+    },
+    onError: (error: Error) => {
+      setConnectionStatus("error");
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSave = () => {
+    // Only validate Twilio credentials if we're creating a new config
+    // or if the user is explicitly updating them
+    const isNewConfig = !existingConfig || !existingConfig.configured;
+    const isUpdatingTwilioCredentials = formData.twilioAccountSid || formData.twilioAuthToken;
+
+    if (isNewConfig && (!formData.twilioAccountSid || !formData.twilioAuthToken || !formData.twilioWhatsappNumber)) {
+      toast({
+        title: "⚠️ Campi mancanti",
+        description: "Per la prima configurazione, compila tutti i campi Twilio obbligatori.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prepare data to send - preserve existing Twilio credentials if not updating
+    const dataToSend = {
+      // Twilio credentials
+      twilioAccountSid: formData.twilioAccountSid || existingConfig?.config?.twilioAccountSid || "",
+      twilioAuthToken: formData.twilioAuthToken || "KEEP_EXISTING", // Backend will preserve existing if this value
+      twilioWhatsappNumber: formData.twilioWhatsappNumber || existingConfig?.config?.twilioWhatsappNumber || "",
+
+      // Basic settings
+      autoResponseEnabled: formData.autoResponseEnabled,
+
+      // Working hours
+      workingHoursEnabled: formData.workingHoursEnabled,
+      workingHoursStart: formData.workingHoursStart,
+      workingHoursEnd: formData.workingHoursEnd,
+      workingDays: formData.workingDays,
+      afterHoursMessage: formData.afterHoursMessage,
+
+      // Business Profile
+      businessName: formData.businessName,
+      businessDescription: formData.businessDescription,
+      consultantBio: formData.consultantBio,
+
+      // Chi Sono & Autorità
+      vision: formData.vision,
+      mission: formData.mission,
+      values: formData.values,
+      usp: formData.usp,
+      softwareCreated: formData.softwareCreated,
+      booksPublished: formData.booksPublished,
+
+      // Chi Aiutiamo & Metodo
+      whoWeHelp: formData.whoWeHelp,
+      whoWeDontHelp: formData.whoWeDontHelp,
+      whatWeDo: formData.whatWeDo,
+      howWeDoIt: formData.howWeDoIt,
+
+      // Proof & Servizi
+      yearsExperience: formData.yearsExperience,
+      clientsHelped: formData.clientsHelped,
+      resultsGenerated: formData.resultsGenerated,
+      caseStudies: formData.caseStudies,
+      servicesOffered: formData.servicesOffered,
+      guarantees: formData.guarantees,
+
+      // AI Personality
+      aiPersonality: formData.aiPersonality || "amico_fidato",
+    };
+
+    saveMutation.mutate(dataToSend);
+  };
+
+  // Load API Keys
+  const { data: apiKeysData, isLoading: keysLoading } = useQuery({
+    queryKey: ["/api/whatsapp/api-keys"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/api-keys", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to load API keys");
+      return response.json();
+    },
+  });
+
+  const apiKeys = apiKeysData?.keys || [];
+  const keysCount = apiKeysData?.count || 0;
+  const maxKeys = apiKeysData?.maxKeys || 50;
+
+  // Add API Key mutation
+  const addKeyMutation = useMutation({
+    mutationFn: async (apiKey: string) => {
+      const response = await fetch("/api/whatsapp/api-keys", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ apiKey }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/api-keys"] });
+      setNewApiKey("");
+      toast({
+        title: "✅ API Key aggiunta",
+        description: "La chiave è stata aggiunta con successo.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete API Key mutation
+  const deleteKeyMutation = useMutation({
+    mutationFn: async (keyId: string) => {
+      const response = await fetch(`/api/whatsapp/api-keys/${keyId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to delete key");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/api-keys"] });
+      toast({
+        title: "✅ API Key rimossa",
+        description: "La chiave è stata rimossa con successo.",
+      });
+    },
+  });
+
+  // Toggle API Key mutation
+  const toggleKeyMutation = useMutation({
+    mutationFn: async (keyId: string) => {
+      const response = await fetch(`/api/whatsapp/api-keys/${keyId}/toggle`, {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to toggle key");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/api-keys"] });
+    },
+  });
+
+  const handleAddKey = () => {
+    if (!newApiKey.trim() || newApiKey.trim().length < 20) {
+      toast({
+        title: "⚠️ API Key non valida",
+        description: "Inserisci una API key Gemini valida (minimo 20 caratteri).",
+        variant: "destructive",
+      });
+      return;
+    }
+    addKeyMutation.mutate(newApiKey.trim());
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar onMenuClick={() => setSidebarOpen(true)} />
+      <div className="flex">
+        <Sidebar
+          role="consultant"
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+        <main className="flex-1 p-8">
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                  <MessageSquare className="h-8 w-8 text-green-600" />
+                  Configurazione WhatsApp Business
+                </h1>
+                <p className="mt-2 text-gray-600 dark:text-gray-400">
+                  Configura Twilio per ricevere e inviare messaggi WhatsApp ai tuoi clienti
+                </p>
+              </div>
+
+              {/* Status Badge */}
+              {connectionStatus === "active" && (
+                <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 px-4 py-2">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Configurato
+                </Badge>
+              )}
+              {connectionStatus === "not-configured" && (
+                <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 px-4 py-2">
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Non Configurato
+                </Badge>
+              )}
+              {connectionStatus === "error" && (
+                <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 px-4 py-2">
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Errore
+                </Badge>
+              )}
+            </div>
+
+            {/* Info Alert */}
+            <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-900 dark:text-blue-200">
+                <strong>Come ottenere le credenziali Twilio:</strong>
+                <ol className="list-decimal ml-5 mt-2 space-y-1">
+                  <li>Registrati su <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener noreferrer" className="underline font-medium">Twilio.com</a></li>
+                  <li>Vai alla <a href="https://console.twilio.com/" target="_blank" rel="noopener noreferrer" className="underline font-medium">Console Twilio</a></li>
+                  <li>Copia <strong>Account SID</strong> e <strong>Auth Token</strong></li>
+                  <li>Attiva WhatsApp Sandbox o collega un numero Business verificato</li>
+                  <li>Copia il numero WhatsApp (formato: +14155238886)</li>
+                </ol>
+              </AlertDescription>
+            </Alert>
+
+            {/* Main Content - Two Column Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* LEFT COLUMN */}
+            <div className="space-y-6">
+            {/* Configuration Form */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Server className="h-5 w-5 text-purple-600" />
+                  Credenziali Twilio
+                </CardTitle>
+                <CardDescription>
+                  Inserisci le credenziali del tuo account Twilio per abilitare WhatsApp Business
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Account SID */}
+                <div className="space-y-2">
+                  <Label htmlFor="accountSid" className="flex items-center gap-2">
+                    <Key className="h-4 w-4 text-gray-500" />
+                    Account SID
+                  </Label>
+                  <Input
+                    id="accountSid"
+                    type="text"
+                    placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                    value={formData.twilioAccountSid}
+                    onChange={(e) => setFormData({ ...formData, twilioAccountSid: e.target.value })}
+                    className="font-mono"
+                  />
+                  <p className="text-sm text-gray-500">
+                    Identificatore univoco del tuo account Twilio (inizia con "AC")
+                  </p>
+                </div>
+
+                {/* Auth Token */}
+                <div className="space-y-2">
+                  <Label htmlFor="authToken" className="flex items-center gap-2">
+                    <Key className="h-4 w-4 text-gray-500" />
+                    Auth Token
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="authToken"
+                      type={showAuthToken ? "text" : "password"}
+                      placeholder="••••••••••••••••••••••••••••••••"
+                      value={formData.twilioAuthToken}
+                      onChange={(e) => setFormData({ ...formData, twilioAuthToken: e.target.value })}
+                      className="font-mono pr-20"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1"
+                      onClick={() => setShowAuthToken(!showAuthToken)}
+                    >
+                      {showAuthToken ? "Nascondi" : "Mostra"}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    Token di autenticazione segreto (mantienilo privato!)
+                  </p>
+                </div>
+
+                {/* WhatsApp Number */}
+                <div className="space-y-2">
+                  <Label htmlFor="whatsappNumber" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-500" />
+                    Numero WhatsApp
+                  </Label>
+                  <Input
+                    id="whatsappNumber"
+                    type="text"
+                    placeholder="+14155238886"
+                    value={formData.twilioWhatsappNumber}
+                    onChange={(e) => setFormData({ ...formData, twilioWhatsappNumber: e.target.value })}
+                    className="font-mono"
+                  />
+                  <p className="text-sm text-gray-500">
+                    Il tuo numero WhatsApp Business Twilio (formato internazionale con +)
+                  </p>
+                </div>
+
+                {/* Auto Response Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="autoResponse" className="text-base font-semibold">
+                      Risposta Automatica AI
+                    </Label>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      L'AI risponderà automaticamente ai messaggi in arrivo
+                    </p>
+                  </div>
+                  <Switch
+                    id="autoResponse"
+                    checked={formData.autoResponseEnabled}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, autoResponseEnabled: checked })
+                    }
+                  />
+                </div>
+
+                {/* Save Button */}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={handleSave}
+                    disabled={saveMutation.isPending || isLoading}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
+                  >
+                    {saveMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Salvataggio...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Salva Configurazione
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open("https://console.twilio.com/", "_blank")}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Console Twilio
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Orari di Lavoro Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                  Orari di Lavoro
+                </CardTitle>
+                <CardDescription>
+                  Configura gli orari in cui l'AI risponderà automaticamente. Fuori orario verrà inviato un messaggio personalizzato.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Enable Working Hours Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="workingHoursEnabled" className="text-base font-semibold">
+                      Abilita Orari di Lavoro
+                    </Label>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Limita le risposte automatiche agli orari configurati
+                    </p>
+                  </div>
+                  <Switch
+                    id="workingHoursEnabled"
+                    checked={formData.workingHoursEnabled || false}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, workingHoursEnabled: checked })
+                    }
+                  />
+                </div>
+
+                {formData.workingHoursEnabled && (
+                  <>
+                    {/* Time Range */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="workingHoursStart">Ora Inizio</Label>
+                        <Input
+                          id="workingHoursStart"
+                          type="time"
+                          value={formData.workingHoursStart || "09:00"}
+                          onChange={(e) =>
+                            setFormData({ ...formData, workingHoursStart: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="workingHoursEnd">Ora Fine</Label>
+                        <Input
+                          id="workingHoursEnd"
+                          type="time"
+                          value={formData.workingHoursEnd || "18:00"}
+                          onChange={(e) =>
+                            setFormData({ ...formData, workingHoursEnd: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    {/* Days of Week */}
+                    <div className="space-y-3">
+                      <Label>Giorni Lavorativi</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { value: "monday", label: "Lunedì" },
+                          { value: "tuesday", label: "Martedì" },
+                          { value: "wednesday", label: "Mercoledì" },
+                          { value: "thursday", label: "Giovedì" },
+                          { value: "friday", label: "Venerdì" },
+                          { value: "saturday", label: "Sabato" },
+                          { value: "sunday", label: "Domenica" },
+                        ].map((day) => (
+                          <div key={day.value} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={day.value}
+                              checked={formData.workingDays?.includes(day.value) || false}
+                              onCheckedChange={(checked) => {
+                                const currentDays = formData.workingDays || [];
+                                const newDays = checked
+                                  ? [...currentDays, day.value]
+                                  : currentDays.filter((d) => d !== day.value);
+                                setFormData({ ...formData, workingDays: newDays });
+                              }}
+                            />
+                            <Label htmlFor={day.value} className="cursor-pointer font-normal">
+                              {day.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* After Hours Message */}
+                    <div className="space-y-2">
+                      <Label htmlFor="afterHoursMessage">Messaggio Fuori Orario</Label>
+                      <Textarea
+                        id="afterHoursMessage"
+                        placeholder="Ciao! Ti risponderò durante i miei orari di lavoro."
+                        value={formData.afterHoursMessage || ""}
+                        onChange={(e) =>
+                          setFormData({ ...formData, afterHoursMessage: e.target.value })
+                        }
+                        rows={3}
+                      />
+                      <p className="text-sm text-gray-500">
+                        Questo messaggio verrà inviato quando ricevi messaggi fuori dagli orari di lavoro
+                      </p>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Business Profile Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-orange-600" />
+                  Profilo Business
+                </CardTitle>
+                <CardDescription>
+                  Informazioni base sul tuo business e come l'AI si presenta ai lead
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Business Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="businessName" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-gray-500" />
+                    Nome Business
+                  </Label>
+                  <Input
+                    id="businessName"
+                    type="text"
+                    placeholder="Es: Orbitale, Studio Rossi, Finanza Facile..."
+                    value={formData.businessName || ""}
+                    onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Il nome con cui l'AI si presenterà ai clienti
+                  </p>
+                </div>
+
+                {/* Business Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="businessDescription" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-gray-500" />
+                    Descrizione Servizi
+                  </Label>
+                  <Textarea
+                    id="businessDescription"
+                    placeholder="Es: consulenza finanziaria personalizzata, pianificazione investimenti, gestione patrimonio..."
+                    value={formData.businessDescription || ""}
+                    onChange={(e) => setFormData({ ...formData, businessDescription: e.target.value })}
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Descrivi brevemente i tuoi servizi (l'AI userà questo per spiegare cosa offri)
+                  </p>
+                </div>
+
+                {/* Consultant Bio */}
+                <div className="space-y-2">
+                  <Label htmlFor="consultantBio" className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-gray-500" />
+                    Bio Consulente
+                  </Label>
+                  <Textarea
+                    id="consultantBio"
+                    placeholder="Es: 15 anni di esperienza, certificato EFA, specializzato in investimenti ESG..."
+                    value={formData.consultantBio || ""}
+                    onChange={(e) => setFormData({ ...formData, consultantBio: e.target.value })}
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">
+                    La tua bio professionale (opzionale, aiuta l'AI a presentarti meglio)
+                  </p>
+                </div>
+
+                {/* AI Personality */}
+                <div className="space-y-2">
+                  <Label htmlFor="aiPersonality" className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    Personalità AI
+                  </Label>
+                  <select
+                    id="aiPersonality"
+                    value={formData.aiPersonality || "amico_fidato"}
+                    onChange={(e) => setFormData({ ...formData, aiPersonality: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-800 dark:border-gray-700"
+                  >
+                    <option value="amico_fidato">🤝 Amico Fidato (GPT-4o Style) - Caldo, empatico, conversazionale</option>
+                    <option value="coach_motivazionale">💪 Coach Motivazionale - Energico, incoraggiante, orientato all'azione</option>
+                    <option value="consulente_professionale">👔 Consulente Professionale - Formale, esperto, autorevole</option>
+                    <option value="mentore_paziente">🧘 Mentore Paziente - Calmo, educativo, paziente</option>
+                    <option value="venditore_energico">🔥 Venditore Energico - Dinamico, persuasivo, entusiasta</option>
+                    <option value="consigliere_empatico">❤️ Consigliere Empatico - Comprensivo, supportivo, non giudicante</option>
+                    <option value="stratega_diretto">🎯 Stratega Diretto - Conciso, pratico, orientato ai risultati</option>
+                    <option value="educatore_socratico">🤔 Educatore Socratico - Curioso, riflessivo, stimolante</option>
+                    <option value="esperto_tecnico">📊 Esperto Tecnico - Dettagliato, analitico, basato su dati</option>
+                    <option value="compagno_entusiasta">🎉 Compagno Entusiasta - Giocoso, leggero, positivo</option>
+                  </select>
+                  <p className="text-sm text-gray-500">
+                    Scegli lo stile di comunicazione dell'AI. Default: "Amico Fidato" (stile GPT-4o naturale e conversazionale)
+                  </p>
+                </div>
+
+                <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
+                  <Sparkles className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-900 dark:text-orange-200">
+                    <strong>Metodo Turbo integrato!</strong> L'AI è già configurata con il sistema di vendita Metodo Turbo per qualificare lead e fissare appuntamenti in modo aggressivo. Usa "Come Lo Facciamo" nella sezione sotto per personalizzare ulteriormente l'approccio.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+            </div>
+
+            {/* RIGHT COLUMN */}
+            <div className="space-y-6">
+            {/* Business Profile Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-orange-600" />
+                  Profilo Business
+                </CardTitle>
+                <CardDescription>
+                  Informazioni base sul tuo business e come l'AI si presenta ai lead
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Business Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="businessName" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-gray-500" />
+                    Nome Business
+                  </Label>
+                  <Input
+                    id="businessName"
+                    type="text"
+                    placeholder="Es: Orbitale, Studio Rossi, Finanza Facile..."
+                    value={formData.businessName || ""}
+                    onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Il nome con cui l'AI si presenterà ai clienti
+                  </p>
+                </div>
+
+                {/* Business Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="businessDescription" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-gray-500" />
+                    Descrizione Servizi
+                  </Label>
+                  <Textarea
+                    id="businessDescription"
+                    placeholder="Es: consulenza finanziaria personalizzata, pianificazione investimenti, gestione patrimonio..."
+                    value={formData.businessDescription || ""}
+                    onChange={(e) => setFormData({ ...formData, businessDescription: e.target.value })}
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Descrivi brevemente i tuoi servizi (l'AI userà questo per spiegare cosa offri)
+                  </p>
+                </div>
+
+                {/* Consultant Bio */}
+                <div className="space-y-2">
+                  <Label htmlFor="consultantBio" className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-gray-500" />
+                    Bio Consulente
+                  </Label>
+                  <Textarea
+                    id="consultantBio"
+                    placeholder="Es: 15 anni di esperienza, certificato EFA, specializzato in investimenti ESG..."
+                    value={formData.consultantBio || ""}
+                    onChange={(e) => setFormData({ ...formData, consultantBio: e.target.value })}
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">
+                    La tua bio professionale (opzionale, aiuta l'AI a presentarti meglio)
+                  </p>
+                </div>
+
+                {/* AI Personality */}
+                <div className="space-y-2">
+                  <Label htmlFor="aiPersonality" className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    Personalità AI
+                  </Label>
+                  <select
+                    id="aiPersonality"
+                    value={formData.aiPersonality || "amico_fidato"}
+                    onChange={(e) => setFormData({ ...formData, aiPersonality: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 dark:bg-gray-800 dark:border-gray-700"
+                  >
+                    <option value="amico_fidato">🤝 Amico Fidato (GPT-4o Style) - Caldo, empatico, conversazionale</option>
+                    <option value="coach_motivazionale">💪 Coach Motivazionale - Energico, incoraggiante, orientato all'azione</option>
+                    <option value="consulente_professionale">👔 Consulente Professionale - Formale, esperto, autorevole</option>
+                    <option value="mentore_paziente">🧘 Mentore Paziente - Calmo, educativo, paziente</option>
+                    <option value="venditore_energico">🔥 Venditore Energico - Dinamico, persuasivo, entusiasta</option>
+                    <option value="consigliere_empatico">❤️ Consigliere Empatico - Comprensivo, supportivo, non giudicante</option>
+                    <option value="stratega_diretto">🎯 Stratega Diretto - Conciso, pratico, orientato ai risultati</option>
+                    <option value="educatore_socratico">🤔 Educatore Socratico - Curioso, riflessivo, stimolante</option>
+                    <option value="esperto_tecnico">📊 Esperto Tecnico - Dettagliato, analitico, basato su dati</option>
+                    <option value="compagno_entusiasta">🎉 Compagno Entusiasta - Giocoso, leggero, positivo</option>
+                  </select>
+                  <p className="text-sm text-gray-500">
+                    Scegli lo stile di comunicazione dell'AI. Default: "Amico Fidato" (stile GPT-4o naturale e conversazionale)
+                  </p>
+                </div>
+
+                <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
+                  <Sparkles className="h-4 w-4 text-orange-600" />
+                  <AlertDescription className="text-orange-900 dark:text-orange-200">
+                    <strong>Metodo Turbo integrato!</strong> L'AI è già configurata con il sistema di vendita Metodo Turbo per qualificare lead e fissare appuntamenti in modo aggressivo. Usa "Come Lo Facciamo" nella sezione sotto per personalizzare ulteriormente l'approccio.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
+            {/* Chi Sono & Autorità Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-purple-600" />
+                  Chi Sono & Autorità
+                </CardTitle>
+                <CardDescription>
+                  Definisci vision, mission, valori e USP. L'AI userà queste info per posizionarti come esperto autorevole.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Vision */}
+                <div className="space-y-2">
+                  <Label htmlFor="vision">Vision</Label>
+                  <Textarea
+                    id="vision"
+                    placeholder="Es: Rendere la consulenza finanziaria accessibile a tutti gli imprenditori"
+                    value={formData.vision || ""}
+                    onChange={(e) => setFormData({ ...formData, vision: e.target.value })}
+                    rows={2}
+                  />
+                  <p className="text-sm text-gray-500">La tua visione a lungo termine</p>
+                </div>
+
+                {/* Mission */}
+                <div className="space-y-2">
+                  <Label htmlFor="mission">Mission</Label>
+                  <Textarea
+                    id="mission"
+                    placeholder="Es: Aiutare imprenditori a ottimizzare le finanze aziendali attraverso consulenza personalizzata"
+                    value={formData.mission || ""}
+                    onChange={(e) => setFormData({ ...formData, mission: e.target.value })}
+                    rows={2}
+                  />
+                  <p className="text-sm text-gray-500">La tua missione pratica</p>
+                </div>
+
+                {/* Values */}
+                <div className="space-y-2">
+                  <Label htmlFor="values">Valori Fondamentali (separati da virgola)</Label>
+                  <Input
+                    id="values"
+                    type="text"
+                    placeholder="Es: Trasparenza, Onestà, Eccellenza"
+                    value={formData.values?.join(", ") || ""}
+                    onChange={(e) => setFormData({ ...formData, values: e.target.value.split(",").map(v => v.trim()).filter(v => v) })}
+                  />
+                  <p className="text-sm text-gray-500">I tuoi valori core</p>
+                </div>
+
+                {/* USP */}
+                <div className="space-y-2">
+                  <Label htmlFor="usp">Unique Selling Proposition (USP)</Label>
+                  <Textarea
+                    id="usp"
+                    placeholder="Es: L'unico consulente finanziario specializzato in startup tech con 20 anni di esperienza"
+                    value={formData.usp || ""}
+                    onChange={(e) => setFormData({ ...formData, usp: e.target.value })}
+                    rows={2}
+                  />
+                  <p className="text-sm text-gray-500">Cosa ti rende unico e diverso dai competitor</p>
+                </div>
+
+                {/* Software Created */}
+                <div className="space-y-3">
+                  <Label>Software Creati</Label>
+                  {formData.softwareCreated && formData.softwareCreated.length > 0 ? (
+                    <div className="space-y-2">
+                      {formData.softwareCreated.map((software, index) => (
+                        <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              placeholder="Nome software"
+                              value={software.name}
+                              onChange={(e) => {
+                                const updated = [...(formData.softwareCreated || [])];
+                                updated[index].name = e.target.value;
+                                setFormData({ ...formData, softwareCreated: updated });
+                              }}
+                            />
+                            <Input
+                              placeholder="Descrizione"
+                              value={software.description}
+                              onChange={(e) => {
+                                const updated = [...(formData.softwareCreated || [])];
+                                updated[index].description = e.target.value;
+                                setFormData({ ...formData, softwareCreated: updated });
+                              }}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updated = formData.softwareCreated?.filter((_, i) => i !== index) || [];
+                              setFormData({ ...formData, softwareCreated: updated });
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const updated = [...(formData.softwareCreated || []), { name: "", description: "" }];
+                      setFormData({ ...formData, softwareCreated: updated });
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Aggiungi Software
+                  </Button>
+                  <p className="text-sm text-gray-500">Software che hai creato (aumenta autorità)</p>
+                </div>
+
+                {/* Books Published */}
+                <div className="space-y-3">
+                  <Label>Libri Pubblicati</Label>
+                  {formData.booksPublished && formData.booksPublished.length > 0 ? (
+                    <div className="space-y-2">
+                      {formData.booksPublished.map((book, index) => (
+                        <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <Input
+                              placeholder="Titolo libro"
+                              value={book.title}
+                              onChange={(e) => {
+                                const updated = [...(formData.booksPublished || [])];
+                                updated[index].title = e.target.value;
+                                setFormData({ ...formData, booksPublished: updated });
+                              }}
+                            />
+                            <Input
+                              placeholder="Anno (es: 2023)"
+                              value={book.year}
+                              onChange={(e) => {
+                                const updated = [...(formData.booksPublished || [])];
+                                updated[index].year = e.target.value;
+                                setFormData({ ...formData, booksPublished: updated });
+                              }}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updated = formData.booksPublished?.filter((_, i) => i !== index) || [];
+                              setFormData({ ...formData, booksPublished: updated });
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const updated = [...(formData.booksPublished || []), { title: "", year: "" }];
+                      setFormData({ ...formData, booksPublished: updated });
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Aggiungi Libro
+                  </Button>
+                  <p className="text-sm text-gray-500">Libri che hai pubblicato (aumenta autorità)</p>
+                </div>
+
+                <Alert className="border-purple-200 bg-purple-50 dark:bg-purple-950/20 dark:border-purple-800">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <AlertDescription className="text-purple-900 dark:text-purple-200">
+                    <strong>Perché è importante:</strong> L'AI userà questi elementi di autorità per posizionarti come esperto riconosciuto, aumentando la fiducia dei lead.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
+            {/* Chi Aiutiamo & Metodo Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  Chi Aiutiamo & Metodo
+                </CardTitle>
+                <CardDescription>
+                  Definisci chi è il tuo cliente ideale e chi NON aiuti. L'AI userà questo per qualificare/disqualificare automaticamente i lead.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Who We Help */}
+                <div className="space-y-2">
+                  <Label htmlFor="whoWeHelp" className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Chi Aiutiamo
+                  </Label>
+                  <Textarea
+                    id="whoWeHelp"
+                    placeholder="Es: Imprenditori con fatturato 100k-1M€, professionisti che vogliono ottimizzare tasse, startup in fase di crescita"
+                    value={formData.whoWeHelp || ""}
+                    onChange={(e) => setFormData({ ...formData, whoWeHelp: e.target.value })}
+                    rows={3}
+                  />
+                  <p className="text-sm text-gray-500">Il tuo cliente ideale (profilo, obiettivi, situazione)</p>
+                </div>
+
+                {/* Who We DON'T Help */}
+                <div className="space-y-2">
+                  <Label htmlFor="whoWeDontHelp" className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-red-500" />
+                    Chi NON Aiutiamo (Disqualifica Automatica)
+                  </Label>
+                  <Textarea
+                    id="whoWeDontHelp"
+                    placeholder="Es: Persone in cerca di rendimenti rapidi senza rischio, chi non ha budget minimo 5k€, chi vuole solo informazioni gratis"
+                    value={formData.whoWeDontHelp || ""}
+                    onChange={(e) => setFormData({ ...formData, whoWeDontHelp: e.target.value })}
+                    rows={3}
+                    className="border-red-300 dark:border-red-700"
+                  />
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    ⚠️ IMPORTANTE: L'AI disqualificherà automaticamente i lead che corrispondono a questo profilo
+                  </p>
+                </div>
+
+                {/* What We Do */}
+                <div className="space-y-2">
+                  <Label htmlFor="whatWeDo">Cosa Facciamo</Label>
+                  <Textarea
+                    id="whatWeDo"
+                    placeholder="Es: Consulenza finanziaria personalizzata, pianificazione fiscale, gestione patrimonio"
+                    value={formData.whatWeDo || ""}
+                    onChange={(e) => setFormData({ ...formData, whatWeDo: e.target.value })}
+                    rows={2}
+                  />
+                  <p className="text-sm text-gray-500">I tuoi servizi principali</p>
+                </div>
+
+                {/* How We Do It */}
+                <div className="space-y-2">
+                  <Label htmlFor="howWeDoIt">Come Lo Facciamo</Label>
+                  <Textarea
+                    id="howWeDoIt"
+                    placeholder="Es: Metodo Turbo - qualifica veloce, proposta diretta, focus su appuntamento. Chiamata strategica 1:1 per capire situazione e obiettivi."
+                    value={formData.howWeDoIt || ""}
+                    onChange={(e) => setFormData({ ...formData, howWeDoIt: e.target.value })}
+                    rows={2}
+                  />
+                  <p className="text-sm text-gray-500">Il tuo metodo/approccio unico</p>
+                </div>
+
+                <Alert className="border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-900 dark:text-red-200">
+                    <strong>Disqualifica Automatica:</strong> Se un lead corrisponde a "Chi NON Aiutiamo", l'AI lo disqualificherà educatamente e chiuderà la conversazione. Questo ti fa risparmiare tempo evitando lead non adatti.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
+            {/* Proof & Servizi Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Badge className="h-5 w-5 text-blue-600" />
+                  Proof & Servizi
+                </CardTitle>
+                <CardDescription>
+                  Mostra risultati concreti, case study e servizi. Questi elementi di credibilità rafforzano la fiducia dei lead.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Years Experience */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="yearsExperience">Anni di Esperienza</Label>
+                    <Input
+                      id="yearsExperience"
+                      type="number"
+                      placeholder="15"
+                      value={formData.yearsExperience || ""}
+                      onChange={(e) => setFormData({ ...formData, yearsExperience: parseInt(e.target.value) || undefined })}
+                    />
+                    <p className="text-sm text-gray-500">Anni nel settore</p>
+                  </div>
+
+                  {/* Clients Helped */}
+                  <div className="space-y-2">
+                    <Label htmlFor="clientsHelped">Clienti Aiutati</Label>
+                    <Input
+                      id="clientsHelped"
+                      type="number"
+                      placeholder="500"
+                      value={formData.clientsHelped || ""}
+                      onChange={(e) => setFormData({ ...formData, clientsHelped: parseInt(e.target.value) || undefined })}
+                    />
+                    <p className="text-sm text-gray-500">Numero clienti</p>
+                  </div>
+                </div>
+
+                {/* Results Generated */}
+                <div className="space-y-2">
+                  <Label htmlFor="resultsGenerated">Risultati Generati</Label>
+                  <Textarea
+                    id="resultsGenerated"
+                    placeholder="Es: Aiutato clienti a risparmiare 10M€ in tasse, 50+ aziende scalate da 100k a 1M€ fatturato"
+                    value={formData.resultsGenerated || ""}
+                    onChange={(e) => setFormData({ ...formData, resultsGenerated: e.target.value })}
+                    rows={2}
+                  />
+                  <p className="text-sm text-gray-500">I risultati concreti che hai generato</p>
+                </div>
+
+                {/* Case Studies */}
+                <div className="space-y-3">
+                  <Label>Case Study</Label>
+                  {formData.caseStudies && formData.caseStudies.length > 0 ? (
+                    <div className="space-y-2">
+                      {formData.caseStudies.map((caseStudy, index) => (
+                        <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              placeholder="Nome cliente / azienda"
+                              value={caseStudy.clientName}
+                              onChange={(e) => {
+                                const updated = [...(formData.caseStudies || [])];
+                                updated[index].clientName = e.target.value;
+                                setFormData({ ...formData, caseStudies: updated });
+                              }}
+                            />
+                            <Textarea
+                              placeholder="Risultato ottenuto (es: Fatturato da 200k a 1.2M€ in 12 mesi)"
+                              value={caseStudy.result}
+                              onChange={(e) => {
+                                const updated = [...(formData.caseStudies || [])];
+                                updated[index].result = e.target.value;
+                                setFormData({ ...formData, caseStudies: updated });
+                              }}
+                              rows={2}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updated = formData.caseStudies?.filter((_, i) => i !== index) || [];
+                              setFormData({ ...formData, caseStudies: updated });
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const updated = [...(formData.caseStudies || []), { clientName: "", result: "" }];
+                      setFormData({ ...formData, caseStudies: updated });
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Aggiungi Case Study
+                  </Button>
+                  <p className="text-sm text-gray-500">Storie di successo dei tuoi clienti (proof sociale potente)</p>
+                </div>
+
+                {/* Services Offered */}
+                <div className="space-y-3">
+                  <Label>Servizi Offerti</Label>
+                  {formData.servicesOffered && formData.servicesOffered.length > 0 ? (
+                    <div className="space-y-2">
+                      {formData.servicesOffered.map((service, index) => (
+                        <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              placeholder="Nome servizio"
+                              value={service.name}
+                              onChange={(e) => {
+                                const updated = [...(formData.servicesOffered || [])];
+                                updated[index].name = e.target.value;
+                                setFormData({ ...formData, servicesOffered: updated });
+                              }}
+                            />
+                            <Input
+                              placeholder="Descrizione"
+                              value={service.description}
+                              onChange={(e) => {
+                                const updated = [...(formData.servicesOffered || [])];
+                                updated[index].description = e.target.value;
+                                setFormData({ ...formData, servicesOffered: updated });
+                              }}
+                            />
+                            <Input
+                              placeholder="Prezzo (es: 500€, 1000€/mese)"
+                              value={service.price}
+                              onChange={(e) => {
+                                const updated = [...(formData.servicesOffered || [])];
+                                updated[index].price = e.target.value;
+                                setFormData({ ...formData, servicesOffered: updated });
+                              }}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updated = formData.servicesOffered?.filter((_, i) => i !== index) || [];
+                              setFormData({ ...formData, servicesOffered: updated });
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const updated = [...(formData.servicesOffered || []), { name: "", description: "", price: "" }];
+                      setFormData({ ...formData, servicesOffered: updated });
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Aggiungi Servizio
+                  </Button>
+                  <p className="text-sm text-gray-500">I servizi che offri con prezzi</p>
+                </div>
+
+                {/* Guarantees */}
+                <div className="space-y-2">
+                  <Label htmlFor="guarantees">Garanzie</Label>
+                  <Textarea
+                    id="guarantees"
+                    placeholder="Es: Garanzia soddisfatti o rimborsati entro 30 giorni. Se non vedi risultati, ti rimborsiamo 100%."
+                    value={formData.guarantees || ""}
+                    onChange={(e) => setFormData({ ...formData, guarantees: e.target.value })}
+                    rows={2}
+                  />
+                  <p className="text-sm text-gray-500">Le garanzie che offri (riducono il rischio percepito)</p>
+                </div>
+
+                <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-900 dark:text-blue-200">
+                    <strong>Social Proof:</strong> L'AI userà questi elementi di credibilità per aumentare la conversione: "Abbiamo aiutato 500+ clienti come te" è molto più convincente di semplici informazioni.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
+            {/* API Keys Management Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-purple-600" />
+                  Gemini API Keys (per Lead)
+                </CardTitle>
+                <CardDescription>
+                  Configura fino a {maxKeys} API keys Gemini per gestire messaggi da lead. Le keys vengono ruotate automaticamente.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Progress Bar */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    {keysCount} / {maxKeys} Keys configurate
+                  </span>
+                  <Badge variant={keysCount > 0 ? "default" : "secondary"}>
+                    {keysCount === 0 ? "Nessuna key" : `${keysCount} ${keysCount === 1 ? "key" : "keys"}`}
+                  </Badge>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-purple-600 h-2 rounded-full transition-all"
+                    style={{ width: `${(keysCount / maxKeys) * 100}%` }}
+                  />
+                </div>
+
+                {/* Add New Key */}
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    placeholder="Inserisci una nuova Gemini API key..."
+                    value={newApiKey}
+                    onChange={(e) => setNewApiKey(e.target.value)}
+                    disabled={keysCount >= maxKeys || addKeyMutation.isPending}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddKey();
+                    }}
+                  />
+                  <Button
+                    onClick={handleAddKey}
+                    disabled={!newApiKey.trim() || keysCount >= maxKeys || addKeyMutation.isPending}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {addKeyMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Aggiungi
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Keys List */}
+                {keysLoading ? (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  </div>
+                ) : apiKeys.length === 0 ? (
+                  <div className="text-center p-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <Sparkles className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Nessuna API key configurata. Aggiungi la prima key per iniziare.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {apiKeys.map((key: any, index: number) => (
+                      <div
+                        key={key.id}
+                        className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                      >
+                        <div className="flex-shrink-0 w-8 text-center">
+                          <span className="text-xs font-medium text-gray-500">#{index + 1}</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-mono text-sm text-gray-900 dark:text-gray-100">
+                            {key.apiKeyPreview}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-gray-500">
+                              Utilizzi: {key.usageCount || 0}
+                            </span>
+                            {key.lastUsedAt && (
+                              <span className="text-xs text-gray-500">
+                                Ultimo uso: {new Date(key.lastUsedAt).toLocaleString("it-IT")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={key.isActive}
+                            onCheckedChange={() => toggleKeyMutation.mutate(key.id)}
+                            disabled={toggleKeyMutation.isPending}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteKeyMutation.mutate(key.id)}
+                            disabled={deleteKeyMutation.isPending}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <Alert className="border-purple-200 bg-purple-50 dark:bg-purple-950/20 dark:border-purple-800">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <AlertDescription className="text-purple-900 dark:text-purple-200">
+                    <strong>Rotazione automatica:</strong> Le API keys vengono utilizzate a rotazione (least recently used) per evitare rate limiting. I clienti registrati useranno sempre le loro chiavi personali.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
+            {/* Proof & Servizi Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Badge className="h-5 w-5 text-blue-600" />
+                  Proof & Servizi
+                </CardTitle>
+                <CardDescription>
+                  Mostra risultati concreti, case study e servizi. Questi elementi di credibilità rafforzano la fiducia dei lead.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Years Experience */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="yearsExperience">Anni di Esperienza</Label>
+                    <Input
+                      id="yearsExperience"
+                      type="number"
+                      placeholder="15"
+                      value={formData.yearsExperience || ""}
+                      onChange={(e) => setFormData({ ...formData, yearsExperience: parseInt(e.target.value) || undefined })}
+                    />
+                    <p className="text-sm text-gray-500">Anni nel settore</p>
+                  </div>
+
+                  {/* Clients Helped */}
+                  <div className="space-y-2">
+                    <Label htmlFor="clientsHelped">Clienti Aiutati</Label>
+                    <Input
+                      id="clientsHelped"
+                      type="number"
+                      placeholder="500"
+                      value={formData.clientsHelped || ""}
+                      onChange={(e) => setFormData({ ...formData, clientsHelped: parseInt(e.target.value) || undefined })}
+                    />
+                    <p className="text-sm text-gray-500">Numero clienti</p>
+                  </div>
+                </div>
+
+                {/* Results Generated */}
+                <div className="space-y-2">
+                  <Label htmlFor="resultsGenerated">Risultati Generati</Label>
+                  <Textarea
+                    id="resultsGenerated"
+                    placeholder="Es: Aiutato clienti a risparmiare 10M€ in tasse, 50+ aziende scalate da 100k a 1M€ fatturato"
+                    value={formData.resultsGenerated || ""}
+                    onChange={(e) => setFormData({ ...formData, resultsGenerated: e.target.value })}
+                    rows={2}
+                  />
+                  <p className="text-sm text-gray-500">I risultati concreti che hai generato</p>
+                </div>
+
+                {/* Case Studies */}
+                <div className="space-y-3">
+                  <Label>Case Study</Label>
+                  {formData.caseStudies && formData.caseStudies.length > 0 ? (
+                    <div className="space-y-2">
+                      {formData.caseStudies.map((caseStudy, index) => (
+                        <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              placeholder="Nome cliente / azienda"
+                              value={caseStudy.clientName}
+                              onChange={(e) => {
+                                const updated = [...(formData.caseStudies || [])];
+                                updated[index].clientName = e.target.value;
+                                setFormData({ ...formData, caseStudies: updated });
+                              }}
+                            />
+                            <Textarea
+                              placeholder="Risultato ottenuto (es: Fatturato da 200k a 1.2M€ in 12 mesi)"
+                              value={caseStudy.result}
+                              onChange={(e) => {
+                                const updated = [...(formData.caseStudies || [])];
+                                updated[index].result = e.target.value;
+                                setFormData({ ...formData, caseStudies: updated });
+                              }}
+                              rows={2}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updated = formData.caseStudies?.filter((_, i) => i !== index) || [];
+                              setFormData({ ...formData, caseStudies: updated });
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const updated = [...(formData.caseStudies || []), { clientName: "", result: "" }];
+                      setFormData({ ...formData, caseStudies: updated });
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Aggiungi Case Study
+                  </Button>
+                  <p className="text-sm text-gray-500">Storie di successo dei tuoi clienti (proof sociale potente)</p>
+                </div>
+
+                {/* Services Offered */}
+                <div className="space-y-3">
+                  <Label>Servizi Offerti</Label>
+                  {formData.servicesOffered && formData.servicesOffered.length > 0 ? (
+                    <div className="space-y-2">
+                      {formData.servicesOffered.map((service, index) => (
+                        <div key={index} className="flex gap-2 items-start p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex-1 space-y-2">
+                            <Input
+                              placeholder="Nome servizio"
+                              value={service.name}
+                              onChange={(e) => {
+                                const updated = [...(formData.servicesOffered || [])];
+                                updated[index].name = e.target.value;
+                                setFormData({ ...formData, servicesOffered: updated });
+                              }}
+                            />
+                            <Input
+                              placeholder="Descrizione"
+                              value={service.description}
+                              onChange={(e) => {
+                                const updated = [...(formData.servicesOffered || [])];
+                                updated[index].description = e.target.value;
+                                setFormData({ ...formData, servicesOffered: updated });
+                              }}
+                            />
+                            <Input
+                              placeholder="Prezzo (es: 500€, 1000€/mese)"
+                              value={service.price}
+                              onChange={(e) => {
+                                const updated = [...(formData.servicesOffered || [])];
+                                updated[index].price = e.target.value;
+                                setFormData({ ...formData, servicesOffered: updated });
+                              }}
+                            />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const updated = formData.servicesOffered?.filter((_, i) => i !== index) || [];
+                              setFormData({ ...formData, servicesOffered: updated });
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const updated = [...(formData.servicesOffered || []), { name: "", description: "", price: "" }];
+                      setFormData({ ...formData, servicesOffered: updated });
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Aggiungi Servizio
+                  </Button>
+                  <p className="text-sm text-gray-500">I servizi che offri con prezzi</p>
+                </div>
+
+                {/* Guarantees */}
+                <div className="space-y-2">
+                  <Label htmlFor="guarantees">Garanzie</Label>
+                  <Textarea
+                    id="guarantees"
+                    placeholder="Es: Garanzia soddisfatti o rimborsati entro 30 giorni. Se non vedi risultati, ti rimborsiamo 100%."
+                    value={formData.guarantees || ""}
+                    onChange={(e) => setFormData({ ...formData, guarantees: e.target.value })}
+                    rows={2}
+                  />
+                  <p className="text-sm text-gray-500">Le garanzie che offri (riducono il rischio percepito)</p>
+                </div>
+
+                <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-900 dark:text-blue-200">
+                    <strong>Social Proof:</strong> L'AI userà questi elementi di credibilità per aumentare la conversione: "Abbiamo aiutato 500+ clienti come te" è molto più convincente di semplici informazioni.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+
+            {/* API Keys Management Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-purple-600" />
+                  Gemini API Keys (per Lead)
+                </CardTitle>
+                <CardDescription>
+                  Configura fino a {maxKeys} API keys Gemini per gestire messaggi da lead. Le keys vengono ruotate automaticamente.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Progress Bar */}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">
+                    {keysCount} / {maxKeys} Keys configurate
+                  </span>
+                  <Badge variant={keysCount > 0 ? "default" : "secondary"}>
+                    {keysCount === 0 ? "Nessuna key" : `${keysCount} ${keysCount === 1 ? "key" : "keys"}`}
+                  </Badge>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-purple-600 h-2 rounded-full transition-all"
+                    style={{ width: `${(keysCount / maxKeys) * 100}%` }}
+                  />
+                </div>
+
+                {/* Add New Key */}
+                <div className="flex gap-2">
+                  <Input
+                    type="password"
+                    placeholder="Inserisci una nuova Gemini API key..."
+                    value={newApiKey}
+                    onChange={(e) => setNewApiKey(e.target.value)}
+                    disabled={keysCount >= maxKeys || addKeyMutation.isPending}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddKey();
+                    }}
+                  />
+                  <Button
+                    onClick={handleAddKey}
+                    disabled={!newApiKey.trim() || keysCount >= maxKeys || addKeyMutation.isPending}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {addKeyMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Aggiungi
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Keys List */}
+                {keysLoading ? (
+                  <div className="flex justify-center p-4">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  </div>
+                ) : apiKeys.length === 0 ? (
+                  <div className="text-center p-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <Sparkles className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Nessuna API key configurata. Aggiungi la prima key per iniziare.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {apiKeys.map((key: any, index: number) => (
+                      <div
+                        key={key.id}
+                        className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                      >
+                        <div className="flex-shrink-0 w-8 text-center">
+                          <span className="text-xs font-medium text-gray-500">#{index + 1}</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-mono text-sm text-gray-900 dark:text-gray-100">
+                            {key.apiKeyPreview}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-gray-500">
+                              Utilizzi: {key.usageCount || 0}
+                            </span>
+                            {key.lastUsedAt && (
+                              <span className="text-xs text-gray-500">
+                                Ultimo uso: {new Date(key.lastUsedAt).toLocaleString("it-IT")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={key.isActive}
+                            onCheckedChange={() => toggleKeyMutation.mutate(key.id)}
+                            disabled={toggleKeyMutation.isPending}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteKeyMutation.mutate(key.id)}
+                            disabled={deleteKeyMutation.isPending}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <Alert className="border-purple-200 bg-purple-50 dark:bg-purple-950/20 dark:border-purple-800">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <AlertDescription className="text-purple-900 dark:text-purple-200">
+                    <strong>Rotazione automatica:</strong> Le API keys vengono utilizzate a rotazione (least recently used) per evitare rate limiting. I clienti registrati useranno sempre le loro chiavi personali.
+                  </AlertDescription>
+                </Alert>
+              </CardContent>
+            </Card>
+            </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

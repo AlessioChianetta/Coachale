@@ -1,0 +1,417 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuovo Aggiornamento: Guida Completa alla Piattaforma</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.95;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #eff6ff 0%, #f3e8ff 100%);
+            border-left: 4px solid #2563eb;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            color: white;
+            padding: 16px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+        }
+        .video-section {
+            background: #f8fafc;
+            padding: 30px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .video-summary {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+        .feature-list li {
+            padding: 12px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        .feature-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #2563eb;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .tutorial-section {
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            transition: all 0.3s;
+        }
+        .tutorial-section:hover {
+            border-color: #2563eb;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+        }
+        .tutorial-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        .tutorial-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 12px;
+        }
+        .tutorial-description {
+            color: #475569;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        .tutorial-link {
+            display: inline-block;
+            color: #2563eb;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 2px solid #2563eb;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        .tutorial-link:hover {
+            background: #2563eb;
+            color: white;
+        }
+        .footer {
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .emoji {
+            font-size: 24px;
+            margin-right: 8px;
+        }
+        .divider {
+            height: 2px;
+            background: linear-gradient(90deg, #2563eb 0%, #7c3aed 100%);
+            margin: 40px 0;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 La Tua Piattaforma. Sbloccata.</h1>
+            <p>Tutto quello che devi sapere per dominare ogni funzionalità</p>
+        </div>
+        
+        <div class="content">
+            <p>Ciao <strong>[Nome Cliente]</strong>,</p>
+            
+            <p>Hai mai sentito quella sensazione di avere uno strumento potentissimo tra le mani... ma non sapere esattamente come sfruttarlo al massimo? 🤔</p>
+            
+            <p><strong>Oggi cambia tutto.</strong></p>
+            
+            <p>Abbiamo creato la <strong>guida definitiva</strong> della piattaforma. Non una semplice lista di funzioni, ma un vero e proprio <strong>manuale strategico</strong> che ti mostra come ogni pezzo del puzzle si incastra perfettamente per portarti verso i tuoi obiettivi.</p>
+            
+            <div class="highlight-box">
+                <p style="margin: 0; font-size: 18px; font-weight: 600; color: #1e40af;">
+                    <span class="emoji">🎯</span> Perché questa guida è diversa?
+                </p>
+                <p style="margin-top: 10px; color: #475569;">
+                    Non ti dice solo <strong>COSA</strong> puoi fare. Ti mostra <strong>COME</strong> farlo nel modo più efficace e <strong>PERCHÉ</strong> quella strategia funziona. È la differenza tra possedere uno strumento e saperlo padroneggiare.
+                </p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://coachale.replit.app/client/faq" class="cta-button">
+                    📖 Accedi alla Guida Completa
+                </a>
+            </div>
+
+            <div class="divider"></div>
+
+            <h2 style="text-align: center; font-size: 28px; color: #1e293b; margin-bottom: 30px;">
+                🎥 Inizia dal Video Tutorial
+            </h2>
+            
+            <div class="video-section">
+                <p style="color: #475569; margin-bottom: 20px; font-size: 16px;">
+                    <strong>Preferisci imparare guardando?</strong> Perfetto. Abbiamo preparato un video completo che ti accompagna attraverso l'intera piattaforma in modo visuale e pratico.
+                </p>
+                
+                <div class="video-container">
+                    <iframe 
+                        src="https://www.youtube.com/embed/AivKQ45LoHo" 
+                        title="Tutorial Completo Piattaforma" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
+                </div>
+                
+                <div class="video-summary">
+                    <h3 style="margin-top: 0; color: #1e293b; font-size: 18px;">
+                        📋 Un Viaggio in 5 Tappe (0:00 - 7:14)
+                    </h3>
+                    <ul style="color: #475569; margin: 0; padding-left: 20px; line-height: 1.8;">
+                        <li><strong>Le Fondamenta (0:00 - 1:12):</strong> La filosofia dell'ecosistema integrato</li>
+                        <li><strong>I Due Pilastri (1:12 - 3:26):</strong> AI Assistant + Università strutturata</li>
+                        <li><strong>Teoria → Pratica (3:26 - 5:02):</strong> Esercizi e Diario dei 5 Minuti</li>
+                        <li><strong>La Magia dell'Integrazione (5:02 - 6:22):</strong> Come tutto si connette</li>
+                        <li><strong>Il Futuro della Formazione (6:22 - 7:14):</strong> Un sistema che evolve con te</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <h2 style="text-align: center; font-size: 28px; color: #1e293b; margin-bottom: 15px;">
+                🎓 Esplora Ogni Funzionalità
+            </h2>
+            <p style="text-align: center; color: #64748b; margin-bottom: 35px; font-size: 16px;">
+                Scegli da dove iniziare. Ogni sezione ha la sua guida completa con strategie pratiche e suggerimenti avanzati.
+            </p>
+
+            <!-- UNIVERSITÀ -->
+            <div class="tutorial-section">
+                <div class="tutorial-icon">🎓</div>
+                <div class="tutorial-title">Università - Il Tuo Percorso di Crescita Strutturato</div>
+                <div class="tutorial-description">
+                    <strong>Cosa scoprirai:</strong> L'Università non è solo una raccolta di lezioni. È un <strong>sistema a tre livelli</strong> (Anni → Trimestri → Moduli) progettato come un vero corso accademico ma personalizzato sui tuoi obiettivi. Imparerai come:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Navigare tra anni, trimestri e moduli in modo strategico</li>
+                        <li>Collegare lezioni → esercizi → materiali della Libreria</li>
+                        <li>Usare le note personali per trasformare teoria in pratica</li>
+                        <li>Monitorare progressi e sbloccare attestati di completamento</li>
+                    </ul>
+                    <strong>Il segreto:</strong> Ogni lezione è posizionata in un punto preciso del percorso per un motivo. Non bruciare le tappe - le competenze si costruiscono una sull'altra.
+                </div>
+                <a href="https://coachale.replit.app/client/faq#university" class="tutorial-link">
+                    Leggi la Guida Completa Università →
+                </a>
+            </div>
+
+            <!-- ESERCIZI -->
+            <div class="tutorial-section">
+                <div class="tutorial-icon">📝</div>
+                <div class="tutorial-title">Esercizi - La Palestra del Tuo Business</div>
+                <div class="tutorial-description">
+                    <strong>Cosa scoprirai:</strong> Gli esercizi sono dove la teoria diventa azione. Scopri le <strong>due tipologie</strong> (Consulenza personalizzata + Corso strutturato), le <strong>tre viste</strong> (Kanban, Timeline, Griglia) e il potente sistema di revisione con feedback del consulente. Imparerai:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Come filtrare per categoria (Finanza, Vendita, Business, etc.)</li>
+                        <li>Il ciclo completo: Da Fare → In Corso → Revisione → Completato</li>
+                        <li>Come massimizzare il valore del feedback ricevuto</li>
+                        <li>Salvare bozze e lavorare su esercizi complessi in più sessioni</li>
+                    </ul>
+                    <strong>Il segreto:</strong> Non cercare di completare velocemente. Il vero valore non sta nel "completare" ma nel processo di riflessione e applicazione.
+                </div>
+                <a href="https://coachale.replit.app/client/faq#exercises" class="tutorial-link">
+                    Leggi la Guida Completa Esercizi →
+                </a>
+            </div>
+
+            <!-- AI ASSISTANT -->
+            <div class="tutorial-section">
+                <div class="tutorial-icon">✨</div>
+                <div class="tutorial-title">AI Assistant - Il Tuo Consulente Intelligente 24/7</div>
+                <div class="tutorial-description">
+                    <strong>Cosa scoprirai:</strong> Questo non è un chatbot generico. È un <strong>consulente che conosce tutto di te</strong>: progressi formativi, esercizi, obiettivi e (se collegato) anche i tuoi dati finanziari reali da Percorso Capitale. Scoprirai:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Le due modalità: Assistenza quotidiana + Consulente strategico</li>
+                        <li>I tre tipi di consulente: Finanziario, Business, Vendita</li>
+                        <li>L'intelligenza "context-aware" che sa dove sei nella piattaforma</li>
+                        <li>Come fare domande specifiche per ottenere consigli concreti</li>
+                    </ul>
+                    <strong>Il segreto:</strong> Più dettagli fornisci sulla tua situazione specifica, più i consigli dell'AI saranno pertinenti. Non chiedere "come vendere meglio" ma "sto vendendo X a €Y ma ricevo obiezione Z, come gestirla?"
+                </div>
+                <a href="https://coachale.replit.app/client/faq#ai-assistant" class="tutorial-link">
+                    Leggi la Guida Completa AI Assistant →
+                </a>
+            </div>
+
+            <!-- TASK & RIFLESSIONI -->
+            <div class="tutorial-section">
+                <div class="tutorial-icon">📅</div>
+                <div class="tutorial-title">Task & Riflessioni - Il Tuo Diario di Crescita</div>
+                <div class="tutorial-description">
+                    <strong>Cosa scoprirai:</strong> Molto più di una to-do list. È uno strumento che combina <strong>organizzazione operativa</strong> con <strong>riflessione strategica</strong>. Il calendario settimanale + il Diario dei 5 Minuti creano un circolo virtuoso di azione e apprendimento. Scoprirai:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Come creare task specifici e azionabili (non vaghi)</li>
+                        <li>Le 4 domande della riflessione giornaliera che cambiano tutto</li>
+                        <li>Come usare i dati storici per identificare pattern e migliorare</li>
+                        <li>Integrare task con lezioni, esercizi e feedback del consulente</li>
+                    </ul>
+                    <strong>Il segreto:</strong> La domanda "Cosa ho imparato oggi?" è trasformativa. Ogni giorno contiene lezioni - annotarle le cristallizza invece di perderle nel flusso.
+                </div>
+                <a href="https://coachale.replit.app/client/faq#tasks" class="tutorial-link">
+                    Leggi la Guida Completa Task & Riflessioni →
+                </a>
+            </div>
+
+            <!-- LIBRERIA -->
+            <div class="tutorial-section">
+                <div class="tutorial-icon">📚</div>
+                <div class="tutorial-title">Libreria - La Tua Enciclopedia del Business</div>
+                <div class="tutorial-description">
+                    <strong>Cosa scoprirai:</strong> Un archivio completo di conoscenza: <strong>video lezioni, PDF scaricabili, guide pratiche, templates</strong>. Organizzata per corsi, sottocategorie e livelli di difficoltà. Scoprirai:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Come navigare tra Base → Intermedio → Avanzato</li>
+                        <li>Usare filtri e ricerca per trovare esattamente ciò che ti serve</li>
+                        <li>Scaricare materiali e templates pronti all'uso</li>
+                        <li>Integrare con l'Università (le lezioni 📖 si collegano qui)</li>
+                    </ul>
+                    <strong>Il segreto:</strong> Dopo ogni lezione, chiediti "Come posso applicare questo nei prossimi 7 giorni?" e crea task concreti. Trasforma conoscenza in azione.
+                </div>
+                <a href="https://coachale.replit.app/client/faq#library" class="tutorial-link">
+                    Leggi la Guida Completa Libreria →
+                </a>
+            </div>
+
+            <!-- CONSULENZE -->
+            <div class="tutorial-section">
+                <div class="tutorial-icon">💬</div>
+                <div class="tutorial-title">Consulenze - Il Tuo Tempo con il Consulente</div>
+                <div class="tutorial-description">
+                    <strong>Cosa scoprirai:</strong> Le consulenze sono il momento più personale e ad alto valore del percorso. <strong>Incontri one-to-one</strong> per decisioni strategiche, accountability e piani d'azione personalizzati. Scoprirai:
+                    <ul style="margin: 10px 0; padding-left: 20px;">
+                        <li>Come prepararti in modo efficace prima di ogni call</li>
+                        <li>Cosa fare durante la consulenza per massimizzare il valore</li>
+                        <li>Come usare lo storico per tracciare la tua evoluzione</li>
+                        <li>Trasformare feedback in azioni concrete immediate</li>
+                    </ul>
+                    <strong>Il segreto:</strong> Una consulenza preparata bene produce 3x il valore di una improvvisata. Leggi le note in anticipo, prepara domande, porta dati concreti.
+                </div>
+                <a href="https://coachale.replit.app/client/faq#consultations" class="tutorial-link">
+                    Leggi la Guida Completa Consulenze →
+                </a>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="highlight-box" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left-color: #f59e0b;">
+                <p style="margin: 0; font-size: 20px; font-weight: 700; color: #92400e;">
+                    💡 Il Vero Potere? L'Integrazione.
+                </p>
+                <p style="margin-top: 10px; color: #78350f; font-size: 15px;">
+                    Ogni funzionalità è potente da sola. Ma quando tutte lavorano insieme, creano qualcosa di magico: un ecosistema che <strong>conosce la tua situazione</strong>, <strong>traccia i tuoi progressi</strong>, <strong>adatta i consigli</strong> e ti accompagna verso i tuoi obiettivi in modo fluido e naturale.
+                    <br><br>
+                    Non è formazione statica - è un <strong>sistema vivo</strong> che evolve con te.
+                </p>
+            </div>
+
+            <div style="text-align: center; margin: 40px 0;">
+                <h3 style="color: #1e293b; font-size: 24px; margin-bottom: 15px;">
+                    Pronto a Sbloccare il Potenziale Completo?
+                </h3>
+                <p style="color: #64748b; margin-bottom: 25px;">
+                    La guida completa ti aspetta. Con tutorial dettagliati, suggerimenti pratici e strategie avanzate per ogni sezione.
+                </p>
+                <a href="https://coachale.replit.app/client/faq" class="cta-button" style="font-size: 18px; padding: 18px 36px;">
+                    🚀 Accedi Alla Guida Ora
+                </a>
+            </div>
+            
+            <p style="margin-top: 40px; color: #475569;">
+                Questo aggiornamento è stato pensato per <strong>eliminare ogni dubbio</strong> e permetterti di sfruttare al 100% ogni strumento della piattaforma. Non più "come si fa?", ma "cosa posso fare di straordinario con questo?"
+            </p>
+            
+            <p style="color: #475569;">
+                Se hai domande o dubbi, ricorda che l'<strong>AI Assistant</strong> è sempre disponibile per aiutarti, oppure puoi contattarmi direttamente.
+            </p>
+            
+            <p style="margin-top: 30px; color: #1e293b;">
+                Buon lavoro e buona esplorazione! 💪<br>
+                <strong>Il Team di Coachale</strong>
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p style="margin: 0 0 10px 0;">
+                <strong>Coachale Platform</strong>
+            </p>
+            <p style="margin: 0;">
+                <a href="https://coachale.replit.app" style="color: #2563eb; text-decoration: none;">coachale.replit.app</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
