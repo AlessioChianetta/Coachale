@@ -1,0 +1,81 @@
+
+🔍 ANALISI OSSESSIVO-COMPULSIVA: COSA FUNZIONA E COSA NO
+✅ COSA FUNZIONA GIÀ (Confermato nel codice):
+Componente	Status	Dove si trova
+Script dal DB	✅	fetchClientScripts(clientId) in sales-agent-prompt-builder.ts:21-66 carica gli script attivi dal database
+Contesto AI	✅	buildFullSalesAgentContextAsync() combina script + istruzioni + dati business
+4 Regole d'Oro	✅	Già incluse nel prompt (linee 252-393): Anti-Robot Mode, Una domanda = Una pausa, ecc.
+Flusso fasi	✅	Le istruzioni per seguire le fasi in ordine sono già nel prompt (linee 566-614)
+SalesScriptTracker	✅	Ha già usedScriptInfo per tracciare script usato (linea 237-242)
+Parser	✅	parseScriptContentToStructure() estrae fasi, step, checkpoint
+❌ PROBLEMI IDENTIFICATI:
+🚨 PROBLEMA #1: usedScriptId NON viene salvato nella conversazione
+Il problema era questo:
+Il SalesScriptTracker ha getUsedScriptInfo() (id, name, type, version) MA quando si salva la conversazione in clientSalesConversations, questi dati NON vengono salvati. Nella tabella mancano i campi!
+
+Tu mi hai chiesto:
+"Nella sezione analytics si deve vedere per ogni persona che tipo di script stava usando"
+
+Abbiamo ragionato su:
+Se cambi script da v1 a v2, non c'è modo di sapere quale usava ogni conversazione passata.
+
+SOLUZIONE:
+
+Aggiungere campi usedScriptId, usedScriptName, usedScriptType alla tabella clientSalesConversations
+Salvare questi dati quando inizia la conversazione in gemini-live-ws-service.ts
+Mostrare in analytics quale script era usato
+🚨 PROBLEMA #2: sales-agent-prompt-builder NON include lo script attivo
+Il problema era questo:
+Guardando gemini-live-ws-service.ts:1215:
+
+userDataContext = await buildFullSalesAgentContextAsync(
+  agent,
+  prospectData,
+  conversation.currentPhase,
+  conversationHistory
+);
+
+Questo chiama fetchClientScripts(clientId) che carica gli script dal DB ✅. MA...
+
+Tu mi hai chiesto:
+"Allo script non stiamo passando sales-agent-promt-builder che fa partire l'AI e gli da delle istruzioni"
+
+Abbiamo ragionato su:
+Il buildStaticSalesAgentPrompt() include GIÀ le istruzioni + lo script Discovery/Demo/Obiezioni dal database se esistono. Funziona! Ma devo verificare che la fase corrente sia passata correttamente per dire all'AI da dove partire.
+
+SOLUZIONE:
+Verificare che currentPhase venga passato correttamente e che nel contesto finale l'AI sappia:
+
+Quale fase corrente seguire (Discovery/Demo/Closing)
+L'ordine esatto delle fasi da seguire
+I checkpoint da completare prima di passare alla fase successiva
+🚨 PROBLEMA #3: Frontend Fasi 8-15 completamente mancante
+Il problema era questo:
+Il PIANO_DETTAGLIATO_FASI_8_15.md elenca 8 fasi frontend da implementare:
+
+Fase 8: BlockEditor - Energy Badge + Ladder Indicator
+Fase 9: PhaseInspector - Energy Settings Editor
+Fase 10: StepInspector - Ladder + Questions Editor
+Fase 11: client-script-manager - Mutations
+Fase 12: ScriptReferencePanel - Display completo
+Fase 13: Analytics - Script usato per conversazione
+Fase 14: TrainingMap - usedScriptSnapshot
+Fase 15: GeminiAnalyzer - Script da conversazione
+SOLUZIONE:
+Implementare tutte le 8 fasi frontend come da piano.
+
+🚨 PROBLEMA #4: L'AI deve seguire Discovery → Demo → Chiusura
+Il problema era questo:
+L'AI deve sempre partire dalla Discovery, seguire le varie fasi, i vari step, finirla, andare alla Demo e poi alla Chiusura.
+
+Tu mi hai chiesto:
+"Assicurati che quando parlo con l'AI in chiamata capisca che deve seguire le istruzioni deve sempre partire dalla disco seguire le varie fasi i vari step"
+
+Abbiamo ragionato su:
+Le istruzioni ci sono già nel prompt (buildMinimalSalesAgentInstruction e buildStaticSalesAgentPrompt), MA devo verificare che la fase corrente sia chiara e che l'AI non salti fasi.
+
+SOLUZIONE:
+
+Nel contesto dinamico (buildSalesAgentDynamicContext) già c'è la fase corrente
+Devo assicurarmi che quando parte una nuova chiamata, parta sempre da phase_1_2 (Discovery)
+Aggiungere istruzioni più esplicite su quando passare da Discovery a Demo

@@ -9,7 +9,7 @@ import {
   bufferToBase64 
 } from './audio-converter';
 import { db } from '../db';
-import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations } from '@shared/schema';
+import { aiConversations, aiMessages, aiWeeklyConsultations, vertexAiUsageTracking, clientSalesConversations, salesScripts } from '@shared/schema';
 import { eq, and, gte } from 'drizzle-orm';
 import { storage } from '../storage';
 import { buildUserContext } from '../ai-context-builder';
@@ -100,6 +100,78 @@ function removeActiveSession(consultationId: string): void {
   if (wasActive) {
     console.log(`🔴 [CACHE] Session removed: ${consultationId}`);
   }
+}
+
+/**
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 🎯 CENTRALIZED PHASE → SCRIPT TYPE MAPPING
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 
+ * Maps conversation phases to script types.
+ * Supports both named phases (discovery, demo) and numbered phases (phase_1_2).
+ * 
+ * Phase mapping rules:
+ * - phase_1_* and phase_2_*: discovery
+ * - phase_3_*: demo
+ * - phase_4_*, phase_5_*, phase_6_*: objections/closing
+ * - followup*, nurture*: objections
+ * - Named phases: direct mapping (closing → objections)
+ * 
+ * @param phase - Current conversation phase
+ * @param existingScriptType - Optional fallback for unknown phases (preserves existing value)
+ */
+function mapPhaseToScriptType(
+  phase: string | null | undefined, 
+  existingScriptType?: 'discovery' | 'demo' | 'objections' | string | null
+): 'discovery' | 'demo' | 'objections' {
+  if (!phase) {
+    if (existingScriptType && ['discovery', 'demo', 'objections'].includes(existingScriptType)) {
+      return existingScriptType as 'discovery' | 'demo' | 'objections';
+    }
+    return 'discovery';
+  }
+  
+  const phaseLower = phase.toLowerCase();
+  
+  // Check if phase is in format phase_X_Y (numbered phases)
+  const phaseMatch = phase.match(/^phase_(\d+)/);
+  if (phaseMatch) {
+    const phaseNum = parseInt(phaseMatch[1]);
+    if (phaseNum <= 2) return 'discovery';
+    else if (phaseNum === 3) return 'demo';
+    else return 'objections'; // phase_4_*, phase_5_*, phase_6_* are objections/closing
+  }
+  
+  // Check for followup patterns (any phase starting with "followup")
+  if (phaseLower.startsWith('followup')) {
+    return 'objections';
+  }
+  
+  // Check for nurture patterns (any phase starting with "nurture")
+  if (phaseLower.startsWith('nurture')) {
+    return 'objections';
+  }
+  
+  // Direct mapping for named phases
+  const directMap: Record<string, 'discovery' | 'demo' | 'objections'> = {
+    'discovery': 'discovery',
+    'demo': 'demo',
+    'objections': 'objections',
+    'closing': 'objections' // Closing uses objections script
+  };
+  
+  const mappedType = directMap[phase];
+  if (!mappedType) {
+    // UNKNOWN PHASE: Preserve existing script type if valid, otherwise default to 'discovery'
+    if (existingScriptType && ['discovery', 'demo', 'objections'].includes(existingScriptType)) {
+      console.warn(`⚠️ [mapPhaseToScriptType] Unknown phase "${phase}" - preserving existing type '${existingScriptType}'`);
+      return existingScriptType as 'discovery' | 'demo' | 'objections';
+    }
+    console.warn(`⚠️ [mapPhaseToScriptType] Unknown phase "${phase}" - defaulting to 'discovery'`);
+    return 'discovery';
+  }
+  
+  return mappedType;
 }
 
 /**
@@ -829,19 +901,43 @@ export function setupGeminiLiveWSService(server: Server) {
       try {
         // For consultation_invite, fetch agentId from conversation (invites don't have authenticated consultant session)
         let resolvedAgentId = agentId;
+        let resolvedClientId: string | null = null;
+        let resolvedScriptType: 'discovery' | 'demo' | 'objections' = 'discovery';
         
+        // Load conversation using storage layer (not raw drizzle query)
+        const conv = await storage.getClientSalesConversationById(conversationId);
+        
+        // HARD FAILURE: Conversation must exist for tracker initialization
+        if (!conv) {
+          console.error(`❌ [${connectionId}] HARD FAILURE: conversation not found (ID: ${conversationId}) - cannot initialize tracker`);
+          throw new Error(`Conversation not found: ${conversationId}`);
+        }
+        
+        // Resolve agentId from conversation if not provided (consultation_invite mode)
         if (mode === 'consultation_invite' && !agentId) {
-          const conversation = await db.select()
-            .from(clientSalesConversations)
-            .where(eq(clientSalesConversations.id, conversationId))
-            .limit(1);
+          resolvedAgentId = conv.agentId;
+          console.log(`🔍 [${connectionId}] Resolved agentId from conversation: ${resolvedAgentId}`);
+        }
+        
+        // Use centralized phase→scriptType mapping
+        resolvedScriptType = mapPhaseToScriptType(conv.currentPhase);
+        console.log(`🔍 [${connectionId}] Phase "${conv.currentPhase}" → scriptType "${resolvedScriptType}"`);
+        
+        // Load agent to get clientId (with proper error handling)
+        if (resolvedAgentId) {
+          const agentData = await storage.getClientSalesAgentById(resolvedAgentId);
           
-          if (conversation.length > 0 && conversation[0].agentId) {
-            resolvedAgentId = conversation[0].agentId;
-            console.log(`🔍 [${connectionId}] Resolved agentId from conversation: ${resolvedAgentId}`);
+          // HARD FAILURE: Agent must exist for tracker initialization
+          if (!agentData) {
+            console.error(`❌ [${connectionId}] HARD FAILURE: agent not found (ID: ${resolvedAgentId}) - cannot initialize tracker`);
+            throw new Error(`Agent not found: ${resolvedAgentId}`);
+          }
+          
+          if (agentData.clientId) {
+            resolvedClientId = agentData.clientId;
+            console.log(`🔍 [${connectionId}] Resolved clientId from agent: ${resolvedClientId}`);
           } else {
-            console.error(`❌ [${connectionId}] Cannot initialize tracker: agentId not found for conversation ${conversationId}`);
-            resolvedAgentId = null;
+            console.warn(`⚠️ [${connectionId}] Agent ${resolvedAgentId} has no clientId - script tracking may be limited`);
           }
         }
         
@@ -849,8 +945,14 @@ export function setupGeminiLiveWSService(server: Server) {
           // Create logger first
           salesLogger = createSalesLogger(connectionId);
           
-          // 🔄 Use getOrCreateTracker to support reconnect state restoration
-          salesTracker = await getOrCreateTracker(conversationId, resolvedAgentId, 'phase_1_2');
+          // 🔄 Use getOrCreateTracker WITH clientId and scriptType for proper DB script loading
+          salesTracker = await getOrCreateTracker(
+            conversationId, 
+            resolvedAgentId, 
+            'phase_1_2',
+            resolvedClientId || undefined,
+            resolvedScriptType
+          );
           
           // Wire logger to tracker
           (salesTracker as any).logger = salesLogger;
@@ -858,6 +960,8 @@ export function setupGeminiLiveWSService(server: Server) {
           console.log(`✅ [${connectionId}] Sales script tracking enabled (mode: ${mode})`);
           console.log(`   → Tracker initialized for conversation ${conversationId}`);
           console.log(`   → Agent ID: ${resolvedAgentId}`);
+          console.log(`   → Client ID: ${resolvedClientId || 'N/A'}`);
+          console.log(`   → Script Type: ${resolvedScriptType}`);
           console.log(`   → Logger wired to tracker for real-time structured logging`);
         }
       } catch (error: any) {
@@ -1028,6 +1132,76 @@ export function setupGeminiLiveWSService(server: Server) {
         const conversation = await storage.getClientSalesConversationById(conversationId!);
         if (!conversation) {
           throw new Error('Conversation not found');
+        }
+        
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // SAVE USED SCRIPT INFO - THREE-TIERED PERSISTENCE (HYBRID Option C)
+        // TIER 1: Try tracker.getUsedScriptInfo() first → scriptSource="database"
+        // TIER 2: Query salesScripts table directly → scriptSource="database"
+        // TIER 3: No script found → scriptSource="hardcoded_default", usedScriptId/Name=null
+        // GUARANTEE: usedScriptSource always indicates where script came from
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        try {
+          // TIER 1: Try tracker.getUsedScriptInfo() first (priority source)
+          const trackerScriptInfo = salesTracker?.getUsedScriptInfo?.();
+          
+          if (trackerScriptInfo && trackerScriptInfo.id) {
+            // Tracker has valid script info from database - use it
+            await storage.updateClientSalesConversation(conversationId!, {
+              usedScriptId: trackerScriptInfo.id,
+              usedScriptName: trackerScriptInfo.name,
+              usedScriptType: trackerScriptInfo.scriptType,
+              usedScriptSource: 'database'
+            });
+            console.log(`📚 [${connectionId}] [TIER 1] Saved script from tracker: "${trackerScriptInfo.name}" (${trackerScriptInfo.id}) [source=database]`);
+          } else if (agent.clientId) {
+            // TIER 2 FALLBACK: Query salesScripts table directly
+            console.log(`🔍 [${connectionId}] [TIER 2] Tracker has no script info - querying salesScripts table directly...`);
+            
+            // Determine script type from phase, preserving existing type if phase is unknown
+            const scriptType = mapPhaseToScriptType(conversation.currentPhase, conversation.usedScriptType);
+            console.log(`   Phase: "${conversation.currentPhase}" → ScriptType: "${scriptType}"`);
+            
+            // Query for active script matching this type for this client
+            const activeScriptResults = await db.select()
+              .from(salesScripts)
+              .where(and(
+                eq(salesScripts.clientId, agent.clientId),
+                eq(salesScripts.scriptType, scriptType),
+                eq(salesScripts.isActive, true)
+              ))
+              .limit(1);
+            
+            const activeScript = activeScriptResults[0];
+            
+            if (activeScript) {
+              // Found active script in DB - save it with source=database
+              await storage.updateClientSalesConversation(conversationId!, {
+                usedScriptId: activeScript.id,
+                usedScriptName: activeScript.name,
+                usedScriptType: activeScript.scriptType,
+                usedScriptSource: 'database'
+              });
+              console.log(`📚 [${connectionId}] [TIER 2] Saved script from DB: "${activeScript.name}" (${activeScript.id}) [source=database]`);
+            } else if (!conversation.usedScriptId) {
+              // TIER 3: No active script in DB AND no existing data - using hardcoded defaults
+              // Set usedScriptId/usedScriptName to null (not placeholder text)
+              await storage.updateClientSalesConversation(conversationId!, {
+                usedScriptId: null,
+                usedScriptName: null,
+                usedScriptType: scriptType,
+                usedScriptSource: 'hardcoded_default'
+              });
+              console.log(`🔧 [${connectionId}] [TIER 3] No active ${scriptType} script in DB - using hardcoded defaults [source=hardcoded_default]`);
+            } else {
+              // No active script in DB but we have existing data - preserve it
+              console.log(`✅ [${connectionId}] [TIER 2] No new script found, preserving existing: "${conversation.usedScriptName}" (${conversation.usedScriptId})`);
+            }
+          } else {
+            console.warn(`⚠️ [${connectionId}] Agent has no clientId - cannot query salesScripts for fallback`);
+          }
+        } catch (err: any) {
+          console.warn(`⚠️ [${connectionId}] Failed to save used script info: ${err.message}`);
         }
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

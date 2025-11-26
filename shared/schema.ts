@@ -3334,6 +3334,12 @@ export const clientSalesConversations = pgTable("client_sales_conversations", {
   // Outcome
   outcome: text("outcome").$type<"interested" | "not_interested" | "closed" | "pending">().default("pending"),
   
+  // Used Script tracking - quale script dal DB era attivo durante questa conversazione
+  usedScriptId: varchar("used_script_id"),
+  usedScriptName: text("used_script_name"),
+  usedScriptType: text("used_script_type").$type<"discovery" | "demo" | "objections">(),
+  usedScriptSource: text("used_script_source").$type<"database" | "hardcoded_default" | "unknown">(), // Tracks whether script came from DB or hardcoded defaults
+  
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
