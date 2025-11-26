@@ -4,8 +4,11 @@ import * as crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
 interface Question {
+  id: string;
   text: string;
   marker?: string;
+  type?: 'opening' | 'discovery' | 'ladder' | 'closing' | 'objection' | 'general';
+  order: number;
 }
 
 interface Checkpoint {
@@ -15,6 +18,27 @@ interface Checkpoint {
   lineNumber: number;
 }
 
+interface EnergySettings {
+  level: 'BASSO' | 'MEDIO' | 'ALTO';
+  tone: 'CALMO' | 'SICURO' | 'CONFIDENZIALE' | 'ENTUSIASTA';
+  volume: 'SOFT' | 'NORMAL' | 'LOUD';
+  pace: 'LENTO' | 'MODERATO' | 'VELOCE';
+  vocabulary: 'FORMALE' | 'COLLOQUIALE' | 'TECNICO';
+  reason?: string;
+}
+
+interface LadderLevel {
+  level: number; // 1-5
+  name: string; // es. "CHIARIFICAZIONE", "CONSEGUENZE"
+  text: string; // Domanda o istruzione per questo livello
+  purpose: string; // Scopo del livello
+}
+
+interface Biscottino {
+  text: string;
+  type: 'rapport' | 'value' | 'agreement' | 'other';
+}
+
 interface Step {
   id: string;
   number: number;
@@ -22,7 +46,9 @@ interface Step {
   objective: string;
   questions: Question[];
   hasLadder: boolean;
-  ladderLevels?: number;
+  ladderLevels: LadderLevel[]; // Array dei 5 livelli dettagliati
+  energy?: EnergySettings;
+  biscottini: Biscottino[];
   lineNumber: number;
 }
 
@@ -34,6 +60,7 @@ interface Phase {
   semanticType: string;
   steps: Step[];
   checkpoints: Checkpoint[];
+  energy?: EnergySettings; // Energy settings a livello di fase
   lineNumber: number;
 }
 
@@ -41,23 +68,29 @@ interface ScriptStructure {
   version: string;
   lastExtracted: string;
   sourceFile: string;
-  sourceContentHash: string; // SHA-256 hash of source file content for version detection
+  sourceContentHash: string;
   totalLines: number;
   phases: Phase[];
   metadata: {
     totalPhases: number;
     totalSteps: number;
     totalCheckpoints: number;
+    totalQuestions: number;
+    totalLadderSteps: number;
+    totalBiscottini: number;
     scriptTypes: string[];
+    hasEnergySettings: boolean;
   };
 }
+
+export type { Question, Checkpoint, EnergySettings, LadderLevel, Biscottino, Step, Phase, ScriptStructure };
 
 export function parseScriptContentToStructure(content: string, scriptType: string = 'discovery'): ScriptStructure {
   const lines = content.split('\n');
   const contentHash = crypto.createHash('sha256').update(content).digest('hex');
   
   const structure: ScriptStructure = {
-    version: '1.0.0',
+    version: '2.0.0',
     lastExtracted: new Date().toISOString(),
     sourceFile: `database:${scriptType}`,
     sourceContentHash: contentHash,
@@ -67,7 +100,11 @@ export function parseScriptContentToStructure(content: string, scriptType: strin
       totalPhases: 0,
       totalSteps: 0,
       totalCheckpoints: 0,
-      scriptTypes: [scriptType]
+      totalQuestions: 0,
+      totalLadderSteps: 0,
+      totalBiscottini: 0,
+      scriptTypes: [scriptType],
+      hasEnergySettings: false
     }
   };
 
@@ -81,7 +118,7 @@ export function parseScriptStructure(filePath: string): ScriptStructure {
   const contentHash = crypto.createHash('sha256').update(content).digest('hex');
   
   const structure: ScriptStructure = {
-    version: '1.0.0',
+    version: '2.0.0',
     lastExtracted: new Date().toISOString(),
     sourceFile: filePath,
     sourceContentHash: contentHash,
@@ -91,7 +128,11 @@ export function parseScriptStructure(filePath: string): ScriptStructure {
       totalPhases: 0,
       totalSteps: 0,
       totalCheckpoints: 0,
-      scriptTypes: ['discovery', 'demo', 'objections']
+      totalQuestions: 0,
+      totalLadderSteps: 0,
+      totalBiscottini: 0,
+      scriptTypes: ['discovery', 'demo', 'objections'],
+      hasEnergySettings: false
     }
   };
 
@@ -102,7 +143,8 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
   let currentPhase: Phase | null = null;
   let currentStep: Step | null = null;
   let insideLadder = false;
-  let ladderLevel = 0;
+  let currentLadderLevels: LadderLevel[] = [];
+  let questionCounter = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -116,7 +158,6 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const phaseMatch = trimmed.match(/^\*\*FASE\s+#(\d+(?:\s+e\s+#\d+)?)\s*-\s*(.+?)\*\*/i);
     if (phaseMatch) {
-      // Save previous phase if exists
       if (currentPhase) {
         structure.phases.push(currentPhase);
       }
@@ -124,7 +165,6 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
       const phaseNumber = phaseMatch[1];
       const phaseName = phaseMatch[2];
       
-      // Extract description from next lines
       let description = '';
       if (i + 1 < lines.length) {
         const nextLine = lines[i + 1].trim();
@@ -133,8 +173,8 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
         }
       }
 
-      // Determine semantic type based on phase name
       const semanticType = getSemanticType(phaseName);
+      const phaseEnergy = extractEnergyFromContext(lines, i, 20);
 
       currentPhase = {
         id: `phase_${phaseNumber.replace(/\s+e\s+#/g, '_')}`,
@@ -144,10 +184,13 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
         semanticType,
         steps: [],
         checkpoints: [],
+        energy: phaseEnergy,
         lineNumber: i + 1
       };
       
       currentStep = null;
+      insideLadder = false;
+      currentLadderLevels = [];
       continue;
     }
 
@@ -160,10 +203,13 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const stepMatch = trimmed.match(/^(?:\*\*)?STEP\s+(\d+)\s*-\s*(.+?)(?:\*\*)?:?$/i);
     if (stepMatch && currentPhase) {
+      if (currentStep && currentLadderLevels.length > 0) {
+        currentStep.ladderLevels = [...currentLadderLevels];
+      }
+
       const stepNumber = parseInt(stepMatch[1]);
       const stepName = stepMatch[2];
       
-      // Extract objective from next lines
       let objective = '';
       if (i + 1 < lines.length) {
         const nextLine = lines[i + 1].trim();
@@ -173,73 +219,98 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
         }
       }
 
+      const stepEnergy = extractEnergyFromContext(lines, i, 15);
+
       currentStep = {
-        id: `step_${stepNumber}`,
+        id: `${currentPhase.id}_step_${stepNumber}`,
         number: stepNumber,
         name: stepName,
         objective,
         questions: [],
         hasLadder: false,
+        ladderLevels: [],
+        energy: stepEnergy,
+        biscottini: [],
         lineNumber: i + 1
       };
       
       currentPhase.steps.push(currentStep);
       insideLadder = false;
-      ladderLevel = 0;
+      currentLadderLevels = [];
       continue;
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // PATTERN 3: Detect LADDER (3-5 PERCHÉ)
-    // Examples:
-    // 🔍 REGOLA DEI 3-5 PERCHÉ - SCAVO PROFONDO (OBBLIGATORIO)
-    // 🔥 LADDER EMOTIVO (OBBLIGATORIO - 3-5 PERCHÉ)
-    // LIVELLO 1️⃣ - CHIARIFICAZIONE:
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (trimmed.includes('3-5 PERCHÉ') || trimmed.includes('LADDER')) {
       if (currentStep) {
         currentStep.hasLadder = true;
       }
       insideLadder = true;
-      ladderLevel = 0;
+      currentLadderLevels = [];
       continue;
     }
 
-    // Detect ladder levels
-    const ladderLevelMatch = trimmed.match(/^LIVELLO\s+(\d+)(?:️⃣)?\s*-/);
-    if (ladderLevelMatch && insideLadder) {
-      ladderLevel = parseInt(ladderLevelMatch[1]);
-      if (currentStep && (!currentStep.ladderLevels || currentStep.ladderLevels < ladderLevel)) {
-        currentStep.ladderLevels = ladderLevel;
+    // Extract detailed ladder levels (LIVELLO 1-5)
+    const ladderLevelMatch = trimmed.match(/^LIVELLO\s+(\d+)(?:️⃣)?\s*-\s*(.+?):/i);
+    if (ladderLevelMatch && insideLadder && currentStep) {
+      const levelNum = parseInt(ladderLevelMatch[1]);
+      const levelName = ladderLevelMatch[2].trim();
+      
+      let levelText = '';
+      let levelPurpose = '';
+      
+      for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
+        const nextLine = lines[j].trim();
+        if (nextLine.startsWith('LIVELLO') || nextLine.startsWith('**STEP') || 
+            nextLine.startsWith('STEP') || nextLine.startsWith('⛔') || 
+            nextLine.startsWith('🚨')) {
+          break;
+        }
+        
+        const questionInLevel = nextLine.match(/^"(.+?)"$/);
+        if (questionInLevel && !levelText) {
+          levelText = questionInLevel[1];
+        }
+        
+        if (nextLine.includes('SCOPO:') || nextLine.includes('OBIETTIVO:')) {
+          const purposeMatch = nextLine.match(/(?:SCOPO|OBIETTIVO):\s*(.+)/i);
+          if (purposeMatch) {
+            levelPurpose = purposeMatch[1];
+          }
+        }
       }
+
+      const ladderLevel: LadderLevel = {
+        level: levelNum,
+        name: levelName,
+        text: levelText || `Domanda livello ${levelNum}`,
+        purpose: levelPurpose || getLadderPurpose(levelNum, levelName)
+      };
+      
+      currentLadderLevels.push(ladderLevel);
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // PATTERN 4: Detect CHECKPOINT
-    // Examples:
-    // ⛔ CHECKPOINT OBBLIGATORIO FASE #1-2 ⛔
-    // ⛔ CHECKPOINT OBBLIGATORIO FASE #3 ⛔
-    // 🚨 CHECKPOINT OBBLIGATORIO #3 - STRUMENTI:
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (trimmed.includes('⛔ CHECKPOINT') || trimmed.includes('🚨 CHECKPOINT')) {
       const checkpointMatch = trimmed.match(/(?:⛔|🚨)\s*CHECKPOINT\s+(?:OBBLIGATORIO\s+)?(?:FASE\s+)?(?:#)?(\d+(?:\s*-\s*\d+)?|\w+)/i);
       if (checkpointMatch && currentPhase) {
         const checkpointId = checkpointMatch[1];
         
-        // Extract verifications from following lines
         const verifications: string[] = [];
         for (let j = i + 1; j < Math.min(i + 30, lines.length); j++) {
           const verificationLine = lines[j].trim();
           
-          // Stop at next section
           if (verificationLine.startsWith('**STEP') || 
               verificationLine.startsWith('STEP') ||
               verificationLine.startsWith('**FASE') ||
-              verificationLine.includes('━━━━━━━') && lines[j + 1]?.trim().startsWith('**')) {
+              (verificationLine.includes('━━━━━━━') && lines[j + 1]?.trim().startsWith('**'))) {
             break;
           }
           
-          // Extract verification items (✓, ✅, or bullet points)
           const verificationMatch = verificationLine.match(/^(?:✓|✅|\*)\s*(.+)/);
           if (verificationMatch) {
             verifications.push(verificationMatch[1].replace(/\?$/, ''));
@@ -259,27 +330,46 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // PATTERN 5: Extract QUESTIONS
-    // Questions are in quotes and followed by ⏸️ ASPETTA LA RISPOSTA
-    // Examples:
-    // "Ciao [NOME_PROSPECT]! Benvenuto/a in questa consulenza, come stai?"
-    // "Dimmi, perché hai deciso di partecipare a questa call?"
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const questionMatch = trimmed.match(/^"(.+?)"$/);
     if (questionMatch && currentStep) {
-      // Check if next line has pause marker
       const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
       const hasPauseMarker = nextLine.includes('⏸️') || nextLine.includes('ASPETTA');
       
       if (hasPauseMarker || trimmed.includes('?')) {
+        questionCounter++;
+        const questionType = determineQuestionType(currentPhase, currentStep, insideLadder);
+        
         currentStep.questions.push({
+          id: `q_${questionCounter}`,
           text: questionMatch[1],
-          marker: hasPauseMarker ? 'pause_required' : undefined
+          marker: hasPauseMarker ? 'pause_required' : undefined,
+          type: questionType,
+          order: currentStep.questions.length + 1
         });
       }
     }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // PATTERN 6: Extract BISCOTTINI (cookies/rapport builders)
+    // Examples: 🍪 BISCOTTINO, 🎁 REGALO, ✨ COMPLIMENTO
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const biscottinoMatch = trimmed.match(/^(?:🍪|🎁|✨)\s*(?:BISCOTTINO|REGALO|COMPLIMENTO)?\s*:?\s*"?(.+?)"?$/i);
+    if (biscottinoMatch && currentStep) {
+      const biscottinoText = biscottinoMatch[1].replace(/^"|"$/g, '');
+      const biscottinoType = determineBiscottinoType(biscottinoText);
+      
+      currentStep.biscottini.push({
+        text: biscottinoText,
+        type: biscottinoType
+      });
+    }
   }
 
-  // Add last phase
+  if (currentStep && currentLadderLevels.length > 0) {
+    currentStep.ladderLevels = [...currentLadderLevels];
+  }
+
   if (currentPhase) {
     structure.phases.push(currentPhase);
   }
@@ -288,8 +378,117 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
   structure.metadata.totalPhases = structure.phases.length;
   structure.metadata.totalSteps = structure.phases.reduce((sum, p) => sum + p.steps.length, 0);
   structure.metadata.totalCheckpoints = structure.phases.reduce((sum, p) => sum + p.checkpoints.length, 0);
+  structure.metadata.totalQuestions = structure.phases.reduce((sum, p) => 
+    p.steps.reduce((stepSum, s) => stepSum + s.questions.length, 0) + sum, 0);
+  structure.metadata.totalLadderSteps = structure.phases.reduce((sum, p) => 
+    p.steps.filter(s => s.hasLadder).length + sum, 0);
+  structure.metadata.totalBiscottini = structure.phases.reduce((sum, p) => 
+    p.steps.reduce((stepSum, s) => stepSum + s.biscottini.length, 0) + sum, 0);
+  structure.metadata.hasEnergySettings = structure.phases.some(p => 
+    p.energy !== undefined || p.steps.some(s => s.energy !== undefined));
 
   return structure;
+}
+
+function extractEnergyFromContext(lines: string[], startIndex: number, range: number): EnergySettings | undefined {
+  const searchLines = lines.slice(startIndex, Math.min(startIndex + range, lines.length));
+  const context = searchLines.join('\n');
+  
+  let level: EnergySettings['level'] | undefined;
+  let tone: EnergySettings['tone'] | undefined;
+  let volume: EnergySettings['volume'] | undefined;
+  let pace: EnergySettings['pace'] | undefined;
+  let vocabulary: EnergySettings['vocabulary'] | undefined;
+
+  const energyMatch = context.match(/(?:🔊|ENERGY|ENERGIA)[\s:]*(\w+)/i);
+  if (energyMatch) {
+    const val = energyMatch[1].toUpperCase();
+    if (['BASSO', 'MEDIO', 'ALTO'].includes(val)) {
+      level = val as EnergySettings['level'];
+    }
+  }
+
+  const toneMatch = context.match(/TONO[\s:]*(\w+)/i);
+  if (toneMatch) {
+    const val = toneMatch[1].toUpperCase();
+    if (['CALMO', 'SICURO', 'CONFIDENZIALE', 'ENTUSIASTA'].includes(val)) {
+      tone = val as EnergySettings['tone'];
+    }
+  }
+
+  const volumeMatch = context.match(/VOLUME[\s:]*(\w+)/i);
+  if (volumeMatch) {
+    const val = volumeMatch[1].toUpperCase();
+    if (['SOFT', 'NORMAL', 'LOUD'].includes(val)) {
+      volume = val as EnergySettings['volume'];
+    }
+  }
+
+  const paceMatch = context.match(/(?:RITMO|PACE)[\s:]*(\w+)/i);
+  if (paceMatch) {
+    const val = paceMatch[1].toUpperCase();
+    if (['LENTO', 'MODERATO', 'VELOCE'].includes(val)) {
+      pace = val as EnergySettings['pace'];
+    }
+  }
+
+  const vocabMatch = context.match(/(?:LESSICO|VOCABULARY)[\s:]*(\w+)/i);
+  if (vocabMatch) {
+    const val = vocabMatch[1].toUpperCase();
+    if (['FORMALE', 'COLLOQUIALE', 'TECNICO'].includes(val)) {
+      vocabulary = val as EnergySettings['vocabulary'];
+    }
+  }
+
+  if (level || tone || volume || pace || vocabulary) {
+    return {
+      level: level || 'MEDIO',
+      tone: tone || 'SICURO',
+      volume: volume || 'NORMAL',
+      pace: pace || 'MODERATO',
+      vocabulary: vocabulary || 'COLLOQUIALE'
+    };
+  }
+
+  return undefined;
+}
+
+function determineQuestionType(phase: Phase | null, step: Step | null, insideLadder: boolean): Question['type'] {
+  if (insideLadder) return 'ladder';
+  if (!phase) return 'general';
+  
+  const semanticType = phase.semanticType;
+  if (semanticType === 'opening') return 'opening';
+  if (semanticType === 'discovery') return 'discovery';
+  if (semanticType === 'closing') return 'closing';
+  if (semanticType === 'objection_handling') return 'objection';
+  
+  return 'general';
+}
+
+function determineBiscottinoType(text: string): Biscottino['type'] {
+  const lowerText = text.toLowerCase();
+  if (lowerText.includes('compliment') || lowerText.includes('bravo') || lowerText.includes('ottimo')) {
+    return 'rapport';
+  }
+  if (lowerText.includes('valore') || lowerText.includes('benefic') || lowerText.includes('vantaggi')) {
+    return 'value';
+  }
+  if (lowerText.includes('esatto') || lowerText.includes('giusto') || lowerText.includes('accord')) {
+    return 'agreement';
+  }
+  return 'other';
+}
+
+function getLadderPurpose(level: number, name: string): string {
+  const purposes: Record<number, string> = {
+    1: 'Chiarificare il problema iniziale e confermare la comprensione',
+    2: 'Esplorare le conseguenze pratiche del problema',
+    3: 'Scoprire l\'impatto emotivo e personale',
+    4: 'Trovare la motivazione profonda del cambiamento',
+    5: 'Visualizzare il futuro ideale e la trasformazione desiderata'
+  };
+  return purposes[level] || `Approfondimento livello ${level}`;
 }
 
 function getSemanticType(phaseName: string): string {

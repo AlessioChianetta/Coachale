@@ -15,62 +15,22 @@ import * as crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { nanoid } from 'nanoid';
 import { db } from '../db';
-import { salesConversationTraining, salesAgentTrainingSummary } from '@shared/schema';
-import { eq, sql as drizzleSql } from 'drizzle-orm';
+import { salesConversationTraining, salesAgentTrainingSummary, salesScripts, clientSalesAgents } from '@shared/schema';
+import { eq, and, sql as drizzleSql } from 'drizzle-orm';
 import { SalesScriptLogger } from './sales-script-logger';
 import { CheckpointDetector } from './checkpoint-detector';
+import { parseScriptContentToStructure, ScriptStructure } from './sales-script-structure-parser';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TYPES
+// TYPES (Question, Checkpoint, Step, Phase, ScriptStructure imported from parser)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-interface Question {
-  text: string;
-  marker?: string;
-}
-
-interface Checkpoint {
+// Info sullo script usato per questa conversazione
+interface UsedScriptInfo {
   id: string;
-  description: string;
-  verifications: string[];
-  lineNumber: number;
-}
-
-interface Step {
-  id: string;
-  number: number;
   name: string;
-  objective: string;
-  questions: Question[];
-  hasLadder: boolean;
-  ladderLevels?: number;
-  lineNumber: number;
-}
-
-interface Phase {
-  id: string;
-  number: string;
-  name: string;
-  description: string;
-  semanticType: string;
-  steps: Step[];
-  checkpoints: Checkpoint[];
-  lineNumber: number;
-}
-
-interface ScriptStructure {
+  scriptType: 'discovery' | 'demo' | 'objections';
   version: string;
-  lastExtracted: string;
-  sourceFile: string;
-  sourceContentHash?: string; // SHA-256 hash of source file content (optional for backward compatibility)
-  totalLines: number;
-  phases: Phase[];
-  metadata: {
-    totalPhases: number;
-    totalSteps: number;
-    totalCheckpoints: number;
-    scriptTypes: string[];
-  };
 }
 
 interface TrackingState {
@@ -146,14 +106,16 @@ interface TrackingState {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export class SalesScriptTracker {
-  private scriptStructure: ScriptStructure;
+  private scriptStructure!: ScriptStructure;
   private conversationId: string;
   private agentId: string;
-  private state: TrackingState;
+  private clientId?: string;
+  private state!: TrackingState;
   private startTime: Date;
   private lastLadderLevel: number = 0;
   private logger: SalesScriptLogger | null = null;
-  private scriptOutdated: boolean = false; // Flag indicating script file was modified after JSON extraction
+  private scriptOutdated: boolean = false;
+  private usedScriptInfo?: UsedScriptInfo; // Script dal database usato per questa conversazione
   
   // Ladder detection keywords
   private readonly LADDER_KEYWORDS = [
@@ -169,13 +131,17 @@ export class SalesScriptTracker {
     'cosa succede veramente'
   ];
   
+  /**
+   * Costruttore legacy sincrono (per backward compatibility)
+   * Carica lo script da file JSON locale
+   */
   constructor(conversationId: string, agentId: string, initialPhase: string = 'phase_1_2', logger?: SalesScriptLogger) {
     this.conversationId = conversationId;
     this.agentId = agentId;
     this.startTime = new Date();
     this.logger = logger || null;
     
-    // Load script structure from JSON
+    // Load script structure from JSON (legacy sync method)
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const jsonPath = path.join(__dirname, 'sales-script-structure.json');
@@ -188,9 +154,7 @@ export class SalesScriptTracker {
       throw new Error(`Failed to load script structure: ${error.message}`);
     }
     
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // VERSION CHECK: Compare source file hash with extracted JSON hash
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // VERSION CHECK
     try {
       const scriptPath = path.join(__dirname, 'sales-scripts-base.ts');
       if (fs.existsSync(scriptPath) && this.scriptStructure.sourceContentHash) {
@@ -199,10 +163,7 @@ export class SalesScriptTracker {
         
         if (currentHash !== this.scriptStructure.sourceContentHash) {
           this.scriptOutdated = true;
-          console.warn('⚠️  [TRACKER] SCRIPT OUTDATED - Source file has been modified!');
-          console.warn('   Re-run parser to update: tsx server/ai/sales-script-structure-parser.ts');
-        } else {
-          console.log('✅ [TRACKER] Script version is up-to-date');
+          console.warn('⚠️  [TRACKER] SCRIPT OUTDATED');
         }
       }
     } catch (error: any) {
@@ -223,18 +184,79 @@ export class SalesScriptTracker {
       aiReasoning: []
     };
     
-    console.log(`✅ [TRACKER] Initialized for conversation ${conversationId}`);
+    console.log(`✅ [TRACKER] Initialized (legacy) for conversation ${conversationId}`);
     console.log(`   Script version: ${this.scriptStructure.version}`);
     console.log(`   Total phases: ${this.scriptStructure.metadata.totalPhases}`);
     console.log(`   Starting phase: ${initialPhase}`);
     
-    // Log phase start if logger available
     if (this.logger) {
       const phase = this.getCurrentPhase();
       if (phase) {
         this.logger.logPhaseStart(phase.id, phase.name, phase.semanticType);
       }
     }
+  }
+  
+  /**
+   * Factory method asincrono per creare il tracker
+   * Carica lo script dal database (se esiste) o dal file JSON di fallback
+   */
+  static async create(
+    conversationId: string, 
+    agentId: string, 
+    initialPhase: string = 'phase_1_2', 
+    logger?: SalesScriptLogger,
+    clientId?: string,
+    scriptType: 'discovery' | 'demo' | 'objections' = 'discovery'
+  ): Promise<SalesScriptTracker> {
+    // Crea con costruttore legacy
+    const tracker = new SalesScriptTracker(conversationId, agentId, initialPhase, logger);
+    tracker.clientId = clientId;
+    
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Prova a caricare lo script dal database (Script Manager)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (clientId) {
+      try {
+        const [activeScript] = await db.select()
+          .from(salesScripts)
+          .where(and(
+            eq(salesScripts.clientId, clientId),
+            eq(salesScripts.scriptType, scriptType),
+            eq(salesScripts.isActive, true)
+          ))
+          .limit(1);
+        
+        if (activeScript && activeScript.content) {
+          console.log(`📖 [TRACKER] Loading script from database: ${activeScript.name}`);
+          
+          // Parse il contenuto dello script per creare la struttura
+          tracker.scriptStructure = parseScriptContentToStructure(activeScript.content, scriptType);
+          
+          // Memorizza info sullo script usato
+          tracker.usedScriptInfo = {
+            id: activeScript.id,
+            name: activeScript.name,
+            scriptType: activeScript.scriptType as 'discovery' | 'demo' | 'objections',
+            version: activeScript.version || '1.0.0'
+          };
+          
+          console.log(`✅ [TRACKER] Script loaded from DB: "${activeScript.name}" (ID: ${activeScript.id})`);
+          console.log(`   Phases: ${tracker.scriptStructure.metadata.totalPhases}, Steps: ${tracker.scriptStructure.metadata.totalSteps}`);
+        }
+      } catch (error: any) {
+        console.warn(`⚠️  [TRACKER] Failed to load script from database, using fallback JSON: ${error.message}`);
+      }
+    }
+    
+    return tracker;
+  }
+  
+  /**
+   * Getter per le info sullo script usato
+   */
+  getUsedScriptInfo(): UsedScriptInfo | undefined {
+    return this.usedScriptInfo;
   }
   
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -899,7 +921,7 @@ export class SalesScriptTracker {
         agentId: this.agentId,
         currentPhase: this.state.currentPhase,
         phasesReached: this.state.phasesReached,
-        phaseActivations: this.state.phaseActivations, // ✅ Save phase activation evidence
+        phaseActivations: this.state.phaseActivations,
         checkpointsCompleted: this.state.checkpointsCompleted,
         semanticTypes: this.state.semanticTypes,
         aiReasoning: this.state.aiReasoning,
@@ -912,6 +934,10 @@ export class SalesScriptTracker {
         // Save script snapshot for historical comparison
         scriptSnapshot: this.scriptStructure,
         scriptVersion: this.scriptStructure.version,
+        // ✅ Save used script info (from Script Manager database)
+        usedScriptId: this.usedScriptInfo?.id || null,
+        usedScriptName: this.usedScriptInfo?.name || null,
+        usedScriptType: this.usedScriptInfo?.scriptType || null,
         updatedAt: new Date()
       };
       
@@ -1236,14 +1262,33 @@ export class SalesScriptTracker {
 
 /**
  * Create or get existing tracker for a conversation
+ * @param conversationId - ID della conversazione
+ * @param agentId - ID dell'agente
+ * @param initialPhase - Fase iniziale (default: phase_1_2)
+ * @param clientId - ID del cliente (opzionale, per caricare script dal DB)
+ * @param scriptType - Tipo di script (default: discovery)
  */
 const trackerInstances = new Map<string, SalesScriptTracker>();
 
-export async function getOrCreateTracker(conversationId: string, agentId: string, initialPhase?: string): Promise<SalesScriptTracker> {
+export async function getOrCreateTracker(
+  conversationId: string, 
+  agentId: string, 
+  initialPhase?: string,
+  clientId?: string,
+  scriptType: 'discovery' | 'demo' | 'objections' = 'discovery'
+): Promise<SalesScriptTracker> {
   let tracker = trackerInstances.get(conversationId);
   
   if (!tracker) {
-    tracker = new SalesScriptTracker(conversationId, agentId, initialPhase);
+    // Usa il factory method asincrono per supportare caricamento da DB
+    tracker = await SalesScriptTracker.create(
+      conversationId, 
+      agentId, 
+      initialPhase || 'phase_1_2',
+      undefined, // logger
+      clientId,
+      scriptType
+    );
     
     // 🔄 RECONNECT FIX: Try to load existing state from database
     const loaded = await tracker.loadFromDatabase();

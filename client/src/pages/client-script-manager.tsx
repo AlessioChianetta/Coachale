@@ -65,6 +65,33 @@ import { QuestionInspector } from '@/components/script-manager/QuestionInspector
 import { BlockEditor } from '@/components/script-manager/BlockEditor';
 
 // Types and Constants
+interface EnergySettingsData {
+  level: 'BASSO' | 'MEDIO' | 'ALTO';
+  tone: 'CALMO' | 'SICURO' | 'CONFIDENZIALE' | 'ENTUSIASTA';
+  volume: 'SOFT' | 'NORMAL' | 'LOUD';
+  pace: 'LENTO' | 'MODERATO' | 'VELOCE';
+  vocabulary: 'FORMALE' | 'COLLOQUIALE' | 'TECNICO';
+  reason?: string;
+}
+
+interface LadderLevel {
+  level: number;
+  text: string;
+  purpose: string;
+}
+
+interface LadderData {
+  hasLadder: boolean;
+  levels: LadderLevel[];
+}
+
+interface QuestionData {
+  id: string;
+  text: string;
+  order: number;
+  type?: string;
+}
+
 interface SalesScript {
   id: string;
   name: string;
@@ -77,6 +104,10 @@ interface SalesScript {
   };
   isActive: boolean;
   updatedAt: string;
+  energySettings?: Record<string, EnergySettingsData>;
+  ladderOverrides?: Record<string, LadderData>;
+  stepQuestions?: Record<string, QuestionData[]>;
+  stepBiscottini?: Record<string, Array<{ text: string; type: string }>>;
 }
 
 const scriptTypeLabels: Record<SalesScript['scriptType'], string> = {
@@ -195,6 +226,74 @@ export default function ClientScriptManager() {
       queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
       setSelectedScriptId(null);
       toast({ title: 'Script eliminato', description: 'Lo script è stato eliminato' });
+    },
+    onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
+  });
+
+  const updateEnergyMutation = useMutation({
+    mutationFn: async (data: { scriptId: string; phaseOrStepId: string; settings: EnergySettingsData }) => {
+      const res = await fetch(`/api/sales-scripts/${data.scriptId}/energy`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phaseOrStepId: data.phaseOrStepId, settings: data.settings }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Errore nel salvataggio energy');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
+      toast({ title: 'Energy salvato', description: 'Le impostazioni energia sono state aggiornate.' });
+    },
+    onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
+  });
+
+  const updateLadderMutation = useMutation({
+    mutationFn: async (data: { scriptId: string; stepId: string; hasLadder: boolean; levels: LadderLevel[] }) => {
+      const res = await fetch(`/api/sales-scripts/${data.scriptId}/ladder`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stepId: data.stepId, hasLadder: data.hasLadder, levels: data.levels }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Errore nel salvataggio ladder');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
+      toast({ title: 'Ladder salvato', description: 'I livelli ladder sono stati aggiornati.' });
+    },
+    onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
+  });
+
+  const updateQuestionsMutation = useMutation({
+    mutationFn: async (data: { scriptId: string; stepId: string; questions: QuestionData[] }) => {
+      const res = await fetch(`/api/sales-scripts/${data.scriptId}/questions`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stepId: data.stepId, questions: data.questions }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Errore nel salvataggio domande');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
+      toast({ title: 'Domande salvate', description: 'Le domande sono state aggiornate.' });
+    },
+    onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
+  });
+
+  const updateBiscottiniMutation = useMutation({
+    mutationFn: async (data: { scriptId: string; stepId: string; biscottini: Array<{ text: string; type: string }> }) => {
+      const res = await fetch(`/api/sales-scripts/${data.scriptId}/biscottini`, {
+        method: 'PUT',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stepId: data.stepId, biscottini: data.biscottini }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Errore nel salvataggio biscottini');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
+      toast({ title: 'Biscottini salvati', description: 'I biscottini sono stati aggiornati.' });
     },
     onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
   });
@@ -332,14 +431,54 @@ export default function ClientScriptManager() {
     }
   }, [selectedScript]);
 
+  // Handlers for enhanced mutations
+  const handleSaveEnergy = useCallback((phaseOrStepId: string, settings: EnergySettingsData) => {
+    if (!selectedScriptId) return;
+    updateEnergyMutation.mutate({ scriptId: selectedScriptId, phaseOrStepId, settings });
+  }, [selectedScriptId, updateEnergyMutation]);
+
+  const handleSaveLadder = useCallback((stepId: string, hasLadder: boolean, levels: LadderLevel[]) => {
+    if (!selectedScriptId) return;
+    updateLadderMutation.mutate({ scriptId: selectedScriptId, stepId, hasLadder, levels });
+  }, [selectedScriptId, updateLadderMutation]);
+
+  const handleSaveQuestions = useCallback((stepId: string, questions: QuestionData[]) => {
+    if (!selectedScriptId) return;
+    updateQuestionsMutation.mutate({ scriptId: selectedScriptId, stepId, questions });
+  }, [selectedScriptId, updateQuestionsMutation]);
+
   // RENDER: Inspector Panel
   const renderInspector = () => {
     if (!selectedScriptId || !selectedScript) return <InspectorWelcomeMessage />;
 
     if (isEditing && selectedBlock) {
         switch (selectedBlock.type) {
-            case 'phase': return <PhaseInspector phase={selectedBlock as Phase} onUpdate={handleBlockUpdate} isEditing />;
-            case 'step': return <StepInspector step={selectedBlock as Step} onUpdate={handleBlockUpdate} isEditing />;
+            case 'phase': return (
+              <PhaseInspector 
+                phase={selectedBlock as Phase} 
+                onUpdate={handleBlockUpdate} 
+                isEditing 
+                energySettings={selectedScript.energySettings?.[selectedBlock.id]}
+                onSaveEnergy={(settings) => handleSaveEnergy(selectedBlock.id, settings)}
+                isSavingEnergy={updateEnergyMutation.isPending}
+              />
+            );
+            case 'step': return (
+              <StepInspector 
+                step={selectedBlock as Step} 
+                onUpdate={handleBlockUpdate} 
+                isEditing 
+                energySettings={selectedScript.energySettings?.[selectedBlock.id]}
+                ladderData={selectedScript.ladderOverrides?.[selectedBlock.id]}
+                questionsData={selectedScript.stepQuestions?.[selectedBlock.id]}
+                onSaveEnergy={(settings) => handleSaveEnergy(selectedBlock.id, settings)}
+                onSaveLadder={(hasLadder, levels) => handleSaveLadder(selectedBlock.id, hasLadder, levels)}
+                onSaveQuestions={(questions) => handleSaveQuestions(selectedBlock.id, questions)}
+                isSavingEnergy={updateEnergyMutation.isPending}
+                isSavingLadder={updateLadderMutation.isPending}
+                isSavingQuestions={updateQuestionsMutation.isPending}
+              />
+            );
             case 'question': return <QuestionInspector question={selectedBlock as Question} onUpdate={handleBlockUpdate} isEditing />;
             default: return <div className="p-4 text-sm text-muted-foreground">Seleziona un blocco per visualizzarne i dettagli e modificarlo.</div>;
         }
@@ -510,7 +649,10 @@ export default function ClientScriptManager() {
                                  onSelectBlock={setSelectedBlock} 
                                  onAddBlock={handleBlockAdd}
                                  onDeleteBlock={handleBlockDelete}
-                                 isEditing 
+                                 isEditing
+                                 energySettings={selectedScript?.energySettings}
+                                 ladderOverrides={selectedScript?.ladderOverrides}
+                                 stepQuestions={selectedScript?.stepQuestions}
                                /> 
                                : <Loader2 className="h-6 w-6 animate-spin mx-auto mt-10" />
                            )}
@@ -525,6 +667,9 @@ export default function ClientScriptManager() {
                                  onAddBlock={handleBlockAdd}
                                  onDeleteBlock={handleBlockDelete}
                                  isEditing={false}
+                                 energySettings={selectedScript?.energySettings}
+                                 ladderOverrides={selectedScript?.ladderOverrides}
+                                 stepQuestions={selectedScript?.stepQuestions}
                                />
                            )}
                            {!isEditing && editorMode === 'text' && (

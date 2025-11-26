@@ -599,4 +599,237 @@ function getMaxStepForPhase(phaseIndex: number): number {
   return stepRanges[phaseIndex] || 20;
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ENERGY SETTINGS, LADDER LEVELS, QUESTIONS ENDPOINTS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// PUT /api/sales-scripts/:id/energy - Update energy settings for a phase or step
+router.put('/:id/energy', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientId = req.user!.id;
+    const { phaseOrStepId, settings } = req.body;
+    
+    if (!phaseOrStepId || !settings) {
+      return res.status(400).json({ error: 'phaseOrStepId e settings sono obbligatori' });
+    }
+    
+    const [script] = await db
+      .select()
+      .from(salesScripts)
+      .where(and(
+        eq(salesScripts.id, id),
+        eq(salesScripts.clientId, clientId)
+      ));
+    
+    if (!script) {
+      return res.status(404).json({ error: 'Script non trovato' });
+    }
+    
+    // Merge new energy settings with existing
+    const currentSettings = (script.energySettings as Record<string, any>) || {};
+    currentSettings[phaseOrStepId] = {
+      level: settings.level || 'MEDIO',
+      tone: settings.tone || 'SICURO',
+      volume: settings.volume || 'NORMAL',
+      pace: settings.pace || 'MODERATO',
+      vocabulary: settings.vocabulary || 'COLLOQUIALE',
+      reason: settings.reason || undefined
+    };
+    
+    const [updatedScript] = await db
+      .update(salesScripts)
+      .set({ 
+        energySettings: currentSettings,
+        updatedAt: new Date() 
+      })
+      .where(eq(salesScripts.id, id))
+      .returning();
+    
+    console.log(`🔊 [EnergyUpdate] Updated energy for ${phaseOrStepId} in script ${id}`);
+    
+    res.json({ success: true, energySettings: updatedScript.energySettings });
+  } catch (error) {
+    console.error('Error updating energy settings:', error);
+    res.status(500).json({ error: 'Errore nell\'aggiornamento degli energy settings' });
+  }
+});
+
+// PUT /api/sales-scripts/:id/ladder - Update ladder levels for a step
+router.put('/:id/ladder', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientId = req.user!.id;
+    const { stepId, hasLadder, levels } = req.body;
+    
+    if (!stepId) {
+      return res.status(400).json({ error: 'stepId è obbligatorio' });
+    }
+    
+    const [script] = await db
+      .select()
+      .from(salesScripts)
+      .where(and(
+        eq(salesScripts.id, id),
+        eq(salesScripts.clientId, clientId)
+      ));
+    
+    if (!script) {
+      return res.status(404).json({ error: 'Script non trovato' });
+    }
+    
+    // Merge new ladder settings with existing
+    const currentLadder = (script.ladderOverrides as Record<string, any>) || {};
+    currentLadder[stepId] = {
+      hasLadder: hasLadder ?? true,
+      levels: levels || []
+    };
+    
+    const [updatedScript] = await db
+      .update(salesScripts)
+      .set({ 
+        ladderOverrides: currentLadder,
+        updatedAt: new Date() 
+      })
+      .where(eq(salesScripts.id, id))
+      .returning();
+    
+    console.log(`🪜 [LadderUpdate] Updated ladder for step ${stepId} in script ${id}`);
+    
+    res.json({ success: true, ladderOverrides: updatedScript.ladderOverrides });
+  } catch (error) {
+    console.error('Error updating ladder settings:', error);
+    res.status(500).json({ error: 'Errore nell\'aggiornamento dei ladder levels' });
+  }
+});
+
+// PUT /api/sales-scripts/:id/questions - Update questions for a step
+router.put('/:id/questions', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientId = req.user!.id;
+    const { stepId, questions } = req.body;
+    
+    if (!stepId || !Array.isArray(questions)) {
+      return res.status(400).json({ error: 'stepId e questions array sono obbligatori' });
+    }
+    
+    const [script] = await db
+      .select()
+      .from(salesScripts)
+      .where(and(
+        eq(salesScripts.id, id),
+        eq(salesScripts.clientId, clientId)
+      ));
+    
+    if (!script) {
+      return res.status(404).json({ error: 'Script non trovato' });
+    }
+    
+    // Merge new questions with existing
+    const currentQuestions = (script.stepQuestions as Record<string, any>) || {};
+    currentQuestions[stepId] = questions.map((q: any, index: number) => ({
+      id: q.id || `q_${Date.now()}_${index}`,
+      text: q.text,
+      order: q.order ?? index + 1,
+      type: q.type || 'general'
+    }));
+    
+    const [updatedScript] = await db
+      .update(salesScripts)
+      .set({ 
+        stepQuestions: currentQuestions,
+        updatedAt: new Date() 
+      })
+      .where(eq(salesScripts.id, id))
+      .returning();
+    
+    console.log(`❓ [QuestionsUpdate] Updated ${questions.length} questions for step ${stepId} in script ${id}`);
+    
+    res.json({ success: true, stepQuestions: updatedScript.stepQuestions });
+  } catch (error) {
+    console.error('Error updating step questions:', error);
+    res.status(500).json({ error: 'Errore nell\'aggiornamento delle domande' });
+  }
+});
+
+// PUT /api/sales-scripts/:id/biscottini - Update biscottini for a step
+router.put('/:id/biscottini', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientId = req.user!.id;
+    const { stepId, biscottini } = req.body;
+    
+    if (!stepId || !Array.isArray(biscottini)) {
+      return res.status(400).json({ error: 'stepId e biscottini array sono obbligatori' });
+    }
+    
+    const [script] = await db
+      .select()
+      .from(salesScripts)
+      .where(and(
+        eq(salesScripts.id, id),
+        eq(salesScripts.clientId, clientId)
+      ));
+    
+    if (!script) {
+      return res.status(404).json({ error: 'Script non trovato' });
+    }
+    
+    // Merge new biscottini with existing
+    const currentBiscottini = (script.stepBiscottini as Record<string, any>) || {};
+    currentBiscottini[stepId] = biscottini.map((b: any) => ({
+      text: b.text,
+      type: b.type || 'other'
+    }));
+    
+    const [updatedScript] = await db
+      .update(salesScripts)
+      .set({ 
+        stepBiscottini: currentBiscottini,
+        updatedAt: new Date() 
+      })
+      .where(eq(salesScripts.id, id))
+      .returning();
+    
+    console.log(`🍪 [BiscottiniUpdate] Updated biscottini for step ${stepId} in script ${id}`);
+    
+    res.json({ success: true, stepBiscottini: updatedScript.stepBiscottini });
+  } catch (error) {
+    console.error('Error updating biscottini:', error);
+    res.status(500).json({ error: 'Errore nell\'aggiornamento dei biscottini' });
+  }
+});
+
+// GET /api/sales-scripts/:id/enhanced - Get script with all enhanced data
+router.get('/:id/enhanced', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientId = req.user!.id;
+    
+    const [script] = await db
+      .select()
+      .from(salesScripts)
+      .where(and(
+        eq(salesScripts.id, id),
+        eq(salesScripts.clientId, clientId)
+      ));
+    
+    if (!script) {
+      return res.status(404).json({ error: 'Script non trovato' });
+    }
+    
+    res.json({
+      ...script,
+      energySettings: script.energySettings || {},
+      ladderOverrides: script.ladderOverrides || {},
+      stepQuestions: script.stepQuestions || {},
+      stepBiscottini: script.stepBiscottini || {}
+    });
+  } catch (error) {
+    console.error('Error fetching enhanced script:', error);
+    res.status(500).json({ error: 'Errore nel recupero dello script' });
+  }
+});
+
 export default router;
