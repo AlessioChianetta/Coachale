@@ -512,7 +512,7 @@ che non è calibrato per te, concordi?"
 📌 DOMANDA: "Perfetto! Allora, più o meno a che livello sei?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il numero
-💬 REAGISCI: "Capisco!"
+💬 REAGISCI: "Capisco!!"
 
 🛡️ SE RESISTE: Continua ad essere vago
 📌 DOMANDA: "Capisco, non serve essere preciso al centesimo. Anche a occhio, 
