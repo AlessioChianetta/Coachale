@@ -974,6 +974,9 @@ router.get("/:agentId/training/conversations", authenticateToken, async (req: Au
         ladderActivations: salesConversationTraining.ladderActivations,
         checkpointsCompleted: salesConversationTraining.checkpointsCompleted,
         aiAnalysisResult: salesConversationTraining.aiAnalysisResult, // Include AI analysis for badge
+        usedScriptId: salesConversationTraining.usedScriptId,
+        usedScriptName: salesConversationTraining.usedScriptName,
+        usedScriptType: salesConversationTraining.usedScriptType,
         createdAt: salesConversationTraining.createdAt,
         updatedAt: salesConversationTraining.updatedAt,
       })
@@ -998,6 +1001,10 @@ router.get("/:agentId/training/conversations", authenticateToken, async (req: Au
           checkpointsCompletedCount: Array.isArray(training.checkpointsCompleted) ? training.checkpointsCompleted.length : 0,
           totalDuration: training.totalDuration,
           aiAnalysisResult: training.aiAnalysisResult, // Include AI analysis for badge display
+          usedScriptId: training.usedScriptId,
+          usedScriptName: training.usedScriptName,
+          usedScriptType: training.usedScriptType,
+          usedScriptSource: conversation?.usedScriptSource || null, // From clientSalesConversations table
           createdAt: training.createdAt,
           updatedAt: training.updatedAt,
         };
@@ -1087,6 +1094,10 @@ router.get("/:agentId/training/conversation/:conversationId", authenticateToken,
       scriptSnapshot: training.scriptSnapshot,
       scriptVersion: training.scriptVersion,
       aiAnalysisResult: training.aiAnalysisResult, // FIX: Include AI analysis for GeminiReportPanel
+      usedScriptId: training.usedScriptId,
+      usedScriptName: training.usedScriptName,
+      usedScriptType: training.usedScriptType,
+      usedScriptSource: conversation.usedScriptSource || null, // From clientSalesConversations table
       createdAt: training.createdAt,
       updatedAt: training.updatedAt,
     };
