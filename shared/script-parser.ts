@@ -39,31 +39,62 @@ function extractVocabulary(text: string): string[] {
   return [];
 }
 
-function parseEnergySettings(text: string): EnergySettings | undefined {
-  // Match standard format ⚡ ENERGIA: or box format ║  ⚡ ENERGIA
-  const energyMatch = text.match(/(?:║\s*)?⚡\s*(?:ENERGIA|RITMO)[^:]*:\s*([^\n║]+)/i);
-  const toneMatch = text.match(/(?:║\s*)?🎵\s*TONO:\s*([^\n║]+)/i);
-  const volumeMatch = text.match(/(?:║\s*)?📢\s*VOLUME:\s*([^\n║]+)/i);
-  const rhythmMatch = text.match(/(?:║\s*)?🏃\s*RITMO:\s*([^\n║]+)/i);
-  const inflectionMatch = text.match(/(?:║\s*)?(?:📈|🎭)\s*INFLESSIONI?[^:]*:\s*([^\n║]+)/i);
-  const vocabMatch = text.match(/(?:║\s*)?(?:✅|📣)\s*LESSICO[^:]*:\s*([^\n║]+(?:\n\s+"[^"]+[^\n]+)*)/i);
-  const mindsetMatch = text.match(/(?:║\s*)?💪\s*MINDSET:\s*([^\n║]+)/i);
-  const exampleMatch = text.match(/(?:║\s*)?💬\s*ESEMPIO[^:]*:\s*([\s\S]*?)(?=(?:║\s*$|💪|━|╚|$))/i) ||
-                       text.match(/(?:║\s*)?🎬\s*ESEMPIO[^:]*:\s*([\s\S]*?)(?=(?:║\s*$|💪|━|╚|$))/i);
+function extractEnergyBoxContent(text: string): string | undefined {
+  const boxMatch = text.match(/╔[═╔╗\s\S]*?╚[═╚╝]+/);
+  if (boxMatch) {
+    return boxMatch[0]
+      .replace(/[╔╠╚][═]+[╗╣╝]/g, '')
+      .replace(/║/g, '')
+      .trim();
+  }
+  return undefined;
+}
 
-  if (!energyMatch && !toneMatch) {
+function parseEnergySettings(text: string): EnergySettings | undefined {
+  const boxContent = extractEnergyBoxContent(text);
+  const searchText = boxContent || text;
+  
+  const energyMatch = searchText.match(/⚡\s*(?:ENERGIA(?:\s*E\s*TONALITÀ)?|RITMO)[^:\n]*(?::\s*([^\n]+))?/i);
+  const toneMatch = searchText.match(/🎵\s*TONO[^:]*:\s*([^\n]+)/i);
+  const volumeMatch = searchText.match(/📢\s*VOLUME[^:]*:\s*([^\n]+)/i);
+  const rhythmMatch = searchText.match(/(?:🏃|⚡)\s*RITMO[^:]*:\s*([^\n]+)/i);
+  const inflectionMatch = searchText.match(/(?:📈|🎭)\s*INFLESSIONI?[^:]*:\s*([^\n]+)/i);
+  
+  const vocabMatch = searchText.match(/(?:✅|📣)\s*LESSICO[^:]*:\s*([^\n]+(?:\n[^\n🎵📢🏃📈🎭💬🎬💪⚡╔╠╚]*"[^"]+[^\n]*)*)/i);
+  
+  const mindsetMatch = searchText.match(/(?:💪|🎯)\s*MINDSET[^:]*:\s*([^\n]+)/i);
+  
+  const exampleMatch = searchText.match(/💬\s*ESEMPIO[^:]*:\s*([\s\S]*?)(?=💪|🎯|━{3,}|╚|$)/i) ||
+                       searchText.match(/🎬\s*ESEMPIO[^:]*:\s*([\s\S]*?)(?=💪|🎯|━{3,}|╚|$)/i);
+
+  const toneParenMatch = text.match(/\*\*\(TONO:\s*([^)]+)\)\*\*/i) ||
+                          text.match(/\(TONO:\s*([^)]+)\)/i);
+
+  if (!energyMatch && !toneMatch && !toneParenMatch) {
     return undefined;
   }
 
+  let level = '';
+  if (energyMatch) {
+    if (energyMatch[1]) {
+      level = energyMatch[1].trim();
+    } else {
+      const headerMatch = energyMatch[0].match(/ENERGIA\s*E\s*TONALITÀ\s*[-–—]\s*(.+)/i);
+      if (headerMatch) {
+        level = headerMatch[1].trim();
+      }
+    }
+  }
+
   return {
-    level: energyMatch?.[1]?.trim() || '',
-    tone: toneMatch?.[1]?.trim() || '',
+    level,
+    tone: toneMatch?.[1]?.trim() || toneParenMatch?.[1]?.trim() || '',
     volume: volumeMatch?.[1]?.trim() || '',
     rhythm: rhythmMatch?.[1]?.trim() || '',
     inflections: inflectionMatch?.[1]?.trim(),
     vocabulary: vocabMatch ? extractVocabulary(vocabMatch[1]) : [],
     mindset: mindsetMatch?.[1]?.trim(),
-    example: exampleMatch?.[1]?.trim(),
+    example: exampleMatch?.[1]?.replace(/\n\s*║\s*/g, '\n').trim(),
   };
 }
 
@@ -90,15 +121,24 @@ function parseQuestionInstructions(text: string): QuestionInstructions {
 
 function parseQuestions(text: string): Question[] {
   const questions: Question[] = [];
-  const questionBlocks = text.split(/(?=📌\s)/);
+  const questionBlocks = text.split(/(?=📌\s|💡\s*DOMANDA\s*CHIAVE)/i);
 
   for (const block of questionBlocks) {
-    if (!block.trim().startsWith('📌')) continue;
+    const startsWithPin = block.trim().startsWith('📌');
+    const startsWithKey = /^💡\s*DOMANDA\s*CHIAVE/i.test(block.trim());
+    
+    if (!startsWithPin && !startsWithKey) continue;
 
     const lines = block.split('\n');
-    const firstLine = lines[0].replace('📌', '').trim();
+    let firstLine = lines[0];
     
-    const markerMatch = firstLine.match(/^([A-Z\s]+(?:\s*-\s*[^\n:]+)?)\s*[:\-]\s*/i);
+    if (startsWithPin) {
+      firstLine = firstLine.replace('📌', '').trim();
+    } else if (startsWithKey) {
+      firstLine = firstLine.replace(/💡\s*DOMANDA\s*CHIAVE\s*[-–—]?\s*/i, '').trim();
+    }
+    
+    const markerMatch = firstLine.match(/^([A-Z\s]+(?:\s*[-–—]\s*[^\n:]+)?)\s*[:\-]\s*/i);
     let marker = '';
     let questionText = firstLine;
 
@@ -117,7 +157,8 @@ function parseQuestions(text: string): Question[] {
         !l.includes('⏸️') && 
         !l.includes('🎧') && 
         !l.includes('💬') &&
-        !l.startsWith('   →')
+        !l.startsWith('   →') &&
+        !l.trim().startsWith('SE ')
       );
       if (contentLines.length > 0) {
         questionText = contentLines.join(' ').trim().replace(/^\s*"|"\s*$/g, '');
@@ -125,7 +166,14 @@ function parseQuestions(text: string): Question[] {
     }
 
     const conditionMatch = block.match(/SE\s+([^:\n]+)/i);
-    const isKey = /CHIAVE|PRINCIPALE|KEY/i.test(marker) || /DOMANDA CHIAVE/i.test(block);
+    const isKey = startsWithKey || 
+                  /CHIAVE|PRINCIPALE|KEY/i.test(marker) || 
+                  /DOMANDA CHIAVE/i.test(block) ||
+                  /💡/i.test(block.substring(0, 50));
+
+    if (startsWithKey && !marker) {
+      marker = 'DOMANDA CHIAVE';
+    }
 
     questions.push({
       id: generateBlockId(),
@@ -141,23 +189,71 @@ function parseQuestions(text: string): Question[] {
 }
 
 function parseLadder(text: string): Ladder | undefined {
-  const titleMatch = text.match(/(?:🔍|📋)\s*(?:LADDER|REGOLA)\s*(?:DEI\s*)?([^\n]+)/i);
-  if (!titleMatch) return undefined;
+  const titleMatch = text.match(/(?:🔍|📋|⚠️)\s*(?:LADDER|REGOLA)\s*(?:DEI\s*)?(?:PERCHÉ\s*)?([^\n]+)/i);
+  if (!titleMatch && !/LIVELLO\s*\d+/i.test(text)) return undefined;
 
   const levels: LadderLevel[] = [];
-  const levelPattern = /LIVELLO\s*(\d+)️⃣\s*[-–—]\s*([^:\n]+):\s*(?:━+\s*)?"?([^"]*)"?\s*(?:\n\n|⏸️)/gi;
   
-  let match;
-  while ((match = levelPattern.exec(text)) !== null) {
-    levels.push({
-      number: parseInt(match[1]),
-      name: match[2].trim(),
-      question: match[3].trim().replace(/^["']|["']$/g, ''),
-    });
+  const levelSections = text.split(/(?=LIVELLO\s*\d+)/i);
+  
+  for (const section of levelSections) {
+    const headerMatch = section.match(/LIVELLO\s*(\d+)(?:️⃣)?\s*(?:[-–—]\s*)?([^:\n]*)?(?::\s*)?/i);
+    if (!headerMatch) continue;
+    
+    const levelNum = parseInt(headerMatch[1]);
+    let levelName = headerMatch[2]?.trim() || `Livello ${levelNum}`;
+    levelName = levelName.replace(/\s*\([^)]*\)\s*$/, '').trim() || `Livello ${levelNum}`;
+    
+    const cleanSection = section.replace(/^LIVELLO\s*\d+(?:️⃣)?[^\n]*\n?/i, '');
+    const withoutSeparators = cleanSection.replace(/^━+\s*\n?/gm, '');
+    
+    let question = '';
+    
+    const quotedMatch = withoutSeparators.match(/"([^"]+)"/);
+    if (quotedMatch) {
+      question = quotedMatch[1].trim();
+    } else {
+      const objectiveMatch = withoutSeparators.match(/🎯\s*OBIETTIVO:[^\n]*\n+([\s\S]*?)(?=⏸️|LIVELLO|---|$)/i);
+      if (objectiveMatch) {
+        const afterObjective = objectiveMatch[1].trim();
+        const innerQuote = afterObjective.match(/"([^"]+)"/);
+        if (innerQuote) {
+          question = innerQuote[1].trim();
+        } else {
+          const firstLine = afterObjective.split('\n')[0].trim();
+          if (firstLine && !firstLine.startsWith('🎯') && !firstLine.startsWith('⏸️')) {
+            question = firstLine.replace(/^["']|["']$/g, '');
+          }
+        }
+      } else {
+        const contentLines = withoutSeparators.split('\n')
+          .filter(l => l.trim() && 
+                 !l.trim().startsWith('🎯') && 
+                 !l.trim().startsWith('⏸️') &&
+                 !l.trim().startsWith('💡') &&
+                 !l.match(/^SE\s+(dice|DICE)/i))
+          .slice(0, 3);
+        if (contentLines.length > 0) {
+          question = contentLines.join(' ').trim().replace(/^["']|["']$/g, '');
+        }
+      }
+    }
+    
+    const notesMatch = section.match(/💡\s*(?:NOTA|NOTE)?:?\s*([^\n]+)/i);
+    
+    if (question) {
+      levels.push({
+        number: levelNum,
+        name: levelName,
+        question,
+        notes: notesMatch?.[1]?.trim(),
+      });
+    }
   }
 
   if (levels.length === 0) {
-    const simplePattern = /LIVELLO\s*(\d+)️⃣[^"]*"([^"]+)"/gi;
+    const simplePattern = /LIVELLO\s*(\d+)(?:️⃣)?[^"]*"([^"]+)"/gi;
+    let match;
     while ((match = simplePattern.exec(text)) !== null) {
       levels.push({
         number: parseInt(match[1]),
@@ -168,25 +264,30 @@ function parseLadder(text: string): Ladder | undefined {
   }
 
   const whenToUse: string[] = [];
-  const whenToUseMatch = text.match(/⚠️\s*QUANDO\s*ATTIVARLA:?\s*([\s\S]*?)(?=❌|📋|LIVELLO)/i);
+  const whenToUseMatch = text.match(/⚠️\s*QUANDO\s*(?:ATTIVARLA|ATTIVARLO|USARLO):?\s*([\s\S]*?)(?=❌|📋|LIVELLO)/i);
   if (whenToUseMatch) {
-    const items = whenToUseMatch[1].match(/[✓✅]\s*([^\n]+)/g);
+    const items = whenToUseMatch[1].match(/[✓✅•]\s*([^\n]+)/g);
     if (items) {
-      whenToUse.push(...items.map(i => i.replace(/^[✓✅]\s*/, '').trim()));
+      whenToUse.push(...items.map(i => i.replace(/^[✓✅•]\s*/, '').trim()));
     }
   }
 
   const stopWhen: string[] = [];
-  const stopMatch = text.match(/🛑\s*FERMATI\s*QUANDO:?\s*([\s\S]*?)(?=❌|💡|---|$)/i);
+  const stopMatch = text.match(/(?:🛑|✅)\s*(?:FERMATI\s*QUANDO|CRITERIO\s*DI\s*STOP):?\s*([\s\S]*?)(?=❌|💡|---|LIVELLO|$)/i);
   if (stopMatch) {
-    const items = stopMatch[1].match(/[✓✅]\s*([^\n]+)/g);
+    const items = stopMatch[1].match(/[✓✅•]\s*([^\n]+)/g);
     if (items) {
-      stopWhen.push(...items.map(i => i.replace(/^[✓✅]\s*/, '').trim()));
+      stopWhen.push(...items.map(i => i.replace(/^[✓✅•]\s*/, '').trim()));
+    } else {
+      const singleLine = stopMatch[1].trim().split('\n')[0];
+      if (singleLine && singleLine.length > 5) {
+        stopWhen.push(singleLine);
+      }
     }
   }
 
   return {
-    title: titleMatch[1].trim(),
+    title: titleMatch?.[1]?.trim() || 'Ladder dei Perché',
     whenToUse: whenToUse.length > 0 ? whenToUse : undefined,
     levels,
     stopWhen: stopWhen.length > 0 ? stopWhen : undefined,
@@ -204,7 +305,7 @@ function parseBiscottino(text: string): Biscottino | undefined {
 }
 
 function parseCheckpoint(text: string): Checkpoint | undefined {
-  const titleMatch = text.match(/⛔\s*CHECKPOINT\s*(?:OBBLIGATORIO)?\s*(?:FASE\s*)?([^\n⛔]+)?/i);
+  const titleMatch = text.match(/(?:⛔|🚨)\s*CHECKPOINT\s*(?:OBBLIGATORIO)?\s*(?:#?\d+\s*[-–—]?\s*)?(?:FASE\s*)?([^\n⛔🚨:]+)?:?/i);
   if (!titleMatch) return undefined;
 
   const checks: string[] = [];
@@ -214,16 +315,17 @@ function parseCheckpoint(text: string): Checkpoint | undefined {
   }
 
   let resistanceHandling: ResistanceHandling | undefined;
-  const resistanceMatch = text.match(/🛡️\s*GESTIONE\s*RESISTENZA[^:]*:?\s*([\s\S]*?)(?=✅\s*SOLO|---|$)/i);
+  
+  const resistanceMatch = text.match(/(?:🛡️|⚠️)\s*(?:GESTIONE\s*RESISTENZA|SE\s*(?:SEMBRA|DICE|CHIEDE))[^:]*:?\s*([\s\S]*?)(?=✅\s*(?:SOLO|SE)|---|$)/i);
   if (resistanceMatch) {
-    const triggerMatch = resistanceMatch[1].match(/SE\s*(?:IL\s*PROSPECT\s*)?(?:DICE|CHIEDE)?:?\s*"?([^"\n]+)"?/i);
-    const responseMatch = resistanceMatch[1].match(/RISPOSTA\s*(?:OBBLIGATORIA)?:?\s*(?:━+\s*)?([\s\S]*?)(?=⏸️|STEP|$)/i);
+    const triggerMatch = resistanceMatch[1].match(/SE\s*(?:IL\s*PROSPECT\s*)?(?:DICE|CHIEDE|SEMBRA)?:?\s*"?([^"\n]+)"?/i);
+    const responseMatch = resistanceMatch[1].match(/(?:RISPOSTA\s*(?:OBBLIGATORIA)?|→):?\s*(?:━+\s*)?([\s\S]*?)(?=⏸️|STEP|$)/i);
     
     const steps: ResistanceStep[] = [];
-    const stepMatches = resistanceMatch[1].match(/STEP\s*\d+\s*[-–—]\s*([^:]+):\s*([^\n]+)/gi);
+    const stepMatches = resistanceMatch[1].match(/(?:STEP\s*\d+|→)\s*[-–—]?\s*([^:]+):\s*([^\n]+)/gi);
     if (stepMatches) {
       stepMatches.forEach(s => {
-        const parts = s.match(/STEP\s*\d+\s*[-–—]\s*([^:]+):\s*(.+)/i);
+        const parts = s.match(/(?:STEP\s*\d+|→)\s*[-–—]?\s*([^:]+):\s*(.+)/i);
         if (parts) {
           steps.push({
             action: parts[1].trim(),
@@ -240,7 +342,16 @@ function parseCheckpoint(text: string): Checkpoint | undefined {
     };
   }
 
-  const reminderMatch = text.match(/🚨\s*REMINDER[^:]*:?\s*([\s\S]*?)(?=---|$)/i);
+  const warningMatch = text.match(/⚠️\s*SE\s*[^\n]+/gi);
+  if (warningMatch && !resistanceHandling) {
+    const warnings = warningMatch.map(w => w.replace(/^⚠️\s*/, '').trim());
+    resistanceHandling = {
+      trigger: 'Warning',
+      response: warnings.join('\n'),
+    };
+  }
+
+  const reminderMatch = text.match(/(?:🚨|💡)\s*(?:REMINDER|RICORDA)[^:]*:?\s*([\s\S]*?)(?=---|$)/i);
 
   return {
     title: titleMatch[1]?.trim() || 'Checkpoint',
@@ -310,7 +421,7 @@ function parsePhase(text: string): Phase | undefined {
 function parseGlobalRules(text: string): GlobalRule[] {
   const rules: GlobalRule[] = [];
 
-  const criticalMatch = text.match(/🚨🚨🚨\s*([^\n]+)\s*🚨🚨🚨\s*([\s\S]*?)(?=════|💎|$)/i);
+  const criticalMatch = text.match(/🚨🚨🚨\s*([^\n]+)\s*🚨🚨🚨\s*([\s\S]*?)(?=════|💎|🔄|$)/i);
   if (criticalMatch) {
     const items: string[] = [];
     const itemMatches = criticalMatch[2].match(/[✓✅❌]\s*([^\n]+)/g);
@@ -327,7 +438,7 @@ function parseGlobalRules(text: string): GlobalRule[] {
     });
   }
 
-  const goldenRegex = /💎\s*REGOLA\s*D['']ORO:?\s*([^\n]+(?:\n[^\n💎🚨═]+)*)/gi;
+  const goldenRegex = /💎\s*REGOLA\s*D['']ORO:?\s*([^\n]+(?:\n[^\n💎🚨═🔄]+)*)/gi;
   let goldenMatch;
   while ((goldenMatch = goldenRegex.exec(text)) !== null) {
     rules.push({
@@ -335,6 +446,50 @@ function parseGlobalRules(text: string): GlobalRule[] {
       type: 'golden',
       title: "REGOLA D'ORO",
       content: goldenMatch[1].trim(),
+    });
+  }
+
+  const loopMatch = text.match(/🔄\s*GESTIONE\s*LOOP\s*(?:OBIEZIONI)?[^═\n]*\n[═]*\s*([\s\S]*?)(?=🚨\s*CHECKPOINT|════|$)/i);
+  if (loopMatch) {
+    const items: string[] = [];
+    const itemMatches = loopMatch[1].match(/[✓✅⚠️•]\s*([^\n]+)/g);
+    if (itemMatches) {
+      items.push(...itemMatches.map(i => i.replace(/^[✓✅⚠️•]\s*/, '').trim()));
+    }
+
+    rules.push({
+      id: generateBlockId(),
+      type: 'reminder',
+      title: 'GESTIONE LOOP OBIEZIONI',
+      content: loopMatch[1].trim(),
+      items: items.length > 0 ? items : undefined,
+    });
+  }
+
+  const checkpointFinalMatch = text.match(/🚨\s*CHECKPOINT\s*FINALE[^═\n]*\n[═]*\s*([\s\S]*?)(?=════|$)/i);
+  if (checkpointFinalMatch) {
+    const items: string[] = [];
+    const itemMatches = checkpointFinalMatch[1].match(/[✓✅❌]\s*([^\n]+)/g);
+    if (itemMatches) {
+      items.push(...itemMatches.map(i => i.replace(/^[✓✅❌]\s*/, '').trim()));
+    }
+
+    rules.push({
+      id: generateBlockId(),
+      type: 'critical',
+      title: 'CHECKPOINT FINALE',
+      content: checkpointFinalMatch[1].trim(),
+      items: items.length > 0 ? items : undefined,
+    });
+  }
+
+  const metaInstructionsMatch = text.match(/⚠️\s*RICORDA:?\s*([^\n]+(?:\n[^\n⚠️═]+)*)/i);
+  if (metaInstructionsMatch) {
+    rules.push({
+      id: generateBlockId(),
+      type: 'reminder',
+      title: 'META-ISTRUZIONI',
+      content: metaInstructionsMatch[1].trim(),
     });
   }
 
@@ -349,28 +504,77 @@ function parseObjections(text: string): Objection[] {
     const headerMatch = block.match(/###\s*OBIEZIONE\s*#?(\d+):?\s*"?([^"\n]+)"?/i);
     if (!headerMatch) continue;
 
-    const objectiveMatch = block.match(/🎯\s*OBIETTIVO:\s*([^\n]+)/i);
-    const reframeMatch = block.match(/\*\*REFRAME:\*\*\s*([\s\S]*?)(?=\*\*DOMANDA|🔍|---|$)/i);
-    const keyQuestionMatch = block.match(/\*\*DOMANDA\s*(?:CHIAVE|KEY)?:?\*\*\s*([^\n]+)/i);
-    const analogyMatch = block.match(/\*\*ANALOGIA:\*\*\s*([\s\S]*?)(?=\*\*|---|$)/i);
-
+    const rawTitle = headerMatch[2].trim().replace(/^["']|["']$/g, '');
+    const titleParts = rawTitle.split(/\s*\/\s*/);
+    const mainTitle = titleParts[0].replace(/^["']|["']$/g, '').trim();
+    
     const variants: string[] = [];
-    const variantMatches = block.match(/^\s*[-•]\s*"([^"]+)"/gm);
-    if (variantMatches) {
-      variants.push(...variantMatches.map(v => v.replace(/^\s*[-•]\s*"?|"$/g, '').trim()));
+    if (titleParts.length > 1) {
+      for (let i = 1; i < titleParts.length; i++) {
+        const variant = titleParts[i].replace(/^["']|["']$/g, '').trim();
+        if (variant) variants.push(variant);
+      }
+    }
+    
+    const bulletVariants = block.match(/^\s*[-•]\s*"([^"]+)"/gm);
+    if (bulletVariants) {
+      variants.push(...bulletVariants.map(v => 
+        v.replace(/^\s*[-•]\s*"?/g, '').replace(/"$/g, '').trim()
+      ));
+    }
+
+    const objectiveMatch = block.match(/🎯\s*OBIETTIVO:\s*([^\n]+)/i);
+
+    const energy = parseEnergySettings(block);
+
+    const ladder = parseLadder(block);
+
+    let reframe = '';
+    const reframeMatch1 = block.match(/\*\*REFRAME:?\*\*\s*([\s\S]*?)(?=\*\*DOMANDA|\*\*ANALOGIA|🔍|📌|---|###|$)/i);
+    const reframeMatch2 = block.match(/📌\s*REFRAME\s*[-–—]?\s*[^:\n]*:?\s*([\s\S]*?)(?=\*\*DOMANDA|📌\s*(?!REFRAME)|🔍|---|###|$)/i);
+    
+    if (reframeMatch1) {
+      reframe = reframeMatch1[1].trim();
+    } else if (reframeMatch2) {
+      reframe = reframeMatch2[1].trim();
+    } else {
+      const simpleReframe = block.match(/(?:Vedi|Capisco)[^.]*\.\s*([\s\S]*?)(?=\*\*DOMANDA|📌|---|###|$)/i);
+      if (simpleReframe) {
+        reframe = simpleReframe[0].trim();
+      }
+    }
+
+    let keyQuestion = '';
+    const keyQ1 = block.match(/\*\*DOMANDA\s*(?:CHIAVE|KEY)?:?\*\*\s*([\s\S]*?)(?=\*\*ANALOGIA|\*\*---|###|$)/i);
+    const keyQ2 = block.match(/📌\s*DOMANDA\s*CHIAVE[^:\n]*:?\s*([\s\S]*?)(?=\*\*|---|###|$)/i);
+    
+    if (keyQ1) {
+      const content = keyQ1[1].trim();
+      const quotedQ = content.match(/"([^"]+)"/);
+      keyQuestion = quotedQ ? quotedQ[1] : content.split('\n')[0].trim();
+    } else if (keyQ2) {
+      const content = keyQ2[1].trim();
+      const quotedQ = content.match(/"([^"]+)"/);
+      keyQuestion = quotedQ ? quotedQ[1] : content.split('\n')[0].trim();
+    }
+
+    let analogy = '';
+    const analogyMatch = block.match(/\*\*ANALOGIA:?\*\*\s*([\s\S]*?)(?=\*\*|---|###|$)/i);
+    if (analogyMatch) {
+      analogy = analogyMatch[1].trim();
     }
 
     objections.push({
       id: generateBlockId(),
       number: parseInt(headerMatch[1]),
-      title: headerMatch[2].trim().replace(/^["']|["']$/g, ''),
+      title: mainTitle,
       variants: variants.length > 0 ? variants : undefined,
       objective: objectiveMatch?.[1]?.trim() || '',
-      energy: parseEnergySettings(block),
-      ladder: parseLadder(block),
-      reframe: reframeMatch?.[1]?.trim() || '',
-      keyQuestion: keyQuestionMatch?.[1]?.trim() || '',
-      analogy: analogyMatch?.[1]?.trim(),
+      energy,
+      ladder,
+      reframe,
+      keyQuestion,
+      analogy: analogy || undefined,
     });
   }
 
@@ -443,18 +647,26 @@ export function parseTextToBlocks(
     objections = parseObjections(text);
   }
 
-  const finalRulesMatch = text.match(/(?:REGOLE?\s*FINAL[EI]|CONCLUSIONE|CHIUSURA)\s*:?\s*([\s\S]*?)$/i);
   const finalRules: GlobalRule[] = [];
-  if (finalRulesMatch) {
-    const ruleItems = finalRulesMatch[1].match(/[✓✅]\s*([^\n]+)/g);
-    if (ruleItems && ruleItems.length > 0) {
-      finalRules.push({
-        id: generateBlockId(),
-        type: 'reminder',
-        title: 'Regole Finali',
-        content: finalRulesMatch[1].trim(),
-        items: ruleItems.map(r => r.replace(/^[✓✅]\s*/, '').trim()),
-      });
+  // Only parse finalRules for non-objection scripts, or when there's a clear "REGOLE FINALI" section
+  // CRITICAL FIX: Don't include finalRules if they would contain objections (causes duplication)
+  if (scriptType !== 'objections') {
+    const finalRulesMatch = text.match(/(?:REGOLE?\s*FINAL[EI]|CONCLUSIONE|CHIUSURA)\s*:?\s*([\s\S]*?)$/i);
+    if (finalRulesMatch) {
+      // Don't include if it contains objection markers (prevents duplication)
+      const content = finalRulesMatch[1].trim();
+      if (!content.includes('### OBIEZIONE')) {
+        const ruleItems = content.match(/[✓✅]\s*([^\n]+)/g);
+        if (ruleItems && ruleItems.length > 0) {
+          finalRules.push({
+            id: generateBlockId(),
+            type: 'reminder',
+            title: 'Regole Finali',
+            content: content,
+            items: ruleItems.map(r => r.replace(/^[✓✅]\s*/, '').trim()),
+          });
+        }
+      }
     }
   }
 
@@ -882,33 +1094,68 @@ export function extractScriptSummary(structure: ScriptBlockStructure): {
   totalPhases: number;
   totalSteps: number;
   totalQuestions: number;
+  totalKeyQuestions: number;
   totalCheckpoints: number;
   totalLadders: number;
+  totalEnergy: number;
   totalObjections: number;
+  objectionsWithEnergy: number;
+  objectionsWithLadder: number;
   hasGlobalRules: boolean;
 } {
   let totalSteps = 0;
   let totalQuestions = 0;
+  let totalKeyQuestions = 0;
   let totalCheckpoints = 0;
   let totalLadders = 0;
+  let totalEnergy = 0;
 
   structure.phases?.forEach(phase => {
     totalSteps += phase.steps?.length || 0;
     if (phase.checkpoint) totalCheckpoints++;
+    if (phase.energy) totalEnergy++;
     
     phase.steps?.forEach(step => {
       totalQuestions += step.questions?.length || 0;
+      totalKeyQuestions += step.questions?.filter(q => q.isKey).length || 0;
       if (step.ladder) totalLadders++;
+      if (step.energy) totalEnergy++;
     });
+  });
+
+  let objectionsWithEnergy = 0;
+  let objectionsWithLadder = 0;
+  structure.objections?.forEach(obj => {
+    if (obj.energy) objectionsWithEnergy++;
+    if (obj.ladder) objectionsWithLadder++;
   });
 
   return {
     totalPhases: structure.phases?.length || 0,
     totalSteps,
     totalQuestions,
+    totalKeyQuestions,
     totalCheckpoints,
     totalLadders,
+    totalEnergy,
     totalObjections: structure.objections?.length || 0,
+    objectionsWithEnergy,
+    objectionsWithLadder,
     hasGlobalRules: (structure.globalRules?.length || 0) > 0,
   };
+}
+
+export function logParsingResults(structure: ScriptBlockStructure, scriptType: string): void {
+  const summary = extractScriptSummary(structure);
+  console.log(`\n📊 PARSING RESULTS - ${scriptType.toUpperCase()}`);
+  console.log('━'.repeat(50));
+  console.log(`📁 Fasi: ${summary.totalPhases}`);
+  console.log(`📝 Step: ${summary.totalSteps}`);
+  console.log(`❓ Domande: ${summary.totalQuestions} (${summary.totalKeyQuestions} chiave)`);
+  console.log(`⚡ Energy Settings: ${summary.totalEnergy}`);
+  console.log(`🔍 Ladder: ${summary.totalLadders}`);
+  console.log(`⛔ Checkpoint: ${summary.totalCheckpoints}`);
+  console.log(`🛡️ Obiezioni: ${summary.totalObjections} (${summary.objectionsWithEnergy} con energy, ${summary.objectionsWithLadder} con ladder)`);
+  console.log(`📋 Regole Globali: ${structure.globalRules?.length || 0}`);
+  console.log('━'.repeat(50));
 }
