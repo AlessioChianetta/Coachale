@@ -1,0 +1,233 @@
+TASK 1: Passare posizione esatta al Prompt
+PROBLEMA:
+Il prompt riceve currentPhase = "discovery" invece di currentPhase = "phase_1" + currentStep = "step_1".
+L'AI sa solo "sei in discovery" ma non "sei a Fase 1, Step 1".
+
+DOVE SI ROMPE:
+
+File server/ai/sales-agent-prompt-builder.ts linea 987:
+currentPhase: 'discovery' | 'demo' | 'objections' | 'closing'  // ← TROPPO GENERICO
+
+SOLUZIONE:
+
+Il SalesScriptTracker già traccia la posizione esatta:
+state.currentPhase = "phase_1", "phase_2", ecc.
+state.currentStep = "step_1", "step_3", ecc.
+Modificare buildSalesAgentDynamicContext() per accettare anche exactPosition
+Nel prompt, mostrare: "POSIZIONE: Fase 1, Step 1 - APERTURA ENTUSIASTA"
+FILE DA MODIFICARE:
+
+server/ai/gemini-live-ws-service.ts - dove chiama buildFullSalesAgentContext(), passare anche i dati dal tracker
+server/ai/sales-agent-prompt-builder.ts - modificare firma funzione e output
+CODICE ESEMPIO:
+
+// PRIMA (attuale)
+buildSalesAgentDynamicContext(config, prospect, 'discovery', history)
+// DOPO (nuovo)
+buildSalesAgentDynamicContext(config, prospect, 'discovery', history, {
+  exactPhaseId: tracker.state.currentPhase,      // "phase_1"
+  exactStepId: tracker.state.currentStep,        // "step_1"
+  scriptStructure: tracker.scriptStructure       // struttura completa
+})
+
+TASK 2: Generare MAPPA NAVIGAZIONE dinamica
+PROBLEMA:
+Lo script è un blob di testo enorme. L'AI non vede dove si trova.
+
+SOLUZIONE:
+Creare funzione che legge scriptStructure.phases (dal database/Script Manager) e genera mappa visiva dinamica.
+
+LOGICA:
+
+function generateNavigationMap(
+  scriptStructure: ScriptStructure,
+  currentPhaseId: string,
+  completedPhases: string[]
+): string {
+  let map = "═══ MAPPA NAVIGAZIONE ═══\n";
+  
+  for (const phase of scriptStructure.phases) {
+    const isCompleted = completedPhases.includes(phase.id);
+    const isCurrent = phase.id === currentPhaseId;
+    
+    if (isCompleted) {
+      map += `[✅] ${phase.name} - COMPLETATA\n`;
+    } else if (isCurrent) {
+      map += `[➡️] ${phase.name} ← SEI QUI\n`;
+    } else {
+      map += `[  ] ${phase.name}\n`;
+    }
+  }
+  return map;
+}
+
+OUTPUT ESEMPIO (dinamico, non hardcoded):
+
+═══ MAPPA NAVIGAZIONE ═══
+[✅] FASE 1: Apertura (2 step) - COMPLETATA
+[➡️] FASE 2: Pain Point Discovery (4 step) ← SEI QUI, Step 4/4
+[  ] FASE 3: Info Business (1 step)
+[  ] FASE 4: Inquisitorio (2 step)
+[  ] FASE 5: Stretch The Gap (2 step)
+[  ] FASE 6: Qualificazione (1 step)
+🎯 PROSSIMO: Completa Step 4 → Checkpoint Fase 2 → Fase 3
+
+FILE DA MODIFICARE:
+
+server/ai/sales-agent-prompt-builder.ts - nuova funzione generateNavigationMap()
+TASK 3: Generare istruzione PROSSIMA AZIONE
+PROBLEMA:
+Il prompt dice solo "Segui script #1" ma non dice ESATTAMENTE cosa fare ora.
+
+SOLUZIONE:
+Leggere lo step corrente dalla struttura e mostrare istruzioni specifiche.
+
+LOGICA:
+
+function generateNextAction(
+  scriptStructure: ScriptStructure,
+  currentPhaseId: string,
+  currentStepId: string
+): string {
+  // Trova fase e step correnti
+  const phase = scriptStructure.phases.find(p => p.id === currentPhaseId);
+  const step = phase?.steps.find(s => s.id === currentStepId);
+  
+  if (!step) return "";
+  
+  // Trova step successivo
+  const stepIndex = phase.steps.findIndex(s => s.id === currentStepId);
+  const nextStep = phase.steps[stepIndex + 1];
+  
+  return `
+╔════════════════════════════════════════════════════════════╗
+║ 🎯 PROSSIMA AZIONE                                        ║
+╠════════════════════════════════════════════════════════════╣
+║ FASE: ${phase.name}
+║ STEP: ${step.number} - ${step.name}
+║ OBIETTIVO: ${step.objective}
+║
+║ DOMANDE DA FARE:
+${step.questions.map(q => `║  • "${q.text}"`).join('\n')}
+║
+║ ⏸️ DOPO OGNI DOMANDA: Fermati e aspetta risposta
+║
+║ DOPO QUESTO STEP: ${nextStep ? `Passa a Step ${nextStep.number}` : 'Checkpoint → Fase successiva'}
+╚════════════════════════════════════════════════════════════╝
+`;
+}
+
+FILE DA MODIFICARE:
+
+server/ai/sales-agent-prompt-builder.ts - nuova funzione generateNextAction()
+TASK 4: Aggiungere META-ISTRUZIONI compatte
+PROBLEMA:
+L'AI non sa come interpretare lo script (cosa sono i simboli, come navigare).
+
+SOLUZIONE:
+Sezione iniziale compatta che spiega tutto.
+
+OUTPUT:
+
+═══ META-ISTRUZIONI ═══
+👤 CHI SEI: Marco Rossi di AziendaX
+📊 SCRIPT: Discovery (6 fasi, 16 step totali)
+📚 STRUTTURA:
+   FASI → STEP → DOMANDE
+   Completa tutti gli step di una fase
+   Supera il checkpoint
+   Poi passa alla fase successiva
+🔣 LEGENDA SIMBOLI:
+   ⏸️ = FERMATI, aspetta risposta
+   🎧 = Ascolta attivamente
+   💬 = Reagisci brevemente (2-3 parole)
+   🍪 = Biscottino se divaga
+   ⛔ = Checkpoint obbligatorio
+⚠️ REGOLA D'ORO: UNA domanda → STOP → aspetta → reagisci → prossima domanda
+
+FILE DA MODIFICARE:
+
+server/ai/sales-agent-prompt-builder.ts - aggiungere all'inizio di buildStaticSalesAgentPrompt()
+TASK 5: Ottimizzare prompt (-40% lunghezza)
+PROBLEMA:
+Il prompt è ~1100 righe. Molte regole sono ripetute 2-3 volte.
+
+RIPETIZIONI TROVATE:
+
+Regola	Dove appare	Volte
+4 Regole d'Oro complete	linee 252-342, linee 1042-1048	2
+"Una domanda = una pausa"	multiple sezioni	3+
+Regole anti-robot	sezioni 305-340, 884-891	2
+Energy checklist	linee 847-893	duplica concetti
+SOLUZIONE:
+
+Tenere le 4 Regole d'Oro UNA sola volta (all'inizio, box prominente)
+Altrove usare riferimenti: "Ricorda Regola #1: Una domanda = una pausa"
+Rimuovere Energy Checklist duplicata
+Consolidare sezioni anti-robot
+TARGET: Da ~1100 righe a ~650-700 righe
+
+FILE DA MODIFICARE:
+
+server/ai/sales-agent-prompt-builder.ts - funzione buildStaticSalesAgentPrompt()
+TASK 6: Badge script attivo nell'UI
+PROBLEMA:
+L'utente non vede quale script sta usando l'agente.
+
+DATI GIÀ DISPONIBILI:
+Nel database (tabella client_sales_conversations) vengono già salvati:
+
+usedScriptId - ID dello script
+usedScriptName - Nome dello script
+usedScriptType - Tipo (discovery/demo/objections)
+scriptSource - "database" o "hardcoded_default"
+SOLUZIONE:
+
+Creare componente ActiveScriptBadge.tsx
+Mostrare badge: "📜 Script: Discovery v1.2 [Personalizzato]" o "📜 Script: Default"
+Aggiungere nelle pagine conversazioni/sessioni
+FILE DA CREARE/MODIFICARE:
+
+client/src/components/ActiveScriptBadge.tsx (nuovo)
+Pagine che mostrano conversazioni
+TASK 7: Guida configurazione nello Script Manager
+PROBLEMA:
+L'utente non capisce come funziona lo Script Manager.
+
+SOLUZIONE:
+Aggiungere pannello espandibile/collassabile nella pagina Script Manager.
+
+CONTENUTO:
+
+📖 COME FUNZIONA QUESTO SCRIPT
+1. STRUTTURA
+   • Lo script è organizzato in: FASI → STEP → DOMANDE
+   • Ogni Fase ha un obiettivo (es. "Apertura", "Pain Point Discovery")
+   • Ogni Step contiene domande specifiche da fare
+   • I Checkpoint verificano che hai raccolto le info necessarie
+2. COME L'AI LO USA
+   • L'AI segue l'ordine esatto: Step 1 → Step 2 → ... → Checkpoint → Fase successiva
+   • Sostituisce [NOME_PROSPECT] con il nome reale del prospect
+   • Rispetta i simboli: ⏸️ = pausa, 🍪 = biscottino, ⛔ = checkpoint
+3. PERSONALIZZAZIONE
+   • Modifica le domande per adattarle al tuo business
+   • Aggiungi/rimuovi step secondo le tue esigenze
+   • Le modifiche si applicano a TUTTE le nuove conversazioni
+   
+4. TIPI DI SCRIPT
+   • Discovery: per la prima chiamata (raccolta info)
+   • Demo: per la presentazione della soluzione
+   • Obiezioni: tecniche per gestire resistenze (non sequenziale)
+
+FILE DA CREARE/MODIFICARE:
+
+client/src/components/script-manager/ScriptManagerGuide.tsx (nuovo)
+Pagina Script Manager per includere il componente
+TASK 8: Test e verifica
+COSA TESTARE:
+
+Avviare una nuova conversazione → l'AI deve partire da Fase 1, Step 1
+Verificare che la mappa navigazione si aggiorni dinamicamente
+Verificare che l'AI segua l'ordine corretto (Step 1 → Step 2 → Checkpoint → Fase 2)
+Testare con script personalizzato da Script Manager
+Verificare che il badge mostri lo script corretto
