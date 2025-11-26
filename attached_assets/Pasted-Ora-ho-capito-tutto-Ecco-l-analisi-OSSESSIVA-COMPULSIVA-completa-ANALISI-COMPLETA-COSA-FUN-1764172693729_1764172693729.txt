@@ -1,0 +1,113 @@
+Ora ho capito tutto! Ecco l'analisi OSSESSIVA-COMPULSIVA completa:
+
+🔍 ANALISI COMPLETA - COSA FUNZIONA E COSA NON FUNZIONA
+✅ COSA FUNZIONA GIÀ (dal documento):
+Parser (sales-script-structure-parser.ts) - Estrae 3543 righe dal file base
+JSON generato (sales-script-structure.json) - 36 fasi, step, checkpoint
+API endpoint (/api/sales-script/) - Serve il JSON
+ScriptReferencePanel - Visualizza fasi/step base
+❌ PROBLEMI CRITICI IDENTIFICATI:
+PROBLEMA #1: Il sistema usa SOLO lo script HARDCODED
+Il problema era questo:
+Il parser legge SOLO sales-scripts-base.ts (file hardcoded con 3543 righe) e genera un JSON statico. Ma TU vuoi usare gli script che attivi nello Script Manager (salvati nel database salesScripts).
+
+Tu mi hai chiesto:
+"A che serve sales-script-structure.json e se c'è bisogno di fare qualche modifica, perché adesso non useremo più lo script hardcoded ma i vari script che attiviamo nello script manager."
+
+Abbiamo ragionato su:
+Il flusso attuale è:
+
+sales-scripts-base.ts → Parser → sales-script-structure.json → API → Frontend
+
+Ma dovrebbe essere:
+
+salesScripts (Database) → Parser dinamico → Struttura → API → Frontend
+
+LA SOLUZIONE È:
+
+Modificare il parser per accettare il content degli script dal database
+Salvare la struttura parsata come campo structure nella tabella salesScripts (già esiste!)
+Quando lo script viene attivato, usare la SUA struttura invece del JSON statico
+PROBLEMA #2: Non si traccia quale script era usato in ogni conversazione
+Il problema era questo:
+Nella tabella salesConversationTraining c'è solo scriptVersion (testo "1.0.0") ma MANCA:
+
+usedScriptId → Quale script era attivo
+usedScriptSnapshot → Copia dello script per preservarlo
+Tu mi hai chiesto:
+"Nella sezione analytics si deve vedere per ogni persona che tipo di script stava usando, perché se cambia nel tempo si deve capire."
+
+Abbiamo ragionato su:
+Se passi da "Script V1" a "Script V2", le vecchie conversazioni non sanno quale script avevano!
+
+LA SOLUZIONE È:
+
+Aggiungere campi usedScriptId e usedScriptSnapshot al database
+Salvare lo script usato quando inizia una conversazione
+Mostrare in analytics quale script era attivo per ogni sessione
+PROBLEMA #3: Training Map mostra lo script SBAGLIATO
+Il problema era questo:
+training-map.tsx chiama /api/client/sales-agents/${agentId}/script che restituisce lo script CORRENTE, non quello usato durante quella conversazione.
+
+Tu mi hai chiesto:
+"Come è collegato al training map."
+
+Abbiamo ragionato su:
+Se guardi una conversazione vecchia ma hai cambiato script, vedi lo script SBAGLIATO!
+
+LA SOLUZIONE È:
+
+Se la conversazione ha usedScriptSnapshot, usare quello
+Mostrare versione e nome script usato
+Avvisare se lo script attuale è diverso
+PROBLEMA #4: Dati mancanti nel JSON (dal tuo documento)
+Il problema era questo:
+Dal documento che hai allegato mancano:
+
+❌ Energy Settings (Livello, Tono, Volume, Ritmo, Lessico)
+❌ Ladder Levels (solo hasLadder: true/false, mancano i 5 livelli)
+❌ Domande chiave incomplete (molti step con questions: [])
+❌ Metadata vuoto (deve avere totalPhases, totalSteps, etc.)
+❌ Biscottini/Objection handling
+LA SOLUZIONE È:
+
+Migliorare il parser per estrarre tutti questi dati
+Aggiungere colonne JSON nel database per overrides (energy_settings, ladder_overrides)
+Creare endpoint per salvare questi campi
+Aggiornare frontend per visualizzarli
+PROBLEMA #5: AI Training Assistant deve usare lo script giusto
+Il problema era questo:
+gemini-training-analyzer.ts analizza le conversazioni ma potrebbe usare lo script sbagliato.
+
+Tu mi hai chiesto:
+"Stessa cosa per l'AI training assistant."
+
+LA SOLUZIONE È:
+
+Passare lo scriptSnapshot salvato nella conversazione
+Confrontare con lo script attuale per identificare differenze
+
+
+
+attuale:
+
+COSA MOSTRA:
+
+✅ Fase numero + nome
+✅ Descrizione fase
+✅ Step numero + nome
+✅ Step obiettivo
+✅ Questions (solo testo)
+COSA MANCA (dal tuo documento):
+
+❌ Energy badge per ogni fase (⚡ALTO, 🔊, etc.)
+❌ Ladder indicator per ogni step (🪜 se hasLadder=true)
+❌ Step count per fase
+❌ Checkpoint indicator per fase
+❌ Biscottini per step
+❌ Visualizzazione dei 5 livelli ladder quando apri uno step
+E mancano anche in:
+
+PhaseInspector.tsx - Non mostra energy settings editabili
+StepInspector.tsx - Non mostra ladder levels, questions editabili
+client-script-manager.tsx - Non ha le mutation per salvare energy/ladder/questions
