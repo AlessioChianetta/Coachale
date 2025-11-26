@@ -2,12 +2,10 @@ import { db } from '../server/db';
 import { salesScripts } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 
-// Copy of the parseScriptStructure function with corrected IDs
 function parseScriptStructure(content: string, scriptType: string): any {
   const phases: any[] = [];
   
   try {
-    // Parse phases from markdown-like content
     const phaseMatches = content.matchAll(/\*\*FASE #?(\d+(?:\s*e\s*#?\d+)?)\s*[-–]\s*([^*]+)\*\*/gi);
     
     for (const match of phaseMatches) {
@@ -26,7 +24,6 @@ function parseScriptStructure(content: string, scriptType: string): any {
       });
     }
     
-    // Parse steps within each phase
     const stepMatches = content.matchAll(/STEP\s+(\d+)\s*[-–]\s*([^:\n*]+)/gi);
     
     for (const match of stepMatches) {
@@ -57,24 +54,25 @@ function parseScriptStructure(content: string, scriptType: string): any {
         const phaseId = phases[currentPhaseIndex].id;
         const objectiveMatch = content.slice(match.index).match(/🎯\s*OBIETTIVO:\s*([^\n]+)/i);
         
+        // Extract questions - only explicit DOMANDA markers
         const questions: Array<{text: string; id: string}> = [];
-        const stepContent = content.slice(match.index!, match.index! + 3000);
         
-        const questionPatterns = [
-          /📌\s*(?:DOMANDA[^:]*:)?\s*\n?\s*[""]([^""]+)[""]/gi,
-          /"([^"]{20,})"/g,
-        ];
+        // Find next step or phase boundary
+        const nextStepMatch = content.slice(match.index! + 10).match(/(?:\*\*)?STEP\s+\d+|FASE\s*#?\d+|⛔\s*CHECKPOINT/i);
+        const stepEndOffset = nextStepMatch?.index || 3000;
+        const stepContent = content.slice(match.index!, match.index! + 10 + stepEndOffset);
         
-        for (const pattern of questionPatterns) {
-          const questionMatches = stepContent.matchAll(pattern);
-          for (const q of questionMatches) {
-            const questionText = q[1].trim();
-            if (!questions.some(existing => existing.text === questionText)) {
-              questions.push({ 
-                id: `${phaseId}_step_${stepNumber}_q_${questions.length + 1}`,
-                text: questionText 
-              });
-            }
+        // Match only explicit 📌 DOMANDA patterns
+        const questionRegex = /📌\s*DOMANDA(?:\s+CHIAVE)?[^:]*:\s*[""]([^""]+)[""]/gi;
+        const questionMatches = stepContent.matchAll(questionRegex);
+        
+        for (const q of questionMatches) {
+          const questionText = q[1].trim();
+          if (questionText.length > 10 && !questions.some(existing => existing.text === questionText)) {
+            questions.push({ 
+              id: `${phaseId}_step_${stepNumber}_q_${questions.length + 1}`,
+              text: questionText 
+            });
           }
         }
         
@@ -116,7 +114,7 @@ function getSemanticType(phaseName: string): string {
 }
 
 async function reparseAllScripts() {
-  console.log('🔄 Starting script re-parsing...\n');
+  console.log('🔄 Starting script re-parsing with improved question extraction...\n');
   
   const scripts = await db.select().from(salesScripts);
   
@@ -124,18 +122,17 @@ async function reparseAllScripts() {
   
   for (const script of scripts) {
     console.log(`\n📝 Re-parsing: ${script.name}`);
-    console.log(`   ID: ${script.id}`);
-    console.log(`   Type: ${script.scriptType}`);
     
     const newStructure = parseScriptStructure(script.content, script.scriptType);
-    
-    console.log(`   Phases: ${newStructure.phases?.length || 0}`);
     
     if (newStructure.phases?.length > 0) {
       for (const phase of newStructure.phases) {
         console.log(`   └─ ${phase.id}: ${phase.name}`);
         for (const step of phase.steps || []) {
-          console.log(`      └─ ${step.id}: ${step.name} (${step.questions?.length || 0} questions)`);
+          console.log(`      └─ ${step.id}: ${step.name} (${step.questions?.length || 0} Q)`);
+          for (const q of (step.questions || []).slice(0, 2)) {
+            console.log(`         └─ "${q.text.substring(0, 50)}..."`);
+          }
         }
       }
     }

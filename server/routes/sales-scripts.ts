@@ -740,27 +740,27 @@ function parseScriptStructure(content: string, scriptType: string): any {
         // Extract objective
         const objectiveMatch = content.slice(match.index).match(/🎯\s*OBIETTIVO:\s*([^\n]+)/i);
         
-        // Extract questions - improved regex to catch more formats
+        // Extract questions - only explicit DOMANDA markers
         const questions: Array<{text: string; marker?: string; id: string}> = [];
-        const stepContent = content.slice(match.index!, match.index! + 3000);
         
-        // Match questions in various formats
-        const questionPatterns = [
-          /📌\s*(?:DOMANDA[^:]*:)?\s*\n?\s*[""]([^""]+)[""]/gi,
-          /"([^"]{20,})"/g, // Quoted text at least 20 chars (likely a question)
-        ];
+        // Find next step or phase boundary to limit search
+        const nextStepMatch = content.slice(match.index! + 10).match(/(?:\*\*)?STEP\s+\d+|FASE\s*#?\d+|⛔\s*CHECKPOINT/i);
+        const stepEndOffset = nextStepMatch?.index || 3000;
+        const stepContent = content.slice(match.index!, match.index! + 10 + stepEndOffset);
         
-        for (const pattern of questionPatterns) {
-          const questionMatches = stepContent.matchAll(pattern);
-          for (const q of questionMatches) {
-            const questionText = q[1].trim();
-            // Avoid duplicates
-            if (!questions.some(existing => existing.text === questionText)) {
-              questions.push({ 
-                id: `${phaseId}_step_${stepNumber}_q_${questions.length + 1}`,
-                text: questionText 
-              });
-            }
+        // Match only explicit 📌 DOMANDA patterns with quoted text
+        // Pattern: 📌 DOMANDA: "text" or 📌 DOMANDA CHIAVE: "text"
+        const questionRegex = /📌\s*DOMANDA(?:\s+CHIAVE)?[^:]*:\s*[""]([^""]+)[""]/gi;
+        const questionMatches = stepContent.matchAll(questionRegex);
+        
+        for (const q of questionMatches) {
+          const questionText = q[1].trim();
+          // Skip if too short (likely a fragment) or a duplicate
+          if (questionText.length > 10 && !questions.some(existing => existing.text === questionText)) {
+            questions.push({ 
+              id: `${phaseId}_step_${stepNumber}_q_${questions.length + 1}`,
+              text: questionText 
+            });
           }
         }
         
