@@ -70,7 +70,7 @@ interface SalesAgent {
 }
 
 interface TrainingConversation {
-  conversationId: string;
+  id: string;
   prospectName: string | null;
   currentPhase: string;
   completionRate: number;
@@ -725,7 +725,7 @@ export default function ClientSalesAgentAnalytics() {
                                 const isLive = isConversationLive(conv.createdAt);
                                 return (
                                 <tr
-                                  key={conv.conversationId}
+                                  key={conv.id}
                                   className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                                 >
                                   <td className="p-3 text-sm text-gray-900 dark:text-white">
