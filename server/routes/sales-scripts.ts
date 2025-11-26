@@ -281,6 +281,65 @@ router.put('/:id', requireClient, async (req: AuthRequest, res: Response) => {
   }
 });
 
+// POST /api/sales-scripts/:id/reparse - Force re-parse script structure with corrected IDs
+router.post('/:id/reparse', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const clientId = req.user!.id;
+    
+    const [script] = await db
+      .select()
+      .from(salesScripts)
+      .where(and(
+        eq(salesScripts.id, id),
+        eq(salesScripts.clientId, clientId)
+      ));
+    
+    if (!script) {
+      return res.status(404).json({ error: 'Script non trovato' });
+    }
+    
+    // Re-parse the structure with corrected ID format
+    const newStructure = parseScriptStructure(script.content, script.scriptType);
+    
+    // Log the changes for debugging
+    console.log(`🔄 [REPARSE] Re-parsing script ${id}`);
+    console.log(`   Old phases: ${script.structure?.phases?.length || 0}`);
+    console.log(`   New phases: ${newStructure.phases?.length || 0}`);
+    
+    if (newStructure.phases?.length > 0) {
+      const firstPhase = newStructure.phases[0];
+      console.log(`   First phase ID: ${firstPhase.id}`);
+      if (firstPhase.steps?.length > 0) {
+        console.log(`   First step ID: ${firstPhase.steps[0].id}`);
+        console.log(`   First step questions: ${firstPhase.steps[0].questions?.length || 0}`);
+      }
+    }
+    
+    const [updatedScript] = await db
+      .update(salesScripts)
+      .set({
+        structure: newStructure,
+        updatedAt: new Date(),
+      })
+      .where(eq(salesScripts.id, id))
+      .returning();
+    
+    // Clear cache so AI uses updated structure
+    clearScriptCache(clientId);
+    console.log(`✅ [REPARSE] Script ${id} re-parsed successfully`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Script ri-parsato con successo',
+      structure: newStructure 
+    });
+  } catch (error) {
+    console.error('Error re-parsing script:', error);
+    res.status(500).json({ error: 'Errore nel re-parsing dello script' });
+  }
+});
+
 // POST /api/sales-scripts/:id/activate - Set script as active for a specific agent
 // Requires agentId in body - assigns script to that agent (1 agent = max 1 script per type)
 router.post('/:id/activate', requireClient, async (req: AuthRequest, res: Response) => {
@@ -645,36 +704,74 @@ function parseScriptStructure(content: string, scriptType: string): any {
     }
     
     // Parse steps within each phase
-    const stepMatches = content.matchAll(/STEP\s+(\d+)\s*[-–]\s*([^:]+):/gi);
+    const stepMatches = content.matchAll(/STEP\s+(\d+)\s*[-–]\s*([^:\n*]+)/gi);
     let currentPhaseIndex = 0;
     
     for (const match of stepMatches) {
       const stepNumber = parseInt(match[1]);
-      const stepName = match[2].trim();
+      // Clean step name: remove ** and everything after (like \n🎯 OBIETTIVO)
+      let stepName = match[2].trim();
+      stepName = stepName.replace(/\*\*.*$/, '').trim();
+      stepName = stepName.replace(/\n.*$/, '').trim();
       
-      // Find the relevant phase
-      while (currentPhaseIndex < phases.length - 1 && stepNumber > getMaxStepForPhase(currentPhaseIndex)) {
-        currentPhaseIndex++;
+      // Find the relevant phase based on step position in content
+      const stepPosition = match.index || 0;
+      
+      // Find which phase this step belongs to by checking phase positions
+      for (let i = 0; i < phases.length; i++) {
+        const phasePattern = new RegExp(`\\*\\*FASE\\s*#?${phases[i].number}`, 'i');
+        const phaseMatch = content.match(phasePattern);
+        const phasePosition = phaseMatch?.index || 0;
+        
+        // Check next phase position
+        const nextPhasePosition = i < phases.length - 1 
+          ? (content.match(new RegExp(`\\*\\*FASE\\s*#?${phases[i + 1].number}`, 'i'))?.index || content.length)
+          : content.length;
+        
+        if (stepPosition > phasePosition && stepPosition < nextPhasePosition) {
+          currentPhaseIndex = i;
+          break;
+        }
       }
       
       if (phases[currentPhaseIndex]) {
+        const phaseId = phases[currentPhaseIndex].id;
+        
         // Extract objective
         const objectiveMatch = content.slice(match.index).match(/🎯\s*OBIETTIVO:\s*([^\n]+)/i);
         
-        // Extract questions
-        const questions: Array<{text: string; marker?: string}> = [];
-        const questionMatches = content.slice(match.index, match.index! + 2000).matchAll(/📌\s*(?:DOMANDA[^:]*:|[^:]+:)\s*\n?\s*[""]([^""]+)[""]/gi);
-        for (const q of questionMatches) {
-          questions.push({ text: q[1].trim() });
+        // Extract questions - improved regex to catch more formats
+        const questions: Array<{text: string; marker?: string; id: string}> = [];
+        const stepContent = content.slice(match.index!, match.index! + 3000);
+        
+        // Match questions in various formats
+        const questionPatterns = [
+          /📌\s*(?:DOMANDA[^:]*:)?\s*\n?\s*[""]([^""]+)[""]/gi,
+          /"([^"]{20,})"/g, // Quoted text at least 20 chars (likely a question)
+        ];
+        
+        for (const pattern of questionPatterns) {
+          const questionMatches = stepContent.matchAll(pattern);
+          for (const q of questionMatches) {
+            const questionText = q[1].trim();
+            // Avoid duplicates
+            if (!questions.some(existing => existing.text === questionText)) {
+              questions.push({ 
+                id: `${phaseId}_step_${stepNumber}_q_${questions.length + 1}`,
+                text: questionText 
+              });
+            }
+          }
         }
         
+        // Generate step ID with phase prefix for tracker compatibility
         phases[currentPhaseIndex].steps.push({
-          id: `step_${stepNumber}`,
+          id: `${phaseId}_step_${stepNumber}`,
           number: stepNumber,
           name: stepName,
           objective: objectiveMatch ? objectiveMatch[1].trim() : '',
           questions,
-          hasLadder: content.slice(match.index, match.index! + 3000).toLowerCase().includes('ladder'),
+          hasLadder: stepContent.toLowerCase().includes('ladder') || stepContent.toLowerCase().includes('perché'),
         });
       }
     }
