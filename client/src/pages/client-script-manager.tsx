@@ -19,7 +19,9 @@ import {
   Lightbulb,
   Trash2,
   Blocks,
-  Code
+  Code,
+  Users,
+  Bot
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -144,6 +146,22 @@ export default function ClientScriptManager() {
   const [newScriptName, setNewScriptName] = useState('');
   const [useTemplate, setUseTemplate] = useState(true);
   const [showGuideDialog, setShowGuideDialog] = useState(false);
+  const [showAgentSelectDialog, setShowAgentSelectDialog] = useState(false);
+  const [scriptToActivate, setScriptToActivate] = useState<string | null>(null);
+
+  // Types for agents with script assignments
+  interface AgentWithAssignments {
+    id: string;
+    agentName: string;
+    displayName: string;
+    businessName: string;
+    isActive: boolean;
+    scriptAssignments: {
+      discovery: { scriptId: string; scriptName: string } | null;
+      demo: { scriptId: string; scriptName: string } | null;
+      objections: { scriptId: string; scriptName: string } | null;
+    };
+  }
 
   // API Calls
   const { data: scripts = [], isLoading: isLoadingScripts } = useQuery<SalesScript[]>({
@@ -151,6 +169,15 @@ export default function ClientScriptManager() {
     queryFn: async () => {
       const res = await fetch('/api/sales-scripts', { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch scripts');
+      return res.json();
+    },
+  });
+
+  const { data: agents = [] } = useQuery<AgentWithAssignments[]>({
+    queryKey: ['sales-scripts-agents'],
+    queryFn: async () => {
+      const res = await fetch('/api/sales-scripts/agents', { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch agents');
       return res.json();
     },
   });
@@ -185,10 +212,27 @@ export default function ClientScriptManager() {
   });
 
   const activateScriptMutation = useMutation({
-    mutationFn: (scriptId: string) => fetch(`/api/sales-scripts/${scriptId}/activate`, { method: 'POST', headers: getAuthHeaders() }),
-    onSuccess: () => {
+    mutationFn: async ({ scriptId, agentId }: { scriptId: string; agentId: string }) => {
+      const res = await fetch(`/api/sales-scripts/${scriptId}/activate`, { 
+        method: 'POST', 
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Errore nell\'attivazione');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
-      toast({ title: 'Script attivato', description: 'Lo script è ora attivo per l\'AI.' });
+      queryClient.invalidateQueries({ queryKey: ['sales-scripts-agents'] });
+      setShowAgentSelectDialog(false);
+      setScriptToActivate(null);
+      toast({ 
+        title: 'Script attivato', 
+        description: `Lo script è ora attivo per l'agente "${data.agent?.name || 'selezionato'}".` 
+      });
     },
     onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
   });
@@ -613,11 +657,17 @@ export default function ClientScriptManager() {
                         <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                             <Edit3 className="h-4 w-4 mr-2" /> Modifica
                         </Button>
-                        {!selectedScript?.isActive && (
-                            <Button size="sm" onClick={() => activateScriptMutation.mutate(selectedScript.id)} disabled={activateScriptMutation.isPending}>
-                                <Play className="h-4 w-4 mr-2" />Attiva
-                            </Button>
-                        )}
+                        <Button 
+                          size="sm" 
+                          onClick={() => {
+                            setScriptToActivate(selectedScript.id);
+                            setShowAgentSelectDialog(true);
+                          }} 
+                          disabled={activateScriptMutation.isPending}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          {selectedScript?.isActive ? 'Cambia Agente' : 'Attiva'}
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => {
                           if (confirm('Sei sicuro di voler eliminare questo script?')) {
                             deleteScriptMutation.mutate(selectedScriptId);
@@ -713,6 +763,88 @@ export default function ClientScriptManager() {
                       >
                         {createFromTemplateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                         Crea da Template
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Dialog Selezione Agente per Attivazione Script */}
+                <Dialog open={showAgentSelectDialog} onOpenChange={(open) => {
+                  setShowAgentSelectDialog(open);
+                  if (!open) setScriptToActivate(null);
+                }}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-primary" />
+                        Seleziona Agente
+                      </DialogTitle>
+                      <DialogDescription>
+                        Scegli per quale AI Sales Agent vuoi attivare questo script. 
+                        Ogni agente può avere un solo script per tipo.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 py-4 max-h-[300px] overflow-y-auto">
+                      {agents.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                          <p>Nessun agente configurato.</p>
+                          <p className="text-sm">Crea prima un AI Sales Agent.</p>
+                        </div>
+                      ) : (
+                        agents.map((agent) => {
+                          const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
+                          const currentAssignment = scriptToActivateData 
+                            ? agent.scriptAssignments[scriptToActivateData.scriptType as keyof typeof agent.scriptAssignments]
+                            : null;
+                          const isCurrentlyAssigned = currentAssignment?.scriptId === scriptToActivate;
+                          
+                          return (
+                            <button
+                              key={agent.id}
+                              className={cn(
+                                "w-full text-left p-4 rounded-lg border transition-all hover:bg-muted/50",
+                                isCurrentlyAssigned && "border-primary bg-primary/5"
+                              )}
+                              onClick={() => {
+                                if (scriptToActivate) {
+                                  activateScriptMutation.mutate({ 
+                                    scriptId: scriptToActivate, 
+                                    agentId: agent.id 
+                                  });
+                                }
+                              }}
+                              disabled={activateScriptMutation.isPending}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Bot className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{agent.agentName}</p>
+                                    <p className="text-sm text-muted-foreground">{agent.businessName}</p>
+                                  </div>
+                                </div>
+                                {isCurrentlyAssigned && (
+                                  <Badge variant="default" className="text-xs">
+                                    <CheckCircle className="h-3 w-3 mr-1" /> Attivo
+                                  </Badge>
+                                )}
+                              </div>
+                              {currentAssignment && !isCurrentlyAssigned && (
+                                <p className="text-xs text-muted-foreground mt-2 pl-13">
+                                  Attualmente usa: {currentAssignment.scriptName}
+                                </p>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowAgentSelectDialog(false)}>
+                        Annulla
                       </Button>
                     </DialogFooter>
                   </DialogContent>
