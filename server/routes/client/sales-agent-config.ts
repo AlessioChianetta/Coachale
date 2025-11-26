@@ -8,9 +8,6 @@ import { extractSalesAgentContext } from "../../ai/sales-agent-context-builder";
 import { SalesScriptTracker } from "../../ai/sales-script-tracker";
 import { db } from "../../db";
 import { eq, and, desc } from "drizzle-orm";
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
 import { parseScriptContentToStructure } from "../../ai/sales-script-structure-parser";
 
 const router = Router();
@@ -111,27 +108,13 @@ router.get("/script-structure", authenticateToken, async (req: AuthRequest, res)
       return res.json(combinedStructure);
     }
 
-    // 2. Fallback: Load from static JSON file
-    console.log(`[ScriptStructure] No active scripts in DB, falling back to static file`);
-    
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const scriptStructurePath = path.join(__dirname, '../../ai/sales-script-structure.json');
-
-    if (!fs.existsSync(scriptStructurePath)) {
-      console.error(`[ScriptStructure] Static file not found at ${scriptStructurePath}`);
-      return res.status(404).json({ 
-        message: "Nessuno script attivo trovato e file statico non disponibile. Attiva uno script nel Script Manager.",
-        path: scriptStructurePath
-      });
-    }
-
-    const scriptStructureContent = fs.readFileSync(scriptStructurePath, 'utf-8');
-    const scriptStructure = JSON.parse(scriptStructureContent);
-
-    console.log(`[ScriptStructure] Loaded from static file v${scriptStructure.version} with ${scriptStructure.metadata.totalPhases} phases`);
-
-    res.json(scriptStructure);
+    // Nessuno script attivo - errore esplicito
+    console.warn(`[ScriptStructure] No active scripts in DB for client ${clientId}`);
+    return res.status(404).json({ 
+      message: "Nessuno script attivo trovato. Vai nel Script Manager e attiva uno script prima di continuare.",
+      error: "NO_ACTIVE_SCRIPT",
+      clientId
+    });
   } catch (error: any) {
     console.error(`[ScriptStructure] GET error:`, error);
     res.status(500).json({
