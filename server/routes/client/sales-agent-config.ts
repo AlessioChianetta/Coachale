@@ -109,11 +109,11 @@ router.get("/script-structure", authenticateToken, async (req: AuthRequest, res)
     }
 
     // Nessuno script attivo - errore esplicito
-    console.warn(`[ScriptStructure] No active scripts in DB for client ${clientId}`);
+    console.warn(`[ScriptStructure] No active scripts in DB for client ${userId}`);
     return res.status(404).json({ 
       message: "Nessuno script attivo trovato. Vai nel Script Manager e attiva uno script prima di continuare.",
       error: "NO_ACTIVE_SCRIPT",
-      clientId
+      clientId: userId
     });
   } catch (error: any) {
     console.error(`[ScriptStructure] GET error:`, error);
