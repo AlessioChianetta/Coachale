@@ -142,7 +142,7 @@ export class GeminiTrainingAnalyzer {
         throw new Error(`Sales agent ${agentId} not found`);
       }
 
-      const currentScript = agent[0].systemPrompt || agent[0].customPrompt || '';
+      let currentScript = agent[0].systemPrompt || agent[0].customPrompt || '';
       console.log(`│  ✅ Loaded current script (${currentScript.length} chars)`);
 
       // Get recent conversations for performance analysis
@@ -154,6 +154,12 @@ export class GeminiTrainingAnalyzer {
 
       result.conversationsAnalyzed = conversations.length;
       console.log(`│  ✅ Loaded ${conversations.length} recent conversations`);
+
+      // Check if conversations have script snapshot data
+      const conversationsWithScripts = conversations.filter((c: any) => c.usedScriptId);
+      if (conversationsWithScripts.length > 0) {
+        console.log(`│  ℹ️ ${conversationsWithScripts.length} conversations have script tracking data`);
+      }
       console.log(`└─ STEP 2: Complete\n`);
 
       // STEP 3: Analyze with Gemini 2.5 Pro

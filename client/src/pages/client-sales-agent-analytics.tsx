@@ -77,6 +77,10 @@ interface TrainingConversation {
   totalDuration: number;
   ladderActivationCount: number;
   createdAt: string;
+  usedScriptId: string | null;
+  usedScriptName: string | null;
+  usedScriptType: 'discovery' | 'demo' | 'objections' | null;
+  usedScriptSource: 'database' | 'hardcoded_default' | null;
 }
 
 interface TrainingStats {
@@ -706,6 +710,9 @@ export default function ClientSalesAgentAnalytics() {
                                   Durata
                                 </th>
                                 <th className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                  Script
+                                </th>
+                                <th className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
                                   Data
                                 </th>
                                 <th className="text-right p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -753,6 +760,20 @@ export default function ClientSalesAgentAnalytics() {
                                   </td>
                                   <td className="p-3 text-sm text-gray-600 dark:text-gray-400">
                                     {Math.floor(conv.totalDuration / 60)}m
+                                  </td>
+                                  <td className="p-3">
+                                    {conv.usedScriptName ? (
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-medium text-gray-900 dark:text-white">{conv.usedScriptName}</span>
+                                        <Badge variant="outline" className="text-xs w-fit">
+                                          {conv.usedScriptType || 'N/A'}
+                                        </Badge>
+                                      </div>
+                                    ) : (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {conv.usedScriptSource === 'hardcoded_default' ? 'Default' : 'N/A'}
+                                      </Badge>
+                                    )}
                                   </td>
                                   <td className="p-3 text-sm text-gray-600 dark:text-gray-400">
                                     {formatDistanceToNow(new Date(conv.createdAt), {

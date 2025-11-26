@@ -135,8 +135,18 @@ export function ScriptReferencePanel({
                   <div className="flex items-start gap-2 w-full">
                     <StatusIcon className={cn('h-5 w-5 mt-0.5', status.color)} />
                     <div className="flex-1 text-left">
-                      <div className="font-semibold text-sm">
+                      <div className="font-semibold text-sm flex items-center flex-wrap gap-1">
                         FASE {phase.number} - {phase.name}
+                        {phase.energySettings && (
+                          <Badge className={cn(
+                            'text-xs ml-2',
+                            phase.energySettings.level === 'ALTO' && 'bg-red-500 text-white',
+                            phase.energySettings.level === 'MEDIO' && 'bg-yellow-500 text-black',
+                            phase.energySettings.level === 'BASSO' && 'bg-blue-500 text-white'
+                          )}>
+                            ⚡ {phase.energySettings.level}
+                          </Badge>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         {phase.description}
@@ -261,11 +271,18 @@ export function ScriptReferencePanel({
                           {step.objective}
                         </div>
                       )}
-                      {step.hasLadder && (
-                        <Badge variant="secondary" className="text-xs mt-2">
-                          🔍 Ladder {step.ladderLevels || 3}-5 PERCHÉ
-                        </Badge>
-                      )}
+                      <div className="flex flex-wrap gap-1">
+                        {step.hasLadder && (
+                          <Badge variant="secondary" className="text-xs mt-2 flex items-center gap-1">
+                            🪜 Ladder • {step.ladderLevels?.length || 5} livelli
+                          </Badge>
+                        )}
+                        {step.questions && step.questions.length > 0 && (
+                          <Badge variant="outline" className="text-xs mt-2 ml-1">
+                            ❓ {step.questions.length} domande
+                          </Badge>
+                        )}
+                      </div>
                       
                       {showDetails && step.questions && step.questions.length > 0 && (
                         <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">

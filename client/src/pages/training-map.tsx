@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { TrainingMapLayout } from "@/components/training/TrainingMapLayout";
 import { PageLoader } from "@/components/page-loader";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 export default function TrainingMapPage() {
   const { agentId, conversationId } = useParams<{ agentId: string; conversationId: string }>();
@@ -21,15 +23,20 @@ export default function TrainingMapPage() {
   });
 
   const { data: scriptStructure, isLoading: isLoadingScript } = useQuery({
-    queryKey: ['/api/client/sales-agents/:agentId/script', agentId],
+    queryKey: ['/api/client/sales-agents/:agentId/script', agentId, conversationDetail?.usedScriptId],
     queryFn: async () => {
-      const response = await fetch(`/api/client/sales-agents/${agentId}/script`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch script structure');
+      if (conversationDetail?.usedScriptId) {
+        const response = await fetch(`/api/sales-scripts/${conversationDetail.usedScriptId}`);
+        if (response.ok) {
+          const script = await response.json();
+          return script.structure || script;
+        }
       }
+      const response = await fetch(`/api/client/sales-agents/${agentId}/script`);
+      if (!response.ok) throw new Error('Failed to fetch script structure');
       return response.json();
     },
-    enabled: !!agentId,
+    enabled: !!agentId && !!conversationDetail,
   });
 
   if (isLoading || isLoadingScript) {
@@ -47,11 +54,29 @@ export default function TrainingMapPage() {
     );
   }
 
+  const scriptChanged = conversationDetail?.usedScriptId && 
+    scriptStructure?.id && 
+    scriptStructure.id !== conversationDetail.usedScriptId;
+
   return (
-    <TrainingMapLayout
-      conversationDetail={conversationDetail}
-      scriptStructure={scriptStructure}
-      onBack={() => setLocation(`/client/sales-agents/${agentId}/analytics`)}
-    />
+    <div className="flex flex-col h-screen">
+      {scriptChanged && (
+        <Alert className="m-4 mb-0 border-amber-500/50 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-100 [&>svg]:text-amber-600">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Script cambiato</AlertTitle>
+          <AlertDescription>
+            Lo script attuale è diverso da quello usato in questa conversazione. 
+            Stai visualizzando lo script corrente perché quello originale non è più disponibile.
+          </AlertDescription>
+        </Alert>
+      )}
+      <div className="flex-1 overflow-hidden">
+        <TrainingMapLayout
+          conversationDetail={conversationDetail}
+          scriptStructure={scriptStructure}
+          onBack={() => setLocation(`/client/sales-agents/${agentId}/analytics`)}
+        />
+      </div>
+    </div>
   );
 }
