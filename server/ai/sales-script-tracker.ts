@@ -259,6 +259,14 @@ export class SalesScriptTracker {
     return this.usedScriptInfo;
   }
   
+  /**
+   * Public typed getter for script structure
+   * Used by gemini-live-ws-service.ts to access script metadata
+   */
+  getScriptStructure(): ScriptStructure {
+    return this.scriptStructure;
+  }
+  
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // PUBLIC API
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -303,6 +311,56 @@ export class SalesScriptTracker {
     const matchedQuestion = this.matchQuestionToScript(message);
     if (matchedQuestion) {
       const previousPhase = this.state.currentPhase;
+      const previousStep = this.state.currentStep;
+      
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 🛡️ STEP VALIDATION: Enforce sequential progression
+      // Only allow moving to the immediate next step or staying at current
+      // When previousStep is undefined, only first step of phase is valid
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const validation = this.isValidStepTransition(
+        previousPhase,                                    // current phase
+        previousStep,                                     // current step (undefined means no step yet)
+        matchedQuestion.phaseId,                          // target phase
+        matchedQuestion.stepId                            // target step
+      );
+      
+      if (!validation.valid) {
+        // BLOCKED: AI tried to skip steps - keep tracker at current position
+        console.log(`\n🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🚫 [TRACKER] TRANSITION BLOCKED: ${validation.reason}`);
+        console.log(`🚫 Current Position: ${previousPhase} / ${previousStep || 'no step'}`);
+        console.log(`🚫 Attempted Target: ${matchedQuestion.phaseId} / ${matchedQuestion.stepId}`);
+        console.log(`🚫 Action: Keeping tracker at current position`);
+        console.log(`🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        
+        // Still log the question as asked (for analytics) but don't change position
+        this.state.questionsAsked.push({
+          timestamp,
+          phase: previousPhase, // Use current phase, not the skipped one
+          stepId: previousStep,
+          question: message.substring(0, 200),
+          questionType: 'blocked_skip_attempt'
+        });
+        
+        // Log with structured logger if available
+        if (this.logger) {
+          this.logger.logEvent('step_skip_blocked', {
+            currentPhase: previousPhase,
+            currentStep: previousStep,
+            attemptedPhase: matchedQuestion.phaseId,
+            attemptedStep: matchedQuestion.stepId,
+            reason: validation.reason,
+            message: message.substring(0, 100)
+          });
+        }
+        
+        // Don't update state - return early without changing position
+        await this.saveToDatabase();
+        return;
+      }
+      
+      // Valid transition - proceed with update
       this.state.currentPhase = matchedQuestion.phaseId;
       this.state.currentStep = matchedQuestion.stepId;
       
@@ -637,6 +695,148 @@ export class SalesScriptTracker {
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // PRIVATE METHODS - Detection & Matching
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  /**
+   * Validate that a step transition is sequential (only allows moving to next step or staying at current)
+   * This enforces strict sequential progression through the sales script
+   * 
+   * @param currentPhaseId - The current phase ID
+   * @param currentStepId - The current step ID (e.g., "phase_1_2_step_1"), undefined if no step yet
+   * @param newPhaseId - The proposed new phase ID
+   * @param newStepId - The proposed new step ID
+   * @returns object with valid boolean and reason string
+   */
+  private isValidStepTransition(
+    currentPhaseId: string, 
+    currentStepId: string | undefined, 
+    newPhaseId: string, 
+    newStepId: string
+  ): { valid: boolean; reason: string } {
+    
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎯 SPECIAL CASE: No step yet (start of conversation)
+    // The ONLY valid match is the FIRST step of the current phase
+    // Any other step should be blocked to enforce correct start
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (!currentStepId) {
+      const currentPhase = this.scriptStructure.phases.find(p => p.id === currentPhaseId);
+      if (!currentPhase || !currentPhase.steps?.length) {
+        console.log(`🚫 [STEP-VALIDATION] Phase or steps not found for first utterance check: ${currentPhaseId}`);
+        return { valid: false, reason: 'Phase or steps not found' };
+      }
+      
+      const firstStepId = currentPhase.steps[0].id;
+      
+      // Must start from first step of current phase
+      if (newStepId === firstStepId && newPhaseId === currentPhaseId) {
+        console.log(`✅ [STEP-VALIDATION] First utterance correctly matched first step: ${newStepId}`);
+        return { valid: true, reason: 'Starting at first step of phase (correct start)' };
+      }
+      
+      // Blocked: Trying to skip to a later step without completing step 1
+      console.log(`\n🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`🚫 [STEP-VALIDATION] FIRST UTTERANCE BLOCKED`);
+      console.log(`🚫 Must start from first step of phase.`);
+      console.log(`🚫 Attempted: ${newPhaseId} / ${newStepId}`);
+      console.log(`🚫 Required: ${currentPhaseId} / ${firstStepId}`);
+      console.log(`🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      return { valid: false, reason: `Must start from first step of phase. Attempted: ${newStepId}, Required: ${firstStepId}` };
+    }
+    
+    // If staying in same phase and step - always valid
+    if (currentPhaseId === newPhaseId && currentStepId === newStepId) {
+      console.log(`✅ [STEP-VALIDATION] Staying at current position: ${currentPhaseId} / ${currentStepId}`);
+      return { valid: true, reason: 'Staying at current position' };
+    }
+    
+    // If same phase, check step progression
+    if (currentPhaseId === newPhaseId) {
+      const phase = this.scriptStructure.phases.find(p => p.id === currentPhaseId);
+      if (!phase) {
+        console.log(`⚠️  [STEP-VALIDATION] Phase not found: ${currentPhaseId}`);
+        return { valid: false, reason: 'Phase not found' };
+      }
+      
+      const currentIdx = phase.steps.findIndex(s => s.id === currentStepId);
+      const newIdx = phase.steps.findIndex(s => s.id === newStepId);
+      
+      // Handle case where current step is not found in phase
+      if (currentIdx === -1) {
+        // Allow transition to first step of phase
+        if (newIdx === 0) {
+          console.log(`✅ [STEP-VALIDATION] First step in phase: ${newStepId}`);
+          return { valid: true, reason: 'Starting first step in phase' };
+        }
+        console.log(`🚫 [STEP-VALIDATION] Current step ${currentStepId} not in phase ${currentPhaseId} - blocking skip to non-first step`);
+        return { valid: false, reason: `Cannot skip to step ${newStepId} when current step not found in phase` };
+      }
+      
+      // Handle case where new step is not found in phase
+      if (newIdx === -1) {
+        console.log(`🚫 [STEP-VALIDATION] New step ${newStepId} not found in phase ${currentPhaseId}`);
+        return { valid: false, reason: `Step ${newStepId} not found in phase` };
+      }
+      
+      // Only allow next step (index + 1) or staying at same step
+      if (newIdx === currentIdx + 1) {
+        console.log(`✅ [STEP-VALIDATION] Valid step progression: Step ${currentIdx + 1} → Step ${newIdx + 1}`);
+        return { valid: true, reason: 'Moving to next step in same phase' };
+      }
+      
+      if (newIdx === currentIdx) {
+        console.log(`✅ [STEP-VALIDATION] Staying at current step: ${currentStepId}`);
+        return { valid: true, reason: 'Staying at current step' };
+      }
+      
+      if (newIdx > currentIdx + 1) {
+        console.log(`🚫 [STEP-VALIDATION] BLOCKED: Trying to skip from Step ${currentIdx + 1} to Step ${newIdx + 1}`);
+        return { valid: false, reason: `Cannot skip from step ${currentIdx + 1} to step ${newIdx + 1}` };
+      }
+      
+      console.log(`🚫 [STEP-VALIDATION] BLOCKED: Trying to go backwards from Step ${currentIdx + 1} to Step ${newIdx + 1}`);
+      return { valid: false, reason: `Cannot go backwards from step ${currentIdx + 1} to step ${newIdx + 1}` };
+    }
+    
+    // If different phase, check phase progression
+    const currentPhaseIdx = this.scriptStructure.phases.findIndex(p => p.id === currentPhaseId);
+    const newPhaseIdx = this.scriptStructure.phases.findIndex(p => p.id === newPhaseId);
+    
+    // Handle case where phases are not found
+    if (currentPhaseIdx === -1) {
+      console.log(`⚠️  [STEP-VALIDATION] Current phase ${currentPhaseId} not found - allowing transition`);
+      return { valid: true, reason: 'Current phase not found - allowing transition' };
+    }
+    
+    if (newPhaseIdx === -1) {
+      console.log(`🚫 [STEP-VALIDATION] New phase ${newPhaseId} not found`);
+      return { valid: false, reason: `Phase ${newPhaseId} not found` };
+    }
+    
+    // Only allow moving to immediate next phase (and only if current phase's last step)
+    if (newPhaseIdx === currentPhaseIdx + 1) {
+      // Verify we're at the last step of current phase
+      const currentPhase = this.scriptStructure.phases[currentPhaseIdx];
+      const lastStepId = currentPhase.steps[currentPhase.steps.length - 1]?.id;
+      
+      if (currentStepId === lastStepId) {
+        console.log(`✅ [STEP-VALIDATION] Valid phase transition: ${currentPhaseId} → ${newPhaseId} (completed last step)`);
+        return { valid: true, reason: 'Moving to next phase after completing current' };
+      }
+      
+      console.log(`🚫 [STEP-VALIDATION] BLOCKED: Cannot change phase without completing current phase steps`);
+      console.log(`   Current step: ${currentStepId}, Last step required: ${lastStepId}`);
+      return { valid: false, reason: 'Cannot change phase without completing current phase steps' };
+    }
+    
+    if (newPhaseIdx > currentPhaseIdx + 1) {
+      console.log(`🚫 [STEP-VALIDATION] BLOCKED: Trying to skip phases ${currentPhaseId} → ${newPhaseId}`);
+      return { valid: false, reason: `Cannot jump from phase ${currentPhaseIdx + 1} to phase ${newPhaseIdx + 1}` };
+    }
+    
+    // Going backwards
+    console.log(`🚫 [STEP-VALIDATION] BLOCKED: Trying to go backwards ${currentPhaseId} → ${newPhaseId}`);
+    return { valid: false, reason: `Cannot go backwards from phase ${currentPhaseIdx + 1} to phase ${newPhaseIdx + 1}` };
+  }
   
   /**
    * Match AI message to a question in the script

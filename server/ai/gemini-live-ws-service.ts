@@ -14,7 +14,7 @@ import { eq, and, gte } from 'drizzle-orm';
 import { storage } from '../storage';
 import { buildUserContext } from '../ai-context-builder';
 import { buildSystemPrompt } from '../ai-prompts';
-import { buildSalesAgentPrompt, buildStaticSalesAgentPrompt, buildSalesAgentDynamicContext, buildMinimalSalesAgentInstruction, buildFullSalesAgentContext, buildFullSalesAgentContextAsync } from './sales-agent-prompt-builder';
+import { buildSalesAgentPrompt, buildStaticSalesAgentPrompt, buildSalesAgentDynamicContext, buildMinimalSalesAgentInstruction, buildFullSalesAgentContext, buildFullSalesAgentContextAsync, ScriptPosition } from './sales-agent-prompt-builder';
 import { getOrCreateTracker, removeTracker, SalesScriptTracker } from './sales-script-tracker';
 import { createSalesLogger, SalesScriptLogger } from './sales-script-logger';
 
@@ -1384,13 +1384,61 @@ export function setupGeminiLiveWSService(server: Server) {
         // MINIMAL system instruction - goes in setup message (under limit)
         systemInstruction = buildMinimalSalesAgentInstruction();
         
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 🆕 BUILD SCRIPT POSITION from tracker (for dynamic navigation)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        let scriptPosition: ScriptPosition | undefined;
+        
+        if (salesTracker) {
+          const trackerState = salesTracker.getState();
+          const trackerStructure = salesTracker.getScriptStructure();
+          
+          if (trackerState && trackerStructure) {
+            scriptPosition = {
+              exactPhaseId: trackerState.currentPhase || 'phase_1',
+              exactStepId: trackerState.currentStep || 'phase_1_step_1',
+              completedPhases: trackerState.phasesReached || [],
+              scriptStructure: {
+                phases: trackerStructure.phases?.map((p: any) => ({
+                  id: p.id,
+                  number: p.number,
+                  name: p.name,
+                  description: p.description || '',
+                  steps: p.steps?.map((s: any) => ({
+                    id: s.id,
+                    number: s.number,
+                    name: s.name,
+                    objective: s.objective || '',
+                    questions: s.questions?.map((q: any) => ({
+                      id: q.id,
+                      text: q.text
+                    })) || []
+                  })) || []
+                })) || [],
+                metadata: {
+                  totalPhases: trackerStructure.metadata?.totalPhases || 0,
+                  totalSteps: trackerStructure.metadata?.totalSteps || 0
+                }
+              }
+            };
+            
+            console.log(`🗺️ [${connectionId}] Script position built from tracker:`);
+            console.log(`   → Current Phase: ${scriptPosition.exactPhaseId}`);
+            console.log(`   → Current Step: ${scriptPosition.exactStepId}`);
+            console.log(`   → Completed Phases: ${scriptPosition.completedPhases.length}`);
+            console.log(`   → Total Phases in Script: ${scriptPosition.scriptStructure?.metadata.totalPhases}`);
+          }
+        }
+        
         // FULL context - goes in chunks after setup (33k+ tokens, split into ~5 chunks)
         // Uses async version to automatically load custom scripts from database
+        // 🆕 Now includes script position for dynamic navigation map
         userDataContext = await buildFullSalesAgentContextAsync(
           agent,
           prospectData,
           conversation.currentPhase,
-          conversationHistory
+          conversationHistory,
+          scriptPosition  // 🆕 Pass exact script position
         );
         
         // Replace [NOME_PROSPECT] placeholders with actual name
