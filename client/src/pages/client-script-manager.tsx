@@ -567,7 +567,7 @@ const ScriptListItem = ({ script, isSelected, onSelect }: { script: SalesScript,
         className={cn(
             'w-full text-left p-3 rounded-lg border-l-4 transition-all hover:bg-muted/50',
             scriptTypeColors[script.scriptType],
-            isSelected ? 'bg-muted/50' : 'bg-transparent'
+            isSelected ? 'bg-primary/15 border-l-4 border-primary font-semibold shadow-sm ring-1 ring-primary/30' : 'bg-transparent'
         )}
         onClick={() => onSelect(script.id)}
     >
