@@ -134,8 +134,8 @@ export function TrainingMapLayout({
   const observerRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const effectiveScript = conversationDetail.scriptSnapshot || scriptStructure;
-  const isUsingSnapshot = !!conversationDetail.scriptSnapshot;
-  const snapshotVersionDiffers = isUsingSnapshot && conversationDetail.scriptSnapshot?.version !== scriptStructure.version;
+  const snapshotVersionDiffers = !!conversationDetail.scriptSnapshot && 
+    conversationDetail.scriptSnapshot.version !== scriptStructure.version;
 
   // Helper to safely get the score
   const getOverallScore = () => {
@@ -219,11 +219,6 @@ export function TrainingMapLayout({
                   Script v{effectiveScript.version} (attuale: v{scriptStructure.version})
                 </Badge>
               )}
-              {isUsingSnapshot && !snapshotVersionDiffers && (
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300">
-                  📜 Script storico v{effectiveScript.version}
-                </Badge>
-              )}
             </div>
             <p className="text-xs text-muted-foreground flex items-center gap-2">
               <span>{new Date(conversationDetail.createdAt).toLocaleDateString()}</span>
@@ -251,6 +246,7 @@ export function TrainingMapLayout({
                 conversationDetail={conversationDetail}
                 selectedPhaseId={activePhaseId}
                 onSelectPhase={scrollToPhase}
+                currentScriptVersion={scriptStructure.version}
               />
             </SheetContent>
           </Sheet>

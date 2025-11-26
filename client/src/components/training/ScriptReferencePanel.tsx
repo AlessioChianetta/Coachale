@@ -17,6 +17,7 @@ interface ScriptReferencePanelProps {
   conversationDetail: any;
   selectedPhaseId: string | null;
   onSelectPhase: (phaseId: string) => void;
+  currentScriptVersion?: string;
 }
 
 export function ScriptReferencePanel({
@@ -24,6 +25,7 @@ export function ScriptReferencePanel({
   conversationDetail,
   selectedPhaseId,
   onSelectPhase,
+  currentScriptVersion,
 }: ScriptReferencePanelProps) {
   const [showDetails, setShowDetails] = useState(false);
   
@@ -90,7 +92,8 @@ export function ScriptReferencePanel({
     return { color: 'bg-yellow-100 text-yellow-800', text: `${count}x` };
   };
 
-  const isHistoricalSnapshot = !!conversationDetail?.scriptSnapshot;
+  const snapshotVersionDiffers = currentScriptVersion && 
+    scriptStructure.version !== currentScriptVersion;
 
   return (
     <div className="h-full flex flex-col bg-muted/30">
@@ -101,7 +104,7 @@ export function ScriptReferencePanel({
             <Badge variant="outline">
               v{scriptStructure.version}
             </Badge>
-            {isHistoricalSnapshot && (
+            {snapshotVersionDiffers && (
               <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100">
                 <History className="h-3 w-3 mr-1" />
                 Storico
@@ -118,11 +121,11 @@ export function ScriptReferencePanel({
             {showDetails ? 'Nascondi domande' : 'Mostra domande'}
           </Button>
         </div>
-        {isHistoricalSnapshot && (
+        {snapshotVersionDiffers && (
           <Alert className="py-2 bg-amber-50 border-amber-200 dark:bg-amber-950 dark:border-amber-800">
             <History className="h-3 w-3 text-amber-600" />
             <AlertDescription className="text-xs text-amber-800 dark:text-amber-200">
-              Questo è lo script usato durante la conversazione, non quello attuale.
+              Questo è lo script usato durante la conversazione (v{scriptStructure.version}), non quello attuale (v{currentScriptVersion}).
             </AlertDescription>
           </Alert>
         )}
