@@ -1,0 +1,1061 @@
+         "text": "🎙️ MODALITÀ: CHIAMATA VOCALE LIVE IN TEMPO REALE\n⚡ Stai parlando con il prospect tramite audio bidirezionale. Rispondi in modo naturale, conversazionale e immediato come in una vera telefonata.\n\nSei un SALES AGENT che vende i servizi del business in formato consulenziale, spiegando sempre i COSA ma non i ...
+
+📊 Setup Message Stats:
+   - Model path: projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-live-2.5-flash-preview-native-audio-09-2025
+   - System instruction length: 2388 chars (always minimal)
+   - Prompt mode: MINIMAL (user data in chunks)
+   - Response modalities: AUDIO
+   - Voice: achernar
+   - Language: it-IT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 [FRESH INPUT TRACKING] System Instruction: 2388 chars (~597 tokens) - WILL BE COUNTED AS FRESH TEXT INPUT
+
+📤 [jlni3p] Sending dynamic context IMMEDIATELY after setup (cache optimization)...
+   Type: OPTIMIZED DYNAMIC CONTEXT
+   Size: 138408 chars (~34602 tokens)
+   Total chunks to send: 5
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 CHUNK BREAKDOWN (sent BEFORE AI can speak):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 CHUNK 1/5
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      📏 Size: 30,720 chars (~7,680 tokens)
+      🔢 Chunk position: 0 - 30720
+
+      ▶️  FIRST 500 CHARS:
+      "╔══════════════════════════════════════════════════════════════════════════════╗ ║                    📋 GUIDA RAPIDA - LEGGI PRIMA DI TUTTO                    ║ ╠══════════════════════════════════════════════════════════════════════════════╣ ║                                                                              ║ ║  🤖 CHI SEI: Sales Agent per Premium                            ║ ║     Nome: Giusy Dattilo                                                   ║ ║..."
+
+      ◀️  LAST 500 CHARS:
+      "...to?" ⏸️ ASPETTA LA RISPOSTA 🎧 ASCOLTA attentamente 💬 REAGISCI: "Capisco!"  LIVELLO 2: PERCHÉ L'HANNO SCELTO 📌 DOMANDA: "E cosa ti ha convinto a provarla?" ⏸️ ASPETTA LA RISPOSTA 🎧 ASCOLTA le motivazioni 💬 REAGISCI: "Ha senso!"  LIVELLO 3: RISULTATI OTTENUTI 📌 DOMANDA: "E com'è andata? Risultati?" ⏸️ ASPETTA LA RISPOSTA 🎧 ASCOLTA i risultati (o la mancanza di essi) 💬 REAGISCI: "Capisco" / "Ha senso" / "Interessante"  LIVELLO 4: ANALISI DEL FALLIMENTO 📌 DOMANDA: "E perché pensi non ha fun"
+
+      📋 SECTIONS IN THIS CHUNK: Anti-Salto Formula, Sales Scripts, Discovery Script, Prospect Data, Agent Instructions
+      ✅ Chunk tracked in currentTurnMessages for fresh input analysis
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 CHUNK 2/5
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      📏 Size: 30,720 chars (~7,680 tokens)
+      🔢 Chunk position: 30720 - 61440
+
+      ▶️  FIRST 500 CHARS:
+      "zionato?" ⏸️ ASPETTA LA RISPOSTA 🎧 ASCOLTA il pattern dei fallimenti 💬 REAGISCI: "Capisco, succede spesso..."  💡 NOTA: Se è una persona che pensa di aver fatto tutto giusto, chiedi invece: "E secondo te cosa è mancato per raggiungere il risultato che volevi?"  LIVELLO 5: SCAVO PROFONDO (opzionale) 📌 DOMANDA: "E qual è stata LA cosa che proprio non andava?" ⏸️ ASPETTA LA RISPOSTA 🎧 ASCOLTA il punto critico 💬 REAGISCI: "Interessante!"  🎯 FERMATI quando capisci: ✅ Cosa hanno provato esattame..."
+
+      ◀️  LAST 500 CHARS:
+      "...l "come funziona" connettendolo ai pain points della discovery  📌 DOMANDA: "Bene mario, ho ascoltato attentamente ↗️ la tua situazione  e ho capito perfettamente quali sono le sfide che affronti:  [RECUPERA 2-3 PAIN POINT CHIAVE dalla discovery e ripetili testualmente]"  ⏸️ PAUSA  📌 TRANSIZIONE AL METODO:  "Per questo ↗️, ti serve PRECISAMENTE ↗️ il nostro percorso [NOME PERCORSO].  Lascia che ti spieghi il perché."  ⏸️ PAUSA  📌 SPIEGAZIONE SISTEMA (personalizza COMPLETAMENTE con il metodo sp"
+
+      📋 SECTIONS IN THIS CHUNK: Sales Scripts, Discovery Script, Agent Instructions
+      ✅ Chunk tracked in currentTurnMessages for fresh input analysis
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 CHUNK 3/5
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      📏 Size: 30,720 chars (~7,680 tokens)
+      🔢 Chunk position: 61440 - 92160
+
+      ▶️  FIRST 500 CHARS:
+      "ecifico del BOSS!):     "Lo abbiamo progettato come un **sistema completo** che risolve TUTTI i tuoi problemi ↗️.  ⏸️ PAUSA  [SPIEGA IL TUO METODO SPECIFICO usando le FASI/MODULI che hai creato] [COLLEGA OGNI FASE a un PAIN POINT dalla discovery] [USA CASI STUDIO per ogni fase quando possibile]  L'obiettivo è semplice ↗️: portarti da [STATO ATTUALE dalla discovery]  a [RISULTATO DESIDERATO dalla discovery] ↗️,  eliminando [FRUSTRAZIONE PRINCIPALE dalla discovery]."  ⏸️ PAUSA  ---  🚨 CHECKPOINT..."
+
+      ◀️  LAST 500 CHARS:
+      "...USA - Lascia riflettere  "L'investimento oggi è [PREZZO] ↘️.  Ma il costo di non agire potrebbe essere 10, 20, 50 volte superiore ↘️.  Ha senso ↘️?"  ⏸️ ASPETTA LA RISPOSTA  📌 DOMANDA CHIAVE: "Ha senso quello che ti sto dicendo?"  📌 CTA: "Carta o bonifico?"  ---  ════════════════════════════════════════════════════════════════════════════════ **FASE #2 - OBIEZIONE "DEVO PENSARCI"** **Come gestire questa obiezione** ═══════════════════════════════════════════════════════════════════════════════"
+
+      📋 SECTIONS IN THIS CHUNK: Sales Scripts, Objection Script, Closing Script, Agent Instructions
+      ✅ Chunk tracked in currentTurnMessages for fresh input analysis
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 CHUNK 4/5
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      📏 Size: 30,720 chars (~7,680 tokens)
+      🔢 Chunk position: 92160 - 122880
+
+      ▶️  FIRST 500 CHARS:
+      "═  🎯 OBIETTIVO: Scoprire la VERA obiezione nascosta (questa è quasi SEMPRE falsa!)  ⚡ ENERGIA E TONALITÀ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Tono: Curioso ↘️ (NON giudicante!) Volume: Basso (empatico, comprensivo) Lessico: "Aiutami a capire", "Dimmi", "Interessante" ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ---  **STEP 1 - CHIARIFICA**  📌 DOMANDA: "Capisco ↘️ mario. Aiutami a capire ↘️:  cosa devi pensare esattamente ↘️?"  ⏸️ ASPETTA..."
+
+      ◀️  LAST 500 CHARS:
+      "...obiezione** ════════════════════════════════════════════════════════════════════════════════  🎯 OBIETTIVO: Mostrare che la vera scelta sbagliata è NON agire  ⚡ ENERGIA E TONALITÀ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Tono: Empatico, rassicurante Volume: Basso-Medio (comprensivo) Lessico: "Capisco perfettamente", "È una paura legittima", "Facciamo un ragionamento" ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ---  **STEP 1 - CHIARIFICA**  �"
+      ✅ Chunk tracked in currentTurnMessages for fresh input analysis
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📦 CHUNK 5/5
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      📏 Size: 15,528 chars (~3,882 tokens)
+      🔢 Chunk position: 122880 - 138408
+
+      ▶️  FIRST 500 CHARS:
+      "� DOMANDA: "Capisco perfettamente mario, ed è una paura legittima.  Nessuno vuole sbagliare, soprattutto quando si investe.  Posso chiederti: cosa ti spaventa esattamente?  Cosa sarebbe 'la scelta sbagliata' per te?"  ⏸️ ASPETTA CON EMPATIA 🎧 ASCOLTA attentamente 💬 REAGISCI: "Capisco!"  ---  **STEP 3 - REFRAME**  📌 SCRIPT REFRAME:  "Ok, vedo. Hai paura di [RIASSUMI LA PAURA]. Facciamo un ragionamento insieme.  Ci sono solo due scelte possibili:  **SCELTA 1: Agire ora** - Rischio: Investimento..."
+
+      ◀️  LAST 500 CHARS:
+      "...═══════════════════════════════  📌 ISTRUZIONI OPERATIVE:  ➡️ Segui lo SCRIPT #1: DISCOVERY CALL dalla sezione SCRIPTS sopra.    Ricorda di sostituire mario con il nome reale del prospect.    ⚠️ INIZIA DALLA FASE E STEP INDICATI NELLA MAPPA SOPRA!  ⚡ REMINDER: Tutti gli script sono nella sezione SCRIPTS DI VENDITA (cachata) sopra.    Non sono ripetuti qui per ottimizzare i costi (riduzione 94% sui token di input).  ════════════════════════════════════════════════════════════════════════════════"
+
+      📋 SECTIONS IN THIS CHUNK: Sales Scripts, Discovery Script, Objection Script, Prospect Data, Agent Instructions
+      ✅ Chunk tracked in currentTurnMessages for fresh input analysis
+   📦 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📊 TOTAL CHUNKS SUMMARY:
+      • Total chunks: 5
+      • Total size: 138,408 chars
+      • Estimated tokens: ~34,602 tokens
+      • All chunks tracked in currentTurnMessages
+      • 🔍 Saved to sessionInitialChunkTokens for comparison report
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏳ Sending chunks to Gemini Live API...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 TASK 7: CACHE OPTIMIZATION EXPERIMENT - Primer Chunk at END
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   💡 Strategy: Send all 5 data chunks FIRST
+   💡 Then: Send minimal primer chunk LAST (with turnComplete: true)
+   💡 Goal: Test if this order enables better caching
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ✅ Chunk 1/5 sent - 30720 chars (~7,680 tokens)
+   ✅ Chunk 2/5 sent - 30720 chars (~7,680 tokens)
+   ✅ Chunk 3/5 sent - 30720 chars (~7,680 tokens)
+   ✅ Chunk 4/5 sent - 30720 chars (~7,680 tokens)
+   ✅ Chunk 5/5 sent - 15528 chars (~3,882 tokens)
+
+   🎯 Primer chunk sent (FINAL) - 48 chars (~12 tokens)
+   ✅ Turn complete with primer at END
+
+
+🎉 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ [jlni3p] ALL 5 CHUNKS SENT & LOADED
+   💾 Chunks are now CACHED by Gemini Live API (90% cost savings on next turn!)
+   🎙️ AI can now speak (has complete context: 34602 tokens)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [jlni3p] Gemini Live session ready
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[jlni3p] STARTING AUTOSAVE INTERVAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Mode: consultation_invite
+   Interval: 30 seconds
+   aiConversationId: 2852f0c4-eead-4779-b0ec-4cf7fc58bc13
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [jlni3p] Autosave interval started - will save every 30 seconds
+📝 [jlni3p] AI transcript (output): EVVAI Mario,
+🎤 [jlni3p] AI started speaking (audio streaming)
+📝 [jlni3p] AI transcript (output):  perfetto!
+📝 [jlni3p] AI transcript (output):  Allora
+📝 [jlni3p] AI transcript (output):  sono
+📝 [jlni3p] AI transcript (output):  super
+📝 [jlni3p] AI transcript (output):  entusiasta
+📝 [jlni3p] AI transcript (output):  di questa
+📝 [jlni3p] AI transcript (output):  chiacchierata,
+📝 [jlni3p] AI transcript (output):  perché
+📝 [jlni3p] AI transcript (output):  l'obiettivo
+📝 [jlni3p] AI transcript (output):  è proprio
+📝 [jlni3p] AI transcript (output):  capire
+📝 [jlni3p] AI transcript (output):  se e
+📝 [jlni3p] AI transcript (output):  come
+📝 [jlni3p] AI transcript (output):  possiamo
+📝 [jlni3p] AI transcript (output):  aiutarti
+📝 [jlni3p] AI transcript (output):  a raggiungere
+📝 [jlni3p] AI transcript (output):  quei
+📝 [jlni3p] AI transcript (output):  traguardi
+📝 [jlni3p] AI transcript (output):  che
+📝 [jlni3p] AI transcript (output):  ci siamo
+📝 [jlni3p] AI transcript (output):  detti
+📝 [jlni3p] AI transcript (output):  nell'email
+📝 [jlni3p] AI transcript (output):  o che
+📝 [jlni3p] AI transcript (output):  ci siamo
+📝 [jlni3p] AI transcript (output):  visti
+📝 [jlni3p] AI transcript (output):  poco
+📝 [jlni3p] AI transcript (output):  fa,
+📝 [jlni3p] AI transcript (output):  quindi
+📝 [jlni3p] AI transcript (output):  le
+📝 [jlni3p] AI transcript (output):  famose
+📝 [jlni3p] AI transcript (output):  10
+📝 [jlni3p] AI transcript (output):  sessioni
+📝 [jlni3p] AI transcript (output):  di Tecnica
+📝 [jlni3p] AI transcript (output):  Flow
+📝 [jlni3p] AI transcript (output):  e
+📝 [jlni3p] AI transcript (output):  Ricalibrazione.
+📝 [jlni3p] AI transcript (output):  Ti va
+📝 [jlni3p] AI transcript (output):  se ti
+📝 [jlni3p] AI transcript (output):  spiego
+📝 [jlni3p] AI transcript (output):  velocemente
+📝 [jlni3p] AI transcript (output):  come
+📝 [jlni3p] AI transcript (output):  funziona
+📝 [jlni3p] AI transcript (output):  la chiacchierata,
+📝 [jlni3p] AI transcript (output):  così
+📝 [jlni3p] AI transcript (output):  entrambi
+📝 [jlni3p] AI transcript (output):  sappiamo
+📝 [jlni3p] AI transcript (output):  dove
+📝 [jlni3p] AI transcript (output):  andiamo?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 28897,
+  "candidatesTokenCount": 708,
+  "totalTokenCount": 29605,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 28897
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 98
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 610
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 28,897 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Messages sent in this turn:
+   1. SETUP - System Instruction (NON-CACHED)
+      Size: 2,388 chars (~597 tokens)
+      Preview: "🎙️ MODALITÀ: CHIAMATA VOCALE LIVE IN TEMPO REALE
+⚡ Stai parlando con il prospect tramite audio bidirezionale. Rispondi in modo naturale, conversazionale e immediato come in una vera telefonata.
+
+Sei un SALES AGENT che vende i servizi del business in formato consulenziale, spiegando sempre i COSA ma non i COME.
+
+🗣️ TONO E STILE:
+- Tono SUPER ENERGICO, positivo e incoraggiante e rispondere in modo proattivo
+- NON C'È UNA PERSONA PIÙ FELICE ED ENERGICA DI TE NEL TONO
+- In base al tono del prospec..."
+      Sent at: 2025-11-26T21:50:06.657Z
+   2. CHUNK 1/5 - User Data Context (SHOULD BE CACHED)
+      Size: 30,720 chars (~7680 tokens)
+      Preview: "╔══════════════════════════════════════════════════════════════════════════════╗ ║                    📋 GUIDA RAPIDA - LEGGI PRIMA DI TUTTO                    ║ ╠═════════════════════════════════════... [TOTAL: 30720 chars] ...i?" ⏸️ ASPETTA LA RISPOSTA 🎧 ASCOLTA i risultati (o la mancanza di essi) 💬 REAGISCI: "Capisco" / "Ha senso" / "Interessante"  LIVELLO 4: ANALISI DEL FALLIMENTO 📌 DOMANDA: "E perché pensi non ha fun"
+      Sent at: 2025-11-26T21:50:06.659Z
+   3. CHUNK 2/5 - User Data Context (SHOULD BE CACHED)
+      Size: 30,720 chars (~7680 tokens)
+      Preview: "zionato?" ⏸️ ASPETTA LA RISPOSTA 🎧 ASCOLTA il pattern dei fallimenti 💬 REAGISCI: "Capisco, succede spesso..."  💡 NOTA: Se è una persona che pensa di aver fatto tutto giusto, chiedi invece: "E secon... [TOTAL: 30720 chars] ... METODO:  "Per questo ↗️, ti serve PRECISAMENTE ↗️ il nostro percorso [NOME PERCORSO].  Lascia che ti spieghi il perché."  ⏸️ PAUSA  📌 SPIEGAZIONE SISTEMA (personalizza COMPLETAMENTE con il metodo sp"
+      Sent at: 2025-11-26T21:50:06.659Z
+   4. CHUNK 3/5 - User Data Context (SHOULD BE CACHED)
+      Size: 30,720 chars (~7680 tokens)
+      Preview: "ecifico del BOSS!):     "Lo abbiamo progettato come un **sistema completo** che risolve TUTTI i tuoi problemi ↗️.  ⏸️ PAUSA  [SPIEGA IL TUO METODO SPECIFICO usando le FASI/MODULI che hai creato] [COLL... [TOTAL: 30720 chars] ...══════════════════════════════════════════════ **FASE #2 - OBIEZIONE "DEVO PENSARCI"** **Come gestire questa obiezione** ═══════════════════════════════════════════════════════════════════════════════"
+      Sent at: 2025-11-26T21:50:06.660Z
+   5. CHUNK 4/5 - User Data Context (SHOULD BE CACHED)
+      Size: 30,720 chars (~7680 tokens)
+      Preview: "═  🎯 OBIETTIVO: Scoprire la VERA obiezione nascosta (questa è quasi SEMPRE falsa!)  ⚡ ENERGIA E TONALITÀ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Tono: Curioso ↘️ (NON giu... [TOTAL: 30720 chars] ...comprensivo) Lessico: "Capisco perfettamente", "È una paura legittima", "Facciamo un ragionamento" ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  ---  **STEP 1 - CHIARIFICA**  �"
+      Sent at: 2025-11-26T21:50:06.660Z
+   6. CHUNK 5/5 - User Data Context (SHOULD BE CACHED)
+      Size: 15,528 chars (~3882 tokens)
+      Preview: "� DOMANDA: "Capisco perfettamente mario, ed è una paura legittima.  Nessuno vuole sbagliare, soprattutto quando si investe.  Posso chiederti: cosa ti spaventa esattamente?  Cosa sarebbe 'la scelta sba... [TOTAL: 15528 chars] ...RIPTS DI VENDITA (cachata) sopra.    Non sono ripetuti qui per ottimizzare i costi (riduzione 94% sui token di input).  ════════════════════════════════════════════════════════════════════════════════"
+      Sent at: 2025-11-26T21:50:06.660Z
+   7. PRIMER CHUNK at END - Cache Optimization (TASK 7 v2)
+      Size: 48 chars (~12 tokens)
+      Preview: "📋 CONTEXT_END - All user data loaded and ready."
+      Sent at: 2025-11-26T21:50:06.662Z
+
+   📊 TOTAL SENT: 140,844 chars (~35211 estimated tokens)
+   📊 ACTUAL FRESH INPUT TOKENS: 28,897 tokens
+   💡 Difference: ~-6314 tokens (due to encoding/system overhead)
+
+   🎯 CHUNK ANALYSIS:
+      • Chunks sent: 6
+      • Expected to be CACHED after first turn
+      • If this is NOT the first turn, these should appear as CACHED tokens, not FRESH!
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 28,897 tokens × $0.50/1M = $0.014448
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [jlni3p] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 28,897 tokens → $0.014448 ($0.50/1M)
+   - Audio Output: 708 tokens → $0.008496 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.022944 USD
+
+📊 Session totals:
+   - Text Input: 28,897 tokens → $0.014448
+   - Audio Output: 708 tokens → $0.008496
+   - SESSION TOTAL: $0.022944 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 34,602 (~34.6k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 28,897 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 28,897 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (34,602 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~34,602 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 34,602 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [jlni3p] SESSION RESUMPTION UPDATE received
+   - New handle: b62eea44-4ab8-4101-9ec4-8aa6b2...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [jlni3p] Usage tracked → DB saved (Turn cost: $0.022944)
+✅ [jlni3p] Turn complete
+🔇 [jlni3p] AI finished speaking (turn complete)
+💾 [jlni3p] Saved AI message (server-side): 1 total messages
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_WLLXjhnQ4d5Lv506, ConversationId: 35417494-ce84-4746-95e7-8760cce97d80
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ EVVAI Mario, perfetto! Allora sono super entusiasta di questa chiacchierata, │
+│ perché l'obiettivo è proprio capire se e come possiamo aiutarti a ragg...    │
+│ Time: 21:50:14                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "S"
+   → Timestamp: 2025-11-26T21:50:35.716Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ [jlni3p] LANGUAGE FILTER: Scartato transcript non italiano: "ì, ok."
+   → Motivo: Troppi caratteri non-latini (40%)
+   → Transcript ignorato, attendo prossimo chunk
+📝 [jlni3p] AI transcript (output): EVVAI! Allora,
+🎤 [jlni3p] AI started speaking (audio streaming)
+🎤 [jlni3p] Receiving audio chunks (last logged: seq 805)
+📝 [jlni3p] AI transcript (output):  super
+💾 [jlni3p] Autosave: Saving 1 new messages...
+📝 [jlni3p] AI transcript (output):  semplice:
+📝 [jlni3p] AI transcript (output):  faremo
+📝 [jlni3p] AI transcript (output):  un
+📝 [jlni3p] AI transcript (output):  piccolo
+📝 [jlni3p] AI transcript (output):  check
+📝 [jlni3p] AI transcript (output):  iniziale
+📝 [jlni3p] AI transcript (output):  per
+📝 [jlni3p] AI transcript (output):  capire
+📝 [jlni3p] AI transcript (output):  bene
+✅ [jlni3p] Autosave: 1 messages saved successfully (total saved: 1/1)
+📝 [jlni3p] AI transcript (output):  il tuo
+📝 [jlni3p] AI transcript (output):  punto
+📝 [jlni3p] AI transcript (output):  di partenza
+📝 [jlni3p] AI transcript (output):  e
+📝 [jlni3p] AI transcript (output):  dove
+📝 [jlni3p] AI transcript (output):  vuoi
+📝 [jlni3p] AI transcript (output):  arrivare.
+📝 [jlni3p] AI transcript (output):  Poi
+📝 [jlni3p] AI transcript (output):  ti spiegherò
+📝 [jlni3p] AI transcript (output):  come
+📝 [jlni3p] AI transcript (output):  esattamente
+📝 [jlni3p] AI transcript (output):  le
+📝 [jlni3p] AI transcript (output):  nostre
+📝 [jlni3p] AI transcript (output):  sessioni
+📝 [jlni3p] AI transcript (output):  possono
+📝 [jlni3p] AI transcript (output):  portarti
+📝 [jlni3p] AI transcript (output):  a raggiungere
+📝 [jlni3p] AI transcript (output):  quell'obiettivo.
+📝 [jlni3p] AI transcript (output):  E alla
+📝 [jlni3p] AI transcript (output):  fine
+📝 [jlni3p] AI transcript (output):  vedremo
+📝 [jlni3p] AI transcript (output):  se
+📝 [jlni3p] AI transcript (output):  siamo
+📝 [jlni3p] AI transcript (output):  la soluzione
+📝 [jlni3p] AI transcript (output):  giusta
+📝 [jlni3p] AI transcript (output):  per te.
+📝 [jlni3p] AI transcript (output):  Ci
+📝 [jlni3p] AI transcript (output):  stai?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 29683,
+  "candidatesTokenCount": 559,
+  "totalTokenCount": 30242,
+  "promptTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 684
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 28999
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 69
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 490
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 29,683 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 29,683 tokens × $0.50/1M = $0.014842
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [jlni3p] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 29,683 tokens → $0.014842 ($0.50/1M)
+   - Audio Output: 559 tokens → $0.006708 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.021549 USD
+
+📊 Session totals:
+   - Text Input: 58,580 tokens → $0.029290
+   - Audio Output: 1,267 tokens → $0.015204
+   - SESSION TOTAL: $0.044494 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 34,602 (~34.6k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 58,580 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 58,580 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (34,602 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~34,602 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 34,602 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [jlni3p] SESSION RESUMPTION UPDATE received
+   - New handle: a8e1e18b-8837-424c-b0de-c69321...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [jlni3p] Usage tracked → DB saved (Turn cost: $0.021549)
+✅ [jlni3p] Turn complete
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_1
+
+🔍 [CHECKPOINT-DETECTOR] Analyzing 2 messages for 1 checkpoints in phase phase_1
+      🔎 Searching for: "Hai salutato e chiesto "come stai""
+         Keywords: salutato, chiesto, "come, stai"
+         ❌ No evidence found
+      🔎 Searching for: "Hai chiesto "da dove mi chiami""
+         Keywords: chiesto, chiami"
+         ❌ No evidence found
+      🔎 Searching for: "Hai spiegato il processo della call"
+         Keywords: spiegato, processo, call
+         ❌ No evidence found
+      🔎 Searching for: "Il prospect ha detto "OK" / "Sì" / "Va bene" al processo"
+         Keywords: prospect, detto, "ok", "sì", bene", processo
+         ❌ No evidence found
+      🔎 Searching for: "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
+         Keywords: solo, dopo, questo, checkpoint, passa, fase
+         ❌ No evidence found
+   ⏳ checkpoint_1: pending
+      Verifications: 0/5 verified
+   ⏳ checkpoint_1: 0/5 verifications found (still pending)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_1)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ S                                                                            │
+│ Time: 21:50:41                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+⚠️  [jlni3p] Sales tracking: Fallback - tracked user message without isFinal flag
+🔇 [jlni3p] AI finished speaking (turn complete)
+💾 [jlni3p] Saved AI message (server-side): 2 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ EVVAI! Allora, super semplice: faremo un piccolo check iniziale per capire   │
+│ bene il tuo punto di partenza e dove vuoi arrivare. Poi ti spiegherò com...  │
+│ Time: 21:50:41                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_WLLXjhnQ4d5Lv506, ConversationId: 35417494-ce84-4746-95e7-8760cce97d80
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "Okay"
+   → Timestamp: 2025-11-26T21:51:00.643Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ [jlni3p] LANGUAGE FILTER: Scartato transcript non italiano: "."
+   → Motivo: Troppi caratteri non-latini (100%)
+   → Transcript ignorato, attendo prossimo chunk
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+📝 [jlni3p] AI transcript (output): EVVAI Mario,
+🎤 [jlni3p] AI started speaking (audio streaming)
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+📝 [jlni3p] AI transcript (output):  perfetto!
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-11-16T01:55:16.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-11-16T01:55:16.000Z) is older than watermark - keeping current
+📝 [jlni3p] AI transcript (output):  Iniziamo
+✅ [WHATSAPP POLLING] Poll cycle complete
+📝 [jlni3p] AI transcript (output):  con la
+📝 [jlni3p] AI transcript (output):  Discovery,
+📝 [jlni3p] AI transcript (output):  così
+📝 [jlni3p] AI transcript (output):  capiamo
+📝 [jlni3p] AI transcript (output):  meglio
+📝 [jlni3p] AI transcript (output):  la tua
+📝 [jlni3p] AI transcript (output):  situazione
+📝 [jlni3p] AI transcript (output):  attuale.
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 30314,
+  "candidatesTokenCount": 189,
+  "totalTokenCount": 30503,
+  "promptTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 1248
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 29066
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 164
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 25
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 30,314 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 30,314 tokens × $0.50/1M = $0.015157
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [jlni3p] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 30,314 tokens → $0.015157 ($0.50/1M)
+   - Audio Output: 189 tokens → $0.002268 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.017425 USD
+
+📊 Session totals:
+   - Text Input: 88,894 tokens → $0.044447
+   - Audio Output: 1,456 tokens → $0.017472
+   - SESSION TOTAL: $0.061919 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 34,602 (~34.6k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 88,894 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 88,894 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (34,602 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~34,602 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 34,602 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [jlni3p] SESSION RESUMPTION UPDATE received
+   - New handle: 2fb4c09e-e40d-45a0-b302-316d09...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [jlni3p] Usage tracked → DB saved (Turn cost: $0.017425)
+✅ [jlni3p] Turn complete
+✓ [TRACKER] Checkpoint progress detected: User confirmed in phase_1
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_1
+
+🔍 [CHECKPOINT-DETECTOR] Analyzing 4 messages for 1 checkpoints in phase phase_1
+      🔎 Searching for: "Hai salutato e chiesto "come stai""
+         Keywords: salutato, chiesto, "come, stai"
+         ❌ No evidence found
+      🔎 Searching for: "Hai chiesto "da dove mi chiami""
+         Keywords: chiesto, chiami"
+         ❌ No evidence found
+      🔎 Searching for: "Hai spiegato il processo della call"
+         Keywords: spiegato, processo, call
+         ❌ No evidence found
+      🔎 Searching for: "Il prospect ha detto "OK" / "Sì" / "Va bene" al processo"
+         Keywords: prospect, detto, "ok", "sì", bene", processo
+         ❌ No evidence found
+      🔎 Searching for: "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
+         Keywords: solo, dopo, questo, checkpoint, passa, fase
+         ❌ No evidence found
+   ⏳ checkpoint_1: pending
+      Verifications: 0/5 verified
+   ⏳ checkpoint_1: 0/5 verifications found (still pending)
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_WLLXjhnQ4d5Lv506, ConversationId: 35417494-ce84-4746-95e7-8760cce97d80
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_1)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Okay                                                                         │
+│ Time: 21:51:03                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+⚠️  [jlni3p] Sales tracking: Fallback - tracked user message without isFinal flag
+🔇 [jlni3p] AI finished speaking (turn complete)
+💾 [jlni3p] Saved AI message (server-side): 3 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ EVVAI Mario, perfetto! Iniziamo con la Discovery, così capiamo meglio la tua │
+│ situazione attuale.                                                          │
+│ Time: 21:51:03                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+🎤 [jlni3p] Receiving audio chunks (last logged: seq 1555)
+💾 [jlni3p] Autosave: Saving 2 new messages...
+✅ [jlni3p] Autosave: 2 messages saved successfully (total saved: 3/3)
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "Va"
+   → Timestamp: 2025-11-26T21:51:12.402Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " bene."
+   → Timestamp: 2025-11-26T21:51:12.427Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [jlni3p] AI transcript (output): EVVAI Mario,
+🎤 [jlni3p] AI started speaking (audio streaming)
+📝 [jlni3p] AI transcript (output):  perfetto!
+📝 [jlni3p] AI transcript (output):  Allora,
+📝 [jlni3p] AI transcript (output):  dimmi
+📝 [jlni3p] AI transcript (output):  una cosa
+📝 [jlni3p] AI transcript (output):  qual
+📝 [jlni3p] AI transcript (output):  è la
+📝 [jlni3p] AI transcript (output):  sfida
+📝 [jlni3p] AI transcript (output):  più grande
+📝 [jlni3p] AI transcript (output):  che stai
+📝 [jlni3p] AI transcript (output):  affrontando
+📝 [jlni3p] AI transcript (output):  in questo
+📝 [jlni3p] AI transcript (output):  momento
+📝 [jlni3p] AI transcript (output):  nella
+📝 [jlni3p] AI transcript (output):  tua
+📝 [jlni3p] AI transcript (output):  attività?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 30576,
+  "candidatesTokenCount": 239,
+  "totalTokenCount": 30815,
+  "promptTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 1484
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 29092
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 205
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 34
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 30,576 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 30,576 tokens × $0.50/1M = $0.015288
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [jlni3p] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 30,576 tokens → $0.015288 ($0.50/1M)
+   - Audio Output: 239 tokens → $0.002868 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.018156 USD
+
+📊 Session totals:
+   - Text Input: 119,470 tokens → $0.059735
+   - Audio Output: 1,695 tokens → $0.020340
+   - SESSION TOTAL: $0.080075 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 34,602 (~34.6k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 119,470 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 119,470 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (34,602 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~34,602 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 34,602 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [jlni3p] SESSION RESUMPTION UPDATE received
+   - New handle: b1c33373-efc7-4512-a253-3f467f...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [jlni3p] Usage tracked → DB saved (Turn cost: $0.018156)
+✅ [jlni3p] Turn complete
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_1
+
+🔍 [CHECKPOINT-DETECTOR] Analyzing 6 messages for 1 checkpoints in phase phase_1
+      🔎 Searching for: "Hai salutato e chiesto "come stai""
+         Keywords: salutato, chiesto, "come, stai"
+         ❌ No evidence found
+      🔎 Searching for: "Hai chiesto "da dove mi chiami""
+         Keywords: chiesto, chiami"
+         ❌ No evidence found
+      🔎 Searching for: "Hai spiegato il processo della call"
+         Keywords: spiegato, processo, call
+         ❌ No evidence found
+      🔎 Searching for: "Il prospect ha detto "OK" / "Sì" / "Va bene" al processo"
+         Keywords: prospect, detto, "ok", "sì", bene", processo
+         ❌ No evidence found
+      🔎 Searching for: "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
+         Keywords: solo, dopo, questo, checkpoint, passa, fase
+         ❌ No evidence found
+   ⏳ checkpoint_1: pending
+      Verifications: 0/5 verified
+   ⏳ checkpoint_1: 0/5 verifications found (still pending)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_1)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ bene.                                                                        │
+│ Time: 21:51:15                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+⚠️  [jlni3p] Sales tracking: Fallback - tracked user message without isFinal flag
+🔇 [jlni3p] AI finished speaking (turn complete)
+💾 [jlni3p] Saved AI message (server-side): 4 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ EVVAI Mario, perfetto! Allora, dimmi una cosa qual è la sfida più grande che │
+│ stai affrontando in questo momento nella tua attività?                       │
+│ Time: 21:51:15                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_WLLXjhnQ4d5Lv506, ConversationId: 35417494-ce84-4746-95e7-8760cce97d80
+9:51:25 PM [express] POST /api/activity/session/heartbeat 200 in 357ms :: {"success":true,"lastActiv…
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "a"
+   → Timestamp: 2025-11-26T21:51:30.911Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "vere più clienti."
+   → Timestamp: 2025-11-26T21:51:30.953Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [jlni3p] AI transcript (output): Capisco, super
+🎤 [jlni3p] AI started speaking (audio streaming)
+📝 [jlni3p] AI transcript (output):  interessante!
+📝 [jlni3p] AI transcript (output):  E dimmi,
+📝 [jlni3p] AI transcript (output):  perché
+📝 [jlni3p] AI transcript (output):  è così
+📝 [jlni3p] AI transcript (output):  importante
+📝 [jlni3p] AI transcript (output):  per te
+📝 [jlni3p] AI transcript (output):  avere
+📝 [jlni3p] AI transcript (output):  più
+📝 [jlni3p] AI transcript (output):  clienti
+📝 [jlni3p] AI transcript (output):  in questo
+📝 [jlni3p] AI transcript (output):  momento?
+📝 [jlni3p] AI transcript (output):  Cosa
+📝 [jlni3p] AI transcript (output):  cambierebbe
+📝 [jlni3p] AI transcript (output):  per te?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 30934,
+  "candidatesTokenCount": 272,
+  "totalTokenCount": 31206,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 29128
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 1806
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 238
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 34
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 30,934 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 30,934 tokens × $0.50/1M = $0.015467
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [jlni3p] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 30,934 tokens → $0.015467 ($0.50/1M)
+   - Audio Output: 272 tokens → $0.003264 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.018731 USD
+
+📊 Session totals:
+   - Text Input: 150,404 tokens → $0.075202
+   - Audio Output: 1,967 tokens → $0.023604
+   - SESSION TOTAL: $0.098806 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 34,602 (~34.6k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 150,404 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 150,404 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (34,602 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~34,602 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 34,602 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [jlni3p] SESSION RESUMPTION UPDATE received
+   - New handle: 4e46960d-f91e-4f05-91cf-49be3a...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [jlni3p] Usage tracked → DB saved (Turn cost: $0.018731)
+✅ [jlni3p] Turn complete
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_1
+
+🔍 [CHECKPOINT-DETECTOR] Analyzing 8 messages for 1 checkpoints in phase phase_1
+      🔎 Searching for: "Hai salutato e chiesto "come stai""
+         Keywords: salutato, chiesto, "come, stai"
+         ❌ No evidence found
+      🔎 Searching for: "Hai chiesto "da dove mi chiami""
+         Keywords: chiesto, chiami"
+         ❌ No evidence found
+      🔎 Searching for: "Hai spiegato il processo della call"
+         Keywords: spiegato, processo, call
+         ❌ No evidence found
+      🔎 Searching for: "Il prospect ha detto "OK" / "Sì" / "Va bene" al processo"
+         Keywords: prospect, detto, "ok", "sì", bene", processo
+         ❌ No evidence found
+      🔎 Searching for: "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
+         Keywords: solo, dopo, questo, checkpoint, passa, fase
+         ❌ No evidence found
+   ⏳ checkpoint_1: pending
+      Verifications: 0/5 verified
+   ⏳ checkpoint_1: 0/5 verifications found (still pending)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_1)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ vere più clienti.                                                            │
+│ Time: 21:51:34                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+⚠️  [jlni3p] Sales tracking: Fallback - tracked user message without isFinal flag
+🔇 [jlni3p] AI finished speaking (turn complete)
+
+⚠️  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[jlni3p] AI MESSAGE QUALITY WARNING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🚨 MULTIPLE QUESTIONS: 2 questions detected (should ask ONE at a time)
+   📝 Message: "Capisco, super interessante! E dimmi, perché è così importante per te avere più clienti in questo momento? Cosa cambierebbe per te?"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [jlni3p] Saved AI message (server-side): 5 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Capisco, super interessante! E dimmi, perché è così importante per te avere  │
+│ più clienti in questo momento? Cosa cambierebbe per te?                      │
+│ Time: 21:51:34                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_WLLXjhnQ4d5Lv506, ConversationId: 35417494-ce84-4746-95e7-8760cce97d80
+🎤 [jlni3p] Receiving audio chunks (last logged: seq 2305)
+💾 [jlni3p] Autosave: Saving 2 new messages...
+✅ [jlni3p] Autosave: 2 messages saved successfully (total saved: 5/5)
+9:51:42 PM [express] POST /api/activity/session/heartbeat 200 in 227ms :: {"

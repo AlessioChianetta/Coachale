@@ -36,7 +36,7 @@ interface TrackingState {
   phaseActivations: Array<{
     phase: string; // phaseId (e.g., "phase_3")
     timestamp: string;
-    trigger: "semantic_match" | "keyword_match" | "exact_match";
+    trigger: "semantic_match" | "keyword_match" | "exact_match" | "ai_agent_semantic";
     matchedQuestion?: string;
     keywordsMatched?: string[];
     similarity?: number;
@@ -658,6 +658,75 @@ export class SalesScriptTracker {
    */
   isScriptOutdated(): boolean {
     return this.scriptOutdated;
+  }
+  
+  /**
+   * 🎯 ADVANCE TO - Called by Step Advancement Agent to move to next step/phase
+   * This is the semantic-based advancement that replaces keyword matching
+   */
+  async advanceTo(nextPhaseId: string, nextStepId: string, reasoning: string): Promise<void> {
+    const timestamp = new Date().toISOString();
+    const previousPhase = this.state.currentPhase;
+    const previousStep = this.state.currentStep;
+    
+    // Update position
+    this.state.currentPhase = nextPhaseId;
+    this.state.currentStep = nextStepId;
+    
+    // Track phase if new
+    const isNewPhase = !this.state.phasesReached.includes(nextPhaseId);
+    if (isNewPhase) {
+      this.state.phasesReached.push(nextPhaseId);
+      
+      // Find phase info for logging
+      const phase = this.scriptStructure.phases.find(p => p.id === nextPhaseId);
+      if (phase) {
+        this.state.phaseActivations.push({
+          phase: nextPhaseId,
+          timestamp,
+          trigger: 'ai_agent_semantic',
+          matchedQuestion: reasoning,
+          keywordsMatched: [],
+          similarity: 1.0,
+          messageId: `advancement-${Date.now()}`,
+          excerpt: reasoning,
+          reasoning: `Step Advancement Agent ha determinato semanticamente che siamo pronti per questa fase. ${reasoning}`
+        });
+        
+        if (this.logger) {
+          this.logger.logPhaseStart(phase.id, phase.name, phase.semanticType);
+        }
+      }
+    }
+    
+    // Log the advancement with AI reasoning
+    this.state.aiReasoning.push({
+      timestamp,
+      phase: nextPhaseId,
+      decision: 'step_advancement',
+      reasoning: `🎯 Advanced from ${previousPhase}/${previousStep || 'start'} to ${nextPhaseId}/${nextStepId}. ${reasoning}`
+    });
+    
+    console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🎯 [TRACKER] STEP ADVANCEMENT (AI-driven)`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   📍 FROM: ${previousPhase} / ${previousStep || 'start'}`);
+    console.log(`   📍 TO:   ${nextPhaseId} / ${nextStepId}`);
+    console.log(`   💡 Reasoning: ${reasoning}`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    
+    // Save to database
+    await this.saveToDatabase();
+  }
+  
+  /**
+   * Get current phase and step indices for Step Advancement Agent
+   */
+  getCurrentIndices(): { phaseIndex: number; stepIndex: number } {
+    const phaseIndex = this.scriptStructure.phases.findIndex(p => p.id === this.state.currentPhase);
+    const phase = this.scriptStructure.phases[phaseIndex];
+    const stepIndex = phase?.steps.findIndex(s => s.id === this.state.currentStep) ?? -1;
+    return { phaseIndex: Math.max(0, phaseIndex), stepIndex: Math.max(0, stepIndex) };
   }
   
   /**

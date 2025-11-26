@@ -17,6 +17,7 @@ import { buildSystemPrompt } from '../ai-prompts';
 import { buildSalesAgentPrompt, buildStaticSalesAgentPrompt, buildSalesAgentDynamicContext, buildMinimalSalesAgentInstruction, buildFullSalesAgentContext, buildFullSalesAgentContextAsync, ScriptPosition } from './sales-agent-prompt-builder';
 import { getOrCreateTracker, removeTracker, SalesScriptTracker } from './sales-script-tracker';
 import { createSalesLogger, SalesScriptLogger } from './sales-script-logger';
+import { StepAdvancementAgent, StepAdvancementParams } from './step-advancement-agent';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -896,6 +897,12 @@ export function setupGeminiLiveWSService(server: Server) {
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     let salesTracker: SalesScriptTracker | null = null;
     let salesLogger: SalesScriptLogger | null = null;
+    // 🎯 STEP ADVANCEMENT AGENT: Store IDs for AI-driven step advancement
+    let trackerClientId: string | null = null;
+    let trackerConsultantId: string | null = null;
+    // 🔒 MUTEX: Prevent overlapping step advancement agent calls
+    let isAdvancementInProgress = false;
+    let lastAdvancedToState: { phase: string; step: string | undefined } | null = null;
     
     if ((mode === 'sales_agent' || mode === 'consultation_invite') && conversationId) {
       try {
@@ -938,6 +945,17 @@ export function setupGeminiLiveWSService(server: Server) {
             console.log(`🔍 [${connectionId}] Resolved clientId from agent: ${resolvedClientId}`);
           } else {
             console.warn(`⚠️ [${connectionId}] Agent ${resolvedAgentId} has no clientId - script tracking may be limited`);
+          }
+          
+          // 🎯 STEP ADVANCEMENT AGENT: Save IDs for later use
+          // Use the consultantId from the authenticated session (has Vertex AI credentials)
+          // This is agent.consultantId which was extracted in getUserIdFromRequest
+          if (agentData.consultantId) {
+            trackerClientId = agentData.consultantId;
+            trackerConsultantId = agentData.consultantId;
+            console.log(`🔍 [${connectionId}] Step Advancement Agent will use consultantId: ${trackerConsultantId}`);
+          } else {
+            console.warn(`⚠️ [${connectionId}] Agent ${resolvedAgentId} has no consultantId - Step Advancement Agent will be disabled`);
           }
         }
         
@@ -2945,6 +2963,127 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                     console.log(`✅ [${connectionId}] CONTEXTUAL RESPONSE tracked - AI answered prospect's question before continuing script`);
                     lastProspectQuestion = null; // Reset
                   }
+                  
+                  // 🎯 STEP ADVANCEMENT AGENT: Analyze conversation and advance step if needed
+                  // Runs in background (~300ms) after each AI turn - doesn't block conversation flow
+                  // 🔒 MUTEX: Skip if another analysis is already in progress (prevent race conditions)
+                  console.log(`\n🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                  console.log(`🔍 [${connectionId}] STEP ADVANCEMENT CHECK`);
+                  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                  console.log(`   📋 trackerClientId: ${trackerClientId || 'NULL'}`);
+                  console.log(`   📋 trackerConsultantId: ${trackerConsultantId || 'NULL'}`);
+                  console.log(`   🔒 isAdvancementInProgress: ${isAdvancementInProgress}`);
+                  
+                  if (trackerClientId && trackerConsultantId && !isAdvancementInProgress) {
+                    console.log(`   ✅ PROCEEDING with Step Advancement Agent call...`);
+                    isAdvancementInProgress = true; // Acquire lock
+                    // Fire and forget - don't await to avoid blocking
+                    (async () => {
+                      try {
+                        const script = salesTracker.getScriptStructure();
+                        const state = salesTracker.getState();
+                        const { phaseIndex, stepIndex } = salesTracker.getCurrentIndices();
+                        
+                        console.log(`\n🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`🚀 [${connectionId}] STEP ADVANCEMENT AGENT - STARTING ANALYSIS`);
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`   📍 Current Phase: ${state.currentPhase}`);
+                        console.log(`   📍 Current Step: ${state.currentStep || 'N/A'}`);
+                        console.log(`   📍 Phase Index: ${phaseIndex}, Step Index: ${stepIndex}`);
+                        console.log(`   📜 Script has ${script.phases.length} phases`);
+                        console.log(`   💬 Conversation has ${conversationMessages.length} messages`);
+                        
+                        // Prepare recent messages from conversationMessages
+                        const recentMessages = conversationMessages.slice(-6).map(msg => ({
+                          role: msg.role as 'user' | 'assistant',
+                          content: msg.transcript,
+                          timestamp: msg.timestamp
+                        }));
+                        
+                        // Prepare script structure for agent
+                        const scriptForAgent = {
+                          phases: script.phases.map(p => ({
+                            id: p.id,
+                            number: p.number,
+                            name: p.name,
+                            description: p.description,
+                            steps: p.steps.map(s => ({
+                              id: s.id,
+                              number: s.number,
+                              name: s.name,
+                              objective: s.objective,
+                              questions: s.questions || []
+                            }))
+                          }))
+                        };
+                        
+                        const params: StepAdvancementParams = {
+                          recentMessages,
+                          script: scriptForAgent,
+                          currentPhaseId: state.currentPhase,
+                          currentStepId: state.currentStep,
+                          currentPhaseIndex: phaseIndex,
+                          currentStepIndex: stepIndex,
+                          clientId: trackerClientId,
+                          consultantId: trackerConsultantId
+                        };
+                        
+                        console.log(`   📨 Calling StepAdvancementAgent.analyze()...`);
+                        const analysisStart = Date.now();
+                        const result = await StepAdvancementAgent.analyze(params);
+                        const analysisTime = Date.now() - analysisStart;
+                        
+                        console.log(`\n📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`📊 [${connectionId}] STEP ADVANCEMENT AGENT - RESULT (${analysisTime}ms)`);
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`   🎯 shouldAdvance: ${result.shouldAdvance}`);
+                        console.log(`   📍 nextPhaseId: ${result.nextPhaseId || 'null'}`);
+                        console.log(`   📍 nextStepId: ${result.nextStepId || 'null'}`);
+                        console.log(`   📈 confidence: ${(result.confidence * 100).toFixed(0)}%`);
+                        console.log(`   💡 reasoning: ${result.reasoning}`);
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        
+                        // If agent says to advance, call advanceTo on tracker
+                        // 🔒 IDEMPOTENCY CHECK: Skip if we already advanced to this state
+                        if (result.shouldAdvance && result.nextPhaseId && result.nextStepId && result.confidence >= 0.6) {
+                          const alreadyAtTarget = lastAdvancedToState?.phase === result.nextPhaseId && 
+                                                  lastAdvancedToState?.step === result.nextStepId;
+                          if (!alreadyAtTarget) {
+                            console.log(`\n🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                            console.log(`🚀 [${connectionId}] ADVANCING STEP!`);
+                            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                            console.log(`   → FROM: ${state.currentPhase} / ${state.currentStep || 'start'}`);
+                            console.log(`   → TO: ${result.nextPhaseId} / ${result.nextStepId}`);
+                            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                            await salesTracker.advanceTo(result.nextPhaseId, result.nextStepId, result.reasoning);
+                            lastAdvancedToState = { phase: result.nextPhaseId, step: result.nextStepId };
+                          } else {
+                            console.log(`🔒 [${connectionId}] Skipping duplicate advancement to ${result.nextPhaseId}/${result.nextStepId}`);
+                          }
+                        } else {
+                          console.log(`   ⏸️  NOT advancing: shouldAdvance=${result.shouldAdvance}, confidence=${result.confidence}, hasIds=${!!result.nextPhaseId && !!result.nextStepId}`);
+                        }
+                      } catch (agentError: any) {
+                        console.error(`\n❌ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.error(`❌ [${connectionId}] STEP ADVANCEMENT AGENT ERROR`);
+                        console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.error(`   Error: ${agentError.message}`);
+                        console.error(`   Stack: ${agentError.stack?.split('\n').slice(0, 3).join('\n')}`);
+                        console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                        // Non-blocking - don't affect main conversation flow
+                      } finally {
+                        isAdvancementInProgress = false; // Release lock
+                        console.log(`🔓 [${connectionId}] Step Advancement lock released`);
+                      }
+                    })();
+                  } else {
+                    if (!trackerClientId || !trackerConsultantId) {
+                      console.log(`   ⏭️  SKIPPING: Missing IDs (clientId=${!!trackerClientId}, consultantId=${!!trackerConsultantId})`);
+                    } else if (isAdvancementInProgress) {
+                      console.log(`   ⏭️  SKIPPING: Another analysis already in progress`);
+                    }
+                  }
+                  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                 } catch (trackError: any) {
                   console.error(`❌ [${connectionId}] Sales tracking error:`, trackError.message);
                 }
