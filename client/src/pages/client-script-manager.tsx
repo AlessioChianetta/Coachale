@@ -17,7 +17,9 @@ import {
   AlertCircle,
   HelpCircle,
   Lightbulb,
-  Trash2
+  Trash2,
+  Blocks,
+  Code
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -365,6 +367,16 @@ export default function ClientScriptManager() {
                     </>
                 ) : selectedScriptId && (
                     <>
+                        <div className="flex items-center gap-1">
+                            <Button variant={editorMode === 'blocks' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('blocks')} disabled={parsingFailed}>
+                                <Blocks className="h-4 w-4 mr-1" />
+                                Blocchi
+                            </Button>
+                            <Button variant={editorMode === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('text')}>
+                                <Code className="h-4 w-4 mr-1" />
+                                Testo
+                            </Button>
+                        </div>
                         <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                             <Edit3 className="h-4 w-4 mr-2" /> Modifica
                         </Button>
@@ -505,8 +517,27 @@ export default function ClientScriptManager() {
                            {isEditing && parsingFailed && (
                                <ParsingFailedEditor value={editedContent} onChange={setEditedContent} />
                            )}
-                           {!isEditing && (
+                           {!isEditing && editorMode === 'blocks' && !parsingFailed && blockStructure && (
+                               <BlockEditor 
+                                 structure={blockStructure} 
+                                 selectedBlock={selectedBlock} 
+                                 onSelectBlock={setSelectedBlock} 
+                                 onAddBlock={handleBlockAdd}
+                                 onDeleteBlock={handleBlockDelete}
+                                 isEditing={false}
+                               />
+                           )}
+                           {!isEditing && editorMode === 'text' && (
                                <pre className="whitespace-pre-wrap text-sm font-mono">{selectedScript.content}</pre>
+                           )}
+                           {!isEditing && parsingFailed && editorMode === 'blocks' && (
+                               <Alert variant="destructive">
+                                   <AlertCircle className="h-4 w-4" />
+                                   <AlertTitle>Parsing Non Valido</AlertTitle>
+                                   <AlertDescription>
+                                       Visualizzazione blocchi non disponibile. Clicca "Testo" per vedere il contenuto.
+                                   </AlertDescription>
+                               </Alert>
                            )}
                          </div>
                        </ScrollArea>
