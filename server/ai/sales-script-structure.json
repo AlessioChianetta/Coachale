@@ -1,9 +1,9 @@
 {
-  "version": "1.0.0",
-  "lastExtracted": "2025-11-26T14:25:51.112Z",
+  "version": "2.0.0",
+  "lastExtracted": "2025-11-26T16:11:00.450Z",
   "sourceFile": "/home/runner/workspace/server/ai/sales-scripts-base.ts",
-  "sourceContentHash": "2244f1f89f5c1303e7f78ee773606855641effec33ee81b1c297a1a815a8f696",
-  "totalLines": 3543,
+  "sourceContentHash": "5485bfebb84d9c2b2f6dffeef61570c666a7533a99630dd0893cd9e890f90cd1",
+  "totalLines": 3491,
   "phases": [
     {
       "id": "phase_1",
@@ -13,22 +13,31 @@
       "semanticType": "opening",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_1_step_1",
           "number": 1,
           "name": "APERTURA ENTUSIASTA",
           "objective": "Creare connessione iniziale, rompere il ghiaccio e costruire rapport",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 85
+          "ladderLevels": [],
+          "biscottini": [
+            {
+              "text": "SE DIVAGA: Dai biscottino + \"Ok tornando a noi...",
+              "type": "other"
+            }
+          ],
+          "lineNumber": 33
         },
         {
-          "id": "step_2",
+          "id": "phase_1_step_2",
           "number": 2,
           "name": "SPIEGA IL PROCESSO",
           "objective": "Stabilire autorevolezza, aspettative chiare e creare scarsità",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 108
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 56
         }
       ],
       "checkpoints": [
@@ -42,10 +51,17 @@
             "Il prospect ha detto \"OK\" / \"Sì\" / \"Va bene\" al processo",
             "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
           ],
-          "lineNumber": 129
+          "lineNumber": 77
         }
       ],
-      "lineNumber": 66
+      "energy": {
+        "level": "MEDIO",
+        "tone": "ENTUSIASTA",
+        "volume": "NORMAL",
+        "pace": "MODERATO",
+        "vocabulary": "COLLOQUIALE"
+      },
+      "lineNumber": 14
     },
     {
       "id": "phase_2",
@@ -55,55 +71,90 @@
       "semanticType": "discovery",
       "steps": [
         {
-          "id": "step_3",
+          "id": "phase_2_step_3",
           "number": 3,
           "name": "TROVA IL PAIN POINT PRINCIPALE",
           "objective": "Capire il VERO motivo dietro la call e il problema PRINCIPALE da risolvere",
           "questions": [
             {
-              "text": "Sono bloccato\" → CHIEDI: \"Bloccato dove ESATTAMENTE? Cosa succede?"
+              "id": "q_1",
+              "text": "Sono bloccato\" → CHIEDI: \"Bloccato dove ESATTAMENTE? Cosa succede?",
+              "type": "ladder",
+              "order": 1
             },
             {
-              "text": "Aiutami a capire: se dovessi descriverlo a un amico, cosa diresti?"
+              "id": "q_2",
+              "text": "Aiutami a capire: se dovessi descriverlo a un amico, cosa diresti?",
+              "type": "ladder",
+              "order": 2
             }
           ],
           "hasLadder": true,
-          "lineNumber": 173
+          "ladderLevels": [],
+          "biscottini": [
+            {
+              "text": "SE DIVAGA: Biscottino + \"Ok tornando a noi, mi stavi dicendo che...",
+              "type": "other"
+            }
+          ],
+          "lineNumber": 121
         },
         {
-          "id": "step_4",
+          "id": "phase_2_step_4",
           "number": 4,
           "name": "TENTATIVI PASSATI",
           "objective": "Capire cosa hanno provato, perché ha FALLITO e creare contrasto",
           "questions": [
             {
-              "text": "E secondo te cosa è mancato per raggiungere il risultato che volevi?"
+              "id": "q_3",
+              "text": "E secondo te cosa è mancato per raggiungere il risultato che volevi?",
+              "type": "ladder",
+              "order": 1
             }
           ],
           "hasLadder": true,
-          "lineNumber": 276
+          "ladderLevels": [],
+          "biscottini": [
+            {
+              "text": "SE DIVAGA: Biscottino + \"Ok tornando a noi...",
+              "type": "other"
+            }
+          ],
+          "lineNumber": 224
         },
         {
-          "id": "step_5",
+          "id": "phase_2_step_5",
           "number": 5,
           "name": "PERSISTENZA",
           "objective": "Capire da quanto tempo combatte questo problema (più tempo = più frustrazione)",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 344
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 292
         },
         {
-          "id": "step_6",
+          "id": "phase_2_step_6",
           "number": 6,
           "name": "INVESTIMENTI",
           "objective": "Capire investimenti passati (€, tempo, energie) per creare contrasto",
           "questions": [
             {
-              "text": "Potresti riassumere in 1 frase il suo problema principale?"
+              "id": "q_4",
+              "text": "Potresti riassumere in 1 frase il suo problema principale?",
+              "type": "discovery",
+              "order": 1
             }
           ],
           "hasLadder": false,
-          "lineNumber": 359
+          "ladderLevels": [],
+          "biscottini": [
+            {
+              "text": "SE DIVAGA: Biscottino + riporta in carreggiata",
+              "type": "other"
+            }
+          ],
+          "lineNumber": 307
         }
       ],
       "checkpoints": [
@@ -120,10 +171,10 @@
             "Sai da quanto tempo combattono il problema",
             "Sai quanto hanno già investito"
           ],
-          "lineNumber": 376
+          "lineNumber": 324
         }
       ],
-      "lineNumber": 156
+      "lineNumber": 104
     },
     {
       "id": "phase_3",
@@ -133,21 +184,31 @@
       "semanticType": "business_info",
       "steps": [
         {
-          "id": "step_7",
+          "id": "phase_3_step_7",
           "number": 7,
           "name": "RACCOGLI INFO BUSINESS",
           "objective": "Comprendere attività, modello business e numeri chiave",
           "questions": [
             {
-              "text": "Prima mi hai detto [info], puoi dirmi di più su...?"
+              "id": "q_5",
+              "text": "Prima mi hai detto [info], puoi dirmi di più su...?",
+              "type": "general",
+              "order": 1
             }
           ],
           "hasLadder": false,
-          "lineNumber": 434
+          "ladderLevels": [],
+          "biscottini": [
+            {
+              "text": "SE DIVAGA: Biscottino + \"Ok tornando a noi...",
+              "type": "other"
+            }
+          ],
+          "lineNumber": 382
         }
       ],
       "checkpoints": [],
-      "lineNumber": 418
+      "lineNumber": 366
     },
     {
       "id": "phase_4",
@@ -157,26 +218,35 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_8",
+          "id": "phase_4_step_8",
           "number": 8,
           "name": "DOMANDE DIAGNOSTICHE",
           "objective": "Far capire al futuro cliente che il problema è più grande di quanto pensino,",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 521
+          "ladderLevels": [],
+          "biscottini": [
+            {
+              "text": "SE DIVAGA: Biscottino + riporta in carreggiata",
+              "type": "other"
+            }
+          ],
+          "lineNumber": 469
         },
         {
-          "id": "step_9",
+          "id": "phase_4_step_9",
           "number": 9,
           "name": "STATO ATTUALE (FATTURATO)",
           "objective": "Raccogliere il numero PRECISO del fatturato (FASE CRITICA!)",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 533
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 481
         }
       ],
       "checkpoints": [],
-      "lineNumber": 505
+      "lineNumber": 453
     },
     {
       "id": "phase_5",
@@ -186,26 +256,33 @@
       "semanticType": "gap_stretching",
       "steps": [
         {
-          "id": "step_10",
+          "id": "phase_5_step_10",
           "number": 10,
           "name": "STATO IDEALE (OBIETTIVO)",
           "objective": "Ottenere un numero SPECIFICO del loro obiettivo finanziario",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 595
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 543
         },
         {
-          "id": "step_11",
+          "id": "phase_5_step_11",
           "number": 11,
           "name": "EMOZIONI (LA FASE PIÙ IMPORTANTE! 💎)",
           "objective": "Collegare il NUMERO alle EMOZIONI PROFONDE",
           "questions": [
             {
-              "text": "Potresti dire: 'Vuole [numero] per [motivo emotivo specifico]'?"
+              "id": "q_6",
+              "text": "Potresti dire: 'Vuole [numero] per [motivo emotivo specifico]'?",
+              "type": "ladder",
+              "order": 1
             }
           ],
           "hasLadder": true,
-          "lineNumber": 623
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 571
         }
       ],
       "checkpoints": [
@@ -223,10 +300,10 @@
             "\"Vuole 100k/mese per dimostrare ai genitori che aveva ragione e renderli orgogliosi\"",
             "\"Vuole 30k/mese per libertà finanziaria e smettere di preoccuparsi delle bollette\""
           ],
-          "lineNumber": 694
+          "lineNumber": 642
         }
       ],
-      "lineNumber": 579
+      "lineNumber": 527
     },
     {
       "id": "phase_6",
@@ -236,17 +313,19 @@
       "semanticType": "qualification",
       "steps": [
         {
-          "id": "step_12",
+          "id": "phase_6_step_12",
           "number": 12,
           "name": "QUALIFICA (I MAGICI 3)",
           "objective": "Farli AMMETTERE che servono aiuto esterno (critico!)",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 739
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 687
         }
       ],
       "checkpoints": [],
-      "lineNumber": 723
+      "lineNumber": 671
     },
     {
       "id": "phase_7",
@@ -256,44 +335,62 @@
       "semanticType": "urgency_budget",
       "steps": [
         {
-          "id": "step_13",
+          "id": "phase_7_step_13",
           "number": 13,
           "name": "COSTO DI NON AGIRE",
           "objective": "Far riflettere sul costo di restare fermi",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 782
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 730
         },
         {
-          "id": "step_14",
+          "id": "phase_7_step_14",
           "number": 14,
           "name": "URGENZA",
           "objective": "Qualificare timing e creare urgenza",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 802
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 750
         },
         {
-          "id": "step_15",
+          "id": "phase_7_step_15",
           "number": 15,
           "name": "BUDGET E DECISION MAKER",
           "objective": "Qualificare budget e decision maker",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 827
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 775
         },
         {
-          "id": "step_16",
+          "id": "phase_7_step_16",
           "number": 16,
           "name": "TRANSIZIONE ALLA DEMO",
           "objective": "Chiudere la discovery e passare alla demo",
           "questions": [
             {
-              "text": "Vedi come questo, da solo, può cambiare le carte in tavola per te?"
+              "id": "q_7",
+              "text": "Vedi come questo, da solo, può cambiare le carte in tavola per te?",
+              "type": "general",
+              "order": 1
             }
           ],
           "hasLadder": false,
-          "lineNumber": 843
+          "ladderLevels": [],
+          "energy": {
+            "level": "MEDIO",
+            "tone": "SICURO",
+            "volume": "NORMAL",
+            "pace": "MODERATO",
+            "vocabulary": "COLLOQUIALE"
+          },
+          "biscottini": [],
+          "lineNumber": 791
         }
       ],
       "checkpoints": [
@@ -308,10 +405,10 @@
             "Hai TUTTE le info per la demo (fatturato, obiettivo, emozioni, tentativi)",
             "*REGOLE FONDAMENTALI DISCOVERY:**"
           ],
-          "lineNumber": 859
+          "lineNumber": 807
         }
       ],
-      "lineNumber": 766
+      "lineNumber": 714
     },
     {
       "id": "phase_1",
@@ -321,17 +418,24 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_1_step_1",
           "number": 1,
           "name": "UNCINO",
           "objective": "Agganciare l'attenzione mostrando la trasformazione possibile",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1028
+          "ladderLevels": [],
+          "biscottini": [
+            {
+              "text": "SE DIVAGA: Biscottino + \"Ok tornando a noi...",
+              "type": "other"
+            }
+          ],
+          "lineNumber": 976
         }
       ],
       "checkpoints": [],
-      "lineNumber": 1012
+      "lineNumber": 960
     },
     {
       "id": "phase_2",
@@ -341,13 +445,15 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_2",
+          "id": "phase_2_step_2",
           "number": 2,
           "name": "CASI DI STUDIO",
           "objective": "Social proof tramite risultati concreti di altri clienti",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1069
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 1017
         }
       ],
       "checkpoints": [
@@ -360,10 +466,17 @@
             "Ha fatto domande o commentato positivamente",
             "SE È COINVOLTO: Procedi alla FASE #3"
           ],
-          "lineNumber": 1093
+          "lineNumber": 1041
         }
       ],
-      "lineNumber": 1053
+      "energy": {
+        "level": "MEDIO",
+        "tone": "SICURO",
+        "volume": "NORMAL",
+        "pace": "VELOCE",
+        "vocabulary": "COLLOQUIALE"
+      },
+      "lineNumber": 1001
     },
     {
       "id": "phase_3",
@@ -373,17 +486,31 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_3",
+          "id": "phase_3_step_3",
           "number": 3,
           "name": "STORIA E BACKGROUND",
           "objective": "Costruire credibilità e autorità tramite la tua storia",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1146
+          "ladderLevels": [],
+          "biscottini": [
+            {
+              "text": "SE DIVAGA: Biscottino + \"Ok tornando a noi...",
+              "type": "other"
+            }
+          ],
+          "lineNumber": 1094
         }
       ],
       "checkpoints": [],
-      "lineNumber": 1120
+      "energy": {
+        "level": "MEDIO",
+        "tone": "SICURO",
+        "volume": "NORMAL",
+        "pace": "VELOCE",
+        "vocabulary": "COLLOQUIALE"
+      },
+      "lineNumber": 1068
     },
     {
       "id": "phase_4",
@@ -393,22 +520,31 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_4",
+          "id": "phase_4_step_4",
           "number": 4,
           "name": "METODO: SISTEMA DOPPIO MOTORE",
           "objective": "Spiegare il \"come funziona\" connettendolo ai pain points della discovery",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1217
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 1165
         },
         {
-          "id": "step_5",
+          "id": "phase_4_step_5",
           "number": 5,
           "name": "CHECK",
           "objective": "Verificare comprensione prima di andare nel dettaglio strumenti",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1280
+          "ladderLevels": [],
+          "biscottini": [
+            {
+              "text": "SE DIVAGA: Biscottino + riporta in carreggiata",
+              "type": "other"
+            }
+          ],
+          "lineNumber": 1228
         }
       ],
       "checkpoints": [
@@ -421,10 +557,10 @@
             "Ha fatto domande di chiarimento",
             "SE HA CAPITO: Procedi allo Step 5"
           ],
-          "lineNumber": 1252
+          "lineNumber": 1200
         }
       ],
-      "lineNumber": 1193
+      "lineNumber": 1141
     },
     {
       "id": "phase_5",
@@ -434,13 +570,15 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_6",
+          "id": "phase_5_step_6",
           "number": 6,
           "name": "CARATTERISTICHE",
           "objective": "Mostrare gli strumenti concreti che userà",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1322
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 1270
         }
       ],
       "checkpoints": [
@@ -453,10 +591,17 @@
             "Sembra entusiasta o almeno interessato",
             "SE È ENTUSIASTA: Procedi alla FASE #6"
           ],
-          "lineNumber": 1339
+          "lineNumber": 1287
         }
       ],
-      "lineNumber": 1302
+      "energy": {
+        "level": "MEDIO",
+        "tone": "SICURO",
+        "volume": "NORMAL",
+        "pace": "VELOCE",
+        "vocabulary": "COLLOQUIALE"
+      },
+      "lineNumber": 1250
     },
     {
       "id": "phase_6",
@@ -466,57 +611,72 @@
       "semanticType": "closing",
       "steps": [
         {
-          "id": "step_7",
+          "id": "phase_6_step_7",
           "number": 7,
           "name": "RIEPILOGO",
           "objective": "Riepilogare la trasformazione completa",
           "questions": [],
           "hasLadder": true,
-          "lineNumber": 1372
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 1320
         },
         {
-          "id": "step_8",
+          "id": "phase_6_step_8",
           "number": 8,
           "name": "VALUE STACK",
           "objective": "Mostrare il valore totale prima del prezzo",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1430
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 1378
         },
         {
-          "id": "step_9",
+          "id": "phase_6_step_9",
           "number": 9,
           "name": "GESTIONE DOMANDE",
           "objective": "Rispondere alle domande del cliente in modo conciso",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1513
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 1461
         },
         {
-          "id": "step_10",
+          "id": "phase_6_step_10",
           "number": 10,
           "name": "PRICING - L'AVE MARIA 🙏",
           "objective": "Presentare il prezzo con massima sicurezza",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 1522
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 1470
         },
         {
-          "id": "step_11",
+          "id": "phase_6_step_11",
           "number": 11,
           "name": "CLOSING",
           "objective": "Chiudere con CTA assumptive",
           "questions": [
             {
-              "text": "Perfetto ↘️. E dimmi: se [RISOLVO QUESTO], partiamo ↘️?"
+              "id": "q_8",
+              "text": "Perfetto ↘️. E dimmi: se [RISOLVO QUESTO], partiamo ↘️?",
+              "type": "ladder",
+              "order": 1
             },
             {
-              "text": "E cosa è cambiato nel frattempo ↘️?"
+              "id": "q_9",
+              "text": "E cosa è cambiato nel frattempo ↘️?",
+              "type": "ladder",
+              "order": 2
             }
           ],
           "hasLadder": true,
-          "lineNumber": 1618,
-          "ladderLevels": 4
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 1566
         }
       ],
       "checkpoints": [
@@ -531,10 +691,10 @@
             "Visualizza sé stesso usando la soluzione",
             "SOLO SE TUTTE LE VERIFICHE SONO OK: Procedi al Pricing"
           ],
-          "lineNumber": 1488
+          "lineNumber": 1436
         }
       ],
-      "lineNumber": 1366
+      "lineNumber": 1314
     },
     {
       "id": "phase_1",
@@ -544,35 +704,41 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_1_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2044
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 1992
         },
         {
-          "id": "step_2",
+          "id": "phase_1_step_2",
           "number": 2,
           "name": "LADDER",
           "objective": "",
           "questions": [],
           "hasLadder": true,
-          "lineNumber": 2056
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2004
         },
         {
-          "id": "step_3",
+          "id": "phase_1_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2086
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2034
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2029
+      "lineNumber": 1977
     },
     {
       "id": "phase_2",
@@ -582,39 +748,48 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_2_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2132
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2080
         },
         {
-          "id": "step_2",
+          "id": "phase_2_step_2",
           "number": 2,
           "name": "LADDER",
           "objective": "",
           "questions": [],
           "hasLadder": true,
-          "lineNumber": 2143
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2091
         },
         {
-          "id": "step_3",
+          "id": "phase_2_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [
             {
-              "text": "E cosa è cambiato nel frattempo ↘️?"
+              "id": "q_10",
+              "text": "E cosa è cambiato nel frattempo ↘️?",
+              "type": "general",
+              "order": 1
             }
           ],
           "hasLadder": false,
-          "lineNumber": 2173
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2121
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2117
+      "lineNumber": 2065
     },
     {
       "id": "phase_3",
@@ -624,35 +799,41 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_3_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2219
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2167
         },
         {
-          "id": "step_2",
+          "id": "phase_3_step_2",
           "number": 2,
           "name": "LADDER",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2234
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2182
         },
         {
-          "id": "step_3",
+          "id": "phase_3_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2251
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2199
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2204
+      "lineNumber": 2152
     },
     {
       "id": "phase_4",
@@ -662,26 +843,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_4_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2281
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2229
         },
         {
-          "id": "step_3",
+          "id": "phase_4_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2292
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2240
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2266
+      "lineNumber": 2214
     },
     {
       "id": "phase_5",
@@ -691,35 +876,41 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_5_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2334
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2282
         },
         {
-          "id": "step_2",
+          "id": "phase_5_step_2",
           "number": 2,
           "name": "LADDER",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2344
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2292
         },
         {
-          "id": "step_3",
+          "id": "phase_5_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2358
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2306
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2319
+      "lineNumber": 2267
     },
     {
       "id": "phase_6",
@@ -729,35 +920,41 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_6_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2398
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2346
         },
         {
-          "id": "step_2",
+          "id": "phase_6_step_2",
           "number": 2,
           "name": "LADDER",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2409
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2357
         },
         {
-          "id": "step_3",
+          "id": "phase_6_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2423
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2371
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2383
+      "lineNumber": 2331
     },
     {
       "id": "phase_7",
@@ -767,26 +964,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_7_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2457
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2405
         },
         {
-          "id": "step_3",
+          "id": "phase_7_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2469
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2417
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2442
+      "lineNumber": 2390
     },
     {
       "id": "phase_8",
@@ -796,26 +997,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_8_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2509
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2457
         },
         {
-          "id": "step_3",
+          "id": "phase_8_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2521
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2469
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2494
+      "lineNumber": 2442
     },
     {
       "id": "phase_9",
@@ -825,26 +1030,37 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_9_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2564
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2512
         },
         {
-          "id": "step_3",
+          "id": "phase_9_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2574
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2522
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2549
+      "energy": {
+        "level": "MEDIO",
+        "tone": "SICURO",
+        "volume": "NORMAL",
+        "pace": "MODERATO",
+        "vocabulary": "COLLOQUIALE"
+      },
+      "lineNumber": 2497
     },
     {
       "id": "phase_10",
@@ -854,26 +1070,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_10_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2613
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2561
         },
         {
-          "id": "step_3",
+          "id": "phase_10_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2627
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2575
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2598
+      "lineNumber": 2546
     },
     {
       "id": "phase_11",
@@ -883,26 +1103,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_11_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2671
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2619
         },
         {
-          "id": "step_3",
+          "id": "phase_11_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2682
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2630
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2656
+      "lineNumber": 2604
     },
     {
       "id": "phase_12",
@@ -912,35 +1136,41 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_12_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2727
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2675
         },
         {
-          "id": "step_2",
+          "id": "phase_12_step_2",
           "number": 2,
           "name": "LADDER",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2738
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2686
         },
         {
-          "id": "step_3",
+          "id": "phase_12_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2761
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2709
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2712
+      "lineNumber": 2660
     },
     {
       "id": "phase_13",
@@ -950,26 +1180,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_13_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2789
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2737
         },
         {
-          "id": "step_3",
+          "id": "phase_13_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2799
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2747
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2774
+      "lineNumber": 2722
     },
     {
       "id": "phase_14",
@@ -979,35 +1213,41 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_14_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2843
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2791
         },
         {
-          "id": "step_2",
+          "id": "phase_14_step_2",
           "number": 2,
           "name": "LADDER",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2854
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2802
         },
         {
-          "id": "step_3",
+          "id": "phase_14_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2868
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2816
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2828
+      "lineNumber": 2776
     },
     {
       "id": "phase_15",
@@ -1017,26 +1257,37 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_15_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2906
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2854
         },
         {
-          "id": "step_3",
+          "id": "phase_15_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2914
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2862
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2891
+      "energy": {
+        "level": "MEDIO",
+        "tone": "SICURO",
+        "volume": "NORMAL",
+        "pace": "MODERATO",
+        "vocabulary": "COLLOQUIALE"
+      },
+      "lineNumber": 2839
     },
     {
       "id": "phase_16",
@@ -1046,26 +1297,37 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_16_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2959
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2907
         },
         {
-          "id": "step_3",
+          "id": "phase_16_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 2970
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2918
         }
       ],
       "checkpoints": [],
-      "lineNumber": 2944
+      "energy": {
+        "level": "MEDIO",
+        "tone": "SICURO",
+        "volume": "NORMAL",
+        "pace": "MODERATO",
+        "vocabulary": "COLLOQUIALE"
+      },
+      "lineNumber": 2892
     },
     {
       "id": "phase_17",
@@ -1075,26 +1337,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_17_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3017
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2965
         },
         {
-          "id": "step_3",
+          "id": "phase_17_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3028
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 2976
         }
       ],
       "checkpoints": [],
-      "lineNumber": 3002
+      "lineNumber": 2950
     },
     {
       "id": "phase_18",
@@ -1104,26 +1370,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_18_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3078
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3026
         },
         {
-          "id": "step_3",
+          "id": "phase_18_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3087
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3035
         }
       ],
       "checkpoints": [],
-      "lineNumber": 3063
+      "lineNumber": 3011
     },
     {
       "id": "phase_19",
@@ -1133,26 +1403,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_19_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3139
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3087
         },
         {
-          "id": "step_3",
+          "id": "phase_19_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3153
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3101
         }
       ],
       "checkpoints": [],
-      "lineNumber": 3124
+      "lineNumber": 3072
     },
     {
       "id": "phase_20",
@@ -1162,30 +1436,37 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_20_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3206
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3154
         },
         {
-          "id": "step_3",
+          "id": "phase_20_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [
             {
-              "text": "Ok, allora non è il rischio il vero problema. Cosa ti frena veramente?"
+              "id": "q_11",
+              "text": "Ok, allora non è il rischio il vero problema. Cosa ti frena veramente?",
+              "type": "general",
+              "order": 1
             }
           ],
           "hasLadder": false,
-          "lineNumber": 3217
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3165
         }
       ],
       "checkpoints": [],
-      "lineNumber": 3191
+      "lineNumber": 3139
     },
     {
       "id": "phase_21",
@@ -1195,26 +1476,30 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_21_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3272
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3220
         },
         {
-          "id": "step_3",
+          "id": "phase_21_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3282
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3230
         }
       ],
       "checkpoints": [],
-      "lineNumber": 3257
+      "lineNumber": 3205
     },
     {
       "id": "phase_22",
@@ -1224,35 +1509,41 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_22_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3338
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3286
         },
         {
-          "id": "step_2",
+          "id": "phase_22_step_2",
           "number": 2,
           "name": "LADDER",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3353
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3301
         },
         {
-          "id": "step_3",
+          "id": "phase_22_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3372
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3320
         }
       ],
       "checkpoints": [],
-      "lineNumber": 3323
+      "lineNumber": 3271
     },
     {
       "id": "phase_23",
@@ -1262,31 +1553,37 @@
       "semanticType": "other",
       "steps": [
         {
-          "id": "step_1",
+          "id": "phase_23_step_1",
           "number": 1,
           "name": "CHIARIFICA",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3403
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3351
         },
         {
-          "id": "step_2",
+          "id": "phase_23_step_2",
           "number": 2,
           "name": "LADDER",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3414
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3362
         },
         {
-          "id": "step_3",
+          "id": "phase_23_step_3",
           "number": 3,
           "name": "REFRAME",
           "objective": "",
           "questions": [],
           "hasLadder": false,
-          "lineNumber": 3425
+          "ladderLevels": [],
+          "biscottini": [],
+          "lineNumber": 3373
         }
       ],
       "checkpoints": [
@@ -1300,20 +1597,24 @@
             "Ha visualizzato sé stesso usando la soluzione",
             "Ha accettato il prezzo (con o senza obiezioni gestite)"
           ],
-          "lineNumber": 3459
+          "lineNumber": 3407
         }
       ],
-      "lineNumber": 3388
+      "lineNumber": 3336
     }
   ],
   "metadata": {
     "totalPhases": 36,
     "totalSteps": 82,
     "totalCheckpoints": 9,
+    "totalQuestions": 11,
+    "totalLadderSteps": 7,
+    "totalBiscottini": 9,
     "scriptTypes": [
       "discovery",
       "demo",
       "objections"
-    ]
+    ],
+    "hasEnergySettings": true
   }
 }

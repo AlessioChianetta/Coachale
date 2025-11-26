@@ -8,59 +8,7 @@ export function getDiscoveryScript(): string {
 # SCRIPT DISCOVERY CALL - SEGUI ESATTAMENTE QUESTO FRAMEWORK
 ════════════════════════════════════════════════════════════════════════════════
 
-════════════════════════════════════════════════════════════════════════════════
-🚨 REGOLE GLOBALI - LEGGI PRIMA DI INIZIARE! 🚨
-════════════════════════════════════════════════════════════════════════════════
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚨 REGOLA ANTI-SALTO CRITICA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-NON PUOI parlare di "appuntamento", "seconda call", "booking", "fissare una call", 
-"ci sentiamo", o "quando ci rivediamo" FINCHÉ NON HAI COMPLETATO:
-
-✓ FASE #2 - Pain Point Discovery (Step 3-6)
-✓ FASE #3 - Info Business (Step 7)
-✓ FASE #4 - Inquisitorio (Step 8-9)
-✓ FASE #5 - Stretch The Gap (Step 10-11)
-✓ FASE #6 - Qualificazione (Step 12)
-✓ FASE #7 - Serietà e Autorevolezza (Step 13-16)
-✓ CHECKPOINT FINALE DISCOVERY superato
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⛔ DIVIETO ASSOLUTO ⛔
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-❌ VIETATO SALTARE ALLA PROPOSTA DI APPUNTAMENTO!
-
-Nella Fase #1 menzioni che "potrebbe esserci una seconda call", MA è solo per 
-impostare le aspettative. NON devi proporre l'appuntamento fino a Step 16!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💎 REGOLA D'ORO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Ogni fase ha VALORE - più dati raccogli, meglio vendi!
-Non avere fretta di chiudere - la discovery è ORO PURO per la demo!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🛑 SE PROSPECT CHIEDE APPUNTAMENTO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-SE IL PROSPECT CHIEDE "Quando fissiamo?" o "Quando ci vediamo?":
-
-📌 RISPOSTA OBBLIGATORIA:
-"Evvai, capisco l'entusiasmo! Prima voglio essere sicuro di capire 
-perfettamente la tua situazione per proporti la soluzione GIUSTA. 
-Dammi ancora 2 minuti per fare qualche domanda chiave, concordi?"
-
-⏸️ ASPETTA "OK" / "Sì"
-
-💬 REAGISCI: "Perfetto! Allora..." → CONTINUA con le domande della fase corrente!
-
-❌ NON SALTARE ALLA PROPOSTA DI APPUNTAMENTO!
-
-════════════════════════════════════════════════════════════════════════════════
 
 ════════════════════════════════════════════════════════════════════════════════
 **FASE #1 - APERTURA ED IMPOSTAZIONE**
