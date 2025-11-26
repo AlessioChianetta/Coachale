@@ -12,12 +12,9 @@ import { db } from "../db";
 import { vertexAiSettings, vertexAiClientAccess, users } from "../../shared/schema";
 import { eq, and, gt, sql } from "drizzle-orm";
 import { AiProviderMetadata } from "./retry-manager";
-import { createLogger } from "./log-manager";
 import fs from "fs";
 import path from "path";
 import os from "os";
-
-const logger = createLogger('AI-PROVIDER');
 
 /**
  * AI provider source (tier)
@@ -281,25 +278,26 @@ export async function parseServiceAccountJson(serviceAccountJson: string): Promi
     // Try plaintext JSON first
     try {
       const credentials = JSON.parse(serviceAccountJson) as ServiceAccountCredentials;
-      logger.debug("Parsed credentials as plaintext JSON");
+      console.log("✅ Parsed credentials as plaintext JSON");
       
       // Fix newlines if needed
       if (credentials.private_key && typeof credentials.private_key === 'string') {
         const hasLiteralNewlines = credentials.private_key.includes('\\n');
         if (hasLiteralNewlines) {
           credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
-          logger.debug("Converted literal \\n to real newlines");
+          console.log("🔍 Converted literal \\n to real newlines");
         }
       }
       
       return credentials;
     } catch (parseError) {
       // Fallback: Try legacy encrypted format
-      logger.debug("Failed plaintext parse, trying legacy decryption...");
+      console.log("⚠️  Failed plaintext parse, trying legacy decryption...");
       try {
         const { decryptJSON } = await import("../encryption");
         const credentials = decryptJSON(serviceAccountJson);
-        logger.warn("Using legacy encrypted credentials - re-upload to save in plaintext");
+        console.log("✅ Decrypted legacy encrypted credentials");
+        console.log("⚠️  WARNING: Re-upload credentials to save in plaintext format");
         
         // Fix newlines if needed
         if (credentials.private_key && typeof credentials.private_key === 'string') {
@@ -311,12 +309,12 @@ export async function parseServiceAccountJson(serviceAccountJson: string): Promi
         
         return credentials;
       } catch (decryptError) {
-        logger.error("Failed both plaintext and decryption");
+        console.error("❌ Failed both plaintext and decryption");
         throw parseError; // Re-throw original error
       }
     }
   } catch (error: any) {
-    logger.error(`Failed to parse service account JSON: ${error.message}`);
+    console.error("❌ Failed to parse service account JSON:", error.message);
     return null;
   }
 }
@@ -332,7 +330,7 @@ async function getParsedCredentials(
   // Check cache first
   const cached = credentialsCache.get(settingsId);
   if (cached && cached.activatedAt.getTime() === activatedAt.getTime()) {
-    logger.debug(`Using cached credentials for settings ${settingsId.substring(0, 8)}...`);
+    console.log(`✅ Using cached credentials for settings ${settingsId}`);
     return cached.credentials;
   }
 
@@ -340,13 +338,13 @@ async function getParsedCredentials(
   const credentials = await parseServiceAccountJson(serviceAccountJson);
   
   if (!credentials) {
-    logger.error(`Failed to parse credentials for settings ${settingsId.substring(0, 8)}...`);
+    console.error(`❌ Failed to parse credentials for settings ${settingsId}`);
     return null;
   }
   
   // Validate credentials structure
   if (!credentials.private_key || !credentials.client_email) {
-    logger.error(`Invalid service account credentials structure for settings ${settingsId.substring(0, 8)}...`);
+    console.error(`❌ Invalid service account credentials structure for settings ${settingsId}`);
     return null;
   }
 
@@ -357,7 +355,7 @@ async function getParsedCredentials(
     settingsId,
   });
 
-  logger.debug(`Parsed and cached credentials for settings ${settingsId.substring(0, 8)}...`);
+  console.log(`✅ Parsed and cached credentials for settings ${settingsId}`);
   return credentials;
 }
 
@@ -396,7 +394,11 @@ export function createVertexGeminiClient(
   credentials: any,
   modelName: string = 'gemini-2.5-flash'
 ): GeminiClient {
-  logger.debug(`Creating VertexAI: project=${projectId}, location=${location}, model=${modelName}`);
+  console.log("🚀 Creating VertexAI instance with Service Account credentials");
+  console.log("  - project:", projectId);
+  console.log("  - location:", location);
+  console.log("  - model:", modelName);
+  console.log("  - credentials:", credentials.client_email);
   
   const vertexAI = new VertexAI({
     project: projectId,
@@ -406,9 +408,14 @@ export function createVertexGeminiClient(
     },
   });
   
+  console.log("✅ VertexAI instance created successfully");
+  console.log("🔧 Getting Generative Model...");
+  
   const model = vertexAI.preview.getGenerativeModel({
     model: modelName,
   });
+  
+  console.log("✅ GenerativeModel created successfully");
   
   // Wrap in VertexAI adapter to normalize API
   const adapter = new VertexAIClientAdapter(model, modelName);
@@ -435,8 +442,14 @@ async function createVertexAIClient(
   }
 ): Promise<{ client: GeminiClient; metadata: AiProviderMetadata } | null> {
   try {
-    // Log debug info solo in DEBUG mode
-    logger.debug(`Creating Vertex AI client from settings ${settings.id.substring(0, 8)}...`);
+    // FIRST: Log the RAW JSON from database
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("📄 RAW SERVICE ACCOUNT JSON FROM DATABASE");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("Settings ID:", settings.id);
+    console.log("serviceAccountJson length:", settings.serviceAccountJson?.length || 0);
+    console.log("First 300 chars:", settings.serviceAccountJson?.substring(0, 300));
+    console.log("Last 200 chars:", settings.serviceAccountJson?.substring(settings.serviceAccountJson.length - 200));
     
     // Get parsed credentials (with caching)
     const credentials = await getParsedCredentials(
@@ -449,8 +462,22 @@ async function createVertexAIClient(
       return null;
     }
 
-    // Debug credentials info (solo in DEBUG mode)
-    logger.debug(`Credentials: project=${credentials.project_id}, email=${credentials.client_email?.substring(0, 20)}...`);
+    // Debug: Check environment variables and credentials
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("🔍 DEBUG VERTEX AI CREDENTIALS");
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.log("GOOGLE_API_KEY presente?", !!process.env.GOOGLE_API_KEY);
+    console.log("GOOGLE_APPLICATION_CREDENTIALS presente?", !!process.env.GOOGLE_APPLICATION_CREDENTIALS);
+    console.log("credentials.type:", credentials.type);
+    console.log("credentials.project_id:", credentials.project_id);
+    console.log("credentials.private_key_id:", credentials.private_key_id);
+    console.log("credentials.client_email:", credentials.client_email);
+    console.log("credentials.client_id:", credentials.client_id);
+    console.log("credentials.private_key length:", credentials.private_key?.length || 0);
+    console.log("credentials.private_key starts with:", credentials.private_key?.substring(0, 50));
+    console.log("settings.projectId:", settings.projectId);
+    console.log("settings.location:", settings.location);
+    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Use shared helper to create Vertex AI client
     const client = createVertexGeminiClient(
@@ -466,7 +493,7 @@ async function createVertexAIClient(
       expiresAt: settings.expiresAt || undefined,
     };
 
-    logger.info(`Vertex AI client created: ${metadata.name}`);
+    console.log(`✅ Created Vertex AI client (${metadata.name}) from settings ${settings.id}`);
 
     // Extract the original VertexAI client for TTS
     const vertexClient = (client as any).__vertexAI as VertexAI | undefined;
@@ -477,7 +504,7 @@ async function createVertexAIClient(
       metadata,
     };
   } catch (error: any) {
-    logger.error(`Failed to create Vertex AI client: ${error.message}`);
+    console.error(`❌ Failed to create Vertex AI client for settings ${settings.id}:`, error.message);
     return null;
   }
 }
@@ -527,14 +554,14 @@ async function createGoogleAIStudioClient(
       name: "Google AI Studio",
     };
 
-    logger.info(`Google AI Studio client created for user ${clientId.substring(0, 8)}...`);
+    console.log(`✅ Created Google AI Studio client for user ${clientId}`);
 
     return {
       client,
       metadata,
     };
   } catch (error: any) {
-    logger.error(`Failed to create Google AI Studio client: ${error.message}`);
+    console.error(`❌ Failed to create Google AI Studio client:`, error.message);
     return null;
   }
 }
@@ -573,17 +600,17 @@ async function checkUsageScope(
 
   // "both" - everyone can use
   if (usageScope === "both") {
-    logger.debug(`usageScope='both' - access granted`);
+    console.log(`✅ usageScope is 'both' - access granted`);
     return true;
   }
 
   // "consultant_only" - only consultant can use
   if (usageScope === "consultant_only") {
     if (isConsultantUsingOwnAI) {
-      logger.debug(`usageScope='consultant_only', user is consultant - access granted`);
+      console.log(`✅ usageScope is 'consultant_only' and user is consultant - access granted`);
       return true;
     } else {
-      logger.debug(`usageScope='consultant_only', user is client - access denied`);
+      console.log(`❌ usageScope is 'consultant_only' but user is a client - access denied`);
       return false;
     }
   }
@@ -591,10 +618,10 @@ async function checkUsageScope(
   // "clients_only" - only clients can use
   if (usageScope === "clients_only") {
     if (!isConsultantUsingOwnAI) {
-      logger.debug(`usageScope='clients_only', user is client - access granted`);
+      console.log(`✅ usageScope is 'clients_only' and user is a client - access granted`);
       return true;
     } else {
-      logger.debug(`usageScope='clients_only', user is consultant - access denied`);
+      console.log(`❌ usageScope is 'clients_only' but user is consultant - access denied`);
       return false;
     }
   }
@@ -603,7 +630,7 @@ async function checkUsageScope(
   if (usageScope === "selective") {
     // Consultant always has access to their own settings
     if (isConsultantUsingOwnAI) {
-      logger.debug(`usageScope='selective', user is owner - access granted`);
+      console.log(`✅ usageScope is 'selective' but user is consultant (owner) - access granted`);
       return true;
     }
 
@@ -620,16 +647,16 @@ async function checkUsageScope(
       .limit(1);
 
     if (accessRecord && accessRecord.hasAccess) {
-      logger.debug(`usageScope='selective', client has explicit access - granted`);
+      console.log(`✅ usageScope is 'selective' and client has explicit access - access granted`);
       return true;
     } else {
-      logger.debug(`usageScope='selective', no explicit access - denied`);
+      console.log(`❌ usageScope is 'selective' but client has no explicit access record - access denied`);
       return false;
     }
   }
 
   // Fallback: deny access for unknown usageScope values
-  logger.warn(`Unknown usageScope '${usageScope}' - access denied`);
+  console.log(`❌ Unknown usageScope '${usageScope}' - access denied by default`);
   return false;
 }
 

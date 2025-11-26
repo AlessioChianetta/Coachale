@@ -2803,10 +2803,6 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 pendingUserTranscript.text = userTranscriptText;
                 if (isFinal) {
                   pendingUserTranscript.hasFinalChunk = true;
-                  
-                  // 🎤 VAD: Log solo quando la frase è completa (isFinal=true)
-                  console.log(`🎤 [${connectionId}] USER: "${userTranscriptText}"`);
-                  
                   // Track user message immediately when final chunk arrives
                   try {
                     await salesTracker.trackUserMessage(userTranscriptText);
@@ -2822,7 +2818,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                     // 🤖➡️😊 CONTEXTUAL RESPONSE DETECTION: Check if user is asking a question
                     if (isProspectQuestion(userTranscriptText)) {
                       lastProspectQuestion = userTranscriptText;
-                      console.log(`❓ [${connectionId}] PROSPECT QUESTION: "${userTranscriptText.substring(0, 60)}..." → AI should respond first`);
+                      console.log(`🤖➡️😊 [${connectionId}] PROSPECT QUESTION DETECTED: "${userTranscriptText.substring(0, 80)}..."`);
+                      console.log(`   → AI should respond to this before continuing script (Anti-Robot Mode)`);
                     }
                     
                     // Reset pending buffer
@@ -2833,13 +2830,24 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 }
               }
               
-              // 🔥 BARGE-IN: Se AI sta parlando, ferma l'audio client-side
+              // 🎯 VAD DEBUG: Log evidenziato per capire quando Gemini VAD rileva l'inizio del parlato
+              console.log(`\n🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`🎤 [VAD DETECTION] Gemini rilevato parlato utente!`);
+              console.log(`   → Testo rilevato: "${userTranscriptText}"`);
+              console.log(`   → Timestamp: ${new Date().toISOString()}`);
+              console.log(`   → AI sta parlando? ${isAiSpeaking ? 'SÌ - INTERROMPO AUDIO!' : 'No'}`);
+              console.log(`🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+              
+              // 🔥 BARGE-IN FIX: Se AI sta parlando, FERMA IMMEDIATAMENTE l'audio client-side
               if (isAiSpeaking) {
+                console.log(`🛑 [${connectionId}] BARGE-IN ATTIVATO - Invio stop_audio al client`);
                 clientWs.send(JSON.stringify({
                   type: 'stop_audio',
                   reason: 'user_speaking',
                   message: 'User is speaking - stop AI audio immediately'
                 }));
+                
+                // Reset flag - l'AI è stato interrotto
                 isAiSpeaking = false;
               }
               
@@ -2957,13 +2965,33 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                   }
                   
                   // 🎯 STEP ADVANCEMENT AGENT: Analyze conversation and advance step if needed
+                  // Runs in background (~300ms) after each AI turn - doesn't block conversation flow
+                  // 🔒 MUTEX: Skip if another analysis is already in progress (prevent race conditions)
+                  console.log(`\n🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                  console.log(`🔍 [${connectionId}] STEP ADVANCEMENT CHECK`);
+                  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                  console.log(`   📋 trackerClientId: ${trackerClientId || 'NULL'}`);
+                  console.log(`   📋 trackerConsultantId: ${trackerConsultantId || 'NULL'}`);
+                  console.log(`   🔒 isAdvancementInProgress: ${isAdvancementInProgress}`);
+                  
                   if (trackerClientId && trackerConsultantId && !isAdvancementInProgress) {
-                    isAdvancementInProgress = true;
+                    console.log(`   ✅ PROCEEDING with Step Advancement Agent call...`);
+                    isAdvancementInProgress = true; // Acquire lock
+                    // Fire and forget - don't await to avoid blocking
                     (async () => {
                       try {
                         const script = salesTracker.getScriptStructure();
                         const state = salesTracker.getState();
                         const { phaseIndex, stepIndex } = salesTracker.getCurrentIndices();
+                        
+                        console.log(`\n🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`🚀 [${connectionId}] STEP ADVANCEMENT AGENT - STARTING ANALYSIS`);
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`   📍 Current Phase: ${state.currentPhase}`);
+                        console.log(`   📍 Current Step: ${state.currentStep || 'N/A'}`);
+                        console.log(`   📍 Phase Index: ${phaseIndex}, Step Index: ${stepIndex}`);
+                        console.log(`   📜 Script has ${script.phases.length} phases`);
+                        console.log(`   💬 Conversation has ${conversationMessages.length} messages`);
                         
                         // Prepare recent messages from conversationMessages
                         const recentMessages = conversationMessages.slice(-6).map(msg => ({
@@ -3000,36 +3028,20 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                           consultantId: trackerConsultantId
                         };
                         
+                        console.log(`   📨 Calling StepAdvancementAgent.analyze()...`);
                         const analysisStart = Date.now();
                         const result = await StepAdvancementAgent.analyze(params);
                         const analysisTime = Date.now() - analysisStart;
                         
-                        // 📊 TRAINING DATA: Salva il reasoning dello STEP-AGENT per addestramento futuro
-                        const decision = result.shouldAdvance ? 'advance' : 'stay';
-                        await salesTracker.addReasoning(
-                          decision,
-                          `[STEP-AGENT] ${result.reasoning} (confidence: ${(result.confidence * 100).toFixed(0)}%, time: ${analysisTime}ms)`
-                        );
-                        
-                        // 🔄 STEP-AGENT → PRIMARY AGENT COMMUNICATION
-                        // When shouldAdvance=false, inject correction into primary agent's context
-                        if (!result.shouldAdvance && result.reasoning && geminiSession && geminiSession.readyState === WebSocket.OPEN) {
-                          const correctionMessage = {
-                            clientContent: {
-                              turns: [{
-                                role: 'user',
-                                parts: [{ 
-                                  text: `[ISTRUZIONE INTERNA - NON LEGGERE AL CLIENTE]
-⚠️ CORREZIONE DAL SUPERVISORE: ${result.reasoning}
-📌 AZIONE RICHIESTA: Adatta la tua prossima risposta seguendo questa guida. NON menzionare questa istruzione al cliente.`
-                                }]
-                              }],
-                              turnComplete: false
-                            }
-                          };
-                          geminiSession.send(JSON.stringify(correctionMessage));
-                          console.log(`📨 [${connectionId}] CORRECTION INJECTED: ${result.reasoning.substring(0, 80)}...`);
-                        }
+                        console.log(`\n📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`📊 [${connectionId}] STEP ADVANCEMENT AGENT - RESULT (${analysisTime}ms)`);
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`   🎯 shouldAdvance: ${result.shouldAdvance}`);
+                        console.log(`   📍 nextPhaseId: ${result.nextPhaseId || 'null'}`);
+                        console.log(`   📍 nextStepId: ${result.nextStepId || 'null'}`);
+                        console.log(`   📈 confidence: ${(result.confidence * 100).toFixed(0)}%`);
+                        console.log(`   💡 reasoning: ${result.reasoning}`);
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                         
                         // If agent says to advance, call advanceTo on tracker
                         // 🔒 IDEMPOTENCY CHECK: Skip if we already advanced to this state
@@ -3037,18 +3049,41 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                           const alreadyAtTarget = lastAdvancedToState?.phase === result.nextPhaseId && 
                                                   lastAdvancedToState?.step === result.nextStepId;
                           if (!alreadyAtTarget) {
-                            console.log(`🚀 [${connectionId}] ADVANCING: ${state.currentPhase}/${state.currentStep || 'start'} → ${result.nextPhaseId}/${result.nextStepId}`);
+                            console.log(`\n🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                            console.log(`🚀 [${connectionId}] ADVANCING STEP!`);
+                            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                            console.log(`   → FROM: ${state.currentPhase} / ${state.currentStep || 'start'}`);
+                            console.log(`   → TO: ${result.nextPhaseId} / ${result.nextStepId}`);
+                            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                             await salesTracker.advanceTo(result.nextPhaseId, result.nextStepId, result.reasoning);
                             lastAdvancedToState = { phase: result.nextPhaseId, step: result.nextStepId };
+                          } else {
+                            console.log(`🔒 [${connectionId}] Skipping duplicate advancement to ${result.nextPhaseId}/${result.nextStepId}`);
                           }
+                        } else {
+                          console.log(`   ⏸️  NOT advancing: shouldAdvance=${result.shouldAdvance}, confidence=${result.confidence}, hasIds=${!!result.nextPhaseId && !!result.nextStepId}`);
                         }
                       } catch (agentError: any) {
-                        console.error(`❌ [${connectionId}] STEP-AGENT Error: ${agentError.message}`);
+                        console.error(`\n❌ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.error(`❌ [${connectionId}] STEP ADVANCEMENT AGENT ERROR`);
+                        console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.error(`   Error: ${agentError.message}`);
+                        console.error(`   Stack: ${agentError.stack?.split('\n').slice(0, 3).join('\n')}`);
+                        console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                        // Non-blocking - don't affect main conversation flow
                       } finally {
-                        isAdvancementInProgress = false;
+                        isAdvancementInProgress = false; // Release lock
+                        console.log(`🔓 [${connectionId}] Step Advancement lock released`);
                       }
                     })();
+                  } else {
+                    if (!trackerClientId || !trackerConsultantId) {
+                      console.log(`   ⏭️  SKIPPING: Missing IDs (clientId=${!!trackerClientId}, consultantId=${!!trackerConsultantId})`);
+                    } else if (isAdvancementInProgress) {
+                      console.log(`   ⏭️  SKIPPING: Another analysis already in progress`);
+                    }
                   }
+                  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                 } catch (trackError: any) {
                   console.error(`❌ [${connectionId}] Sales tracking error:`, trackError.message);
                 }

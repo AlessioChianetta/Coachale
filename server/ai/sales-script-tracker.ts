@@ -14,10 +14,8 @@ import { db } from '../db';
 import { salesConversationTraining, salesAgentTrainingSummary, salesScripts, clientSalesAgents } from '@shared/schema';
 import { eq, and, sql as drizzleSql } from 'drizzle-orm';
 import { SalesScriptLogger } from './sales-script-logger';
-import { createLogger } from './log-manager';
+import { CheckpointDetector } from './checkpoint-detector';
 import { parseScriptContentToStructure, ScriptStructure } from './sales-script-structure-parser';
-
-const logger = createLogger('SALES-TRACKER');
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TYPES (Question, Checkpoint, Step, Phase, ScriptStructure imported from parser)
@@ -528,19 +526,55 @@ export class SalesScriptTracker {
   
   /**
    * Auto-detect and complete checkpoints based on transcript evidence
-   * 
-   * NOTE: This function is DISABLED because STEP-ADVANCEMENT-AGENT now handles
-   * all checkpoint/step verification with AI semantic analysis.
-   * The old keyword-based CheckpointDetector was less accurate and redundant.
-   * 
-   * Checkpoint completion is now managed by:
-   * 1. StepAdvancementAgent.analyze() - decides when to advance
-   * 2. advanceToNextStep() - marks checkpoints as completed when advancing
+   * Called after each user message to check if any checkpoint requirements are met
    */
   private async autoDetectCheckpoints(): Promise<void> {
-    // DISABLED: STEP-ADVANCEMENT-AGENT handles all verification
-    // No need for keyword-based checkpoint detection
-    return;
+    const currentPhase = this.getCurrentPhase();
+    if (!currentPhase || !currentPhase.checkpoints || currentPhase.checkpoints.length === 0) {
+      return; // No checkpoints in current phase
+    }
+    
+    console.log(`\n🎯 [AUTO-DETECT] Checking ${currentPhase.checkpoints.length} checkpoint(s) for ${currentPhase.id}`);
+    
+    // Get checkpoints that haven't been completed yet
+    const pendingCheckpoints = currentPhase.checkpoints.filter(cp => 
+      !this.state.checkpointsCompleted.some(completed => completed.checkpointId === cp.id)
+    );
+    
+    if (pendingCheckpoints.length === 0) {
+      console.log(`   ✅ All checkpoints already completed for ${currentPhase.id}`);
+      return;
+    }
+    
+    // Use CheckpointDetector to analyze transcript
+    const detectionResults = CheckpointDetector.detectCheckpoints(
+      pendingCheckpoints,
+      this.state.fullTranscript,
+      this.state.currentPhase
+    );
+    
+    // Process results and auto-complete verified checkpoints
+    for (const result of detectionResults) {
+      if (result.status === "completed") {
+        // Add to state with evidence
+        this.state.checkpointsCompleted.push(result);
+        
+        console.log(`\n✅ [AUTO-DETECT] CHECKPOINT AUTO-COMPLETED: ${result.checkpointId}`);
+        const verifiedCount = result.verifications.filter(v => v.status === "verified").length;
+        console.log(`   Verifications: ${verifiedCount}/${result.verifications.length} verified`);
+        
+        result.verifications.forEach(v => {
+          if (v.status === "verified" && v.evidence) {
+            console.log(`   ✓ ${v.requirement}`);
+            console.log(`     Evidence: "${v.evidence.excerpt.substring(0, 80)}..."`);
+            console.log(`     Keywords: ${v.evidence.matchedKeywords.join(', ')}`);
+          }
+        });
+      } else if (result.status === "pending") {
+        const verifiedCount = result.verifications.filter(v => v.status === "verified").length;
+        console.log(`   ⏳ ${result.checkpointId}: ${verifiedCount}/${result.verifications.length} verifications found (still pending)`);
+      }
+    }
   }
   
   /**

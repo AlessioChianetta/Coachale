@@ -11,7 +11,6 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 import { getAIProvider, GeminiClient } from "./provider-factory";
-import { createLogger } from "./log-manager";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TYPES
@@ -76,30 +75,35 @@ export class StepAdvancementAgent {
    */
   static async analyze(params: StepAdvancementParams): Promise<StepAdvancementResult> {
     const startTime = Date.now();
-    const logger = createLogger('STEP-AGENT');
     
-    logger.info(`Analyzing ${params.currentPhaseId}/${params.currentStepId || 'N/A'} (${params.recentMessages.length} messages)`);
+    console.log(`\n🤖 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🤖 [STEP-AGENT] Starting analysis`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   📍 Current: ${params.currentPhaseId} / ${params.currentStepId || 'N/A'}`);
+    console.log(`   💬 Recent messages: ${params.recentMessages.length}`);
+    console.log(`   🔑 Using clientId: ${params.clientId?.substring(0, 8)}...`);
     
     try {
       // Ottieni il client AI usando il sistema a 3 livelli (Vertex client -> Vertex admin -> Google AI Studio)
-      logger.debug('Getting AI provider...');
+      console.log(`   📡 Getting AI provider...`);
       const providerStart = Date.now();
       const { client: aiClient, cleanup } = await getAIProvider(params.clientId, params.consultantId);
-      logger.debug(`AI provider obtained in ${Date.now() - providerStart}ms`);
+      console.log(`   ✅ AI provider obtained in ${Date.now() - providerStart}ms`);
       
       try {
         // Costruisci il prompt
         const prompt = this.buildPrompt(params);
-        logger.debug(`Prompt length: ${prompt.length} chars`);
+        console.log(`   📝 Prompt length: ${prompt.length} chars`);
         
-        // Log recent messages being analyzed (solo in DEBUG)
-        logger.debug('Recent messages:', params.recentMessages.slice(-4).map(m => ({
-          role: m.role === 'user' ? 'PROSPECT' : 'AGENTE',
-          text: m.content.substring(0, 60)
-        })));
+        // Log recent messages being analyzed
+        console.log(`   💬 Recent messages being analyzed:`);
+        params.recentMessages.slice(-4).forEach((msg, i) => {
+          const role = msg.role === 'user' ? 'PROSPECT' : 'AGENTE';
+          console.log(`      ${i + 1}. [${role}] "${msg.content.substring(0, 80)}${msg.content.length > 80 ? '...' : ''}"`);
+        });
         
         // Chiama Gemini con timeout
-        logger.debug(`Calling Gemini ${this.MODEL}...`);
+        console.log(`   🚀 Calling Gemini ${this.MODEL}...`);
         const geminiStart = Date.now();
         const response = await Promise.race([
           aiClient.generateContent({
@@ -112,10 +116,11 @@ export class StepAdvancementAgent {
           }),
           this.timeout(this.TIMEOUT_MS)
         ]);
-        logger.debug(`Gemini responded in ${Date.now() - geminiStart}ms`);
+        console.log(`   ⏱️ Gemini responded in ${Date.now() - geminiStart}ms`);
         
         if (!response || typeof response === 'string') {
-          logger.warn('Timeout or invalid response');
+          console.warn('⚠️ [STEP-AGENT] Timeout or invalid response');
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           return this.createDefaultResult('Timeout');
         }
         
@@ -123,19 +128,27 @@ export class StepAdvancementAgent {
         let responseText = '';
         try {
           responseText = response.response.text();
-          logger.debug(`Raw response: ${responseText.substring(0, 150)}...`);
+          console.log(`   📄 Raw response (first 300 chars): "${responseText.substring(0, 300)}${responseText.length > 300 ? '...' : ''}"`);
         } catch (extractError: any) {
-          logger.warn(`Failed to extract text: ${extractError.message}`);
+          console.warn(`⚠️ [STEP-AGENT] Failed to extract text: ${extractError.message}`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           return this.createDefaultResult('Failed to extract response text');
         }
         
         // Parse la risposta JSON
+        console.log(`   🔍 Parsing JSON response...`);
         const result = this.parseResponse(responseText, params);
-        const elapsed = Date.now() - startTime;
         
-        // Log compatto del risultato (sempre visibile)
-        logger.stepAgentResult(result.shouldAdvance, result.confidence, result.reasoning);
-        logger.debug(`Completed in ${elapsed}ms`);
+        const elapsed = Date.now() - startTime;
+        console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🎯 [STEP-AGENT] Analysis completed in ${elapsed}ms`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   → shouldAdvance: ${result.shouldAdvance}`);
+        console.log(`   → nextPhase: ${result.nextPhaseId || 'same'}`);
+        console.log(`   → nextStep: ${result.nextStepId || 'same'}`);
+        console.log(`   → confidence: ${(result.confidence * 100).toFixed(0)}%`);
+        console.log(`   → reasoning: ${result.reasoning}`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         
         return result;
         
@@ -148,7 +161,7 @@ export class StepAdvancementAgent {
       
     } catch (error: any) {
       const elapsed = Date.now() - startTime;
-      logger.error(`Error after ${elapsed}ms: ${error.message}`);
+      console.error(`❌ [STEP-AGENT] Error after ${elapsed}ms:`, error.message);
       return this.createDefaultResult(`Error: ${error.message}`);
     }
   }
@@ -215,42 +228,11 @@ Per decidere, considera:
 2. Il prospect ha risposto in modo che permette di andare avanti?
 3. L'obiettivo dello step è stato raggiunto?
 
-═══════════════════════════════════════════════════════════════
-🤖 ANTI-ROBOT MODE - CHECK CRITICI
-═══════════════════════════════════════════════════════════════
-Prima di decidere se avanzare, verifica questi punti CRITICI:
-
-❌ BLOCCA L'AVANZAMENTO SE:
-1. Il prospect ha fatto una DOMANDA e l'agente NON ha ancora risposto
-   → L'agente DEVE rispondere alle domande del cliente PRIMA di continuare lo script
-   → Se vedi "?" nell'ultimo messaggio del prospect, l'agente deve aver risposto
-   
-2. L'agente sta SALTANDO step o fasi
-   → L'ordine degli step è OBBLIGATORIO
-   → Non si può passare dallo step 1 allo step 3 senza completare lo step 2
-   
-3. L'agente sta parlando come un robot
-   → Se l'agente legge lo script parola per parola senza adattarsi, segnalalo
-   → La conversazione deve essere NATURALE, non meccanica
-
-4. L'agente NON sta PARAFRASANDO le parole del cliente
-   → PRIMA di fare una nuova domanda, l'agente DEVE ripetere le parole del prospect
-   → Esempio CORRETTO: Prospect dice "non trovo clienti" → Agente: "Ah, quindi TROVARE CLIENTI..."
-   → Esempio SBAGLIATO: Prospect dice qualcosa → Agente: "Ok, dimmi di più" (troppo generico!)
-   → Esempio SBAGLIATO: Prospect risponde → Agente passa subito a nuova domanda (ignora risposta!)
-   → Se l'agente dice solo "ok" / "capisco" / "dimmi di più" SENZA ripetere le parole → BLOCCA
-
-✅ PERMETTI L'AVANZAMENTO SE:
-- Il prospect ha risposto alla domanda dell'agente (anche brevemente: "ok", "sì", "va bene")
-- L'obiettivo dello step è stato raggiunto
-- L'agente ha risposto a eventuali domande del prospect PRIMA di continuare
-- L'agente ha PARAFRASATO le parole del prospect prima di fare nuova domanda
-
 IMPORTANTE:
 - NON avanzare troppo presto. Meglio rimanere uno step in più che saltare.
+- Se il prospect ha risposto brevemente (es. "ok", "sì", "va bene") dopo che l'agente ha fatto la domanda, probabilmente si può avanzare.
+- Se l'agente sta ancora esplorando o il prospect non ha risposto alla domanda, NON avanzare.
 - Se siamo all'ultimo step dell'ultima fase, NON si può avanzare.
-- Nel reasoning, spiega PERCHÉ blocchi o permetti l'avanzamento.
-- Se l'agente non parafrasava, scrivi nel reasoning: "L'agente deve parafrasare le parole del cliente"
 
 ═══════════════════════════════════════════════════════════════
 📤 FORMATO RISPOSTA (JSON VALIDO)
