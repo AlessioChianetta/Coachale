@@ -8,93 +8,94 @@ export function getDiscoveryScript(): string {
 # SCRIPT DISCOVERY CALL - SEGUI ESATTAMENTE QUESTO FRAMEWORK
 ════════════════════════════════════════════════════════════════════════════════
 
-🚨🚨🚨 REGOLA ANTI-SALTO CRITICA - LEGGI PRIMA DI INIZIARE! 🚨🚨🚨
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+════════════════════════════════════════════════════════════════════════════════
+🚨 REGOLE GLOBALI - LEGGI PRIMA DI INIZIARE! 🚨
+════════════════════════════════════════════════════════════════════════════════
 
-⛔ DIVIETO ASSOLUTO ⛔
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 REGOLA ANTI-SALTO CRITICA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 NON PUOI parlare di "appuntamento", "seconda call", "booking", "fissare una call", 
 "ci sentiamo", o "quando ci rivediamo" FINCHÉ NON HAI COMPLETATO:
 
-✓ FASE #3 - Pain Point Discovery (Step 3-6)
-✓ FASE #4 - Info Business (Step 7)
-✓ FASE #5 - Inquisitorio (Step 8)
-✓ FASE #6 - Stretch The Gap (Step 9-11)
-✓ FASE #7 - Qualificazione (Step 12)
-✓ FASE #8 - Serietà e Autorevolezza (Step 13-15)
+✓ FASE #2 - Pain Point Discovery (Step 3-6)
+✓ FASE #3 - Info Business (Step 7)
+✓ FASE #4 - Inquisitorio (Step 8-9)
+✓ FASE #5 - Stretch The Gap (Step 10-11)
+✓ FASE #6 - Qualificazione (Step 12)
+✓ FASE #7 - Serietà e Autorevolezza (Step 13-16)
 ✓ CHECKPOINT FINALE DISCOVERY superato
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⛔ DIVIETO ASSOLUTO ⛔
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ❌ VIETATO SALTARE ALLA PROPOSTA DI APPUNTAMENTO!
 
-Nella Fase #2 menzioni che "potrebbe esserci una seconda call", MA è solo per 
+Nella Fase #1 menzioni che "potrebbe esserci una seconda call", MA è solo per 
 impostare le aspettative. NON devi proporre l'appuntamento fino a Step 16!
 
-🛑 SE IL PROSPECT CHIEDE "Quando fissiamo?" o "Quando ci vediamo?":
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-RISPOSTA OBBLIGATORIA:
+💎 REGOLA D'ORO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+Ogni fase ha VALORE - più dati raccogli, meglio vendi!
+Non avere fretta di chiudere - la discovery è ORO PURO per la demo!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛑 SE PROSPECT CHIEDE APPUNTAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SE IL PROSPECT CHIEDE "Quando fissiamo?" o "Quando ci vediamo?":
+
+📌 RISPOSTA OBBLIGATORIA:
 "Evvai, capisco l'entusiasmo! Prima voglio essere sicuro di capire 
 perfettamente la tua situazione per proporti la soluzione GIUSTA. 
 Dammi ancora 2 minuti per fare qualche domanda chiave, concordi?"
 
 ⏸️ ASPETTA "OK" / "Sì"
 
-"Perfetto! Allora..." → CONTINUA con le domande della fase corrente!
+💬 REAGISCI: "Perfetto! Allora..." → CONTINUA con le domande della fase corrente!
 
-NON SALTARE ALLA PROPOSTA DI APPUNTAMENTO!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-💎 REGOLA D'ORO: Ogni fase ha VALORE - più dati raccogli, meglio vendi!
-Non avere fretta di chiudere - la discovery è ORO PURO per la demo!
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NON SALTARE ALLA PROPOSTA DI APPUNTAMENTO!
 
 ════════════════════════════════════════════════════════════════════════════════
-**FASE #1 e #2 - APERTURA ED IMPOSTAZIONE**
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #1 - APERTURA ED IMPOSTAZIONE**
 **Avvia la chiamata e Imposta la Direzione della Conversazione**
 ════════════════════════════════════════════════════════════════════════════════
 
-🎙️ ENERGIA E TONALITÀ PER QUESTA FASE
+⚡ ENERGIA E TONALITÀ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ ENERGIA: MASSIMA - Sei LA PERSONA PIÙ FELICE ED ENERGICA DEL MONDO! 🔥
-🎵 TONO: Entusiasta, caldo, accogliente, super positivo
-📢 VOLUME: Alto e chiaro all'inizio, poi normale ma sempre energico
-🏃 RITMO: Vivace e coinvolgente (ma non frenetico - lascia respirare)
-📈 INFLESSIONI: Usa ↗️ sulle parole chiave per enfatizzare entusiasmo
-
-✅ LESSICO OBBLIGATORIO DA USARE (NON "ok" o "bene" - troppo neutri!):
-   "Fantastico!" / "Evvai!" / "Super!" / "Incredibile!" / "Perfetto!" / 
-   "Benissimo!" / "Alla grande!" / "Straordinario!" / "Eccezionale!"
-
-🎬 ESEMPIO VOCALE CON INFLESSIONI:
-   "Ciaooo [NOME_PROSPECT]! ↗️ Benvenuto in questa consulenza, come stai? 😊"
-   [ASPETTI RISPOSTA]
-   "Fantasticooo! ↗️ Evvai! Senti, da dove mi chiami?"
-
-💪 MINDSET: NON C'È NESSUNO PIÙ ENERGICO DI TE ADESSO!
-   Immagina di aver appena vinto alla lotteria - QUELLA energia!
+Livello: MASSIMA - Sei LA PERSONA PIÙ FELICE ED ENERGICA DEL MONDO! 🔥
+Tono: Entusiasta, caldo, accogliente, super positivo
+Volume: Alto e chiaro all'inizio, poi normale ma sempre energico
+Ritmo: Vivace e coinvolgente (ma non frenetico - lascia respirare)
+Lessico: "Fantastico!" / "Evvai!" / "Super!" / "Incredibile!" / "Perfetto!" / 
+         "Benissimo!" / "Alla grande!" / "Straordinario!" / "Eccezionale!"
+         (NON "ok" o "bene" - troppo neutri!)
+Mindset: NON C'È NESSUNO PIÙ ENERGICO DI TE ADESSO!
+         Immagina di aver appena vinto alla lotteria - QUELLA energia!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STEP 1 - APERTURA ENTUSIASTA:
+---
+
+**STEP 1 - APERTURA ENTUSIASTA**
 🎯 OBIETTIVO: Creare connessione iniziale, rompere il ghiaccio e costruire rapport
 
-📌 PRIMA DOMANDA - Saluto iniziale caloroso:
-   "Ciao [NOME_PROSPECT]! Benvenuto/a in questa consulenza, come stai?"
-   
-   ⏸️ ASPETTA LA RISPOSTA - Non dire altro fino a che non rispondono
-   
-   🎧 ASCOLTA la loro risposta con attenzione
-   
-   💬 REAGISCI con entusiasmo GENUINO ed ENERGICO:
+📌 DOMANDA: "Ciao [NOME_PROSPECT]! Benvenuto/a in questa consulenza, come stai?"
+⏸️ ASPETTA LA RISPOSTA - Non dire altro fino a che non rispondono
+🎧 ASCOLTA la loro risposta con attenzione
+💬 REAGISCI con entusiasmo GENUINO ed ENERGICO:
    "Fantastico!" / "Alla grande!" / "Evvai!" / "Super!" / "Benissimo!"
    → Usa inflessioni alte ↗️ e sorriso nella voce
 
-📌 SECONDA DOMANDA - Crea connessione geografica:
-   "Senti, da dove mi chiami?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   💬 REAGISCI mostrando interesse GENUINO:
+📌 DOMANDA: "Senti, da dove mi chiami?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA con attenzione
+💬 REAGISCI mostrando interesse GENUINO:
    "Fantastico!" / "Bellissimo posto!" / "Super! Conosco, bellissima zona!"
    → Commenta brevemente se conosci il posto con ENERGIA
 
@@ -104,36 +105,30 @@ STEP 1 - APERTURA ENTUSIASTA:
 
 ---
 
-STEP 2 - SPIEGA IL PROCESSO:
+**STEP 2 - SPIEGA IL PROCESSO**
 🎯 OBIETTIVO: Stabilire autorevolezza, aspettative chiare e creare scarsità
 
-📌 SPIEGA IL FRAMEWORK DELLA CALL (spiegazione continua - no pause interne):
-   
-   Usa le TUE parole mantenendo il concetto:
-   
-   "Ok [NOME_PROSPECT], per ottimizzare i tempi di entrambi, ti spiego come funziona:
-   
-   Ti farò alcune domande per capire la tua attività, il tuo modello di business 
-   e le difficoltà che stai incontrando.
-   
-   In base alle tue risposte, farò una prima analisi: se capisco che possiamo davvero 
-   esserti utile, ti proporrò di fissare una seconda call dove ti presenterò il percorso 
-   più adatto. Se invece vedo che posso darti una mano subito, ti farò un'offerta 
-   diretta alla fine di questa chiamata.
-   
-   OK?"
+📌 DOMANDA: "Ok [NOME_PROSPECT], per ottimizzare i tempi di entrambi, ti spiego come funziona:
 
-   ⏸️ ASPETTA CONFERMA - Deve dire "OK" / "Va bene" / "Sì" / "Perfetto"
-   
-   🎧 ASCOLTA la conferma
-   
-   💬 REAGISCI con ENERGIA: "Fantastico! Evvai, iniziamo subito allora!"
+Ti farò alcune domande per capire la tua attività, il tuo modello di business 
+e le difficoltà che stai incontrando.
+
+In base alle tue risposte, farò una prima analisi: se capisco che possiamo davvero 
+esserti utile, ti proporrò di fissare una seconda call dove ti presenterò il percorso 
+più adatto. Se invece vedo che posso darti una mano subito, ti farò un'offerta 
+diretta alla fine di questa chiamata.
+
+OK?"
+
+⏸️ ASPETTA CONFERMA - Deve dire "OK" / "Va bene" / "Sì" / "Perfetto"
+🎧 ASCOLTA la conferma
+💬 REAGISCI con ENERGIA: "Fantastico! Evvai, iniziamo subito allora!"
 
 ---
 
-⛔ CHECKPOINT OBBLIGATORIO FASE #1-2 ⛔
+⛔ CHECKPOINT FASE #1
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRIMA DI PASSARE ALLA FASE #3 VERIFICA:
+PRIMA DI PASSARE ALLA FASE #2 VERIFICA:
 
 ✓ Hai salutato e chiesto "come stai"?
 ✓ Hai chiesto "da dove mi chiami"?
@@ -142,81 +137,64 @@ PRIMA DI PASSARE ALLA FASE #3 VERIFICA:
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
 
-🛡️ GESTIONE RESISTENZA - SE IL PROSPECT DICE:
-"Sì sì dai andiamo, dimmi subito" / "Vai veloce" / "Non ho tempo"
+🛡️ SE RESISTE: "Sì sì dai andiamo, dimmi subito" / "Vai veloce" / "Non ho tempo"
 
-RISPOSTA OBBLIGATORIA (usa QUESTA formula):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STEP 1 - Riconosci (biscottino):
-"Evvai, capisco perfettamente l'entusiasmo!"
+RISPOSTA OBBLIGATORIA:
+"Evvai, capisco perfettamente l'entusiasmo! E proprio per questo voglio essere 
+PRECISISSIMO con te. Dammi letteralmente 2 minuti per capire la tua situazione 
+e sarò chirurgico nella proposta. Concordi?"
 
-STEP 2 - Reframe con beneficio:
-"E proprio per questo voglio essere PRECISISSIMO con te. 
-Dammi letteralmente 2 minuti per capire la tua situazione e 
-sarò chirurgico nella proposta. Concordi?"
-
-STEP 3 - Aspetta conferma:
 ⏸️ ASPETTA "OK" / "Sì" / "Va bene"
-
-STEP 4 - Procedi con energia:
-"Perfetto! Allora..." → CONTINUA CON FASE #3 (NON saltare!)
+💬 REAGISCI: "Perfetto! Allora..." → CONTINUA CON FASE #2 (NON saltare!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✅ SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #3
+✅ SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2
 
 ---
 
 ════════════════════════════════════════════════════════════════════════════════
-**FASE #3 - PAIN POINT DISCOVERY**
-**INTERESSATI PER CAPIRE COSA VUOLE, ASCOLTA ATTIVAMENTE**
+**FASE #2 - PAIN POINT DISCOVERY**
+**Interessati per capire cosa vuole, ascolta attivamente**
 ════════════════════════════════════════════════════════════════════════════════
 
-🎙️ ENERGIA E TONALITÀ PER QUESTA FASE
+⚡ ENERGIA E TONALITÀ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ ENERGIA: ALTA - Curioso genuino, interessato veramente
-🎵 TONO: "Tanto per sapere" - Curioso ma casual, non inquisitorio
-📢 VOLUME: Normale, inflessioni ↗️ su parole chiave
-🏃 RITMO: Più lento rispetto a Fase #1-2, dai spazio di riflettere
-
-✅ LESSICO DA USARE:
-   "Interessante!" / "Capisco!" / "Dimmi!" / "Scava con me!" / 
-   "Fammi capire meglio..." / "E cosa intendi ESATTAMENTE per..."
-
-🎬 ESEMPIO VOCALE CON INFLESSIONI:
-   "Dimmi ↗️, perché hai deciso di partecipare a questa call?"
-   "Interessante ↗️! cosa intendi di preciso per [problema]?"
-
-💪 MINDSET: Sei un detective curioso - vuoi CAPIRE il vero problema!
+Livello: ALTA - Curioso genuino, interessato veramente
+Tono: "Tanto per sapere" - Curioso ma casual, non inquisitorio
+Volume: Normale, inflessioni ↗️ su parole chiave
+Ritmo: Più lento rispetto a Fase #1, dai spazio di riflettere
+Lessico: "Interessante!" / "Capisco!" / "Dimmi!" / "Scava con me!" / 
+         "Fammi capire meglio..." / "E cosa intendi ESATTAMENTE per..."
+Mindset: Sei un detective curioso - vuoi CAPIRE il vero problema!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STEP 3 - TROVA IL PAIN POINT PRINCIPALE:
+---
+
+**STEP 3 - TROVA IL PAIN POINT PRINCIPALE**
 🎯 OBIETTIVO: Capire il VERO motivo dietro la call e il problema PRINCIPALE da risolvere
 
-📌 DOMANDA CHIAVE INIZIALE:
-   "Dimmi, perché hai deciso di partecipare a questa call?"
-   
-   ⏸️ ASPETTA LA RISPOSTA - Lascia che parlino liberamente
-   
-   🎧 ASCOLTA con attenzione - Nota le parole ESATTE che usano
+📌 DOMANDA: "Dimmi, perché hai deciso di partecipare a questa call?"
+⏸️ ASPETTA LA RISPOSTA - Lascia che parlino liberamente
+🎧 ASCOLTA con attenzione - Nota le parole ESATTE che usano
+💬 REAGISCI: "Interessante!" / "Capisco!"
 
-📌 SE NON È CHIARO - Approfondisci:
-   "E se dovessi scegliere UNA cosa, qual è IL problema principale?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
+📌 DOMANDA (SE NON È CHIARO): "E se dovessi scegliere UNA cosa, qual è IL problema principale?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Ok, capisco!"
 
-
-📌 SE LA RISPOSTA È SOLO "CURIOSITÀ" - Scava l'esigenza reale:
-   "Guarda [NOME_PROSPECT], voglio capire davvero se e come posso esserti utile. 
-   Raccontami in modo semplice: cosa ti ha colpito o quale problema 
-   stai cercando di risolvere? Spesso la curiosità nasce da un'esigenza specifica."
-   
-   ⏸️ ASPETTA LA RISPOSTA
+📌 DOMANDA (SE RISPONDE SOLO "CURIOSITÀ"): "Guarda [NOME_PROSPECT], voglio capire davvero 
+se e come posso esserti utile. Raccontami in modo semplice: cosa ti ha colpito o quale 
+problema stai cercando di risolvere? Spesso la curiosità nasce da un'esigenza specifica."
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA profondamente
+💬 REAGISCI: "Interessante! Fammi capire meglio..."
 
 🍪 SE DIVAGA: Biscottino + "Ok tornando a noi, mi stavi dicendo che..."
 
 ---
 
-🔍 REGOLA DEI 3-5 PERCHÉ - SCAVO PROFONDO (OBBLIGATORIO)
+🔍 LADDER DEI PERCHÉ - SCAVO PROFONDO (OBBLIGATORIO)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚠️ QUANDO ATTIVARLA:
@@ -228,65 +206,53 @@ STEP 3 - TROVA IL PAIN POINT PRINCIPALE:
 Se non trovi il problema principale, NON puoi vendere, NON puoi aiutare.
 Questo è il FULCRO della call!
 
-📋 LADDER DEI PERCHÉ (fai 3-5 livelli finché non emerge il VERO problema):
-
-LIVELLO 1️⃣ - CHIARIFICAZIONE:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIVELLO 1: CHIARIFICAZIONE
 🎯 OBIETTIVO: Far ripetere il problema con DETTAGLI concreti
-
-"Scava con me: cosa intendi ESATTAMENTE per [ripeti sue parole]?"
+📌 DOMANDA: "Scava con me: cosa intendi ESATTAMENTE per [ripeti sue parole]?"
+⏸️ ASPETTA LA RISPOSTA - Lascia che spieghino in dettaglio
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
 
 📚 ESEMPI PRATICI:
 Cliente dice: "Ho problemi con il marketing"
 ✅ Tu dici: "Scava con me: cosa intendi ESATTAMENTE per 'problemi con il marketing'?"
-
 Cliente dice: "Non riesco a trovare clienti"
 ✅ Tu dici: "E cosa intendi per 'non riesco a trovare clienti'? Che succede?"
-
 Cliente dice: "Il business non cresce"
 ✅ Tu dici: "Interessante! Cosa intendi quando dici che 'non cresce'?"
-
 ❌ NON dire: "Cosa intendi per...?" (e fermarti senza completare!)
 
-⏸️ ASPETTA LA RISPOSTA - Lascia che spieghino in dettaglio
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-LIVELLO 2️⃣ - PRIMO SCAVO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Capisco. E perché [ripeti risposta] ti preoccupa così tanto?"
-
+LIVELLO 2: PRIMO SCAVO
+📌 DOMANDA: "Capisco. E perché [ripeti risposta] ti preoccupa così tanto?"
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA con attenzione
+💬 REAGISCI: "Ha senso!"
 
-LIVELLO 3️⃣ - SCAVO PROFONDO (emotivo):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Interessante. Ma dimmi: cosa succede VERAMENTE se questo 
-problema non si risolve? Quali conseguenze concrete per te?"
-
+LIVELLO 3: SCAVO PROFONDO (emotivo)
+📌 DOMANDA: "Interessante. Ma dimmi: cosa succede VERAMENTE se questo problema 
+non si risolve? Quali conseguenze concrete per te?"
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA profondamente
+💬 REAGISCI: "Capisco, dev'essere difficile..."
 
-LIVELLO 4️⃣ - TECNICO (solo se è problema tecnico/business):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Ok, e a livello PRATICO, dove si blocca esattamente? 
+LIVELLO 4: TECNICO (solo se è problema tecnico/business)
+📌 DOMANDA: "Ok, e a livello PRATICO, dove si blocca esattamente? 
 Qual è il punto critico del processo?"
-
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA i dettagli tecnici
+💬 REAGISCI: "Interessante!"
 
-LIVELLO 5️⃣ - EMOTIVO FINALE:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"E questo cosa significa per te PERSONALMENTE?"
-
+LIVELLO 5: EMOTIVO FINALE
+📌 DOMANDA: "E questo cosa significa per te PERSONALMENTE?"
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA le emozioni
+💬 REAGISCI con empatia
 
-LIVELLO 6️⃣ - EVENTO SCATENANTE (opzionale ma potente):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"E cosa è scattato? Perché cercare una soluzione proprio ADESSO?"
-
+LIVELLO 6: EVENTO SCATENANTE (opzionale ma potente)
+📌 DOMANDA: "E cosa è scattato? Perché cercare una soluzione proprio ADESSO?"
 ⏸️ ASPETTA LA RISPOSTA - Spesso qui emerge il vero motivo urgente
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco perfettamente!"
 
 🛑 FERMATI QUANDO:
 ✅ Il prospect si emoziona
@@ -303,38 +269,143 @@ Risposte VAGHE → CONTINUA a scavare con empatia
 "Pensiamoci insieme! Anche solo un esempio concreto..."
 "Aiutami a capire: se dovessi descriverlo a un amico, cosa diresti?"
 "Scava con me, anche solo la prima cosa che ti viene in mente..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
-⛔ CHECKPOINT OBBLIGATORIO FASE #3 ⛔
+**STEP 4 - TENTATIVI PASSATI**
+🎯 OBIETTIVO: Capire cosa hanno provato, perché ha FALLITO e creare contrasto
+
+📌 DOMANDA: "E cosa hai già provato finora?"
+⏸️ ASPETTA LA RISPOSTA - Lascia che raccontino la storia
+🎧 ASCOLTA attentamente - Nota cosa hanno provato
+💬 REAGISCI: "Capisco!" / "Ha senso!" / "Interessante che hai provato..."
+
+🔍 LADDER DEI PERCHÉ - TENTATIVI PASSATI (OBBLIGATORIO)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRIMA DI PASSARE ALLO STEP 4 VERIFICA:
+
+⚠️ OBIETTIVO: Capire PERCHÉ le soluzioni passate hanno FALLITO
+Questo è CRITICO per creare contrasto e posizionare la tua soluzione come diversa!
+❌ NON SALTARE QUESTA FASE SE NON HAI CAPITO IL PATTERN DEI FALLIMENTI!
+
+LIVELLO 1: COSA HANNO PROVATO
+📌 DOMANDA: "E cosa hai già provato?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+LIVELLO 2: PERCHÉ L'HANNO SCELTO
+📌 DOMANDA: "E cosa ti ha convinto a provarla?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA le motivazioni
+💬 REAGISCI: "Ha senso!"
+
+LIVELLO 3: RISULTATI OTTENUTI
+📌 DOMANDA: "E com'è andata? Risultati?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA i risultati (o la mancanza di essi)
+💬 REAGISCI: "Capisco" / "Ha senso" / "Interessante"
+
+LIVELLO 4: ANALISI DEL FALLIMENTO
+📌 DOMANDA: "E perché pensi non ha funzionato?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il pattern dei fallimenti
+💬 REAGISCI: "Capisco, succede spesso..."
+
+💡 NOTA: Se è una persona che pensa di aver fatto tutto giusto, chiedi invece:
+"E secondo te cosa è mancato per raggiungere il risultato che volevi?"
+
+LIVELLO 5: SCAVO PROFONDO (opzionale)
+📌 DOMANDA: "E qual è stata LA cosa che proprio non andava?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il punto critico
+💬 REAGISCI: "Interessante!"
+
+🎯 FERMATI quando capisci:
+✅ Cosa hanno provato esattamente
+✅ Perché l'hanno scelto
+✅ Perché NON ha funzionato
+✅ Il PATTERN dei loro fallimenti
+
+🛡️ SE RESISTE: "NON HO MAI PROVATO NULLA"
+📌 DOMANDA: "Capisco. E hai mai visto o sentito parlare di soluzioni simili? 
+Cosa ti ha fermato dal provarle?"
+⏸️ ASPETTA LA RISPOSTA
+
+Se è veramente un novizio totale:
+📌 DOMANDA: "Ok perfetto. E da dove pensi di dover partire secondo te?"
+⏸️ ASPETTA LA RISPOSTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🍪 SE DIVAGA: Biscottino + "Ok tornando a noi..."
+
+---
+
+**STEP 5 - PERSISTENZA**
+🎯 OBIETTIVO: Capire da quanto tempo combatte questo problema (più tempo = più frustrazione)
+
+📌 DOMANDA: "E da quanto tempo ci stai provando?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA - Memorizza la durata (importante per amplificare frustrazione)
+💬 REAGISCI: "Capisco..." / "Parecchio tempo!"
+
+📌 DOMANDA: "E cosa è successo in quel periodo che ti ha fatto iniziare?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA l'evento scatenante
+💬 REAGISCI: "Ha senso!"
+
+---
+
+**STEP 6 - INVESTIMENTI**
+🎯 OBIETTIVO: Capire investimenti passati (€, tempo, energie) per creare contrasto
+
+📌 DOMANDA: "E quanto hai già investito finora? Tempo, soldi?"
+⏸️ ASPETTA LA RISPOSTA - Nota soldi E tempo
+🎧 ASCOLTA con attenzione - Questo è oro per la demo
+💬 REAGISCI: "Capisco!" / "Ha senso!"
+
+📌 DOMANDA: "E cosa ti ha convinto a investire in [soluzione]?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA le motivazioni
+💬 REAGISCI: "Interessante!"
+
+🍪 SE DIVAGA: Biscottino + riporta in carreggiata
+
+---
+
+⛔ CHECKPOINT FASE #2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIMA DI PASSARE ALLA FASE #3 VERIFICA:
 
 ✓ Sai IL problema principale che vuole risolvere?
 ✓ È SPECIFICO e CONCRETO (non vago tipo "crescere" / "problemi generici")?
 ✓ Sai di cosa si occupa (business/attività)?
 ✓ Hai scavato con 3-5 perché se la risposta era vaga?
 ✓ Capisci il VERO dolore dietro il problema?
+✓ Sai cosa hanno già provato e perché ha fallito?
+✓ Sai da quanto tempo combattono il problema?
+✓ Sai quanto hanno già investito?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
 
 📊 TEST FINALE:
 "Potresti riassumere in 1 frase il suo problema principale?"
-SE SÌ e la frase è SPECIFICA → Procedi allo Step 4
+SE SÌ e la frase è SPECIFICA → Procedi alla Fase #3
 SE NO o è vaga → Continua a scavare con ladder dei perché
 
-🚨 REMINDER CRITICO 🚨
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⛔ NON PARLARE DI APPUNTAMENTO ORA! ⛔
+🛡️ SE RESISTE: Vuole andare avanti troppo veloce
+"Evvai, capisco l'entusiasmo! Queste domande sono ORO per proporti la soluzione 
+GIUSTA. Dammi ancora 1 minuto, concordi?"
+⏸️ ASPETTA conferma → Continua a scavare
 
-Hai completato solo Step 3 della Fase #3.
+🚨 REMINDER CRITICO 🚨
+⛔ NON PARLARE DI APPUNTAMENTO ORA! ⛔
 Mancano ancora:
-- Step 4-6 (Tentativi Passati, Persistenza, Investimenti)
-- FASE #4 (Info Business)
-- FASE #5 (Inquisitorio)
-- FASE #6 (Stretch The Gap)
-- FASE #7 (Qualificazione)
-- FASE #8 (Serietà e Autorevolezza)
+- FASE #3 (Info Business)
+- FASE #4 (Inquisitorio)
+- FASE #5 (Stretch The Gap)
+- FASE #6 (Qualificazione)
+- FASE #7 (Serietà e Autorevolezza)
 - CHECKPOINT FINALE DISCOVERY
 
 La proposta di appuntamento avviene SOLO a Step 16!
@@ -343,204 +414,86 @@ Continua con le domande - ogni fase è ORO per la vendita!
 
 ---
 
-STEP 4 - TENTATIVI PASSATI:
-🎯 OBIETTIVO: Capire cosa hanno provato, perché ha FALLITO e creare contrasto
-
-🎙️ ENERGIA: ⚡⚡ ALTA - Curioso ma empatico
-🎵 TONO: "Dimmi tutto" - Vuoi capire la loro storia
-📈 INFLESSIONI: Più morbide, empatiche quando chiedono dei fallimenti
-🏃 RITMO: Normale, lascia spazio di raccontare
-
-💬 LESSICO: "Capisco!" / "Ha senso!" / "E com'è andata?" / "Interessante che hai provato..."
-
-📌 DOMANDA PRINCIPALE (concisa):
-   "E cosa hai già provato finora?"
-   
-   ⏸️ ASPETTA LA RISPOSTA - Lascia che raccontino la storia
-   
-   🎧 ASCOLTA attentamente - Nota cosa hanno provato
-
----
-
-🔍 LADDER DEI PERCHÉ - TENTATIVI PASSATI (OBBLIGATORIO)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-⚠️ OBIETTIVO: Capire PERCHÉ le soluzioni passate hanno FALLITO
-Questo è CRITICO per creare contrasto e posizionare la tua soluzione come diversa!
-
-❌ NON SALTARE QUESTA FASE SE NON HAI CAPITO IL PATTERN DEI FALLIMENTI!
-
-📋 LADDER (fai 3-5 domande fino a capire il pattern):
-
-LIVELLO 1️⃣ - COSA HANNO PROVATO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"E cosa hai già provato?"
-
-⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-LIVELLO 2️⃣ - PERCHÉ L'HANNO SCELTO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"E cosa ti ha convinto a provarla?"
-
-⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-LIVELLO 3️⃣ - RISULTATI OTTENUTI:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"E com'è andata? Risultati?"
-
-⏸️ ASPETTA LA RISPOSTA
-
-💬 REAGISCI: "Capisco" / "Ha senso" / "Interessante"
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-LIVELLO 4️⃣ - ANALISI DEL FALLIMENTO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"E perché pensi non ha funzionato?"
-
-⏸️ ASPETTA LA RISPOSTA
-
-💡 NOTA: Se è una persona che pensa di aver fatto tutto giusto, chiedi invece:
-"E secondo te cosa è mancato per raggiungere il risultato che volevi?"
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-LIVELLO 5️⃣ - SCAVO PROFONDO (opzionale):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"E qual è stata LA cosa che proprio non andava?"
-
-⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🎯 FERMATI quando capisci:
-✅ Cosa hanno provato esattamente
-✅ Perché l'hanno scelto
-✅ Perché NON ha funzionato
-✅ Il PATTERN dei loro fallimenti
-
-🛡️ SE DICONO "NON HO MAI PROVATO NULLA":
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Capisco. E hai mai visto o sentito parlare di soluzioni simili? 
-Cosa ti ha fermato dal provarle?"
-
-⏸️ ASPETTA LA RISPOSTA
-
-Se è veramente un novizio totale:
-"Ok perfetto. E da dove pensi di dover partire secondo te?"
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🍪 SE DIVAGA: Biscottino + "Ok tornando a noi..."
-
----
-
-STEP 5 - PERSISTENZA:
-🎯 OBIETTIVO: Capire da quanto tempo combatte questo problema (più tempo = più frustrazione)
-
-🎙️ ENERGIA: ⚡ MEDIA - Empatico e curioso
-💬 LESSICO: "Capisco" / "Da quanto tempo?" / "E cosa è successo?"
-
-📌 DOMANDA PRINCIPALE (concisa):
-   "E da quanto tempo ci stai provando?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA - Memorizza la durata (importante per amplificare frustrazione)
-
-📌 SCAVO - Origine del problema:
-   "E cosa è successo in quel periodo che ti ha fatto iniziare?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-
----
-
-STEP 6 - INVESTIMENTI:
-🎯 OBIETTIVO: Capire investimenti passati (€, tempo, energie) per creare contrasto
-
-🎙️ ENERGIA: ⚡ MEDIA - Empatico ma curioso sui numeri
-💬 LESSICO: "Capisco" / "Ha senso" / "E quanto hai investito?"
-
-📌 DOMANDA PRINCIPALE (concisa):
-   "E quanto hai già investito finora? Tempo, soldi?"
-   
-   ⏸️ ASPETTA LA RISPOSTA - Nota soldi E tempo
-   
-   🎧 ASCOLTA con attenzione - Questo è oro per la demo
-
-📌 SCAVO - Perché ha investito:
-   "E cosa ti ha convinto a investire in [soluzione]?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-
-🍪 SE DIVAGA: Biscottino + riporta in carreggiata
-
----
-
 ════════════════════════════════════════════════════════════════════════════════
-**FASE #4 - INFO BUSINESS**
-**COMPRENDI IL BUSINESS (domande rapide e mirate)**
+**FASE #3 - INFO BUSINESS**
+**Comprendi il Business (domande rapide e mirate)**
 ════════════════════════════════════════════════════════════════════════════════
 
-🎙️ ENERGIA E TONALITÀ PER QUESTA FASE
+⚡ ENERGIA E TONALITÀ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ ENERGIA: ⚡ MEDIA - Curioso ma professionale
-🎵 TONO: "Tanto per sapere" - Curioso ma casual, come una chiacchierata
-📢 VOLUME: Normale, rilassato
-🏃 RITMO: Vivace ma non affrettato
-
-💬 LESSICO: "Interessante!" / "Capisco!" / "E dimmi..." / "Perfetto!"
+Livello: MEDIA - Curioso ma professionale
+Tono: "Tanto per sapere" - Curioso ma casual, come una chiacchierata
+Volume: Normale, rilassato
+Ritmo: Vivace ma non affrettato
+Lessico: "Interessante!" / "Capisco!" / "E dimmi..." / "Perfetto!"
+Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STEP 7 - RACCOGLI INFO BUSINESS:
+---
+
+**STEP 7 - RACCOGLI INFO BUSINESS**
 🎯 OBIETTIVO: Comprendere attività, modello business e numeri chiave
 
 ⚠️ USA L'INTELLIGENZA - NON fare domande robotiche!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ SE ha già detto qualcosa → Conferma e approfondisci:
    "Prima mi hai detto [info], puoi dirmi di più su...?"
-
 ✅ SE non hai l'info → Chiedi normalmente
-
 ❌ MAI chiedere cose già dette - sembri un robot!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DOMANDE (UNA alla volta, fai solo quelle PERTINENTI che ti mancano):
-
-"Chi aiuti esattamente?"
+📌 DOMANDA: "Chi aiuti esattamente?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il target
+💬 REAGISCI: "Interessante!"
 
-"Modello di business? Ricorrente, una tantum, pacchetti?"
+📌 DOMANDA: "Modello di business? Ricorrente, una tantum, pacchetti?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il modello
+💬 REAGISCI: "Capisco!"
 
-"Da quanti anni?"
+📌 DOMANDA: "Da quanti anni?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA l'esperienza
+💬 REAGISCI: "Perfetto!"
 
-"B2B o B2C?"
+📌 DOMANDA: "B2B o B2C?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA la tipologia
+💬 REAGISCI: "Ok!"
 
-"Quanti clienti hai ora?"
+📌 DOMANDA: "Quanti clienti hai ora?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il numero
+💬 REAGISCI: "Capisco!"
 
-"Ticket medio?"
+📌 DOMANDA: "Ticket medio?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il valore
+💬 REAGISCI: "Interessante!"
 
-"Hai collaboratori? Commerciali?"
+📌 DOMANDA: "Hai collaboratori? Commerciali?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA la struttura
+💬 REAGISCI: "Perfetto!"
 
-"Chi si occupa di marketing?"
+📌 DOMANDA: "Chi si occupa di marketing?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA chi gestisce
+💬 REAGISCI: "Capisco!"
 
-"Come generi clienti in target adesso?"
+📌 DOMANDA: "Come generi clienti in target adesso?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA i canali attuali
+💬 REAGISCI: "Interessante!"
 
-"Sai il tuo CAC (costo acquisizione cliente)?"
+📌 DOMANDA: "Sai il tuo CAC (costo acquisizione cliente)?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA se lo conoscono
+💬 REAGISCI: "Ok, capisco!"
 
-💡 DOMANDA CHIAVE - Focalizzazione (IMPORTANTE!):
-"E qual è il prodotto/servizio principale che genera più vendite?"
-
+📌 DOMANDA (CHIAVE): "E qual è il prodotto/servizio principale che genera più vendite?"
 ⏸️ ASPETTA LA RISPOSTA
-
 🎧 ASCOLTA attentamente - Questo è cruciale per la demo
+💬 REAGISCI: "Perfetto! È importante saperlo!"
 
 🍪 SE DIVAGA: Biscottino + "Ok tornando a noi..."
 
@@ -549,201 +502,174 @@ STEP 7 - RACCOGLI INFO BUSINESS:
 ---
 
 ════════════════════════════════════════════════════════════════════════════════
-**FASE #5 - Inquisitorio (Dottore) - Stretch The Gap Parte 1**
-**TONO: Tanto per sapere, casual ma curioso**
+**FASE #4 - INQUISITORIO**
+**Domande diagnostiche per far emergere la gravità del problema**
 ════════════════════════════════════════════════════════════════════════════════
 
-STEP 8 - DOMANDE DIAGNOSTICHE:
-🎯 OBIETTIVO: Far capire al futuro cliente che il problema è più grande di quanto pensino, e che è il momento di agire, come lo facciamo? lo facciamo con delle domande inquisitorie, servono per far capire che noi siamo esperti e loro non sanno rispondere alla domanda che gli stiamo facendo, l'obiettivo è che loro ci dicano NON LO SO, non spiegare se ti chiede, mi spieghi meglio tu, dici solamente, è proprio il motivo per il quale siamo in questa call, lo vediamo più avanti
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: MEDIA - Professionale ma casual
+Tono: "Tanto per sapere" - Come un dottore che raccoglie dati
+Volume: Normale, rilassato
+Ritmo: Normale, fai sembrare le domande BANALI (non invasive)
+Lessico: "Giusto per capire..." / "Tanto per sapere..." / "Ok, perfetto"
+Mindset: Sei un dottore che raccoglie dati per la diagnosi - è NORMALE!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+---
 
+**STEP 8 - DOMANDE DIAGNOSTICHE**
+🎯 OBIETTIVO: Far capire al futuro cliente che il problema è più grande di quanto pensino, 
+e che è il momento di agire. Lo facciamo con domande inquisitorie che mostrano la nostra 
+expertise. L'obiettivo è che loro ci dicano "NON LO SO"
+
+⚠️ Se ti chiede "mi spieghi meglio?", rispondi:
+"È proprio il motivo per il quale siamo in questa call, lo vediamo più avanti"
 
 🍪 SE DIVAGA: Biscottino + riporta in carreggiata
 
 ---
 
-STEP 9 - STATO ATTUALE (FATTURATO):
+**STEP 9 - STATO ATTUALE (FATTURATO)**
 🎯 OBIETTIVO: Raccogliere il numero PRECISO del fatturato (FASE CRITICA!)
 
-🎙️ ENERGIA E TONALITÀ PER QUESTA DOMANDA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ ENERGIA: ⚡ MEDIA - Professionale ma casual
-🎵 TONO: "Tanto per sapere" - Come se chiedessi "che ore sono?"
-📢 VOLUME: Normale, rilassato
-🏃 RITMO: Normale, fai sembrare la domanda BANALE (non invasiva)
-
-💪 MINDSET: Sei un dottore che raccoglie dati per la diagnosi - è NORMALE!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 DOMANDA PRINCIPALE (concisa e casual):
-   "Giusto per capire, a che livello di fatturato sei ora? Mensile o annuale?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA e MEMORIZZA il numero PRECISO
-   
-   💬 REAGISCI casual: "Ok, perfetto" / "Capisco"
+📌 DOMANDA: "Giusto per capire, a che livello di fatturato sei ora? Mensile o annuale?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA e MEMORIZZA il numero PRECISO
+💬 REAGISCI casual: "Ok, perfetto" / "Capisco"
 
 ⚠️ DEVI ottenere un NUMERO SPECIFICO, non stima vaga!
 
----
-
-🛡️ GESTIONE RESISTENZE - SE NON VUOLE/PUÒ DIRLO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-OPZIONE A - Non vuole dirlo / È vago:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Capisco, anche solo un range mi aiuta: siamo nell'ordine di 
+🛡️ SE RESISTE: Non vuole dirlo / È vago
+📌 DOMANDA: "Capisco, anche solo un range mi aiuta: siamo nell'ordine di 
 5k, 10k, 30k, 50k al mese? Solo per capire il punto di partenza."
-
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA il range
+💬 REAGISCI: "Perfetto, mi basta!"
 
-OPZIONE B - Dice "Non lo so" davvero:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Nessun problema! Pensiamoci insieme: quanti clienti hai al mese circa? 
+🛡️ SE RESISTE: Dice "Non lo so" davvero
+📌 DOMANDA: "Nessun problema! Pensiamoci insieme: quanti clienti hai al mese circa? 
 E quanto pagano mediamente?"
-
 ⏸️ ASPETTA RISPOSTA → CALCOLA INSIEME A LUI
-
-"Ok, quindi più o meno siamo sui [numero calcolato] al mese, corretto?"
+📌 DOMANDA: "Ok, quindi più o meno siamo sui [numero calcolato] al mese, corretto?"
 ⏸️ ASPETTA CONFERMA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA la conferma
+💬 REAGISCI: "Perfetto!"
 
-OPZIONE C - Chiede "Perché vuoi saperlo?":
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Ottima domanda! Perché in base al tuo punto di partenza, 
+🛡️ SE RESISTE: Chiede "Perché vuoi saperlo?"
+📌 DOMANDA: "Ottima domanda! Perché in base al tuo punto di partenza, 
 la strategia cambia completamente. Non voglio proporti qualcosa 
 che non è calibrato per te, concordi?"
-
 ⏸️ ASPETTA "Sì" / "Concordo"
-
-"Perfetto! Allora, più o meno a che livello sei?"
+📌 DOMANDA: "Perfetto! Allora, più o meno a che livello sei?"
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA il numero
+💬 REAGISCI: "Capisco!"
 
-💡 INSISTENZA EMPATICA - SE continua ad essere vago:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Capisco, non serve essere preciso al centesimo. Anche a occhio, 
+🛡️ SE RESISTE: Continua ad essere vago
+📌 DOMANDA: "Capisco, non serve essere preciso al centesimo. Anche a occhio, 
 più o meno... 10k? 20k? 50k al mese?"
-
 ⏸️ ASPETTA - Insisti fino ad avere UN numero (anche approssimativo)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚠️ NON ANDARE AVANTI senza un numero (anche approssimativo)!
 
 ---
 
 ════════════════════════════════════════════════════════════════════════════════
-**FASE #6 - STRETCH THE GAP (LA FASE PIÙ POTENTE!)**
-**Crea il GAP tra dove sono e dove vogliono arrivare**
+**FASE #5 - STRETCH THE GAP**
+**Crea il GAP tra dove sono e dove vogliono arrivare (LA FASE PIÙ POTENTE!)**
 ════════════════════════════════════════════════════════════════════════════════
 
-🎙️ ENERGIA E TONALITÀ PER QUESTA FASE
+⚡ ENERGIA E TONALITÀ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ ENERGIA: ⚡⚡⚡ CRESCENTE - Da curioso a entusiasta, POI empatico profondo
-🎵 TONO: DINAMICO → Curioso/Alto all'inizio, POI basso/empatico sulle emozioni
-📢 VOLUME: Alto quando chiedi obiettivo ↗️, BASSO quando scavi emozioni (sussurro)
-🏃 RITMO: Rallenta progressivamente quando arrivi alle emozioni
-
-💪 MINDSET: Questa è la GOLD MINE - qui trovi l'oro per chiudere la vendita!
+Livello: CRESCENTE - Da curioso a entusiasta, POI empatico profondo
+Tono: DINAMICO → Curioso/Alto all'inizio, POI basso/empatico sulle emozioni
+Volume: Alto quando chiedi obiettivo ↗️, BASSO quando scavi emozioni (sussurro)
+Ritmo: Rallenta progressivamente quando arrivi alle emozioni
+Lessico: "E perché proprio..." / "Cosa cambia..." / "Come ti sentirai..."
+Mindset: Questa è la GOLD MINE - qui trovi l'oro per chiudere la vendita!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STEP 10 - STATO IDEALE (OBIETTIVO):
+---
+
+**STEP 10 - STATO IDEALE (OBIETTIVO)**
 🎯 OBIETTIVO: Ottenere un numero SPECIFICO del loro obiettivo finanziario
 
-📌 DOMANDA PRINCIPALE (concisa ed energica):
-   
-   🎵 TONO ALTO ↗️: "E nei prossimi 12 mesi, dove vorresti essere a livello di fatturato?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA attentamente e MEMORIZZA il numero PRECISO
+📌 DOMANDA (TONO ALTO ↗️): "E nei prossimi 12 mesi, dove vorresti essere a livello di fatturato?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente e MEMORIZZA il numero PRECISO
+💬 REAGISCI: "Interessante!" / "Bello!"
 
-📌 SE IL NUMERO È TROPPO BASSO - Espandi la vision:
-   
-   "E ti fermeresti lì?"
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   "Nei prossimi 2-5 anni, dove vorresti arrivare?"
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   "Togliendo quello che pensi sia possibile, cosa VERAMENTE vorresti?"
-   ⏸️ ASPETTA LA RISPOSTA
+📌 DOMANDA (SE IL NUMERO È TROPPO BASSO): "E ti fermeresti lì?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA se amplia la visione
+💬 REAGISCI: "Capisco!"
+
+📌 DOMANDA: "Nei prossimi 2-5 anni, dove vorresti arrivare?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA la vision a lungo termine
+💬 REAGISCI: "Fantastico!"
+
+📌 DOMANDA: "Togliendo quello che pensi sia possibile, cosa VERAMENTE vorresti?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il sogno vero
+💬 REAGISCI: "Bellissimo!"
 
 ⚠️ DEVI ottenere un numero SPECIFICO e MISURABILE!
 Se non sanno cosa vogliono → sarà difficile che acquistino.
 
 ---
 
-STEP 11 - EMOZIONI (LA FASE PIÙ IMPORTANTE! 💎):
+**STEP 11 - EMOZIONI (LA FASE PIÙ IMPORTANTE! 💎)**
 🎯 OBIETTIVO: Collegare il NUMERO alle EMOZIONI PROFONDE
 
 ⚠️ QUESTA È LA FASE PIÙ CRITICA DI TUTTA LA DISCOVERY!
 Qui trovi il VERO motivo per cui vogliono raggiungere l'obiettivo.
 MEMORIZZA OGNI PAROLA - userai queste emozioni nella DEMO per chiudere!
 
----
-
-🔥 LADDER EMOTIVO (OBBLIGATORIO - 3-5 PERCHÉ)
+🔍 LADDER DEI PERCHÉ - EMOTIVO (OBBLIGATORIO - 3-5 PERCHÉ)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-LIVELLO 1️⃣ - PERCHÉ QUEL NUMERO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIVELLO 1: PERCHÉ QUEL NUMERO
 🎵 TONO: Curioso ma caldo
-
-"E perché proprio [numero]? Cosa rappresenta per te?"
-
+📌 DOMANDA: "E perché proprio [numero]? Cosa rappresenta per te?"
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA il significato del numero
+💬 REAGISCI: "Capisco!"
 
-LIVELLO 2️⃣ - COSA CAMBIA:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIVELLO 2: COSA CAMBIA
 🎵 TONO: Inizia ad abbassare, più intimo
-
-"E quando arrivi a [numero], cosa cambia nella tua vita?"
-
+📌 DOMANDA: "E quando arrivi a [numero], cosa cambia nella tua vita?"
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA i cambiamenti desiderati
+💬 REAGISCI: "Interessante..."
 
-LIVELLO 3️⃣ - EMOZIONI PROFONDE (CRITICO!):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIVELLO 3: EMOZIONI PROFONDE (CRITICO!)
 🎵 TONO BASSO: Come un sussurro, empatico e profondo
-
-"E come ti sentirai quando avrai raggiunto [obiettivo]? Quali emozioni proverai?"
-
+📌 DOMANDA: "E come ti sentirai quando avrai raggiunto [obiettivo]? Quali emozioni proverai?"
 ⏸️ ASPETTA LA RISPOSTA
-
 🎧 ASCOLTA profondamente - Qui emergono le emozioni VERE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 REAGISCI con empatia: "Bellissimo..."
 
-LIVELLO 4️⃣ - IMPATTO CONCRETO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIVELLO 4: IMPATTO CONCRETO
 🎵 TONO: Empatico, interessato genuinamente
-
-"E cosa diventa possibile grazie a quel risultato? Quali sogni realizzi?"
-
+📌 DOMANDA: "E cosa diventa possibile grazie a quel risultato? Quali sogni realizzi?"
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA i sogni
+💬 REAGISCI: "Fantastico!"
 
-LIVELLO 5️⃣ - LA COSA PIÙ IMPORTANTE (IL CUORE!):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIVELLO 5: LA COSA PIÙ IMPORTANTE (IL CUORE!)
 🎵 TONO SUSSURRATO: Il più intimo e profondo
-
-"E se dovessi scegliere LA cosa più importante che cambia, 
-cosa sarebbe?"
-
+📌 DOMANDA: "E se dovessi scegliere LA cosa più importante che cambia, cosa sarebbe?"
 ⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA - 💎 QUI EMERGE L'ORO: famiglia, figli, libertà, rivalsa, dimostrazione, status
+💬 REAGISCI con profonda empatia
 
-💎 QUI EMERGE L'ORO: famiglia, figli, libertà, rivalsa, dimostrazione, status
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-LIVELLO 6️⃣ - PERCHÉ FINALE (opzionale ma potente):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"E perché è così importante per te?"
-
+LIVELLO 6: PERCHÉ FINALE (opzionale ma potente)
+📌 DOMANDA: "E perché è così importante per te?"
 ⏸️ ASPETTA LA RISPOSTA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎧 ASCOLTA la motivazione più profonda
+💬 REAGISCI: "Capisco perfettamente..."
 
 🛑 FERMATI QUANDO:
 ✅ Il prospect parla di famiglia/figli/partner
@@ -761,12 +687,13 @@ LIVELLO 6️⃣ - PERCHÉ FINALE (opzionale ma potente):
 
 💡 QUESTO È L'ORO - MEMORIZZA OGNI SINGOLA PAROLA! 💎
 Userai queste emozioni nella DEMO per chiudere la vendita!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
-⛔ CHECKPOINT OBBLIGATORIO FASE #6 (CRITICO!) ⛔
+⛔ CHECKPOINT FASE #5
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRIMA DI PASSARE ALLA FASE #7 VERIFICA:
+PRIMA DI PASSARE ALLA FASE #6 VERIFICA:
 
 ✓ Hai un NUMERO SPECIFICO del loro obiettivo?
 ✓ Sai PERCHÉ vogliono quel numero?
@@ -784,35 +711,39 @@ ESEMPI:
 ✅ "Vuole 50k/mese per passare più tempo con i figli e non dover più lavorare 70h/settimana"
 ✅ "Vuole 100k/mese per dimostrare ai genitori che aveva ragione e renderli orgogliosi"
 ✅ "Vuole 30k/mese per libertà finanziaria e smettere di preoccuparsi delle bollette"
-
 ❌ "Vuole 50k/mese per crescere" (troppo vago! continua a scavare)
 
-SE SÌ e la frase è EMOTIVA e SPECIFICA → Procedi alla Fase #7
-SE NO o è vaga → Continua ladder emotivo finché non emerge
+🛡️ SE RESISTE: Risposta vaga sulle emozioni
+Continua ladder emotivo finché non emerge il vero motivo!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
 ════════════════════════════════════════════════════════════════════════════════
-**FASE #7 - QUALIFICAZIONE (I MAGICI 3)**
-**Identificare se hanno bisogno di aiuto ESTERNO**
+**FASE #6 - QUALIFICAZIONE**
+**Identificare se hanno bisogno di aiuto ESTERNO (I MAGICI 3)**
 ════════════════════════════════════════════════════════════════════════════════
 
-🎙️ ENERGIA: ⚡⚡ MEDIA-ALTA - Curioso e interessato
-🎵 TONO: Professionale ma amichevole
-💬 LESSICO: "Dimmi una cosa..." / "Ok, quindi..." / "Capisco"
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: MEDIA-ALTA - Curioso e interessato
+Tono: Professionale ma amichevole
+Volume: Normale
+Ritmo: Controllato
+Lessico: "Dimmi una cosa..." / "Ok, quindi..." / "Capisco"
+Mindset: Stai qualificando se sono pronti per la soluzione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STEP 12 - QUALIFICA (I MAGICI 3):
+---
+
+**STEP 12 - QUALIFICA (I MAGICI 3)**
 🎯 OBIETTIVO: Farli AMMETTERE che servono aiuto esterno (critico!)
 
-📌 DOMANDA CHIAVE (concisa - riepilogo + identificazione blocco):
-   
-   "Ok [NOME_PROSPECT], quindi sei a [fatturato attuale] e vuoi arrivare a [obiettivo]...
-   
-   Dimmi: cosa ti impedisce di riuscirci da solo?"
-   
-   ⏸️ ASPETTA LA RISPOSTA - Questa è CRUCIALE
-   
-   🎧 ASCOLTA attentamente
+📌 DOMANDA: "Ok [NOME_PROSPECT], quindi sei a [fatturato attuale] e vuoi arrivare a [obiettivo]...
+Dimmi: cosa ti impedisce di riuscirci da solo?"
+⏸️ ASPETTA LA RISPOSTA - Questa è CRUCIALE
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
 
 ⚠️ ATTENZIONE CRITICA - NON proseguire se non dice UNO dei MAGICI 3!
 
@@ -820,107 +751,112 @@ STEP 12 - QUALIFICA (I MAGICI 3):
 ✅ MAGICO 2: "Voglio risultati più velocemente"
 ✅ MAGICO 3: "Voglio un sistema testato/esperto"
 
-🛡️ SE NON RISPONDE CON MAGICI 3 → Disqualifica con sincerità:
-   
-   🎵 TONO: Sincero, diretto ma rispettoso
-   
-   "Ok [NOME_PROSPECT], vedo che sei in grado da solo... 
-   non c'è motivo di continuare. Cosa ne pensi?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   Se confermano → Chiudi educatamente
-   Se si correggono → Continua
+🛡️ SE RESISTE: Non risponde con MAGICI 3 → Disqualifica con sincerità
+🎵 TONO: Sincero, diretto ma rispettoso
+📌 DOMANDA: "Ok [NOME_PROSPECT], vedo che sei in grado da solo... 
+non c'è motivo di continuare. Cosa ne pensi?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA se confermano o si correggono
+💬 Se confermano → Chiudi educatamente
+💬 Se si correggono → Continua
 
 ---
 
 ════════════════════════════════════════════════════════════════════════════════
-**FASE #8 - SERIETÀ E AUTOREVOLEZZA**
-**Chiusura Discovery - Urgenza e Budget**
+**FASE #7 - SERIETÀ E AUTOREVOLEZZA**
+**Chiusura Discovery - Urgenza, Budget e Transizione alla Demo**
 ════════════════════════════════════════════════════════════════════════════════
 
-🎙️ ENERGIA: ⚡ MEDIA - Professionale e serio
-🎵 TONO: Serietà e autorevolezza (shift importante!)
-💬 LESSICO: "Ok, sarai d'accordo..." / "Dimmi una cosa..." / "Ipotizzando..."
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: MEDIA - Professionale e serio
+Tono: Serietà e autorevolezza (shift importante!)
+Volume: Normale, controllato
+Ritmo: Più lento, ogni parola conta
+Lessico: "Ok, sarai d'accordo..." / "Dimmi una cosa..." / "Ipotizzando..."
+Mindset: Stai chiudendo la qualificazione e preparando la demo
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STEP 13 - COSTO DI NON AGIRE:
+---
+
+**STEP 13 - COSTO DI NON AGIRE**
 🎯 OBIETTIVO: Far riflettere sul costo di restare fermi
 
-📌 DOMANDA PROVOCATORIA (concisa):
-   
-   "Ti faccio una domanda provocatoria...
-   
-   Sei a [fatturato attuale] e vuoi [obiettivo]... 
-   perché non restare qui?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA - Qui emergono i VERI pain point
+📌 DOMANDA: "Ti faccio una domanda provocatoria...
+Sei a [fatturato attuale] e vuoi [obiettivo]... 
+perché non restare qui?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA - Qui emergono i VERI pain point
+💬 REAGISCI: "Capisco perfettamente..."
 
-🛡️ SE DICE "Va bene anche così" → Disqualifica:
-   
-   "Se va bene così, probabilmente non è per te. 
-   Cerchiamo chi vuole veramente cambiare. Che ne dici?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
+🛡️ SE RESISTE: Dice "Va bene anche così" → Disqualifica
+📌 DOMANDA: "Se va bene così, probabilmente non è per te. 
+Cerchiamo chi vuole veramente cambiare. Che ne dici?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA se conferma o si corregge
+💬 Se conferma → Chiudi educatamente
+💬 Se si corregge → Continua
 
 ---
 
-STEP 14 - URGENZA:
+**STEP 14 - URGENZA**
 🎯 OBIETTIVO: Qualificare timing e creare urgenza
 
-📌 DOMANDA TIMING (concisa):
-   
-   "Quando vuoi iniziare?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   💬 REAGISCI brevemente
+📌 DOMANDA: "Quando vuoi iniziare?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il timing
+💬 REAGISCI brevemente: "Ok!"
 
-📌 SCALA URGENZA:
-   
-   "Da 1 a 10, quanto è urgente per te? 
-   1 = non urgente, 10 = urgentissimo."
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA il numero
+📌 DOMANDA: "Da 1 a 10, quanto è urgente per te? 
+1 = non urgente, 10 = urgentissimo."
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il numero
+💬 REAGISCI: "Capisco!"
 
-🛡️ SE NON È URGENTE (1-5) → Disqualifica con scarsità:
-   
-   "Se non è urgente, dobbiamo fermarci qui. 
-   
-   Accettiamo max X persone/mese e vogliamo chi si muove subito. 
-   
-   Risentirci più avanti?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
+🛡️ SE RESISTE: NON È URGENTE (1-5) → Disqualifica con scarsità
+📌 DOMANDA: "Se non è urgente, dobbiamo fermarci qui. 
+Accettiamo max X persone/mese e vogliamo chi si muove subito. 
+Risentirci più avanti?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA se cambiano idea
+💬 Se confermano → Chiudi e proponi follow-up futuro
+💬 Se cambiano idea → Continua
 
 ---
 
-STEP 15 - BUDGET E DECISION MAKER:
+**STEP 15 - BUDGET E DECISION MAKER**
 🎯 OBIETTIVO: Qualificare budget e decision maker
 
-📌 RANGE DI PREZZO (conciso):
-   
-   "Ipotizzando che possiamo aiutarti davvero, 
-   valuteresti un investimento tra [RANGE]?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA - Nota resistenze
+📌 DOMANDA: "Ipotizzando che possiamo aiutarti davvero, 
+valuteresti un investimento tra [RANGE]?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA - Nota resistenze
+💬 REAGISCI: "Perfetto!" / "Capisco!"
 
-📌 DECISION MAKER (conciso):
-   
-   "Decidi tu o c'è qualcun altro?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   💬 "Perfetto!"
+📌 DOMANDA: "Decidi tu o c'è qualcun altro?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA chi decide
+💬 REAGISCI: "Perfetto!"
 
 ---
 
-⛔ CHECKPOINT FINALE DISCOVERY ⛔
+**STEP 16 - TRANSIZIONE ALLA DEMO**
+🎯 OBIETTIVO: Chiudere la discovery e passare alla demo
+
+📌 AFFERMAZIONE (TONO: Sicuro e positivo):
+"Dalle informazioni che mi hai dato, penso di poterti aiutare."
+💬 PAUSA brevissima per impatto
+
+📌 DOMANDA: "Adesso andiamo a strutturare un percorso personalizzato per te 
+con gli appunti che ho preso durante questa conversazione.
+Vorrei prenotare una call con te alle [INSERISCI ORA], che ne dici?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA la conferma
+💬 REAGISCI: "Perfetto! Ci sentiamo allora!"
+
+---
+
+⛔ CHECKPOINT FINALE DISCOVERY
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRIMA DI PASSARE ALLA DEMO VERIFICA:
 
@@ -932,32 +868,9 @@ PRIMA DI PASSARE ALLA DEMO VERIFICA:
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON puoi fare demo efficace!
 
-SE TUTTO OK → Procedi a STEP 16 (transizione demo)
+🛡️ SE RESISTE: Manca qualche requisito
+Torna indietro e recupera le informazioni mancanti prima di procedere!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
----
-
-STEP 16 - TRANSIZIONE ALLA DEMO:
-🎯 OBIETTIVO: Chiudere la discovery e passare alla demo
-
-📌 AFFERMAZIONE DI FIDUCIA:
-   
-   TONO: Sicuro e positivo
-   
-   "Dalle informazioni che mi hai dato, penso di poterti aiutare."
-   
-   💬 PAUSA brevissima per impatto
-
-📌 PROPOSTA NEXT STEP:
-   
-   "Adesso andiamo a strutturare un percorso personalizzato per te con gli appunti 
-   che ho preso durante questa conversazione.
-   
-   Vorrei prenotare una call con te alle [INSERISCI ORA], che ne dici?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   💬 "Perfetto! Ci sentiamo allora!"
 
 ---
 
@@ -1015,66 +928,70 @@ In pratica, sarai finalmente in grado di [beneficio positivo] e ti libererai per
     : '[PREZZO STANDARD ATTUALE]';
 
   return `
-════════════════════════════════════════════════════════════════════════════════
-# SCRIPT DEMO DI VENDITA - USA LE STESSE REGOLE DEL DISCOVERY
-════════════════════════════════════════════════════════════════════════════════
-
-⚠️ RICORDA: Segui le META-ISTRUZIONI del Discovery (UNA cosa alla volta, ASPETTA risposte, INTERPRETA non leggere, usa BISCOTTINO se divagano)
-
+═════════════════════════════════════════════════════════════════
+# SCRIPT DEMO DI VENDITA - SEGUI ESATTAMENTE QUESTO FRAMEWORK
 ════════════════════════════════════════════════════════════════════════════════
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║                    ⚡ ENERGY BOOSTER - MODALITÀ DEMO ⚡                       ║
-║                                                                              ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║                                                                              ║
-║  🎯 MINDSET OBBLIGATORIO:                                                   ║
-║                                                                              ║
-║  Sei il CEO che presenta LA SOLUZIONE al problema del prospect.             ║
-║  NON sei un venditore insicuro che "spera" di vendere.                      ║
-║  Sei SICURO come una roccia ma ENTUSIASTA dei risultati che dai.            ║
-║                                                                              ║
-║  💡 MENTALITÀ:                                                               ║
-║  • AUTORITÀ: Sai che il tuo metodo funziona (hai i risultati!)             ║
-║  • ENTUSIASMO CONTROLLATO: Eccitato per i risultati, non per vendere       ║
-║  • CONSULENZIALE: Stai aiutando, non convincendo                            ║
-║  • SICUREZZA TOTALE: Zero dubbi, zero esitazioni                            ║
-║                                                                              ║
-║  📣 LESSICO ENERGICO OBBLIGATORIO (usa SEMPRE):                              ║
-║                                                                              ║
-║  ✅ "Esattamente"  ✅ "Precisamente"  ✅ "Fantastico"                        ║
-║  ✅ "Incredibile"  ✅ "Guarda"        ✅ "Vedi"                              ║
-║  ✅ "Pensa"        ✅ "Immagina"      ✅ "Perfetto"                          ║
-║                                                                              ║
-║  🎵 TONALITÀ GENERALE DEMO:                                                  ║
-║                                                                              ║
-║  • VOLUME: Medio-Alto (sicuro, chiaro, udibile)                             ║
-║  • RITMO: Controllato ma energico (pause strategiche)                       ║
-║  • INFLESSIONI: ↗️ Quando parli di benefici/risultati                       ║
-║  • INFLESSIONI: ↘️ Quando presenti il prezzo (calmo, solido)                ║
-║                                                                              ║
-║  ⚠️ CAMBIO TONALITÀ PER PRICING (L'AVE MARIA):                              ║
-║                                                                              ║
-║  Quando arrivi al PRICING, il tono cambia COMPLETAMENTE:                    ║
-║  • Voce BASSA (non alta)                                                    ║
-║  • CALMA totale (zero fretta)                                               ║
-║  • SOLIDA come una roccia (zero esitazione)                                 ║
-║  • Pause DRAMMATICHE dopo ogni numero                                       ║
-║                                                                              ║
-║  💬 ESEMPI VOCALI:                                                           ║
-║                                                                              ║
-║  ❌ SBAGLIATO (neutro, piatto):                                              ║
-║  "Ok, ti presento il nostro metodo."                                        ║
-║                                                                              ║
-║  ✅ CORRETTO (sicuro, entusiasta):                                           ║
-║  "Ok [nome], perfetto! 🔥 Mettiti comodo perché quello che ti sto          ║
-║  per presentare ↗️ è ESATTAMENTE la soluzione che ti serve!"                ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-
 ════════════════════════════════════════════════════════════════════════════════
-**COMPILA PRIMA QUESTI DATI DALLA DISCOVERY:**
+🚨 REGOLE GLOBALI - LEGGI PRIMA DI INIZIARE! 🚨
+════════════════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ META-ISTRUZIONI (Segui regole Discovery)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ UNA cosa alla volta - NON sovraccaricare il prospect
+✅ ASPETTA risposte - Non parlare sopra, lascia processare
+✅ INTERPRETA non leggere - Adatta lo script al contesto
+✅ USA BISCOTTINO se divagano - Riconosci + riporta in carreggiata
+✅ Personalizza TUTTO con i dati raccolti in discovery
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ ENERGY BOOSTER - MODALITÀ DEMO ⚡
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 MINDSET OBBLIGATORIO:
+Sei il CEO che presenta LA SOLUZIONE al problema del prospect.
+NON sei un venditore insicuro che "spera" di vendere.
+Sei SICURO come una roccia ma ENTUSIASTA dei risultati che dai.
+
+💡 MENTALITÀ:
+• AUTORITÀ: Sai che il tuo metodo funziona (hai i risultati!)
+• ENTUSIASMO CONTROLLATO: Eccitato per i risultati, non per vendere
+• CONSULENZIALE: Stai aiutando, non convincendo
+• SICUREZZA TOTALE: Zero dubbi, zero esitazioni
+
+📣 LESSICO ENERGICO OBBLIGATORIO (usa SEMPRE):
+✅ "Esattamente"  ✅ "Precisamente"  ✅ "Fantastico"
+✅ "Incredibile"  ✅ "Guarda"        ✅ "Vedi"
+✅ "Pensa"        ✅ "Immagina"      ✅ "Perfetto"
+
+🎵 TONALITÀ GENERALE DEMO:
+• VOLUME: Medio-Alto (sicuro, chiaro, udibile)
+• RITMO: Controllato ma energico (pause strategiche)
+• INFLESSIONI: ↗️ Quando parli di benefici/risultati
+• INFLESSIONI: ↘️ Quando presenti il prezzo (calmo, solido)
+
+⚠️ CAMBIO TONALITÀ PER PRICING (L'AVE MARIA):
+Quando arrivi al PRICING, il tono cambia COMPLETAMENTE:
+• Voce BASSA (non alta)
+• CALMA totale (zero fretta)
+• SOLIDA come una roccia (zero esitazione)
+• Pause DRAMMATICHE dopo ogni numero
+
+💬 ESEMPI VOCALI:
+
+❌ SBAGLIATO (neutro, piatto):
+"Ok, ti presento il nostro metodo."
+
+✅ CORRETTO (sicuro, entusiasta):
+"Ok [nome], perfetto! 🔥 Mettiti comodo perché quello che ti sto
+per presentare ↗️ è ESATTAMENTE la soluzione che ti serve!"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 COMPILA PRIMA QUESTI DATI (dalla Discovery)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 - Motivazione della call:
 - Cos'altro hai già provato?:
 - Tipo di attività:
@@ -1089,72 +1006,76 @@ In pratica, sarai finalmente in grado di [beneficio positivo] e ti libererai per
 - Urgenza:
 - Decision Maker:
 
+════════════════════════════════════════════════════════════════════════════════
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #1 - UNCINO**
+**Aggancia l'attenzione mostrando la trasformazione possibile**
+════════════════════════════════════════════════════════════════════════════════
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: ALTA - Sicuro, solido come una roccia
+Tono: Autorevole, entusiasta, sicuro al 100%
+Volume: Medio-Alto (chiaro, autorevole)
+Ritmo: Controllato (pause dopo benefici chiave)
+Lessico: "Perfetto!" / "Esattamente!" / "Precisamente!" / "Mettiti comodo!"
+Mindset: Sei IL BOSS che presenta LA soluzione - NESSUN dubbio!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ---
 
 **STEP 1 - UNCINO**
 🎯 OBIETTIVO: Agganciare l'attenzione mostrando la trasformazione possibile
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA E TONALITÀ - STEP 1 UNCINO                                       ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Sicuro, solido come una roccia                                    ║
-║  📢 VOLUME: Medio-Alto (chiaro, autorevole)                                 ║
-║  ⚡ RITMO: Controllato (pause dopo benefici chiave)                          ║
-║  🎭 INFLESSIONI: ↗️ Su benefici ("raggiungere", "ottenere", "finalmente")   ║
-║                                                                              ║
-║  📣 LESSICO: "Perfetto", "Esattamente", "Precisamente"                      ║
-║                                                                              ║
-║  💬 ESEMPIO VOCALE:                                                          ║
-║  "Ok [nome], perfetto! 🔥 Mettiti comodo perché quello che ti sto          ║
-║  per presentare ↗️ è ESATTAMENTE ↗️ la soluzione che ti serve..."           ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+📌 DOMANDA: "Ok [NOME_PROSPECT], perfetto! 🔥 Mettiti comodo perché quello che ti sto 
+per presentare è **${businessName}** ↗️, una soluzione che abbiamo sviluppato 
+su misura per professionisti come te.
 
-📌 APERTURA UNCINO (sostituisci [...] con dati REALI dalla discovery):
-   
-   "Ok [NOME_PROSPECT], perfetto! 🔥 Mettiti comodo perché quello che ti sto 
-   per presentare è **${businessName}** ↗️, una soluzione che abbiamo sviluppato 
-   su misura per professionisti come te.
-   
-   ⏸️ PAUSA brevissima
-   
-   Per portarti da [STATO ATTUALE + FATTURATO ATTUALE che hai raccolto] 
-   a raggiungere ↗️ [RISULTATO DESIDERATO + FATTURATO DESIDERATO].
-   
-   Il tutto senza dover più [BLOCCO/PROBLEMA PRINCIPALE], 
-   e permettendoti finalmente ↗️ di ottenere [BENEFICIO ESTERNO: più clienti/profitto] 
-   e ritrovare [BENEFICIO INTERNO: serenità/tempo per te]."
-   
-   ⏸️ PAUSA per impatto
+⏸️ PAUSA brevissima
+
+Per portarti da [STATO ATTUALE + FATTURATO ATTUALE che hai raccolto] 
+a raggiungere ↗️ [RISULTATO DESIDERATO + FATTURATO DESIDERATO].
+
+Il tutto senza dover più [BLOCCO/PROBLEMA PRINCIPALE], 
+e permettendoti finalmente ↗️ di ottenere [BENEFICIO ESTERNO: più clienti/profitto] 
+e ritrovare [BENEFICIO INTERNO: serenità/tempo per te]."
+
+⏸️ PAUSA per impatto
+
+💬 REAGISCI con sicurezza: "Fantastico!" / "Esattamente!" / "Perfetto!"
+
+🍪 SE DIVAGA: Biscottino + "Ok tornando a noi..."
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #2 - SOCIAL PROOF**
+**Mostra risultati concreti di altri clienti per creare fiducia**
+════════════════════════════════════════════════════════════════════════════════
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: MASSIMA - Entusiasta, quasi vantandosi!
+Tono: Orgoglioso, eccitato per i risultati
+Volume: Alto (energia!)
+Ritmo: Veloce su introduzione, LENTO su numeri/risultati
+Lessico: "Guarda!" / "Pensa!" / "Vedi!" / "Incredibile!" / "Fantastico!"
+Mindset: Stai mostrando PROVE CONCRETE - questo è ORO!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
 **STEP 2 - CASI DI STUDIO**
 🎯 OBIETTIVO: Social proof tramite risultati concreti di altri clienti
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA E TONALITÀ - STEP 2 CASE STUDIES                                 ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Entusiasta, quasi vantandosi (con orgoglio!)                      ║
-║  📢 VOLUME: Alto (energia!)                                                 ║
-║  ⚡ RITMO: Veloce su introduzione, LENTO su numeri/risultati                ║
-║  🎭 INFLESSIONI: ↗️ Su ogni risultato ("ha raggiunto", "è passato da")      ║
-║                                                                              ║
-║  📣 LESSICO: "Guarda", "Pensa", "Vedi", "Incredibile"                       ║
-║                                                                              ║
-║  💬 ESEMPIO VOCALE:                                                          ║
-║  "Guarda [nome case study], partiva ESATTAMENTE ↗️ dalla tua situazione.    ║
-║  In soli [tempo] è passato da [A] a [B] ↗️. Incredibile ↗️ no?"             ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+📌 DOMANDA: "Prima di entrare nel vivo del come funziona, lascia che ti mostri ↗️ 
+cosa è stato possibile per altri professionisti che erano ESATTAMENTE 
+nella tua stessa situazione.
 
-📌 INTRODUZIONE CASE STUDIES:
-   
-   "Prima di entrare nel vivo del come funziona, lascia che ti mostri ↗️ 
-   cosa è stato possibile per altri professionisti che erano ESATTAMENTE 
-   nella tua stessa situazione.
-   
-   Voglio che tu veda con i tuoi occhi cosa puoi aspettarti ↗️..."
-   
-   ⏸️ PAUSA brevissima
+Voglio che tu veda con i tuoi occhi cosa puoi aspettarti ↗️..."
+
+⏸️ PAUSA brevissima
 
 📌 PRESENTAZIONE CASE STUDIES (usa quelli più pertinenti):
 
@@ -1162,561 +1083,656 @@ ${caseStudiesText}
 
 📌 TRANSIZIONE DOPO CASE STUDIES (TONO: Sicuro):
    
-   "Vedi [NOME_PROSPECT]? Questi non sono casi isolati. 
-   È il risultato di un sistema preciso ↗️ che funziona."
-   
-   ⏸️ PAUSA
+"Vedi [NOME_PROSPECT]? Questi non sono casi isolati. 
+È il risultato di un sistema preciso ↗️ che funziona."
 
-🚨 CHECKPOINT OBBLIGATORIO #1 - CASE STUDIES:
+⏸️ PAUSA
 
-   ⚠️ VERIFICA PRIMA DI ANDARE AVANTI:
-   
-   ✅ Ha visto almeno 2-3 case studies pertinenti?
-   ✅ Ha mostrato segni di interesse/coinvolgimento?
-   ✅ Ha fatto domande o commentato positivamente?
-   
-   📌 DOMANDA DI VERIFICA (concisa, casuale):
-   
-   "[NOME_PROSPECT], quale di questi casi ti ha colpito di più?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA - Nota cosa lo entusiasma
-   
-   💬 REAGISCI: "Fantastico! Esattamente!" / "Perfetto, capisco perché!"
-   
-   ⚠️ SE RISPONDE VAGAMENTE o sembra poco coinvolto:
-   → Torna ai case studies e aggiungi dettagli
-   → Collega meglio al suo problema specifico
-   → NON andare avanti finché non vedi coinvolgimento!
-   
-   ✅ SE È COINVOLTO: Procedi allo Step 3
+---
+
+⛔ CHECKPOINT #1 - CASE STUDIES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIMA DI PASSARE ALLA FASE #3 VERIFICA:
+
+✓ Ha visto almeno 2-3 case studies pertinenti?
+✓ Ha mostrato segni di interesse/coinvolgimento?
+✓ Ha fatto domande o commentato positivamente?
+
+📌 DOMANDA: "[NOME_PROSPECT], quale di questi casi ti ha colpito di più?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+🎧 ASCOLTA - Nota cosa lo entusiasma
+
+💬 REAGISCI: "Fantastico! Esattamente!" / "Perfetto, capisco perché!"
+
+⚠️ SE RISPONDE VAGAMENTE o sembra poco coinvolto:
+→ Torna ai case studies e aggiungi dettagli
+→ Collega meglio al suo problema specifico
+→ NON andare avanti finché non vedi coinvolgimento!
+
+✅ SE È COINVOLTO: Procedi alla FASE #3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #3 - CREDIBILITÀ**
+**Costruisci autorità tramite la tua storia e background**
+════════════════════════════════════════════════════════════════════════════════
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: ALTA - Entusiasta + Amichevole
+Tono: Come raccontare a un amico (personale, autentico)
+Volume: Medio (conversazionale)
+Ritmo: Veloce all'inizio, LENTO sui numeri/risultati importanti
+Lessico: "Pensa!" / "Vedi!" / "Interessante!" / "Importante per te!"
+Mindset: Stai condividendo la TUA storia - connessione personale!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+INFLESSIONI SPECIALI:
+• ↗️ Su risultati e numeri ("300 mila euro", "600 imprenditori")
+• 🔽 SUSSURRO su "segreti" ("l'unico in Italia", "non lo sa nessuno")
+
+💬 ESEMPI VOCALI:
+"Pensa che sono partito da ZERO ↗️. E in pochi anni...
+[PAUSA] ...oltre 300 mila euro online ↗️!" [tono orgoglioso]
+
+"E sai cosa? 🔽 Siamo gli UNICI in Italia a..." [sussurro confidenziale]
 
 ---
 
 **STEP 3 - STORIA E BACKGROUND**
 🎯 OBIETTIVO: Costruire credibilità e autorità tramite la tua storia
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA E TONALITÀ - STEP 3 STORIA                                       ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Entusiasta + Amichevole (come raccontare a un amico)             ║
-║  📢 VOLUME: Medio (conversazionale)                                         ║
-║  ⚡ RITMO: Veloce all'inizio, LENTO sui numeri/risultati importanti         ║
-║  🎭 INFLESSIONI SPECIALI:                                                    ║
-║     • ↗️ Su risultati e numeri ("300 mila euro", "600 imprenditori")        ║
-║     • 🔽 SUSSURRO su "segreti" ("l'unico in Italia", "non lo sa nessuno")  ║
-║                                                                              ║
-║  📣 LESSICO: "Pensa", "Vedi", "Interessante", "Importante per te"          ║
-║                                                                              ║
-║  💬 ESEMPIO VOCALE:                                                          ║
-║  "Pensa che sono partito da ZERO ↗️. E in pochi anni...                     ║
-║  [PAUSA] ...oltre 300 mila euro online ↗️!" [tono orgoglioso]               ║
-║                                                                              ║
-║  "E sai cosa? 🔽 Siamo gli UNICI in Italia a..." [sussurro confidenziale]  ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+📌 DOMANDA: "Magari ti chiedi: 'Ok, ma come siete arrivati a creare una cosa del genere?' 
+È una storia interessante ↗️."
 
-📌 APERTURA STORIA (usa dati del BOSS, non hard-coded):
-   
-   "Magari ti chiedi: 'Ok, ma come siete arrivati a creare una cosa del genere?' 
-   È una storia interessante ↗️."
-   
-   ⏸️ PAUSA brevissima
+⏸️ PAUSA brevissima
 
 📌 RACCONTO TRASFORMAZIONE (PERSONALIZZA con bio del BOSS!):
    
-   "Io, ${displayName}, [INSERISCI BACKGROUND UNICO DEL BOSS].
-   
-   Sono partito da [SITUAZIONE INIZIALE DEL BOSS], letteralmente [PROBLEMA/FRUSTRAZIONE INIZIALE].
-   
-   In [TEMPO], ho completamente ribaltato la situazione ↗️, arrivando a 
-   [RISULTATO CHIAVE 1] ↗️, [RISULTATO CHIAVE 2] ↗️, e [RISULTATO CHIAVE 3] ↗️."
-   
-   ⏸️ PAUSA drammatica per impatto
+"Io, ${displayName}, [INSERISCI BACKGROUND UNICO DEL BOSS].
+
+Sono partito da [SITUAZIONE INIZIALE DEL BOSS], letteralmente [PROBLEMA/FRUSTRAZIONE INIZIALE].
+
+In [TEMPO], ho completamente ribaltato la situazione ↗️, arrivando a 
+[RISULTATO CHIAVE 1] ↗️, [RISULTATO CHIAVE 2] ↗️, e [RISULTATO CHIAVE 3] ↗️."
+
+⏸️ PAUSA drammatica per impatto
 
 📌 UNIQUE SELLING PROPOSITION (TONO: Sussurro confidenziale 🔽):
    
-   "Questo è importante per te perché [SPIEGA USP UNICO DEL BOSS] 🔽.
-   
-   [ENFATIZZA DIFFERENZIATORE: es: 'l'unico in Italia', 'pochi al mondo', ecc]
-   
-   Ho creato un sistema che [BENEFICIO CHIAVE DEL METODO] ↗️."
-   
-   ⏸️ PAUSA
+"Questo è importante per te perché [SPIEGA USP UNICO DEL BOSS] 🔽.
+
+[ENFATIZZA DIFFERENZIATORE: es: 'l'unico in Italia', 'pochi al mondo', ecc]
+
+Ho creato un sistema che [BENEFICIO CHIAVE DEL METODO] ↗️."
+
+⏸️ PAUSA
 
 📌 CREDIBILITÀ E SOCIAL PROOF (TONO: Sicuro, orgoglioso):
    
-   "Siamo un'azienda seria, e i nostri risultati lo dimostrano ↗️.
-   
-   Abbiamo collaborato con [NOMI IMPORTANTI/PARTNERSHIP/CLIENTI FAMOSI]."
-   
-   ⏸️ PAUSA brevissima
+"Siamo un'azienda seria, e i nostri risultati lo dimostrano ↗️.
+
+Abbiamo collaborato con [NOMI IMPORTANTI/PARTNERSHIP/CLIENTI FAMOSI]."
+
+⏸️ PAUSA brevissima
 
 ⚠️ NOTA IMPORTANTE: 
-   Personalizza COMPLETAMENTE con i dati del businessName e displayName!
-   NON usare "Alessio" se il BOSS ha un altro nome!
-   NON usare "300k" se i numeri del BOSS sono diversi!
+Personalizza COMPLETAMENTE con i dati del businessName e displayName!
+NON usare "Alessio" se il BOSS ha un altro nome!
+NON usare "300k" se i numeri del BOSS sono diversi!
+
+🍪 SE DIVAGA: Biscottino + "Ok tornando a noi..."
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #4 - METODO**
+**Spiega il "come funziona" connettendolo ai pain points della discovery**
+════════════════════════════════════════════════════════════════════════════════
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: ALTA - Entusiasta + Educativo
+Tono: "Ti spiego come funziona!" - Professore appassionato
+Volume: Medio-Alto (energia controllata)
+Ritmo: Controllato (pause dopo ogni beneficio chiave)
+Lessico: "Precisamente!" / "Esattamente!" / "Vedi!" / "Per questo!"
+Mindset: Stai svelando il SEGRETO del tuo successo!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+INFLESSIONI:
+• ↗️ Su benefici ("questo ti permetterà di...", "elimina...")
+• 🔽 SUSSURRO su "questo lo facciamo SOLO noi" (differenziatore)
+
+💬 ESEMPIO VOCALE:
+"Bene [nome], ho ascoltato ATTENTAMENTE ↗️ la tua situazione.
+Per questo ↗️ ti serve PRECISAMENTE ↗️ il nostro percorso..."
 
 ---
 
 **STEP 4 - METODO: SISTEMA DOPPIO MOTORE**
 🎯 OBIETTIVO: Spiegare il "come funziona" connettendolo ai pain points della discovery
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA E TONALITÀ - STEP 4 METODO                                       ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Entusiasta + Educativo ("ti spiego come funziona!")              ║
-║  📢 VOLUME: Medio-Alto (energia controllata)                                ║
-║  ⚡ RITMO: Controllato (pause dopo ogni beneficio chiave)                    ║
-║  🎭 INFLESSIONI:                                                             ║
-║     • ↗️ Su benefici ("questo ti permetterà di...", "elimina...")           ║
-║     • 🔽 SUSSURRO su "questo lo facciamo SOLO noi" (differenziatore)       ║
-║                                                                              ║
-║  📣 LESSICO: "Precisamente", "Esattamente", "Vedi", "Per questo"           ║
-║                                                                              ║
-║  💬 ESEMPIO VOCALE:                                                          ║
-║  "Bene [nome], ho ascoltato ATTENTAMENTE ↗️ la tua situazione.              ║
-║  Per questo ↗️ ti serve PRECISAMENTE ↗️ il nostro percorso..."              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+📌 DOMANDA: "Bene [NOME_PROSPECT], ho ascoltato attentamente ↗️ la tua situazione 
+e ho capito perfettamente quali sono le sfide che affronti:
 
-📌 APERTURA METODO (CONNESSIONE OBBLIGATORIA con discovery!):
-   
-   "Bene [NOME_PROSPECT], ho ascoltato attentamente ↗️ la tua situazione 
-   e ho capito perfettamente quali sono le sfide che affronti:
-   
-   [RECUPERA 2-3 PAIN POINT CHIAVE dalla discovery e ripetili testualmente]
-   
-   ⏸️ PAUSA
-   
-   Per questo ↗️, ti serve PRECISAMENTE ↗️ il nostro percorso [NOME PERCORSO]. 
-   Lascia che ti spieghi il perché."
-   
-   ⏸️ PAUSA
+[RECUPERA 2-3 PAIN POINT CHIAVE dalla discovery e ripetili testualmente]"
+
+⏸️ PAUSA
+
+📌 TRANSIZIONE AL METODO:
+
+"Per questo ↗️, ti serve PRECISAMENTE ↗️ il nostro percorso [NOME PERCORSO]. 
+Lascia che ti spieghi il perché."
+
+⏸️ PAUSA
 
 📌 SPIEGAZIONE SISTEMA (personalizza COMPLETAMENTE con il metodo specifico del BOSS!):
    
-   "Lo abbiamo progettato come un **sistema completo** che risolve TUTTI i tuoi problemi ↗️.
-   
-   ⏸️ PAUSA
-   
-   [SPIEGA IL TUO METODO SPECIFICO usando le FASI/MODULI che hai creato]
-   [COLLEGA OGNI FASE a un PAIN POINT dalla discovery]
-   [USA CASI STUDIO per ogni fase quando possibile]
-   
-   L'obiettivo è semplice ↗️: portarti da [STATO ATTUALE dalla discovery] 
-   a [RISULTATO DESIDERATO dalla discovery] ↗️, 
-   eliminando [FRUSTRAZIONE PRINCIPALE dalla discovery]."
-   
-   ⏸️ PAUSA
+"Lo abbiamo progettato come un **sistema completo** che risolve TUTTI i tuoi problemi ↗️.
 
-🚨 CHECKPOINT OBBLIGATORIO #2 - METODO:
+⏸️ PAUSA
 
-   ⚠️ VERIFICA PRIMA DI ANDARE AVANTI:
-   
-   ✅ Ha capito come funziona il metodo?
-   ✅ Vede la connessione tra metodo e suoi problemi specifici?
-   ✅ Ha fatto domande di chiarimento?
-   
-   📌 DOMANDA DI VERIFICA (concisa):
-   
-   "[NOME_PROSPECT], quale parte di questo percorso senti più adatta 
-   a risolvere il tuo problema principale?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA - Cosa lo entusiasma? Cosa non ha capito?
-   
-   💬 REAGISCI: "Esattamente! Precisamente per questo..." / "Perfetto!"
-   
-   ⚠️ SE NON HA CAPITO o sembra confuso:
-   → Rispieghi la parte poco chiara
-   → Usa analogie più semplici
-   → Connetti meglio al suo caso specifico
-   → NON andare avanti finché non è chiaro!
-   
-   ✅ SE HA CAPITO: Procedi allo Step 5
+[SPIEGA IL TUO METODO SPECIFICO usando le FASI/MODULI che hai creato]
+[COLLEGA OGNI FASE a un PAIN POINT dalla discovery]
+[USA CASI STUDIO per ogni fase quando possibile]
+
+L'obiettivo è semplice ↗️: portarti da [STATO ATTUALE dalla discovery] 
+a [RISULTATO DESIDERATO dalla discovery] ↗️, 
+eliminando [FRUSTRAZIONE PRINCIPALE dalla discovery]."
+
+⏸️ PAUSA
+
+---
+
+🚨 CHECKPOINT #2 - METODO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VERIFICA PRIMA DI ANDARE AVANTI:
+
+✓ Ha capito come funziona il metodo?
+✓ Vede la connessione tra metodo e suoi problemi specifici?
+✓ Ha fatto domande di chiarimento?
+
+📌 DOMANDA: "[NOME_PROSPECT], quale parte di questo percorso senti più adatta 
+a risolvere il tuo problema principale?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+🎧 ASCOLTA - Cosa lo entusiasma? Cosa non ha capito?
+
+💬 REAGISCI: "Esattamente! Precisamente per questo..." / "Perfetto!"
+
+⚠️ SE NON HA CAPITO o sembra confuso:
+→ Rispieghi la parte poco chiara
+→ Usa analogie più semplici
+→ Connetti meglio al suo caso specifico
+→ NON andare avanti finché non è chiaro!
+
+✅ SE HA CAPITO: Procedi allo Step 5
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
 **STEP 5 - CHECK**
 🎯 OBIETTIVO: Verificare comprensione prima di andare nel dettaglio strumenti
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA E TONALITÀ - STEP 5 CHECK                                        ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Curioso, interessato (genuinamente vuoi sapere)                   ║
-║  📢 VOLUME: Medio (conversazionale, rilassato)                              ║
-║  🎭 INFLESSIONI: ↗️ Su "chiaro?" (domanda leggera)                          ║
-║  📣 LESSICO: "Perfetto", "Ottimo", "Fantastico"                             ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: MEDIA - Curioso, interessato
+Tono: Genuinamente vuoi sapere se ha capito
+Volume: Medio (conversazionale, rilassato)
+Lessico: "Perfetto!" / "Ottimo!" / "Fantastico!"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DOMANDA CONCISA (tono casuale):
-   
-   "Ok [NOME_PROSPECT], fermiamoci un secondo. È tutto chiaro ↗️ finora?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   💬 REAGISCI: "Perfetto!" / "Ottimo!"
+📌 DOMANDA: "Ok [NOME_PROSPECT], fermiamoci un secondo. È tutto chiaro ↗️ finora?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+💬 REAGISCI: "Perfetto!" / "Ottimo!"
 
 🍪 SE DIVAGA: Biscottino + riporta in carreggiata
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #5 - CARATTERISTICHE**
+**Mostra gli strumenti concreti che userà**
+════════════════════════════════════════════════════════════════════════════════
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: MASSIMA - Entusiasta al massimo!
+Tono: Mostra i "giocattoli" - eccitato come un bambino!
+Volume: Alto (energia!)
+Ritmo: Veloce, dinamico
+Lessico: "Guarda!" / "Vedi!" / "Incredibile!" / "Solo questo!"
+Mindset: Stai mostrando TESORI - ogni strumento è ORO!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💬 ESEMPIO VOCALE:
+"Perfetto! Ora lascia che ti mostri ↗️ ESATTAMENTE ↗️ gli strumenti
+che avrai a disposizione. Guarda ↗️ questo..."
 
 ---
 
 **STEP 6 - CARATTERISTICHE**
 🎯 OBIETTIVO: Mostrare gli strumenti concreti che userà
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA E TONALITÀ - STEP 6 CARATTERISTICHE                              ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Entusiasta (mostra i "giocattoli"!)                               ║
-║  📢 VOLUME: Alto (energia!)                                                 ║
-║  ⚡ RITMO: Veloce, dinamico                                                  ║
-║  🎭 INFLESSIONI: ↗️ Su ogni beneficio                                        ║
-║  📣 LESSICO: "Guarda", "Vedi", "Incredibile", "Solo questo"                ║
-║                                                                              ║
-║  💬 ESEMPIO VOCALE:                                                          ║
-║  "Perfetto! Ora lascia che ti mostri ↗️ ESATTAMENTE ↗️ gli strumenti       ║
-║  che avrai a disposizione. Guarda ↗️ questo..."                             ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-
 📌 TRANSIZIONE:
    
-   "Perfetto! Ora che hai visto il 'perché' ↗️ questo percorso funziona, 
-   lascia che ti mostri il 'come' ↗️, ovvero gli strumenti e le risorse 
-   che avrai a disposizione."
-   
-   ⏸️ PAUSA brevissima
+"Perfetto! Ora che hai visto il 'perché' ↗️ questo percorso funziona, 
+lascia che ti mostri il 'come' ↗️, ovvero gli strumenti e le risorse 
+che avrai a disposizione."
+
+⏸️ PAUSA brevissima
 
 📌 PRESENTAZIONE STRUMENTI:
 
 ${servicesText}
 
-🚨 CHECKPOINT OBBLIGATORIO #3 - STRUMENTI:
+---
 
-   ⚠️ VERIFICA PRIMA DI ANDARE AVANTI:
-   
-   ✅ Ha visto tutti gli strumenti principali?
-   ✅ Ha capito il valore di ognuno?
-   ✅ Sembra entusiasta o almeno interessato?
-   
-   📌 DOMANDA CONCISA:
-   
-   "[NOME_PROSPECT], quale di questi strumenti ti entusiasma ↗️ di più?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA - Cosa lo attrae di più?
-   
-   💬 REAGISCI: "Esattamente! E vedi come questo ti aiuterà a..."
-   
-   ⚠️ SE SEMBRA POCO ENTUSIASTA:
-   → Enfatizza meglio il beneficio specifico per lui
-   → Collega lo strumento al suo pain point
-   → NON andare avanti senza entusiasmo!
-   
-   ✅ SE È ENTUSIASTA: Procedi allo Step 7
+🚨 CHECKPOINT #3 - STRUMENTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VERIFICA PRIMA DI ANDARE AVANTI:
+
+✓ Ha visto tutti gli strumenti principali?
+✓ Ha capito il valore di ognuno?
+✓ Sembra entusiasta o almeno interessato?
+
+📌 DOMANDA: "[NOME_PROSPECT], quale di questi strumenti ti entusiasma ↗️ di più?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+🎧 ASCOLTA - Cosa lo attrae di più?
+
+💬 REAGISCI: "Esattamente! E vedi come questo ti aiuterà a..."
+
+⚠️ SE SEMBRA POCO ENTUSIASTA:
+→ Enfatizza meglio il beneficio specifico per lui
+→ Collega lo strumento al suo pain point
+→ NON andare avanti senza entusiasmo!
+
+✅ SE È ENTUSIASTA: Procedi alla FASE #6
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #6 - CHIUSURA**
+**Riepilogo, Value Stack, Gestione Domande, Pricing e Closing**
+════════════════════════════════════════════════════════════════════════════════
 
 ---
 
 **STEP 7 - RIEPILOGO**
 🎯 OBIETTIVO: Riepilogare la trasformazione completa
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA E TONALITÀ - STEP 7 RIEPILOGO                                    ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Sicuro, solido (tutto è chiaro)                                   ║
-║  📢 VOLUME: Medio-Alto (autorevole)                                         ║
-║  🎭 INFLESSIONI: ↗️ Crescente verso il beneficio finale                     ║
-║  📣 LESSICO: "Precisamente", "Esattamente", "Finalmente"                    ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: ALTA - Sicuro, solido
+Tono: Tutto è chiaro, autorevole
+Volume: Medio-Alto (autorevole)
+Ritmo: Crescente verso il beneficio finale
+Lessico: "Precisamente!" / "Esattamente!" / "Finalmente!"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 RIEPILOGO TRASFORMAZIONE (PERSONALIZZA con dati discovery!):
    
-   "In altre parole [NOME_PROSPECT], con questo programma hai un sistema completo ↗️. 
-   Non devi comprare nient'altro. Ti prendiamo per mano.
-   
-   Così passi da [FATTURATO ATTUALE dalla discovery] 
-   a generare ↗️ [FATTURATO DESIDERATO dalla discovery] nei prossimi 6-12 mesi.
-   
-   Tutto questo senza più [FRUSTRAZIONE 1 dalla discovery] 
-   e senza nemmeno dover [FRUSTRAZIONE 2 dalla discovery].
-   
-   Così potrai finalmente ↗️ avere [BENEFICIO EMOZIONALE dalla discovery]."
-   
-   ⏸️ PAUSA
+"In altre parole [NOME_PROSPECT], con questo programma hai un sistema completo ↗️. 
+Non devi comprare nient'altro. Ti prendiamo per mano.
 
-📌 DOMANDA VISUALIZZAZIONE (concisa, potente):
-   
-   "Sinceramente [NOME_PROSPECT]... cosa ti piace di più ↗️ di questa soluzione?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   💬 REAGISCI: "Fantastico! Esattamente!" / "Perfetto!"
+Così passi da [FATTURATO ATTUALE dalla discovery] 
+a generare ↗️ [FATTURATO DESIDERATO dalla discovery] nei prossimi 6-12 mesi.
+
+Tutto questo senza più [FRUSTRAZIONE 1 dalla discovery] 
+e senza nemmeno dover [FRUSTRAZIONE 2 dalla discovery].
+
+Così potrai finalmente ↗️ avere [BENEFICIO EMOZIONALE dalla discovery]."
+
+⏸️ PAUSA
+
+📌 DOMANDA: "Sinceramente [NOME_PROSPECT]... cosa ti piace di più ↗️ di questa soluzione?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+💬 REAGISCI: "Fantastico! Esattamente!" / "Perfetto!"
 
 ⚠️ LADDER DEI PERCHÉ (se risposta VAGA come "tutto", "niente", "boh"):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   SE dice: "Boh, tutto" / "Non lo so" / Risposta generica
-   
-   → ATTIVA LADDER (3-5 domande progressive):
-   
-   LIVELLO 1: "[NOME_PROSPECT], capisco. Ma se dovessi scegliere UNA cosa sola, 
-               quale parte senti più utile per la tua situazione?"
-   ⏸️ ASPETTA
-   
-   LIVELLO 2: "Perfetto! E perché proprio questa parte è importante per te?"
-   ⏸️ ASPETTA
-   
-   LIVELLO 3: "Interessante! E come ti immagini di usarla nel tuo [business/vita]?"
-   ⏸️ ASPETTA
-   
-   ✅ CRITERIO DI STOP:
-   Quando hai una risposta SPECIFICA e CONCRETA che mostra visualizzazione.
-   
-   ❌ NON andare avanti senza visualizzazione chiara!
+SE dice: "Boh, tutto" / "Non lo so" / Risposta generica
+
+→ ATTIVA LADDER (3-5 domande progressive):
+
+LIVELLO 1: "[NOME_PROSPECT], capisco. Ma se dovessi scegliere UNA cosa sola, 
+            quale parte senti più utile per la tua situazione?"
+⏸️ ASPETTA
+
+LIVELLO 2: "Perfetto! E perché proprio questa parte è importante per te?"
+⏸️ ASPETTA
+
+LIVELLO 3: "Interessante! E come ti immagini di usarla nel tuo [business/vita]?"
+⏸️ ASPETTA
+
+✅ CRITERIO DI STOP:
+Quando hai una risposta SPECIFICA e CONCRETA che mostra visualizzazione.
+
+❌ NON andare avanti senza visualizzazione chiara!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
 **STEP 8 - VALUE STACK**
 🎯 OBIETTIVO: Mostrare il valore totale prima del prezzo
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA E TONALITÀ - STEP 8 VALUE STACK                                  ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO DINAMICO:                                                           ║
-║     • ENTUSIASTA ↗️ su ogni beneficio/caratteristica                         ║
-║     • CRESCENTE ↗️↗️ man mano che aggiungi valore                            ║
-║     • CASUALE ↘️ sulla domanda finale (come se nulla fosse)                 ║
-║                                                                              ║
-║  📢 VOLUME: Alto su benefici, Medio su domanda finale                       ║
-║  📣 LESSICO: "ESATTAMENTE", "Guarda", "Pensa", "Tutto questo"               ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: DINAMICA - Cresce man mano!
+Tono DINAMICO:
+   • ENTUSIASTA ↗️ su ogni beneficio/caratteristica
+   • CRESCENTE ↗️↗️ man mano che aggiungi valore
+   • CASUALE ↘️ sulla domanda finale (come se nulla fosse)
+Volume: Alto su benefici, Medio su domanda finale
+Lessico: "ESATTAMENTE!" / "Guarda!" / "Pensa!" / "Tutto questo!"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 APERTURA VALUE STACK:
    
-   "Ok. Prima di parlare di investimento, voglio che sia CHIARISSIMO ↗️ 
-   il valore di tutto quello che stai per ricevere, e perché questa è una strada 
-   completamente diversa ↗️ dalle alternative."
-   
-   ⏸️ PAUSA
+"Ok. Prima di parlare di investimento, voglio che sia CHIARISSIMO ↗️ 
+il valore di tutto quello che stai per ricevere, e perché questa è una strada 
+completamente diversa ↗️ dalle alternative."
+
+⏸️ PAUSA
 
 📌 CONFRONTO ALTERNATIVE (veloce ma potente):
    
-   "Pensa:
-   - Se facessi tutto da solo → mesi persi + decine di migliaia sprecati in tentativi ↗️
-   - Se assumessi un team → minimo [PREZZO ALTO] al mese ↗️
-   - Se comprassi formazione di questo livello → tra [PREZZO] e [PREZZO MOLTO ALTO] ↗️"
-   
-   ⏸️ PAUSA
+"Pensa:
+- Se facessi tutto da solo → mesi persi + decine di migliaia sprecati in tentativi ↗️
+- Se assumessi un team → minimo [PREZZO ALTO] al mese ↗️
+- Se comprassi formazione di questo livello → tra [PREZZO] e [PREZZO MOLTO ALTO] ↗️"
+
+⏸️ PAUSA
 
 📌 LISTA VALORE (usa dati reali):
    
-   "Con noi, invece, ecco cosa ottieni ESATTAMENTE ↗️:
-   
+"Con noi, invece, ecco cosa ottieni ESATTAMENTE ↗️:
+
 ${servicesOffered && servicesOffered.length > 0 
   ? servicesOffered.map((s, i) => `   ✅ **${s.name}** ↗️: ${s.description}`).join('\n')
   : '   ✅ Sistema completo + Supporto + Strumenti'}
-   
-   ⏸️ PAUSA per impatto
-   
-   In sintesi ↗️, ti portiamo da dove sei oggi a [OBIETTIVO dalla discovery] ↗️."
-   
-   ⏸️ PAUSA
 
-📌 DOMANDA PRE-PRICING (TONO: Casuale, rilassato ↘️):
-   
-   "Allora [NOME_PROSPECT], mettendo da parte l'investimento per un secondo ↘️... 
-   pensi che una soluzione così strutturata possa fare al caso tuo ↗️?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA - Se dice SÌ → sono pronti per il prezzo
-   
-   ⚠️ SE dice NO o esita:
-   → "Capisco. Cosa ti frena? Qual è il dubbio principale?"
-   → RISOLVI il dubbio PRIMA di andare al pricing!
+⏸️ PAUSA per impatto
+
+In sintesi ↗️, ti portiamo da dove sei oggi a [OBIETTIVO dalla discovery] ↗️."
+
+⏸️ PAUSA
+
+📌 DOMANDA: "Allora [NOME_PROSPECT], mettendo da parte l'investimento per un secondo ↘️... 
+pensi che una soluzione così strutturata possa fare al caso tuo ↗️?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+🎧 ASCOLTA - Se dice SÌ → sono pronti per il prezzo
+
+⚠️ SE dice NO o esita:
+→ "Capisco. Cosa ti frena? Qual è il dubbio principale?"
+→ RISOLVI il dubbio PRIMA di andare al pricing!
 
 ---
 
-🚨 CHECKPOINT OBBLIGATORIO #4 - FINALE PRE-PRICING:
+⛔ CHECKPOINT #4 - FINALE PRE-PRICING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ VERIFICA ASSOLUTA PRIMA DEL PRICING:
 
-   ⚠️ VERIFICA ASSOLUTA PRIMA DEL PRICING:
-   
-   ✅ Ha visto i case studies e ne è rimasto colpito?
-   ✅ Ha capito il metodo e come funziona?
-   ✅ Ha visto il valore degli strumenti?
-   ✅ Ha risposto SÌ alla domanda "può fare al caso tuo"?
-   ✅ Visualizza sé stesso usando la soluzione?
-   
-   ⚠️ SE MANCA ANCHE UNA SOLA VERIFICA:
-   
-   ❌ NON ANDARE AL PRICING!
-   → Torna allo step mancante
-   → Risolvi il dubbio/perplessità
-   → Ottieni entusiasmo PRIMA del prezzo
-   
-   💡 RICORDA: Il pricing è L'AVE MARIA - va fatto SOLO quando il prospect 
-   è già convinto del VALORE. Se presenti il prezzo troppo presto, hai perso!
-   
-   ✅ SOLO SE TUTTE LE VERIFICHE SONO OK: Procedi al Pricing
+✓ Ha visto i case studies e ne è rimasto colpito?
+✓ Ha capito il metodo e come funziona?
+✓ Ha visto il valore degli strumenti?
+✓ Ha risposto SÌ alla domanda "può fare al caso tuo"?
+✓ Visualizza sé stesso usando la soluzione?
+
+⚠️ SE MANCA ANCHE UNA SOLA VERIFICA:
+
+❌ NON ANDARE AL PRICING!
+→ Torna allo step mancante
+→ Risolvi il dubbio/perplessità
+→ Ottieni entusiasmo PRIMA del prezzo
+
+💡 RICORDA: Il pricing è L'AVE MARIA - va fatto SOLO quando il prospect 
+è già convinto del VALORE. Se presenti il prezzo troppo presto, hai perso!
+
+✅ SOLO SE TUTTE LE VERIFICHE SONO OK: Procedi al Pricing
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
 **STEP 9 - GESTIONE DOMANDE**
+🎯 OBIETTIVO: Rispondere alle domande del cliente in modo conciso
 
 [Da qui in poi, il cliente guida. Rispondi in modo conciso alle sue domande.]
 
-**NON RIVELARE IL PREZZO FINCHÉ NON LO CHIEDE ESPLICITAMENTE.**
+**⚠️ NON RIVELARE IL PREZZO FINCHÉ NON LO CHIEDE ESPLICITAMENTE.**
 
 ---
 
 **STEP 10 - PRICING - L'AVE MARIA 🙏**
 🎯 OBIETTIVO: Presentare il prezzo con massima sicurezza
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                                                                              ║
-║                    🙏 L'AVE MARIA - MOMENTO SACRO 🙏                         ║
-║                                                                              ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║                                                                              ║
-║  ⚡ ENERGIA E TONALITÀ - L'AVE MARIA DEL PRICING:                            ║
-║                                                                              ║
-║  🎵 TONO: COMPLETAMENTE DIVERSO da tutto il resto della demo!                ║
-║                                                                              ║
-║  📢 VOLUME: BASSO (non alto!)                                                ║
-║  • Voce calma, profonda, autorevole                                         ║
-║  • Come un dottore che dà una diagnosi seria                                ║
-║  • Zero fretta, zero esitazione                                             ║
-║                                                                              ║
-║  🎭 INFLESSIONI: ↘️ Tutte DISCENDENTI (calma, certezza)                     ║
-║  • NON usare ↗️ (troppo venditore!)                                          ║
-║  • Ogni numero detto con PAUSA dopo                                         ║
-║                                                                              ║
-║  ⏳ RITMO: LENTISSIMO                                                         ║
-║  • Pause DRAMMATICHE dopo ogni numero                                       ║
-║  • Silenzio totale dopo il prezzo finale                                    ║
-║  • NON PARLARE per primi dopo aver detto il prezzo!                         ║
-║                                                                              ║
-║  📣 LESSICO: "Guarda", "Ottima domanda", "Facciamo così"                    ║
-║                                                                              ║
-║  💬 ESEMPIO VOCALE:                                                          ║
-║  [VOCE BASSA, CALMA] "Guarda [nome] ↘️... ottima domanda ↘️.                ║
-║  [PAUSA 2 SEC] Come hai visto, è un programma completo ↘️.                  ║
-║  [PAUSA 3 SEC] L'investimento per te oggi... [PAUSA 5 SEC]                  ║
-║  ...è di [PREZZO] ↘️. [SILENZIO TOTALE - NON PARLARE!]"                     ║
-║                                                                              ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+⚡ ENERGIA E TONALITÀ - L'AVE MARIA DEL PRICING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎵 TONO: COMPLETAMENTE DIVERSO da tutto il resto della demo!
+
+📢 VOLUME: BASSO (non alto!)
+• Voce calma, profonda, autorevole
+• Come un dottore che dà una diagnosi seria
+• Zero fretta, zero esitazione
+
+🎭 INFLESSIONI: ↘️ Tutte DISCENDENTI (calma, certezza)
+• NON usare ↗️ (troppo venditore!)
+• Ogni numero detto con PAUSA dopo
+
+⏳ RITMO: LENTISSIMO
+• Pause DRAMMATICHE dopo ogni numero
+• Silenzio totale dopo il prezzo finale
+• NON PARLARE per primi dopo aver detto il prezzo!
+
+📣 LESSICO: "Guarda", "Ottima domanda", "Facciamo così"
+
+💬 ESEMPIO VOCALE:
+[VOCE BASSA, CALMA] "Guarda [nome] ↘️... ottima domanda ↘️.
+[PAUSA 2 SEC] Come hai visto, è un programma completo ↘️.
+[PAUSA 3 SEC] L'investimento per te oggi... [PAUSA 5 SEC]
+...è di [PREZZO] ↘️. [SILENZIO TOTALE - NON PARLARE!]"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚠️ ATTENDI CHE IL CLIENTE CHIEDA: "Quanto costa?" / "Qual è l'investimento?"
 
 📌 PRESENTAZIONE PREZZO (sostituisci [...] con dati REALI dalla discovery):
    
-   [VOCE BASSA ↘️, CALMA TOTALE]
-   
-   "Guarda [NOME_PROSPECT] ↘️, ottima domanda ↘️. 
-   
-   Come hai visto, è un programma di trasformazione completo ↘️."
-   
-   ⏸️ PAUSA 2 secondi
-   
-   "Visti i risultati che ottengono i nostri clienti ↘️, 
-   il valore reale di un percorso del genere è di [VALORE ANCORAGGIO ALTO] ↘️."
-   
-   ⏸️ PAUSA 3 secondi - DRAMMATICA
-   
-   "Nei prossimi 12 mesi, il prezzo di listino salirà a [PREZZO FUTURO] ↘️."
-   
-   ⏸️ PAUSA 2 secondi
-   
-   "ADESSO ↘️, i professionisti che entrano nel programma, 
-   inclusi molti dei casi studio che hai visto, 
-   investono ${standardPrice} ↘️."
-   
-   ⏸️ PAUSA 3 secondi - LUNGA
-   
-   "Tuttavia ↘️... [NOME_PROSPECT] ↘️, 
-   dato che hai [ripeti PROBLEMA 1 dalla discovery] ↘️, 
-   [ripeti PROBLEMA 2 dalla discovery] ↘️, 
-   e vuoi raggiungere [ripeti loro OBIETTIVO] ↘️, 
-   e mi hai promesso che ti impegnerai DAVVERO ↘️, 
-   facciamo così ↘️..."
-   
-   ⏸️ PAUSA 5 secondi - DRAMMATICA MASSIMA
-   
-   "Io parlo con il team, utilizzo uno dei miei coupon ↘️, 
-   e ne abbiamo due al mese, perché è una cosa importante ↘️."
-   
-   ⏸️ PAUSA 2 secondi
-   
-   "E ti posso dare il coupon chiamato 'l'incentivo dell'imprenditore' ↘️."
-   
-   ⏸️ PAUSA 3 secondi
-   
-   "Secondo cui, l'investimento per te oggi non è più ${standardPrice} ↘️, 
-   ma scende a **${priceText}** ↘️."
-   
-   ⏸️⏸️⏸️ SILENZIO TOTALE - ASSOLUTO!!!
-   
-   ⚠️ REGOLA D'ORO POST-PREZZO:
-   
-   🔇 NON PARLARE per primi!
-   🔇 Aspetta che sia LUI a rompere il silenzio!
-   🔇 Chi parla per primo dopo il prezzo, PERDE!
-   
-   ⏳ Aspetta 5-10-15 secondi se serve - SILENZIO!
-   
-   💬 SOLO DOPO che lui parla, aggiungi:
-   
-   "E questo include la nostra **GARANZIA 100% RIMBORSO + 200 EURO PER IL DISTURBO** ↘️.
-   
-   Per me l'importante è che tu parta e ottenga risultati ↘️."
+[VOCE BASSA ↘️, CALMA TOTALE]
+
+"Guarda [NOME_PROSPECT] ↘️, ottima domanda ↘️. 
+
+Come hai visto, è un programma di trasformazione completo ↘️."
+
+⏸️ PAUSA 2 secondi
+
+"Visti i risultati che ottengono i nostri clienti ↘️, 
+il valore reale di un percorso del genere è di [VALORE ANCORAGGIO ALTO] ↘️."
+
+⏸️ PAUSA 3 secondi - DRAMMATICA
+
+"Nei prossimi 12 mesi, il prezzo di listino salirà a [PREZZO FUTURO] ↘️."
+
+⏸️ PAUSA 2 secondi
+
+"ADESSO ↘️, i professionisti che entrano nel programma, 
+inclusi molti dei casi studio che hai visto, 
+investono ${standardPrice} ↘️."
+
+⏸️ PAUSA 3 secondi - LUNGA
+
+"Tuttavia ↘️... [NOME_PROSPECT] ↘️, 
+dato che hai [ripeti PROBLEMA 1 dalla discovery] ↘️, 
+[ripeti PROBLEMA 2 dalla discovery] ↘️, 
+e vuoi raggiungere [ripeti loro OBIETTIVO] ↘️, 
+e mi hai promesso che ti impegnerai DAVVERO ↘️, 
+facciamo così ↘️..."
+
+⏸️ PAUSA 5 secondi - DRAMMATICA MASSIMA
+
+"Io parlo con il team, utilizzo uno dei miei coupon ↘️, 
+e ne abbiamo due al mese, perché è una cosa importante ↘️."
+
+⏸️ PAUSA 2 secondi
+
+"E ti posso dare il coupon chiamato 'l'incentivo dell'imprenditore' ↘️."
+
+⏸️ PAUSA 3 secondi
+
+"Secondo cui, l'investimento per te oggi non è più ${standardPrice} ↘️, 
+ma scende a **${priceText}** ↘️."
+
+⏸️⏸️⏸️ SILENZIO TOTALE - ASSOLUTO!!!
+
+⚠️ REGOLA D'ORO POST-PREZZO:
+
+🔇 NON PARLARE per primi!
+🔇 Aspetta che sia LUI a rompere il silenzio!
+🔇 Chi parla per primo dopo il prezzo, PERDE!
+
+⏳ Aspetta 5-10-15 secondi se serve - SILENZIO!
+
+💬 SOLO DOPO che lui parla, aggiungi:
+
+"E questo include la nostra **GARANZIA 100% RIMBORSO + 200 EURO PER IL DISTURBO** ↘️.
+
+Per me l'importante è che tu parta e ottenga risultati ↘️."
 
 ---
 
 **STEP 11 - CLOSING**
 🎯 OBIETTIVO: Chiudere con CTA assumptive
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA E TONALITÀ - CLOSING CTA                                         ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Sicuro, diretto, assumptive (come se fosse già deciso)            ║
-║  📢 VOLUME: Medio (chiaro, calmo)                                           ║
-║  🎭 INFLESSIONI: Neutre (né su né giù)                                       ║
-║  📣 LESSICO: Domande chiuse con 2 opzioni positive                          ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Livello: MEDIA-ALTA - Sicuro, diretto
+Tono: Assumptive (come se fosse già deciso)
+Volume: Medio (chiaro, calmo)
+Ritmo: Neutre (né su né giù)
+Lessico: Domande chiuse con 2 opzioni positive
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 CTA ASSUMPTIVE (varia SEMPRE!):
    
-   CTA 1: "Carta o bonifico ↘️?"
+CTA 1: "Carta o bonifico ↘️?"
+
+⏸️ ASPETTA LA RISPOSTA - SILENZIO!
+
+⚠️ SE OBIETTA → Gestisci obiezione (vedi script obiezioni)
+
+💬 DOPO gestione obiezione → Torna con CTA DIVERSA:
+
+CTA 2: "Preferisci carta o bonifico ↘️?"
+
+⏸️ ASPETTA
+
+⚠️ SE obietta ancora → Gestisci nuova obiezione
+
+💬 DOPO:
+
+CTA 3: "Ok, per procedere: carta o bonifico ↘️?"
+
+⏸️ ASPETTA
+
+---
+
+🔍 LADDER OBIEZIONI CLOSING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 LOOP RULE:
+
+Dopo 3 loop di CTA + obiezioni → Rifai RECAP valore:
+
+"Guarda [NOME_PROSPECT], ricapitoliamo: 
+Con [PREZZO] ottieni [BENEFICIO 1] + [BENEFICIO 2] + [BENEFICIO 3], 
+eliminando [PROBLEMA] e raggiungendo [OBIETTIVO]. 
+
+E tutto questo con garanzia totale.
+
+Carta o bonifico ↘️?"
+
+⏸️ ASPETTA
+
+LIVELLO 1 - Identifica:
+
+📌 DOMANDA: "[NOME_PROSPECT], aiutami a capire ↘️: cosa ti frena ↘️?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+🎧 ASCOLTA - Nota cosa dice e cosa NON dice
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LIVELLO 2 - Categorizza:
+
+"Vedi ↘️, l'esperienza mi ha insegnato che di solito è:
+
+1. Qualcosa non chiaro del percorso ↘️
+2. Dubbio che funzioni per te specificamente ↘️
+3. Questione di priorità o timing ↘️
+
+Quale delle tre ↘️?"
+
+⏸️ ASPETTA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LIVELLO 3 - Scava più profondo:
+
+"Perfetto ↘️. E dimmi: se [RISOLVO QUESTO], partiamo ↘️?"
+
+⏸️ ASPETTA
+
+✅ SE DICE "SÌ" → Risolvi quello e chiudi
+
+❌ SE ESITA → C'è dell'altro! Continua ladder:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LIVELLO 4 - Verità (se ancora esita):
+
+"Capisco ↘️. Mi sembra che ci sia qualcos'altro ↘️. 
+[NOME_PROSPECT], in tutta sincerità: qual è il vero dubbio ↘️?"
+
+⏸️ PAUSA LUNGA - Silenzio - Aspetta la VERA obiezione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 REFRAME - Costo del "pensarci":
    
-   ⏸️ ASPETTA LA RISPOSTA - SILENZIO!
-   
-   ⚠️ SE OBIETTA → Gestisci obiezione (vedi script obiezioni)
-   
-   💬 DOPO gestione obiezione → Torna con CTA DIVERSA:
-   
-   CTA 2: "Preferisci carta o bonifico ↘️?"
-   
-   ⏸️ ASPETTA
-   
-   ⚠️ SE obietta ancora → Gestisci nuova obiezione
-   
-   💬 DOPO:
-   
-   CTA 3: "Ok, per procedere: carta o bonifico ↘️?"
-   
-   ⏸️ ASPETTA
-   
-   🔄 LOOP RULE:
-   
-   Dopo 3 loop di CTA + obiezioni → Rifai RECAP valore:
-   
-   "Guarda [NOME_PROSPECT], ricapitoliamo: 
-   Con [PREZZO] ottieni [BENEFICIO 1] + [BENEFICIO 2] + [BENEFICIO 3], 
-   eliminando [PROBLEMA] e raggiungendo [OBIETTIVO]. 
-   
-   E tutto questo con garanzia totale.
-   
-   Carta o bonifico ↘️?"
+"Guarda [NOME_PROSPECT] ↘️, capisco la necessità di riflettere.
+
+Ma lasciami fare una domanda ↘️: da quanto tempo pensi 
+di risolvere questo problema ↘️?"
+
+⏸️ ASPETTA
+
+"E cosa è cambiato nel frattempo ↘️?"
+
+⏸️ ASPETTA
+
+"Il 'pensarci' spesso diventa un 'non farlo mai' ↘️. 
+E il costo è il tempo che passa ↘️.
+
+Se potessi toglierti ogni dubbio ORA, cosa dovrei chiarirti ↘️?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+💬 Chiarisci il dubbio, poi torna alla CTA
 
 ════════════════════════════════════════════════════════════════════════════════
 🛡️ GESTIONE RESISTENZE DURANTE LA DEMO
@@ -1812,11 +1828,83 @@ ${servicesOffered && servicesOffered.length > 0
 // SCRIPT OBIEZIONI - GESTIONE DELLE 23 OBIEZIONI DAN LOK
 export function getObjectionsScript(): string {
   return `
+═════════════════════════════════════════════════════════════════
+# SCRIPT GESTIONE OBIEZIONI - SEGUI ESATTAMENTE QUESTO FRAMEWORK
 ════════════════════════════════════════════════════════════════════════════════
-# SCRIPT GESTIONE OBIEZIONI - USA LE STESSE REGOLE DEL DISCOVERY
+
+════════════════════════════════════════════════════════════════════════════════
+🚨 REGOLE GLOBALI - LEGGI PRIMA DI INIZIARE! 🚨
 ════════════════════════════════════════════════════════════════════════════════
 
 ⚠️ RICORDA: Segui le META-ISTRUZIONI (ASPETTA risposte, ASCOLTA con empatia, usa BISCOTTINO se divagano)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 GESTIONE LOOP OBIEZIONI (max 3 loop per stessa obiezione)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 TRACCIAMENTO LOOP:
+
+   LOOP 1 - Prima volta obiezione:
+   → Gestisci con empatia + ladder + reframe
+   → Torna a CTA: "Carta o bonifico?"
+   
+   LOOP 2 - Ripete STESSA obiezione:
+   → Gestisci con ladder più profondo
+   → Torna a CTA VARIATA: "Preferisci carta o bonifico?"
+   
+   LOOP 3 - Ripete ANCORA stessa obiezione:
+   → Gestisci con test finale
+   → Torna a CTA VARIATA: "Ok, per procedere: carta o bonifico?"
+   
+   LOOP 4+ - Se ripete ANCORA:
+   🚨 STOP! C'è dell'altro! Usa DOMANDA VERITÀ:
+   
+   "Guarda [NOME_PROSPECT] ↘️, capisco perfettamente.
+   Ma lascia che ti sia sincero ↘️: abbiamo parlato di [OBIEZIONE] più volte, 
+   e ogni volta torniamo qui ↘️.
+   Mi sembra che ci sia qualcos'altro che ti preoccupa ↘️, 
+   qualcosa che magari è difficile da dire.
+   In tutta onestà ↘️: qual è la VERA preoccupazione ↘️?"
+   
+   ⏸️⏸️ PAUSA LUNGHISSIMA - Silenzio totale - Aspetta la VERA obiezione
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💎 REGOLA: Sempre tornare a CTA variata
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ DOPO OGNI GESTIONE OBIEZIONE:
+
+   ✅ SEMPRE tornare a CTA assumptive
+   ✅ SEMPRE variare la formulazione
+   ✅ NON ripetere mai stesso CTA due volte di fila
+   
+   ESEMPI CTA VARIATI:
+   • "Carta o bonifico?"
+   • "Preferisci carta o bonifico?"
+   • "Ok, per procedere: carta o bonifico?"
+   • "Perfetto, facciamo così: carta o bonifico?"
+   • "Bene, quindi: carta o bonifico?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ QUANDO QUALIFICARE COME "NON PRONTO"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se dopo tutti i loop e checkpoint il prospect:
+• Continua a ripetere stesse obiezioni senza accettare reframe
+• Non visualizza sé stesso usando la soluzione
+• Non ha reale urgenza/dolore
+• Non ha budget e non vuole trovare soluzione
+
+→ È OK lasciarlo andare! NON tutti sono clienti ideali!
+
+💬 CHIUSURA EDUCATA:
+
+"Capisco [NOME_PROSPECT]. Vedo che in questo momento non è allineato.
+Va benissimo ↘️, non c'è problema.
+Se le cose cambiano e decidi di affrontare [PROBLEMA], 
+sai dove trovarmi. Ti auguro il meglio ↘️."
+
+🎯 Lascialo andare con dignità - NON forzare!
 
 ════════════════════════════════════════════════════════════════════════════════
 
@@ -1904,9 +1992,9 @@ export function getObjectionsScript(): string {
    ⏸️ PAUSA LUNGA - Aspetta la VERA obiezione
 
 ════════════════════════════════════════════════════════════════════════════════
-
 **INTRODUZIONE - TRANSIZIONE DALLA DEMO**
-🎯 OBIETTIVO: Identificare l'obiezione principale con empatia assoluta
+**Identificare l'obiezione principale con empatia assoluta**
+════════════════════════════════════════════════════════════════════════════════
 
 📌 APERTURA EMPATICA (TONO: Calmo ↘️, comprensivo):
    
@@ -1933,436 +2021,790 @@ export function getObjectionsScript(): string {
 
 ---
 
-## LE 23 OBIEZIONI COMUNI E COME GESTIRLE
+## LE 23 OBIEZIONI - FASI DI GESTIONE
 
 ---
 
-### OBIEZIONE #1: "È troppo costoso" / "Non ho budget"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #1 - OBIEZIONE "È TROPPO COSTOSO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
+
 🎯 OBIETTIVO: Reframe da costo a investimento + Scavare vera obiezione
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA - OBIEZIONE PREZZO                                               ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Empatico ↘️ + Consulenziale (dottore che spiega)                  ║
-║  📢 VOLUME: Basso-Medio (rassicurante)                                      ║
-║  📣 LESSICO: "Capisco", "Aiutami a capire", "Pensiamoci insieme"           ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Empatico ↘️ + Consulenziale (dottore che spiega)
+Volume: Basso-Medio (rassicurante)
+Lessico: "Capisco", "Aiutami a capire", "Pensiamoci insieme"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco ↘️ [NOME_PROSPECT]. Aiutami a capire meglio ↘️: 
+quando dici 'costoso', lo paragoni a qualcos'altro o 
+non hai la cifra disponibile ora ↘️?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 2 - LADDER**
 
 🔍 LADDER DEI PERCHÉ - OBIEZIONE PREZZO (3-5 domande progressive):
 
-   LIVELLO 1 - Chiarifica (concisa):
-   
-   "Capisco ↘️ [NOME_PROSPECT]. Aiutami a capire meglio ↘️: 
-   quando dici 'costoso', lo paragoni a qualcos'altro o 
-   non hai la cifra disponibile ora ↘️?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA attentamente
-   
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   
-   LIVELLO 2A - SE DICE "Non ho la cifra":
-   
-   "Ok, capisco ↘️. Dimmi: è una questione di liquidità immediata 
-   o più di priorità nel budget ↘️?"
-   
-   ⏸️ ASPETTA
-   
-   LIVELLO 3A: "Perfetto ↘️. E se questa fosse la TUA priorità numero 1, 
-               come la gestiresti ↘️?"
-   
-   ⏸️ ASPETTA
-   
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   
-   LIVELLO 2B - SE DICE "È costoso rispetto ad altro":
-   
-   "Capisco ↘️. Come stai valutando il costo ↘️? 
-   Prezzo o ritorno sull'investimento ↘️?"
-   
-   ⏸️ ASPETTA
-   
-   LIVELLO 3B: "Interessante ↘️. E quanto valore dai 
-               al raggiungere [loro OBIETTIVO dalla discovery] ↘️?"
-   
-   ⏸️ ASPETTA
+LIVELLO 1: Chiarificazione iniziale (già fatta in Step 1)
 
-📌 REFRAME - Costo di non agire (dopo ladder, usa dati discovery):
-   
-   "Vedi [NOME_PROSPECT] ↘️, la domanda vera non è 'quanto costa' ↘️, 
-   ma 'quanto mi costa NON farlo' ↘️?
-   
-   ⏸️ PAUSA 2 sec
-   
-   Nella discovery mi hai detto che vuoi passare 
-   da [ripeti STATO ATTUALE] a [ripeti STATO DESIDERATO] ↘️.
-   
-   Pensiamoci insieme ↘️: se rimani dove sei per altri 12 mesi, 
-   quanto perdi in opportunità ↘️?"
-   
-   ⏸️ PAUSA - Lascia riflettere
-   
-   "L'investimento oggi è [PREZZO] ↘️. 
-   Ma il costo di non agire potrebbe essere 10, 20, 50 volte superiore ↘️.
-   
-   Ha senso ↘️?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   💬 Poi torna alla CTA: "Carta o bonifico?"
+LIVELLO 2A: SE DICE "Non ho la cifra":
+📌 DOMANDA: "Ok, capisco ↘️. Dimmi: è una questione di liquidità immediata 
+o più di priorità nel budget ↘️?"
+⏸️ ASPETTA
+
+LIVELLO 3A: 
+📌 DOMANDA: "Perfetto ↘️. E se questa fosse la TUA priorità numero 1, 
+come la gestiresti ↘️?"
+⏸️ ASPETTA
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+LIVELLO 2B: SE DICE "È costoso rispetto ad altro":
+📌 DOMANDA: "Capisco ↘️. Come stai valutando il costo ↘️? 
+Prezzo o ritorno sull'investimento ↘️?"
+⏸️ ASPETTA
+
+LIVELLO 3B: 
+📌 DOMANDA: "Interessante ↘️. E quanto valore dai 
+al raggiungere [loro OBIETTIVO dalla discovery] ↘️?"
+⏸️ ASPETTA
 
 ---
 
-### OBIEZIONE #2: "Devo pensarci"
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME - Costo di non agire (dopo ladder, usa dati discovery):
+   
+"Vedi [NOME_PROSPECT] ↘️, la domanda vera non è 'quanto costa' ↘️, 
+ma 'quanto mi costa NON farlo' ↘️?
+
+⏸️ PAUSA 2 sec
+
+Nella discovery mi hai detto che vuoi passare 
+da [ripeti STATO ATTUALE] a [ripeti STATO DESIDERATO] ↘️.
+
+Pensiamoci insieme ↘️: se rimani dove sei per altri 12 mesi, 
+quanto perdi in opportunità ↘️?"
+
+⏸️ PAUSA - Lascia riflettere
+
+"L'investimento oggi è [PREZZO] ↘️. 
+Ma il costo di non agire potrebbe essere 10, 20, 50 volte superiore ↘️.
+
+Ha senso ↘️?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+📌 DOMANDA CHIAVE: "Ha senso quello che ti sto dicendo?"
+
+📌 CTA: "Carta o bonifico?"
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #2 - OBIEZIONE "DEVO PENSARCI"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
+
 🎯 OBIETTIVO: Scoprire la VERA obiezione nascosta (questa è quasi SEMPRE falsa!)
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  ⚡ ENERGIA - OBIEZIONE "PENSARCI"                                           ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  🎵 TONO: Curioso ↘️ (NON giudicante!)                                       ║
-║  📢 VOLUME: Basso (empatico, comprensivo)                                   ║
-║  📣 LESSICO: "Aiutami a capire", "Dimmi", "Interessante"                    ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Curioso ↘️ (NON giudicante!)
+Volume: Basso (empatico, comprensivo)
+Lessico: "Aiutami a capire", "Dimmi", "Interessante"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco ↘️ [NOME_PROSPECT]. Aiutami a capire ↘️: 
+cosa devi pensare esattamente ↘️?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA - Nota cosa dice e cosa NON dice
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 2 - LADDER**
 
 🔍 LADDER DEI PERCHÉ - OBIEZIONE "PENSARCI" (SCAVA obiezione vera!):
 
-   LIVELLO 1 - Apri (concisa):
-   
-   "Capisco ↘️ [NOME_PROSPECT]. Aiutami a capire ↘️: 
-   cosa devi pensare esattamente ↘️?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   🎧 ASCOLTA - Nota cosa dice e cosa NON dice
-   
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   
-   LIVELLO 2 - Categorizza:
-   
-   "Vedi ↘️, l'esperienza mi ha insegnato che di solito è:
-   
-   1. Qualcosa non chiaro del percorso ↘️
-   2. Dubbio che funzioni per te specificamente ↘️
-   3. Questione di priorità o timing ↘️
-   
-   Quale delle tre ↘️?"
-   
-   ⏸️ ASPETTA
-   
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   
-   LIVELLO 3 - Scava più profondo:
-   
-   "Perfetto ↘️. E dimmi: se [RISOLVO QUESTO], partiamo ↘️?"
-   
-   ⏸️ ASPETTA
-   
-   ✅ SE DICE "SÌ" → Risolvi quello e chiudi
-   
-   ❌ SE ESITA → C'è dell'altro! Continua ladder:
-   
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   
-   LIVELLO 4 - Verità (se ancora esita):
-   
-   "Capisco ↘️. Mi sembra che ci sia qualcos'altro ↘️. 
-   [NOME_PROSPECT], in tutta sincerità: qual è il vero dubbio ↘️?"
-   
-   ⏸️ PAUSA LUNGA - Silenzio - Aspetta la VERA obiezione
+LIVELLO 1: Chiarificazione iniziale (già fatta in Step 1)
 
-📌 REFRAME - Costo del "pensarci":
-   
-   "Guarda [NOME_PROSPECT] ↘️, capisco la necessità di riflettere.
-   
-   Ma lasciami fare una domanda ↘️: da quanto tempo pensi 
-   di risolvere questo problema ↘️?"
-   
-   ⏸️ ASPETTA
-   
-   "E cosa è cambiato nel frattempo ↘️?"
-   
-   ⏸️ ASPETTA
-   
-   "Il 'pensarci' spesso diventa un 'non farlo mai' ↘️. 
-   E il costo è il tempo che passa ↘️.
-   
-   Se potessi toglierti ogni dubbio ORA, cosa dovrei chiarirti ↘️?"
-   
-   ⏸️ ASPETTA LA RISPOSTA
-   
-   💬 Chiarisci il dubbio, poi torna alla CTA
+LIVELLO 2: Categorizza
+📌 DOMANDA: "Vedi ↘️, l'esperienza mi ha insegnato che di solito è:
+
+1. Qualcosa non chiaro del percorso ↘️
+2. Dubbio che funzioni per te specificamente ↘️
+3. Questione di priorità o timing ↘️
+
+Quale delle tre ↘️?"
+⏸️ ASPETTA
+
+LIVELLO 3: Scava più profondo
+📌 DOMANDA: "Perfetto ↘️. E dimmi: se [RISOLVO QUESTO], partiamo ↘️?"
+⏸️ ASPETTA
+
+✅ SE DICE "SÌ" → Risolvi quello e chiudi
+❌ SE ESITA → C'è dell'altro! Continua ladder:
+
+LIVELLO 4: Verità (se ancora esita)
+📌 DOMANDA: "Capisco ↘️. Mi sembra che ci sia qualcos'altro ↘️. 
+[NOME_PROSPECT], in tutta sincerità: qual è il vero dubbio ↘️?"
+⏸️ PAUSA LUNGA - Silenzio - Aspetta la VERA obiezione
 
 ---
 
-### OBIEZIONE #3: "Devo parlarne con [partner/socio/team]"
+**STEP 3 - REFRAME**
 
-**(TONO: Rispettoso, collaborativo)**
+📌 SCRIPT REFRAME - Costo del "pensarci":
+   
+"Guarda [NOME_PROSPECT] ↘️, capisco la necessità di riflettere.
 
-Assolutamente [NOME_PROSPECT], ha senso coinvolgere le persone che contano per questa decisione.
+Ma lasciami fare una domanda ↘️: da quanto tempo pensi 
+di risolvere questo problema ↘️?"
 
-Posso chiederti: qual è il ruolo di [partner/socio/team] in questa decisione? È qualcuno che deve approvare l'investimento o qualcuno che deve essere d'accordo sulla strategia?
+⏸️ ASPETTA
 
-**[ASCOLTA LA RISPOSTA]**
+"E cosa è cambiato nel frattempo ↘️?"
 
-**REFRAME:**
-Perfetto. Allora facciamo così: cosa pensi che [partner/socio/team] chiederà quando gliene parlerai? Quali saranno i suoi dubbi principali?
+⏸️ ASPETTA
 
-**[ASCOLTA]**
+"Il 'pensarci' spesso diventa un 'non farlo mai' ↘️. 
+E il costo è il tempo che passa ↘️.
 
-Ottimo. Perché non affrontiamo questi dubbi ora insieme, così quando ne parlerai avrai tutte le risposte pronte?
+Se potessi toglierti ogni dubbio ORA, cosa dovrei chiarirti ↘️?"
 
-Inoltre, se vuoi, possiamo organizzare una call veloce a tre, così rispondo direttamente alle sue domande. Ti semplificherei le cose, che ne dici?
+⏸️ ASPETTA LA RISPOSTA
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], se [partner/socio/team] fosse d'accordo, tu partiresti?
+💬 Chiarisci il dubbio
+
+📌 DOMANDA CHIAVE: "Se potessi toglierti ogni dubbio ORA, cosa dovrei chiarirti?"
+
+📌 CTA: "Perfetto, facciamo così: carta o bonifico?"
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #3 - OBIEZIONE "DEVO PARLARNE CON PARTNER/SOCIO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
+
+🎯 OBIETTIVO: Qualificare l'influenza e preparare o coinvolgere il decisore
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Rispettoso, collaborativo
+Volume: Medio (professionale)
+Lessico: "Assolutamente", "Perfetto", "Facciamo così"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Assolutamente [NOME_PROSPECT], ha senso coinvolgere le persone 
+che contano per questa decisione.
+
+Posso chiederti: qual è il ruolo di [partner/socio/team] in questa decisione? 
+È qualcuno che deve approvare l'investimento o qualcuno che deve essere 
+d'accordo sulla strategia?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 2 - LADDER**
+
+LIVELLO 1: Anticipare dubbi
+📌 DOMANDA: "Perfetto. Allora facciamo così: cosa pensi che [partner/socio/team] 
+chiederà quando gliene parlerai? Quali saranno i suoi dubbi principali?"
+⏸️ ASPETTA
+
+LIVELLO 2: Preparare risposte
+📌 SCRIPT: "Ottimo. Perché non affrontiamo questi dubbi ora insieme, così quando 
+ne parlerai avrai tutte le risposte pronte?
+
+Inoltre, se vuoi, possiamo organizzare una call veloce a tre, così rispondo 
+direttamente alle sue domande. Ti semplificherei le cose, che ne dici?"
+⏸️ ASPETTA
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], se [partner/socio/team] fosse d'accordo, 
+tu partiresti?"
+
+⏸️ ASPETTA LA RISPOSTA
 
 **[Se dice NO → c'è un'altra obiezione nascosta]**
 **[Se dice SÌ → organizza call a tre o fornisci materiali]**
 
+📌 CTA: "Organizziamo la call a tre per questa settimana. Quando è disponibile?"
+
 ---
 
-### OBIEZIONE #4: "Non è il momento giusto"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #4 - OBIEZIONE "NON È IL MOMENTO GIUSTO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Empatico, diretto)**
+🎯 OBIETTIVO: Creare urgenza mostrando che il momento giusto si CREA
 
-Capisco [NOME_PROSPECT]. Dimmi, cosa dovrebbe cambiare perché diventi il momento giusto?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Empatico, diretto
+Volume: Medio (deciso ma non aggressivo)
+Lessico: "Capisco", "Dimmi", "Vedi"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA LA RISPOSTA]**
+---
 
-**REFRAME:**
-Vedi, l'esperienza mi ha insegnato che il "momento giusto" non arriva mai da solo. Si crea.
+**STEP 1 - CHIARIFICA**
 
-Nella discovery mi hai detto che questo problema lo stai affrontando da [TEMPO]. Quante volte in questo periodo hai pensato che non era il momento giusto?
+📌 DOMANDA: "Capisco [NOME_PROSPECT]. Dimmi, cosa dovrebbe cambiare 
+perché diventi il momento giusto?"
 
-E cosa è successo nel frattempo? Il problema si è risolto da solo o è peggiorato?
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
 
-**DOMANDA CHIAVE:**
-Se aspetti il "momento giusto", quanto tempo pensi passerà ancora prima di risolvere questo problema? 3 mesi? 6 mesi? Un anno?
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Vedi, l'esperienza mi ha insegnato che il 'momento giusto' non arriva mai da solo. 
+Si crea.
+
+Nella discovery mi hai detto che questo problema lo stai affrontando da [TEMPO]. 
+Quante volte in questo periodo hai pensato che non era il momento giusto?
+
+E cosa è successo nel frattempo? Il problema si è risolto da solo o è peggiorato?"
+
+⏸️ ASPETTA LA RISPOSTA
+
+📌 DOMANDA CHIAVE: "Se aspetti il 'momento giusto', quanto tempo pensi passerà 
+ancora prima di risolvere questo problema? 3 mesi? 6 mesi? Un anno?
 
 E quanto ti costerà in termini di opportunità perse e frustrazione accumulata?
 
-Il momento giusto è quando decidi di agire. E da quello che mi hai detto, quel momento è ora.
+Il momento giusto è quando decidi di agire. E da quello che mi hai detto, 
+quel momento è ora."
+
+📌 CTA: "Carta o bonifico?"
 
 ---
 
-### OBIEZIONE #5: "Ho bisogno di più tempo per decidere"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #5 - OBIEZIONE "HO BISOGNO DI PIÙ TEMPO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Comprensivo, ma diretto)**
+🎯 OBIETTIVO: Scoprire cosa vogliono valutare e risolvere dubbi ORA
 
-Capisco [NOME_PROSPECT]. Quanto tempo ti serve? Un giorno? Una settimana? Un mese?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Comprensivo, ma diretto
+Volume: Medio (deciso)
+Lessico: "Capisco", "Vedi", "Sii sincero"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA LA RISPOSTA]**
+---
 
-**REFRAME:**
-Ok, e in questo tempo, cosa andrai a valutare esattamente? Quali informazioni ti mancano per prendere una decisione?
+**STEP 1 - CHIARIFICA**
 
-**[ASCOLTA]**
+📌 DOMANDA: "Capisco [NOME_PROSPECT]. Quanto tempo ti serve? 
+Un giorno? Una settimana? Un mese?"
 
-Vedi, il tempo non risolve i dubbi, le risposte sì. Se c'è qualcosa che non ti è chiaro, affrontiamolo ora insieme.
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], sii sincero con me: è davvero una questione di tempo o c'è dell'altro che ti frena?
+---
+
+**STEP 2 - LADDER**
+
+LIVELLO 1: Cosa valuterà
+📌 DOMANDA: "Ok, e in questo tempo, cosa andrai a valutare esattamente? 
+Quali informazioni ti mancano per prendere una decisione?"
+⏸️ ASPETTA
+
+LIVELLO 2: Verità
+📌 DOMANDA: "[NOME_PROSPECT], sii sincero con me: è davvero una questione di tempo 
+o c'è dell'altro che ti frena?"
+⏸️ ASPETTA
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Vedi, il tempo non risolve i dubbi, le risposte sì. Se c'è qualcosa che non ti è 
+chiaro, affrontiamolo ora insieme."
 
 **[Se continua a dire che serve tempo]:**
 
-Guarda, rispetto la tua necessità di riflettere. Ma lascia che ti dica una cosa: nella mia esperienza, le persone che dicono "ho bisogno di tempo" di solito non tornano. Non perché la soluzione non vada bene, ma perché la vita prende il sopravvento e si rimanda all'infinito.
+"Guarda, rispetto la tua necessità di riflettere. Ma lascia che ti dica una cosa: 
+nella mia esperienza, le persone che dicono 'ho bisogno di tempo' di solito non tornano. 
+Non perché la soluzione non vada bene, ma perché la vita prende il sopravvento 
+e si rimanda all'infinito.
 
-Da quanto tempo hai questo problema? E quanto tempo ancora vuoi aspettare prima di risolverlo?
+Da quanto tempo hai questo problema? E quanto tempo ancora vuoi aspettare 
+prima di risolverlo?"
 
----
+📌 DOMANDA CHIAVE: "Il tempo non risolve i dubbi, le risposte sì. 
+Cosa posso chiarirti ORA?"
 
-### OBIEZIONE #6: "Sto già lavorando con qualcun altro"
-
-**(TONO: Curioso, non competitivo)**
-
-Capisco [NOME_PROSPECT]. Posso chiederti: se stai già lavorando con qualcun altro, perché sei qui oggi a parlare con me?
-
-**[ASCOLTA LA RISPOSTA - È FONDAMENTALE]**
-
-**REFRAME:**
-Vedi, il fatto che tu sia qui significa che, probabilmente, quello che stai facendo ora non ti sta dando i risultati che vuoi, giusto?
-
-Dimmi, cosa ti manca nella collaborazione attuale? Cosa vorresti che fosse diverso?
-
-**[ASCOLTA]**
-
-Perfetto. E se potessi avere esattamente quello che ti manca, quanto cambierebbe la tua situazione?
-
-Guarda [NOME_PROSPECT], non sto dicendo che devi abbandonare chi ti sta aiutando ora. Sto dicendo che forse è il momento di aggiungere un approccio diverso, che ti porti i risultati che stai cercando.
-
-**DOMANDA CHIAVE:**
-Se dovessi scegliere tra rimanere dove sei ora o ottenere [RISULTATO DESIDERATO dalla discovery], cosa sceglieresti?
+📌 CTA: "Preferisci carta o bonifico?"
 
 ---
 
-### OBIEZIONE #7: "Ho provato cose simili e non hanno funzionato"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #6 - OBIEZIONE "STO GIÀ LAVORANDO CON QUALCUN ALTRO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Empatico, validante)**
+🎯 OBIETTIVO: Capire perché è qui nonostante abbia già un fornitore
 
-Capisco perfettamente [NOME_PROSPECT], e mi dispiace per quella esperienza. Posso chiederti: cosa esattamente hai provato e perché pensi che non abbia funzionato?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Curioso, non competitivo
+Volume: Medio (interessato)
+Lessico: "Capisco", "Posso chiederti", "Vedi"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA CON ATTENZIONE]**
+---
 
-**REFRAME:**
-Ok, vedo. Quello che hai provato era [RIASSUMI]. Lascia che ti mostri le differenze fondamentali con quello che ti sto proponendo:
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco [NOME_PROSPECT]. Posso chiederti: se stai già lavorando 
+con qualcun altro, perché sei qui oggi a parlare con me?"
+
+⏸️ ASPETTA LA RISPOSTA - È FONDAMENTALE
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Interessante!"
+
+---
+
+**STEP 2 - LADDER**
+
+LIVELLO 1: Cosa manca
+📌 DOMANDA: "Dimmi, cosa ti manca nella collaborazione attuale? 
+Cosa vorresti che fosse diverso?"
+⏸️ ASPETTA
+
+LIVELLO 2: Impatto del cambiamento
+📌 DOMANDA: "Perfetto. E se potessi avere esattamente quello che ti manca, 
+quanto cambierebbe la tua situazione?"
+⏸️ ASPETTA
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Vedi, il fatto che tu sia qui significa che, probabilmente, quello che stai 
+facendo ora non ti sta dando i risultati che vuoi, giusto?
+
+Guarda [NOME_PROSPECT], non sto dicendo che devi abbandonare chi ti sta aiutando ora. 
+Sto dicendo che forse è il momento di aggiungere un approccio diverso, 
+che ti porti i risultati che stai cercando."
+
+📌 DOMANDA CHIAVE: "Se dovessi scegliere tra rimanere dove sei ora o ottenere 
+[RISULTATO DESIDERATO dalla discovery], cosa sceglieresti?"
+
+📌 CTA: "Ok, per procedere: carta o bonifico?"
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #7 - OBIEZIONE "HO PROVATO COSE SIMILI E NON HANNO FUNZIONATO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
+
+🎯 OBIETTIVO: Validare l'esperienza passata e mostrare le differenze
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Empatico, validante
+Volume: Basso-Medio (comprensivo)
+Lessico: "Capisco perfettamente", "Mi dispiace", "Lascia che ti mostri"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco perfettamente [NOME_PROSPECT], e mi dispiace per quella 
+esperienza. Posso chiederti: cosa esattamente hai provato e perché pensi 
+che non abbia funzionato?"
+
+⏸️ ASPETTA LA RISPOSTA - ASCOLTA CON ATTENZIONE
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Ok, vedo. Quello che hai provato era [RIASSUMI]. Lascia che ti mostri le 
+differenze fondamentali con quello che ti sto proponendo:
 
 1. **[DIFFERENZA 1]**: A differenza di [soluzione precedente], noi [COME SIETE DIVERSI]
 2. **[DIFFERENZA 2]**: Il problema che hai avuto era [PROBLEMA], noi lo risolviamo così: [SOLUZIONE]
-3. **[DIFFERENZA 3]**: Tu non avevi [SUPPORTO/STRATEGIA], qui invece hai [COSA OFFRITE]
+3. **[DIFFERENZA 3]**: Tu non avevi [SUPPORTO/STRATEGIA], qui invece hai [COSA OFFRITE]"
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], se fossi sicuro al 100% che questa volta sarebbe diverso e otterresti i risultati che vuoi, partiresti?
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], se fossi sicuro al 100% che questa volta 
+sarebbe diverso e otterresti i risultati che vuoi, partiresti?"
 
 **[Se dice NO → c'è un'altra obiezione]**
 **[Se dice SÌ → affronta la certezza]**
 
-Perfetto. Allora la vera domanda è: come posso darti quella certezza? Cosa ti servirebbe vedere o sapere?
+📌 SCRIPT FOLLOW-UP: "Perfetto. Allora la vera domanda è: come posso darti 
+quella certezza? Cosa ti servirebbe vedere o sapere?"
+
+📌 CTA: "Carta o bonifico?"
 
 ---
 
-### OBIEZIONE #8: "Non sono sicuro che funzioni per me"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #8 - OBIEZIONE "NON SONO SICURO CHE FUNZIONI PER ME"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Comprensivo, educativo)**
+🎯 OBIETTIVO: Identificare dubbi specifici e mostrare case study pertinenti
 
-Capisco [NOME_PROSPECT], ed è una preoccupazione legittima. Dimmi, cosa ti fa dubitare? C'è qualcosa di specifico nella tua situazione che pensi possa essere un ostacolo?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Comprensivo, educativo
+Volume: Medio (rassicurante)
+Lessico: "Capisco", "Dimmi", "Lascia che ti mostri"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA LA RISPOSTA]**
+---
 
-**REFRAME:**
-Ok, vedo. Hai detto [RIASSUMI IL DUBBIO]. Lascia che ti mostri come abbiamo aiutato altri nella tua stessa situazione.
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco [NOME_PROSPECT], ed è una preoccupazione legittima. 
+Dimmi, cosa ti fa dubitare? C'è qualcosa di specifico nella tua situazione 
+che pensi possa essere un ostacolo?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Ok, vedo. Hai detto [RIASSUMI IL DUBBIO]. Lascia che ti mostri come abbiamo 
+aiutato altri nella tua stessa situazione.
 
 **[USA CASE STUDY PERTINENTE]**
 
-[CLIENTE SIMILE] aveva esattamente lo stesso dubbio. Pensava che nel suo caso specifico non avrebbe funzionato perché [MOTIVO]. 
+[CLIENTE SIMILE] aveva esattamente lo stesso dubbio. Pensava che nel suo caso 
+specifico non avrebbe funzionato perché [MOTIVO]. 
 
-Quello che abbiamo fatto è stato [SOLUZIONE SPECIFICA], e i risultati sono stati [RISULTATI].
+Quello che abbiamo fatto è stato [SOLUZIONE SPECIFICA], e i risultati sono 
+stati [RISULTATI]."
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], se io ti garantisco personalmente che funzionerà per la tua situazione, e mi impegno a lavorare con te fino a quando non ottieni risultati, partiresti?
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], se io ti garantisco personalmente che 
+funzionerà per la tua situazione, e mi impegno a lavorare con te fino a quando 
+non ottieni risultati, partiresti?
 
-Perché vedi, la mia reputazione si basa sui risultati dei miei clienti. Se tu non ottieni risultati, io non ho fatto bene il mio lavoro. E questo per me è inaccettabile.
+Perché vedi, la mia reputazione si basa sui risultati dei miei clienti. 
+Se tu non ottieni risultati, io non ho fatto bene il mio lavoro. 
+E questo per me è inaccettabile."
+
+📌 CTA: "Preferisci carta o bonifico?"
 
 ---
 
-### OBIEZIONE #9: "Cosa succede se non funziona?"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #9 - OBIEZIONE "COSA SUCCEDE SE NON FUNZIONA?"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Sicuro, rassicurante)**
+🎯 OBIETTIVO: Invertire la domanda e mostrare garanzie
 
-Ottima domanda [NOME_PROSPECT]. Mostra che stai pensando in modo pratico.
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Sicuro, rassicurante
+Volume: Medio-Alto (deciso)
+Lessico: "Ottima domanda", "Ma facciamo un ragionamento diverso"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Lascia che ti dica una cosa: abbiamo [GARANZIA SPECIFICA se c'è], ma più importante di questo, abbiamo un track record di [RISULTATI/CASE STUDIES].
+---
 
-**REFRAME:**
-Ma facciamo un ragionamento diverso. Invece di chiederti "cosa succede se non funziona?", chiediti: "cosa succede se funziona?"
+**STEP 1 - CHIARIFICA**
 
-Se ottieni [RISULTATO DESIDERATO dalla discovery], come cambia la tua vita? E quanto vale per te?
+📌 DOMANDA: "Ottima domanda [NOME_PROSPECT]. Mostra che stai pensando in modo 
+pratico.
 
-E ora, facciamoci l'altra domanda: cosa succede se NON lo fai? Cosa succede se tra 6 mesi, 12 mesi, sei ancora nella stessa situazione?
+Lascia che ti dica una cosa: abbiamo [GARANZIA SPECIFICA se c'è], ma più 
+importante di questo, abbiamo un track record di [RISULTATI/CASE STUDIES]."
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], quale delle due scenari ti spaventa di più: provare e scoprire che funziona, o non provare e rimanere dove sei?
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Ma facciamo un ragionamento diverso. Invece di chiederti 'cosa succede se 
+non funziona?', chiediti: 'cosa succede se funziona?'
+
+Se ottieni [RISULTATO DESIDERATO dalla discovery], come cambia la tua vita? 
+E quanto vale per te?
+
+E ora, facciamoci l'altra domanda: cosa succede se NON lo fai? 
+Cosa succede se tra 6 mesi, 12 mesi, sei ancora nella stessa situazione?"
+
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], quale delle due scenari ti spaventa di più: 
+provare e scoprire che funziona, o non provare e rimanere dove sei?"
 
 **[AGGIUNGI GARANZIA SE DISPONIBILE]:**
-E comunque, abbiamo [GARANZIA], quindi il rischio è praticamente zero.
+"E comunque, abbiamo [GARANZIA], quindi il rischio è praticamente zero."
+
+📌 CTA: "Carta o bonifico?"
 
 ---
 
-### OBIEZIONE #10: "Posso farcela da solo"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #10 - OBIEZIONE "POSSO FARCELA DA SOLO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Rispettoso, non offeso)**
+🎯 OBIETTIVO: Mostrare il valore del tempo e dell'esperienza
 
-[NOME_PROSPECT], sono sicuro che sei perfettamente capace di farcela da solo. Non è una questione di capacità.
-
-Posso farti una domanda? Se puoi farcela da solo, perché non lo hai già fatto? Cosa ti ha fermato fino ad ora?
-
-**[ASCOLTA LA RISPOSTA]**
-
-**REFRAME:**
-Vedi, la domanda non è "posso farlo da solo?", ma "QUANTO TEMPO mi ci vorrà per farlo da solo? E QUANTO MI COSTERÀ in termini di errori, tentativi falliti, e opportunità perse?"
-
-Pensa a questo: potresti anche imparare a volare un aereo da solo, studiando manuali e facendo pratica. Ma quanto tempo ti ci vorrebbe? E quanti errori faresti lungo la strada?
-
-Oppure, potresti avere un pilota esperto che ti insegna, ti corregge quando sbagli, e ti porta al risultato in una frazione del tempo.
-
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], quanto vale per te il tempo? E quanto vale per te evitare gli errori che ho già fatto io per te?
-
-Io ci ho messo [TEMPO] per arrivare dove sono. Tu puoi farcela da solo, ma ci metteresti altrettanto. O puoi sfruttare la mia esperienza e arrivarci in [TEMPO MINORE].
-
-Quale preferisci?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Rispettoso, non offeso
+Volume: Medio (professionale)
+Lessico: "Sono sicuro", "Non è una questione di capacità", "Vedi"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
-### OBIEZIONE #11: "Non ho tempo"
+**STEP 1 - CHIARIFICA**
 
-**(TONO: Empatico, ma sfidante)**
+📌 DOMANDA: "[NOME_PROSPECT], sono sicuro che sei perfettamente capace di 
+farcela da solo. Non è una questione di capacità.
 
-Capisco [NOME_PROSPECT]. Dimmi, quanto tempo stai dedicando ora a [PROBLEMA che vuole risolvere]?
+Posso farti una domanda? Se puoi farcela da solo, perché non lo hai già fatto? 
+Cosa ti ha fermato fino ad ora?"
 
-**[ASCOLTA LA RISPOSTA]**
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
 
-**REFRAME:**
-Ok, quindi stai già dedicando tempo a questo problema. La domanda non è se hai tempo, ma come lo stai usando.
+---
 
-Vedi, quello che ti propongo non è AGGIUNGERE tempo, ma OTTIMIZZARE il tempo che già stai spendendo.
+**STEP 3 - REFRAME**
 
-Invece di provare, sbagliare, ricominciare (che è quello che stai facendo ora), avrai un sistema testato che ti porta dritto al risultato.
+📌 SCRIPT REFRAME:
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], se potessi ottenere [RISULTATO DESIDERATO] dedicandoci MENO tempo di quanto ne stai dedicando ora, ti interesserebbe?
+"Vedi, la domanda non è 'posso farlo da solo?', ma 'QUANTO TEMPO mi ci vorrà 
+per farlo da solo? E QUANTO MI COSTERÀ in termini di errori, tentativi falliti, 
+e opportunità perse?'
 
-Perché è esattamente questo che succede: smetti di sprecare tempo in tentativi ed errori, e inizi a usare un sistema che funziona.
+Pensa a questo: potresti anche imparare a volare un aereo da solo, studiando 
+manuali e facendo pratica. Ma quanto tempo ti ci vorrebbe? E quanti errori 
+faresti lungo la strada?
 
-E pensa a questo: quanto tempo in più avrai quando avrai risolto questo problema?
+Oppure, potresti avere un pilota esperto che ti insegna, ti corregge quando 
+sbagli, e ti porta al risultato in una frazione del tempo."
+
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], quanto vale per te il tempo? 
+E quanto vale per te evitare gli errori che ho già fatto io per te?
+
+Io ci ho messo [TEMPO] per arrivare dove sono. Tu puoi farcela da solo, 
+ma ci metteresti altrettanto. O puoi sfruttare la mia esperienza e arrivarci 
+in [TEMPO MINORE].
+
+Quale preferisci?"
+
+📌 CTA: "Perfetto, facciamo così: carta o bonifico?"
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #11 - OBIEZIONE "NON HO TEMPO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
+
+🎯 OBIETTIVO: Mostrare che il tempo investito ORA risparmia tempo DOPO
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Empatico, ma sfidante
+Volume: Medio (deciso)
+Lessico: "Capisco", "Dimmi", "Vedi"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco [NOME_PROSPECT]. Dimmi, quanto tempo stai dedicando ora 
+a [PROBLEMA che vuole risolvere]?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Ok, quindi stai già dedicando tempo a questo problema. La domanda non è se 
+hai tempo, ma come lo stai usando.
+
+Vedi, quello che ti propongo non è AGGIUNGERE tempo, ma OTTIMIZZARE il tempo 
+che già stai spendendo.
+
+Invece di provare, sbagliare, ricominciare (che è quello che stai facendo ora), 
+avrai un sistema testato che ti porta dritto al risultato."
+
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], se potessi ottenere [RISULTATO DESIDERATO] 
+dedicandoci MENO tempo di quanto ne stai dedicando ora, ti interesserebbe?
+
+Perché è esattamente questo che succede: smetti di sprecare tempo in tentativi 
+ed errori, e inizi a usare un sistema che funziona.
+
+E pensa a questo: quanto tempo in più avrai quando avrai risolto questo problema?"
 
 **REALTÀ CRUDA:**
-La verità è che troverai sempre tempo per le cose che sono una priorità. Quindi la vera domanda è: quanto è prioritario per te risolvere questo problema?
+"La verità è che troverai sempre tempo per le cose che sono una priorità. 
+Quindi la vera domanda è: quanto è prioritario per te risolvere questo problema?"
+
+📌 CTA: "Bene, quindi: carta o bonifico?"
 
 ---
 
-### OBIEZIONE #12: "Mandami più informazioni"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #12 - OBIEZIONE "MANDAMI PIÙ INFORMAZIONI"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Diretto, ma gentile)**
+🎯 OBIETTIVO: Capire cosa manca veramente e affrontare la vera obiezione
 
-Certo [NOME_PROSPECT], posso mandarti qualsiasi informazione. Ma prima lascia che ti faccia una domanda: quali informazioni specifiche ti mancano?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Diretto, ma gentile
+Volume: Medio (professionale)
+Lessico: "Certo", "Ma prima lascia che ti faccia una domanda"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA LA RISPOSTA]**
+---
 
-**REFRAME:**
-Vedi, l'esperienza mi ha insegnato che quando qualcuno dice "mandami più informazioni", di solito significa una di queste cose:
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Certo [NOME_PROSPECT], posso mandarti qualsiasi informazione. 
+Ma prima lascia che ti faccia una domanda: quali informazioni specifiche ti mancano?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 2 - LADDER**
+
+LIVELLO 1: Categorizza
+📌 SCRIPT: "Vedi, l'esperienza mi ha insegnato che quando qualcuno dice 
+'mandami più informazioni', di solito significa una di queste cose:
 
 1. Non ha chiaro qualcosa di specifico
 2. Vuole un modo per rimandare la decisione
 3. Non è convinto del valore
 
-Quale delle tre descrive meglio la tua situazione?
+Quale delle tre descrive meglio la tua situazione?"
+⏸️ ASPETTA E AFFRONTA LA VERA OBIEZIONE
 
-**[ASCOLTA E AFFRONTA LA VERA OBIEZIONE]**
+LIVELLO 2: Test sincerità
+📌 DOMANDA: "Guarda [NOME_PROSPECT], ti mando volentieri tutto quello che vuoi. 
+Ma sii sincero con me: se ti mando le informazioni, le leggerai veramente? 
+E poi tornerai qui per fare questo passo?
 
-Guarda [NOME_PROSPECT], ti mando volentieri tutto quello che vuoi. Ma sii sincero con me: se ti mando le informazioni, le leggerai veramente? E poi tornerai qui per fare questo passo?
-
-O è un modo educato per dire di no?
-
-**DOMANDA CHIAVE:**
-Perché vedi, abbiamo appena passato [TEMPO] insieme. Ti ho spiegato tutto il percorso, i risultati, le garanzie. Cosa c'è nelle "informazioni scritte" che non c'è in quello che abbiamo discusso?
-
-Se c'è qualcosa di specifico che non ti è chiaro, affrontiamolo ora insieme.
+O è un modo educato per dire di no?"
+⏸️ ASPETTA
 
 ---
 
-### OBIEZIONE #13: "È troppo complicato"
+**STEP 3 - REFRAME**
 
-**(TONO: Rassicurante, semplificante)**
+📌 DOMANDA CHIAVE: "Perché vedi, abbiamo appena passato [TEMPO] insieme. 
+Ti ho spiegato tutto il percorso, i risultati, le garanzie. 
+Cosa c'è nelle 'informazioni scritte' che non c'è in quello che abbiamo discusso?
 
-Capisco [NOME_PROSPECT]. Dimmi, quale parte ti sembra troppo complicata?
+Se c'è qualcosa di specifico che non ti è chiaro, affrontiamolo ora insieme."
 
-**[ASCOLTA LA RISPOSTA]**
+📌 CTA: "Carta o bonifico?"
 
-**REFRAME:**
-Ok, vedo. Ti sembra complicato perché ti sto mostrando TUTTO il sistema completo. Ma per te, sarà semplicissimo.
+---
 
-Guarda, la complessità è dietro le quinte. Per te, è solo seguire un percorso passo-passo:
+════════════════════════════════════════════════════════════════════════════════
+**FASE #13 - OBIEZIONE "È TROPPO COMPLICATO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
+
+🎯 OBIETTIVO: Semplificare e mostrare il percorso passo-passo
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Rassicurante, semplificante
+Volume: Medio (calmo)
+Lessico: "Capisco", "Ti sembra complicato perché", "Per te sarà semplicissimo"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco [NOME_PROSPECT]. Dimmi, quale parte ti sembra troppo complicata?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Ok, vedo. Ti sembra complicato perché ti sto mostrando TUTTO il sistema completo. 
+Ma per te, sarà semplicissimo.
+
+Guarda, la complessità è dietro le quinte. Per te, è solo seguire un percorso 
+passo-passo:
 
 1. **Passo 1**: [SEMPLIFICA FASE 1]
 2. **Passo 2**: [SEMPLIFICA FASE 2]
@@ -2371,145 +2813,282 @@ Guarda, la complessità è dietro le quinte. Per te, è solo seguire un percorso
 Noi ci occupiamo di tutta la parte complicata. Tu devi solo [AZIONE SEMPLICE].
 
 **ANALOGIA:**
-È come guidare una macchina. Sotto il cofano ci sono centinaia di componenti complessi, ma tu devi solo girare il volante e premere l'acceleratore. Noi siamo il motore, tu sei il pilota.
+È come guidare una macchina. Sotto il cofano ci sono centinaia di componenti 
+complessi, ma tu devi solo girare il volante e premere l'acceleratore. 
+Noi siamo il motore, tu sei il pilota."
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], se io ti garantisco che sarà semplice e ti guido passo-passo, partiresti?
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], se io ti garantisco che sarà semplice 
+e ti guido passo-passo, partiresti?"
+
+📌 CTA: "Preferisci carta o bonifico?"
 
 ---
 
-### OBIEZIONE #14: "Non voglio impegnarmi adesso"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #14 - OBIEZIONE "NON VOGLIO IMPEGNARMI ADESSO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Comprensivo, ma diretto)**
+🎯 OBIETTIVO: Capire la vera paura dietro l'impegno
 
-Capisco [NOME_PROSPECT]. Dimmi, cosa significa "adesso"? Quando sarebbe il momento giusto per impegnarti?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Comprensivo, ma diretto
+Volume: Medio (deciso)
+Lessico: "Capisco", "Dimmi", "Vedi"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA LA RISPOSTA]**
+---
 
-**REFRAME:**
-Vedi, la paura dell'impegno di solito nasce da una di queste cose:
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco [NOME_PROSPECT]. Dimmi, cosa significa 'adesso'? 
+Quando sarebbe il momento giusto per impegnarti?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 2 - LADDER**
+
+LIVELLO 1: Categorizza la paura
+📌 SCRIPT: "Vedi, la paura dell'impegno di solito nasce da una di queste cose:
 
 1. Non sei sicuro che funzioni
 2. Non sei sicuro di riuscire a portarlo avanti
 3. Hai paura di fare la scelta sbagliata
 
-Quale delle tre ti risuona di più?
-
-**[ASCOLTA E AFFRONTA LA VERA PAURA]**
-
-Guarda [NOME_PROSPECT], capisco la paura dell'impegno. Ma facciamo un ragionamento:
-
-Ti sei impegnato nel tuo business, giusto? Ti impegni ogni giorno a lavorare, a cercare clienti, a risolvere problemi.
-
-Questo non è un impegno EXTRA, è un impegno STRATEGICO che ti libera da tutti gli altri impegni sbagliati che stai facendo ora.
-
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], sei più spaventato dall'impegnarti in una soluzione che potrebbe funzionare, o dall'impegno quotidiano di continuare a combattere con un problema che non si risolve?
-
-Perché uno dei due impegni lo devi prendere comunque.
+Quale delle tre ti risuona di più?"
+⏸️ ASPETTA E AFFRONTA LA VERA PAURA
 
 ---
 
-### OBIEZIONE #15: "Voglio una garanzia"
+**STEP 3 - REFRAME**
 
-**(TONO: Sicuro, trasparente)**
+📌 SCRIPT REFRAME:
 
-Assolutamente [NOME_PROSPECT]. Abbiamo [DESCRIVI GARANZIA SE ESISTE].
+"Guarda [NOME_PROSPECT], capisco la paura dell'impegno. Ma facciamo un ragionamento:
 
-Ma lascia che ti dica una cosa più importante della garanzia.
+Ti sei impegnato nel tuo business, giusto? Ti impegni ogni giorno a lavorare, 
+a cercare clienti, a risolvere problemi.
 
-**REFRAME:**
-La vera garanzia non è un pezzo di carta che dice "rimborso garantito". La vera garanzia sono i risultati dei miei clienti.
+Questo non è un impegno EXTRA, è un impegno STRATEGICO che ti libera da tutti 
+gli altri impegni sbagliati che stai facendo ora."
+
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], sei più spaventato dall'impegnarti in una 
+soluzione che potrebbe funzionare, o dall'impegno quotidiano di continuare 
+a combattere con un problema che non si risolve?
+
+Perché uno dei due impegni lo devi prendere comunque."
+
+📌 CTA: "Carta o bonifico?"
+
+---
+
+════════════════════════════════════════════════════════════════════════════════
+**FASE #15 - OBIEZIONE "VOGLIO UNA GARANZIA"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
+
+🎯 OBIETTIVO: Mostrare le vere garanzie (risultati clienti + impegno reciproco)
+
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Sicuro, trasparente
+Volume: Medio-Alto (deciso)
+Lessico: "Assolutamente", "Ma lascia che ti dica una cosa più importante"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
+**STEP 1 - CHIARIFICA**
+
+📌 SCRIPT: "Assolutamente [NOME_PROSPECT]. Abbiamo [DESCRIVI GARANZIA SE ESISTE].
+
+Ma lascia che ti dica una cosa più importante della garanzia."
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"La vera garanzia non è un pezzo di carta che dice 'rimborso garantito'. 
+La vera garanzia sono i risultati dei miei clienti.
 
 [USA 2-3 CASE STUDIES RAPIDI]
 
-Vedi? Questi non sono promesse, sono FATTI. Persone reali, nella tua stessa situazione, che hanno ottenuto risultati concreti.
+Vedi? Questi non sono promesse, sono FATTI. Persone reali, nella tua stessa 
+situazione, che hanno ottenuto risultati concreti."
 
-**DOMANDA IMPORTANTE:**
-[NOME_PROSPECT], dimmi, cosa dovrebbe garantire esattamente? Che non devi fare niente e i risultati arrivano da soli? O che se ti impegni, ottieni risultati?
+📌 DOMANDA IMPORTANTE: "[NOME_PROSPECT], dimmi, cosa dovrebbe garantire esattamente? 
+Che non devi fare niente e i risultati arrivano da soli? 
+O che se ti impegni, ottieni risultati?
 
-Perché vedi, io posso garantirti un sistema che funziona, supporto completo, e tutto quello di cui hai bisogno. Ma non posso garantire che tu lo usi.
+Perché vedi, io posso garantirti un sistema che funziona, supporto completo, 
+e tutto quello di cui hai bisogno. Ma non posso garantire che tu lo usi."
 
-**DOMANDA CHIAVE:**
-Se io ti garantisco il mio massimo impegno, i risultati provati di decine di clienti, e [GARANZIA SPECIFICA], tu mi garantisci il tuo impegno?
+📌 DOMANDA CHIAVE: "Se io ti garantisco il mio massimo impegno, i risultati 
+provati di decine di clienti, e [GARANZIA SPECIFICA], tu mi garantisci il tuo impegno?
 
-Perché questa è una partnership. Io metto la mia esperienza e il mio sistema, tu metti il tuo impegno.
+Perché questa è una partnership. Io metto la mia esperienza e il mio sistema, 
+tu metti il tuo impegno."
+
+📌 CTA: "Bene, quindi: carta o bonifico?"
 
 ---
 
-### OBIEZIONE #16: "La concorrenza offre prezzi migliori"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #16 - OBIEZIONE "LA CONCORRENZA OFFRE PREZZI MIGLIORI"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Sicuro, non competitivo)**
+🎯 OBIETTIVO: Spostare il focus da prezzo a valore
 
-Capisco [NOME_PROSPECT]. Posso chiederti: stai paragonando solo il prezzo, o stai valutando anche il valore e i risultati?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Sicuro, non competitivo
+Volume: Medio (professionale)
+Lessico: "Capisco", "Posso chiederti", "Vedi"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA LA RISPOSTA]**
+---
 
-**REFRAME:**
-Vedi, c'è una differenza fondamentale tra "meno costoso" e "migliore valore".
+**STEP 1 - CHIARIFICA**
 
-Posso trovarti una soluzione che costa la metà. Ma se ti porta la metà dei risultati, o peggio, zero risultati, quanto hai risparmiato veramente?
+📌 DOMANDA: "Capisco [NOME_PROSPECT]. Posso chiederti: stai paragonando solo 
+il prezzo, o stai valutando anche il valore e i risultati?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Vedi, c'è una differenza fondamentale tra 'meno costoso' e 'migliore valore'.
+
+Posso trovarti una soluzione che costa la metà. Ma se ti porta la metà dei 
+risultati, o peggio, zero risultati, quanto hai risparmiato veramente?
 
 **ANALOGIA:**
-È come comprare un biglietto aereo. Puoi trovare un volo low-cost con tre scali, bagaglio a pagamento, e 12 ore di viaggio. Oppure puoi prendere un volo diretto, comodo, che ti porta a destinazione in 2 ore.
+È come comprare un biglietto aereo. Puoi trovare un volo low-cost con tre scali, 
+bagaglio a pagamento, e 12 ore di viaggio. Oppure puoi prendere un volo diretto, 
+comodo, che ti porta a destinazione in 2 ore.
 
-Quale scegli se la destinazione è importante?
+Quale scegli se la destinazione è importante?"
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], quando hai cercato la concorrenza, cosa ti ha spinto a venire qui da me comunque? Cosa ti mancava in quelle altre soluzioni?
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], quando hai cercato la concorrenza, 
+cosa ti ha spinto a venire qui da me comunque? 
+Cosa ti mancava in quelle altre soluzioni?"
 
-**[ASCOLTA - QUI C'È LA VERA RISPOSTA]**
+⏸️ ASPETTA - QUI C'È LA VERA RISPOSTA
 
-Esatto. Perché in fondo non cerchi il prezzo più basso, cerchi la soluzione migliore. E la soluzione migliore non è mai la più economica.
+📌 SCRIPT FOLLOW-UP: "Esatto. Perché in fondo non cerchi il prezzo più basso, 
+cerchi la soluzione migliore. E la soluzione migliore non è mai la più economica.
 
-La domanda vera è: vuoi spendere meno o vuoi ottenere risultati?
+La domanda vera è: vuoi spendere meno o vuoi ottenere risultati?"
+
+📌 CTA: "Carta o bonifico?"
 
 ---
 
-### OBIEZIONE #17: "Non mi fido dei consulenti"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #17 - OBIEZIONE "NON MI FIDO DEI CONSULENTI"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Comprensivo, validante)**
+🎯 OBIETTIVO: Validare la cautela e costruire fiducia con prove concrete
 
-Capisco perfettamente [NOME_PROSPECT], e rispetto questa tua cautela. Posso chiederti: hai avuto esperienze negative in passato?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Comprensivo, validante
+Volume: Basso-Medio (empatico)
+Lessico: "Capisco perfettamente", "Rispetto", "Lascia che ti dica perché sono diverso"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA LA RISPOSTA CON EMPATIA]**
+---
 
-**REFRAME:**
-Mi dispiace per quell'esperienza. Purtroppo ci sono molti che promettono e non mantengono.
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco perfettamente [NOME_PROSPECT], e rispetto questa tua cautela. 
+Posso chiederti: hai avuto esperienze negative in passato?"
+
+⏸️ ASPETTA LA RISPOSTA CON EMPATIA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Mi dispiace per quell'esperienza."
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Purtroppo ci sono molti che promettono e non mantengono.
 
 Lascia che ti dica perché sono diverso:
 
 1. **Non prometto miracoli**: Ti ho detto esattamente cosa possiamo fare e cosa no
 2. **Risultati verificabili**: [CASE STUDIES CONCRETI]
 3. **Sono nel business da [TEMPO]**: Se non fossi affidabile, non sarei qui
-4. **[GARANZIE/REFERENZE]**: Puoi parlare con altri miei clienti
+4. **[GARANZIE/REFERENZE]**: Puoi parlare con altri miei clienti"
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], cosa dovrei fare o dirti per guadagnare la tua fiducia? Cosa ti serve vedere?
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], cosa dovrei fare o dirti per guadagnare 
+la tua fiducia? Cosa ti serve vedere?"
 
-**[ASCOLTA]**
+⏸️ ASPETTA
 
-E poi facciamo un ragionamento pratico: se io non ti aiuto a ottenere risultati, cosa succede?
+📌 SCRIPT FOLLOW-UP: "E poi facciamo un ragionamento pratico: 
+se io non ti aiuto a ottenere risultati, cosa succede?
 
 - Tu chiedi il rimborso [se c'è garanzia]
 - Tu parli male di me (e io perdo reputazione)
 - Io perdo un potenziale caso studio e referenze future
 
-Quindi io ho TUTTO l'interesse a farti ottenere risultati. La mia credibilità dipende dal tuo successo.
+Quindi io ho TUTTO l'interesse a farti ottenere risultati. 
+La mia credibilità dipende dal tuo successo.
 
-Ha senso?
+Ha senso?"
+
+📌 CTA: "Preferisci carta o bonifico?"
 
 ---
 
-### OBIEZIONE #18: "Non sono convinto del ROI"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #18 - OBIEZIONE "NON SONO CONVINTO DEL ROI"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Analitico, educativo)**
+🎯 OBIETTIVO: Fare calcoli concreti e mostrare costo opportunità
 
-Perfetto [NOME_PROSPECT], parliamo di numeri. È una domanda intelligente.
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Analitico, educativo
+Volume: Medio (professionale)
+Lessico: "Perfetto, parliamo di numeri", "Facciamo un calcolo insieme"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Facciamo un calcolo insieme:
+---
 
-**INVESTIMENTO:**
+**STEP 1 - CHIARIFICA**
+
+📌 SCRIPT: "Perfetto [NOME_PROSPECT], parliamo di numeri. 
+È una domanda intelligente.
+
+Facciamo un calcolo insieme:"
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"**INVESTIMENTO:**
 - Quello che investi oggi: [PREZZO]
 
 **RITORNO:**
@@ -2522,8 +3101,8 @@ Facciamo un calcolo insieme:
 - Ritorno potenziale: [DIFFERENZA FATTURATO]
 - ROI: [CALCOLA LA PERCENTUALE - es. 300%, 500%, 1000%]
 
-**REFRAME:**
-[NOME_PROSPECT], guarda questi numeri. Anche se ottenessi solo il 20% di quello che ti ho mostrato, avresti comunque un ROI di [CALCOLA].
+[NOME_PROSPECT], guarda questi numeri. Anche se ottenessi solo il 20% di quello 
+che ti ho mostrato, avresti comunque un ROI di [CALCOLA].
 
 Ma lascia che ti chieda: quanto ti costa NON fare niente?
 
@@ -2532,25 +3111,50 @@ Ma lascia che ti chieda: quanto ti costa NON fare niente?
 - Perdi [DIFFERENZA FATTURATO] in opportunità
 - Più [TEMPO/FRUSTRAZIONE/ALTRI COSTI]
 
-Quindi la vera domanda non è "qual è il ROI", ma "posso permettermi di NON farlo?"
+Quindi la vera domanda non è 'qual è il ROI', ma 'posso permettermi di NON farlo?'"
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], se ti garantissi un ROI minimo del [X%] nei prossimi [TEMPO], partiresti?
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], se ti garantissi un ROI minimo del [X%] 
+nei prossimi [TEMPO], partiresti?"
+
+📌 CTA: "Carta o bonifico?"
 
 ---
 
-### OBIEZIONE #19: "Ho paura di fare la scelta sbagliata"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #19 - OBIEZIONE "HO PAURA DI FARE LA SCELTA SBAGLIATA"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Empatico, rassicurante)**
+🎯 OBIETTIVO: Mostrare che la vera scelta sbagliata è NON agire
 
-Capisco perfettamente [NOME_PROSPECT], ed è una paura legittima. Nessuno vuole sbagliare, soprattutto quando si investe.
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Empatico, rassicurante
+Volume: Basso-Medio (comprensivo)
+Lessico: "Capisco perfettamente", "È una paura legittima", "Facciamo un ragionamento"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Posso chiederti: cosa ti spaventa esattamente? Cosa sarebbe "la scelta sbagliata" per te?
+---
 
-**[ASCOLTA CON EMPATIA]**
+**STEP 1 - CHIARIFICA**
 
-**REFRAME:**
-Ok, vedo. Hai paura di [RIASSUMI LA PAURA]. Facciamo un ragionamento insieme.
+📌 DOMANDA: "Capisco perfettamente [NOME_PROSPECT], ed è una paura legittima. 
+Nessuno vuole sbagliare, soprattutto quando si investe.
+
+Posso chiederti: cosa ti spaventa esattamente? 
+Cosa sarebbe 'la scelta sbagliata' per te?"
+
+⏸️ ASPETTA CON EMPATIA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Ok, vedo. Hai paura di [RIASSUMI LA PAURA]. Facciamo un ragionamento insieme.
 
 Ci sono solo due scelte possibili:
 
@@ -2563,32 +3167,58 @@ Ci sono solo due scelte possibili:
 **SCELTA 2: Non agire**
 - Rischio: Rimanere nella stessa situazione
 - Costo: Opportunità perse per [TEMPO]
-- Risultato: Nessun cambiamento
+- Risultato: Nessun cambiamento"
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], quale delle due scelte ti spaventa di più quando ci pensi tra 12 mesi?
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], quale delle due scelte ti spaventa di più 
+quando ci pensi tra 12 mesi?
 
-Tra un anno, cosa ti farà più male: aver provato e scoperto che funzionava, o non aver provato e essere rimasto dove sei?
+Tra un anno, cosa ti farà più male: aver provato e scoperto che funzionava, 
+o non aver provato e essere rimasto dove sei?"
 
-**VERITÀ:**
-La scelta sbagliata non è provare e forse non ottenere tutto quello che vuoi.
+📌 VERITÀ: "La scelta sbagliata non è provare e forse non ottenere tutto quello 
+che vuoi.
 
-La scelta sbagliata è NON provare e rimanere bloccato dove sei, mentre guardi altri ottenere i risultati che tu vuoi.
+La scelta sbagliata è NON provare e rimanere bloccato dove sei, mentre guardi 
+altri ottenere i risultati che tu vuoi.
 
-Quale delle due scegli?
+Quale delle due scegli?"
+
+📌 CTA: "Carta o bonifico?"
 
 ---
 
-### OBIEZIONE #20: "Non voglio rischiare"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #20 - OBIEZIONE "NON VOGLIO RISCHIARE"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Comprensivo, ma diretto)**
+🎯 OBIETTIVO: Mostrare che il vero rischio è NON agire
 
-Capisco [NOME_PROSPECT]. Dimmi, cosa intendi per "rischiare"? Rischiare cosa esattamente?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Comprensivo, ma diretto
+Volume: Medio (deciso)
+Lessico: "Capisco", "Dimmi", "Ma facciamo un ragionamento diverso"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA LA RISPOSTA]**
+---
 
-**REFRAME:**
-Ok, vedo. Hai paura di rischiare [DENARO/TEMPO/REPUTAZIONE/ALTRO].
+**STEP 1 - CHIARIFICA**
+
+📌 DOMANDA: "Capisco [NOME_PROSPECT]. Dimmi, cosa intendi per 'rischiare'? 
+Rischiare cosa esattamente?"
+
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Ok, vedo. Hai paura di rischiare [DENARO/TEMPO/REPUTAZIONE/ALTRO].
 
 Ma facciamo un ragionamento diverso: cosa stai rischiando ADESSO rimanendo dove sei?
 
@@ -2599,36 +3229,61 @@ Ma facciamo un ragionamento diverso: cosa stai rischiando ADESSO rimanendo dove 
 - Stai rischiando [ALTRO PAIN POINT dalla discovery]
 
 **VERITÀ CRUDA:**
-[NOME_PROSPECT], la vita è un rischio continuo. L'unico modo per non rischiare è non fare niente. Ma non fare niente è il rischio più grande di tutti.
+[NOME_PROSPECT], la vita è un rischio continuo. L'unico modo per non rischiare 
+è non fare niente. Ma non fare niente è il rischio più grande di tutti.
 
 **CONFRONTO:**
 - Rischio di agire: [PREZZO] + impegno → Potenziale risultato: [RISULTATI]
 - Rischio di non agire: €0 → Risultato certo: rimanere dove sei
 
 **RIDUZIONE DEL RISCHIO:**
-E comunque, abbiamo [GARANZIA/SUPPORTO/CASI STUDIO] che riducono drasticamente il rischio.
+E comunque, abbiamo [GARANZIA/SUPPORTO/CASI STUDIO] che riducono drasticamente 
+il rischio."
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], se potessi eliminare il rischio completamente, partiresti?
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], se potessi eliminare il rischio completamente, 
+partiresti?"
 
 **[Se dice SI]:**
-Perfetto. Allora ecco come eliminiamo il rischio: [DESCRIVI GARANZIE E SUPPORTO]
+"Perfetto. Allora ecco come eliminiamo il rischio: [DESCRIVI GARANZIE E SUPPORTO]"
 
 **[Se dice NO]:**
-Ok, allora non è il rischio il vero problema. Cosa ti frena veramente?
+"Ok, allora non è il rischio il vero problema. Cosa ti frena veramente?"
+
+📌 CTA: "Preferisci carta o bonifico?"
 
 ---
 
-### OBIEZIONE #21: "È troppo bello per essere vero"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #21 - OBIEZIONE "È TROPPO BELLO PER ESSERE VERO"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Comprensivo, trasparente)**
+🎯 OBIETTIVO: Validare lo scetticismo e mostrare fatti concreti
 
-Capisco lo scetticismo [NOME_PROSPECT], ed è sano avere un pensiero critico.
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Comprensivo, trasparente
+Volume: Medio (onesto)
+Lessico: "Capisco lo scetticismo", "Hai ragione", "Ma vedi, la differenza..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Lascia che ti dica una cosa: hai ragione ad essere scettico. Ci sono troppe promesse false là fuori.
+---
 
-**REFRAME:**
-Ma vedi, la differenza tra una promessa vuota e una realtà concreta sono i FATTI.
+**STEP 1 - CHIARIFICA**
+
+📌 SCRIPT: "Capisco lo scetticismo [NOME_PROSPECT], ed è sano avere un pensiero 
+critico.
+
+Lascia che ti dica una cosa: hai ragione ad essere scettico. 
+Ci sono troppe promesse false là fuori."
+
+---
+
+**STEP 3 - REFRAME**
+
+📌 SCRIPT REFRAME:
+
+"Ma vedi, la differenza tra una promessa vuota e una realtà concreta sono i FATTI.
 
 **FATTI CONCRETI:**
 1. [CASE STUDY 1 con numeri specifici]
@@ -2645,155 +3300,163 @@ Ti ho detto esattamente:
 - Quanto costa: [PREZZO]
 - Cosa devi fare tu: [IMPEGNO RICHIESTO]
 
-Non ti ho promesso miracoli. Ti ho mostrato un sistema che funziona per chi si impegna.
+Non ti ho promesso miracoli. Ti ho mostrato un sistema che funziona per chi 
+si impegna."
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], cosa esattamente ti sembra "troppo bello"? I risultati? Il processo? Il prezzo?
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], cosa esattamente ti sembra 'troppo bello'? 
+I risultati? Il processo? Il prezzo?"
 
-**[ASCOLTA E AFFRONTA LO SPECIFICO DUBBIO]**
+⏸️ ASPETTA E AFFRONTA LO SPECIFICO DUBBIO
 
-Vedi, non è "troppo bello per essere vero". È semplicemente quello che succede quando usi un sistema testato invece di andare a tentativi.
+📌 SCRIPT FOLLOW-UP: "Vedi, non è 'troppo bello per essere vero'. 
+È semplicemente quello che succede quando usi un sistema testato invece di 
+andare a tentativi.
 
-La domanda è: vuoi continuare a credere che non sia possibile, o vuoi provare e scoprire che è reale?
+La domanda è: vuoi continuare a credere che non sia possibile, 
+o vuoi provare e scoprire che è reale?"
+
+📌 CTA: "Carta o bonifico?"
 
 ---
 
-### OBIEZIONE #22: "Voglio parlare con altri tuoi clienti prima"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #22 - OBIEZIONE "VOGLIO PARLARE CON ALTRI TUOI CLIENTI"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Aperto, collaborativo)**
+🎯 OBIETTIVO: Organizzare subito le referenze + testare se è la vera obiezione
 
-Assolutamente [NOME_PROSPECT], è una richiesta legittima.
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Aperto, collaborativo
+Volume: Medio (disponibile)
+Lessico: "Assolutamente", "È una richiesta legittima", "Ti posso mettere in contatto"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Ti posso mettere in contatto con [NUMERO] clienti che hanno ottenuto risultati simili a quelli che stai cercando.
+---
+
+**STEP 1 - CHIARIFICA**
+
+📌 SCRIPT: "Assolutamente [NOME_PROSPECT], è una richiesta legittima.
+
+Ti posso mettere in contatto con [NUMERO] clienti che hanno ottenuto risultati 
+simili a quelli che stai cercando.
 
 **ORGANIZZAZIONE:**
 Posso organizzare delle chiamate con:
 1. [CLIENTE 1 - simile per settore/situazione]
 2. [CLIENTE 2 - simile per obiettivo]
-3. [CLIENTE 3 - aveva stesso dubbio iniziale]
+3. [CLIENTE 3 - aveva stesso dubbio iniziale]"
 
-**MA PRIMA:**
-Prima di organizzare queste call, lascia che ti faccia una domanda: cosa chiederai loro esattamente? Quali dubbi specifici vuoi che ti chiariscano?
+---
 
-**[ASCOLTA LA RISPOSTA]**
+**STEP 2 - LADDER**
 
-**REFRAME:**
-Perfetto. Posso rispondere a quelle domande ora, così quando parlerai con loro potrai concentrarti su altro.
+LIVELLO 1: Cosa chiederà
+📌 DOMANDA: "Ma prima, lascia che ti faccia una domanda: cosa chiederai loro 
+esattamente? Quali dubbi specifici vuoi che ti chiariscano?"
+⏸️ ASPETTA
+
+LIVELLO 2: Rispondere ORA
+📌 SCRIPT: "Perfetto. Posso rispondere a quelle domande ora, così quando 
+parlerai con loro potrai concentrarti su altro.
 
 **DOMANDE COMUNI:**
 Di solito i prospect chiedono:
-- "Ha funzionato davvero?" → Risposta: [CASE STUDIES]
-- "È difficile da seguire?" → Risposta: [PROCESSO SEMPLIFICATO]
-- "Vale l'investimento?" → Risposta: [ROI DIMOSTRATO]
+- 'Ha funzionato davvero?' → Risposta: [CASE STUDIES]
+- 'È difficile da seguire?' → Risposta: [PROCESSO SEMPLIFICATO]
+- 'Vale l'investimento?' → Risposta: [ROI DIMOSTRATO]"
 
-**DOMANDA CHIAVE:**
-[NOME_PROSPECT], sii sincero: se parli con 3 clienti soddisfatti che confermano tutto quello che ti ho detto, partiresti?
+---
+
+**STEP 3 - REFRAME**
+
+📌 DOMANDA CHIAVE: "[NOME_PROSPECT], sii sincero: se parli con 3 clienti 
+soddisfatti che confermano tutto quello che ti ho detto, partiresti?"
 
 **[Se dice NO → c'è un'altra obiezione]**
 **[Se dice SI → organizza le call SUBITO]**
 
-Perfetto. Ti metto in contatto oggi stesso. Nel frattempo, quali altre domande hai?
+📌 SCRIPT FOLLOW-UP: "Perfetto. Ti metto in contatto oggi stesso. 
+Nel frattempo, quali altre domande hai?"
+
+📌 CTA: "Ok, per procedere: carta o bonifico?"
 
 ---
 
-### OBIEZIONE #23: "Non sono il decisore finale"
+════════════════════════════════════════════════════════════════════════════════
+**FASE #23 - OBIEZIONE "NON SONO IL DECISORE FINALE"**
+**Come gestire questa obiezione**
+════════════════════════════════════════════════════════════════════════════════
 
-**(TONO: Comprensivo, strategico)**
+🎯 OBIETTIVO: Coinvolgere il decisore o equipaggiare il prospect per vendere internamente
 
-Capisco [NOME_PROSPECT]. Posso chiederti: chi è il decisore finale? E qual è il tuo ruolo in questa decisione?
+⚡ ENERGIA E TONALITÀ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tono: Comprensivo, strategico
+Volume: Medio (professionale)
+Lessico: "Capisco", "Posso chiederti", "Fammi capire"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-**[ASCOLTA LA RISPOSTA]**
+---
 
-**REFRAME:**
-Ok, quindi tu [RUOLO] e il decisore finale è [PERSONA/RUOLO].
+**STEP 1 - CHIARIFICA**
 
-Fammi capire: se tu fossi convinto, hai influenza sulla decisione finale o devi solo presentare l'opzione?
+📌 DOMANDA: "Capisco [NOME_PROSPECT]. Posso chiederti: chi è il decisore finale? 
+E qual è il tuo ruolo in questa decisione?"
 
-**[ASCOLTA]**
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA attentamente
+💬 REAGISCI: "Capisco!"
+
+---
+
+**STEP 2 - LADDER**
+
+LIVELLO 1: Livello di influenza
+📌 DOMANDA: "Ok, quindi tu [RUOLO] e il decisore finale è [PERSONA/RUOLO].
+
+Fammi capire: se tu fossi convinto, hai influenza sulla decisione finale 
+o devi solo presentare l'opzione?"
+⏸️ ASPETTA
+
+---
+
+**STEP 3 - REFRAME**
 
 **SCENARIO 1: Ha influenza**
-Perfetto. Allora facciamo così: assicuriamoci che tu abbia tutti gli elementi per presentare questa opportunità nel modo migliore.
 
-Quando presenterai questa soluzione a [DECISORE], quali saranno le sue domande principali?
+📌 SCRIPT: "Perfetto. Allora facciamo così: assicuriamoci che tu abbia tutti 
+gli elementi per presentare questa opportunità nel modo migliore.
 
-**[ASCOLTA E FORNISCI TUTTE LE RISPOSTE]**
+Quando presenterai questa soluzione a [DECISORE], quali saranno le sue 
+domande principali?"
 
-**DOMANDA CHIAVE:**
-Vuoi che organizziamo una call a tre con [DECISORE]? Così rispondo direttamente alle sue domande e ti semplifico il lavoro.
+⏸️ ASCOLTA E FORNISCI TUTTE LE RISPOSTE
 
-**SCENARIO 2: Non ha influenza reale**
-Ok, capisco. Allora la persona giusta con cui parlare è [DECISORE].
-
-Possiamo organizzare una call insieme a lui/lei? Oppure preferisci che parli direttamente con il decisore?
-
-**VERITÀ IMPORTANTE:**
-[NOME_PROSPECT], apprezzo che tu abbia fatto questa call esplorativa. Ma per procedere davvero, dobbiamo coinvolgere chi può dire sì.
-
-Quanto tempo ci vuole per organizzare una call con [DECISORE]? Possiamo farlo questa settimana?
+📌 DOMANDA CHIAVE: "Vuoi che organizziamo una call a tre con [DECISORE]? 
+Così rispondo direttamente alle sue domande e ti semplifico il lavoro."
 
 ---
 
-════════════════════════════════════════════════════════════════════════════════
-🔄 GESTIONE LOOP OBIEZIONI - REGOLE CRITICHE
-════════════════════════════════════════════════════════════════════════════════
+**SCENARIO 2: Non ha influenza reale**
 
-⚠️ REGOLA MAX 3 LOOP PER STESSA OBIEZIONE:
+📌 SCRIPT: "Ok, capisco. Allora la persona giusta con cui parlare è [DECISORE].
 
-📊 TRACCIAMENTO LOOP:
+Possiamo organizzare una call insieme a lui/lei? 
+Oppure preferisci che parli direttamente con il decisore?"
 
-   LOOP 1 - Prima volta obiezione:
-   → Gestisci con empatia + ladder + reframe
-   → Torna a CTA: "Carta o bonifico?"
-   
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   
-   LOOP 2 - Ripete STESSA obiezione:
-   → Gestisci con ladder più profondo
-   → Torna a CTA VARIATA: "Preferisci carta o bonifico?"
-   
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   
-   LOOP 3 - Ripete ANCORA stessa obiezione:
-   → Gestisci con test finale
-   → Torna a CTA VARIATA: "Ok, per procedere: carta o bonifico?"
-   
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   
-   LOOP 4+ - Se ripete ANCORA:
-   
-   🚨 STOP! C'è dell'altro! Usa DOMANDA VERITÀ:
-   
-   "Guarda [NOME_PROSPECT] ↘️, capisco perfettamente.
-   
-   Ma lascia che ti sia sincero ↘️: abbiamo parlato di [OBIEZIONE] più volte, 
-   e ogni volta torniamo qui ↘️.
-   
-   Mi sembra che ci sia qualcos'altro che ti preoccupa ↘️, 
-   qualcosa che magari è difficile da dire.
-   
-   In tutta onestà ↘️: qual è la VERA preoccupazione ↘️?"
-   
-   ⏸️⏸️ PAUSA LUNGHISSIMA - Silenzio totale - Aspetta la VERA obiezione
-   
-   🎧 ASCOLTA - Ora ti dirà il vero motivo!
-   
-   💬 Gestisci la VERA obiezione che emerge
+📌 VERITÀ IMPORTANTE: "[NOME_PROSPECT], apprezzo che tu abbia fatto questa 
+call esplorativa. Ma per procedere davvero, dobbiamo coinvolgere chi può dire sì.
 
-⚠️ DOPO OGNI GESTIONE OBIEZIONE:
+Quanto tempo ci vuole per organizzare una call con [DECISORE]? 
+Possiamo farlo questa settimana?"
 
-   ✅ SEMPRE tornare a CTA assumptive
-   ✅ SEMPRE variare la formulazione
-   ✅ NON ripetere mai stesso CTA due volte di fila
-   
-   ESEMPI CTA VARIATI:
-   • "Carta o bonifico?"
-   • "Preferisci carta o bonifico?"
-   • "Ok, per procedere: carta o bonifico?"
-   • "Perfetto, facciamo così: carta o bonifico?"
-   • "Bene, quindi: carta o bonifico?"
+📌 CTA: "Organizziamo la call a tre: quando è disponibile [DECISORE]?"
 
-════════════════════════════════════════════════════════════════════════════════
-🚨 CHECKPOINT FINALE - QUALIFICA DEFINITIVA
+---
+
+⛔ CHECKPOINT FINALE OBIEZIONI
 ════════════════════════════════════════════════════════════════════════════════
 
 ⚠️ DOPO gestione obiezioni, FAI CHECKPOINT FINALE:
@@ -2830,29 +3493,10 @@ Quanto tempo ci vuole per organizzare una call con [DECISORE]? Possiamo farlo qu
    
    ❌ SE ESITA → Scava: "Dimmi ↘️, cosa ti frena ancora ↘️?"
 
-⚠️ QUANDO QUALIFICARE COME "NON PRONTO":
-
-   Se dopo tutti i loop e checkpoint il prospect:
-   • Continua a ripetere stesse obiezioni senza accettare reframe
-   • Non visualizza sé stesso usando la soluzione
-   • Non ha reale urgenza/dolore
-   • Non ha budget e non vuole trovare soluzione
-   
-   → È OK lasciarlo andare! NON tutti sono clienti ideali!
-   
-   💬 CHIUSURA EDUCATA:
-   
-   "Capisco [NOME_PROSPECT]. Vedo che in questo momento non è allineato.
-   Va benissimo ↘️, non c'è problema.
-   
-   Se le cose cambiano e decidi di affrontare [PROBLEMA], 
-   sai dove trovarmi. Ti auguro il meglio ↘️."
-   
-   🎯 Lascialo andare con dignità - NON forzare!
-
 ════════════════════════════════════════════════════════════════════════════════
 
-## REGOLE FONDAMENTALI GESTIONE OBIEZIONI:
+📋 REGOLE FONDAMENTALI GESTIONE OBIEZIONI
+════════════════════════════════════════════════════════════════════════════════
 
 **PROCESSO PER OGNI OBIEZIONE:**
 1. **ASCOLTA** con empatia totale, senza interrompere MAI
