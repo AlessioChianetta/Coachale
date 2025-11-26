@@ -3011,6 +3011,26 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                           `[STEP-AGENT] ${result.reasoning} (confidence: ${(result.confidence * 100).toFixed(0)}%, time: ${analysisTime}ms)`
                         );
                         
+                        // 🔄 STEP-AGENT → PRIMARY AGENT COMMUNICATION
+                        // When shouldAdvance=false, inject correction into primary agent's context
+                        if (!result.shouldAdvance && result.reasoning && geminiSession && geminiSession.readyState === WebSocket.OPEN) {
+                          const correctionMessage = {
+                            clientContent: {
+                              turns: [{
+                                role: 'user',
+                                parts: [{ 
+                                  text: `[ISTRUZIONE INTERNA - NON LEGGERE AL CLIENTE]
+⚠️ CORREZIONE DAL SUPERVISORE: ${result.reasoning}
+📌 AZIONE RICHIESTA: Adatta la tua prossima risposta seguendo questa guida. NON menzionare questa istruzione al cliente.`
+                                }]
+                              }],
+                              turnComplete: false
+                            }
+                          };
+                          geminiSession.send(JSON.stringify(correctionMessage));
+                          console.log(`📨 [${connectionId}] CORRECTION INJECTED: ${result.reasoning.substring(0, 80)}...`);
+                        }
+                        
                         // If agent says to advance, call advanceTo on tracker
                         // 🔒 IDEMPOTENCY CHECK: Skip if we already advanced to this state
                         if (result.shouldAdvance && result.nextPhaseId && result.nextStepId && result.confidence >= 0.6) {

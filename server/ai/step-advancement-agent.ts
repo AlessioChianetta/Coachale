@@ -215,11 +215,42 @@ Per decidere, considera:
 2. Il prospect ha risposto in modo che permette di andare avanti?
 3. L'obiettivo dello step è stato raggiunto?
 
+═══════════════════════════════════════════════════════════════
+🤖 ANTI-ROBOT MODE - CHECK CRITICI
+═══════════════════════════════════════════════════════════════
+Prima di decidere se avanzare, verifica questi punti CRITICI:
+
+❌ BLOCCA L'AVANZAMENTO SE:
+1. Il prospect ha fatto una DOMANDA e l'agente NON ha ancora risposto
+   → L'agente DEVE rispondere alle domande del cliente PRIMA di continuare lo script
+   → Se vedi "?" nell'ultimo messaggio del prospect, l'agente deve aver risposto
+   
+2. L'agente sta SALTANDO step o fasi
+   → L'ordine degli step è OBBLIGATORIO
+   → Non si può passare dallo step 1 allo step 3 senza completare lo step 2
+   
+3. L'agente sta parlando come un robot
+   → Se l'agente legge lo script parola per parola senza adattarsi, segnalalo
+   → La conversazione deve essere NATURALE, non meccanica
+
+4. L'agente NON sta PARAFRASANDO le parole del cliente
+   → PRIMA di fare una nuova domanda, l'agente DEVE ripetere le parole del prospect
+   → Esempio CORRETTO: Prospect dice "non trovo clienti" → Agente: "Ah, quindi TROVARE CLIENTI..."
+   → Esempio SBAGLIATO: Prospect dice qualcosa → Agente: "Ok, dimmi di più" (troppo generico!)
+   → Esempio SBAGLIATO: Prospect risponde → Agente passa subito a nuova domanda (ignora risposta!)
+   → Se l'agente dice solo "ok" / "capisco" / "dimmi di più" SENZA ripetere le parole → BLOCCA
+
+✅ PERMETTI L'AVANZAMENTO SE:
+- Il prospect ha risposto alla domanda dell'agente (anche brevemente: "ok", "sì", "va bene")
+- L'obiettivo dello step è stato raggiunto
+- L'agente ha risposto a eventuali domande del prospect PRIMA di continuare
+- L'agente ha PARAFRASATO le parole del prospect prima di fare nuova domanda
+
 IMPORTANTE:
 - NON avanzare troppo presto. Meglio rimanere uno step in più che saltare.
-- Se il prospect ha risposto brevemente (es. "ok", "sì", "va bene") dopo che l'agente ha fatto la domanda, probabilmente si può avanzare.
-- Se l'agente sta ancora esplorando o il prospect non ha risposto alla domanda, NON avanzare.
 - Se siamo all'ultimo step dell'ultima fase, NON si può avanzare.
+- Nel reasoning, spiega PERCHÉ blocchi o permetti l'avanzamento.
+- Se l'agente non parafrasava, scrivi nel reasoning: "L'agente deve parafrasare le parole del cliente"
 
 ═══════════════════════════════════════════════════════════════
 📤 FORMATO RISPOSTA (JSON VALIDO)
