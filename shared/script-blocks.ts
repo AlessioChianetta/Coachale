@@ -32,6 +32,7 @@ export interface QuestionInstructions {
 
 export interface Question {
   id: string;
+  type?: 'question';
   text: string;
   marker?: string;
   instructions?: QuestionInstructions;
@@ -78,6 +79,7 @@ export interface Checkpoint {
 
 export interface Step {
   id: string;
+  type?: 'step';
   number: number;
   name: string;
   objective: string;
@@ -90,6 +92,7 @@ export interface Step {
 
 export interface Phase {
   id: string;
+  type?: 'phase';
   number: string;
   name: string;
   description?: string;
@@ -101,6 +104,7 @@ export interface Phase {
 
 export interface Objection {
   id: string;
+  type?: 'objection';
   number: number;
   title: string;
   variants?: string[];
@@ -109,7 +113,9 @@ export interface Objection {
   ladder?: Ladder;
   reframe: string;
   keyQuestion: string;
+  cta?: string;
   analogy?: string;
+  steps?: Step[];
 }
 
 export interface ScriptBlockStructure {

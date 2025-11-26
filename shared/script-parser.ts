@@ -54,41 +54,63 @@ function parseEnergySettings(text: string): EnergySettings | undefined {
   const boxContent = extractEnergyBoxContent(text);
   const searchText = boxContent || text;
   
-  const energyMatch = searchText.match(/⚡\s*(?:ENERGIA(?:\s*E\s*TONALITÀ)?|RITMO)[^:\n]*(?::\s*([^\n]+))?/i);
-  const toneMatch = searchText.match(/🎵\s*TONO[^:]*:\s*([^\n]+)/i);
-  const volumeMatch = searchText.match(/📢\s*VOLUME[^:]*:\s*([^\n]+)/i);
-  const rhythmMatch = searchText.match(/(?:🏃|⚡)\s*RITMO[^:]*:\s*([^\n]+)/i);
-  const inflectionMatch = searchText.match(/(?:📈|🎭)\s*INFLESSIONI?[^:]*:\s*([^\n]+)/i);
+  // Support both emoji and plain text formats:
+  // - Emoji: ⚡ ENERGIA, 🎵 TONO, 📢 VOLUME, etc.
+  // - Plain: Livello:, Tono:, Volume:, Ritmo:, Lessico:, Mindset:
   
-  const vocabMatch = searchText.match(/(?:✅|📣)\s*LESSICO[^:]*:\s*([^\n]+(?:\n[^\n🎵📢🏃📈🎭💬🎬💪⚡╔╠╚]*"[^"]+[^\n]*)*)/i);
+  // Check if this is an energy section (either format)
+  const hasEnergyHeader = /⚡\s*ENERGIA/i.test(searchText) || 
+                          /Livello\s*:/i.test(searchText) ||
+                          /Tono\s*:/i.test(searchText);
   
-  const mindsetMatch = searchText.match(/(?:💪|🎯)\s*MINDSET[^:]*:\s*([^\n]+)/i);
-  
-  const exampleMatch = searchText.match(/💬\s*ESEMPIO[^:]*:\s*([\s\S]*?)(?=💪|🎯|━{3,}|╚|$)/i) ||
-                       searchText.match(/🎬\s*ESEMPIO[^:]*:\s*([\s\S]*?)(?=💪|🎯|━{3,}|╚|$)/i);
-
-  const toneParenMatch = text.match(/\*\*\(TONO:\s*([^)]+)\)\*\*/i) ||
-                          text.match(/\(TONO:\s*([^)]+)\)/i);
-
-  if (!energyMatch && !toneMatch && !toneParenMatch) {
-    return undefined;
+  if (!hasEnergyHeader) {
+    // Also check for parenthetical tone format
+    const toneParenMatch = text.match(/\*\*\(TONO:\s*([^)]+)\)\*\*/i) ||
+                            text.match(/\(TONO:\s*([^)]+)\)/i);
+    if (!toneParenMatch) {
+      return undefined;
+    }
+    return {
+      level: '',
+      tone: toneParenMatch[1].trim(),
+      volume: '',
+      rhythm: '',
+      vocabulary: [],
+    };
   }
+  
+  // Extract level (with or without emoji)
+  const levelMatch = searchText.match(/(?:⚡\s*)?(?:ENERGIA[^:]*|Livello)\s*:\s*([^\n]+)/i);
+  
+  // Extract tone (with or without emoji)  
+  const toneMatch = searchText.match(/(?:🎵\s*)?Tono\s*:\s*([^\n]+)/i);
+  
+  // Extract volume (with or without emoji)
+  const volumeMatch = searchText.match(/(?:📢\s*)?Volume\s*:\s*([^\n]+)/i);
+  
+  // Extract rhythm (with or without emoji)
+  const rhythmMatch = searchText.match(/(?:🏃\s*)?Ritmo\s*:\s*([^\n]+)/i);
+  
+  // Extract inflections
+  const inflectionMatch = searchText.match(/(?:📈|🎭)?\s*Inflessioni?\s*:\s*([^\n]+)/i);
+  
+  // Extract vocabulary/lessico (can span multiple lines with quotes)
+  const vocabMatch = searchText.match(/(?:✅|📣)?\s*Lessico\s*:\s*([^\n]+(?:\n\s*(?:[^\n━⚡🎵📢🏃💪🎯]*"[^"]+[^\n]*))*)/i);
+  
+  // Extract mindset (with or without emoji)
+  const mindsetMatch = searchText.match(/(?:💪|🎯)?\s*Mindset\s*:\s*([^\n]+)/i);
+  
+  // Extract example
+  const exampleMatch = searchText.match(/(?:💬|🎬)?\s*Esempio[^:]*:\s*([\s\S]*?)(?=💪|🎯|Mindset|━{3,}|╚|$)/i);
 
   let level = '';
-  if (energyMatch) {
-    if (energyMatch[1]) {
-      level = energyMatch[1].trim();
-    } else {
-      const headerMatch = energyMatch[0].match(/ENERGIA\s*E\s*TONALITÀ\s*[-–—]\s*(.+)/i);
-      if (headerMatch) {
-        level = headerMatch[1].trim();
-      }
-    }
+  if (levelMatch) {
+    level = levelMatch[1].trim();
   }
 
   return {
     level,
-    tone: toneMatch?.[1]?.trim() || toneParenMatch?.[1]?.trim() || '',
+    tone: toneMatch?.[1]?.trim() || '',
     volume: volumeMatch?.[1]?.trim() || '',
     rhythm: rhythmMatch?.[1]?.trim() || '',
     inflections: inflectionMatch?.[1]?.trim(),
@@ -498,6 +520,120 @@ function parseGlobalRules(text: string): GlobalRule[] {
 
 function parseObjections(text: string): Objection[] {
   const objections: Objection[] = [];
+  
+  // Support both formats:
+  // 1. ### OBIEZIONE #X: "..."
+  // 2. **FASE #X - OBIEZIONE "..."**
+  const faseObjectionPattern = /═{3,}[^═]*\*\*FASE\s*#?(\d+)\s*[-–—]\s*OBIEZIONE\s*"([^"]+)"\*\*/gi;
+  const hashObjectionPattern = /###\s*OBIEZIONE\s*#?(\d+):?\s*"?([^"\n]+)"?/gi;
+  
+  // First try FASE format (used in sales-scripts-base.ts)
+  const faseMatches = [...text.matchAll(faseObjectionPattern)];
+  
+  if (faseMatches.length > 0) {
+    // Split by FASE objection blocks
+    const objectionBlocks = text.split(/(?=═{3,}[^═]*\*\*FASE\s*#?\d+\s*[-–—]\s*OBIEZIONE)/i);
+    
+    for (const block of objectionBlocks) {
+      const headerMatch = block.match(/\*\*FASE\s*#?(\d+)\s*[-–—]\s*OBIEZIONE\s*"([^"]+)"\*\*/i);
+      if (!headerMatch) continue;
+      
+      const objNum = parseInt(headerMatch[1]);
+      const rawTitle = headerMatch[2].trim();
+      
+      // Extract objective
+      const objectiveMatch = block.match(/🎯\s*OBIETTIVO:\s*([^\n]+)/i);
+      
+      // Extract energy settings
+      const energy = parseEnergySettings(block);
+      
+      // Extract ladder from STEP 2 - LADDER section
+      const ladder = parseLadder(block);
+      
+      // Extract reframe from STEP 3 - REFRAME section
+      let reframe = '';
+      const reframeSection = block.match(/\*\*STEP\s*3\s*[-–—]\s*REFRAME\*\*\s*([\s\S]*?)(?=\*\*STEP|\*\*FASE|═{3,}|$)/i);
+      if (reframeSection) {
+        // Extract the SCRIPT REFRAME content
+        const scriptReframe = reframeSection[1].match(/📌\s*SCRIPT\s*REFRAME[^:]*:?\s*([\s\S]*?)(?=📌\s*DOMANDA|📌\s*CTA|---|\*\*|$)/i);
+        if (scriptReframe) {
+          reframe = scriptReframe[1].trim();
+        } else {
+          // Fallback: get content after "REFRAME" until next marker
+          reframe = reframeSection[1].replace(/📌\s*SCRIPT\s*REFRAME[^:]*:?\s*/i, '').split(/📌\s*DOMANDA/i)[0].trim();
+        }
+      }
+      
+      // Extract key question
+      let keyQuestion = '';
+      const keyQ1 = block.match(/📌\s*DOMANDA\s*CHIAVE[^:]*:?\s*"([^"]+)"/i);
+      const keyQ2 = block.match(/📌\s*DOMANDA\s*CHIAVE[^:]*:?\s*([\s\S]*?)(?=📌\s*CTA|---|\*\*STEP|\*\*FASE|═{3,}|$)/i);
+      if (keyQ1) {
+        keyQuestion = keyQ1[1].trim();
+      } else if (keyQ2) {
+        const content = keyQ2[1].trim();
+        const quotedQ = content.match(/"([^"]+)"/);
+        keyQuestion = quotedQ ? quotedQ[1] : content.split('\n')[0].replace(/^["']|["']$/g, '').trim();
+      }
+      
+      // Extract CTA
+      let cta = '';
+      const ctaMatch = block.match(/📌\s*CTA:\s*"?([^"\n]+)"?/i);
+      if (ctaMatch) {
+        cta = ctaMatch[1].trim().replace(/^["']|["']$/g, '');
+      }
+      
+      // Extract analogy if present
+      let analogy = '';
+      const analogyMatch = block.match(/\*\*ANALOGIA:?\*\*\s*([\s\S]*?)(?=📌|---|\*\*STEP|\*\*FASE|═{3,}|$)/i);
+      if (analogyMatch) {
+        analogy = analogyMatch[1].trim();
+      }
+      
+      // Extract steps for this objection
+      const steps: Step[] = [];
+      const stepMatches = block.matchAll(/\*\*STEP\s*(\d+)\s*[-–—]\s*([^*\n]+)\*\*/gi);
+      for (const stepMatch of stepMatches) {
+        const stepNum = parseInt(stepMatch[1]);
+        const stepName = stepMatch[2].trim();
+        
+        // Find content until next STEP or end
+        const stepStart = stepMatch.index || 0;
+        const stepContent = block.slice(stepStart).split(/\*\*STEP\s*\d+\s*[-–—]/i)[0];
+        
+        // Parse questions in this step
+        const stepQuestions = parseQuestions(stepContent);
+        
+        steps.push({
+          id: generateBlockId(),
+          type: 'step',
+          number: stepNum,
+          name: stepName,
+          objective: stepName,
+          questions: stepQuestions,
+        });
+      }
+      
+      objections.push({
+        id: generateBlockId(),
+        type: 'objection',
+        number: objNum,
+        title: rawTitle,
+        objective: objectiveMatch?.[1]?.trim() || '',
+        energy,
+        ladder,
+        reframe,
+        keyQuestion,
+        cta,
+        analogy: analogy || undefined,
+        steps: steps.length > 0 ? steps : undefined,
+      });
+    }
+    
+    return objections;
+  }
+  
+  // Fallback: try ### OBIEZIONE format
   const objectionBlocks = text.split(/(?=###\s*OBIEZIONE\s*#?\d+)/i);
 
   for (const block of objectionBlocks) {
@@ -566,6 +702,7 @@ function parseObjections(text: string): Objection[] {
 
     objections.push({
       id: generateBlockId(),
+      type: 'objection',
       number: parseInt(headerMatch[1]),
       title: mainTitle,
       variants: variants.length > 0 ? variants : undefined,
@@ -643,8 +780,31 @@ export function parseTextToBlocks(
   }
 
   let objections: Objection[] | undefined;
-  if (scriptType === 'objections' || text.includes('### OBIEZIONE')) {
+  // Check for objection-specific patterns (must be very specific to avoid false positives)
+  // Pattern must match: **FASE #X - OBIEZIONE "..." (with the specific structure including quotes)
+  const hasHashObjections = /###\s*OBIEZIONE\s*#?\d+/i.test(text);
+  const hasFaseObjections = /\*\*FASE\s*#?\d+\s*[-–—]\s*OBIEZIONE\s*"/i.test(text);
+  
+  // Only parse objections if:
+  // 1. Script type is explicitly 'objections', OR
+  // 2. Text contains the specific objection markers (with quotes to ensure it's a real objection header)
+  if (scriptType === 'objections' || hasHashObjections || hasFaseObjections) {
     objections = parseObjections(text);
+    
+    // For objections script, if we parsed objections successfully, 
+    // filter out phases that are actually objections (avoid duplication)
+    if (objections && objections.length > 0 && (scriptType === 'objections' || hasFaseObjections)) {
+      // Clear phases if they were objection-phases (they're now in objections array)
+      const nonObjectionPhases = phases.filter(p => {
+        // Only filter out phases that match the exact objection pattern
+        // This prevents filtering phases that just happen to contain "obiezione" in their name
+        const isObjectionPhase = /^OBIEZIONE\s*"/i.test(p.name) || 
+                                  /FASE\s*#?\d+\s*[-–—]\s*OBIEZIONE/i.test(p.name);
+        return !isObjectionPhase;
+      });
+      phases.length = 0;
+      phases.push(...nonObjectionPhases);
+    }
   }
 
   const finalRules: GlobalRule[] = [];

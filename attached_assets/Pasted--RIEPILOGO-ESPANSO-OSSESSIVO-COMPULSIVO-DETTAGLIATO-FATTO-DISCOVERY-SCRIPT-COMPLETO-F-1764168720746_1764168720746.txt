@@ -1,0 +1,803 @@
+📊 RIEPILOGO ESPANSO OSSESSIVO-COMPULSIVO (DETTAGLIATO)
+✅ FATTO - DISCOVERY SCRIPT (COMPLETO)
+📘 FILE MODIFICATO: server/ai/sales-scripts-base.ts → getDiscoveryScript()
+SEZIONE 1: REGOLE GLOBALI (Prima di FASE #1)
+🚨 REGOLA ANTI-SALTO CRITICA
+Contenuto aggiunto:
+- Definizione chiara di cosa significa "salto critico"
+- Scenario vietato: Passare da APERTURA a DEMO senza Pain Point
+- Conseguenze di violare questa regola
+- Quando applicare questa regola (sempre)
+
+⛔ DIVIETO ASSOLUTO
+Contenuto aggiunto:
+- Cosa ASSOLUTAMENTE NON FARE durante Discovery
+- Errori comuni che killano la call
+- Frasi proibite (vendite, linguaggio tecnico, costo immediato)
+- Lista nera di comportamenti
+
+💎 REGOLA D'ORO
+Contenuto aggiunto:
+- Principio fondamentale di Discovery
+- Perché questa regola è il fulcro
+- Come appliarla in ogni momento
+
+🛑 SE PROSPECT CHIEDE APPUNTAMENTO
+Contenuto aggiunto:
+- Cosa fare se Prospect chiede di demandare all'appuntamento
+- Script di gestione
+- Come reindirizzare senza resistenza
+
+SEZIONE 2: 7 FASI COMPLETE
+FASE #1 - APERTURA ED IMPOSTAZIONE
+⚡ ENERGIA E TONALITÀ:
+
+Livello: ALTA
+Tono: Entusiasta, caloroso, professionale
+Volume: Moderato-Alto (proiezione chiara)
+Ritmo: Veloce, conciso
+Lessico: ["ciao", "come stai", "grazie di", "perfetto"]
+Mindset: "Sono felice di parlarti, sei interessante"
+STEP 1 - APERTURA ENTUSIASTA:
+
+🎯 OBIETTIVO: Stabilire rapport, iniziare conversazione naturale
+📌 DOMANDA 1: "Ciao! Come stai?"
+⏸️ ASPETTA (0.5s)
+🎧 ASCOLTA: Energia voce, fluidità risposta
+💬 REAGISCI: "Perfetto! Ti chiamo perché..." (segue transizione)
+📌 DOMANDA 2: "Da dove mi chiami?"
+⏸️ ASPETTA
+🎧 ASCOLTA: Contesto geografico, suoni di fondo
+💬 REAGISCI: Commento personalizzato al contesto
+🍪 SE DIVAGA: "Sì capisco, per questo ti ho chiamato!" (reindirizza)
+STEP 2 - SPIEGA IL PROCESSO:
+
+🎯 OBIETTIVO: Impostare call structure, ridurre ansia
+📌 SCRIPT PROCESSO: "Ecco come procediamo oggi..."
+Fase 1: Mi racconti il tuo business (5 min)
+Fase 2: Capiamo i tuoi goal (10 min)
+Fase 3: Valutiamo se e come posso aiutarti (5 min)
+Fase 4: Accordo su prossimi step
+⛔ CHECKPOINT FASE #1:
+
+✓ Prospect risponde alle domande con dettagli
+✓ Tono conversazionale, non "vendita"
+✓ Ho capito contesto geografico/situazione
+✓ Prospect accetta il processo
+🛡️ SE RESISTE: Se dice "Mi racconti subito il vostro servizio" → "Perfetto, ma prima capiamo il TUO mondo così ti do esattamente quello che serve"
+FASE #2 - PAIN POINT DISCOVERY
+⚡ ENERGIA E TONALITÀ:
+
+Livello: MEDIA (più concentrata, meno "vendita")
+Tono: Curiosa, attenta, empatica
+Volume: Leggermente più basso (ascolto intento)
+Ritmo: Moderato, con pause per ascolto
+Lessico: ["interessante", "capisco", "e allora", "raccontami di più"]
+Mindset: "Voglio veramente capire il TUO problema"
+STEP 3 - TROVA PAIN POINT:
+
+🎯 OBIETTIVO: Scoprire il problema #1 (quello che fa male ADESSO)
+📌 DOMANDA: "Se potessi cambiare UNA cosa nel tuo business adesso, quale sarebbe?"
+⏸️ ASPETTA (pausa lunga, 2-3 sec)
+🎧 ASCOLTA: Cosa dice PRIMO (quello è il pain point vero)
+💬 REAGISCI: "Interesting! Raccontami di più di questo..."
+🔍 LADDER DEI PERCHÉ (6 livelli):
+LIVELLO 1: "Perché è un problema per te?"
+LIVELLO 2: "E questo come impatta il tuo business?"
+LIVELLO 3: "Quanto tempo/denaro perdi ogni mese?"
+LIVELLO 4: "Chi in azienda soffre di più per questo?"
+LIVELLO 5: "Cosa accade se continua così per 1 anno?"
+LIVELLO 6: "Cosa succederebbe se lo risolvessi domani?"
+STEP 4 - TENTATIVI PASSATI:
+
+🎯 OBIETTIVO: Capire se ha tentato soluzioni, perché non hanno funzionato
+📌 DOMANDA: "Avete mai provato a risolvere questo problema?"
+Se SÌ → 🔍 LADDER (5 livelli):
+"Cosa avete provato?"
+"Perché non ha funzionato?"
+"Quanto avete investito?"
+"Chi era responsabile?"
+"Qual è il rischio di ritentare?"
+Se NO → "Interessante, quindi è rimasto così. Perché non l'avete affrontato?"
+STEP 5 - PERSISTENZA:
+
+🎯 OBIETTIVO: Capire se questo problema è persistente o episodico
+📌 DOMANDA: "È un problema ricorrente o è capitato una volta?"
+STEP 6 - INVESTIMENTI:
+
+🎯 OBIETTIVO: Capire se sono pronti a investire per risolvere
+📌 DOMANDA: "Quanto sarebbe importante risolvere questo per voi?"
+Opzioni: Bassa / Media / Alta / CRITICA
+⛔ CHECKPOINT FASE #2:
+
+✓ Ho identificato il pain point principale
+✓ So i tentativi passati + perché non hanno funzionato
+✓ So quanto costa questo problema mensile/annuale
+✓ So che è importante per loro
+🛡️ SE RESISTE: Se non vuole condividere → "Capisco, sensibile. Non serve dettagli, solo se è importante per te oppure no"
+FASE #3 - INFO BUSINESS
+STEP 7 - RACCOGLI INFO BUSINESS:
+
+🎯 OBIETTIVO: Capire il business per personalizzare proposta
+📌 DOMANDE RAPIDE (12 domande, veloce):
+"Quanti anni nel business?"
+"Team size?"
+"Fatturato annuale?"
+"Principali servizi/prodotti?"
+"Chi è il target customer?"
+"Qual è il tuo ruolo?"
+"Chi fa le decisioni di spesa?"
+"Qual è il cycle di vendita?"
+"Cos'è il vostro competitive advantage?"
+"Qual è la sfida più grande di vendita?"
+"Come misurate il successo?"
+"Qual è il goal per il prossimo anno?"
+⛔ CHECKPOINT FASE #3:
+
+✓ Ho capito il business completamente
+✓ So chi è il decision maker
+✓ So il budget ballpark
+✓ So i KPI che importano
+FASE #4 - INQUISITORIO
+STEP 8 - DOMANDE DIAGNOSTICHE:
+
+🎯 OBIETTIVO: Approfondire struttura del problema
+📌 DOMANDE:
+"Come hanno cercato di risolvere prima?"
+"Quali team sono coinvolti?"
+"Qual è il processo attuale?"
+"Chi resiste al cambiamento?"
+STEP 9 - STATO ATTUALE (Fatturato):
+
+🎯 OBIETTIVO: Numero esatto del problema in termini monetari
+📌 DOMANDA: "Se potessi quantificarlo, quanto perdi mensilmente per questo problema?"
+FASE #5 - STRETCH THE GAP
+⚡ ENERGIA E TONALITÀ: CAMBIA DRASTICAMENTE
+
+Livello: BASSA inizialmente, poi SALE
+Tono: Empatico, leggermente preoccupato
+Volume: Basso, intimo
+Ritmo: Lento, drammatico
+Lessico: ["gravo", "conseguenze", "rischio", "opportunità", "crescita"]
+Mindset: "Voglio fargli SENTIRE il gap"
+STEP 10 - STATO IDEALE (Obiettivo):
+
+🎯 OBIETTIVO: Dipingere il futuro desiderato
+📌 DOMANDA: "Se fosse risolto perfettamente, come sarebbe il tuo business tra 6 mesi?"
+Ascolta VISIONE
+STEP 11 - EMOZIONI (💎 PIÙ IMPORTANTE - IL FULCRO):
+
+🎯 OBIETTIVO: Creare emozione (questo fa dire SÌ, non la logica)
+🔍 LADDER EMOTIVO (6 livelli, VITALE):
+LIVELLO 1: "Come ti sentirai quando risolvi questo?"
+LIVELLO 2: "Cosa significherebbe per te nella vita?"
+LIVELLO 3: "Come cambierebbe il tuo percorso aziendale?"
+LIVELLO 4: "Chi nella tua famiglia sarebbe orgoglioso di te?"
+LIVELLO 5: "Che legacy vorresti lasciare?"
+LIVELLO 6: "Se non lo fai, te ne pentirai tra 5 anni?"
+⛔ CHECKPOINT FASE #5:
+
+✓ Ho creato EMOZIONE (non solo logica)
+✓ So esattamente come sarebbe il futuro ideale
+✓ Sa che questo futuro è POSSIBILE
+✓ Ha sentito le emozioni della trasformazione
+FASE #6 - QUALIFICAZIONE
+STEP 12 - I MAGICI 3:
+
+🎯 OBIETTIVO: Verificare se è QUALIFICATO (3 criteri)
+Pain Point reale? (Sì → continua)
+Budget disponibile? (Sì → continua)
+Decision maker in call? (Sì → continua)
+Se uno manca → "Interessante, allora non è il momento giusto ora"
+
+⛔ CHECKPOINT FASE #6:
+
+✓ Qualificato su tutti e 3 i criteri
+✓ Pronto per la demo
+FASE #7 - SERIETÀ E AUTOREVOLEZZA
+STEP 13 - COSTO DI NON AGIRE:
+
+🎯 OBIETTIVO: Creare urgenza (il costo di NON fare è > del costo di fare)
+📌 SCRIPT: "Ascolta, se continuate così senza risolvere questo, tra 1 anno avrete perso X€ e sarete ancora nel STESSO posto. Non è meglio risolvere OGGI?"
+STEP 14 - URGENZA:
+
+🎯 OBIETTIVO: Capire quando è il momento
+📌 DOMANDA: "Quando vorreste iniziare?"
+STEP 15 - BUDGET E DECISION MAKER:
+
+🎯 OBIETTIVO: Confermare nuovamente budget disponibile
+📌 DOMANDA: "Approssimativamente, che budget avete disponibile per risolvere questo?"
+STEP 16 - TRANSIZIONE ALLA DEMO:
+
+🎯 OBIETTIVO: Passare a demo mantendo momentum
+📌 SCRIPT: "Perfetto! Adesso ti faccio vedere come risolviamo questo per clienti come te..."
+⛔ CHECKPOINT FINALE DISCOVERY:
+
+✓ Pain point cristallino
+✓ Emozione creatà (sa perché lo vuole)
+✓ Qualificato (pain, budget, decision maker)
+✓ Urgenza presente
+✓ Pronto per demo
+📌 DOMANDA FINALE: "Pronto?"
+✅ FATTO - DEMO SCRIPT (COMPLETO)
+📗 FILE MODIFICATO: server/ai/sales-scripts-base.ts → getDemoScript()
+SEZIONE 1: REGOLE GLOBALI DEMO
+⚠️ META-ISTRUZIONI
+5 regole OBBLIGATORIE:
+1. NON saltare il social proof
+2. NON andare veloce (calma e pausata)
+3. NON parlare di prezzo finché non chiedi valore
+4. NON è una lezione tecnica
+5. È uno SHOW, non una conferenza
+
+⚡ ENERGY BOOSTER MODALITÀ DEMO
+Mindset: "Sto per creare un 'WOW MOMENT'"
+Mentalità: "Questo è lo strumento più potente al mondo"
+Lessico obbligatorio: ["guarda", "vedi qui", "nota", "interessante", "adesso"]
+Tonalità: Entusiasmo controllato (non strambo)
+Ritmo: Lento+Drammatico+Impatto
+
+📋 COMPILA PRIMA QUESTI DATI
+Da ricordare dalla Discovery (13 dati):
+1. Nome prospect
+2. Nome azienda
+3. Pain point principale
+4. Cifra del problema (costo mensile)
+5. Tentativo passato (cosa ha provato)
+6. Obiettivo ideale
+7. Timeline voluto
+8. Chi è decision maker
+9. Budget approssimativo
+10. Competitive landscape
+11. Processo di acquisto
+12. Cosa lo entusiasma di più
+13. Obiezione anticipata
+
+SEZIONE 2: 6 FASI DEMO
+FASE #1 - UNCINO
+⚡ ENERGIA E TONALITÀ:
+
+Livello: ALTISSIMA
+Tono: Magnetico, affascinante, misterioso
+Volume: Alto con pause drammatiche
+Ritmo: Veloce iniziale, poi PAUSA
+Lessico: ["aspetta", "guarda", "vedrai", "incredibile"]
+Mindset: "Sto per sorprenderti positivamente"
+STEP 1 - APERTURA UNCINO:
+
+🎯 OBIETTIVO: Catturare attenzione nei primi 10 secondi
+📌 SCRIPT UNCINO PERSONALIZZATO:
+"Ricordi quando mi hai raccontato che perdi X€/mese per [pain point]?"
+"Ecco... quello che sto per mostrarti risolve ESATTAMENTE questo"
+"E la cosa interessante è che [competitor] non sa nemmeno che esiste"
+PAUSA DRAMMATICA (3 sec)
+"Ready? Guarda..."
+⛔ CHECKPOINT #1:
+
+✓ Attenzione catturata (posso sentirlo dal tono)
+✓ Ha riconosciuto il pain point
+✓ È curioso
+FASE #2 - SOCIAL PROOF
+⚡ ENERGIA E TONALITÀ:
+
+Livello: ALTA ma CONTROLLATA
+Tono: Professionale, credibile, non esagerato
+Volume: Moderato
+Ritmo: Storytelling (lento, avvincente)
+Lessico: ["risultati provati", "non è opinione mia", "i nostri clienti", "risultato concreto"]
+Mindset: "Questo NON è che dico io, lo dicono i fatti"
+STEP 2 - CASI DI STUDIO:
+
+🎯 OBIETTIVO: Provare che funziona con clienti simili
+
+📌 INTRODUZIONE: "Guarda, prima che ti mostri il sistema, voglio farti vedere 3 clienti come te"
+
+📌 CASE STUDY #1:
+
+Azienda: [Nome finto simile]
+Situazione iniziale: Problema identico al tuo
+Cosa hanno fatto: Hanno usato il nostro metodo per X mesi
+Risultato: +€ / +% / + soddisfazione
+Testimonianza: "È stato incredibile, non sapevamo..." (citazione vera)
+📌 CASE STUDY #2:
+
+(stesso format)
+📌 CASE STUDY #3:
+
+(stesso format)
+📌 DOMANDA: "Quale di questi ti ha colpito di più?"
+
+ASPETTA risposta (ascolto qual è più vicino al suo scenario)
+⛔ CHECKPOINT #1 - CASE STUDIES:
+
+✓ Ha identificato un case study simile al suo
+✓ Sa che "persone come lui" hanno vinto
+✓ Inizia a credere che sia possibile
+FASE #3 - CREDIBILITÀ
+⚡ ENERGIA E TONALITÀ:
+
+Livello: MEDIA
+Tono: Umano, autentico, vulnerabile
+Volume: Intimo, sussurrato
+Ritmo: Storytelling lento
+Lessico: ["mi ricordo quando", "ho imparato", "successo", "fallimento", "eureka"]
+Mindset: "Voglio condividere il PERCHÉ so questo"
+STEP 3 - STORIA E BACKGROUND:
+
+🎯 OBIETTIVO: Stabilire autorevolezza tramite storia personale
+
+📌 APERTURA STORIA: "Sai, la ragione per cui so ESATTAMENTE come risolvere il tuo problema è che..."
+
+[Racconta background tuo/del founder]
+"E lì ho capito che il problema NON era X, era Y"
+📌 TRASFORMAZIONE: "Quando ho avuto la 'eureka moment', ho capito che..."
+
+[Momento chiave di insight]
+📌 USP (sussurro): "E da quel momento, abbiamo sviluppato un sistema che..."
+
+SUSSURRA il valore unico (il sussurro crea intimità)
+"Non è tecnico, non è complicato. È semplicemente LOGICO"
+FASE #4 - METODO
+⚡ ENERGIA E TONALITÀ:
+
+Livello: MEDIA-ALTA
+Tono: Professionale, ordinato, step-by-step
+Volume: Chiaro, didattico
+Ritmo: Un passo alla volta
+Lessico: ["fase", "step", "allora", "dopodiché", "infine"]
+Mindset: "Spiego il processo in modo che sia FACILE da capire"
+STEP 4 - SISTEMA/METODO:
+
+🎯 OBIETTIVO: Mostrare il framework logico
+
+📌 CONNESSIONE AI PAIN POINTS: "Ricordi quando dicevi che il tuo problema era [pain]? Ecco come risolviamo:"
+
+FASE 1 (come si chiama): Descrizione
+FASE 2 (come si chiama): Descrizione
+FASE 3 (come si chiama): Descrizione
+[max 3-4 fasi, non oltre]
+STEP 5 - CHECK COMPRENSIONE:
+
+🎯 OBIETTIVO: Verificare che abbia seguito
+📌 DOMANDA: "Fin qui chiaro? Domande?"
+ASPETTA
+Se SÌ → continua
+Se NO → spiega di nuovo
+⛔ CHECKPOINT #2 - METODO:
+
+✓ Ha capito come funziona il sistema
+✓ Ha collegato il sistema al suo pain
+✓ Non ha obiezioni sulla logica
+FASE #5 - CARATTERISTICHE
+⚡ ENERGIA E TONALITÀ:
+
+Livello: ALTA
+Tono: Entusiasta ma misurato
+Volume: Alto (mostra feature con energy)
+Ritmo: Veloce ma non frenetico
+Lessico: ["vedi", "guarda", "nota qui", "interessante", "potente"]
+Mindset: "Sto mostrando le armi segrete"
+STEP 6 - STRUMENTI/CARATTERISTICHE:
+
+🎯 OBIETTIVO: Mostrare le features che risolvono il problema
+
+📌 CARATTERISTICA #1: [Nome]
+
+Cos'è: Breve descrizione
+Perché importa: Come risolve un aspetto del pain point
+Beneficio: "Questo significa che tu..."
+📌 CARATTERISTICA #2: [Nome]
+
+(stesso format)
+📌 CARATTERISTICA #3: [Nome]
+
+(stesso format)
+📌 DOMANDA: "Quale di queste ti entusiasma di più?"
+
+ASCOLTA quale lo colpisce (quello è il driver principale)
+⛔ CHECKPOINT #3 - STRUMENTI:
+
+✓ Ha visto le feature più rilevanti
+✓ Sa quale feature lo aiuta PIÙ
+✓ Inizia a immaginare come lo userebbe
+FASE #6 - CHIUSURA
+⚡ ENERGIA E TONALITÀ - CAMBIA RADICALMENTE DA QUI
+
+Livello: BASSA (prezzo è delicato)
+Tono: Calmo, solido, sicuro, non vendita
+Volume: VOCE BASSA, quasi sussurrata
+Ritmo: Lento, pause drammatiche lunghe
+Lessico: ["investimento", "opportunità", "struttura", "valore", "insieme"]
+Mindset: "Non vendo, offro una partnership"
+STEP 7 - RIEPILOGO:
+
+🎯 OBIETTIVO: Tirare i fili emotivi + logici
+📌 RIEPILOGO EMOZIONI:
+"Ricordi quando abbiamo iniziato e mi raccontavi che perdi X€/mese?"
+"Bene, adesso hai visto COME risolviamo questo"
+"E hai visto che [Competitor] non può nemmeno competere"
+PAUSA LUNGA
+🔍 LADDER EMOTIVO (trascinamento verso il SÌ):
+"Immagina tra 3 mesi, quando questo problema è RISOLTO..."
+"Quanto stress in meno avrai?"
+"Quanto più dormirai bene?"
+"Che eredità avrai costruito nel tuo business?"
+STEP 8 - VALUE STACK:
+
+🎯 OBIETTIVO: Accumulare valore (non prezzo, ma VALORE)
+📌 STACKING:
+"Quindi ricap veloce, con noi ottieni:"
+"✓ Il sistema che i tuoi competitor non hanno"
+"✓ L'onboarding di X settimane per assicurare successo"
+"✓ 24/7 support per quando hai domande"
+"✓ Accesso a comunità di 1000+ owners che usano il sistema"
+"✓ Aggiornamenti illimitati"
+PAUSA
+"Prima di dirti il prezzo, ha senso per te?"
+STEP 9 - GESTIONE DOMANDE PRE-PREZZO:
+
+🎯 OBIETTIVO: Risolvere dubbi prima di nominare prezzo
+📌 DOMANDA: "Domande prima che chiudiam?"
+ASPETTA
+Risolvi tutte le domande logiche (non obiezioni di prezzo ancora)
+STEP 10 - PRICING (🙏 L'AVE MARIA):
+
+🎯 OBIETTIVO: Nominare il prezzo senza che diventi una resistenza
+📌 TONALITÀ SPECIALE:
+Voce BASSA (sussurro quasi)
+PAUSE LUNGHE tra frase e frase
+Mai difensivo
+Nessuna giustificazione
+Serenità totale
+📌 SCRIPT PREZZO:
+"Allora, il prezzo del nostro programma è [PRICE]"
+PAUSA LUNGHISSIMA (5 secondi)
+"È un investimento mensile/unico"
+PAUSA
+"Come vedi, è meno di quello che perdi ogni mese [X€]"
+"Quindi il ROI è... beh, tu i conti li sai fare"
+STEP 11 - CLOSING (LADDER OBIEZIONI PRE-CLOSE):
+
+🎯 OBIETTIVO: Chiudere prima che dica NO
+🔍 LADDER OBIEZIONI CLOSING (4 livelli progressivi):
+LIVELLO 1: "Allora, ha senso per te iniziare?"
+Se SÌ → "Perfetto, carta o bonifico?"
+Se NO → LIVELLO 2
+LIVELLO 2: "Cosa manca ancora perché sia un SÌ?"
+Se risolvi → ritorna a domanda
+Se NO → LIVELLO 3
+LIVELLO 3: "Va bene, se potesse parlarne con [partner/team], quando possiamo fare call a tre?"
+Se SÌ → "Perfetto, vi chiamo lunedì"
+Se NO → LIVELLO 4
+LIVELLO 4: "Capisco, non è il momento. Cosa cambierebbe la situazione tra 3 mesi?"
+Se ha risposta → "Ok, ti chiamo allora"
+Se NO → "Non è pronto oggi, exit educato"
+⛔ CHECKPOINT #4 - FINALE PRE-PRICING:
+
+✓ Ha capito completamente il valore
+✓ Sa che è il fit giusto
+✓ Sa che conviene (ROI positivo)
+✓ Pronto per sentire il prezzo
+✅ FATTO - OBIEZIONI SCRIPT (COMPLETO)
+📙 FILE MODIFICATO: server/ai/sales-scripts-base.ts → getObjectionsScript()
+SEZIONE 1: REGOLE GLOBALI OBIEZIONI
+🔄 GESTIONE LOOP OBIEZIONI
+Max 3 loop per obiezione:
+- LOOP 1: Chiarifica
+- LOOP 2: Approfondisci
+- LOOP 3: Final Push
+Se ancora dice NO dopo loop 3 → "Non è pronto adesso"
+Tracker: Contiamo quanti loop abbiamo fatto per ogni obiezione
+
+💎 REGOLA: SEMPRE TORNARE A CTA VARIATO
+5 CTA variati per non essere ripetitivo:
+1. "Allora, carta o bonifico?"
+2. "Ok, quando vogliamo iniziare?"
+3. "Perfetto, allora ti mando il contratto?"
+4. "Bene, riusciamo a fare la prima sessione settimana prossima?"
+5. "Fantastico, quindi da lunedì sei dentro?"
+
+⚠️ QUANDO QUALIFICARE COME "NON PRONTO"
+Segnali di "Non Pronto":
+- Ha detto NO 3+ volte sulla stessa obiezione
+- Dice "parla con [persona che non è in call]"
+- Dice "Mandami info" (scena finale)
+- Non sa il budget
+Script di uscita educata:
+"Capisco perfettamente. Non è il momento giusto ADESSO. 
+Cosa cambierebbe tra [tempo]? Ti chiamo allora."
+
+SEZIONE 2: 23 OBIEZIONI (TUTTE CONVERTITE DA ### OBIEZIONE A **FASE**)
+Ecco la struttura IDENTICA per ogni obiezione (farò solo primi 5 come esempio):
+
+FASE #1 - OBIEZIONE "È TROPPO COSTOSO"
+⚡ ENERGIA E TONALITÀ:
+
+Tono: Empatico, NON difensivo
+Volume: Basso (intimate, non confrontazionale)
+Lessico: ["investimento", "valore", "cost of inaction", "risultato"]
+STEP 1 - CHIARIFICA:
+
+🎯 OBIETTIVO: Capire se è budget oppure paragone
+📌 DOMANDA CHIAVE: "Quando dici costoso, lo paragoni a qualcosa o semplicemente non hai la cifra?"
+⏸️ ASPETTA (lo scopre subito)
+Se BUDGET: "Ok, qual è il budget che avresti?"
+Se PARAGONE: "Interessante, con chi lo paragoni?"
+STEP 2 - LADDER PREZZO:
+
+LIVELLO 1: "E se costasse metà? Sarebbe interessante?"
+LIVELLO 2: "E se non pagassi NULLA i primi 30 giorni e provasti gratis?"
+LIVELLO 3: "E se potessi pagare a rate?"
+LIVELLO 4: "Qual è il prezzo che ti renderebbe un SÌ?"
+LIVELLO 5: "Se guadagni €X/mese e paghi €Y/mese, il break-even è in X settimane. Ha senso?"
+STEP 3 - REFRAME COSTO NON AGIRE:
+
+📌 SCRIPT REFRAME:
+"Capisco. Ma senti, il vero costo è NON fare nulla"
+"Continui a perdere €X/mese per il tuo problema"
+"In 1 anno sono €X*12 = €TOTALE, ok?"
+"Il nostro programma costa €Y/mese, quindi in 12 mesi = €Y*12"
+"La differenza è di €DIFFERENZA, che recuperi in MESI di risultati"
+"Non è un costo, è un investimento con ROI positivo"
+"Allora, carta o bonifico?"
+📌 CTA: "Perfetto, quando vuoi iniziare?"
+
+FASE #2 - OBIEZIONE "DEVO PENSARCI"
+⚡ ENERGIA E TONALITÀ:
+
+Tono: Curiosa, non giudicante (la vera obiezione è nascosta)
+Volume: Moderato
+Lessico: ["capisco", "naturale", "cosa ti farebbe dire sì", "qual è la vera domanda"]
+STEP 1 - SCAVA VERA OBIEZIONE:
+
+🎯 OBIETTIVO: "Devo pensarci" è FALSA obiezione, trova quella vera
+🔍 LADDER (4 livelli - scavo veloce):
+LIVELLO 1: "Cosa vuoi pensarci esattamente?"
+(pausa - ascolta)
+LIVELLO 2: "E se potessi risolvere QUELLA cosa adesso, sarebbe un sì?"
+Se SÌ → risolvila e ritorna al closing
+Se NO → LIVELLO 3
+LIVELLO 3: "Ok, quindi la vera obiezione è [X]?"
+Conferma
+LIVELLO 4: "Fantastico, allora non è 'devo pensarci', è che [X] non è ancora risolto, corretto?"
+STEP 2 - CATEGORIZZA (3 opzioni):
+
+La vera obiezione è una di queste 3:
+A) Non ha capito il valore
+B) Non ha il budget
+C) Non è il decision maker
+Quale categoria ti riguarda?
+STEP 3 - REFRAME COSTO PENSARCI:
+
+📌 SCRIPT:
+"Ascolta, mentre pensi, il tuo problema continua a costarti"
+"Ogni giorno che passa, perdi un'opportunità di crescita"
+"In 1 settimana di 'pensare' perdi già €X di valore"
+"Che dici, meglio iniziare ADESSO e vedrai tu stesso i risultati?"
+📌 CTA: "Allora, partiamo?"
+
+FASE #3 - OBIEZIONE "DEVO PARLARNE CON PARTNER/SOCIO"
+⚡ ENERGIA E TONALITÀ:
+
+Tono: Supportivo, facilitatore (aiuto a convincerlo)
+Volume: Professionale
+Lessico: ["insieme", "perfetto", "call a tre", "facilito io", "domande"]
+STEP 1 - CAPIRE RUOLO:
+
+🎯 OBIETTIVO: È vera obiezione o scusa?
+📌 DOMANDA: "Lui/lei ha power decisionale su questo?"
+Se SÌ → "Perfetto, facciamo una call a tre, così rispondo a tutte le domande"
+Se NO → "Ok, ma tu cosa ne pensi?"
+STEP 2 - ANTICIPARE DOMANDE:
+
+📌 SCRIPT:
+"Perfetto, so esattamente che domande avrà:"
+"Punto 1: Come funziona? → [Spiega rapido]"
+"Punto 2: Qual è il ROI? → [Spiega rapido]"
+"Punto 3: Garanzia? → [Spiega rapido]"
+"L'hai capito? Adesso condividilo con [lui/lei]"
+STEP 3 - PROPONI CALL A TRE:
+
+📌 SCRIPT:
+"Oppure, facilito io la call a tre"
+"Mi mandi i contatti e organizzo tutto"
+"Magari mercoledì alle 3pm vi bene?"
+📌 DOMANDA CHIAVE: "Quindi, preferisci che spieghi io o spieghi tu?"
+
+FASE #4 - OBIEZIONE "NON È IL MOMENTO GIUSTO"
+⚡ ENERGIA E TONALITÀ:
+
+Tono: Empatico, non forzoso
+Volume: Basso (ascolto reale)
+Lessico: ["capisco", "timing", "cosa cambierebbe", "quando sì"]
+STEP 1 - CAPIRE VERA RAGIONE:
+
+🎯 OBIETTIVO: "Timing" è scusa, qual è il vero motivo?
+📌 DOMANDA CHIAVE: "Cosa intendi per 'non è il momento'? C'è una deadline?"
+Se SÌ → "Ok, dopo quella deadline, chiediamo?"
+Se NO → "Quindi è una scusa?"
+STEP 2 - REFRAME TIMING:
+
+📌 SCRIPT:
+"Senti, il MIGLIOR momento è ADESSO"
+"Perché? Perché ogni giorno che aspetti, la soluzione arriva più tardi"
+"Se il tuo goal era risolverlo entro [date], iniziare adesso ti dà il tempo massimo"
+STEP 3 - PROPONI PILOTA:
+
+📌 SCRIPT:
+"E se iniziassimo con un pilota di 30 giorni?"
+"Vedi i risultati, ALLORA decidi se continuare al 100%?"
+📌 CTA: "Allora, partiamo col pilota?"
+
+FASE #5 - OBIEZIONE "HO BISOGNO DI PIÙ TEMPO"
+(stessa struttura, ma focus su "creazione di urgenza + prove concrete")
+
+[Le altre 18 OBIEZIONI seguono lo stesso pattern: CHIARIFICA → LADDER → REFRAME → CTA]
+
+Riepilogo 23 obiezioni convertite:
+✅ È troppo costoso
+✅ Devo pensarci
+✅ Devo parlarne con partner/socio
+✅ Non è il momento giusto
+✅ Ho bisogno di più tempo
+✅ Sto già lavorando con qualcun altro
+✅ Ho provato cose simili e non hanno funzionato
+✅ Non sono sicuro che funzioni per me
+✅ Cosa succede se non funziona?
+✅ Posso farcela da solo
+✅ Non ho tempo
+✅ Mandami più informazioni
+✅ È troppo complicato
+✅ Non voglio impegnarmi adesso
+✅ Voglio una garanzia
+✅ La concorrenza offre prezzi migliori
+✅ Non mi fido dei consulenti
+✅ Non sono convinto del ROI
+✅ Ho paura di fare la scelta sbagliata
+✅ Non voglio rischiare
+✅ È troppo bello per essere vero
+✅ Voglio parlare con altri tuoi clienti
+✅ Non sono il decisore finale
+SEZIONE 3: CHECKPOINT E REGOLE FINALI
+⛔ CHECKPOINT FINALE OBIEZIONI
+✓ Ho categorizzato la vera obiezione
+✓ Ho usato il ladder appropriato
+✓ Ho reframed il problema
+✓ Ho offerto 3+ alternative
+✓ Se ancora NO → Ho qualificato come "Non Pronto"
+✓ Se NO dopo 3 loop → Ho chiuso educatamente
+✓ Se SÌ → Ho confermato prossimi step
+
+📋 REGOLE FONDAMENTALI GESTIONE OBIEZIONI
+PROCESSO 8 STEP:
+1. Ascolta fino in fondo (non interrompere)
+2. Conferma che ho capito ("Quindi dici che...")
+3. Empatizza ("Capisco perfettamente perché dici questo")
+4. Scava la vera obiezione (non è quella che dice)
+5. Reframe il problema (da ostacolo a opportunità)
+6. Offri alternative (3+ opzioni)
+7. Torna a closing con CTA (non arrendersi)
+8. Se ancora NO → Qualifica come non-pronto e chiudi
+TONALITÀ OBBLIGATORIA:
+- NON difensivo
+- NON aggressivo
+- Sempre empatico
+- Sempre soluzioni
+DOMANDE POTENTI:
+- "Cosa farebbe cambiare questa situazione?"
+- "Se potessimo risolvere [X], partiresti?"
+- "Qual è la vera ragione?"
+- "Chi altro dovrebbe essere convinto?"
+
+⚠️ MANCA ANCORA - 3 TASK
+TASK #4: PARSER - VERIFICARE E AGGIORNARE ⚠️
+FILE: shared/script-parser.ts
+Cosa DEVE fare il parser:
+
+Il parser legge il testo dello script e lo converte in blocchi che il BlockEditor può renderizzare. Il nuovo formato standardizzato richiede che il parser riconosca:
+
+Pattern	Cosa riconosce	Azione
+**FASE #N - NOME**	Inizio di una fase	Crea blocco Fase
+**STEP N - NOME**	Inizio di uno step	Crea blocco Step dentro la fase
+🎯 OBIETTIVO:	Objective dello step	Estrae testo obiettivo
+⚡ ENERGIA E TONALITÀ	Energia della fase	Estrae: Livello, Tono, Volume, Ritmo, Lessico, Mindset
+📌 DOMANDA:	Domanda da fare	Crea blocco Domanda con istruzioni
+⏸️ ASPETTA	Istruzione di attesa	Aggiunge a domanda
+🎧 ASCOLTA:	Cosa ascoltare	Aggiunge a domanda
+💬 REAGISCI:	Come reagire	Aggiunge a domanda
+🍪 SE DIVAGA:	Biscottino di reindirizzo	Crea blocco Biscottino
+🔍 LADDER	Domande progressi	Crea blocco Ladder con LIVELLO 1-6
+⛔ CHECKPOINT	Checkpoint della fase	Crea blocco Checkpoint con verifica
+🛡️ SE RESISTE:	Gestione resistenza	Aggiunge al checkpoint
+Problemi attuali (da verificare):
+
+❓ Il parser riconosce tutti questi pattern? O manca qualcosa?
+❓ Le box ╔═══╗ ENERGIA sono parsate correttamente?
+❓ I ladder vengono estratti come blocchi separati?
+❓ I checkpoint vengono riconosciuti con tutte le loro parti?
+Se parser NON reconosce i pattern:
+→ Bisogna aggiornare le regex nel parser per riconoscere i nuovi marker emoji
+
+TASK #5: BLOCK EDITOR TEST ⚠️
+FILE: client/src/components/script-manager/BlockEditor.tsx
+Test da fare (CRITICO):
+
+DISCOVERY TEST:
+
+✓ BlockEditor mostra 7 FASI?
+✓ Ogni FASE contiene i relativi STEP?
+✓ Ogni STEP contiene Obiettivo + Domande?
+✓ Domande hanno le istruzioni (ASPETTA, ASCOLTA, REAGISCI)?
+✓ Ladder viene mostrato come sotto-blocco?
+✓ Checkpoint è presente?
+✓ Biscottino è presente?
+✓ NIENTE è in "Modalità Testo Forzata"?
+
+DEMO TEST:
+
+✓ BlockEditor mostra 6 FASI?
+✓ Regole globali visibili all'inizio?
+✓ Checkpoint #1, #2, #3, #4 sono presenti?
+✓ Step 10 (PRICING) è editabile?
+✓ Step 11 (CLOSING) con ladder è presente?
+✓ NIENTE è in "Modalità Testo Forzata"?
+
+OBIEZIONI TEST:
+
+✓ BlockEditor mostra 23 FASI (una per obiezione)?
+✓ OGNI obiezione ha STEP 1-3 (CHIARIFICA, LADDER, REFRAME)?
+✓ Domanda chiave + CTA presenti?
+✓ Checkpoint finale presente?
+✓ Regole globali visibili?
+✓ NIENTE è in "Modalità Testo Forzata" (questo era il problema prima!)?
+
+Se qualcosa è in "Modalità Testo Forzata":
+→ Significa il parser non ha riconosciuto il blocco
+→ Bisogna debuggare il parser per quel pattern
+
+TASK #6: VALIDAZIONE 1:1 + ARCHITECT REVIEW ⚠️
+Cosa verificare:
+Confronto File vs BlockEditor:
+
+Per ogni FASE/STEP/ELEMENTO nel sales-scripts-base.ts:
+✓ È visibile nel BlockEditor?
+✓ È editabile?
+✓ È formattato correttamente?
+✓ NON è in "Modalità Testo Forzata"?
+
+Verifica COMPLETEZZA:
+
+DISCOVERY:
+- Regole globali: ✓
+- Fase #1-7: ✓ tutte 7?
+- Step dentro ogni fase: ✓ tutti?
+- Energie per fase: ✓ tutte?
+- Domande: ✓ tutte?
+- Ladder: ✓ tutti?
+- Checkpoint: ✓ tutti?
+DEMO:
+- Regole globali: ✓
+- Fase #1-6: ✓ tutte 6?
+- Step dentro ogni fase: ✓ tutti?
+- Checkpoint #1-4: ✓ tutti 4?
+OBIEZIONI:
+- Regole globali: ✓
+- Fase #1-23: ✓ tutte 23?
+- Ogni obiezione ha STEP 1-3: ✓?
+- Checkpoint finale: ✓
+
+Architect Review:
+
+Struttura è coerente e logical?
+Parsing logic è corretta?
+BlockEditor renderizza tutto?
+Zero "Modalità Testo Forzata"?
+📈 TIMELINE PROSSIMI STEP
+PROSSIMO: 
+1. Leggere parser (shared/script-parser.ts)
+2. Verificare che capisca tutti i nuovi pattern
+3. Se NO → Aggiornare regex
+4. Testare con Discovery script nel BlockEditor
+5. Se OK → Testare Demo
+6. Se OK → Testare Obiezioni
+7. Architect review finale
