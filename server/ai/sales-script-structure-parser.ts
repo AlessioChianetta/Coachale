@@ -158,6 +158,11 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const phaseMatch = trimmed.match(/^\*\*FASE\s+#(\d+(?:\s+e\s+#\d+)?)\s*-\s*(.+?)\*\*/i);
     if (phaseMatch) {
+      // Before switching phases, assign any collected ladder levels to the current step
+      if (currentStep && currentLadderLevels.length > 0) {
+        currentStep.ladderLevels = [...currentLadderLevels];
+      }
+      
       if (currentPhase) {
         structure.phases.push(currentPhase);
       }
@@ -253,10 +258,17 @@ function parseContentLines(lines: string[], structure: ScriptStructure): ScriptS
     }
 
     // Extract detailed ladder levels (LIVELLO 1-5)
-    const ladderLevelMatch = trimmed.match(/^LIVELLO\s+(\d+)(?:️⃣)?\s*-\s*(.+?):/i);
+    // Pattern più flessibile che supporta:
+    // LIVELLO 1: NOME (con : diretto dopo numero)
+    // LIVELLO 1 - NOME: (con - e nome seguito da :)
+    // LIVELLO 2A: NOME (con lettera dopo numero)
+    // LIVELLO 1️⃣ - NOME: (con emoji)
+    // LIVELLO 3: SCAVO PROFONDO (emotivo) (con parentesi)
+    const ladderLevelMatch = trimmed.match(/^LIVELLO\s+(\d+)([A-Z])?(?:️⃣)?\s*[-:]\s*(.+?)(?::)?$/i);
     if (ladderLevelMatch && insideLadder && currentStep) {
       const levelNum = parseInt(ladderLevelMatch[1]);
-      const levelName = ladderLevelMatch[2].trim();
+      const levelSuffix = ladderLevelMatch[2] || ''; // optional suffix like A, B
+      const levelName = ladderLevelMatch[3].trim();
       
       let levelText = '';
       let levelPurpose = '';

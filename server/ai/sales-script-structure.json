@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "lastExtracted": "2025-11-26T16:11:00.450Z",
+  "lastExtracted": "2025-11-26T17:16:20.530Z",
   "sourceFile": "/home/runner/workspace/server/ai/sales-scripts-base.ts",
   "sourceContentHash": "5485bfebb84d9c2b2f6dffeef61570c666a7533a99630dd0893cd9e890f90cd1",
   "totalLines": 3491,
@@ -90,7 +90,44 @@
             }
           ],
           "hasLadder": true,
-          "ladderLevels": [],
+          "ladderLevels": [
+            {
+              "level": 1,
+              "name": "CHIARIFICAZIONE",
+              "text": "Domanda livello 1",
+              "purpose": "Far ripetere il problema con DETTAGLI concreti"
+            },
+            {
+              "level": 2,
+              "name": "PRIMO SCAVO",
+              "text": "Domanda livello 2",
+              "purpose": "Esplorare le conseguenze pratiche del problema"
+            },
+            {
+              "level": 3,
+              "name": "SCAVO PROFONDO (emotivo)",
+              "text": "Domanda livello 3",
+              "purpose": "Scoprire l'impatto emotivo e personale"
+            },
+            {
+              "level": 4,
+              "name": "TECNICO (solo se è problema tecnico/business)",
+              "text": "Domanda livello 4",
+              "purpose": "Trovare la motivazione profonda del cambiamento"
+            },
+            {
+              "level": 5,
+              "name": "EMOTIVO FINALE",
+              "text": "Domanda livello 5",
+              "purpose": "Visualizzare il futuro ideale e la trasformazione desiderata"
+            },
+            {
+              "level": 6,
+              "name": "EVENTO SCATENANTE (opzionale ma potente)",
+              "text": "Domanda livello 6",
+              "purpose": "Approfondimento livello 6"
+            }
+          ],
           "biscottini": [
             {
               "text": "SE DIVAGA: Biscottino + \"Ok tornando a noi, mi stavi dicendo che...",
@@ -113,7 +150,38 @@
             }
           ],
           "hasLadder": true,
-          "ladderLevels": [],
+          "ladderLevels": [
+            {
+              "level": 1,
+              "name": "COSA HANNO PROVATO",
+              "text": "Domanda livello 1",
+              "purpose": "Chiarificare il problema iniziale e confermare la comprensione"
+            },
+            {
+              "level": 2,
+              "name": "PERCHÉ L'HANNO SCELTO",
+              "text": "Domanda livello 2",
+              "purpose": "Esplorare le conseguenze pratiche del problema"
+            },
+            {
+              "level": 3,
+              "name": "RISULTATI OTTENUTI",
+              "text": "Domanda livello 3",
+              "purpose": "Scoprire l'impatto emotivo e personale"
+            },
+            {
+              "level": 4,
+              "name": "ANALISI DEL FALLIMENTO",
+              "text": "E secondo te cosa è mancato per raggiungere il risultato che volevi?",
+              "purpose": "Trovare la motivazione profonda del cambiamento"
+            },
+            {
+              "level": 5,
+              "name": "SCAVO PROFONDO (opzionale)",
+              "text": "Domanda livello 5",
+              "purpose": "Visualizzare il futuro ideale e la trasformazione desiderata"
+            }
+          ],
           "biscottini": [
             {
               "text": "SE DIVAGA: Biscottino + \"Ok tornando a noi...",
@@ -280,7 +348,44 @@
             }
           ],
           "hasLadder": true,
-          "ladderLevels": [],
+          "ladderLevels": [
+            {
+              "level": 1,
+              "name": "PERCHÉ QUEL NUMERO",
+              "text": "Domanda livello 1",
+              "purpose": "Chiarificare il problema iniziale e confermare la comprensione"
+            },
+            {
+              "level": 2,
+              "name": "COSA CAMBIA",
+              "text": "Domanda livello 2",
+              "purpose": "Esplorare le conseguenze pratiche del problema"
+            },
+            {
+              "level": 3,
+              "name": "EMOZIONI PROFONDE (CRITICO!)",
+              "text": "Domanda livello 3",
+              "purpose": "Scoprire l'impatto emotivo e personale"
+            },
+            {
+              "level": 4,
+              "name": "IMPATTO CONCRETO",
+              "text": "Domanda livello 4",
+              "purpose": "Trovare la motivazione profonda del cambiamento"
+            },
+            {
+              "level": 5,
+              "name": "LA COSA PIÙ IMPORTANTE (IL CUORE!)",
+              "text": "Domanda livello 5",
+              "purpose": "Visualizzare il futuro ideale e la trasformazione desiderata"
+            },
+            {
+              "level": 6,
+              "name": "PERCHÉ FINALE (opzionale ma potente)",
+              "text": "Domanda livello 6",
+              "purpose": "Approfondimento livello 6"
+            }
+          ],
           "biscottini": [],
           "lineNumber": 571
         }
@@ -617,7 +722,26 @@
           "objective": "Riepilogare la trasformazione completa",
           "questions": [],
           "hasLadder": true,
-          "ladderLevels": [],
+          "ladderLevels": [
+            {
+              "level": 1,
+              "name": "\"[NOME_PROSPECT], capisco. Ma se dovessi scegliere UNA cosa sola,",
+              "text": "Domanda livello 1",
+              "purpose": "Chiarificare il problema iniziale e confermare la comprensione"
+            },
+            {
+              "level": 2,
+              "name": "\"Perfetto! E perché proprio questa parte è importante per te?\"",
+              "text": "Domanda livello 2",
+              "purpose": "Esplorare le conseguenze pratiche del problema"
+            },
+            {
+              "level": 3,
+              "name": "\"Interessante! E come ti immagini di usarla nel tuo [business/vita]?\"",
+              "text": "Domanda livello 3",
+              "purpose": "Scoprire l'impatto emotivo e personale"
+            }
+          ],
           "biscottini": [],
           "lineNumber": 1320
         },
@@ -721,7 +845,26 @@
           "objective": "",
           "questions": [],
           "hasLadder": true,
-          "ladderLevels": [],
+          "ladderLevels": [
+            {
+              "level": 1,
+              "name": "Chiarificazione iniziale (già fatta in Step 1)",
+              "text": "Domanda livello 1",
+              "purpose": "Chiarificare il problema iniziale e confermare la comprensione"
+            },
+            {
+              "level": 2,
+              "name": "SE DICE \"Non ho la cifra\"",
+              "text": "Domanda livello 2",
+              "purpose": "Esplorare le conseguenze pratiche del problema"
+            },
+            {
+              "level": 2,
+              "name": "SE DICE \"È costoso rispetto ad altro\"",
+              "text": "Domanda livello 2",
+              "purpose": "Esplorare le conseguenze pratiche del problema"
+            }
+          ],
           "biscottini": [],
           "lineNumber": 2004
         },
@@ -765,7 +908,32 @@
           "objective": "",
           "questions": [],
           "hasLadder": true,
-          "ladderLevels": [],
+          "ladderLevels": [
+            {
+              "level": 1,
+              "name": "Chiarificazione iniziale (già fatta in Step 1)",
+              "text": "Domanda livello 1",
+              "purpose": "Chiarificare il problema iniziale e confermare la comprensione"
+            },
+            {
+              "level": 2,
+              "name": "Categorizza",
+              "text": "Domanda livello 2",
+              "purpose": "Esplorare le conseguenze pratiche del problema"
+            },
+            {
+              "level": 3,
+              "name": "Scava più profondo",
+              "text": "Domanda livello 3",
+              "purpose": "Scoprire l'impatto emotivo e personale"
+            },
+            {
+              "level": 4,
+              "name": "Verità (se ancora esita)",
+              "text": "Domanda livello 4",
+              "purpose": "Trovare la motivazione profonda del cambiamento"
+            }
+          ],
           "biscottini": [],
           "lineNumber": 2091
         },
