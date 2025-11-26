@@ -16,7 +16,8 @@ import {
   CheckCircle,
   AlertCircle,
   HelpCircle,
-  Lightbulb
+  Lightbulb,
+  Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -175,6 +176,23 @@ export default function ClientScriptManager() {
       setNewScriptName('');
       setUseTemplate(true);
       toast({ title: 'Script creato', description: 'Lo script è stato creato dal template di base' });
+    },
+    onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
+  });
+
+  const deleteScriptMutation = useMutation({
+    mutationFn: async (scriptId: string) => {
+      const res = await fetch(`/api/sales-scripts/${scriptId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Errore nell\'eliminazione');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
+      setSelectedScriptId(null);
+      toast({ title: 'Script eliminato', description: 'Lo script è stato eliminato' });
     },
     onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
   });
@@ -355,6 +373,13 @@ export default function ClientScriptManager() {
                                 <Play className="h-4 w-4 mr-2" />Attiva
                             </Button>
                         )}
+                        <Button variant="outline" size="sm" onClick={() => {
+                          if (confirm('Sei sicuro di voler eliminare questo script?')) {
+                            deleteScriptMutation.mutate(selectedScriptId);
+                          }
+                        }} disabled={deleteScriptMutation.isPending}>
+                            <Trash2 className="h-4 w-4 mr-2" /> Elimina
+                        </Button>
                     </>
                 )}
             </div>
