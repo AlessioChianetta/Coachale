@@ -1,0 +1,72 @@
+ [m6xz38] Client connected to Live API
+✅ WebSocket authenticated: Consultation Invite - Conversation de10e4a3-86eb-48d3-9e17-ede1a3c1a286 - Prospect: prova - Invite: inv_eFsrgYzKWeI4h3XW
+✅ [m6xz38] Consultation Invite Session → Conversation de10e4a3-86eb-48d3-9e17-ede1a3c1a286
+🔍 [m6xz38] Phase "discovery" → scriptType "discovery"
+🔍 [m6xz38] Resolved clientId from agent: 7e40b56c-2cc8-4515-b843-dc105e478f38
+✅ [TRACKER] Initialized (legacy) for conversation de10e4a3-86eb-48d3-9e17-ede1a3c1a286
+   Script version: 2.0.0
+   Total phases: 36
+   Starting phase: phase_1_2
+📖 [TRACKER] Loading script from database: Discovery Call - Nuovo
+✅ [TRACKER] Script loaded from DB: "Discovery Call - Nuovo" (ID: bc439d56-684f-4049-ae7f-142221517d0c)
+   Phases: 7, Steps: 16
+📥 [TRACKER] Loading existing state from database for conversation de10e4a3-86eb-48d3-9e17-ede1a3c1a286...
+ℹ️  [TRACKER] No existing data found - starting fresh
+🆕 [TRACKER] New conversation - starting fresh for de10e4a3-86eb-48d3-9e17-ede1a3c1a286
+✅ [m6xz38] Sales script tracking enabled (mode: consultation_invite)
+   → Tracker initialized for conversation de10e4a3-86eb-48d3-9e17-ede1a3c1a286
+   → Agent ID: 11cd9e7b-f181-4052-9541-e8d0bb91c956
+   → Client ID: 7e40b56c-2cc8-4515-b843-dc105e478f38
+   → Script Type: discovery
+   → Logger wired to tracker for real-time structured logging
+🔑 [m6xz38] Getting OAuth2 token for Vertex AI Live API...
+🔍 Getting Vertex AI token for Live API - client null, consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b...
+✅ usageScope is 'both' - access granted
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Generating OAuth2 token for Live API from Vertex AI credentials...
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ Generated OAuth2 access token for Live API
+📊 [m6xz38] Building Consultation Invite prompt...
+📚 [m6xz38] [TIER 1] Saved script from tracker: "Discovery Call - Nuovo" (bc439d56-684f-4049-ae7f-142221517d0c) [source=database]
+📝 [m6xz38] No aiConversation linked - creating new one for message history...
+✅ [m6xz38] Created aiConversation e859fc68-d684-4182-b931-ad061f898367 and linked to sales conversation
+🔍 [m6xz38] Validating aiConversation existence in database...
+✅ [m6xz38] aiConversation e859fc68-d684-4182-b931-ad061f898367 validated - record exists
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 📚 [m6xz38] CONVERSATION HISTORY LOADER - 🆕 FIRST SETUP                                 ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ Mode: consultation_invite                                                    ║
+║ ConversationId: de10e4a3-86eb-48d3-9e17-ede1a3c1a286                      ║
+║ IsReconnect: false                                                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+┌─ STEP 1: Loading conversation metadata...
+│  ✅ Found conversation: prova
+│     - Phase: discovery
+│     - Created: 2025-11-26T19:58:37.740Z
+│     - aiConversationId: e859fc68-d684-4182-b931-ad061f898367
+│     - Using aiConversationId override: e859fc68-d684-4182-b931-ad061f898367
+└─ STEP 1: COMPLETED
+
+┌─ STEP 2: Loading message history from aiConversation...
+│  Query: SELECT * FROM ai_messages WHERE conversationId = 'e859fc68-d684-4182-b931-ad061f898367'
+│  ⏱️  Query executed in 116ms
+│  📊 Found 0 messages
+│  ℹ️  No previous messages found - this is a new conversation
+└─ STEP 2: COMPLETED (empty history)
+
+🗺️ [m6xz38] Script position built from tracker:
+   → Current Phase: phase_1_2
+   → Current Step: phase_1_step_1
+   → Completed Phases: 1
+   → Total Phases in Script: 7
+🔄 [SalesAgentContext] Fetching custom scripts for agent 11cd9e7b-f181-4052-9541-e8d0bb91c956...
+📚 [ScriptLoader] 🔍 FETCHING scripts for AGENT 11cd9e7b-f181-4052-9541-e8d0bb91c956...
+✅ [ScriptLoader] ✨ AGENT SCRIPTS LOADED: DISCOVERY
+✅ [SalesAgentContext] Using 1 custom script(s) from agent assignments
+🔄 [m6xz38] Placeholder substitution: [NOME_PROSPECT] → "prova"
