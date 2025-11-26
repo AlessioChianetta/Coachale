@@ -14,17 +14,37 @@ import {
   Info,
   Package,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  HelpCircle,
+  Lightbulb
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { 
   parseTextToBlocks, 
   blocksToText,
@@ -85,6 +105,10 @@ export default function ClientScriptManager() {
   const [editorMode, setEditorMode] = useState<'blocks' | 'text'>('blocks');
   const [parsingFailed, setParsingFailed] = useState(false);
   const [selectedBlock, setSelectedBlock] = useState<ScriptBlock | null>(null);
+  const [showNewScriptDialog, setShowNewScriptDialog] = useState(false);
+  const [newScriptType, setNewScriptType] = useState<'discovery' | 'demo' | 'objections'>('discovery');
+  const [newScriptName, setNewScriptName] = useState('');
+  const [useTemplate, setUseTemplate] = useState(true);
 
   // API Calls
   const { data: scripts = [], isLoading: isLoadingScripts } = useQuery<SalesScript[]>({
@@ -130,6 +154,27 @@ export default function ClientScriptManager() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
       toast({ title: 'Script attivato', description: 'Lo script è ora attivo per l\'AI.' });
+    },
+    onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
+  });
+
+  const createFromTemplateMutation = useMutation({
+    mutationFn: async (data: { name: string; scriptType: string }) => {
+      const res = await fetch('/api/sales-scripts/create-from-template', {
+        method: 'POST',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Errore nella creazione');
+      return res.json();
+    },
+    onSuccess: (newScript) => {
+      queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
+      setSelectedScriptId(newScript.id);
+      setShowNewScriptDialog(false);
+      setNewScriptName('');
+      setUseTemplate(true);
+      toast({ title: 'Script creato', description: 'Lo script è stato creato dal template di base' });
     },
     onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
   });
@@ -337,9 +382,71 @@ export default function ClientScriptManager() {
                 </div>
               </ScrollArea>
               <div className="p-2 border-t">
-                 <Button variant="outline" className="w-full">
-                    <Plus className="h-4 w-4 mr-2" /> Nuovo Script
-                  </Button>
+                <Dialog open={showNewScriptDialog} onOpenChange={setShowNewScriptDialog}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full">
+                      <Plus className="h-4 w-4 mr-2" /> Nuovo Script
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Crea Nuovo Script</DialogTitle>
+                      <DialogDescription>
+                        Crea un nuovo script di vendita per il tuo AI Sales Agent
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Tipo</Label>
+                        <Select value={newScriptType} onValueChange={(v) => setNewScriptType(v as any)}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="discovery">Discovery Call</SelectItem>
+                            <SelectItem value="demo">Demo Call</SelectItem>
+                            <SelectItem value="objections">Gestione Obiezioni</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="use-template" className="text-sm font-medium">
+                            Usa Template Base
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Inizia con lo script base completo già configurato
+                          </p>
+                        </div>
+                        <Switch
+                          id="use-template"
+                          checked={useTemplate}
+                          onCheckedChange={setUseTemplate}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Nome Script {!useTemplate && <span className="text-destructive">*</span>}</Label>
+                        <Input
+                          placeholder={useTemplate ? "(opzionale - usa nome default)" : "Es. Discovery Call v2.0"}
+                          value={newScriptName}
+                          onChange={(e) => setNewScriptName(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowNewScriptDialog(false)}>
+                        Annulla
+                      </Button>
+                      <Button 
+                        onClick={() => createFromTemplateMutation.mutate({ name: newScriptName.trim() || '', scriptType: newScriptType })}
+                        disabled={createFromTemplateMutation.isPending}
+                      >
+                        {createFromTemplateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Crea da Template
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </ResizablePanel>
