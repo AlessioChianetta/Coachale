@@ -285,7 +285,7 @@ router.post('/:id/activate', requireClient, async (req: AuthRequest, res: Respon
       .where(eq(salesScripts.id, id));
     
     // Clear script cache so AI uses the newly activated script
-    clearScriptCache(clientId);
+    clearScriptCache(clientId, agentId);
     console.log(`🔄 [ScriptActivate] Script ${id} assigned to agent ${agentId} (type: ${script.scriptType})`);
     
     res.json({ 

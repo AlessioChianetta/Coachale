@@ -1,10 +1,11 @@
 // Sales Agent Prompt Builder - Integra gli script base con i dati del BOSS
 import { getDiscoveryScript, getDemoScript, getObjectionsScript } from './sales-scripts-base';
 import { db } from '../db';
-import { salesScripts } from '@shared/schema';
+import { salesScripts, agentScriptAssignments } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 // Cache for database scripts to avoid repeated queries during same session
+// Key format: "agentId:xxx" for agent-specific or "clientId:xxx" for legacy
 const scriptCache = new Map<string, { scripts: DatabaseScripts; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
@@ -15,63 +16,102 @@ export interface DatabaseScripts {
 }
 
 /**
- * Fetch active scripts from database for a client
+ * Fetch active scripts from database for a specific agent
+ * Uses agent_script_assignments table to find scripts assigned to the agent
+ * Falls back to legacy client-wide scripts if agentId not provided
  * Returns empty object if no scripts found (will use hardcoded fallbacks)
  */
-export async function fetchClientScripts(clientId: string): Promise<DatabaseScripts> {
+export async function fetchClientScripts(clientId: string, agentId?: string): Promise<DatabaseScripts> {
+  // Build cache key based on agentId (preferred) or clientId (legacy)
+  const cacheKey = agentId ? `agent:${agentId}` : `client:${clientId}`;
+  
   // Check cache first
-  const cached = scriptCache.get(clientId);
+  const cached = scriptCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    console.log(`📚 [ScriptLoader] Using cached scripts for client ${clientId}`);
+    console.log(`📚 [ScriptLoader] Using cached scripts for ${cacheKey}`);
     return cached.scripts;
   }
   
-  console.log(`📚 [ScriptLoader] Fetching scripts from database for client ${clientId}...`);
+  console.log(`📚 [ScriptLoader] Fetching scripts for ${cacheKey}...`);
   
   try {
-    const activeScripts = await db
-      .select({
-        scriptType: salesScripts.scriptType,
-        content: salesScripts.content,
-      })
-      .from(salesScripts)
-      .where(and(
-        eq(salesScripts.clientId, clientId),
-        eq(salesScripts.isActive, true)
-      ));
-    
     const result: DatabaseScripts = {};
     
-    for (const script of activeScripts) {
-      if (script.scriptType === 'discovery') {
-        result.discovery = script.content;
-      } else if (script.scriptType === 'demo') {
-        result.demo = script.content;
-      } else if (script.scriptType === 'objections') {
-        result.objections = script.content;
+    if (agentId) {
+      // NEW: Fetch scripts via agent_script_assignments table
+      const agentScripts = await db
+        .select({
+          scriptType: agentScriptAssignments.scriptType,
+          content: salesScripts.content,
+        })
+        .from(agentScriptAssignments)
+        .innerJoin(salesScripts, eq(agentScriptAssignments.scriptId, salesScripts.id))
+        .where(eq(agentScriptAssignments.agentId, agentId));
+      
+      for (const script of agentScripts) {
+        if (script.scriptType === 'discovery') {
+          result.discovery = script.content;
+        } else if (script.scriptType === 'demo') {
+          result.demo = script.content;
+        } else if (script.scriptType === 'objections') {
+          result.objections = script.content;
+        }
       }
+      
+      console.log(`📚 [ScriptLoader] Found ${Object.keys(result).length} scripts assigned to agent ${agentId}`);
+    } else {
+      // LEGACY: Fetch scripts via isActive flag (for backward compatibility)
+      const activeScripts = await db
+        .select({
+          scriptType: salesScripts.scriptType,
+          content: salesScripts.content,
+        })
+        .from(salesScripts)
+        .where(and(
+          eq(salesScripts.clientId, clientId),
+          eq(salesScripts.isActive, true)
+        ));
+      
+      for (const script of activeScripts) {
+        if (script.scriptType === 'discovery') {
+          result.discovery = script.content;
+        } else if (script.scriptType === 'demo') {
+          result.demo = script.content;
+        } else if (script.scriptType === 'objections') {
+          result.objections = script.content;
+        }
+      }
+      
+      console.log(`📚 [ScriptLoader] Found ${Object.keys(result).length} active scripts for client ${clientId} (legacy mode)`);
     }
     
-    const foundCount = Object.keys(result).length;
-    console.log(`📚 [ScriptLoader] Found ${foundCount} active scripts for client ${clientId}`);
-    
     // Cache the result
-    scriptCache.set(clientId, { scripts: result, timestamp: Date.now() });
+    scriptCache.set(cacheKey, { scripts: result, timestamp: Date.now() });
     
     return result;
   } catch (error) {
-    console.error(`❌ [ScriptLoader] Error fetching scripts for client ${clientId}:`, error);
+    console.error(`❌ [ScriptLoader] Error fetching scripts for ${cacheKey}:`, error);
     return {}; // Return empty to use fallbacks
   }
 }
 
 /**
- * Clear script cache for a client (call after script updates)
+ * Clear script cache for a client or agent (call after script updates)
  */
-export function clearScriptCache(clientId?: string): void {
-  if (clientId) {
-    scriptCache.delete(clientId);
-    console.log(`🗑️ [ScriptLoader] Cleared cache for client ${clientId}`);
+export function clearScriptCache(clientId?: string, agentId?: string): void {
+  if (agentId) {
+    scriptCache.delete(`agent:${agentId}`);
+    console.log(`🗑️ [ScriptLoader] Cleared cache for agent ${agentId}`);
+  } else if (clientId) {
+    // Clear both client-specific and any agent caches that might exist
+    scriptCache.delete(`client:${clientId}`);
+    // Also clear all agent caches for this client (iterate and match)
+    for (const key of scriptCache.keys()) {
+      if (key.startsWith('agent:')) {
+        scriptCache.delete(key);
+      }
+    }
+    console.log(`🗑️ [ScriptLoader] Cleared cache for client ${clientId} and related agents`);
   } else {
     scriptCache.clear();
     console.log(`🗑️ [ScriptLoader] Cleared entire script cache`);
@@ -382,12 +422,13 @@ export async function buildFullSalesAgentContextAsync(
   let dbScripts: DatabaseScripts | undefined;
   
   if (agentConfig.clientId) {
-    console.log(`🔄 [SalesAgentContext] Fetching custom scripts for client ${agentConfig.clientId}...`);
-    dbScripts = await fetchClientScripts(agentConfig.clientId);
+    const agentId = agentConfig.id;
+    console.log(`🔄 [SalesAgentContext] Fetching custom scripts for ${agentId ? `agent ${agentId}` : `client ${agentConfig.clientId}`}...`);
+    dbScripts = await fetchClientScripts(agentConfig.clientId, agentId);
     
     const scriptsFound = Object.keys(dbScripts).length;
     if (scriptsFound > 0) {
-      console.log(`✅ [SalesAgentContext] Using ${scriptsFound} custom script(s) from database`);
+      console.log(`✅ [SalesAgentContext] Using ${scriptsFound} custom script(s) from ${agentId ? 'agent assignments' : 'database'}`);
     } else {
       console.log(`ℹ️ [SalesAgentContext] No custom scripts found, using default scripts`);
     }
