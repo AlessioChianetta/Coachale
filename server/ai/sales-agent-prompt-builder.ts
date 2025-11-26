@@ -28,11 +28,15 @@ export async function fetchClientScripts(clientId: string, agentId?: string): Pr
   // Check cache first
   const cached = scriptCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    console.log(`📚 [ScriptLoader] Using cached scripts for ${cacheKey}`);
+    console.log(`✅ [ScriptLoader] ✨ USING CACHED SCRIPTS FOR ${agentId ? `AGENT ${agentId}` : `CLIENT ${clientId}`}`);
+    if (agentId) {
+      const types = Object.keys(cached.scripts);
+      console.log(`   📌 Active scripts: ${types.length > 0 ? types.join(', ').toUpperCase() : 'NONE (using defaults)'}`);
+    }
     return cached.scripts;
   }
   
-  console.log(`📚 [ScriptLoader] Fetching scripts for ${cacheKey}...`);
+  console.log(`📚 [ScriptLoader] 🔍 FETCHING scripts for ${agentId ? `AGENT ${agentId}` : `CLIENT ${clientId}`}...`);
   
   try {
     const result: DatabaseScripts = {};
@@ -43,6 +47,8 @@ export async function fetchClientScripts(clientId: string, agentId?: string): Pr
         .select({
           scriptType: agentScriptAssignments.scriptType,
           content: salesScripts.content,
+          scriptId: salesScripts.id,
+          scriptName: salesScripts.name,
         })
         .from(agentScriptAssignments)
         .innerJoin(salesScripts, eq(agentScriptAssignments.scriptId, salesScripts.id))
@@ -58,7 +64,12 @@ export async function fetchClientScripts(clientId: string, agentId?: string): Pr
         }
       }
       
-      console.log(`📚 [ScriptLoader] Found ${Object.keys(result).length} scripts assigned to agent ${agentId}`);
+      const assignedTypes = Object.keys(result).map(t => t.toUpperCase());
+      if (assignedTypes.length > 0) {
+        console.log(`✅ [ScriptLoader] ✨ AGENT SCRIPTS LOADED: ${assignedTypes.join(' + ')}`);
+      } else {
+        console.log(`⚠️  [ScriptLoader] No scripts assigned to agent ${agentId} - USING DEFAULT SCRIPTS`);
+      }
     } else {
       // LEGACY: Fetch scripts via isActive flag (for backward compatibility)
       const activeScripts = await db
