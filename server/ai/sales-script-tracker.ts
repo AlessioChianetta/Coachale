@@ -132,50 +132,31 @@ export class SalesScriptTracker {
   ];
   
   /**
-   * Costruttore legacy sincrono (per backward compatibility)
-   * Carica lo script da file JSON locale
+   * Costruttore privato - NON usa più il JSON file
+   * Lo script viene caricato obbligatoriamente dal database nel metodo create()
    */
-  constructor(conversationId: string, agentId: string, initialPhase: string = 'phase_1', logger?: SalesScriptLogger) {
+  private constructor(conversationId: string, agentId: string, initialPhase: string = 'phase_1', logger?: SalesScriptLogger) {
     this.conversationId = conversationId;
     this.agentId = agentId;
     this.startTime = new Date();
     this.logger = logger || null;
     
-    // Load script structure from JSON (legacy sync method)
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const jsonPath = path.join(__dirname, 'sales-script-structure.json');
-    
-    try {
-      const jsonContent = fs.readFileSync(jsonPath, 'utf-8');
-      this.scriptStructure = JSON.parse(jsonContent);
-    } catch (error: any) {
-      console.error('❌ [TRACKER] Failed to load script structure:', error.message);
-      throw new Error(`Failed to load script structure: ${error.message}`);
-    }
-    
-    // VERSION CHECK
-    try {
-      const scriptPath = path.join(__dirname, 'sales-scripts-base.ts');
-      if (fs.existsSync(scriptPath) && this.scriptStructure.sourceContentHash) {
-        const currentContent = fs.readFileSync(scriptPath, 'utf-8');
-        const currentHash = crypto.createHash('sha256').update(currentContent).digest('hex');
-        
-        if (currentHash !== this.scriptStructure.sourceContentHash) {
-          this.scriptOutdated = true;
-          console.warn('⚠️  [TRACKER] SCRIPT OUTDATED');
-        }
+    // Struttura placeholder - verrà sostituita dal create() con lo script dal DB
+    this.scriptStructure = {
+      version: '0.0.0',
+      generatedAt: new Date().toISOString(),
+      phases: [],
+      metadata: {
+        totalPhases: 0,
+        totalSteps: 0,
+        totalCheckpoints: 0
       }
-    } catch (error: any) {
-      console.warn('⚠️  [TRACKER] Failed to verify script version:', error.message);
-    }
+    } as ScriptStructure;
     
-    // Initialize state with currentStep set to first step of the phase
-    const initialStep = this.scriptStructure.phases[0]?.steps[0]?.id;
-    
+    // Inizializza stato vuoto (verrà aggiornato dopo il caricamento dal DB)
     this.state = {
       currentPhase: initialPhase,
-      currentStep: initialStep,
+      currentStep: undefined,
       phasesReached: [initialPhase],
       phaseActivations: [],
       checkpointsCompleted: [],
@@ -186,24 +167,12 @@ export class SalesScriptTracker {
       fullTranscript: [],
       aiReasoning: []
     };
-    
-    console.log(`✅ [TRACKER] Initialized (legacy) for conversation ${conversationId}`);
-    console.log(`   Script version: ${this.scriptStructure.version}`);
-    console.log(`   Total phases: ${this.scriptStructure.metadata.totalPhases}`);
-    console.log(`   Starting phase: ${initialPhase}`);
-    console.log(`   Starting step: ${initialStep || 'N/A'}`);
-    
-    if (this.logger) {
-      const phase = this.getCurrentPhase();
-      if (phase) {
-        this.logger.logPhaseStart(phase.id, phase.name, phase.semanticType);
-      }
-    }
   }
   
   /**
    * Factory method asincrono per creare il tracker
-   * Carica lo script dal database (se esiste) o dal file JSON di fallback
+   * OBBLIGATORIO: Carica lo script dal database (Script Manager)
+   * Se non trova uno script attivo, lancia un errore esplicito
    */
   static async create(
     conversationId: string, 
@@ -213,50 +182,58 @@ export class SalesScriptTracker {
     clientId?: string,
     scriptType: 'discovery' | 'demo' | 'objections' = 'discovery'
   ): Promise<SalesScriptTracker> {
-    // Crea con costruttore legacy
     const tracker = new SalesScriptTracker(conversationId, agentId, initialPhase, logger);
     tracker.clientId = clientId;
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // Prova a caricare lo script dal database (Script Manager)
+    // OBBLIGATORIO: Carica lo script dal database (Script Manager)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if (clientId) {
-      try {
-        const [activeScript] = await db.select()
-          .from(salesScripts)
-          .where(and(
-            eq(salesScripts.clientId, clientId),
-            eq(salesScripts.scriptType, scriptType),
-            eq(salesScripts.isActive, true)
-          ))
-          .limit(1);
-        
-        if (activeScript && activeScript.content) {
-          console.log(`📖 [TRACKER] Loading script from database: ${activeScript.name}`);
-          
-          // Parse il contenuto dello script per creare la struttura
-          tracker.scriptStructure = parseScriptContentToStructure(activeScript.content, scriptType);
-          
-          // Memorizza info sullo script usato
-          tracker.usedScriptInfo = {
-            id: activeScript.id,
-            name: activeScript.name,
-            scriptType: activeScript.scriptType as 'discovery' | 'demo' | 'objections',
-            version: activeScript.version || '1.0.0'
-          };
-          
-          // Aggiorna currentStep con il primo step dello script caricato dal DB
-          const firstStep = tracker.scriptStructure.phases[0]?.steps[0]?.id;
-          if (firstStep) {
-            tracker.state.currentStep = firstStep;
-          }
-          
-          console.log(`✅ [TRACKER] Script loaded from DB: "${activeScript.name}" (ID: ${activeScript.id})`);
-          console.log(`   Phases: ${tracker.scriptStructure.metadata.totalPhases}, Steps: ${tracker.scriptStructure.metadata.totalSteps}`);
-          console.log(`   Starting step: ${firstStep || 'N/A'}`);
-        }
-      } catch (error: any) {
-        console.warn(`⚠️  [TRACKER] Failed to load script from database, using fallback JSON: ${error.message}`);
+    if (!clientId) {
+      throw new Error(`❌ [TRACKER] clientId mancante - impossibile caricare lo script dal database. Verifica che l'agente abbia un clientId configurato.`);
+    }
+    
+    const [activeScript] = await db.select()
+      .from(salesScripts)
+      .where(and(
+        eq(salesScripts.clientId, clientId),
+        eq(salesScripts.scriptType, scriptType),
+        eq(salesScripts.isActive, true)
+      ))
+      .limit(1);
+    
+    if (!activeScript || !activeScript.content) {
+      throw new Error(`❌ [TRACKER] Nessuno script attivo trovato per clientId ${clientId} (tipo: ${scriptType}). Vai nel Script Manager e attiva uno script prima di avviare una consulenza.`);
+    }
+    
+    console.log(`📖 [TRACKER] Loading script from database: ${activeScript.name}`);
+    
+    // Parse il contenuto dello script per creare la struttura
+    tracker.scriptStructure = parseScriptContentToStructure(activeScript.content, scriptType);
+    
+    // Memorizza info sullo script usato
+    tracker.usedScriptInfo = {
+      id: activeScript.id,
+      name: activeScript.name,
+      scriptType: activeScript.scriptType as 'discovery' | 'demo' | 'objections',
+      version: activeScript.version || '1.0.0'
+    };
+    
+    // Aggiorna currentStep con il primo step dello script caricato dal DB
+    const firstStep = tracker.scriptStructure.phases[0]?.steps[0]?.id;
+    if (firstStep) {
+      tracker.state.currentStep = firstStep;
+      tracker.state.currentPhase = tracker.scriptStructure.phases[0]?.id || initialPhase;
+    }
+    
+    console.log(`✅ [TRACKER] Script loaded from DB: "${activeScript.name}" (ID: ${activeScript.id})`);
+    console.log(`   Phases: ${tracker.scriptStructure.metadata.totalPhases}, Steps: ${tracker.scriptStructure.metadata.totalSteps}`);
+    console.log(`   Starting phase: ${tracker.state.currentPhase}`);
+    console.log(`   Starting step: ${firstStep || 'N/A'}`);
+    
+    if (tracker.logger) {
+      const phase = tracker.getCurrentPhase();
+      if (phase) {
+        tracker.logger.logPhaseStart(phase.id, phase.name, phase.semanticType);
       }
     }
     
