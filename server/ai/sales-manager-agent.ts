@@ -725,16 +725,20 @@ export class SalesManagerAgent {
       .map(m => `${m.role === 'user' ? 'PROSPECT' : 'AGENTE'}: ${m.content}`)
       .join('\n');
     
+    const nextPhaseIdValue = nextPhase?.id || null;
+    const nextStepIdValue = nextStep?.id || null;
+    
     return `Sei un analizzatore di conversazioni di vendita.
 
 📍 POSIZIONE ATTUALE:
-- Fase: ${currentPhase?.name || currentPhaseId}
-- Step: ${currentStep?.name || 'N/A'}
+- Fase: ${currentPhase?.name || currentPhaseId} (ID: ${currentPhaseId})
+- Step: ${currentStep?.name || 'N/A'} (ID: ${currentStepId || 'null'})
 - Obiettivo: ${currentStep?.objective || 'Non specificato'}
 
-📍 PROSSIMA POSIZIONE:
-${isLastPhase && isLastStepOfPhase ? '⚠️ ULTIMO STEP - non avanzare' : 
-  `Fase: ${nextPhase?.name || 'N/A'}\nStep: ${nextStep?.name || 'N/A'}`}
+📍 PROSSIMA POSIZIONE (da usare se shouldAdvance=true):
+${isLastPhase && isLastStepOfPhase ? '⚠️ ULTIMO STEP - non avanzare, usa shouldAdvance=false' : 
+  `- Fase: ${nextPhase?.name || 'N/A'} (ID: "${nextPhaseIdValue}")
+- Step: ${nextStep?.name || 'N/A'} (ID: "${nextStepIdValue}")`}
 
 💬 ULTIMI MESSAGGI:
 ${messagesText}
@@ -745,9 +749,10 @@ REGOLE:
 1. DEVI vedere un messaggio PROSPECT dopo la domanda dell'agente
 2. Se vedi solo messaggi AGENTE → shouldAdvance = false
 3. Non assumere risposte non presenti
+4. Se shouldAdvance=true, USA ESATTAMENTE questi IDs: nextPhaseId="${nextPhaseIdValue}", nextStepId="${nextStepIdValue}"
 
 📤 RISPONDI SOLO JSON:
-{"shouldAdvance":boolean,"nextPhaseId":"string|null","nextStepId":"string|null","reasoning":"string","confidence":number}`;
+{"shouldAdvance":boolean,"nextPhaseId":"${nextPhaseIdValue}"|null,"nextStepId":"${nextStepIdValue}"|null,"reasoning":"string","confidence":number}`;
   }
   
   /**
