@@ -689,7 +689,7 @@ export class SalesManagerAgent {
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0,
-            maxOutputTokens: 300,
+            maxOutputTokens: 800,
           }
         }),
         this.timeout(this.TIMEOUT_MS)

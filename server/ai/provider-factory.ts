@@ -98,7 +98,23 @@ class VertexAIClientAdapter implements GeminiClient {
             return result.text;
           }
           
-          // All strategies failed - log and throw
+          // 5. Try iterating through all parts (some responses have text in different parts)
+          const candidate = result.response?.candidates?.[0];
+          if (candidate?.content?.parts) {
+            for (const part of candidate.content.parts) {
+              if (part.text) {
+                return part.text;
+              }
+            }
+          }
+          
+          // 6. Check for functionCall response (model may have returned a function call instead of text)
+          if (candidate?.content?.parts?.[0]?.functionCall) {
+            console.log(`⚠️ [VertexAI Adapter] Response contains function call, not text`);
+            return JSON.stringify(candidate.content.parts[0].functionCall);
+          }
+          
+          // All strategies failed - log detailed structure and throw
           console.error(`❌ [VertexAI Adapter] Failed to extract text. Response structure:`, JSON.stringify({
             hasResponse: !!result.response,
             responseType: typeof result.response,
@@ -106,6 +122,9 @@ class VertexAIClientAdapter implements GeminiClient {
             textType: typeof result.response?.text,
             hasCandidates: !!result.response?.candidates,
             candidatesLength: result.response?.candidates?.length,
+            candidateContent: candidate?.content,
+            candidateParts: candidate?.content?.parts,
+            finishReason: candidate?.finishReason,
           }, null, 2));
           
           throw new Error("Failed to extract text from Vertex AI response");

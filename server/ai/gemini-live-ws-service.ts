@@ -890,6 +890,38 @@ export function setupGeminiLiveWSService(server: Server) {
       hasFinalChunk: false
     };
     
+    /**
+     * 🔧 FIX: Helper to add user message to conversationMessages (deduped)
+     * This was missing - only AI messages were being added to conversationMessages,
+     * causing SalesManagerAgent to receive AI-only history!
+     * 
+     * Deduplication logic: Only skip if the IMMEDIATELY PREVIOUS message in
+     * conversationMessages is the same user transcript. This allows:
+     * - User says "sì" → AI responds → User says "sì" again (both captured)
+     * - User's cumulative partial "Ciao" → "Ciao come" (only final captured)
+     */
+    function commitUserMessage(transcript: string) {
+      const trimmed = transcript.trim();
+      if (!trimmed) return;
+      
+      // Only check if LAST message in conversationMessages is same user message
+      // This prevents cumulative partials but allows repeated phrases across turns
+      const lastMsg = conversationMessages[conversationMessages.length - 1];
+      if (lastMsg?.role === 'user' && lastMsg.transcript === trimmed) {
+        console.log(`⏭️  [${connectionId}] Skipping duplicate user message (same as last): "${trimmed.substring(0, 50)}..."`);
+        return;
+      }
+      
+      conversationMessages.push({
+        role: 'user',
+        transcript: trimmed,
+        duration: 0, // User audio duration calculated by client
+        timestamp: new Date().toISOString()
+      });
+      
+      console.log(`💾 [${connectionId}] Saved USER message: "${trimmed.substring(0, 80)}${trimmed.length > 80 ? '...' : ''}" (${conversationMessages.length} total)`);
+    }
+    
     // 🤖➡️😊 Contextual Response Tracking (Anti-Robot Mode)
     let lastProspectQuestion: string | null = null;
     
@@ -2861,34 +2893,42 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
               currentUserTranscript = userTranscriptText;
               
               // 🎯 SALES SCRIPT TRACKING - Buffer user transcript until isFinal
-              if (salesTracker && salesLogger) {
-                pendingUserTranscript.text = userTranscriptText;
-                if (isFinal) {
-                  pendingUserTranscript.hasFinalChunk = true;
-                  // Track user message immediately when final chunk arrives
-                  try {
-                    await salesTracker.trackUserMessage(userTranscriptText);
-                    const state = salesTracker.getState();
-                    salesLogger.logUserMessage(userTranscriptText, state.currentPhase);
-                    
-                    // Check if response was vague (ladder continuation logic)
-                    const lastLadder = state.ladderActivations[state.ladderActivations.length - 1];
-                    if (lastLadder && salesLogger) {
-                      salesLogger.logLadderResponse(lastLadder.wasVague, lastLadder.wasVague);
+              pendingUserTranscript.text = userTranscriptText;
+              
+              if (isFinal) {
+                pendingUserTranscript.hasFinalChunk = true;
+                
+                // 🔧 FIX: Use try/finally to ensure both commit AND reset happen
+                // even if salesTracker throws an error
+                try {
+                  // Track with salesTracker if available
+                  if (salesTracker && salesLogger) {
+                    try {
+                      await salesTracker.trackUserMessage(userTranscriptText);
+                      const state = salesTracker.getState();
+                      salesLogger.logUserMessage(userTranscriptText, state.currentPhase);
+                      
+                      // Check if response was vague (ladder continuation logic)
+                      const lastLadder = state.ladderActivations[state.ladderActivations.length - 1];
+                      if (lastLadder && salesLogger) {
+                        salesLogger.logLadderResponse(lastLadder.wasVague, lastLadder.wasVague);
+                      }
+                      
+                      // 🤖➡️😊 CONTEXTUAL RESPONSE DETECTION: Check if user is asking a question
+                      if (isProspectQuestion(userTranscriptText)) {
+                        lastProspectQuestion = userTranscriptText;
+                        console.log(`🤖➡️😊 [${connectionId}] PROSPECT QUESTION DETECTED: "${userTranscriptText.substring(0, 80)}..."`);
+                        console.log(`   → AI should respond to this before continuing script (Anti-Robot Mode)`);
+                      }
+                    } catch (trackError: any) {
+                      console.error(`❌ [${connectionId}] Sales tracking error (user isFinal):`, trackError.message);
                     }
-                    
-                    // 🤖➡️😊 CONTEXTUAL RESPONSE DETECTION: Check if user is asking a question
-                    if (isProspectQuestion(userTranscriptText)) {
-                      lastProspectQuestion = userTranscriptText;
-                      console.log(`🤖➡️😊 [${connectionId}] PROSPECT QUESTION DETECTED: "${userTranscriptText.substring(0, 80)}..."`);
-                      console.log(`   → AI should respond to this before continuing script (Anti-Robot Mode)`);
-                    }
-                    
-                    // Reset pending buffer
-                    pendingUserTranscript = { text: '', hasFinalChunk: false };
-                  } catch (trackError: any) {
-                    console.error(`❌ [${connectionId}] Sales tracking error (user isFinal):`, trackError.message);
                   }
+                } finally {
+                  // 🔧 FIX: Always commit user message to conversationMessages and reset buffer
+                  // This runs AFTER salesTracker, ensuring no duplicates from fallback path
+                  commitUserMessage(userTranscriptText);
+                  pendingUserTranscript = { text: '', hasFinalChunk: false };
                 }
               }
               
@@ -2929,17 +2969,25 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
             // 🎯 SALES SCRIPT TRACKING - Fallback: Track user message if no isFinal received
             // (Most cases: user message already tracked when isFinal arrived)
             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            if (salesTracker && salesLogger && pendingUserTranscript.text.trim() && !pendingUserTranscript.hasFinalChunk) {
-              try {
-                const trimmedUserTranscript = pendingUserTranscript.text.trim();
-                await salesTracker.trackUserMessage(trimmedUserTranscript);
-                const state = salesTracker.getState();
-                salesLogger.logUserMessage(trimmedUserTranscript, state.currentPhase);
-                console.log(`⚠️  [${connectionId}] Sales tracking: Fallback - tracked user message without isFinal flag`);
-                pendingUserTranscript = { text: '', hasFinalChunk: false }; // Reset
-              } catch (trackError: any) {
-                console.error(`❌ [${connectionId}] Sales tracking error (user fallback):`, trackError.message);
+            if (pendingUserTranscript.text.trim() && !pendingUserTranscript.hasFinalChunk) {
+              const trimmedUserTranscript = pendingUserTranscript.text.trim();
+              
+              // 🔧 FIX: Commit user message even if salesTracker is not active
+              commitUserMessage(trimmedUserTranscript);
+              console.log(`⚠️  [${connectionId}] Sales tracking: Fallback - committed user message without isFinal flag`);
+              
+              // Track with salesTracker if available
+              if (salesTracker && salesLogger) {
+                try {
+                  await salesTracker.trackUserMessage(trimmedUserTranscript);
+                  const state = salesTracker.getState();
+                  salesLogger.logUserMessage(trimmedUserTranscript, state.currentPhase);
+                } catch (trackError: any) {
+                  console.error(`❌ [${connectionId}] Sales tracking error (user fallback):`, trackError.message);
+                }
               }
+              
+              pendingUserTranscript = { text: '', hasFinalChunk: false }; // Reset
             }
             
             // 🔒 AI has finished speaking
