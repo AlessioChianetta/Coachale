@@ -3022,24 +3022,37 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                   // 🔧 FIX: Always commit user message to conversationMessages and reset buffer
                   // This runs AFTER salesTracker, ensuring no duplicates from fallback path
                   
-                  // 🆕 PIGGYBACK STRATEGY (Trojan Horse): Append feedback to user message
-                  // Instead of sending feedback as separate message, we append it to the user's transcript.
-                  // This way Gemini receives ONE combined message and processes both naturally.
-                  let messageToCommit = finalTranscript;
-                  
-                  if (pendingFeedbackForAI) {
+                  // 🆕 PIGGYBACK STRATEGY (Trojan Horse): Inject combined message to Gemini
+                  // We send the feedback as a TEXT message AFTER user's audio is processed
+                  // This works because Gemini Live API uses turnComplete:false to add context
+                  // before generating a response
+                  if (pendingFeedbackForAI && geminiSession) {
                     console.log(`\n📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                    console.log(`📤 [${connectionId}] PIGGYBACK INJECTION - Appending feedback to user message`);
+                    console.log(`📤 [${connectionId}] PIGGYBACK INJECTION - Sending feedback to Gemini`);
                     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                     console.log(`   👤 User said: "${finalTranscript.substring(0, 80)}${finalTranscript.length > 80 ? '...' : ''}"`);
-                    console.log(`   📝 Appending feedback: "${pendingFeedbackForAI.substring(0, 100)}..."`);
-                    console.log(`   🎯 Strategy: ONE combined message (Trojan Horse)`);
+                    console.log(`   📝 Injecting: "${pendingFeedbackForAI.substring(0, 100)}..."`);
+                    console.log(`   🎯 Strategy: Inject AFTER audio, BEFORE response (Trojan Horse)`);
                     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                     
-                    // Append feedback to user message with delimiter
-                    messageToCommit = finalTranscript + '\n\n' + pendingFeedbackForAI;
+                    // Send feedback to Gemini with turnComplete:false (adds context, doesn't trigger response)
+                    const feedbackPayload = {
+                      clientContent: {
+                        turns: [{
+                          role: 'user',
+                          parts: [{ text: pendingFeedbackForAI }]
+                        }],
+                        turnComplete: false // CRITICAL: Don't trigger response, just add context
+                      }
+                    };
+                    geminiSession.send(JSON.stringify(feedbackPayload));
+                    
+                    // Save combined message in local history (user msg + feedback)
+                    const combinedMessage = finalTranscript + '\n\n' + pendingFeedbackForAI;
+                    commitUserMessage(combinedMessage);
                     
                     // Clear feedback from RAM buffer
+                    const usedFeedback = pendingFeedbackForAI; // Save before clearing for logging
                     pendingFeedbackForAI = null;
                     
                     // 🆕 Clear feedback from DB as well (consumed)
@@ -3050,9 +3063,11 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         .then(() => console.log(`   💾 Feedback cleared from DB after injection`))
                         .catch((err: any) => console.error(`   ⚠️ Failed to clear feedback from DB: ${err.message}`));
                     }
+                  } else {
+                    // No feedback pending - just commit the user message
+                    commitUserMessage(finalTranscript);
                   }
                   
-                  commitUserMessage(messageToCommit);
                   pendingUserTranscript = { text: '', hasFinalChunk: false };
                 }
               }
@@ -3373,31 +3388,69 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
 ${feedback.toneReminder ? `🎵 TONO: ${feedback.toneReminder}` : ''}
 <<</SALES_MANAGER_INSTRUCTION>>>`;
                           
-                          pendingFeedbackForAI = feedbackContent;
+                          // 🆕 IMMEDIATE INJECTION (Trojan Horse): Inject feedback NOW, not on next user message
+                          // This ensures Gemini has the coaching context BEFORE the user speaks again
+                          // Using turnComplete:false adds context without triggering a response
                           
-                          // 🆕 PERSISTENZA DB: Salva feedback nel database per sopravvivere a riconnessioni WebSocket
-                          if (conversationId) {
-                            try {
-                              await db.update(clientSalesConversations)
-                                .set({ 
-                                  pendingFeedback: feedbackContent,
-                                  pendingFeedbackCreatedAt: new Date()
-                                })
-                                .where(eq(clientSalesConversations.id, conversationId));
-                              console.log(`   💾 Feedback saved to DB for conversation ${conversationId}`);
-                            } catch (dbError: any) {
-                              console.error(`   ⚠️ Failed to save feedback to DB: ${dbError.message}`);
-                            }
-                          }
-                          
-                          console.log(`\n🔧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                          console.log(`🔧 [${connectionId}] FEEDBACK BUFFERED FOR NEXT USER MESSAGE`);
+                          console.log(`\n📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                          console.log(`📤 [${connectionId}] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           console.log(`   📢 Priority: ${feedback.priority.toUpperCase()}`);
                           console.log(`   📋 Type: ${feedback.type}`);
                           console.log(`   📝 Message: ${feedback.message.substring(0, 150)}${feedback.message.length > 150 ? '...' : ''}`);
                           console.log(`   🎵 Tone: ${feedback.toneReminder || 'N/A'}`);
-                          console.log(`   💾 Saved to buffer - will be appended to next user audio`);
+                          console.log(`   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)`);
+                          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                          
+                          if (geminiSession) {
+                            // Inject feedback immediately to Gemini
+                            const feedbackPayload = {
+                              clientContent: {
+                                turns: [{
+                                  role: 'user',
+                                  parts: [{ text: feedbackContent }]
+                                }],
+                                turnComplete: false // CRITICAL: Don't trigger response, just add context
+                              }
+                            };
+                            geminiSession.send(JSON.stringify(feedbackPayload));
+                            console.log(`   ✅ Feedback SENT to Gemini with turnComplete:false`);
+                            
+                            // 🆕 PERSISTENZA DB: Save feedback for reconnection scenarios
+                            // If WebSocket disconnects before user speaks, we need to re-inject on resume
+                            if (conversationId) {
+                              try {
+                                await db.update(clientSalesConversations)
+                                  .set({ 
+                                    pendingFeedback: feedbackContent,
+                                    pendingFeedbackCreatedAt: new Date()
+                                  })
+                                  .where(eq(clientSalesConversations.id, conversationId));
+                                console.log(`   💾 Feedback also saved to DB (for reconnection backup)`);
+                              } catch (dbError: any) {
+                                console.error(`   ⚠️ Failed to save feedback to DB: ${dbError.message}`);
+                              }
+                            }
+                          } else {
+                            // Fallback: If session not ready, buffer for later
+                            pendingFeedbackForAI = feedbackContent;
+                            console.log(`   ⚠️ Session not ready - feedback buffered for later injection`);
+                            
+                            // Save to DB as well
+                            if (conversationId) {
+                              try {
+                                await db.update(clientSalesConversations)
+                                  .set({ 
+                                    pendingFeedback: feedbackContent,
+                                    pendingFeedbackCreatedAt: new Date()
+                                  })
+                                  .where(eq(clientSalesConversations.id, conversationId));
+                                console.log(`   💾 Feedback saved to DB for later injection`);
+                              } catch (dbError: any) {
+                                console.error(`   ⚠️ Failed to save feedback to DB: ${dbError.message}`);
+                              }
+                            }
+                          }
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                           
                           await salesTracker.addReasoning('sales_manager_feedback', 
