@@ -1,6 +1,21 @@
 # Overview
 This full-stack web application serves as a consultation platform, connecting consultants with clients for exercise assignment, progress tracking, and performance analytics. Its core ambition is to provide personalized financial insights through an integrated AI assistant, leveraging real-time financial data for context-aware advice, alongside advanced client management and communication tools.
 # Recent Changes
+## November 27, 2025 - Sales Manager Agent Improvements
+- **Structured Coaching Feedback**: AI sales agent now receives structured coaching from Sales Manager with clear format:
+  - `[COACHING SALES MANAGER]...[FINE COACHING]` format with FASE, STEP, OBIETTIVO, FAI BENE, MIGLIORA, STATO, TI SERVE fields
+  - Added section in AI prompt explaining how to read and apply coaching feedback
+- **VAD Concatenation Fix**: Fixed fragmented speech chunks that were incorrectly processed:
+  - Problem: VAD chunks like "Mol" + "to male." were being overwritten instead of concatenated
+  - Solution: Smart detection of cumulative vs fragmented chunks with proper concatenation
+  - Handles sentence punctuation (`.!?;:`) correctly - always adds space after sentences
+  - Detects partial words (lowercase continuation) and joins without space
+- **Tone Analysis Fix**: Improved detection of "AI not responding to questions":
+  - Now checks temporal sequence (AI message must come AFTER user question)
+  - Expanded list of Italian acknowledgment words (sì, certo, perfetto, ottimo, etc.)
+  - Prevents false positives when AI asks a question and user hasn't responded yet
+- **Files Modified**: `sales-agent-prompt-builder.ts`, `gemini-live-ws-service.ts`, `sales-manager-agent.ts`
+
 ## November 26, 2025 - Sales Script Sequential Navigation Fix
 - **Critical Bug Fix**: AI sales agent now follows scripts in strict sequential order (Phase 1 Step 1 → Step 2 → Checkpoint → Phase 2, etc.)
 - **Prompt-Side Guidance**:
