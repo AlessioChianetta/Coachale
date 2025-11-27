@@ -651,11 +651,7 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
       }
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      // Fix for Replit: port might be undefined, only include if present
-      let host = window.location.hostname;
-      if (window.location.port && window.location.port !== 'undefined') {
-        host += ':' + window.location.port;
-      }
+      const host = window.location.host;
       let wsUrl: string;
 
       if (mode === 'sales_agent') {
