@@ -3117,37 +3117,28 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         }
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                         
-                        // 🆕 FEEDBACK INJECTION: Se il SubAgent ha rilevato problemi, inietta il feedback
-                        if (result.feedbackForAgent?.shouldInject && geminiSession) {
+                        // ❌ FEEDBACK INJECTION DISABILITATO
+                        // Il feedback veniva inviato con role: 'user' e Gemini lo interpretava
+                        // come un messaggio del prospect, causando un loop infinito di scuse!
+                        // TODO: Trovare un modo alternativo per correggere l'agente in real-time
+                        // Opzioni future:
+                        // 1. Iniettare come system instruction (se supportato)
+                        // 2. Memorizzare e usare nel prossimo prompt dopo risposta reale del prospect
+                        // 3. Mostrare il feedback solo nei log senza inviarlo a Gemini
+                        if (result.feedbackForAgent?.shouldInject) {
                           const feedback = result.feedbackForAgent;
-                          const feedbackMessage = `
-🔧 [COACHING CORRETTIVO - PRIORITÀ ${feedback.priority.toUpperCase()}]
-${feedback.correctionMessage}
-${feedback.toneReminder ? `\n${feedback.toneReminder}` : ''}
-`.trim();
-                          
                           console.log(`\n🔧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                          console.log(`🔧 [${connectionId}] INJECTING FEEDBACK TO PRIMARY AGENT`);
+                          console.log(`🔧 [${connectionId}] FEEDBACK DETECTED (NOT INJECTED - causa loop)`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           console.log(`   📢 Priority: ${feedback.priority.toUpperCase()}`);
-                          console.log(`   📝 Message: ${feedbackMessage.substring(0, 200)}...`);
+                          console.log(`   📝 Correction: ${feedback.correctionMessage}`);
+                          console.log(`   🎵 Tone: ${feedback.toneReminder || 'N/A'}`);
+                          console.log(`   ⚠️ Non iniettato per evitare loop di scuse`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                           
-                          // Inject feedback as a system message to the primary agent
-                          const feedbackPayload = {
-                            clientContent: {
-                              turns: [{
-                                role: 'user',
-                                parts: [{ text: feedbackMessage }]
-                              }],
-                              turnComplete: true
-                            }
-                          };
-                          geminiSession.send(JSON.stringify(feedbackPayload));
-                          
-                          // 🆕 Save feedback to tracker's aiReasoning
+                          // Solo log, non inviare a Gemini
                           await salesTracker.addReasoning('step_advancement_feedback', 
-                            `SubAgent ha iniettato feedback correttivo (${feedback.priority}): ${feedback.correctionMessage}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
+                            `SubAgent feedback (${feedback.priority}, NON iniettato): ${feedback.correctionMessage}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
                           );
                         }
                         
