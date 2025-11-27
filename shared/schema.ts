@@ -3340,6 +3340,10 @@ export const clientSalesConversations = pgTable("client_sales_conversations", {
   usedScriptType: text("used_script_type").$type<"discovery" | "demo" | "objections">(),
   usedScriptSource: text("used_script_source").$type<"database" | "hardcoded_default" | "unknown">(), // Tracks whether script came from DB or hardcoded defaults
   
+  // Sales Manager feedback - pending feedback for injection (survives WebSocket reconnections)
+  pendingFeedback: text("pending_feedback"), // Feedback from SalesManagerAgent waiting to be injected
+  pendingFeedbackCreatedAt: timestamp("pending_feedback_created_at"), // When the feedback was created
+  
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

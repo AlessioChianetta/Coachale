@@ -1433,6 +1433,19 @@ export function setupGeminiLiveWSService(server: Server) {
           currentAiConversationId = historyResult.aiConversationId;
         }
         
+        // 🆕 FEEDBACK PERSISTENCE: Recover pending feedback from DB (survives WebSocket reconnections)
+        // If there's feedback that wasn't consumed before disconnection, restore it to RAM buffer
+        if (conversation.pendingFeedback) {
+          pendingFeedbackForAI = conversation.pendingFeedback;
+          console.log(`\n🔄 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`🔄 [${connectionId}] RECOVERED PENDING FEEDBACK FROM DB`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`   📝 Feedback: "${pendingFeedbackForAI.substring(0, 100)}..."`);
+          console.log(`   ⏰ Created: ${conversation.pendingFeedbackCreatedAt}`);
+          console.log(`   💾 Will be injected with next user message`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        }
+        
         // Build prospect data from conversation
         const prospectData = {
           name: conversation.prospectName,
@@ -3008,32 +3021,39 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                 } finally {
                   // 🔧 FIX: Always commit user message to conversationMessages and reset buffer
                   // This runs AFTER salesTracker, ensuring no duplicates from fallback path
-                  commitUserMessage(finalTranscript);
-                  pendingUserTranscript = { text: '', hasFinalChunk: false };
                   
-                  // 🔧 FEEDBACK INJECTION: If there's buffered feedback from SalesManager,
-                  // inject it now as a text message with role: 'user' and turnComplete: false.
-                  // This way Gemini sees it as context BEFORE responding, without triggering a double response.
-                  if (pendingFeedbackForAI && geminiSession) {
+                  // 🆕 PIGGYBACK STRATEGY (Trojan Horse): Append feedback to user message
+                  // Instead of sending feedback as separate message, we append it to the user's transcript.
+                  // This way Gemini receives ONE combined message and processes both naturally.
+                  let messageToCommit = finalTranscript;
+                  
+                  if (pendingFeedbackForAI) {
                     console.log(`\n📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                    console.log(`📤 [${connectionId}] INJECTING BUFFERED FEEDBACK TO GEMINI`);
+                    console.log(`📤 [${connectionId}] PIGGYBACK INJECTION - Appending feedback to user message`);
                     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                    console.log(`   📝 Feedback: "${pendingFeedbackForAI.substring(0, 100)}..."`);
-                    console.log(`   🔧 Injected with role: 'user', turnComplete: false`);
+                    console.log(`   👤 User said: "${finalTranscript.substring(0, 80)}${finalTranscript.length > 80 ? '...' : ''}"`);
+                    console.log(`   📝 Appending feedback: "${pendingFeedbackForAI.substring(0, 100)}..."`);
+                    console.log(`   🎯 Strategy: ONE combined message (Trojan Horse)`);
                     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                     
-                    const feedbackPayload = {
-                      clientContent: {
-                        turns: [{
-                          role: 'user',
-                          parts: [{ text: pendingFeedbackForAI }]
-                        }],
-                        turnComplete: false // CRITICAL: false = don't trigger response, just add context
-                      }
-                    };
-                    geminiSession.send(JSON.stringify(feedbackPayload));
-                    pendingFeedbackForAI = null; // Clear buffer after injection
+                    // Append feedback to user message with delimiter
+                    messageToCommit = finalTranscript + '\n\n' + pendingFeedbackForAI;
+                    
+                    // Clear feedback from RAM buffer
+                    pendingFeedbackForAI = null;
+                    
+                    // 🆕 Clear feedback from DB as well (consumed)
+                    if (conversationId) {
+                      db.update(clientSalesConversations)
+                        .set({ pendingFeedback: null, pendingFeedbackCreatedAt: null })
+                        .where(eq(clientSalesConversations.id, conversationId))
+                        .then(() => console.log(`   💾 Feedback cleared from DB after injection`))
+                        .catch((err: any) => console.error(`   ⚠️ Failed to clear feedback from DB: ${err.message}`));
+                    }
                   }
+                  
+                  commitUserMessage(messageToCommit);
+                  pendingUserTranscript = { text: '', hasFinalChunk: false };
                 }
               }
               
@@ -3340,8 +3360,9 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                             whatYouNeed = stepResult.shouldAdvance ? 'Procedi allo step successivo' : 'Ottieni le info mancanti prima di avanzare';
                           }
                           
-                          // Formato STRUTTURATO per il coaching - l'AI sa come leggerlo dal prompt iniziale
-                          pendingFeedbackForAI = `[COACHING SALES MANAGER]
+                          // Formato STRUTTURATO per il coaching con NUOVI DELIMITATORI (Trojan Horse Strategy)
+                          // L'AI è istruita a riconoscere questi tag come "pensiero interno" e non leggerli ad alta voce
+                          const feedbackContent = `<<<SALES_MANAGER_INSTRUCTION>>>
 📍 FASE: ${currentPhaseNum} di ${totalPhases} - ${currentPhaseName}
    STEP: ${currentStepName}
 🎯 OBIETTIVO: ${currentObjective}
@@ -3350,7 +3371,24 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
 🚦 STATO: ${statusMessage}
 📋 TI SERVE: ${whatYouNeed}
 ${feedback.toneReminder ? `🎵 TONO: ${feedback.toneReminder}` : ''}
-[FINE COACHING]`;
+<<</SALES_MANAGER_INSTRUCTION>>>`;
+                          
+                          pendingFeedbackForAI = feedbackContent;
+                          
+                          // 🆕 PERSISTENZA DB: Salva feedback nel database per sopravvivere a riconnessioni WebSocket
+                          if (conversationId) {
+                            try {
+                              await db.update(clientSalesConversations)
+                                .set({ 
+                                  pendingFeedback: feedbackContent,
+                                  pendingFeedbackCreatedAt: new Date()
+                                })
+                                .where(eq(clientSalesConversations.id, conversationId));
+                              console.log(`   💾 Feedback saved to DB for conversation ${conversationId}`);
+                            } catch (dbError: any) {
+                              console.error(`   ⚠️ Failed to save feedback to DB: ${dbError.message}`);
+                            }
+                          }
                           
                           console.log(`\n🔧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           console.log(`🔧 [${connectionId}] FEEDBACK BUFFERED FOR NEXT USER MESSAGE`);
