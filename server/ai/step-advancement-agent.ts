@@ -22,6 +22,20 @@ export interface StepAdvancementResult {
   nextStepId: string | null;
   reasoning: string;
   confidence: number; // 0-1
+  // 🆕 FEEDBACK INJECTION: messaggio correttivo per l'agente primario
+  feedbackForAgent?: {
+    shouldInject: boolean;           // true se c'è un problema da correggere
+    correctionMessage: string;       // messaggio di correzione per l'agente
+    toneReminder?: string;           // reminder sulla tonalità della fase
+    priority: 'low' | 'medium' | 'high'; // urgenza del feedback
+  };
+}
+
+// Energy settings per il tone reminder
+export interface PhaseEnergy {
+  level: 'BASSO' | 'MEDIO' | 'ALTO';
+  tone: 'CALMO' | 'SICURO' | 'CONFIDENZIALE' | 'ENTUSIASTA';
+  pace: 'LENTO' | 'MODERATO' | 'VELOCE';
 }
 
 export interface ConversationMessage {
@@ -59,6 +73,8 @@ export interface StepAdvancementParams {
   currentStepIndex: number;
   clientId: string;
   consultantId: string;
+  // 🆕 Energy settings della fase corrente per tone reminder
+  currentPhaseEnergy?: PhaseEnergy;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -170,7 +186,7 @@ export class StepAdvancementAgent {
    * Costruisce il prompt per l'analisi
    */
   private static buildPrompt(params: StepAdvancementParams): string {
-    const { recentMessages, script, currentPhaseId, currentStepId, currentPhaseIndex, currentStepIndex } = params;
+    const { recentMessages, script, currentPhaseId, currentStepId, currentPhaseIndex, currentStepIndex, currentPhaseEnergy } = params;
     
     // Trova fase e step correnti
     const currentPhase = script.phases.find(p => p.id === currentPhaseId);
@@ -191,7 +207,12 @@ export class StepAdvancementAgent {
     const currentObjective = currentStep?.objective || 'Non specificato';
     const currentQuestions = currentStep?.questions?.map(q => q.text).join('\n- ') || 'Nessuna';
     
-    return `Sei un analizzatore esperto di conversazioni di vendita.
+    // 🆕 Tonalità della fase corrente
+    const toneInfo = currentPhaseEnergy 
+      ? `\n🔊 TONALITÀ FASE CORRENTE:\n- Energia: ${currentPhaseEnergy.level}\n- Tono: ${currentPhaseEnergy.tone}\n- Ritmo: ${currentPhaseEnergy.pace}`
+      : '';
+    
+    return `Sei un analizzatore esperto di conversazioni di vendita E un coach per l'agente.
 
 ═══════════════════════════════════════════════════════════════
 📍 POSIZIONE ATTUALE NELLO SCRIPT
@@ -201,6 +222,7 @@ STEP CORRENTE: ${currentStep?.name || 'N/A'} (${currentStepId || 'N/A'})
 OBIETTIVO DELLO STEP: ${currentObjective}
 DOMANDE DA FARE IN QUESTO STEP:
 - ${currentQuestions}
+${toneInfo}
 
 ═══════════════════════════════════════════════════════════════
 📍 POSIZIONE SUCCESSIVA (se avanziamo)
@@ -228,11 +250,51 @@ Per decidere, considera:
 2. Il prospect ha risposto in modo che permette di andare avanti?
 3. L'obiettivo dello step è stato raggiunto?
 
+⚠️ REGOLA CRITICA - DOMANDE MULTIPLE IN UNA FRASE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+L'agente potrebbe fare PIÙ DOMANDE o coprire PIÙ STEP in una singola frase!
+
+ESEMPIO: "Ciao Luigi! Benvenuto alla nostra consulenza. Come stai? E dimmi, da dove mi chiami?"
+→ Questa frase copre STEP 1 (benvenuto) + STEP 2 (come stai) + STEP 3 (da dove chiami)
+→ Se il prospect risponde, TUTTI e 3 gli step sono completati!
+
+COME VALUTARE:
+1. Conta TUTTE le domande/azioni fatte dall'agente nella frase
+2. Verifica che il prospect abbia risposto a ciascuna
+3. Se ha risposto a tutto → l'agente è già avanti di N step
+4. shouldAdvance = true verso lo step SUCCESSIVO a quelli coperti
+
+NON dire "l'agente non sta seguendo lo script" se ha fatto TUTTO insieme!
+Se l'agente ha combinato step 1+2+3 in una frase e il prospect ha risposto,
+l'obiettivo è COMPLETATO e si deve avanzare allo step 4.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 IMPORTANTE:
 - NON avanzare troppo presto. Meglio rimanere uno step in più che saltare.
 - Se il prospect ha risposto brevemente (es. "ok", "sì", "va bene") dopo che l'agente ha fatto la domanda, probabilmente si può avanzare.
 - Se l'agente sta ancora esplorando o il prospect non ha risposto alla domanda, NON avanzare.
 - Se siamo all'ultimo step dell'ultima fase, NON si può avanzare.
+- CONTA le domande fatte dall'agente in ogni messaggio - potrebbero coprire più step!
+
+═══════════════════════════════════════════════════════════════
+🔧 FEEDBACK INJECTION (COACHING PER L'AGENTE)
+═══════════════════════════════════════════════════════════════
+Se rilevi PROBLEMI nel comportamento dell'agente, genera un feedback correttivo:
+
+PROBLEMI DA RILEVARE:
+1. L'agente NON risponde alle domande del prospect prima di continuare lo script
+2. L'agente ha un tono sbagliato per la fase (es. troppo freddo in fase empatica)
+3. L'agente salta step senza completare l'obiettivo
+4. L'agente fa troppe domande insieme senza aspettare risposta
+5. L'agente ignora segnali importanti del prospect
+
+SE RILEVI UN PROBLEMA → genera feedbackForAgent con:
+- shouldInject: true
+- correctionMessage: messaggio breve e diretto per correggere l'agente
+- toneReminder: ricorda la tonalità corretta (es. "Ricorda: tono ${currentPhaseEnergy?.tone || 'SICURO'}, energia ${currentPhaseEnergy?.level || 'MEDIA'}")
+- priority: "high" se grave, "medium" se importante, "low" se suggerimento
+
+SE TUTTO OK → feedbackForAgent.shouldInject = false
 
 ═══════════════════════════════════════════════════════════════
 📤 FORMATO RISPOSTA (JSON VALIDO)
@@ -249,14 +311,20 @@ Schema JSON richiesto:
   "nextPhaseId": string | null,
   "nextStepId": string | null,
   "reasoning": string,
-  "confidence": number
+  "confidence": number,
+  "feedbackForAgent": {
+    "shouldInject": boolean,
+    "correctionMessage": string,
+    "toneReminder": string,
+    "priority": "low" | "medium" | "high"
+  }
 }
 
-Esempio se si deve avanzare:
-{"shouldAdvance":true,"nextPhaseId":"${nextPhase?.id || 'phase_1'}","nextStepId":"${nextStep?.id || 'step_1'}","reasoning":"Obiettivo completato","confidence":0.8}
+Esempio se si deve avanzare (tutto ok):
+{"shouldAdvance":true,"nextPhaseId":"${nextPhase?.id || 'phase_1'}","nextStepId":"${nextStep?.id || 'step_1'}","reasoning":"Obiettivo completato","confidence":0.8,"feedbackForAgent":{"shouldInject":false,"correctionMessage":"","toneReminder":"","priority":"low"}}
 
-Esempio se NON si deve avanzare:
-{"shouldAdvance":false,"nextPhaseId":null,"nextStepId":null,"reasoning":"Step non completato","confidence":0.9}`;
+Esempio se NON avanzare + feedback correttivo:
+{"shouldAdvance":false,"nextPhaseId":null,"nextStepId":null,"reasoning":"Agente non risponde alla domanda del prospect","confidence":0.9,"feedbackForAgent":{"shouldInject":true,"correctionMessage":"STOP! Il prospect ha fatto una domanda. Rispondi PRIMA di continuare lo script.","toneReminder":"Ricorda: tono EMPATICO, energia MEDIA","priority":"high"}}`;
   }
   
   /**
@@ -317,13 +385,35 @@ Esempio se NON si deve avanzare:
       
       const parsed = JSON.parse(cleanText);
       
+      // 🆕 Estrai feedbackForAgent se presente
+      let feedbackForAgent: StepAdvancementResult['feedbackForAgent'] = undefined;
+      if (parsed.feedbackForAgent && parsed.feedbackForAgent.shouldInject) {
+        feedbackForAgent = {
+          shouldInject: true,
+          correctionMessage: String(parsed.feedbackForAgent.correctionMessage || ''),
+          toneReminder: String(parsed.feedbackForAgent.toneReminder || ''),
+          priority: (['low', 'medium', 'high'].includes(parsed.feedbackForAgent.priority) 
+            ? parsed.feedbackForAgent.priority 
+            : 'medium') as 'low' | 'medium' | 'high'
+        };
+        
+        console.log(`\n🔧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🔧 [STEP-AGENT] FEEDBACK FOR AGENT DETECTED!`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   📢 Priority: ${feedbackForAgent.priority.toUpperCase()}`);
+        console.log(`   📝 Correction: ${feedbackForAgent.correctionMessage}`);
+        console.log(`   🎵 Tone Reminder: ${feedbackForAgent.toneReminder}`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      }
+      
       // Valida e normalizza la risposta
       return {
         shouldAdvance: Boolean(parsed.shouldAdvance),
         nextPhaseId: parsed.shouldAdvance ? (parsed.nextPhaseId || null) : null,
         nextStepId: parsed.shouldAdvance ? (parsed.nextStepId || null) : null,
         reasoning: String(parsed.reasoning || 'No reasoning provided'),
-        confidence: Math.min(1, Math.max(0, Number(parsed.confidence) || 0.5))
+        confidence: Math.min(1, Math.max(0, Number(parsed.confidence) || 0.5)),
+        feedbackForAgent
       };
       
     } catch (error) {
@@ -341,7 +431,8 @@ Esempio se NON si deve avanzare:
       nextPhaseId: null,
       nextStepId: null,
       reasoning,
-      confidence: 0
+      confidence: 0,
+      feedbackForAgent: undefined
     };
   }
   

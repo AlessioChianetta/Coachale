@@ -1011,6 +1011,11 @@ export function setupGeminiLiveWSService(server: Server) {
     let hardTimeoutTimer: NodeJS.Timeout | null = null; // Failsafe: force close dopo 30s
     let hasTriggered90MinClose = false; // Flag per evitare multiple trigger
     
+    // 🆕 TASK 7: prospectHasSpoken - blocca output AI finché utente non parla
+    // Questo previene che l'AI parli per primo sia all'inizio della call che dopo resume
+    let prospectHasSpoken = false; 
+    let aiOutputBuffered = 0; // Contatore chunk audio bufferizzati quando prospect non ha ancora parlato
+    
     // Pattern matching per saluti italiani (case-insensitive)
     const GREETING_PATTERNS = [
       /\barrivederci\b/i,
@@ -2092,7 +2097,16 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           }
           
           // Send primer chunk LAST with turnComplete: true
-          const primerContent = '📋 CONTEXT_END - All user data loaded and ready.';
+          // 🆕 TASK 7: Istruzione per aspettare che il cliente parli per primo
+          const primerContent = `📋 CONTEXT_END - All user data loaded and ready.
+
+🚨 REGOLA CRITICA - ASPETTA IL CLIENTE:
+NON iniziare a parlare tu per primo!
+ASPETTA che il cliente dica qualcosa (anche solo "pronto" o "ciao").
+Solo DOPO che il cliente ha parlato, puoi iniziare con il benvenuto.
+Se il cliente non parla entro 5 secondi, puoi fare un breve "Buongiorno, mi senti?"
+MA NON iniziare con lo script completo finché il cliente non risponde!`;
+          
           const primerTokens = Math.round(primerContent.length / 4);
           const primerMessage = {
             clientContent: {
@@ -2105,7 +2119,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
           };
           geminiSession.send(JSON.stringify(primerMessage));
           console.log(`\n   🎯 Primer chunk sent (FINAL) - ${primerContent.length} chars (~${primerTokens} tokens)`);
-          console.log(`   ✅ Turn complete with primer at END\n`);
+          console.log(`   ✅ Turn complete with primer at END`);
+          console.log(`   🚨 AI instructed to WAIT for client to speak first\n`);
           
           // Track primer in currentTurnMessages
           currentTurnMessages.push({
@@ -2229,6 +2244,36 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               console.log(`║ ⚡ Skipped resending ${conversationHistory.length} messages - saves ~$0.05 per reconnect${' '.repeat(19 - String(conversationHistory.length).length)} ║`);
               console.log(`║ 📊 Database loaded: ${conversationHistory.length} messages (needed for prompt/persistence)${' '.repeat(15 - String(conversationHistory.length).length)} ║`);
               console.log(`╚${'═'.repeat(78)}╝\n`);
+              
+              // 🆕 TASK 7 & 8: After resume, tell AI to WAIT for client and NOT speak first
+              // This prevents double questions/greetings after resume
+              const resumeInstruction = `
+🔄 SESSIONE RIPRESA - ISTRUZIONI POST-RESUME:
+La connessione è stata ripresa dopo un'interruzione.
+⚠️ NON iniziare a parlare subito!
+⚠️ NON fare il benvenuto di nuovo - lo hai già fatto prima.
+⚠️ ASPETTA che il cliente dica qualcosa.
+Solo quando il cliente parla, rispondi brevemente e continua da dove eri rimasto.
+Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'interruzione. Dove eravamo rimasti?"
+`;
+              
+              const resumeMessage = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: resumeInstruction }]
+                  }],
+                  turnComplete: true
+                }
+              };
+              geminiSession.send(JSON.stringify(resumeMessage));
+              console.log(`🚨 [${connectionId}] Post-resume instruction sent: WAIT for client, no double greeting`);
+              
+              // 🆕 TASK 8: Reset prospectHasSpoken dopo resume
+              // Questo forza il prospect a parlare di nuovo prima che l'AI possa generare output
+              prospectHasSpoken = false;
+              aiOutputBuffered = 0;
+              console.log(`🔄 [${connectionId}] TASK 8 RESET: prospectHasSpoken = false (require prospect to speak again)`);
             }
             
             if (shouldReplayHistory) {
@@ -2693,6 +2738,23 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 // Log ridotto - solo primo chunk o ogni 30 secondi
                 // (non logghiamo ogni singolo chunk)
                 
+                // 🆕 TASK 7: Blocca audio AI finché prospect non ha parlato
+                // Questo previene che l'AI parli per primo (sia inizio che resume)
+                if (!prospectHasSpoken) {
+                  aiOutputBuffered++;
+                  if (aiOutputBuffered === 1) {
+                    console.log(`\n🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                    console.log(`🚫 [${connectionId}] TASK 7 BLOCKING: AI audio output BLOCCATO`);
+                    console.log(`   → Prospect non ha ancora parlato (prospectHasSpoken = false)`);
+                    console.log(`   → L'audio AI verrà scartato finché l'utente non parla`);
+                    console.log(`   → Questo previene il problema di AI che parla per primo`);
+                    console.log(`🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                  } else if (aiOutputBuffered % 50 === 0) {
+                    console.log(`🚫 [${connectionId}] Still blocking AI audio... (${aiOutputBuffered} chunks dropped)`);
+                  }
+                  continue; // BLOCCA - non inviare audio al client
+                }
+                
                 // 🔒 Track AI speaking (audio streaming) - MANTIENI true su OGNI chunk
                 if (!isAiSpeaking) {
                   isAiSpeaking = true;
@@ -2794,6 +2856,18 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               console.warn(`   → Transcript ignorato, attendo prossimo chunk`);
               // Skip processing - don't update transcript or send to client
             } else {
+              // 🆕 TASK 7: Prospect ha parlato per primo! Abilita audio AI
+              if (!prospectHasSpoken) {
+                prospectHasSpoken = true;
+                console.log(`\n✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`✅ [${connectionId}] PROSPECT SPOKE FIRST! Enabling AI audio output`);
+                console.log(`   → Transcript: "${userTranscriptText}"`);
+                console.log(`   → Dropped ${aiOutputBuffered} audio chunks while waiting`);
+                console.log(`   → AI can now speak freely`);
+                console.log(`✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                aiOutputBuffered = 0; // Reset counter
+              }
+              
               // CRITICAL: Gemini sends CUMULATIVE partials - OVERWRITE not concatenate!
               // Example: "Ciao" → "Ciao come" → "Ciao come stai"
               currentUserTranscript = userTranscriptText;
@@ -3017,6 +3091,14 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                           }))
                         };
                         
+                        // 🆕 Get current phase energy for tone reminder
+                        const currentPhase = script.phases.find(p => p.id === state.currentPhase);
+                        const currentPhaseEnergy = currentPhase?.energy ? {
+                          level: currentPhase.energy.level || 'MEDIO',
+                          tone: currentPhase.energy.tone || 'SICURO',
+                          pace: currentPhase.energy.pace || 'MODERATO'
+                        } : undefined;
+                        
                         const params: StepAdvancementParams = {
                           recentMessages,
                           script: scriptForAgent,
@@ -3025,7 +3107,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                           currentPhaseIndex: phaseIndex,
                           currentStepIndex: stepIndex,
                           clientId: trackerClientId,
-                          consultantId: trackerConsultantId
+                          consultantId: trackerConsultantId,
+                          currentPhaseEnergy // 🆕 Pass energy settings for tone reminder
                         };
                         
                         console.log(`   📨 Calling StepAdvancementAgent.analyze()...`);
@@ -3041,7 +3124,50 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                         console.log(`   📍 nextStepId: ${result.nextStepId || 'null'}`);
                         console.log(`   📈 confidence: ${(result.confidence * 100).toFixed(0)}%`);
                         console.log(`   💡 reasoning: ${result.reasoning}`);
+                        if (result.feedbackForAgent?.shouldInject) {
+                          console.log(`   🔧 FEEDBACK: ${result.feedbackForAgent.correctionMessage}`);
+                          console.log(`   🎵 TONE: ${result.feedbackForAgent.toneReminder}`);
+                        }
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        
+                        // 🆕 FEEDBACK INJECTION: Se il SubAgent ha rilevato problemi, inietta il feedback
+                        if (result.feedbackForAgent?.shouldInject && geminiSession) {
+                          const feedback = result.feedbackForAgent;
+                          const feedbackMessage = `
+🔧 [COACHING CORRETTIVO - PRIORITÀ ${feedback.priority.toUpperCase()}]
+${feedback.correctionMessage}
+${feedback.toneReminder ? `\n${feedback.toneReminder}` : ''}
+`.trim();
+                          
+                          console.log(`\n🔧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                          console.log(`🔧 [${connectionId}] INJECTING FEEDBACK TO PRIMARY AGENT`);
+                          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                          console.log(`   📢 Priority: ${feedback.priority.toUpperCase()}`);
+                          console.log(`   📝 Message: ${feedbackMessage.substring(0, 200)}...`);
+                          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                          
+                          // Inject feedback as a system message to the primary agent
+                          const feedbackPayload = {
+                            clientContent: {
+                              turns: [{
+                                role: 'user',
+                                parts: [{ text: feedbackMessage }]
+                              }],
+                              turnComplete: true
+                            }
+                          };
+                          geminiSession.send(JSON.stringify(feedbackPayload));
+                          
+                          // 🆕 Save feedback to tracker's aiReasoning
+                          await salesTracker.addReasoning('step_advancement_feedback', 
+                            `SubAgent ha iniettato feedback correttivo (${feedback.priority}): ${feedback.correctionMessage}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
+                          );
+                        }
+                        
+                        // 🆕 TASK 5: Save SubAgent reasoning to training map
+                        await salesTracker.addReasoning('step_advancement_analysis', 
+                          `📊 Analisi: shouldAdvance=${result.shouldAdvance}, confidence=${(result.confidence * 100).toFixed(0)}%, reasoning: ${result.reasoning}`
+                        );
                         
                         // If agent says to advance, call advanceTo on tracker
                         // 🔒 IDEMPOTENCY CHECK: Skip if we already advanced to this state

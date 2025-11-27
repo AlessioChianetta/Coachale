@@ -1,0 +1,1632 @@
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 18,750 tokens × $0.50/1M = $0.009375
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 18,750 tokens → $0.009375 ($0.50/1M)
+   - Audio Output: 102 tokens → $0.001224 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.010599 USD
+
+📊 Session totals:
+   - Text Input: 18,750 tokens → $0.009375
+   - Audio Output: 102 tokens → $0.001224
+   - SESSION TOTAL: $0.010599 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 16,072 (~16.1k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 18,750 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 18,750 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (16,072 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~16,072 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 16,072 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [zck2fj] SESSION RESUMPTION UPDATE received
+   - New handle: 840f5219-4887-423d-a64b-b8c756...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [zck2fj] Usage tracked → DB saved (Turn cost: $0.010599)
+✅ [zck2fj] Turn complete
+🔇 [zck2fj] AI finished speaking (turn complete)
+💾 [zck2fj] Saved AI message (server-side): 1 total messages
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_Se89C-5wrOxfFgqO, ConversationId: d87bcd2c-2085-4702-be73-c3b0b49c2d67
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Ciao luigi! Benvenuto in questa consulenza, come stai?                       │
+│ Time: 00:49:49                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [zck2fj] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Step Advancement Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [zck2fj] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_1
+   📍 Current Step: phase_1_step_1
+   📍 Phase Index: 0, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 1 messages
+   📨 Calling StepAdvancementAgent.analyze()...
+
+🤖 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP-AGENT] Starting analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_1 / phase_1_step_1
+   💬 Recent messages: 1
+   🔑 Using clientId: 0c73bbe5...
+   📡 Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 Finding Vertex AI settings for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (isConsultantUsingOwnAI: true)
+📋 Found 1 Vertex AI setting(s) for consultant
+🔍 Checking Vertex AI setting: managedBy=self, usageScope=both
+✅ usageScope is 'both' - access granted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 RAW SERVICE ACCOUNT JSON FROM DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Settings ID: 4c4e1eb2-47b8-4649-8a92-c656c2988229
+serviceAccountJson length: 2376
+First 300 chars: {"type":"service_account","project_id":"gen-lang-client-0278434337","private_key_id":"7692537ec6cc9ff110932c4c77edce22b59ab9e5","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCmi2GSMb4Z3rEY\nJo+4znbDAzju7HVj7P8IR60/ZCX6CaGG4h8T1rWYHzAUdzIjO8WUklLJFJ03ZS
+Last 200 chars: /v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/vertex-ai-service-account%40gen-lang-client-0278434337.iam.gserviceaccount.com","universe_domain":"googleapis.com"}
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 DEBUG VERTEX AI CREDENTIALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GOOGLE_API_KEY presente? false
+GOOGLE_APPLICATION_CREDENTIALS presente? false
+credentials.type: service_account
+credentials.project_id: gen-lang-client-0278434337
+credentials.private_key_id: 7692537ec6cc9ff110932c4c77edce22b59ab9e5
+credentials.client_email: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+credentials.client_id: 102188926920042138104
+credentials.private_key length: 1704
+credentials.private_key starts with: -----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w
+settings.projectId: gen-lang-client-0278434337
+settings.location: us-central1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ Successfully created Vertex AI client (managedBy: self, usageScope: both)
+   ✅ AI provider obtained in 228ms
+   📝 Prompt length: 2676 chars
+   💬 Recent messages being analyzed:
+      1. [AGENTE] "Ciao luigi! Benvenuto in questa consulenza, come stai?"
+   🚀 Calling Gemini gemini-2.0-flash...
+🔄 Switching model from gemini-2.5-flash to gemini-2.0-flash
+   ⏱️ Gemini responded in 939ms
+   📄 Raw response (first 300 chars): "```json
+{"shouldAdvance":false,"nextPhaseId":null,"nextStepId":null,"reasoning":"L'agente ha iniziato l'apertura con un saluto e una domanda per rompere il ghiaccio. Tuttavia, manca la risposta del prospect Luigi per valutare se si può avanzare.","confidence":0.9}
+```"
+   🔍 Parsing JSON response...
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [STEP-AGENT] Analysis completed in 1169ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → shouldAdvance: false
+   → nextPhase: same
+   → nextStep: same
+   → confidence: 90%
+   → reasoning: L'agente ha iniziato l'apertura con un saluto e una domanda per rompere il ghiaccio. Tuttavia, manca la risposta del prospect Luigi per valutare se si può avanzare.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] STEP ADVANCEMENT AGENT - RESULT (1170ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 90%
+   💡 reasoning: L'agente ha iniziato l'apertura con un saluto e una domanda per rompere il ghiaccio. Tuttavia, manca la risposta del prospect Luigi per valutare se si può avanzare.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=0.9, hasIds=false
+🔓 [zck2fj] Step Advancement lock released
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "T"
+   → Timestamp: 2025-11-27T00:49:56.258Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "utto bene? Tu?"
+   → Timestamp: 2025-11-27T00:49:56.308Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [zck2fj] AI transcript (output): Fantastico! Alla
+🎤 [zck2fj] AI started speaking (audio streaming)
+📝 [zck2fj] AI transcript (output):  grande!
+📝 [zck2fj] AI transcript (output):  Senti,
+📝 [zck2fj] AI transcript (output):  da dove
+📝 [zck2fj] AI transcript (output):  mi chiami?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 18936,
+  "candidatesTokenCount": 123,
+  "totalTokenCount": 19059,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 18768
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 168
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 104
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 19
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 18,936 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 18,936 tokens × $0.50/1M = $0.009468
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 18,936 tokens → $0.009468 ($0.50/1M)
+   - Audio Output: 123 tokens → $0.001476 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.010944 USD
+
+📊 Session totals:
+   - Text Input: 37,686 tokens → $0.018843
+   - Audio Output: 225 tokens → $0.002700
+   - SESSION TOTAL: $0.021543 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 16,072 (~16.1k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 37,686 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 37,686 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (16,072 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~16,072 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 16,072 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [zck2fj] SESSION RESUMPTION UPDATE received
+   - New handle: e377ccab-7847-40e9-ab62-234df4...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [zck2fj] Usage tracked → DB saved (Turn cost: $0.010944)
+✅ [zck2fj] Turn complete
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_1
+
+🔍 [CHECKPOINT-DETECTOR] Analyzing 2 messages for 1 checkpoints in phase phase_1
+      🔎 Searching for: "Hai salutato e chiesto "come stai""
+         Keywords: salutato, chiesto, "come, stai"
+         ❌ No evidence found
+      🔎 Searching for: "Hai chiesto "da dove mi chiami""
+         Keywords: chiesto, chiami"
+         ❌ No evidence found
+      🔎 Searching for: "Hai spiegato il processo della call"
+         Keywords: spiegato, processo, call
+         ❌ No evidence found
+      🔎 Searching for: "Il prospect ha detto "OK" / "Sì" / "Va bene" al processo"
+         Keywords: prospect, detto, "ok", "sì", bene", processo
+         ❌ No evidence found
+      🔎 Searching for: "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
+         Keywords: solo, dopo, questo, checkpoint, passa, fase
+         ❌ No evidence found
+   ⏳ checkpoint_1: pending
+      Verifications: 0/5 verified
+   ⏳ checkpoint_1: 0/5 verifications found (still pending)
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_Se89C-5wrOxfFgqO, ConversationId: d87bcd2c-2085-4702-be73-c3b0b49c2d67
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_1)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ utto bene? Tu?                                                               │
+│ Time: 00:49:59                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+⚠️  [zck2fj] Sales tracking: Fallback - tracked user message without isFinal flag
+🔇 [zck2fj] AI finished speaking (turn complete)
+💾 [zck2fj] Saved AI message (server-side): 2 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Fantastico! Alla grande! Senti, da dove mi chiami?                           │
+│ Time: 00:49:59                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [zck2fj] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Step Advancement Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [zck2fj] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_1
+   📍 Current Step: phase_1_step_1
+   📍 Phase Index: 0, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 2 messages
+   📨 Calling StepAdvancementAgent.analyze()...
+
+🤖 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP-AGENT] Starting analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_1 / phase_1_step_1
+   💬 Recent messages: 2
+   🔑 Using clientId: 0c73bbe5...
+   📡 Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 Finding Vertex AI settings for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (isConsultantUsingOwnAI: true)
+📋 Found 1 Vertex AI setting(s) for consultant
+🔍 Checking Vertex AI setting: managedBy=self, usageScope=both
+✅ usageScope is 'both' - access granted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 RAW SERVICE ACCOUNT JSON FROM DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Settings ID: 4c4e1eb2-47b8-4649-8a92-c656c2988229
+serviceAccountJson length: 2376
+First 300 chars: {"type":"service_account","project_id":"gen-lang-client-0278434337","private_key_id":"7692537ec6cc9ff110932c4c77edce22b59ab9e5","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCmi2GSMb4Z3rEY\nJo+4znbDAzju7HVj7P8IR60/ZCX6CaGG4h8T1rWYHzAUdzIjO8WUklLJFJ03ZS
+Last 200 chars: /v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/vertex-ai-service-account%40gen-lang-client-0278434337.iam.gserviceaccount.com","universe_domain":"googleapis.com"}
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 DEBUG VERTEX AI CREDENTIALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GOOGLE_API_KEY presente? false
+GOOGLE_APPLICATION_CREDENTIALS presente? false
+credentials.type: service_account
+credentials.project_id: gen-lang-client-0278434337
+credentials.private_key_id: 7692537ec6cc9ff110932c4c77edce22b59ab9e5
+credentials.client_email: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+credentials.client_id: 102188926920042138104
+credentials.private_key length: 1704
+credentials.private_key starts with: -----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w
+settings.projectId: gen-lang-client-0278434337
+settings.location: us-central1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ Successfully created Vertex AI client (managedBy: self, usageScope: both)
+   ✅ AI provider obtained in 228ms
+   📝 Prompt length: 2735 chars
+   💬 Recent messages being analyzed:
+      1. [AGENTE] "Ciao luigi! Benvenuto in questa consulenza, come stai?"
+      2. [AGENTE] "Fantastico! Alla grande! Senti, da dove mi chiami?"
+   🚀 Calling Gemini gemini-2.0-flash...
+🔄 Switching model from gemini-2.5-flash to gemini-2.0-flash
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-11-27T00:50:00.023Z
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Found 0 pending leads to contact
+   ⏱️ Gemini responded in 783ms
+   📄 Raw response (first 300 chars): "```json
+{"shouldAdvance":false,"nextPhaseId":null,"nextStepId":null,"reasoning":"L'agente ha posto una domanda per creare connessione, ma il prospect non ha ancora risposto. È necessario attendere la risposta del prospect prima di avanzare.","confidence":0.9}
+```"
+   🔍 Parsing JSON response...
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [STEP-AGENT] Analysis completed in 1011ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → shouldAdvance: false
+   → nextPhase: same
+   → nextStep: same
+   → confidence: 90%
+   → reasoning: L'agente ha posto una domanda per creare connessione, ma il prospect non ha ancora risposto. È necessario attendere la risposta del prospect prima di avanzare.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] STEP ADVANCEMENT AGENT - RESULT (1011ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 90%
+   💡 reasoning: L'agente ha posto una domanda per creare connessione, ma il prospect non ha ancora risposto. È necessario attendere la risposta del prospect prima di avanzare.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=0.9, hasIds=false
+🔓 [zck2fj] Step Advancement lock released
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+📋 Found 3 leads ready for follow-up
+📤 Processing lead: Gianluca Perna (+393933318891)
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: 881b6ed6-3910-4198-9276-0bc9c3030b50
+   Lead Name: Gianluca Perna
+   Message Type: followup_final (14 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+📤 Processing lead: Alessio Chianetta (+393890566422)
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: fd82df05-3a7f-449e-82f0-269935cebc5a
+   Lead Name: Alessio Chianetta
+   Message Type: followup_final (14 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+📤 Processing lead: Dario borloni (+393333887043)
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: 01e0a582-9554-4204-91be-1a77e17af14a
+   Lead Name: Dario borloni
+   Message Type: followup_final (14 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+
+✅ [PROACTIVE OUTREACH] Completed in 678ms
+   📊 Results: 3 success, 0 errors, 3 total
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+📊 [CALENDAR SYNC] Syncing 1 consultant(s)...
+
+🔄 [CALENDAR SYNC] Starting sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-11-16T01:55:16.000Z
+🔗 [OAUTH] Redirect URI for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: https://be58ceda-e32c-45f0-94ff-2969d5947925-00-3czt7o7mwocj0.riker.replit.dev/api/calendar-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-11-16T01:55:16.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ [CALENDAR SYNC] No confirmed appointments to sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b in the next 90 days
+
+✅ [CALENDAR SYNC] Sync cycle complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "da"
+   → Timestamp: 2025-11-27T00:50:05.074Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " Roma"
+   → Timestamp: 2025-11-27T00:50:05.092Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [zck2fj] AI transcript (output): Super! Conosco,
+🎤 [zck2fj] AI started speaking (audio streaming)
+📝 [zck2fj] AI transcript (output):  bellissima
+📝 [zck2fj] AI transcript (output):  zona!
+📝 [zck2fj] AI transcript (output):  Ok,
+📝 [zck2fj] AI transcript (output):  luigi,
+📝 [zck2fj] AI transcript (output):  per
+📝 [zck2fj] AI transcript (output):  ottimizzare
+📝 [zck2fj] AI transcript (output):  i tempi
+📝 [zck2fj] AI transcript (output):  di entrambi,
+📝 [zck2fj] AI transcript (output):  ti
+📝 [zck2fj] AI transcript (output):  spiego
+📝 [zck2fj] AI transcript (output):  come
+📝 [zck2fj] AI transcript (output):  funziona:
+📝 [zck2fj] AI transcript (output):  ti farò
+📝 [zck2fj] AI transcript (output):  alcune
+📝 [zck2fj] AI transcript (output):  domande
+📝 [zck2fj] AI transcript (output):  per
+📝 [zck2fj] AI transcript (output):  capire
+📝 [zck2fj] AI transcript (output):  la tua
+📝 [zck2fj] AI transcript (output):  attività,
+📝 [zck2fj] AI transcript (output):  il tuo
+📝 [zck2fj] AI transcript (output):  modello
+📝 [zck2fj] AI transcript (output):  di business
+📝 [zck2fj] AI transcript (output):  e le
+📝 [zck2fj] AI transcript (output):  difficoltà
+📝 [zck2fj] AI transcript (output):  che stai
+📝 [zck2fj] AI transcript (output):  incontrando.
+📝 [zck2fj] AI transcript (output):  In base
+📝 [zck2fj] AI transcript (output):  alle
+📝 [zck2fj] AI transcript (output):  tue
+📝 [zck2fj] AI transcript (output):  risposte,
+📝 [zck2fj] AI transcript (output):  farò
+📝 [zck2fj] AI transcript (output):  una
+📝 [zck2fj] AI transcript (output):  prima
+📝 [zck2fj] AI transcript (output):  analisi:
+📝 [zck2fj] AI transcript (output):  se capisco
+📝 [zck2fj] AI transcript (output):  che possiamo
+📝 [zck2fj] AI transcript (output):  davvero
+📝 [zck2fj] AI transcript (output):  esserti
+📝 [zck2fj] AI transcript (output):  utile,
+🎤 [zck2fj] Receiving audio chunks (last logged: seq 824)
+💾 [zck2fj] Autosave: Saving 2 new messages...
+📝 [zck2fj] AI transcript (output):  ti proporrò
+📝 [zck2fj] AI transcript (output):  di fissare
+📝 [zck2fj] AI transcript (output):  una seconda
+📝 [zck2fj] AI transcript (output):  call
+📝 [zck2fj] AI transcript (output):  dove
+📝 [zck2fj] AI transcript (output):  ti presenterò
+📝 [zck2fj] AI transcript (output):  il percorso
+📝 [zck2fj] AI transcript (output):  più adatto.
+📝 [zck2fj] AI transcript (output):  Se
+📝 [zck2fj] AI transcript (output):  invece
+📝 [zck2fj] AI transcript (output):  vedo
+📝 [zck2fj] AI transcript (output):  che posso
+📝 [zck2fj] AI transcript (output):  darti
+📝 [zck2fj] AI transcript (output):  una mano
+📝 [zck2fj] AI transcript (output):  subito,
+✅ [zck2fj] Autosave: 2 messages saved successfully (total saved: 2/2)
+📝 [zck2fj] AI transcript (output):  ti farò
+📝 [zck2fj] AI transcript (output):  un'offerta
+📝 [zck2fj] AI transcript (output):  diretta
+12:50:20 AM [express] POST /api/activity/session/heartbeat 200 in 228ms :: {"success":true,"lastActiv…
+📝 [zck2fj] AI transcript (output):  alla
+📝 [zck2fj] AI transcript (output):  fine
+📝 [zck2fj] AI transcript (output):  di questa
+📝 [zck2fj] AI transcript (output):  chiamata.
+📝 [zck2fj] AI transcript (output):  OK?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 19132,
+  "candidatesTokenCount": 989,
+  "totalTokenCount": 20121,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 18784
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 348
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 119
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 870
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 19,132 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 19,132 tokens × $0.50/1M = $0.009566
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 19,132 tokens → $0.009566 ($0.50/1M)
+   - Audio Output: 989 tokens → $0.011868 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.021434 USD
+
+📊 Session totals:
+   - Text Input: 56,818 tokens → $0.028409
+   - Audio Output: 1,214 tokens → $0.014568
+   - SESSION TOTAL: $0.042977 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 16,072 (~16.1k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 56,818 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 56,818 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (16,072 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~16,072 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 16,072 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [zck2fj] SESSION RESUMPTION UPDATE received
+   - New handle: ae2731d0-f26c-4df8-9bde-dd00d6...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [zck2fj] Usage tracked → DB saved (Turn cost: $0.021434)
+✅ [zck2fj] Turn complete
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_1
+
+🔍 [CHECKPOINT-DETECTOR] Analyzing 4 messages for 1 checkpoints in phase phase_1
+      🔎 Searching for: "Hai salutato e chiesto "come stai""
+         Keywords: salutato, chiesto, "come, stai"
+         ❌ No evidence found
+      🔎 Searching for: "Hai chiesto "da dove mi chiami""
+         Keywords: chiesto, chiami"
+         ❌ No evidence found
+      🔎 Searching for: "Hai spiegato il processo della call"
+         Keywords: spiegato, processo, call
+         ❌ No evidence found
+      🔎 Searching for: "Il prospect ha detto "OK" / "Sì" / "Va bene" al processo"
+         Keywords: prospect, detto, "ok", "sì", bene", processo
+         ❌ No evidence found
+      🔎 Searching for: "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
+         Keywords: solo, dopo, questo, checkpoint, passa, fase
+         ❌ No evidence found
+   ⏳ checkpoint_1: pending
+      Verifications: 0/5 verified
+   ⏳ checkpoint_1: 0/5 verifications found (still pending)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_1)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Roma                                                                         │
+│ Time: 00:50:21                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+⚠️  [zck2fj] Sales tracking: Fallback - tracked user message without isFinal flag
+🔇 [zck2fj] AI finished speaking (turn complete)
+
+⚠️  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[zck2fj] AI MESSAGE QUALITY WARNING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📏 TOO LONG: 511 chars (may be reading script robotically)
+   📝 Message: "Super! Conosco, bellissima zona! Ok, luigi, per ottimizzare i tempi di entrambi, ti spiego come funziona: ti farò alcune domande per capire la tua att..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [zck2fj] Saved AI message (server-side): 3 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Super! Conosco, bellissima zona! Ok, luigi, per ottimizzare i tempi di       │
+│ entrambi, ti spiego come funziona: ti farò alcune domande per capire la tua  │
+│ ...                                                                          │
+│ Time: 00:50:21                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [zck2fj] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Step Advancement Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [zck2fj] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_1
+   📍 Current Step: phase_1_step_1
+   📍 Phase Index: 0, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 3 messages
+   📨 Calling StepAdvancementAgent.analyze()...
+
+🤖 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP-AGENT] Starting analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_1 / phase_1_step_1
+   💬 Recent messages: 3
+   🔑 Using clientId: 0c73bbe5...
+   📡 Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 Finding Vertex AI settings for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (isConsultantUsingOwnAI: true)
+📋 Found 1 Vertex AI setting(s) for consultant
+🔍 Checking Vertex AI setting: managedBy=self, usageScope=both
+✅ usageScope is 'both' - access granted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 RAW SERVICE ACCOUNT JSON FROM DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Settings ID: 4c4e1eb2-47b8-4649-8a92-c656c2988229
+serviceAccountJson length: 2376
+First 300 chars: {"type":"service_account","project_id":"gen-lang-client-0278434337","private_key_id":"7692537ec6cc9ff110932c4c77edce22b59ab9e5","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCmi2GSMb4Z3rEY\nJo+4znbDAzju7HVj7P8IR60/ZCX6CaGG4h8T1rWYHzAUdzIjO8WUklLJFJ03ZS
+Last 200 chars: /v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/vertex-ai-service-account%40gen-lang-client-0278434337.iam.gserviceaccount.com","universe_domain":"googleapis.com"}
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 DEBUG VERTEX AI CREDENTIALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GOOGLE_API_KEY presente? false
+GOOGLE_APPLICATION_CREDENTIALS presente? false
+credentials.type: service_account
+credentials.project_id: gen-lang-client-0278434337
+credentials.private_key_id: 7692537ec6cc9ff110932c4c77edce22b59ab9e5
+credentials.client_email: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+credentials.client_id: 102188926920042138104
+credentials.private_key length: 1704
+credentials.private_key starts with: -----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w
+settings.projectId: gen-lang-client-0278434337
+settings.location: us-central1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ Successfully created Vertex AI client (managedBy: self, usageScope: both)
+   ✅ AI provider obtained in 225ms
+   📝 Prompt length: 3255 chars
+   💬 Recent messages being analyzed:
+      1. [AGENTE] "Ciao luigi! Benvenuto in questa consulenza, come stai?"
+      2. [AGENTE] "Fantastico! Alla grande! Senti, da dove mi chiami?"
+      3. [AGENTE] "Super! Conosco, bellissima zona! Ok, luigi, per ottimizzare i tempi di entrambi,..."
+   🚀 Calling Gemini gemini-2.0-flash...
+🔄 Switching model from gemini-2.5-flash to gemini-2.0-flash
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_Se89C-5wrOxfFgqO, ConversationId: d87bcd2c-2085-4702-be73-c3b0b49c2d67
+   ⏱️ Gemini responded in 811ms
+   📄 Raw response (first 300 chars): "```json
+{"shouldAdvance": true, "nextPhaseId": "phase_1", "nextStepId": "phase_1_step_2", "reasoning": "L'agente ha creato una connessione iniziale chiedendo come sta il prospect e da dove chiama, rompendo il ghiaccio. Il prospect ha risposto, permettendo di avanzare.", "confidence": 0.9}
+```"
+   🔍 Parsing JSON response...
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [STEP-AGENT] Analysis completed in 1037ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → shouldAdvance: true
+   → nextPhase: phase_1
+   → nextStep: phase_1_step_2
+   → confidence: 90%
+   → reasoning: L'agente ha creato una connessione iniziale chiedendo come sta il prospect e da dove chiama, rompendo il ghiaccio. Il prospect ha risposto, permettendo di avanzare.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] STEP ADVANCEMENT AGENT - RESULT (1037ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: true
+   📍 nextPhaseId: phase_1
+   📍 nextStepId: phase_1_step_2
+   📈 confidence: 90%
+   💡 reasoning: L'agente ha creato una connessione iniziale chiedendo come sta il prospect e da dove chiama, rompendo il ghiaccio. Il prospect ha risposto, permettendo di avanzare.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [zck2fj] ADVANCING STEP!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → FROM: phase_1 / phase_1_step_1
+   → TO: phase_1 / phase_1_step_2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [TRACKER] STEP ADVANCEMENT (AI-driven)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 FROM: phase_1 / phase_1_step_1
+   📍 TO:   phase_1 / phase_1_step_2
+   💡 Reasoning: L'agente ha creato una connessione iniziale chiedendo come sta il prospect e da dove chiama, rompendo il ghiaccio. Il prospect ha risposto, permettendo di avanzare.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔓 [zck2fj] Step Advancement lock released
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "Va"
+   → Timestamp: 2025-11-27T00:50:44.209Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " bene."
+   → Timestamp: 2025-11-27T00:50:44.234Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [zck2fj] AI transcript (output): Fantastico! Evvai,
+🎤 [zck2fj] AI started speaking (audio streaming)
+📝 [zck2fj] AI transcript (output):  iniziamo
+📝 [zck2fj] AI transcript (output):  subito
+📝 [zck2fj] AI transcript (output):  allora!
+📝 [zck2fj] AI transcript (output):  Dimmi,
+📝 [zck2fj] AI transcript (output):  perché
+📝 [zck2fj] AI transcript (output):  hai deciso
+📝 [zck2fj] AI transcript (output):  di partecipare
+🎤 [zck2fj] Receiving audio chunks (last logged: seq 1574)
+📝 [zck2fj] AI transcript (output):  a questa
+📝 [zck2fj] AI transcript (output):  call?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 20192,
+  "candidatesTokenCount": 207,
+  "totalTokenCount": 20399,
+  "promptTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 1288
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 18904
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 181
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 26
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 20,192 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 20,192 tokens × $0.50/1M = $0.010096
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 20,192 tokens → $0.010096 ($0.50/1M)
+   - Audio Output: 207 tokens → $0.002484 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.012580 USD
+
+📊 Session totals:
+   - Text Input: 77,010 tokens → $0.038505
+   - Audio Output: 1,421 tokens → $0.017052
+   - SESSION TOTAL: $0.055557 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 16,072 (~16.1k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 77,010 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 77,010 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (16,072 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~16,072 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 16,072 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [zck2fj] Autosave: Saving 1 new messages...
+🔄 [zck2fj] SESSION RESUMPTION UPDATE received
+   - New handle: 47665313-f1c5-415c-b04f-6af452...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [zck2fj] Usage tracked → DB saved (Turn cost: $0.012580)
+✅ [zck2fj] Turn complete
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_1
+
+🔍 [CHECKPOINT-DETECTOR] Analyzing 6 messages for 1 checkpoints in phase phase_1
+      🔎 Searching for: "Hai salutato e chiesto "come stai""
+         Keywords: salutato, chiesto, "come, stai"
+         ❌ No evidence found
+      🔎 Searching for: "Hai chiesto "da dove mi chiami""
+         Keywords: chiesto, chiami"
+         ❌ No evidence found
+      🔎 Searching for: "Hai spiegato il processo della call"
+         Keywords: spiegato, processo, call
+         ✅ Found evidence in message eQLVLJ7_: call, spiegato (fuzzy) (match rate: 56.7%)
+      🔎 Searching for: "Il prospect ha detto "OK" / "Sì" / "Va bene" al processo"
+         Keywords: prospect, detto, "ok", "sì", bene", processo
+         ❌ No evidence found
+      🔎 Searching for: "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
+         Keywords: solo, dopo, questo, checkpoint, passa, fase
+         ❌ No evidence found
+   ⏳ checkpoint_1: pending
+      Verifications: 1/5 verified
+   ⏳ checkpoint_1: 1/5 verifications found (still pending)
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_Se89C-5wrOxfFgqO, ConversationId: d87bcd2c-2085-4702-be73-c3b0b49c2d67
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_1)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ bene.                                                                        │
+│ Time: 00:50:48                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+⚠️  [zck2fj] Sales tracking: Fallback - tracked user message without isFinal flag
+🔇 [zck2fj] AI finished speaking (turn complete)
+💾 [zck2fj] Saved AI message (server-side): 4 total messages
+✅ [zck2fj] Autosave: 1 messages saved successfully (total saved: 3/4)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Fantastico! Evvai, iniziamo subito allora! Dimmi, perché hai deciso di       │
+│ partecipare a questa call?                                                   │
+│ Time: 00:50:48                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [zck2fj] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Step Advancement Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [zck2fj] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_1
+   📍 Current Step: phase_1_step_2
+   📍 Phase Index: 0, Step Index: 1
+   📜 Script has 7 phases
+   💬 Conversation has 4 messages
+   📨 Calling StepAdvancementAgent.analyze()...
+
+🤖 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP-AGENT] Starting analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_1 / phase_1_step_2
+   💬 Recent messages: 4
+   🔑 Using clientId: 0c73bbe5...
+   📡 Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 Finding Vertex AI settings for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (isConsultantUsingOwnAI: true)
+📋 Found 1 Vertex AI setting(s) for consultant
+🔍 Checking Vertex AI setting: managedBy=self, usageScope=both
+✅ usageScope is 'both' - access granted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 RAW SERVICE ACCOUNT JSON FROM DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Settings ID: 4c4e1eb2-47b8-4649-8a92-c656c2988229
+serviceAccountJson length: 2376
+First 300 chars: {"type":"service_account","project_id":"gen-lang-client-0278434337","private_key_id":"7692537ec6cc9ff110932c4c77edce22b59ab9e5","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCmi2GSMb4Z3rEY\nJo+4znbDAzju7HVj7P8IR60/ZCX6CaGG4h8T1rWYHzAUdzIjO8WUklLJFJ03ZS
+Last 200 chars: /v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/vertex-ai-service-account%40gen-lang-client-0278434337.iam.gserviceaccount.com","universe_domain":"googleapis.com"}
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 DEBUG VERTEX AI CREDENTIALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GOOGLE_API_KEY presente? false
+GOOGLE_APPLICATION_CREDENTIALS presente? false
+credentials.type: service_account
+credentials.project_id: gen-lang-client-0278434337
+credentials.private_key_id: 7692537ec6cc9ff110932c4c77edce22b59ab9e5
+credentials.client_email: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+credentials.client_id: 102188926920042138104
+credentials.private_key length: 1704
+credentials.private_key starts with: -----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w
+settings.projectId: gen-lang-client-0278434337
+settings.location: us-central1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ Successfully created Vertex AI client (managedBy: self, usageScope: both)
+   ✅ AI provider obtained in 226ms
+   📝 Prompt length: 3373 chars
+   💬 Recent messages being analyzed:
+      1. [AGENTE] "Ciao luigi! Benvenuto in questa consulenza, come stai?"
+      2. [AGENTE] "Fantastico! Alla grande! Senti, da dove mi chiami?"
+      3. [AGENTE] "Super! Conosco, bellissima zona! Ok, luigi, per ottimizzare i tempi di entrambi,..."
+      4. [AGENTE] "Fantastico! Evvai, iniziamo subito allora! Dimmi, perché hai deciso di partecipa..."
+   🚀 Calling Gemini gemini-2.0-flash...
+🔄 Switching model from gemini-2.5-flash to gemini-2.0-flash
+   ⏱️ Gemini responded in 2323ms
+   📄 Raw response (first 300 chars): "```json
+{"shouldAdvance":false,"nextPhaseId":null,"nextStepId":null,"reasoning":"L'agente ha spiegato il processo e ha chiesto conferma al cliente. Il cliente ha risposto con un \"Fantastico! Evvai, iniziamo subito allora!\" che indica un accordo. Tuttavia, l'agente non ha ancora stabilito completam..."
+   🔍 Parsing JSON response...
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [STEP-AGENT] Analysis completed in 2549ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → shouldAdvance: false
+   → nextPhase: same
+   → nextStep: same
+   → confidence: 70%
+   → reasoning: L'agente ha spiegato il processo e ha chiesto conferma al cliente. Il cliente ha risposto con un "Fantastico! Evvai, iniziamo subito allora!" che indica un accordo. Tuttavia, l'agente non ha ancora stabilito completamente l'autorevolezza o creato scarsità. Manca un elemento di valore percepito prima di passare alla fase successiva.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] STEP ADVANCEMENT AGENT - RESULT (2550ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 70%
+   💡 reasoning: L'agente ha spiegato il processo e ha chiesto conferma al cliente. Il cliente ha risposto con un "Fantastico! Evvai, iniziamo subito allora!" che indica un accordo. Tuttavia, l'agente non ha ancora stabilito completamente l'autorevolezza o creato scarsità. Manca un elemento di valore percepito prima di passare alla fase successiva.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=0.7, hasIds=false
+🔓 [zck2fj] Step Advancement lock released
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-11-16T01:55:16.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-11-16T01:55:16.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+🎤 [zck2fj] Receiving audio chunks (last logged: seq 2324)
+💾 [zck2fj] Autosave: Saving 1 new messages...
+✅ [zck2fj] Autosave: 1 messages saved successfully (total saved: 4/4)
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "per"
+   → Timestamp: 2025-11-27T00:51:21.934Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: " avere più clienti"
+   → Timestamp: 2025-11-27T00:51:21.968Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [zck2fj] AI transcript (output): Interessante! E
+🎤 [zck2fj] AI started speaking (audio streaming)
+📝 [zck2fj] AI transcript (output):  se dovessi
+📝 [zck2fj] AI transcript (output):  scegliere
+📝 [zck2fj] AI transcript (output):  una
+📝 [zck2fj] AI transcript (output):  cosa,
+📝 [zck2fj] AI transcript (output):  qual
+📝 [zck2fj] AI transcript (output):  è il
+📝 [zck2fj] AI transcript (output):  problema
+📝 [zck2fj] AI transcript (output):  principale
+📝 [zck2fj] AI transcript (output):  che
+📝 [zck2fj] AI transcript (output):  stai
+📝 [zck2fj] AI transcript (output):  cercando
+📝 [zck2fj] AI transcript (output):  di risolvere?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 20453,
+  "candidatesTokenCount": 220,
+  "totalTokenCount": 20673,
+  "promptTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 1521
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 18932
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 26
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 194
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 20,453 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 20,453 tokens × $0.50/1M = $0.010226
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 20,453 tokens → $0.010226 ($0.50/1M)
+   - Audio Output: 220 tokens → $0.002640 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.012866 USD
+
+📊 Session totals:
+   - Text Input: 97,463 tokens → $0.048731
+   - Audio Output: 1,641 tokens → $0.019692
+   - SESSION TOTAL: $0.068423 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 16,072 (~16.1k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 97,463 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 97,463 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (16,072 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~16,072 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 16,072 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [zck2fj] SESSION RESUMPTION UPDATE received
+   - New handle: b8042dd3-2639-4ccc-80fb-86ef8b...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [zck2fj] Usage tracked → DB saved (Turn cost: $0.012866)
+✅ [zck2fj] Turn complete
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_1
+
+🔍 [CHECKPOINT-DETECTOR] Analyzing 8 messages for 1 checkpoints in phase phase_1
+      🔎 Searching for: "Hai salutato e chiesto "come stai""
+         Keywords: salutato, chiesto, "come, stai"
+         ❌ No evidence found
+      🔎 Searching for: "Hai chiesto "da dove mi chiami""
+         Keywords: chiesto, chiami"
+         ❌ No evidence found
+      🔎 Searching for: "Hai spiegato il processo della call"
+         Keywords: spiegato, processo, call
+         ✅ Found evidence in message eQLVLJ7_: call, spiegato (fuzzy) (match rate: 56.7%)
+      🔎 Searching for: "Il prospect ha detto "OK" / "Sì" / "Va bene" al processo"
+         Keywords: prospect, detto, "ok", "sì", bene", processo
+         ❌ No evidence found
+      🔎 Searching for: "SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2"
+         Keywords: solo, dopo, questo, checkpoint, passa, fase
+         ❌ No evidence found
+   ⏳ checkpoint_1: pending
+      Verifications: 1/5 verified
+   ⏳ checkpoint_1: 1/5 verifications found (still pending)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_1)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ avere più clienti                                                            │
+│ Time: 00:51:25                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+⚠️  [zck2fj] Sales tracking: Fallback - tracked user message without isFinal flag
+🔇 [zck2fj] AI finished speaking (turn complete)
+💾 [zck2fj] Saved AI message (server-side): 5 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Interessante! E se dovessi scegliere una cosa, qual è il problema principale │
+│ che stai cercando di risolvere?                                              │
+│ Time: 00:51:25                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [zck2fj] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Step Advancement Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [zck2fj] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_1
+   📍 Current Step: phase_1_step_2
+   📍 Phase Index: 0, Step Index: 1
+   📜 Script has 7 phases
+   💬 Conversation has 5 messages
+   📨 Calling StepAdvancementAgent.analyze()...
+
+🤖 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP-AGENT] Starting analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_1 / phase_1_step_2
+   💬 Recent messages: 5
+   🔑 Using clientId: 0c73bbe5...
+   📡 Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 Finding Vertex AI settings for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (isConsultantUsingOwnAI: true)
+📋 Found 1 Vertex AI setting(s) for consultant
+🔍 Checking Vertex AI setting: managedBy=self, usageScope=both
+✅ usageScope is 'both' - access granted
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 RAW SERVICE ACCOUNT JSON FROM DATABASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Settings ID: 4c4e1eb2-47b8-4649-8a92-c656c2988229
+serviceAccountJson length: 2376
+First 300 chars: {"type":"service_account","project_id":"gen-lang-client-0278434337","private_key_id":"7692537ec6cc9ff110932c4c77edce22b59ab9e5","private_key":"-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCmi2GSMb4Z3rEY\nJo+4znbDAzju7HVj7P8IR60/ZCX6CaGG4h8T1rWYHzAUdzIjO8WUklLJFJ03ZS
+Last 200 chars: /v1/certs","client_x509_cert_url":"https://www.googleapis.com/robot/v1/metadata/x509/vertex-ai-service-account%40gen-lang-client-0278434337.iam.gserviceaccount.com","universe_domain":"googleapis.com"}
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 DEBUG VERTEX AI CREDENTIALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+GOOGLE_API_KEY presente? false
+GOOGLE_APPLICATION_CREDENTIALS presente? false
+credentials.type: service_account
+credentials.project_id: gen-lang-client-0278434337
+credentials.private_key_id: 7692537ec6cc9ff110932c4c77edce22b59ab9e5
+credentials.client_email: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+credentials.client_id: 102188926920042138104
+credentials.private_key length: 1704
+credentials.private_key starts with: -----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w
+settings.projectId: gen-lang-client-0278434337
+settings.location: us-central1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ Successfully created Vertex AI client (managedBy: self, usageScope: both)
+   ✅ AI provider obtained in 225ms
+   📝 Prompt length: 3490 chars
+   💬 Recent messages being analyzed:
+      1. [AGENTE] "Fantastico! Alla grande! Senti, da dove mi chiami?"
+      2. [AGENTE] "Super! Conosco, bellissima zona! Ok, luigi, per ottimizzare i tempi di entrambi,..."
+      3. [AGENTE] "Fantastico! Evvai, iniziamo subito allora! Dimmi, perché hai deciso di partecipa..."
+      4. [AGENTE] "Interessante! E se dovessi scegliere una cosa, qual è il problema principale che..."
+   🚀 Calling Gemini gemini-2.0-flash...
+🔄 Switching model from gemini-2.5-flash to gemini-2.0-flash
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_Se89C-5wrOxfFgqO, ConversationId: d87bcd2c-2085-4702-be73-c3b0b49c2d67
+   ⏱️ Gemini responded in 868ms
+   📄 Raw response (first 300 chars): "```json
+{"shouldAdvance": false, "nextPhaseId": null, "nextStepId": null, "reasoning": "L'agente ha saltato la spiegazione del processo (phase_1_step_2) e ha iniziato subito con le domande per scoprire i pain points. Quindi, l'obiettivo dello step corrente non \u00e8 stato raggiunto.", "confidence":..."
+   🔍 Parsing JSON response...
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [STEP-AGENT] Analysis completed in 1093ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → shouldAdvance: false
+   → nextPhase: same
+   → nextStep: same
+   → confidence: 100%
+   → reasoning: L'agente ha saltato la spiegazione del processo (phase_1_step_2) e ha iniziato subito con le domande per scoprire i pain points. Quindi, l'obiettivo dello step corrente non è stato raggiunto.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [zck2fj] STEP ADVANCEMENT AGENT - RESULT (1093ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 100%
+   💡 reasoning: L'agente ha saltato la spiegazione del processo (phase_1_step_2) e ha iniziato subito con le domande per scoprire i pain points. Quindi, l'obiettivo dello step corrente non è stato raggiunto.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=1, hasIds=false
+🔓 [zck2fj] Step Advancement lock released
+🎤 [zck2fj] Receiving audio chunks (last logged: seq 3075)
+💾 [zck2fj] Autosave: Saving 1 new messages...
+✅ [zck2fj] Autosave: 1 messages saved successfully (total saved: 5/5)
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-11-16T01:55:16.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-11-16T01:55:16.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+🎤 [zck2fj] Receiving audio chunks (last logged: seq 3826)
+💾 [zck2fj] Autosave: No new messages to save (5 total, all persisted)
+💾 [zck2fj] Autosave: No new messages to save (5 total, all persisted)
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-11-16T01:55:16.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-11-16T01:55:16.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+💾 [zck2fj] Autosave: No new messages to save (5 total, all persisted)
+12:53:20 AM [express] POST /api/activity/session/heartbeat 200 in 937ms :: {"success":true,"lastActiv…
+💾 [zck2fj] Autosave: No new messages to save (5 total, all persisted)
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-11-16T01:55:16.000Z
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-11-16T01:55:16.000Z
+❌ [WHATSAPP POLLING] Error for agent Marco setter: RestException [Error]: Authentication Error - invalid username
+    at MessagePage.processResponse (/home/runner/workspace/node_modules/twilio/lib/base/Page.js:135:19)
+    at new Page (/home/runner/workspace/node_modules/twilio/lib/base/Page.js:17:28)
+    at new MessagePage (/home/runner/workspace/node_modules/twilio/lib/rest/api/v2010/account/message.js:360:9)
+    at /home/runner/workspace/node_modules/twilio/lib/rest/api/v2010/account/message.js:328:63
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  status: 401,
+  code: 20003,
+  moreInfo: 'https://www.twilio.com/docs/errors/20003',
+  details: undefined
+}
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-11-16T01:55:16.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+💾 [zck2fj] Autosave: No new messages to save (5 total, all persisted)
+💾 [zck2fj] Autosave: No new messages to save (5 total, all persisted)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-11-27T00:55:00.026Z
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📋 Found 0 pending leads to contact
+📊 [CALENDAR SYNC] Syncing 1 consultant(s)...
+
+🔄 [CALENDAR SYNC] Starting sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+📋 Found 3 leads ready for follow-up
+📤 Processing lead: Gianluca Perna (+393933318891)
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: 881b6ed6-3910-4198-9276-0bc9c3030b50
+   Lead Name: Gianluca Perna
+   Message Type: followup_final (14 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+📤 Processing lead: Alessio Chianetta (+393890566422)
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)

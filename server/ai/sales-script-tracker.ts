@@ -14,7 +14,8 @@ import { db } from '../db';
 import { salesConversationTraining, salesAgentTrainingSummary, salesScripts, clientSalesAgents } from '@shared/schema';
 import { eq, and, sql as drizzleSql } from 'drizzle-orm';
 import { SalesScriptLogger } from './sales-script-logger';
-import { CheckpointDetector } from './checkpoint-detector';
+// ❌ DEPRECATED: CheckpointDetector sostituito da StepAdvancementAgent (AI semantico)
+// import { CheckpointDetector } from './checkpoint-detector';
 import { parseScriptContentToStructure, ScriptStructure } from './sales-script-structure-parser';
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -546,35 +547,17 @@ export class SalesScriptTracker {
       return;
     }
     
-    // Use CheckpointDetector to analyze transcript
-    const detectionResults = CheckpointDetector.detectCheckpoints(
-      pendingCheckpoints,
-      this.state.fullTranscript,
-      this.state.currentPhase
-    );
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ❌ DEPRECATED: CheckpointDetector (keyword-based) sostituito da StepAdvancementAgent
+    // Il nuovo sistema usa AI semantica per valutare l'avanzamento degli step
+    // Vedi gemini-live-ws-service.ts per l'implementazione con StepAdvancementAgent
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    console.log(`   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)`);
+    console.log(`   ℹ️ Pending checkpoints: ${pendingCheckpoints.map(cp => cp.id).join(', ')}`);
     
-    // Process results and auto-complete verified checkpoints
-    for (const result of detectionResults) {
-      if (result.status === "completed") {
-        // Add to state with evidence
-        this.state.checkpointsCompleted.push(result);
-        
-        console.log(`\n✅ [AUTO-DETECT] CHECKPOINT AUTO-COMPLETED: ${result.checkpointId}`);
-        const verifiedCount = result.verifications.filter(v => v.status === "verified").length;
-        console.log(`   Verifications: ${verifiedCount}/${result.verifications.length} verified`);
-        
-        result.verifications.forEach(v => {
-          if (v.status === "verified" && v.evidence) {
-            console.log(`   ✓ ${v.requirement}`);
-            console.log(`     Evidence: "${v.evidence.excerpt.substring(0, 80)}..."`);
-            console.log(`     Keywords: ${v.evidence.matchedKeywords.join(', ')}`);
-          }
-        });
-      } else if (result.status === "pending") {
-        const verifiedCount = result.verifications.filter(v => v.status === "verified").length;
-        console.log(`   ⏳ ${result.checkpointId}: ${verifiedCount}/${result.verifications.length} verifications found (still pending)`);
-      }
-    }
+    // NOTE: Non usiamo più CheckpointDetector.detectCheckpoints()
+    // I checkpoint vengono ora gestiti tramite StepAdvancementAgent.analyze()
+    // che valuta semanticamente se avanzare alla fase/step successivo
   }
   
   /**
