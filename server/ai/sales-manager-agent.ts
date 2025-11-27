@@ -760,28 +760,60 @@ REGOLE:
     confidence: number;
     reasoning: string;
   } {
+    console.log(`🤖 [SALES-MANAGER] Raw AI response (${responseText.length} chars):`, 
+      responseText.substring(0, 300) + (responseText.length > 300 ? '...' : ''));
+    
     try {
-      let cleanText = responseText.trim();
-      if (cleanText.startsWith('```json')) cleanText = cleanText.slice(7);
-      if (cleanText.startsWith('```')) cleanText = cleanText.slice(3);
-      if (cleanText.endsWith('```')) cleanText = cleanText.slice(0, -3);
-      cleanText = cleanText.trim();
+      let jsonText: string | null = null;
       
-      const parsed = JSON.parse(cleanText);
+      const jsonMatch = responseText.match(/\{[\s\S]*?"shouldAdvance"[\s\S]*?\}/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[0];
+        console.log(`✅ [SALES-MANAGER] Extracted JSON via regex`);
+      } else {
+        let cleanText = responseText.trim();
+        if (cleanText.startsWith('```json')) cleanText = cleanText.slice(7);
+        if (cleanText.startsWith('```')) cleanText = cleanText.slice(3);
+        if (cleanText.endsWith('```')) cleanText = cleanText.slice(0, -3);
+        jsonText = cleanText.trim();
+      }
       
-      return {
+      const parsed = JSON.parse(jsonText);
+      
+      const result = {
         shouldAdvance: Boolean(parsed.shouldAdvance),
         nextPhaseId: parsed.shouldAdvance ? (parsed.nextPhaseId || null) : null,
         nextStepId: parsed.shouldAdvance ? (parsed.nextStepId || null) : null,
         reasoning: String(parsed.reasoning || 'No reasoning'),
         confidence: Math.min(1, Math.max(0, Number(parsed.confidence) || 0.5))
       };
-    } catch {
+      
+      console.log(`✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=${result.shouldAdvance}, confidence=${result.confidence}`);
+      return result;
+      
+    } catch (error: any) {
+      console.error(`❌ [SALES-MANAGER] Parse error:`, error.message);
+      console.error(`❌ [SALES-MANAGER] Full response was:`, responseText);
+      
+      const advanceMatch = responseText.match(/shouldAdvance["\s:]+(\w+)/i);
+      const hasAdvance = advanceMatch && advanceMatch[1].toLowerCase() === 'true';
+      
+      if (advanceMatch) {
+        console.log(`⚠️ [SALES-MANAGER] Fallback extraction: shouldAdvance=${hasAdvance}`);
+        return {
+          shouldAdvance: hasAdvance,
+          nextPhaseId: null,
+          nextStepId: null,
+          reasoning: 'Extracted via fallback (JSON parse failed)',
+          confidence: 0.3
+        };
+      }
+      
       return {
         shouldAdvance: false,
         nextPhaseId: null,
         nextStepId: null,
-        reasoning: 'Failed to parse response',
+        reasoning: `Failed to parse response: ${error.message}`,
         confidence: 0
       };
     }

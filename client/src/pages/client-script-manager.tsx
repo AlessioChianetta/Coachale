@@ -495,6 +495,19 @@ export default function ClientScriptManager() {
             });
         }
         
+        if (parsed && !parsed.metadata) {
+          console.log('📦 [ScriptManager] Creating metadata from script info (was missing)');
+          parsed.metadata = {
+            name: selectedScript.name || 'Script',
+            type: (selectedScript.scriptType as 'discovery' | 'demo' | 'objections') || 'discovery',
+            version: '1.0.0',
+          };
+        }
+        
+        if (parsed && !parsed.globalRules) {
+          parsed.globalRules = [];
+        }
+        
         setBlockStructure(parsed);
         setParsingFailed(!parsed || !parsed.phases?.length);
         setEditorMode((!parsed || !parsed.phases?.length) ? 'text' : 'blocks');

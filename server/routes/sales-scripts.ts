@@ -5,6 +5,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { getDiscoveryScript, getDemoScript, getObjectionsScript } from '../ai/sales-scripts-base';
 import { AuthRequest, requireRole } from '../middleware/auth';
 import { clearScriptCache } from '../ai/sales-agent-prompt-builder';
+import { parseTextToBlocks } from '../../shared/script-parser';
 
 const router = Router();
 
@@ -169,8 +170,8 @@ router.post('/', requireClient, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Tipo script non valido' });
     }
     
-    // Parse structure from content
-    const structure = parseScriptStructure(content, scriptType);
+    // Parse structure from content using the complete parser
+    const structure = parseTextToBlocks(content, scriptType as 'discovery' | 'demo' | 'objections');
     
     // Se lo script viene creato come attivo, disattiva gli altri dello stesso tipo
     // Altrimenti, se ci sono già script attivi, lascia questo come non attivo
@@ -236,7 +237,7 @@ router.put('/:id', requireClient, async (req: AuthRequest, res: Response) => {
     }
     
     // 🔧 FIX: Use client-provided structure if available (preserves IDs!)
-    // Only fall back to parseScriptStructure for legacy clients or text-only updates
+    // Only fall back to parseTextToBlocks for legacy clients or text-only updates
     let structure = existingScript.structure;
     if (clientStructure && typeof clientStructure === 'object' && Array.isArray(clientStructure.phases)) {
       // ✅ Client sent structure with preserved IDs - use it directly
@@ -244,8 +245,25 @@ router.put('/:id', requireClient, async (req: AuthRequest, res: Response) => {
       console.log(`📦 [ScriptUpdate] Using client-provided structure (IDs preserved): ${clientStructure.phases?.length || 0} phases`);
     } else if (content && content !== existingScript.content) {
       // Fallback: Parse from content if no structure provided and content changed
-      structure = parseScriptStructure(content, existingScript.scriptType);
+      structure = parseTextToBlocks(content, existingScript.scriptType as 'discovery' | 'demo' | 'objections');
       console.log(`⚠️ [ScriptUpdate] No structure provided, parsing from content (new IDs generated)`);
+    }
+    
+    // 🔧 FIX: Ensure structure always has metadata (repair legacy structures)
+    if (structure && typeof structure === 'object') {
+      const structureObj = structure as any;
+      if (!structureObj.metadata) {
+        structureObj.metadata = {
+          name: name || existingScript.name || 'Script',
+          type: existingScript.scriptType as 'discovery' | 'demo' | 'objections',
+          version: '1.0.0',
+        };
+        console.log(`🔧 [ScriptUpdate] Created missing metadata for structure`);
+      }
+      if (!structureObj.globalRules) {
+        structureObj.globalRules = [];
+      }
+      structure = structureObj;
     }
     
     // Calculate new version
@@ -310,8 +328,8 @@ router.post('/:id/reparse', requireClient, async (req: AuthRequest, res: Respons
       return res.status(404).json({ error: 'Script non trovato' });
     }
     
-    // Re-parse the structure with corrected ID format
-    const newStructure = parseScriptStructure(script.content, script.scriptType);
+    // Re-parse the structure with corrected ID format using the complete parser
+    const newStructure = parseTextToBlocks(script.content, script.scriptType as 'discovery' | 'demo' | 'objections');
     
     // Log the changes for debugging
     console.log(`🔄 [REPARSE] Re-parsing script ${id}`);
@@ -591,7 +609,7 @@ router.post('/create-from-template', requireClient, async (req: AuthRequest, res
         name: name || defaultName,
         scriptType,
         content,
-        structure: parseScriptStructure(content, scriptType),
+        structure: parseTextToBlocks(content, scriptType as 'discovery' | 'demo' | 'objections'),
         description,
         tags: ['template'],
         isActive: false,
@@ -641,7 +659,7 @@ router.post('/seed-defaults', requireClient, async (req: AuthRequest, res: Respo
         name: 'Discovery Call - Base',
         scriptType: 'discovery' as const,
         content: discoveryContent,
-        structure: parseScriptStructure(discoveryContent, 'discovery'),
+        structure: parseTextToBlocks(discoveryContent, 'discovery'),
         description: 'Script base per la Discovery Call',
         tags: ['base', 'discovery'],
         isActive: true,
@@ -654,7 +672,7 @@ router.post('/seed-defaults', requireClient, async (req: AuthRequest, res: Respo
         name: 'Demo Call - Base',
         scriptType: 'demo' as const,
         content: demoContent,
-        structure: parseScriptStructure(demoContent, 'demo'),
+        structure: parseTextToBlocks(demoContent, 'demo'),
         description: 'Script base per la Demo Call',
         tags: ['base', 'demo'],
         isActive: true,
@@ -667,7 +685,7 @@ router.post('/seed-defaults', requireClient, async (req: AuthRequest, res: Respo
         name: 'Gestione Obiezioni - Base',
         scriptType: 'objections' as const,
         content: objectionsContent,
-        structure: parseScriptStructure(objectionsContent, 'objections'),
+        structure: parseTextToBlocks(objectionsContent, 'objections'),
         description: 'Script base per la gestione delle obiezioni',
         tags: ['base', 'obiezioni'],
         isActive: true,
@@ -815,8 +833,12 @@ function parseScriptStructure(content: string, scriptType: string): any {
   }
   
   return {
-    version: '1.0.0',
-    scriptType,
+    metadata: {
+      name: 'Script',
+      type: scriptType as 'discovery' | 'demo' | 'objections',
+      version: '1.0.0',
+    },
+    globalRules: [],
     phases,
     parsedAt: new Date().toISOString(),
   };

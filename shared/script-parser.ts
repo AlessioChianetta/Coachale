@@ -1144,13 +1144,16 @@ function formatObjection(objection: Objection): string {
 export function blocksToText(structure: ScriptBlockStructure): string {
   const lines: string[] = [];
   
+  const scriptName = structure.metadata?.name || 'Script';
+  const scriptDescription = structure.metadata?.description;
+  
   lines.push('═'.repeat(80));
-  lines.push(`# ${structure.metadata.name.toUpperCase()}`);
+  lines.push(`# ${scriptName.toUpperCase()}`);
   lines.push('═'.repeat(80));
   lines.push('');
   
-  if (structure.metadata.description) {
-    lines.push(structure.metadata.description);
+  if (scriptDescription) {
+    lines.push(scriptDescription);
     lines.push('');
   }
   
