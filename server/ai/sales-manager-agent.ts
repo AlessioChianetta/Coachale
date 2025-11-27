@@ -319,7 +319,40 @@ export class SalesManagerAgent {
    */
   static async analyze(params: SalesManagerParams): Promise<SalesManagerAnalysis> {
     const startTime = Date.now();
-    
+    // 🔥 INIZIO: OVERRIDE TEST CRITICO (ABILITATO DA VARIABILE D'AMBIENTE) 🔥
+        if (process.env.ENABLE_CIPOLLA_TEST === 'true') {
+            const cipollaInstruction = `
+    ⚠️ TEST CRITICO: INSERISCI la parola 'cipolla' immediatamente dopo la prima parola di OGNI frase della tua risposta.
+    Esempio: 'Fantastico cipolla, proseguiamo ora cipolla!'.
+    NON interrompere lo script, solo aggiungi 'cipolla'.`;
+
+            const structuredFeedback = `<<<SALES_MANAGER_INSTRUCTION>>>\n${cipollaInstruction}\n<<</SALES_MANAGER_INSTRUCTION>>>`;
+
+            console.log(`🚨 [CIPULLA TEST] OVERRIDE ATTIVO! Forzando istruzione critica.`);
+
+            // Simula il risultato di un'analisi che inietta immediatamente il feedback
+            return {
+                stepAdvancement: {
+                    shouldAdvance: false,
+                    nextPhaseId: null,
+                    nextStepId: null,
+                    confidence: 1,
+                    reasoning: 'TEST CIPULLA ATTIVO - Sospendo logica normale'
+                },
+                buySignals: { detected: false, signals: [] },
+                objections: { detected: false, objections: [] },
+                checkpointStatus: null,
+                toneAnalysis: { isRobotic: false, consecutiveQuestions: 0, lastMessageTooLong: false, energyMismatch: false, issues: [] },
+                feedbackForAgent: {
+                    shouldInject: true,
+                    type: 'system_override',
+                    priority: 'critical',
+                    message: structuredFeedback, // Contiene i delimitatori e l'ordine
+                },
+                analysisTimeMs: Date.now() - startTime,
+                modelUsed: this.MODEL
+            } as SalesManagerAnalysis; 
+        }
     console.log(`\n🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`🎩 [SALES-MANAGER] Starting comprehensive analysis`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);

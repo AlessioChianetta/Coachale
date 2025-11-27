@@ -3677,13 +3677,25 @@ ${feedback.toneReminder ? `🎵 TONO: ${feedback.toneReminder}` : ''}
         try {
           const msg: LiveMessage = JSON.parse(data.toString());
           
-          if (msg.type === 'audio' && msg.data) {
-            // Frontend already sends PCM16 base64 at 16kHz - no conversion needed!
-            
-            // 🟢 CACHE UPDATE: Refresh activity timestamp quando arriva audio
-            if (currentConsultationId) {
-              refreshSessionActivity(currentConsultationId, userId);
-            }
+            if (msg.type === 'audio' && msg.data) {
+
+                // 🔥 [NUOVO] INIEZIONE PRE-FLIGHT 🔥
+                if (pendingFeedbackForAI && geminiSession && isSessionActive && geminiSession.readyState === WebSocket.OPEN) {
+                   console.log(`🚀 [${connectionId}] INJECTING FEEDBACK (Pre-Flight Strategy)`);
+
+                   const feedbackPayload = {
+                      clientContent: {
+                         turns: [{
+                            role: 'user',
+                            // Usiamo la variabile che contiene l'istruzione Cipolla
+                            parts: [{ text: pendingFeedbackForAI }]
+                         }],
+                         turnComplete: false // CRITICO: Non chiudere il turno, sta per arrivare l'audio
+                      }
+                   };
+                 geminiSession.send(JSON.stringify(feedbackPayload));
+                 pendingFeedbackForAI = null; // Reset immediato
+              }
             
             // Log ridotto: solo 1 ogni 30 secondi
             const now = Date.now();
