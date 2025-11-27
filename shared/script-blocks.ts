@@ -26,8 +26,10 @@ export interface EnergySettings {
 
 export interface QuestionInstructions {
   wait: boolean;
+  waitDetails?: string;
   listen?: string;
   react?: string[];
+  reactContext?: string;
 }
 
 export interface Question {

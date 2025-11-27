@@ -122,22 +122,44 @@ function parseEnergySettings(text: string): EnergySettings | undefined {
 
 function parseQuestionInstructions(text: string): QuestionInstructions {
   const hasWait = /⏸️\s*ASPETTA/i.test(text);
+  
+  const waitMatch = text.match(/⏸️\s*ASPETTA\s*(?:LA\s*RISPOSTA)?\s*[-–—]?\s*([^🎧💬📌\n]*)/i);
+  let waitDetails = waitMatch?.[1]?.trim() || undefined;
+  if (waitDetails && waitDetails.length === 0) waitDetails = undefined;
+  
   const listenMatch = text.match(/🎧\s*ASCOLTA\s*([^\n]*)/i);
-  const reactMatches = text.match(/💬\s*REAGISCI[^:]*:\s*([^\n]+)/gi);
-
+  
+  const reactFullMatch = text.match(/💬\s*REAGISCI\s*([^:]+):\s*([\s\S]*?)(?=📌|⏸️|🎧|🍪|---|$)/i);
+  let reactContext = '';
   const reactions: string[] = [];
-  if (reactMatches) {
-    reactMatches.forEach(m => {
-      const content = m.replace(/💬\s*REAGISCI[^:]*:\s*/i, '').trim();
+  
+  if (reactFullMatch) {
+    const contextPart = reactFullMatch[1].trim();
+    if (contextPart && contextPart.length > 0 && !/^(brevemente|con|mostrando|sempre)/i.test(contextPart)) {
+      reactContext = contextPart;
+    } else if (contextPart && contextPart.length > 0) {
+      reactContext = contextPart;
+    }
+    
+    const content = reactFullMatch[2];
+    const firstLine = content.split('\n')[0].trim();
+    const phrases = firstLine.split(/[\/\|]/).map(p => p.trim()).filter(p => p.length > 0);
+    reactions.push(...phrases);
+  } else {
+    const simpleReactMatch = text.match(/💬\s*REAGISCI\s*:\s*([^\n]+)/i);
+    if (simpleReactMatch) {
+      const content = simpleReactMatch[1].trim();
       const phrases = content.split(/[\/\|]/).map(p => p.trim()).filter(p => p.length > 0);
       reactions.push(...phrases);
-    });
+    }
   }
 
   return {
     wait: hasWait,
+    waitDetails: waitDetails,
     listen: listenMatch?.[1]?.trim(),
     react: reactions.length > 0 ? reactions : undefined,
+    reactContext: reactContext && reactContext.length > 0 ? reactContext : undefined,
   };
 }
 
@@ -333,7 +355,11 @@ function parseCheckpoint(text: string): Checkpoint | undefined {
   const checks: string[] = [];
   const checksMatches = text.match(/[✓✅]\s*([^\n?]+\??)/g);
   if (checksMatches) {
-    checks.push(...checksMatches.map(c => c.replace(/^[✓✅]\s*/, '').trim()));
+    // Filter out the "SOLO DOPO QUESTO CHECKPOINT" line - it's added by the formatter
+    const filteredChecks = checksMatches
+      .map(c => c.replace(/^[✓✅]\s*/, '').trim())
+      .filter(c => !c.match(/SOLO\s*DOPO\s*QUESTO\s*CHECKPOINT/i));
+    checks.push(...filteredChecks);
   }
 
   let resistanceHandling: ResistanceHandling | undefined;
@@ -390,13 +416,32 @@ function parseStep(text: string): Step | undefined {
 
   const objectiveMatch = text.match(/🎯\s*OBIETTIVO:\s*([^\n]+)/i);
   
+  // Extract text BEFORE ladder section for parsing questions
+  // Ladder sections start with patterns like "🔍 - SCAVO", "📋 LADDER", "LIVELLO 1️⃣"
+  const ladderStartPatterns = [
+    /🔍\s*[-–—]?\s*SCAVO/i,
+    /📋\s*LADDER/i,
+    /⚠️\s*QUANDO\s*ATTIVARLA/i,
+    /LIVELLO\s*1️⃣/i,
+    /LIVELLO\s*1\s*[-–—:]/i,
+  ];
+  
+  let textForQuestions = text;
+  for (const pattern of ladderStartPatterns) {
+    const match = text.match(pattern);
+    if (match && match.index !== undefined) {
+      textForQuestions = text.substring(0, match.index);
+      break;
+    }
+  }
+  
   return {
     id: generateBlockId(),
     number: parseInt(headerMatch[1]),
     name: headerMatch[2].trim(),
     objective: objectiveMatch?.[1]?.trim() || '',
     energy: parseEnergySettings(text),
-    questions: parseQuestions(text),
+    questions: parseQuestions(textForQuestions),
     biscottino: parseBiscottino(text),
     ladder: parseLadder(text),
     notes: undefined,
@@ -873,25 +918,38 @@ function formatEnergySettings(energy: EnergySettings): string {
 function formatQuestion(question: Question): string {
   const lines: string[] = [];
   
-  const marker = question.marker ? `${question.marker} - ` : '';
-  const keyLabel = question.isKey ? 'DOMANDA CHIAVE' : 'DOMANDA';
+  let label = '';
+  if (question.isKey) {
+    label = 'DOMANDA CHIAVE';
+  } else if (question.marker) {
+    const markerUpper = question.marker.toUpperCase();
+    if (markerUpper === 'DOMANDA' || markerUpper.includes('DOMANDA')) {
+      label = question.marker;
+    } else {
+      label = `${question.marker}`;
+    }
+  } else {
+    label = 'DOMANDA';
+  }
   
-  lines.push(`📌 ${marker}${keyLabel}:`);
-  lines.push(`   "${question.text}"`);
+  lines.push(`📌 ${label}: "${question.text}"`);
   
   if (question.instructions?.wait) {
-    lines.push('   ');
-    lines.push('   ⏸️ ASPETTA LA RISPOSTA');
+    const waitText = question.instructions.waitDetails 
+      ? `⏸️ ASPETTA LA RISPOSTA - ${question.instructions.waitDetails}`
+      : '⏸️ ASPETTA LA RISPOSTA';
+    lines.push(waitText);
   }
   
   if (question.instructions?.listen) {
-    lines.push('   ');
-    lines.push(`   🎧 ASCOLTA ${question.instructions.listen}`);
+    lines.push(`🎧 ASCOLTA ${question.instructions.listen}`);
   }
   
   if (question.instructions?.react && question.instructions.react.length > 0) {
-    lines.push('   ');
-    lines.push(`   💬 REAGISCI: ${question.instructions.react.join(' / ')}`);
+    const reactPrefix = question.instructions.reactContext 
+      ? `💬 REAGISCI ${question.instructions.reactContext}:`
+      : '💬 REAGISCI:';
+    lines.push(`${reactPrefix} ${question.instructions.react.join(' / ')}`);
   }
   
   return lines.join('\n');
@@ -1033,7 +1091,7 @@ function formatPhase(phase: Phase): string {
   
   lines.push('═'.repeat(80));
   lines.push(`**FASE #${phase.number} - ${phase.name}**`);
-  if (phase.description) {
+  if (phase.description && !phase.description.toUpperCase().includes(phase.name.toUpperCase())) {
     lines.push(`**${phase.description}**`);
   }
   lines.push('═'.repeat(80));
