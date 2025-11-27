@@ -2738,22 +2738,9 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                 // Log ridotto - solo primo chunk o ogni 30 secondi
                 // (non logghiamo ogni singolo chunk)
                 
-                // 🆕 TASK 7: Blocca audio AI finché prospect non ha parlato
-                // Questo previene che l'AI parli per primo (sia inizio che resume)
-                if (!prospectHasSpoken) {
-                  aiOutputBuffered++;
-                  if (aiOutputBuffered === 1) {
-                    console.log(`\n🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                    console.log(`🚫 [${connectionId}] TASK 7 BLOCKING: AI audio output BLOCCATO`);
-                    console.log(`   → Prospect non ha ancora parlato (prospectHasSpoken = false)`);
-                    console.log(`   → L'audio AI verrà scartato finché l'utente non parla`);
-                    console.log(`   → Questo previene il problema di AI che parla per primo`);
-                    console.log(`🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-                  } else if (aiOutputBuffered % 50 === 0) {
-                    console.log(`🚫 [${connectionId}] Still blocking AI audio... (${aiOutputBuffered} chunks dropped)`);
-                  }
-                  continue; // BLOCCA - non inviare audio al client
-                }
+                // ❌ DISABILITATO: Il blocco prospectHasSpoken causava problemi di interazione
+                // L'AI non poteva parlare anche quando l'utente era in attesa
+                // TODO: Risolvere il problema con un approccio diverso (prompt-based invece di blocco audio)
                 
                 // 🔒 Track AI speaking (audio streaming) - MANTIENI true su OGNI chunk
                 if (!isAiSpeaking) {
