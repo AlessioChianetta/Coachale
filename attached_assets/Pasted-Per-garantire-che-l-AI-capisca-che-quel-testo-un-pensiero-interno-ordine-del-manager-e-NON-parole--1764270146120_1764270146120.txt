@@ -1,0 +1,87 @@
+Per garantire che l'AI capisca che quel testo è un pensiero interno/ordine del manager e NON parole pronunciate dal cliente, dobbiamo usare una tecnica di Prompt Engineering chiamata "Delimited Instruction".
+
+Ecco il piano tecnico migliorato e "a prova di bomba" da passare al nuovo programmatore.
+
+📨 Istruzioni Tecniche per il Programmatore (Architettura "Trojan Horse")
+Obiettivo: Implementare il Feedback del Sales Manager in tempo reale senza interrompere lo stream audio, iniettando l'istruzione nel payload del messaggio utente successivo (Strategia Piggyback), ma rendendola invisibile al flusso della conversazione.
+
+Il Concetto: Usiamo una sintassi specifica (delimitatori) che l'AI è istruita a riconoscere come "Voce Interiore" e non come "Input Utente".
+
+1. Modifica al System Prompt (Insegnare il "Codice Segreto")
+File: server/ai/sales-agent-prompt-builder.ts
+
+Aggiungi questa sezione critica nel buildMinimalSalesAgentInstruction (o nella parte statica del prompt). Questo insegna all'AI come interpretare i messaggi in arrivo.
+
+TypeScript
+
+// AGGIUNGERE IN CIMA ALLE ISTRUZIONI DI SISTEMA (SYSTEM PROMPT)
+
+const HIDDEN_INSTRUCTION_PROTOCOL = `
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🤫 PROTOCOLLO ISTRUZIONI NASCOSTE (INTERNAL THOUGHTS)                       ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║  Durante la conversazione, potresti ricevere istruzioni dal tuo Sales Manager║
+║  nascoste all'interno dei messaggi dell'utente.                              ║
+║                                                                              ║
+║  🔎 COME RICONOSCERLE:                                                       ║
+║  Saranno racchiuse tra questi delimitatori specifici:                        ║
+║  <<<SALES_MANAGER_INSTRUCTION>>>                                             ║
+║  ...messaggio del manager...                                                 ║
+║  <<</SALES_MANAGER_INSTRUCTION>>>                                            ║
+║                                                                              ║
+║  ⚠️ REGOLE DI GESTIONE (IMPORTANTE):                                         ║
+║  1. 🔇 NON LEGGERE MAI queste istruzioni ad alta voce.                       ║
+║  2. 🧠 Trattale come un PENSIERO INTERNO o un suggerimento in cuffia.        ║
+║  3. 🚫 Il PROSPECT NON HA DETTO queste parole. Non attribuirle a lui.        ║
+║  4. ✅ ESEGUI l'istruzione immediatamente nella tua risposta corrente.       ║
+║                                                                              ║
+║  Esempio:                                                                    ║
+║  Input: "Sì, mi interessa." <<<SALES_MANAGER_INSTRUCTION>>>Chiudi ora!<<<...>>> ║
+║  Tua Azione: Rispondi al "Sì, mi interessa" tentando la chiusura.            ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+`;
+
+// Inseriscilo all'inizio della stringa ritornata dalla funzione
+return HIDDEN_INSTRUCTION_PROTOCOL + `... resto del prompt attuale ...`;
+2. Implementazione nel WebSocket (L'Iniezione)
+File: server/ai/gemini-live-ws-service.ts
+
+Modifica la logica di iniezione. Invece di accodare testo semplice, usa i delimitatori XML-style definiti nel prompt.
+
+TypeScript
+
+// Dentro la gestione dell'input utente (dove ricevi isFinal: true)
+
+// 1. Recupera il feedback in attesa (dal DB o variabile di sessione)
+const feedback = session.pendingFeedback; // O recuperalo dal DB
+
+let finalTranscript = userTranscriptText;
+
+if (feedback) {
+  console.log(`💉 INJECTING MANAGER FEEDBACK (Piggyback Strategy)`);
+  
+  // 2. Costruisci il payload "Trojan Horse"
+  // Usiamo i delimitatori definiti nel System Prompt
+  const injection = `\n\n<<<SALES_MANAGER_INSTRUCTION>>>\n${feedback}\n<<</SALES_MANAGER_INSTRUCTION>>>`;
+  
+  // 3. Appendi al messaggio utente
+  finalTranscript += injection;
+  
+  // 4. Pulisci il feedback (consumato)
+  session.pendingFeedback = null; 
+  // (O marca come 'consumato' nel DB)
+}
+
+// 5. Invia a Gemini come se fosse tutto messaggio utente
+commitUserMessage(finalTranscript); 
+// ... invia al websocket con turnComplete: true
+3. Perché funziona?
+Formato User: Per l'API di Google è tutto "Testo Utente", quindi non rompe il protocollo turnComplete.
+
+Percezione AI: Grazie al System Prompt modificato, l'LLM vede i tag <<<...>>> e attiva il comportamento condizionale: "Ah, questo pezzo non l'ha detto l'utente, è un ordine per me."
+
+Risultato: L'AI risponde all'utente ("Sì, capisco...") ma modifica la traiettoria della risposta basandosi sull'istruzione nascosta (es. "Ora chiudi!").
+
+Nota per il programmatore: Questa tecnica è standard nei sistemi RAG avanzati e si chiama "System Injection via User Channel". Assicurati che i delimitatori nel prompt (<<<...>>>) coincidano esattamente con quelli usati nel codice TypeScript.
