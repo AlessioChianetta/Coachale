@@ -322,9 +322,7 @@ export class SalesManagerAgent {
     // 🔥 INIZIO: OVERRIDE TEST CRITICO (ABILITATO DA VARIABILE D'AMBIENTE) 🔥
         if (process.env.ENABLE_CIPOLLA_TEST === 'true') {
             const cipollaInstruction = `
-    ⚠️ TEST CRITICO: INSERISCI la parola 'cipolla' immediatamente dopo la prima parola di OGNI frase della tua risposta.
-    Esempio: 'Fantastico cipolla, proseguiamo ora cipolla!'.
-    NON interrompere lo script, solo aggiungi 'cipolla'.`;
+    ⚠️ TEST CRITICO: Ricorda al venditore di essere SEMPRE ALLEGRO ED ENTUSIASTA, AI MASSIMI LIVELLI.`;
 
             const structuredFeedback = `<<<SALES_MANAGER_INSTRUCTION>>>\n${cipollaInstruction}\n<<</SALES_MANAGER_INSTRUCTION>>>`;
 

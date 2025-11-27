@@ -1463,7 +1463,7 @@ export function setupGeminiLiveWSService(server: Server) {
         // This enables unlimited token capacity + automatic caching
         
         // MINIMAL system instruction - goes in setup message (under limit)
-        systemInstruction = buildMinimalSalesAgentInstruction();
+        systemInstruction = buildMinimalSalesAgentInstruction(agent);
         
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         // 🆕 BUILD SCRIPT POSITION from tracker (for dynamic navigation)
