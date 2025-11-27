@@ -890,6 +890,11 @@ export function setupGeminiLiveWSService(server: Server) {
       hasFinalChunk: false
     };
     
+    // 🔧 FEEDBACK BUFFER: Store SalesManager feedback to append to next user message
+    // Instead of injecting with role: 'model' (which Gemini ignores), we append the
+    // feedback to the next user message so it gets processed naturally.
+    let pendingFeedbackForAI: string | null = null;
+    
     /**
      * 🔧 FIX: Helper to add user message to conversationMessages (deduped)
      * This was missing - only AI messages were being added to conversationMessages,
@@ -2848,8 +2853,10 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
             const hasOnlyNonItalianChars = /^[^a-zA-Z\u00C0-\u00FF\u0100-\u017F\s.,!?'-]+$/.test(userTranscriptText);
             
             // Calculate ratio of non-Latin characters (indicates wrong language/encoding)
-            const totalChars = userTranscriptText.replace(/\s/g, '').length;
-            const latinChars = (userTranscriptText.match(/[a-zA-Z\u00C0-\u00FF\u0100-\u017F]/g) || []).length;
+            // 🔧 FIX: Remove common symbols before calculating ratio (€, $, £, %, etc. were causing false positives)
+            const textForAnalysis = userTranscriptText.replace(/[€$£%@#&*()+=\[\]{}|\\:;"'<>,.?\/!\-0-9]/g, '');
+            const totalChars = textForAnalysis.replace(/\s/g, '').length;
+            const latinChars = (textForAnalysis.match(/[a-zA-Z\u00C0-\u00FF\u0100-\u017F]/g) || []).length;
             const nonLatinRatio = totalChars > 0 ? 1 - (latinChars / totalChars) : 0;
             
             // Check for common Spanish/French words (heuristic for wrong language detection)
@@ -2929,6 +2936,30 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                   // This runs AFTER salesTracker, ensuring no duplicates from fallback path
                   commitUserMessage(userTranscriptText);
                   pendingUserTranscript = { text: '', hasFinalChunk: false };
+                  
+                  // 🔧 FEEDBACK INJECTION: If there's buffered feedback from SalesManager,
+                  // inject it now as a text message with role: 'user' and turnComplete: false.
+                  // This way Gemini sees it as context BEFORE responding, without triggering a double response.
+                  if (pendingFeedbackForAI && geminiSession) {
+                    console.log(`\n📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                    console.log(`📤 [${connectionId}] INJECTING BUFFERED FEEDBACK TO GEMINI`);
+                    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                    console.log(`   📝 Feedback: "${pendingFeedbackForAI.substring(0, 100)}..."`);
+                    console.log(`   🔧 Injected with role: 'user', turnComplete: false`);
+                    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                    
+                    const feedbackPayload = {
+                      clientContent: {
+                        turns: [{
+                          role: 'user',
+                          parts: [{ text: pendingFeedbackForAI }]
+                        }],
+                        turnComplete: false // CRITICAL: false = don't trigger response, just add context
+                      }
+                    };
+                    geminiSession.send(JSON.stringify(feedbackPayload));
+                    pendingFeedbackForAI = null; // Clear buffer after injection
+                  }
                 }
               }
               
@@ -3110,6 +3141,15 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           timestamp: msg.timestamp
                         }));
                         
+                        // 🔍 DEBUG: Log esatto dei messaggi passati al SalesManagerAgent
+                        console.log(`\n📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`📋 [${connectionId}] MESSAGGI PASSATI AL SALES MANAGER (${recentMessages.length}):`);
+                        recentMessages.forEach((msg, i) => {
+                          const preview = msg.content.length > 80 ? msg.content.substring(0, 80) + '...' : msg.content;
+                          console.log(`   ${i+1}. [${msg.role.toUpperCase()}]: "${preview}"`);
+                        });
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                        
                         // Prepare script structure for agent
                         const scriptForAgent = {
                           phases: script.phases.map(p => ({
@@ -3179,40 +3219,30 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                         
                         // 🆕 FEEDBACK INJECTION - Uses priority-based feedback from SalesManagerAgent
-                        if (analysis.feedbackForAgent?.shouldInject && geminiSession) {
+                        // 🔧 FIX: Instead of injecting with role: 'model' (which Gemini ignores),
+                        // we save the feedback to a buffer and append it to the NEXT user message.
+                        // This way the AI sees the feedback as part of the user's input and processes it naturally.
+                        if (analysis.feedbackForAgent?.shouldInject) {
                           const feedback = analysis.feedbackForAgent;
                           
-                          // Formato pensiero interno - NON da pronunciare, solo da processare
-                          const internalThought = `[NOTA INTERNA - NON PRONUNCIARE QUESTO, SOLO RICORDALO]
+                          // Formato pensiero interno - verrà appendato al prossimo messaggio utente
+                          pendingFeedbackForAI = `[NOTA PER L'AI - APPLICA NEL PROSSIMO MESSAGGIO]
 🧠 ${feedback.type.toUpperCase()}: ${feedback.message}
 ${feedback.toneReminder ? `📢 Reminder tono: ${feedback.toneReminder}` : ''}
-⚠️ Applica questa correzione nel prossimo messaggio che PRONUNCERAI.
-[FINE NOTA INTERNA]`;
+[FINE NOTA]`;
                           
                           console.log(`\n🔧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                          console.log(`🔧 [${connectionId}] INJECTING FEEDBACK AS INTERNAL THOUGHT`);
+                          console.log(`🔧 [${connectionId}] FEEDBACK BUFFERED FOR NEXT USER MESSAGE`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           console.log(`   📢 Priority: ${feedback.priority.toUpperCase()}`);
                           console.log(`   📋 Type: ${feedback.type}`);
                           console.log(`   📝 Message: ${feedback.message.substring(0, 150)}${feedback.message.length > 150 ? '...' : ''}`);
                           console.log(`   🎵 Tone: ${feedback.toneReminder || 'N/A'}`);
-                          console.log(`   🧠 Injected as role: 'model' (internal thought)`);
+                          console.log(`   💾 Saved to buffer - will be appended to next user audio`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                           
-                          // Inject come pensiero del model stesso (non richiede risposta)
-                          const feedbackPayload = {
-                            clientContent: {
-                              turns: [{
-                                role: 'model',
-                                parts: [{ text: internalThought }]
-                              }],
-                              turnComplete: false
-                            }
-                          };
-                          geminiSession.send(JSON.stringify(feedbackPayload));
-                          
                           await salesTracker.addReasoning('sales_manager_feedback', 
-                            `SalesManager feedback (${feedback.type}/${feedback.priority}): ${feedback.message}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
+                            `SalesManager feedback BUFFERED (${feedback.type}/${feedback.priority}): ${feedback.message}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
                           );
                         }
                         

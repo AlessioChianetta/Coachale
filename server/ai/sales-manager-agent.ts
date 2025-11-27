@@ -311,7 +311,7 @@ const OBJECTION_PATTERNS: Record<ObjectionType, { patterns: RegExp[]; defaultRes
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export class SalesManagerAgent {
-  private static readonly MODEL = "gemini-2.5-flash";
+  private static readonly MODEL = "gemini-2.0-flash-lite";
   private static readonly TIMEOUT_MS = 6000; // 6 secondi max
   
   /**
