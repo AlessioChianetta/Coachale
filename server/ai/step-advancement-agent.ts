@@ -276,6 +276,27 @@ IMPORTANTE:
 - Se siamo all'ultimo step dell'ultima fase, NON si può avanzare.
 - CONTA le domande fatte dall'agente in ogni messaggio - potrebbero coprire più step!
 
+⛔ REGOLA FONDAMENTALE - MAI ASSUMERE RISPOSTE DEL PROSPECT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DEVI vedere ESPLICITAMENTE un messaggio "PROSPECT: ..." nella conversazione.
+
+❌ VIETATO DIRE: "assumiamo che il prospect abbia risposto"
+❌ VIETATO DIRE: "anche se non lo vediamo, il prospect deve aver risposto"
+❌ VIETATO ASSUMERE risposte che non sono presenti nei messaggi
+
+✅ Se vedi SOLO messaggi AGENTE → shouldAdvance = FALSE
+✅ Devi vedere ALMENO UN messaggio PROSPECT dopo la domanda dell'agente
+✅ Se non c'è risposta del prospect → "NON avanzare - manca risposta del prospect"
+
+ESEMPIO DI ERRORE DA EVITARE:
+Messaggi: [AGENTE] "Ciao! Come stai?" [AGENTE] "Benvenuto!" [AGENTE] "Da dove chiami?"
+→ Qui ci sono SOLO messaggi AGENTE = il prospect NON ha parlato = NON AVANZARE!
+
+ESEMPIO CORRETTO:
+Messaggi: [AGENTE] "Ciao! Come stai?" [PROSPECT] "Bene grazie" [AGENTE] "Perfetto!"
+→ Qui c'è un messaggio PROSPECT = il prospect HA risposto = puoi valutare se avanzare
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 ═══════════════════════════════════════════════════════════════
 🔧 FEEDBACK INJECTION (COACHING PER L'AGENTE)
 ═══════════════════════════════════════════════════════════════
