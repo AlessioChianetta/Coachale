@@ -3117,28 +3117,42 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         }
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                         
-                        // ❌ FEEDBACK INJECTION DISABILITATO
-                        // Il feedback veniva inviato con role: 'user' e Gemini lo interpretava
-                        // come un messaggio del prospect, causando un loop infinito di scuse!
-                        // TODO: Trovare un modo alternativo per correggere l'agente in real-time
-                        // Opzioni future:
-                        // 1. Iniettare come system instruction (se supportato)
-                        // 2. Memorizzare e usare nel prossimo prompt dopo risposta reale del prospect
-                        // 3. Mostrare il feedback solo nei log senza inviarlo a Gemini
-                        if (result.feedbackForAgent?.shouldInject) {
+                        // 🆕 FEEDBACK INJECTION v2 - Usa role: 'model' per farlo sembrare un pensiero interno
+                        // Prima usavamo role: 'user' e Gemini rispondeva come se fosse il prospect!
+                        // Ora usiamo role: 'model' così Gemini lo vede come suo ragionamento interno
+                        if (result.feedbackForAgent?.shouldInject && geminiSession) {
                           const feedback = result.feedbackForAgent;
+                          
+                          // Formato pensiero interno - NON da pronunciare, solo da processare
+                          const internalThought = `[NOTA INTERNA - NON PRONUNCIARE QUESTO, SOLO RICORDALO]
+🧠 Auto-correzione: ${feedback.correctionMessage}
+${feedback.toneReminder ? `📢 Reminder tono: ${feedback.toneReminder}` : ''}
+⚠️ Applica questa correzione nel prossimo messaggio che PRONUNCERAI.
+[FINE NOTA INTERNA]`;
+                          
                           console.log(`\n🔧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                          console.log(`🔧 [${connectionId}] FEEDBACK DETECTED (NOT INJECTED - causa loop)`);
+                          console.log(`🔧 [${connectionId}] INJECTING FEEDBACK AS INTERNAL THOUGHT`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           console.log(`   📢 Priority: ${feedback.priority.toUpperCase()}`);
                           console.log(`   📝 Correction: ${feedback.correctionMessage}`);
                           console.log(`   🎵 Tone: ${feedback.toneReminder || 'N/A'}`);
-                          console.log(`   ⚠️ Non iniettato per evitare loop di scuse`);
+                          console.log(`   🧠 Injected as role: 'model' (internal thought)`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                           
-                          // Solo log, non inviare a Gemini
+                          // Inject come pensiero del model stesso (non richiede risposta)
+                          const feedbackPayload = {
+                            clientContent: {
+                              turns: [{
+                                role: 'model',  // 🔑 KEY CHANGE: 'model' invece di 'user'
+                                parts: [{ text: internalThought }]
+                              }],
+                              turnComplete: false  // NON è un turno completo, non richiede risposta
+                            }
+                          };
+                          geminiSession.send(JSON.stringify(feedbackPayload));
+                          
                           await salesTracker.addReasoning('step_advancement_feedback', 
-                            `SubAgent feedback (${feedback.priority}, NON iniettato): ${feedback.correctionMessage}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
+                            `SubAgent feedback iniettato (${feedback.priority}): ${feedback.correctionMessage}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
                           );
                         }
                         
