@@ -82,7 +82,7 @@ export interface StepAdvancementParams {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export class StepAdvancementAgent {
-  private static readonly MODEL = "gemini-2.0-flash";
+  private static readonly MODEL = "gemini-2.5-flash";
   private static readonly TIMEOUT_MS = 5000; // 5 secondi max
   
   /**

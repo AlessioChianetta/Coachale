@@ -216,11 +216,12 @@ router.post('/', requireClient, async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/sales-scripts/:id - Update script (creates new version)
+// 🔧 FIX: Accept structure from client to preserve block IDs
 router.put('/:id', requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const clientId = req.user!.id;
-    const { name, content, description, tags, createNewVersion, changeNotes } = req.body;
+    const { name, content, structure: clientStructure, description, tags, createNewVersion, changeNotes } = req.body;
     
     const [existingScript] = await db
       .select()
@@ -234,8 +235,18 @@ router.put('/:id', requireClient, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Script non trovato' });
     }
     
-    // Parse new structure if content changed
-    const structure = content ? parseScriptStructure(content, existingScript.scriptType) : existingScript.structure;
+    // 🔧 FIX: Use client-provided structure if available (preserves IDs!)
+    // Only fall back to parseScriptStructure for legacy clients or text-only updates
+    let structure = existingScript.structure;
+    if (clientStructure && typeof clientStructure === 'object' && Array.isArray(clientStructure.phases)) {
+      // ✅ Client sent structure with preserved IDs - use it directly
+      structure = clientStructure;
+      console.log(`📦 [ScriptUpdate] Using client-provided structure (IDs preserved): ${clientStructure.phases?.length || 0} phases`);
+    } else if (content && content !== existingScript.content) {
+      // Fallback: Parse from content if no structure provided and content changed
+      structure = parseScriptStructure(content, existingScript.scriptType);
+      console.log(`⚠️ [ScriptUpdate] No structure provided, parsing from content (new IDs generated)`);
+    }
     
     // Calculate new version
     let newVersion = existingScript.version;

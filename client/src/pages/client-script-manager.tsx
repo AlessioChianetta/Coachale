@@ -193,8 +193,9 @@ export default function ClientScriptManager() {
     enabled: !!selectedScriptId,
   });
 
+  // 🔧 FIX: Accept structure in mutation to preserve block IDs
   const updateScriptMutation = useMutation({
-    mutationFn: async (data: { id: string; name?: string; content?: string }) => {
+    mutationFn: async (data: { id: string; name?: string; content?: string; structure?: ScriptBlockStructure }) => {
       const res = await fetch(`/api/sales-scripts/${data.id}`, {
         method: 'PUT',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
@@ -344,10 +345,26 @@ export default function ClientScriptManager() {
   });
 
   // Handlers
+  // 🔧 FIX: Save both content AND structure to preserve IDs
   const handleSave = () => {
     if (!selectedScriptId) return;
     const contentToSave = editorMode === 'blocks' && blockStructure ? blocksToText(blockStructure) : editedContent;
-    updateScriptMutation.mutate({ id: selectedScriptId, name: editedName, content: contentToSave });
+    
+    // ✅ Send structure along with content to preserve IDs in DB
+    const dataToSave: { id: string; name?: string; content?: string; structure?: ScriptBlockStructure } = { 
+      id: selectedScriptId, 
+      name: editedName, 
+      content: contentToSave 
+    };
+    
+    // Include structure if in blocks mode (this is the source of truth for IDs)
+    if (editorMode === 'blocks' && blockStructure) {
+      dataToSave.structure = blockStructure;
+      console.log('💾 [ScriptManager] Saving with structure (IDs preserved):', 
+        blockStructure.phases?.map(p => `${p.id}:${p.name}`).join(', '));
+    }
+    
+    updateScriptMutation.mutate(dataToSave);
   };
 
   const handleSelectScript = (id: string) => {
@@ -441,11 +458,27 @@ export default function ClientScriptManager() {
 
 
   // Effects
+  // 🔧 FIX: Use structure from DB as source of truth (preserves IDs)
+  // Only fall back to parseTextToBlocks for legacy scripts without structure
   useEffect(() => {
     if (selectedScript) {
       try {
-        const parsed = parseTextToBlocks(selectedScript.content, selectedScript.scriptType);
+        let parsed: ScriptBlockStructure | null = null;
         
+        // ✅ OPTION A: Use saved structure if available (preserves IDs!)
+        if (selectedScript.structure && 
+            typeof selectedScript.structure === 'object' && 
+            Array.isArray((selectedScript.structure as any).phases) &&
+            (selectedScript.structure as any).phases.length > 0) {
+          console.log('📦 [ScriptManager] Using saved structure from DB (IDs preserved)');
+          parsed = selectedScript.structure as unknown as ScriptBlockStructure;
+        } else if (selectedScript.content) {
+          // Fallback: Parse from content for legacy scripts
+          console.log('⚠️ [ScriptManager] No structure in DB, parsing from content (new IDs generated)');
+          parsed = parseTextToBlocks(selectedScript.content, selectedScript.scriptType);
+        }
+        
+        // Ensure all blocks have type property for editor
         if (parsed && parsed.phases) {
             parsed.phases.forEach(phase => {
                 phase.type = 'phase';
@@ -465,7 +498,8 @@ export default function ClientScriptManager() {
         setBlockStructure(parsed);
         setParsingFailed(!parsed || !parsed.phases?.length);
         setEditorMode((!parsed || !parsed.phases?.length) ? 'text' : 'blocks');
-      } catch {
+      } catch (err) {
+        console.error('❌ [ScriptManager] Error loading script structure:', err);
         setBlockStructure(null);
         setParsingFailed(true);
         setEditorMode('text');

@@ -17,7 +17,8 @@ import { buildSystemPrompt } from '../ai-prompts';
 import { buildSalesAgentPrompt, buildStaticSalesAgentPrompt, buildSalesAgentDynamicContext, buildMinimalSalesAgentInstruction, buildFullSalesAgentContext, buildFullSalesAgentContextAsync, ScriptPosition } from './sales-agent-prompt-builder';
 import { getOrCreateTracker, removeTracker, SalesScriptTracker } from './sales-script-tracker';
 import { createSalesLogger, SalesScriptLogger } from './sales-script-logger';
-import { StepAdvancementAgent, StepAdvancementParams } from './step-advancement-agent';
+import { SalesManagerAgent } from './sales-manager-agent';
+import type { SalesManagerParams, SalesManagerAnalysis } from './sales-manager-agent';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -947,15 +948,15 @@ export function setupGeminiLiveWSService(server: Server) {
             console.warn(`⚠️ [${connectionId}] Agent ${resolvedAgentId} has no clientId - script tracking may be limited`);
           }
           
-          // 🎯 STEP ADVANCEMENT AGENT: Save IDs for later use
+          // 🎯 SALES MANAGER AGENT: Save IDs for later use
           // Use the consultantId from the authenticated session (has Vertex AI credentials)
           // This is agent.consultantId which was extracted in getUserIdFromRequest
           if (agentData.consultantId) {
             trackerClientId = agentData.consultantId;
             trackerConsultantId = agentData.consultantId;
-            console.log(`🔍 [${connectionId}] Step Advancement Agent will use consultantId: ${trackerConsultantId}`);
+            console.log(`🔍 [${connectionId}] Sales Manager Agent will use consultantId: ${trackerConsultantId}`);
           } else {
-            console.warn(`⚠️ [${connectionId}] Agent ${resolvedAgentId} has no consultantId - Step Advancement Agent will be disabled`);
+            console.warn(`⚠️ [${connectionId}] Agent ${resolvedAgentId} has no consultantId - Sales Manager Agent will be disabled`);
           }
         }
         
@@ -2659,7 +2660,7 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                 consultantId: consultantId,
                 sessionId: connectionId, // Use WebSocket connectionId as session grouping
                 callType: 'live_api',
-                modelName: 'gemini-2.0-flash-exp', // Current Live API model
+                modelName: 'gemini-2.5-flash', // Current Live API model
                 
                 // Token counts
                 promptTokens: inputTokens,
@@ -3036,7 +3037,7 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                   console.log(`   🔒 isAdvancementInProgress: ${isAdvancementInProgress}`);
                   
                   if (trackerClientId && trackerConsultantId && !isAdvancementInProgress) {
-                    console.log(`   ✅ PROCEEDING with Step Advancement Agent call...`);
+                    console.log(`   ✅ PROCEEDING with Sales Manager Agent call...`);
                     isAdvancementInProgress = true; // Acquire lock
                     // Fire and forget - don't await to avoid blocking
                     (async () => {
@@ -3086,7 +3087,7 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           pace: currentPhase.energy.pace || 'MODERATO'
                         } : undefined;
                         
-                        const params: StepAdvancementParams = {
+                        const params: SalesManagerParams = {
                           recentMessages,
                           script: scriptForAgent,
                           currentPhaseId: state.currentPhase,
@@ -3095,37 +3096,47 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           currentStepIndex: stepIndex,
                           clientId: trackerClientId,
                           consultantId: trackerConsultantId,
-                          currentPhaseEnergy // 🆕 Pass energy settings for tone reminder
+                          currentPhaseEnergy,
+                          totalMessages: conversationMessages.length
                         };
                         
-                        console.log(`   📨 Calling StepAdvancementAgent.analyze()...`);
+                        console.log(`   📨 Calling SalesManagerAgent.analyze()...`);
                         const analysisStart = Date.now();
-                        const result = await StepAdvancementAgent.analyze(params);
+                        const analysis: SalesManagerAnalysis = await SalesManagerAgent.analyze(params);
                         const analysisTime = Date.now() - analysisStart;
                         
+                        // Extract step advancement from full analysis
+                        const stepResult = analysis.stepAdvancement;
+                        
                         console.log(`\n📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                        console.log(`📊 [${connectionId}] STEP ADVANCEMENT AGENT - RESULT (${analysisTime}ms)`);
+                        console.log(`📊 [${connectionId}] SALES MANAGER AGENT - RESULT (${analysisTime}ms)`);
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                        console.log(`   🎯 shouldAdvance: ${result.shouldAdvance}`);
-                        console.log(`   📍 nextPhaseId: ${result.nextPhaseId || 'null'}`);
-                        console.log(`   📍 nextStepId: ${result.nextStepId || 'null'}`);
-                        console.log(`   📈 confidence: ${(result.confidence * 100).toFixed(0)}%`);
-                        console.log(`   💡 reasoning: ${result.reasoning}`);
-                        if (result.feedbackForAgent?.shouldInject) {
-                          console.log(`   🔧 FEEDBACK: ${result.feedbackForAgent.correctionMessage}`);
-                          console.log(`   🎵 TONE: ${result.feedbackForAgent.toneReminder}`);
+                        console.log(`   🎯 shouldAdvance: ${stepResult.shouldAdvance}`);
+                        console.log(`   📍 nextPhaseId: ${stepResult.nextPhaseId || 'null'}`);
+                        console.log(`   📍 nextStepId: ${stepResult.nextStepId || 'null'}`);
+                        console.log(`   📈 confidence: ${(stepResult.confidence * 100).toFixed(0)}%`);
+                        console.log(`   💡 reasoning: ${stepResult.reasoning}`);
+                        if (analysis.buySignals.detected) {
+                          console.log(`   💰 BUY SIGNALS: ${analysis.buySignals.signals.map(s => s.type).join(', ')}`);
+                        }
+                        if (analysis.objections.detected) {
+                          console.log(`   🛡️ OBJECTIONS: ${analysis.objections.objections.map(o => o.type).join(', ')}`);
+                        }
+                        if (analysis.toneAnalysis.issues.length > 0) {
+                          console.log(`   🎭 TONE ISSUES: ${analysis.toneAnalysis.issues.join(', ')}`);
+                        }
+                        if (analysis.feedbackForAgent?.shouldInject) {
+                          console.log(`   🔧 FEEDBACK (${analysis.feedbackForAgent.type}): ${analysis.feedbackForAgent.message.substring(0, 100)}...`);
                         }
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                         
-                        // 🆕 FEEDBACK INJECTION v2 - Usa role: 'model' per farlo sembrare un pensiero interno
-                        // Prima usavamo role: 'user' e Gemini rispondeva come se fosse il prospect!
-                        // Ora usiamo role: 'model' così Gemini lo vede come suo ragionamento interno
-                        if (result.feedbackForAgent?.shouldInject && geminiSession) {
-                          const feedback = result.feedbackForAgent;
+                        // 🆕 FEEDBACK INJECTION - Uses priority-based feedback from SalesManagerAgent
+                        if (analysis.feedbackForAgent?.shouldInject && geminiSession) {
+                          const feedback = analysis.feedbackForAgent;
                           
                           // Formato pensiero interno - NON da pronunciare, solo da processare
                           const internalThought = `[NOTA INTERNA - NON PRONUNCIARE QUESTO, SOLO RICORDALO]
-🧠 Auto-correzione: ${feedback.correctionMessage}
+🧠 ${feedback.type.toUpperCase()}: ${feedback.message}
 ${feedback.toneReminder ? `📢 Reminder tono: ${feedback.toneReminder}` : ''}
 ⚠️ Applica questa correzione nel prossimo messaggio che PRONUNCERAI.
 [FINE NOTA INTERNA]`;
@@ -3134,7 +3145,8 @@ ${feedback.toneReminder ? `📢 Reminder tono: ${feedback.toneReminder}` : ''}
                           console.log(`🔧 [${connectionId}] INJECTING FEEDBACK AS INTERNAL THOUGHT`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           console.log(`   📢 Priority: ${feedback.priority.toUpperCase()}`);
-                          console.log(`   📝 Correction: ${feedback.correctionMessage}`);
+                          console.log(`   📋 Type: ${feedback.type}`);
+                          console.log(`   📝 Message: ${feedback.message.substring(0, 150)}${feedback.message.length > 150 ? '...' : ''}`);
                           console.log(`   🎵 Tone: ${feedback.toneReminder || 'N/A'}`);
                           console.log(`   🧠 Injected as role: 'model' (internal thought)`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
@@ -3143,47 +3155,52 @@ ${feedback.toneReminder ? `📢 Reminder tono: ${feedback.toneReminder}` : ''}
                           const feedbackPayload = {
                             clientContent: {
                               turns: [{
-                                role: 'model',  // 🔑 KEY CHANGE: 'model' invece di 'user'
+                                role: 'model',
                                 parts: [{ text: internalThought }]
                               }],
-                              turnComplete: false  // NON è un turno completo, non richiede risposta
+                              turnComplete: false
                             }
                           };
                           geminiSession.send(JSON.stringify(feedbackPayload));
                           
-                          await salesTracker.addReasoning('step_advancement_feedback', 
-                            `SubAgent feedback iniettato (${feedback.priority}): ${feedback.correctionMessage}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
+                          await salesTracker.addReasoning('sales_manager_feedback', 
+                            `SalesManager feedback (${feedback.type}/${feedback.priority}): ${feedback.message}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
                           );
                         }
                         
-                        // 🆕 TASK 5: Save SubAgent reasoning to training map
-                        await salesTracker.addReasoning('step_advancement_analysis', 
-                          `📊 Analisi: shouldAdvance=${result.shouldAdvance}, confidence=${(result.confidence * 100).toFixed(0)}%, reasoning: ${result.reasoning}`
-                        );
+                        // Save full analysis reasoning
+                        let analysisLog = `📊 StepAdvance: ${stepResult.shouldAdvance} (${(stepResult.confidence * 100).toFixed(0)}%)`;
+                        if (analysis.buySignals.detected) {
+                          analysisLog += ` | 💰 BuySignals: ${analysis.buySignals.signals.length}`;
+                        }
+                        if (analysis.objections.detected) {
+                          analysisLog += ` | 🛡️ Objections: ${analysis.objections.objections.length}`;
+                        }
+                        await salesTracker.addReasoning('sales_manager_analysis', analysisLog);
                         
                         // If agent says to advance, call advanceTo on tracker
                         // 🔒 IDEMPOTENCY CHECK: Skip if we already advanced to this state
-                        if (result.shouldAdvance && result.nextPhaseId && result.nextStepId && result.confidence >= 0.6) {
-                          const alreadyAtTarget = lastAdvancedToState?.phase === result.nextPhaseId && 
-                                                  lastAdvancedToState?.step === result.nextStepId;
+                        if (stepResult.shouldAdvance && stepResult.nextPhaseId && stepResult.nextStepId && stepResult.confidence >= 0.6) {
+                          const alreadyAtTarget = lastAdvancedToState?.phase === stepResult.nextPhaseId && 
+                                                  lastAdvancedToState?.step === stepResult.nextStepId;
                           if (!alreadyAtTarget) {
                             console.log(`\n🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                             console.log(`🚀 [${connectionId}] ADVANCING STEP!`);
                             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                             console.log(`   → FROM: ${state.currentPhase} / ${state.currentStep || 'start'}`);
-                            console.log(`   → TO: ${result.nextPhaseId} / ${result.nextStepId}`);
+                            console.log(`   → TO: ${stepResult.nextPhaseId} / ${stepResult.nextStepId}`);
                             console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-                            await salesTracker.advanceTo(result.nextPhaseId, result.nextStepId, result.reasoning);
-                            lastAdvancedToState = { phase: result.nextPhaseId, step: result.nextStepId };
+                            await salesTracker.advanceTo(stepResult.nextPhaseId, stepResult.nextStepId, stepResult.reasoning);
+                            lastAdvancedToState = { phase: stepResult.nextPhaseId, step: stepResult.nextStepId };
                           } else {
-                            console.log(`🔒 [${connectionId}] Skipping duplicate advancement to ${result.nextPhaseId}/${result.nextStepId}`);
+                            console.log(`🔒 [${connectionId}] Skipping duplicate advancement to ${stepResult.nextPhaseId}/${stepResult.nextStepId}`);
                           }
                         } else {
-                          console.log(`   ⏸️  NOT advancing: shouldAdvance=${result.shouldAdvance}, confidence=${result.confidence}, hasIds=${!!result.nextPhaseId && !!result.nextStepId}`);
+                          console.log(`   ⏸️  NOT advancing: shouldAdvance=${stepResult.shouldAdvance}, confidence=${stepResult.confidence}, hasIds=${!!stepResult.nextPhaseId && !!stepResult.nextStepId}`);
                         }
                       } catch (agentError: any) {
                         console.error(`\n❌ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                        console.error(`❌ [${connectionId}] STEP ADVANCEMENT AGENT ERROR`);
+                        console.error(`❌ [${connectionId}] SALES MANAGER AGENT ERROR`);
                         console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                         console.error(`   Error: ${agentError.message}`);
                         console.error(`   Stack: ${agentError.stack?.split('\n').slice(0, 3).join('\n')}`);
@@ -3191,7 +3208,7 @@ ${feedback.toneReminder ? `📢 Reminder tono: ${feedback.toneReminder}` : ''}
                         // Non-blocking - don't affect main conversation flow
                       } finally {
                         isAdvancementInProgress = false; // Release lock
-                        console.log(`🔓 [${connectionId}] Step Advancement lock released`);
+                        console.log(`🔓 [${connectionId}] Sales Manager lock released`);
                       }
                     })();
                   } else {
