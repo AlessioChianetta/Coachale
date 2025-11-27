@@ -578,16 +578,28 @@ export class SalesManagerAgent {
     }
     
     // Check if AI is not responding to user questions
-    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-    if (lastUserMessage) {
+    // FIXED: Only flag if AI message comes AFTER user question and doesn't acknowledge it
+    const lastUserIdx = messages.map((m, i) => m.role === 'user' ? i : -1).filter(i => i >= 0).pop() ?? -1;
+    const lastAiIdx = messages.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i >= 0).pop() ?? -1;
+    
+    if (lastUserIdx >= 0 && lastAiIdx > lastUserIdx) {
+      // AI spoke AFTER user - check if user asked question and AI acknowledged
+      const lastUserMessage = messages[lastUserIdx];
+      const aiAfterUser = messages[lastAiIdx];
       const hasQuestion = lastUserMessage.content.includes('?');
-      const lastAiDoesntAnswer = lastAiMessage && 
-        !lastAiMessage.content.toLowerCase().includes('sì') &&
-        !lastAiMessage.content.toLowerCase().includes('no') &&
-        !lastAiMessage.content.toLowerCase().includes('certo') &&
-        !lastAiMessage.content.toLowerCase().includes('capisco');
       
-      if (hasQuestion && lastAiDoesntAnswer) {
+      // Expanded list of acknowledgment words in Italian
+      const aiContent = aiAfterUser.content.toLowerCase();
+      const acknowledgmentWords = [
+        'sì', 'si', 'no', 'certo', 'capisco', 'esatto', 'perfetto', 'ottimo',
+        'bene', 'benissimo', 'assolutamente', 'chiaro', 'ok', 'okay', 'd\'accordo',
+        'giusto', 'vero', 'infatti', 'certamente', 'ovviamente', 'naturalmente',
+        'bella domanda', 'buona domanda', 'ottima domanda', 'interessante',
+        'ecco', 'allora', 'dunque', 'quindi', 'perché', 'perchè'
+      ];
+      const hasAcknowledgment = acknowledgmentWords.some(word => aiContent.includes(word));
+      
+      if (hasQuestion && !hasAcknowledgment) {
         issues.push('Il prospect ha fatto una domanda ma l\'AI non sembra rispondere');
         isRobotic = true;
       }

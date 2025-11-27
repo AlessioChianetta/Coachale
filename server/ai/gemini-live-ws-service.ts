@@ -890,6 +890,13 @@ export function setupGeminiLiveWSService(server: Server) {
       hasFinalChunk: false
     };
     
+    // 🔧 VAD CONCATENATION BUFFER: Fix for fragmented speech chunks
+    // Problem: VAD sends chunks like "Mol" + "to male." instead of "Molto male."
+    // Solution: Detect if chunk is continuation (not cumulative) and concatenate
+    let vadConcatBuffer: string = '';
+    let vadLastChunkTime: number = 0;
+    const VAD_CONCAT_TIMEOUT_MS = 1500; // Reset buffer if gap > 1.5 seconds
+    
     // 🔧 FEEDBACK BUFFER: Store SalesManager feedback to append to next user message
     // Instead of injecting with role: 'model' (which Gemini ignores), we append the
     // feedback to the next user message so it gets processed naturally.
@@ -2895,15 +2902,82 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                 aiOutputBuffered = 0; // Reset counter
               }
               
-              // CRITICAL: Gemini sends CUMULATIVE partials - OVERWRITE not concatenate!
-              // Example: "Ciao" → "Ciao come" → "Ciao come stai"
-              currentUserTranscript = userTranscriptText;
+              // 🔧 VAD CONCATENATION FIX: Handle both cumulative AND fragmented speech
+              // Problem: Sometimes Gemini sends cumulative ("Ciao" → "Ciao come")
+              //          but sometimes sends fragments ("Mol" → "to male.")
+              // Solution: Detect if new chunk is continuation and concatenate appropriately
+              const now = Date.now();
+              const timeSinceLastChunk = now - vadLastChunkTime;
+              
+              // Reset buffer if too much time has passed (new utterance)
+              if (timeSinceLastChunk > VAD_CONCAT_TIMEOUT_MS) {
+                vadConcatBuffer = '';
+              }
+              
+              // Determine if chunk is cumulative or fragmented
+              let processedTranscript = userTranscriptText;
+              
+              if (vadConcatBuffer.length > 0) {
+                // Robust cumulative detection: ONLY use startsWith to avoid false positives
+                // Example: "Ciao" → "Ciao come stai" is cumulative (new starts with old)
+                // Example: "Mol" → "to male." is fragmented (new does NOT start with old)
+                const bufferLower = vadConcatBuffer.toLowerCase().trim();
+                const chunkLower = userTranscriptText.toLowerCase().trim();
+                
+                // ONLY cumulative if new chunk starts with buffer content
+                // Removed: includes() check which caused "come stai ciao" to overwrite "ciao"
+                const isCumulative = bufferLower.length > 0 && chunkLower.startsWith(bufferLower);
+                
+                if (isCumulative) {
+                  // Cumulative: new chunk extends buffer, use new chunk (it's longer/complete)
+                  processedTranscript = userTranscriptText;
+                  console.log(`📝 [VAD CONCAT] Cumulative (extends buffer): "${processedTranscript}"`);
+                } else {
+                  // Fragmented: new chunk is separate, need to concatenate
+                  // Check if this looks like a split word vs new sentence
+                  const lastCharOfBuffer = vadConcatBuffer.slice(-1);
+                  const firstCharOfChunk = userTranscriptText.charAt(0);
+                  
+                  // Check for sentence-ending punctuation - these should ALWAYS get a space
+                  const bufferEndsSentence = /[.!?;:]$/.test(vadConcatBuffer.trim());
+                  
+                  // Join WITHOUT space only if:
+                  // - Buffer does NOT end with sentence punctuation
+                  // - Buffer ends with a letter (partial word)
+                  // - Chunk starts with lowercase letter (continuation of word)
+                  const isPartialWord = !bufferEndsSentence && 
+                                        /[a-z]$/i.test(lastCharOfBuffer) && 
+                                        /^[a-z]/.test(firstCharOfChunk); // lowercase only = continuation
+                  
+                  if (isPartialWord) {
+                    // Likely a split word like "Mol" + "to" -> "Molto"
+                    processedTranscript = vadConcatBuffer + userTranscriptText;
+                    console.log(`📝 [VAD CONCAT] Word fragment: "${vadConcatBuffer}" + "${userTranscriptText}" = "${processedTranscript}"`);
+                  } else {
+                    // New sentence or separate word - add space
+                    const needsSpace = !vadConcatBuffer.endsWith(' ') && !userTranscriptText.startsWith(' ');
+                    processedTranscript = vadConcatBuffer + (needsSpace ? ' ' : '') + userTranscriptText;
+                    console.log(`📝 [VAD CONCAT] New phrase: "${vadConcatBuffer}" + "${userTranscriptText}" = "${processedTranscript}"`);
+                  }
+                }
+              }
+              
+              // Update buffer and timestamp
+              vadConcatBuffer = processedTranscript;
+              vadLastChunkTime = now;
+              
+              currentUserTranscript = processedTranscript;
               
               // 🎯 SALES SCRIPT TRACKING - Buffer user transcript until isFinal
-              pendingUserTranscript.text = userTranscriptText;
+              pendingUserTranscript.text = processedTranscript;
               
               if (isFinal) {
                 pendingUserTranscript.hasFinalChunk = true;
+                const finalTranscript = processedTranscript; // Use concatenated version
+                
+                // Reset VAD buffer on final
+                vadConcatBuffer = '';
+                vadLastChunkTime = 0;
                 
                 // 🔧 FIX: Use try/finally to ensure both commit AND reset happen
                 // even if salesTracker throws an error
@@ -2911,9 +2985,9 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                   // Track with salesTracker if available
                   if (salesTracker && salesLogger) {
                     try {
-                      await salesTracker.trackUserMessage(userTranscriptText);
+                      await salesTracker.trackUserMessage(finalTranscript);
                       const state = salesTracker.getState();
-                      salesLogger.logUserMessage(userTranscriptText, state.currentPhase);
+                      salesLogger.logUserMessage(finalTranscript, state.currentPhase);
                       
                       // Check if response was vague (ladder continuation logic)
                       const lastLadder = state.ladderActivations[state.ladderActivations.length - 1];
@@ -2922,9 +2996,9 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                       }
                       
                       // 🤖➡️😊 CONTEXTUAL RESPONSE DETECTION: Check if user is asking a question
-                      if (isProspectQuestion(userTranscriptText)) {
-                        lastProspectQuestion = userTranscriptText;
-                        console.log(`🤖➡️😊 [${connectionId}] PROSPECT QUESTION DETECTED: "${userTranscriptText.substring(0, 80)}..."`);
+                      if (isProspectQuestion(finalTranscript)) {
+                        lastProspectQuestion = finalTranscript;
+                        console.log(`🤖➡️😊 [${connectionId}] PROSPECT QUESTION DETECTED: "${finalTranscript.substring(0, 80)}..."`);
                         console.log(`   → AI should respond to this before continuing script (Anti-Robot Mode)`);
                       }
                     } catch (trackError: any) {
@@ -2934,7 +3008,7 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                 } finally {
                   // 🔧 FIX: Always commit user message to conversationMessages and reset buffer
                   // This runs AFTER salesTracker, ensuring no duplicates from fallback path
-                  commitUserMessage(userTranscriptText);
+                  commitUserMessage(finalTranscript);
                   pendingUserTranscript = { text: '', hasFinalChunk: false };
                   
                   // 🔧 FEEDBACK INJECTION: If there's buffered feedback from SalesManager,
@@ -3225,11 +3299,58 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         if (analysis.feedbackForAgent?.shouldInject) {
                           const feedback = analysis.feedbackForAgent;
                           
-                          // Formato pensiero interno - verrà appendato al prossimo messaggio utente
-                          pendingFeedbackForAI = `[NOTA PER L'AI - APPLICA NEL PROSSIMO MESSAGGIO]
-🧠 ${feedback.type.toUpperCase()}: ${feedback.message}
-${feedback.toneReminder ? `📢 Reminder tono: ${feedback.toneReminder}` : ''}
-[FINE NOTA]`;
+                          // Trova info sulla fase corrente per feedback strutturato (con fallback robusti)
+                          const totalPhases = scriptForAgent?.phases?.length || 1;
+                          const currentPhaseNum = (phaseIndex >= 0 ? phaseIndex : 0) + 1;
+                          const currentPhaseName = currentPhase?.name || state?.currentPhase || 'Fase corrente';
+                          const currentStepName = currentPhase?.steps?.[stepIndex]?.name || state?.currentStep || 'Step corrente';
+                          const currentObjective = currentPhase?.steps?.[stepIndex]?.objective || currentPhase?.description || 'Seguire lo script e ottenere le info necessarie';
+                          
+                          // Determina cosa fa bene e cosa deve migliorare
+                          let doingWell = '';
+                          let needsImprovement = '';
+                          let statusMessage = '';
+                          let whatYouNeed = '';
+                          
+                          // Analizza tipo di feedback per costruire messaggi appropriati
+                          if (feedback.type === 'objection') {
+                            doingWell = 'Stai mantenendo la conversazione attiva';
+                            needsImprovement = feedback.message;
+                            statusMessage = 'Rimani in questa fase - gestisci prima l\'obiezione';
+                            whatYouNeed = 'Rispondere all\'obiezione con empatia, poi tornare allo script';
+                          } else if (feedback.type === 'buy_signal') {
+                            doingWell = 'Hai generato interesse - il prospect mostra segnali di acquisto!';
+                            needsImprovement = 'Non perdere il momento - capitalizza subito';
+                            statusMessage = feedback.message.includes('CLOSING') ? 'Puoi avanzare verso il closing!' : 'Rimani e approfondisci l\'interesse';
+                            whatYouNeed = feedback.message;
+                          } else if (feedback.type === 'tone') {
+                            doingWell = 'Stai seguendo lo script';
+                            needsImprovement = feedback.message;
+                            statusMessage = 'Rimani in questa fase - correggi il tono prima';
+                            whatYouNeed = feedback.toneReminder || 'Adegua energia e tono alla fase';
+                          } else if (feedback.type === 'checkpoint') {
+                            doingWell = 'Stai procedendo nella conversazione';
+                            needsImprovement = feedback.message;
+                            statusMessage = 'Rimani in questa fase - checkpoint incompleto';
+                            whatYouNeed = 'Completa le verifiche del checkpoint prima di avanzare';
+                          } else {
+                            doingWell = analysis.toneAnalysis.issues.length === 0 ? 'Tono e ritmo corretti' : 'Stai seguendo lo script';
+                            needsImprovement = feedback.message;
+                            statusMessage = stepResult.shouldAdvance ? 'Puoi avanzare alla prossima fase' : 'Rimani in questa fase';
+                            whatYouNeed = stepResult.shouldAdvance ? 'Procedi allo step successivo' : 'Ottieni le info mancanti prima di avanzare';
+                          }
+                          
+                          // Formato STRUTTURATO per il coaching - l'AI sa come leggerlo dal prompt iniziale
+                          pendingFeedbackForAI = `[COACHING SALES MANAGER]
+📍 FASE: ${currentPhaseNum} di ${totalPhases} - ${currentPhaseName}
+   STEP: ${currentStepName}
+🎯 OBIETTIVO: ${currentObjective}
+✅ FAI BENE: ${doingWell}
+⚠️ MIGLIORA: ${needsImprovement}
+🚦 STATO: ${statusMessage}
+📋 TI SERVE: ${whatYouNeed}
+${feedback.toneReminder ? `🎵 TONO: ${feedback.toneReminder}` : ''}
+[FINE COACHING]`;
                           
                           console.log(`\n🔧 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           console.log(`🔧 [${connectionId}] FEEDBACK BUFFERED FOR NEXT USER MESSAGE`);
