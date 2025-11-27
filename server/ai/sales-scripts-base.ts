@@ -126,7 +126,7 @@ Mindset: Sei un detective curioso - vuoi CAPIRE il vero problema!
 🎧 ASCOLTA con attenzione - Nota le parole ESATTE che usano
 💬 REAGISCI: "Interessante!" / "Capisco!"
 
-📌 DOMANDA (SE NON È CHIARO): "E se dovessi scegliere UNA cosa, qual è IL problema principale?"
+📌 DOMANDA (SE NON È CHIARO): "Okay, qual è IL problema principale che stai cercando di risolvere?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA attentamente
 💬 REAGISCI: "Ok, capisco!"
