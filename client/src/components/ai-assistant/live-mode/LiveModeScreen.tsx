@@ -14,6 +14,7 @@ import { LiveTranscript } from '../LiveTranscript';
 import { useToast } from '@/hooks/use-toast';
 import { getToken, getAuthUser } from '@/lib/auth';
 import { float32ToBase64PCM16 } from './audio-worklet/audio-converter';
+import { PhoneCallLayout } from './PhoneCallLayout';
 
 const AudioSphere3D = lazy(() => import('./AudioSphere3D'));
 const ParticleField3D = lazy(() => import('./ParticleField3D'));
@@ -33,6 +34,7 @@ interface LiveModeScreenProps {
   salesAgentConversationId?: string;
   inviteToken?: string;
   consultationInviteConversationId?: string;
+  layoutMode?: 'immersive' | 'phone_call'; // NUOVO: Switch layout
   onClose: () => void;
   onConversationSaved?: (conversationId: string) => void;
 }
@@ -43,7 +45,7 @@ interface TranscriptEntry {
   timestamp: number;
 }
 
-export function LiveModeScreen({ mode, consultantType, customPrompt, useFullPrompt, voiceName, sessionType, isTestMode, consultationId, shareToken, salesAgentConversationId, inviteToken, consultationInviteConversationId, onClose, onConversationSaved }: LiveModeScreenProps) {
+export function LiveModeScreen({ mode, consultantType, customPrompt, useFullPrompt, voiceName, sessionType, isTestMode, consultationId, shareToken, salesAgentConversationId, inviteToken, consultationInviteConversationId, layoutMode = 'immersive', onClose, onConversationSaved }: LiveModeScreenProps) {
   const { toast } = useToast();
   // Refs per timer: uno per websocket session, uno per conversazione totale
   const websocketSessionTimeRef = useRef<number>(Date.now()); // Resettato al refresh
@@ -2228,6 +2230,27 @@ registerProcessor('pcm-processor', PCMProcessor);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [connectionStatus]);
 
+  // 🎨 PHONE CALL LAYOUT - Stile Samsung Dialer
+  if (layoutMode === 'phone_call') {
+    return (
+      <PhoneCallLayout
+        conversationDuration={conversationDuration}
+        isMuted={isMuted}
+        onToggleMute={toggleMute}
+        onEndCall={() => setShowDisconnectDialog(true)}
+        liveState={liveState}
+        connectionStatus={connectionStatus}
+        currentTranscript={currentTranscript}
+        userTranscript={userTranscript}
+        micLevel={micLevel}
+        audioLevel={audioLevel}
+        isTestMode={isTestMode}
+        sessionClosing={isSessionClosing}
+      />
+    );
+  }
+
+  // 🌌 IMMERSIVE LAYOUT - Layout originale con sfera 3D
   return (
     <AnimatePresence>
       <motion.div

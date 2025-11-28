@@ -24,7 +24,7 @@ function NormalModeWrapper({ children, sidebarOpen, setSidebarOpen }: NormalMode
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
       <div className="flex h-screen">
         <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        
+
         <div className="flex-1 overflow-y-auto bg-transparent">
           <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
             <div className="px-4 md:px-8 py-3 flex items-center gap-3">
@@ -42,7 +42,7 @@ function NormalModeWrapper({ children, sidebarOpen, setSidebarOpen }: NormalMode
               </h1>
             </div>
           </div>
-          
+
           <div className="w-full h-[calc(100vh-60px)]">
             {children}
           </div>
@@ -61,15 +61,22 @@ export default function LiveConsultation() {
 
   const [sessionType, setSessionType] = useState<SessionType | null>(null);
   const [customPrompt, setCustomPrompt] = useState<string | null>(null);
-  const [useFullPrompt, setUseFullPrompt] = useState(false);
-  const [voiceName, setVoiceName] = useState('achernar');
+  const [voiceName, setVoiceName] = useState<string>(() => {
+    return localStorage.getItem('liveMode_voice') || 'Charon';
+  });
+  const [useFullPrompt, setUseFullPrompt] = useState<boolean>(() => {
+    return localStorage.getItem('liveMode_useFullPrompt') === 'true';
+  });
+  const [layoutMode, setLayoutMode] = useState<'immersive' | 'phone_call'>(() => {
+    return (localStorage.getItem('liveMode_layout') as 'immersive' | 'phone_call') || 'immersive';
+  });
   const [isTestMode, setIsTestMode] = useState(false);
   const [consultationId, setConsultationId] = useState<string | null>(null);
 
   // Mode detection
   const searchParams = new URLSearchParams(window.location.search);
   const mode = searchParams.get('mode');
-  
+
   // Check for direct session parameters (from consultation lobby)
   const urlSessionType = searchParams.get('sessionType') as SessionType | null;
   const urlVoice = searchParams.get('voice');
@@ -82,7 +89,7 @@ export default function LiveConsultation() {
   // Public modes (sales_agent, consultation_invite): NON richiedono autenticazione utente
   // Normal mode: richiede autenticazione client
   const isPublicMode = isSalesAgentMode || isConsultationInviteMode;
-  
+
   if (!isPublicMode && (!user || user.role !== 'client')) {
     toast({
       variant: 'destructive',
@@ -123,17 +130,17 @@ export default function LiveConsultation() {
         voice: urlVoice,
         fullPrompt: urlFullPrompt,
       });
-      
+
       setSessionType(urlSessionType);
-      
+
       if (urlVoice) {
         setVoiceName(urlVoice);
       }
-      
+
       if (urlFullPrompt !== null) {
         setUseFullPrompt(urlFullPrompt === 'true');
       }
-      
+
       // For consultation type, fetch test mode and consultation ID
       if (urlSessionType === 'consultation') {
         const fetchConsultationInfo = async () => {
@@ -144,7 +151,7 @@ export default function LiveConsultation() {
                 'Authorization': `Bearer ${token}`
               }
             });
-            
+
             if (response.ok) {
               const data = await response.json();
               setIsTestMode(data.reason === 'test_mode');
@@ -157,10 +164,10 @@ export default function LiveConsultation() {
             console.error('Error fetching consultation info:', error);
           }
         };
-        
+
         fetchConsultationInfo();
       }
-      
+
       // Clear URL params after hydration to prevent re-triggering on session close
       window.history.replaceState({}, '', '/live-consultation');
       console.log('🔵 [LOBBY PARAMS] Cleared URL params to prevent re-hydration loop');
@@ -177,7 +184,7 @@ export default function LiveConsultation() {
         sessionType: 'weekly_consultation' as const,
       };
     }
-    
+
     // Sessione Normale o Custom: mode assistenza, nessun prefix
     return {
       mode: 'assistenza' as const,
@@ -190,7 +197,7 @@ export default function LiveConsultation() {
     setSessionType(type);
     setUseFullPrompt(fullPrompt);
     setVoiceName(voice);
-    
+
     // Se è una consulenza, fetch isTestMode
     if (type === 'consultation') {
       try {
@@ -200,7 +207,7 @@ export default function LiveConsultation() {
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           // Se il motivo è test_mode, significa che isTestMode = true
@@ -233,7 +240,7 @@ export default function LiveConsultation() {
     setCustomPrompt(null);
     setIsTestMode(false);
     setConsultationId(null);
-    
+
     // Navigate to clean URL to prevent re-hydration
     window.history.replaceState({}, '', '/live-consultation');
   };
@@ -312,8 +319,8 @@ export default function LiveConsultation() {
               <p className="text-white/70">
                 La tua sessione è scaduta. Torna alla lobby e riprova.
               </p>
-              <Button 
-                className="mt-4" 
+              <Button
+                className="mt-4"
                 onClick={() => window.location.href = `/invite/${inviteToken}`}
               >
                 Torna alla Lobby
@@ -360,6 +367,12 @@ export default function LiveConsultation() {
         <SessionTypeSelector
           onSelectType={handleSelectSessionType}
           onBack={() => setLocation('/client/ai-assistant')}
+          voiceName={voiceName}
+          setVoiceName={setVoiceName}
+          useFullPrompt={useFullPrompt}
+          setUseFullPrompt={setUseFullPrompt}
+          layoutMode={layoutMode}
+          setLayoutMode={setLayoutMode}
         />
       </NormalModeWrapper>
     );
@@ -400,6 +413,7 @@ export default function LiveConsultation() {
         sessionType={config.sessionType}
         isTestMode={isTestMode}
         consultationId={consultationId || undefined}
+        layoutMode={layoutMode}
         onClose={handleCloseSession}
         onConversationSaved={handleConversationSaved}
       />

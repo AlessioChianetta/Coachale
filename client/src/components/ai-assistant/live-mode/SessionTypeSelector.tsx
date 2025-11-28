@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageSquare, Target, Pencil, Settings, Mic2, Lock, Calendar, Clock, Info } from 'lucide-react';
+import { MessageSquare, Target, Pencil, Settings, Mic2, Lock, Calendar, Clock, Info, Palette, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,6 +17,12 @@ export type SessionType = 'normal' | 'consultation' | 'custom';
 interface SessionTypeSelectorProps {
   onSelectType: (type: SessionType, useFullPrompt: boolean, voiceName: string) => void;
   onBack?: () => void;
+  voiceName: string;
+  setVoiceName: (voice: string) => void;
+  useFullPrompt: boolean;
+  setUseFullPrompt: (value: boolean) => void;
+  layoutMode?: 'immersive' | 'phone_call';
+  setLayoutMode?: (mode: 'immersive' | 'phone_call') => void;
 }
 
 const VOICES = [
@@ -28,7 +34,7 @@ const VOICES = [
   { value: 'aoede', label: 'Aoede', description: '🇬🇧 Femminile Melodiosa' },
 ];
 
-export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelectorProps) {
+export function SessionTypeSelector({ onSelectType, onBack, voiceName, setVoiceName, useFullPrompt, setUseFullPrompt, layoutMode = 'immersive', setLayoutMode }: SessionTypeSelectorProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [checkingAccess, setCheckingAccess] = useState(false);
@@ -39,14 +45,28 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
   const [showSystemPromptDialog, setShowSystemPromptDialog] = useState(false);
   const [selectedPromptType, setSelectedPromptType] = useState<'assistenza' | 'consulente' | 'custom'>('assistenza');
   const [selectedConsultantType, setSelectedConsultantType] = useState<'finanziario' | 'vendita' | 'business'>('finanziario');
-  const [useFullPrompt, setUseFullPrompt] = useState(() => {
+  const [useFullPromptState, setUseFullPromptState] = useState(() => {
     const saved = localStorage.getItem('liveMode_useFullPrompt');
     return saved !== 'false'; // Default: true (Full Prompt attivo di default)
   });
-  const [voiceName, setVoiceName] = useState(() => {
+  const [voiceNameState, setVoiceNameState] = useState(() => {
     const saved = localStorage.getItem('liveMode_voice');
     return saved || 'achernar';
   });
+
+  // Recupera o imposta lo stato iniziale di layoutMode dal localStorage
+  const [currentLayoutMode, setCurrentLayoutMode] = useState<'immersive' | 'phone_call'>(() => {
+    const saved = localStorage.getItem('liveMode_layout');
+    return (saved as 'immersive' | 'phone_call') || 'immersive';
+  });
+
+  useEffect(() => {
+    // Aggiorna lo stato locale se la prop cambia (es. da un componente padre)
+    if (setLayoutMode) {
+      setCurrentLayoutMode(layoutMode);
+    }
+  }, [layoutMode, setLayoutMode]);
+
 
   useEffect(() => {
     const fetchUpcomingConsultations = async () => {
@@ -57,7 +77,7 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setUpcomingConsultations(data);
@@ -83,9 +103,9 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
             'Authorization': `Bearer ${token}`
           }
         });
-        
+
         const data = await response.json();
-        
+
         if (data.canAccess) {
           // Accesso consentito - reindirizza alla lobby
           navigate(`/consultation-lobby?type=consultation`);
@@ -108,7 +128,7 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
       navigate(`/consultation-lobby?type=normal`);
     } else {
       // Per altre sessioni (custom), mantieni il comportamento originale
-      onSelectType(type, useFullPrompt, voiceName);
+      onSelectType(type, useFullPromptState, voiceNameState);
     }
   };
   const sessionTypes = [
@@ -175,9 +195,9 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
           <Mic2 className="h-4 w-4" />
           <span className="font-medium">Voce</span>
           <Select
-            value={voiceName}
+            value={voiceNameState}
             onValueChange={(value) => {
-              setVoiceName(value);
+              setVoiceNameState(value);
               localStorage.setItem('liveMode_voice', value);
               const voice = VOICES.find(v => v.value === value);
               toast({
@@ -204,22 +224,41 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
 
         {/* Full Prompt toggle */}
         <div className="flex items-center gap-3 bg-white/5 px-4 py-2.5 rounded-lg backdrop-blur-sm border border-white/10">
-          <Settings className="h-4 w-4" />
-          <span className="font-medium">Full Prompt</span>
+          <Palette className="h-4 w-4" />
+          <span className="font-medium">Prompt Completo</span>
           <Switch
-            checked={useFullPrompt}
+            checked={useFullPromptState}
             onCheckedChange={(checked) => {
-              setUseFullPrompt(checked);
+              setUseFullPromptState(checked);
               localStorage.setItem('liveMode_useFullPrompt', String(checked));
               toast({
-                title: checked ? '📚 Full System Prompt' : '⚡ Minimal System Prompt',
-                description: checked 
-                  ? 'Prompt completo ~251K tokens (include tutti i dati utente)' 
-                  : 'Prompt minimal 219 tokens + dati chunked 69K tokens',
+                title: checked ? '📝 Prompt Completo Attivato' : '⚡ Prompt Essenziale Attivato',
+                description: checked ? 'Più contesto e dettagli' : 'Risposte più rapide e concise',
               });
             }}
           />
         </div>
+
+        {/* Layout Mode toggle */}
+        {setLayoutMode && (
+          <div className="flex items-center gap-3 bg-white/5 px-4 py-2.5 rounded-lg backdrop-blur-sm border border-white/10">
+            <Smartphone className="h-4 w-4" />
+            <span className="font-medium">Layout Chiamata</span>
+            <Switch
+              checked={currentLayoutMode === 'phone_call'}
+              onCheckedChange={(checked) => {
+                const newMode = checked ? 'phone_call' : 'immersive';
+                setCurrentLayoutMode(newMode);
+                localStorage.setItem('liveMode_layout', newMode);
+                setLayoutMode(newMode); // Chiama la prop per aggiornare lo stato nel componente padre
+                toast({
+                  title: checked ? '📱 Layout Telefono' : '🌌 Layout Immersivo',
+                  description: checked ? 'Interfaccia stile chiamata telefonica' : 'Interfaccia con sfera 3D',
+                });
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <div className="max-w-6xl w-full">
@@ -251,7 +290,7 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
                     📅 Prossime Consulenze AI
                   </h2>
                 </div>
-                
+
                 <div className="space-y-3">
                   {upcomingConsultations.map((consultation) => (
                     <div
@@ -433,7 +472,7 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
                   : 'La tua prossima consulenza AI è programmata'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 mt-4">
             {/* Prossime consulenze disponibili */}
             {upcomingConsultations.length > 0 && (
@@ -534,7 +573,7 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
                 className="flex-1 bg-gradient-to-br from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/20"
                 onClick={() => {
                   setShowConsultationDialog(false);
-                  onSelectType('consultation', useFullPrompt, voiceName);
+                  onSelectType('consultation', useFullPromptState, voiceNameState);
                 }}
               >
                 🎙️ Entra nella Consulenza
@@ -556,7 +595,7 @@ export function SessionTypeSelector({ onSelectType, onBack }: SessionTypeSelecto
               Questo è il prompt di sistema che guida il comportamento dell'AI durante la conversazione vocale
             </DialogDescription>
           </DialogHeader>
-          
+
           <ScrollArea className="h-[500px] pr-4">
             <div className="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
               <pre className="text-sm text-gray-200 whitespace-pre-wrap font-mono leading-relaxed">
