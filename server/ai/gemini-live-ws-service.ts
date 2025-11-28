@@ -18,7 +18,7 @@ import { buildSalesAgentPrompt, buildStaticSalesAgentPrompt, buildSalesAgentDyna
 import { getOrCreateTracker, removeTracker, SalesScriptTracker } from './sales-script-tracker';
 import { createSalesLogger, SalesScriptLogger } from './sales-script-logger';
 import { SalesManagerAgent } from './sales-manager-agent';
-import type { SalesManagerParams, SalesManagerAnalysis } from './sales-manager-agent';
+import type { SalesManagerParams, SalesManagerAnalysis, BusinessContext } from './sales-manager-agent';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -3284,6 +3284,15 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           pace: currentPhase.energy.pace || 'MODERATO'
                         } : undefined;
                         
+                        // 🆕 Build business context for out-of-scope detection
+                        const businessContext = agent ? {
+                          businessName: agent.businessName || '',
+                          whatWeDo: agent.whatWeDo || agent.businessDescription || '',
+                          servicesOffered: agent.servicesOffered?.map((s: any) => s.name || s) || [],
+                          targetClient: agent.targetClient || agent.whoWeHelp || '',
+                          nonTargetClient: agent.nonTargetClient || agent.whoWeDontHelp || ''
+                        } : undefined;
+                        
                         const params: SalesManagerParams = {
                           recentMessages,
                           script: scriptForAgent,
@@ -3294,6 +3303,7 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           clientId: trackerClientId,
                           consultantId: trackerConsultantId,
                           currentPhaseEnergy,
+                          businessContext, // 🆕 Per rilevamento fuori scope
                           totalMessages: conversationMessages.length
                         };
                         
@@ -3375,17 +3385,39 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                             whatYouNeed = stepResult.shouldAdvance ? 'Procedi allo step successivo' : 'Ottieni le info mancanti prima di avanzare';
                           }
                           
+                          // 🆕 Costruisci sezione IDENTITÀ del business (sempre presente)
+                          // Include: chi sei, cosa fai, chi aiuti, chi NON aiuti, servizi
+                          const servicesList = businessContext?.servicesOffered?.length > 0 
+                            ? businessContext.servicesOffered.slice(0, 5).join(', ')
+                            : '';
+                          
+                          const businessIdentity = businessContext ? 
+                            `👤 SEI: ${businessContext.businessName || 'Il consulente'}
+🎯 COSA FAI: ${businessContext.whatWeDo || 'Offri servizi specializzati'}
+👥 CHI AIUTI: ${businessContext.targetClient || 'Clienti interessati ai nostri servizi'}
+🚫 CHI NON AIUTI: ${businessContext.nonTargetClient || ''}
+${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}` 
+                            : '';
+                          
+                          // 🆕 Costruisci sezione ENERGIA/TONO (sempre presente, con fallback)
+                          const phaseEnergy = currentPhaseEnergy || { level: 'MEDIO', tone: 'SICURO', pace: 'MODERATO' };
+                          const energySection = `🔋 ENERGIA: ${phaseEnergy.level} | TONO: ${phaseEnergy.tone} | RITMO: ${phaseEnergy.pace}`;
+                          
                           // Formato STRUTTURATO per il coaching con NUOVI DELIMITATORI (Trojan Horse Strategy)
                           // L'AI è istruita a riconoscere questi tag come "pensiero interno" e non leggerli ad alta voce
                           const feedbackContent = `<<<SALES_MANAGER_INSTRUCTION>>>
+${businessIdentity}
+
 📍 FASE: ${currentPhaseNum} di ${totalPhases} - ${currentPhaseName}
    STEP: ${currentStepName}
+${energySection}
+
 🎯 OBIETTIVO: ${currentObjective}
 ✅ FAI BENE: ${doingWell}
 ⚠️ MIGLIORA: ${needsImprovement}
 🚦 STATO: ${statusMessage}
 📋 TI SERVE: ${whatYouNeed}
-${feedback.toneReminder ? `🎵 TONO: ${feedback.toneReminder}` : ''}
+${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
 <<</SALES_MANAGER_INSTRUCTION>>>`;
                           
                           // 🆕 IMMEDIATE INJECTION (Trojan Horse): Inject feedback NOW, not on next user message
@@ -3400,6 +3432,11 @@ ${feedback.toneReminder ? `🎵 TONO: ${feedback.toneReminder}` : ''}
                           console.log(`   📝 Message: ${feedback.message.substring(0, 150)}${feedback.message.length > 150 ? '...' : ''}`);
                           console.log(`   🎵 Tone: ${feedback.toneReminder || 'N/A'}`);
                           console.log(`   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)`);
+                          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                          // 🆕 Log del feedbackContent COMPLETO per debug
+                          console.log(`\n📋 FEEDBACK CONTENT COMPLETO:`);
+                          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                          console.log(feedbackContent);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           
                           if (geminiSession) {

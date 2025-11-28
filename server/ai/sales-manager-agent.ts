@@ -22,7 +22,7 @@ import { getAIProvider } from "./provider-factory";
 export type BuySignalType = 'price_inquiry' | 'timeline' | 'interest' | 'commitment' | 'comparison';
 export type ObjectionType = 'no_time' | 'need_to_think' | 'too_expensive' | 'not_interested' | 'competitor' | 'timing' | 'authority' | 'other';
 export type FeedbackPriority = 'critical' | 'high' | 'medium' | 'low';
-export type FeedbackType = 'correction' | 'buy_signal' | 'objection' | 'checkpoint' | 'tone' | 'advancement';
+export type FeedbackType = 'correction' | 'buy_signal' | 'objection' | 'checkpoint' | 'tone' | 'advancement' | 'out_of_scope';
 
 export interface BuySignal {
   type: BuySignalType;
@@ -149,6 +149,15 @@ export interface ScriptStructureForManager {
   objections?: ScriptObjection[];
 }
 
+// 🆕 Business Context per rilevamento fuori scope
+export interface BusinessContext {
+  businessName: string;
+  whatWeDo: string;
+  servicesOffered: string[];
+  targetClient: string;
+  nonTargetClient: string;
+}
+
 export interface SalesManagerParams {
   recentMessages: ConversationMessage[];
   script: ScriptStructureForManager;
@@ -159,6 +168,8 @@ export interface SalesManagerParams {
   clientId: string;
   consultantId: string;
   currentPhaseEnergy?: PhaseEnergy;
+  // 🆕 Business context per rilevamento fuori scope
+  businessContext?: BusinessContext;
   // Additional context
   conversationStartTime?: Date;
   totalMessages?: number;
@@ -362,11 +373,14 @@ export class SalesManagerAgent {
     const objections = this.detectObjections(params.recentMessages, params.script.objections);
     const toneAnalysis = this.analyzeTone(params.recentMessages, params.currentPhaseEnergy);
     const checkpointStatus = this.validateCheckpoint(params);
+    // 🆕 Business context per feedback (Gemini decide semanticamente se qualcosa è fuori scope)
+    const businessCtx = this.getBusinessContextForFeedback(params.businessContext);
     
     console.log(`   💰 Buy signals: ${buySignals.detected ? buySignals.signals.length : 0}`);
     console.log(`   🛡️ Objections: ${objections.detected ? objections.objections.length : 0}`);
     console.log(`   🎭 Tone issues: ${toneAnalysis.issues.length}`);
     console.log(`   ⛔ Checkpoint: ${checkpointStatus?.isComplete ? 'COMPLETE' : checkpointStatus?.missingItems.length + ' missing' || 'N/A'}`);
+    console.log(`   👤 Business: ${businessCtx?.identity || 'N/A'}`);
     
     // 2. AI analysis for step advancement (only if needed)
     let stepAdvancement = {
@@ -380,7 +394,9 @@ export class SalesManagerAgent {
     // 3. Determine priority feedback
     let feedbackForAgent: FeedbackForAgent | null = null;
     
-    // Priority order: Critical corrections > Buy signals > Objections > Tone > Checkpoint > Advancement
+    // Priority order: Objections > Buy signals > Tone > Checkpoint > Advancement
+    // 🆕 L'identità business (chi sei, cosa fai, cosa NON fai) viene SEMPRE inclusa nel feedbackContent
+    // e Gemini decide semanticamente se una richiesta è fuori scope
     if (objections.detected && objections.objections.length > 0) {
       // High priority: objection needs handling
       const topObjection = objections.objections[0];
@@ -559,6 +575,23 @@ export class SalesManagerAgent {
   }
   
   /**
+   * 🆕 Get business context for feedback
+   * Restituisce il contesto business completo da includere nel feedback per Gemini
+   * NON fa keyword extraction - passa il testo completo e lascia che l'AI capisca semanticamente
+   */
+  private static getBusinessContextForFeedback(
+    businessContext?: BusinessContext
+  ): { identity: string; whatWeDo: string; whatWeDontDo: string } | null {
+    if (!businessContext) return null;
+    
+    return {
+      identity: businessContext.businessName || 'Il consulente',
+      whatWeDo: businessContext.whatWeDo || 'Offriamo servizi specializzati',
+      whatWeDontDo: businessContext.nonTargetClient || ''
+    };
+  }
+  
+  /**
    * Analyze tone and detect robotic behavior (local, fast)
    */
   private static analyzeTone(
@@ -600,11 +633,11 @@ export class SalesManagerAgent {
       isRobotic = true;
     }
     
-    // Check last message length
+    // Check last message length (800 caratteri per chiamate vocali, non 500)
     const lastAiMessage = aiMessages[aiMessages.length - 1];
-    if (lastAiMessage && lastAiMessage.content.length > 500) {
+    if (lastAiMessage && lastAiMessage.content.length > 800) {
       lastMessageTooLong = true;
-      issues.push(`Messaggio troppo lungo (${lastAiMessage.content.length} caratteri)`);
+      issues.push(`Messaggio troppo lungo (${lastAiMessage.content.length} caratteri, max 800)`);
       isRobotic = true;
     }
     
