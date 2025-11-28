@@ -339,44 +339,32 @@ export function PhoneCallLayout({
             transition={{ duration: 0.2 }}
             className="mx-4 mb-4 bg-gray-800/80 backdrop-blur-xl rounded-2xl border border-gray-600/50 shadow-2xl overflow-hidden"
           >
-            {/* Header della trascrizione */}
-            <div className="px-4 py-3 border-b border-gray-700/50 bg-gray-900/50">
-              <h3 className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                Trascrizione in tempo reale
+            {/* Header della trascrizione - Compatto */}
+            <div className="px-3 py-2 border-b border-gray-700/50 bg-gray-900/50">
+              <h3 className="text-xs font-medium text-gray-400 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                Trascrizione live
               </h3>
             </div>
             
-            {/* Contenuto scrollabile */}
-            <div className="max-h-[35vh] min-h-[120px] overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+            {/* Contenuto scrollabile - Compatto */}
+            <div className="max-h-[25vh] min-h-[80px] overflow-y-auto p-2.5 space-y-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
               {!userTranscript && !currentTranscript ? (
-                <div className="text-center text-gray-500 py-4">
-                  <p className="text-sm">In attesa di conversazione...</p>
+                <div className="text-center text-gray-500 py-2">
+                  <p className="text-xs">In attesa di conversazione...</p>
                 </div>
               ) : (
                 <>
                   {userTranscript && (
-                    <div className="bg-green-500/10 rounded-xl p-3 border border-green-500/20">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium text-green-400">Tu</span>
-                      </div>
-                      <LiveTranscript
-                        text={userTranscript.text}
-                        role={userTranscript.role}
-                        animated={true}
-                      />
+                    <div className="bg-green-500/10 rounded-lg p-2 border border-green-500/20">
+                      <span className="text-[10px] font-medium text-green-400 block mb-0.5">Tu</span>
+                      <p className="text-xs text-gray-200 leading-relaxed">{userTranscript.text}</p>
                     </div>
                   )}
                   {currentTranscript && (
-                    <div className="bg-blue-500/10 rounded-xl p-3 border border-blue-500/20">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-medium text-blue-400">AI</span>
-                      </div>
-                      <LiveTranscript
-                        text={currentTranscript.text}
-                        role={currentTranscript.role}
-                        animated={true}
-                      />
+                    <div className="bg-blue-500/10 rounded-lg p-2 border border-blue-500/20">
+                      <span className="text-[10px] font-medium text-blue-400 block mb-0.5">AI</span>
+                      <p className="text-xs text-gray-200 leading-relaxed">{currentTranscript.text}</p>
                     </div>
                   )}
                 </>
