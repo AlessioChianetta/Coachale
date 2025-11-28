@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBuilder } from './BuilderContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ function EmptyInspector() {
 
 function PhaseInspectorPanel({ phase }: { phase: Phase }) {
   const builder = useBuilder();
+  const [showTextPreview, setShowTextPreview] = useState(false);
 
   const handleUpdate = (data: Partial<Phase>) => {
     builder.updatePhase(phase.id, data);
@@ -123,15 +124,39 @@ function PhaseInspectorPanel({ phase }: { phase: Phase }) {
       <Separator />
 
       <div>
-        <h4 className="font-medium text-sm mb-2">📄 Anteprima Testo</h4>
+        <h4 className="font-medium text-sm mb-2 flex items-center justify-between">
+          <span>📄 Anteprima Testo</span>
+          <Switch
+            checked={showTextPreview}
+            onCheckedChange={setShowTextPreview}
+            id="phase-text-preview-switch"
+          />
+        </h4>
         <Card className="bg-muted/50">
-          <CardContent className="p-3 space-y-2 text-sm">
+          <CardContent className={cn("p-3 space-y-2 text-sm", !showTextPreview && "hidden")}>
             <div>
               <span className="font-semibold">Fase {phase.number}: {phase.name}</span>
             </div>
             {phase.description && (
               <div className="text-muted-foreground italic">
                 {phase.description}
+              </div>
+            )}
+            {phase.transition && (
+              <div className="mt-2 pt-2 border-t">
+                <span className="text-xs font-medium">Transizione:</span>
+                <p className="text-muted-foreground">{phase.transition}</p>
+              </div>
+            )}
+          </CardContent>
+          <CardContent className={cn("p-3 space-y-2 text-sm", showTextPreview && "hidden")}>
+            <div>
+              <span className="font-semibold">Fase {phase.number}: {phase.name}</span>
+            </div>
+            {phase.description && (
+              <div className="text-muted-foreground">
+                <span className="text-xs font-medium">Descrizione:</span>
+                <p>{phase.description}</p>
               </div>
             )}
             {phase.transition && (
@@ -219,6 +244,7 @@ function PhaseInspectorPanel({ phase }: { phase: Phase }) {
 
 function StepInspectorPanel({ step, phaseId }: { step: Step; phaseId: string }) {
   const builder = useBuilder();
+  const [showTextPreview, setShowTextPreview] = useState(false);
 
   const handleUpdate = (data: Partial<Step>) => {
     builder.updateStep(phaseId, step.id, data);
@@ -329,9 +355,43 @@ function StepInspectorPanel({ step, phaseId }: { step: Step; phaseId: string }) 
       <Separator />
 
       <div>
-        <h4 className="font-medium text-sm mb-2">📄 Anteprima Testo</h4>
+        <h4 className="font-medium text-sm mb-2 flex items-center justify-between">
+          <span>📄 Anteprima Testo</span>
+          <Switch
+            checked={showTextPreview}
+            onCheckedChange={setShowTextPreview}
+            id="step-text-preview-switch"
+          />
+        </h4>
         <Card className="bg-muted/50">
-          <CardContent className="p-3 space-y-2 text-sm">
+          <CardContent className={cn("p-3 space-y-2 text-sm", !showTextPreview && "hidden")}>
+            <div>
+              <span className="font-semibold">Step {step.number}: {step.name}</span>
+            </div>
+            {step.objective && (
+              <div className="text-muted-foreground">
+                <span className="text-xs font-medium">Obiettivo:</span>
+                <p>{step.objective}</p>
+              </div>
+            )}
+            {step.notes && (
+              <div className="mt-2 pt-2 border-t text-muted-foreground italic text-xs">
+                <span className="font-medium not-italic">Note AI:</span>
+                <p>{step.notes}</p>
+              </div>
+            )}
+            {step.ladder && (
+              <div className="mt-2 pt-2 border-t">
+                <span className="text-xs font-medium">🪜 Ladder attivo</span>
+              </div>
+            )}
+            {step.biscottino && (
+              <div className="mt-2 pt-2 border-t">
+                <span className="text-xs font-medium">🍪 Biscottino: {step.biscottino.phrase}</span>
+              </div>
+            )}
+          </CardContent>
+          <CardContent className={cn("p-3 space-y-2 text-sm", showTextPreview && "hidden")}>
             <div>
               <span className="font-semibold">Step {step.number}: {step.name}</span>
             </div>
@@ -445,6 +505,7 @@ function StepInspectorPanel({ step, phaseId }: { step: Step; phaseId: string }) 
 
 function QuestionInspectorPanel({ question, phaseId, stepId }: { question: Question; phaseId: string; stepId: string }) {
   const builder = useBuilder();
+  const [showTextPreview, setShowTextPreview] = useState(false);
 
   const handleUpdate = (data: Partial<Question>) => {
     builder.updateQuestion(phaseId, stepId, question.id, data);
@@ -558,9 +619,41 @@ function QuestionInspectorPanel({ question, phaseId, stepId }: { question: Quest
       <Separator />
 
       <div>
-        <h4 className="font-medium text-sm mb-2">📄 Anteprima Testo</h4>
+        <h4 className="font-medium text-sm mb-2 flex items-center justify-between">
+          <span>📄 Anteprima Testo</span>
+          <Switch
+            checked={showTextPreview}
+            onCheckedChange={setShowTextPreview}
+            id="question-text-preview-switch"
+          />
+        </h4>
         <Card className="bg-muted/50">
-          <CardContent className="p-3 space-y-2 text-sm">
+          <CardContent className={cn("p-3 space-y-2 text-sm", !showTextPreview && "hidden")}>
+            <div className="font-medium">
+              {question.text}
+            </div>
+            {question.marker && (
+              <div className="text-xs">
+                <Badge variant="outline" className="text-xs">{question.marker}</Badge>
+              </div>
+            )}
+            {question.condition && (
+              <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
+                <span className="font-medium">Condizione:</span> {question.condition}
+              </div>
+            )}
+            {question.instructions?.listen && (
+              <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
+                <span className="font-medium">Ascolta:</span> {question.instructions.listen}
+              </div>
+            )}
+            {question.instructions?.waitDetails && (
+              <div className="mt-1 text-xs text-muted-foreground italic">
+                ⏱️ {question.instructions.waitDetails}
+              </div>
+            )}
+          </CardContent>
+          <CardContent className={cn("p-3 space-y-2 text-sm", showTextPreview && "hidden")}>
             <div className="font-medium">
               {question.text}
             </div>
