@@ -98,29 +98,27 @@ interface LockedSectionProps {
 
 function LockedSection({ type, title, description, children }: LockedSectionProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const bgColor = type === 'initial' ? 'bg-emerald-50 dark:bg-emerald-950' : 'bg-rose-50 dark:bg-rose-950';
-  const borderColor = type === 'initial' ? 'border-emerald-200 dark:border-emerald-800' : 'border-rose-200 dark:border-rose-800';
 
   return (
-    <Card className={cn('shadow-sm', bgColor, borderColor)}>
+    <Card className="transition-all hover:shadow-md">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="p-3 cursor-pointer hover:bg-black/5 transition-colors">
+          <CardHeader className="p-3 hover:bg-muted/50 transition-colors cursor-pointer">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Lock className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-sm">{title}</CardTitle>
-                <Badge variant="outline" className="text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Lock className="h-4 w-4 text-primary" />
+                <CardTitle className="text-sm font-semibold">{title}</CardTitle>
+                <Badge variant="outline" className="text-xs font-normal">
                   Obbligatorio
                 </Badge>
               </div>
               {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </div>
-            <CardDescription className="text-xs">{description}</CardDescription>
+            <CardDescription className="text-xs pt-1">{description}</CardDescription>
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="p-3 pt-0">
+          <CardContent className="p-3 pt-0 space-y-3">
             {children}
           </CardContent>
         </CollapsibleContent>
