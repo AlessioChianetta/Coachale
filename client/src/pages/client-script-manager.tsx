@@ -817,7 +817,12 @@ export default function ClientScriptManager() {
                   ))}
                 </div>
               </ScrollArea>
-              <div className="p-2 border-t">
+              <div className="p-2 border-t space-y-2">
+                <Button variant="default" className="w-full" asChild>
+                  <a href="/client/scripts/builder">
+                    <Blocks className="h-4 w-4 mr-2" /> Script Builder
+                  </a>
+                </Button>
                 <Dialog open={showNewScriptDialog} onOpenChange={setShowNewScriptDialog}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="w-full">

@@ -81,6 +81,7 @@ const ClientSalesAgentsList = lazy(() => import("@/pages/client-sales-agents-lis
 const ClientSalesAgentConfig = lazy(() => import("@/pages/client-sales-agent-config"));
 const ClientSalesAgentAnalytics = lazy(() => import("@/pages/client-sales-agent-analytics"));
 const ClientScriptManager = lazy(() => import("@/pages/client-script-manager"));
+const ScriptBuilder = lazy(() => import("@/pages/script-builder"));
 const PublicSalesAgentLanding = lazy(() => import("@/pages/public-sales-agent-landing"));
 const ConsultationInviteLobby = lazy(() => import("@/pages/consultation-invite-lobby"));
 const ConsultationLobby = lazy(() => import("@/pages/consultation-lobby"));
@@ -475,6 +476,12 @@ function Router() {
       <Route path="/client/scripts">
         <AuthGuard requiredRole="client">
           <ClientScriptManager />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/client/scripts/builder">
+        <AuthGuard requiredRole="client">
+          <ScriptBuilder />
         </AuthGuard>
       </Route>
 
