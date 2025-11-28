@@ -41,11 +41,15 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
       micStreamRef.current = stream;
       
       // Setup audio analyzer PRIMA di cambiare lo stato (per evitare re-render)
-      setupAudioAnalyser(stream);
+      await setupAudioAnalyser(stream);
       
-      // Cambia lo stato solo DOPO che tutto è configurato
-      setMicStatus('granted');
-      onPermissionGranted?.();
+      // IMPORTANTE: Cambia lo stato DOPO un breve delay per garantire che tutto sia pronto
+      // Questo previene re-render prematuri del componente padre
+      setTimeout(() => {
+        console.log('[MicrophoneTest] 🎯 All setup complete, updating status to granted');
+        setMicStatus('granted');
+        onPermissionGranted?.();
+      }, 100);
       
     } catch (error) {
       console.error('[MicrophoneTest] ❌ Permission denied:', error);
@@ -55,7 +59,7 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
     }
   };
 
-  const setupAudioAnalyser = (stream: MediaStream) => {
+  const setupAudioAnalyser = async (stream: MediaStream) => {
     try {
       console.log('[MicrophoneTest] 🎚️ Setting up audio analyser...');
       
@@ -71,10 +75,19 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
       
+      // Aspetta che l'audio context sia effettivamente running
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+      
       console.log('[MicrophoneTest] ✅ Audio analyser ready, starting monitoring...');
       startAudioLevelMonitoring();
+      
+      // Ritorna una promise risolta per indicare che il setup è completo
+      return Promise.resolve();
     } catch (error) {
       console.error('[MicrophoneTest] ❌ Failed to setup audio analyser:', error);
+      return Promise.reject(error);
     }
   };
 
