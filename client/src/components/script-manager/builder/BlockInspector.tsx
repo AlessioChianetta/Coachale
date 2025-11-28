@@ -1169,74 +1169,87 @@ function QuestionInspectorPanel({ question, phaseId, stepId }: { question: Quest
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
-        <MessageSquare className="h-5 w-5" />
-        <span className="font-semibold">Domanda</span>
+      <div className="flex items-center gap-2 flex-wrap">
+        <MessageSquare className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <span className="font-semibold text-purple-600 dark:text-purple-400">Domanda</span>
         {question.isKey && (
-          <Badge variant="default" className="text-xs">Chiave</Badge>
+          <Badge variant="default" className="bg-purple-600 text-xs">
+            <Key className="h-3 w-3 mr-1" />
+            Chiave
+          </Badge>
+        )}
+        {question.marker && (
+          <Badge variant="outline" className="text-xs">
+            {question.marker}
+          </Badge>
         )}
       </div>
 
-      <div className="space-y-3">
-        <div>
-          <Label htmlFor="question-text" className="text-xs">Testo Domanda</Label>
-          <Textarea
-            id="question-text"
-            value={question.text}
-            onChange={(e) => handleUpdate({ text: e.target.value })}
-            className="mt-1 min-h-[100px]"
-            placeholder="Scrivi la domanda..."
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="question-marker" className="text-xs">Marker (opzionale)</Label>
-          <Input
-            id="question-marker"
-            value={question.marker || ''}
-            onChange={(e) => handleUpdate({ marker: e.target.value })}
-            className="mt-1"
-            placeholder="Es: [BUDGET], [TIMELINE]..."
-          />
-          <p className="text-[10px] text-muted-foreground mt-1">
-            I marker aiutano a categorizzare le risposte
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between">
+      <Card className="transition-all hover:shadow-sm">
+        <CardContent className="p-3 space-y-3">
           <div>
-            <Label className="text-xs">Domanda Chiave</Label>
-            <p className="text-[10px] text-muted-foreground">Essenziale per qualificare</p>
+            <Label htmlFor="question-text" className="text-xs font-medium">Testo Domanda</Label>
+            <Textarea
+              id="question-text"
+              value={question.text}
+              onChange={(e) => handleUpdate({ text: e.target.value })}
+              className="mt-1.5 min-h-[100px]"
+              placeholder="Scrivi la domanda..."
+            />
           </div>
-          <Switch
-            checked={question.isKey || false}
-            onCheckedChange={(checked) => handleUpdate({ isKey: checked })}
-          />
-        </div>
 
-        <div>
-          <Label htmlFor="question-condition" className="text-xs">Condizione (opzionale)</Label>
-          <Input
-            id="question-condition"
-            value={question.condition || ''}
-            onChange={(e) => handleUpdate({ condition: e.target.value })}
-            className="mt-1"
-            placeholder="Es: SE prospect ha detto X..."
-          />
-          <p className="text-[10px] text-muted-foreground mt-1">
-            Quando porre questa domanda
-          </p>
-        </div>
-      </div>
+          <div>
+            <Label htmlFor="question-marker" className="text-xs font-medium">Marker (opzionale)</Label>
+            <Input
+              id="question-marker"
+              value={question.marker || ''}
+              onChange={(e) => handleUpdate({ marker: e.target.value })}
+              className="mt-1.5 h-9"
+              placeholder="Es: [BUDGET], [TIMELINE]..."
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              I marker aiutano a categorizzare le risposte
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between p-2 rounded-md bg-muted/30">
+            <div>
+              <Label className="text-xs font-medium">Domanda Chiave</Label>
+              <p className="text-[10px] text-muted-foreground">Essenziale per qualificare</p>
+            </div>
+            <Switch
+              checked={question.isKey || false}
+              onCheckedChange={(checked) => handleUpdate({ isKey: checked })}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="question-condition" className="text-xs font-medium">Condizione (opzionale)</Label>
+            <Input
+              id="question-condition"
+              value={question.condition || ''}
+              onChange={(e) => handleUpdate({ condition: e.target.value })}
+              className="mt-1.5 h-9"
+              placeholder="Es: SE prospect ha detto X..."
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Quando porre questa domanda
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Separator />
 
       <div>
-        <h4 className="font-medium text-sm mb-2">Istruzioni per l'AI</h4>
-        <Card className="bg-muted/50">
+        <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+          <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          Istruzioni per l'AI
+        </h4>
+        <Card className="bg-gradient-to-br from-blue-50/50 to-purple-50/50 dark:from-blue-950/30 dark:to-purple-950/30 border-blue-200 dark:border-blue-800">
           <CardContent className="p-3 space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs">Aspetta risposta completa</Label>
+            <div className="flex items-center justify-between p-2 rounded-md bg-background/60">
+              <Label className="text-xs font-medium">Aspetta risposta completa</Label>
               <Switch
                 checked={question.instructions?.wait || false}
                 onCheckedChange={(checked) => handleUpdate({
@@ -1246,37 +1259,37 @@ function QuestionInspectorPanel({ question, phaseId, stepId }: { question: Quest
             </div>
             {question.instructions?.wait && (
               <div>
-                <Label className="text-xs">Dettagli attesa</Label>
+                <Label className="text-xs font-medium">Dettagli attesa</Label>
                 <Input
                   value={question.instructions?.waitDetails || ''}
                   onChange={(e) => handleUpdate({
                     instructions: { ...question.instructions, wait: true, waitDetails: e.target.value }
                   })}
-                  className="mt-1 h-8"
+                  className="mt-1.5 h-9"
                   placeholder="Es: Lascia 3 secondi di silenzio..."
                 />
               </div>
             )}
             <div>
-              <Label className="text-xs">Come ascoltare</Label>
+              <Label className="text-xs font-medium">Come ascoltare</Label>
               <Input
                 value={question.instructions?.listen || ''}
                 onChange={(e) => handleUpdate({
                   instructions: { ...question.instructions, wait: question.instructions?.wait || false, listen: e.target.value }
                 })}
-                className="mt-1 h-8"
+                className="mt-1.5 h-9"
                 placeholder="Es: Cerca menzioni di budget, timeline..."
               />
             </div>
             
             <div>
-              <Label className="text-xs">Contesto Reazione</Label>
+              <Label className="text-xs font-medium">Contesto Reazione</Label>
               <Textarea
                 value={question.instructions?.reactContext || ''}
                 onChange={(e) => handleUpdate({
                   instructions: { ...question.instructions, wait: question.instructions?.wait || false, reactContext: e.target.value }
                 })}
-                className="mt-1 min-h-[50px]"
+                className="mt-1.5 min-h-[50px] text-xs"
                 placeholder="Contesto per le reazioni..."
               />
             </div>
