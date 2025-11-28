@@ -25,6 +25,7 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const requestMicrophoneAccess = async () => {
+    console.log('[MicrophoneTest] 🎤 Requesting microphone access...');
     setMicStatus('requesting');
     
     try {
@@ -36,13 +37,18 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
         }
       });
 
+      console.log('[MicrophoneTest] ✅ Microphone access granted');
       micStreamRef.current = stream;
+      
+      // Setup audio analyzer PRIMA di cambiare lo stato (per evitare re-render)
+      setupAudioAnalyser(stream);
+      
+      // Cambia lo stato solo DOPO che tutto è configurato
       setMicStatus('granted');
       onPermissionGranted?.();
       
-      setupAudioAnalyser(stream);
     } catch (error) {
-      console.error('[MicrophoneTest] Permission denied:', error);
+      console.error('[MicrophoneTest] ❌ Permission denied:', error);
       setMicStatus('denied');
       setIsTesting(false);
       onPermissionDenied?.();
@@ -51,6 +57,8 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
 
   const setupAudioAnalyser = (stream: MediaStream) => {
     try {
+      console.log('[MicrophoneTest] 🎚️ Setting up audio analyser...');
+      
       const audioContext = new AudioContext();
       const analyser = audioContext.createAnalyser();
       const source = audioContext.createMediaStreamSource(stream);
@@ -63,19 +71,27 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
       audioContextRef.current = audioContext;
       analyserRef.current = analyser;
       
+      console.log('[MicrophoneTest] ✅ Audio analyser ready, starting monitoring...');
       startAudioLevelMonitoring();
     } catch (error) {
-      console.error('[MicrophoneTest] Failed to setup audio analyser:', error);
+      console.error('[MicrophoneTest] ❌ Failed to setup audio analyser:', error);
     }
   };
 
   const startAudioLevelMonitoring = () => {
-    if (!analyserRef.current) return;
+    if (!analyserRef.current) {
+      console.warn('[MicrophoneTest] ⚠️ Cannot start monitoring - analyser not ready');
+      return;
+    }
 
+    console.log('[MicrophoneTest] 📊 Starting audio level monitoring loop');
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
     
     const updateLevel = () => {
-      if (!analyserRef.current) return;
+      if (!analyserRef.current || !micStreamRef.current) {
+        console.log('[MicrophoneTest] ⚠️ Monitoring stopped - refs cleared');
+        return;
+      }
 
       analyserRef.current.getByteFrequencyData(dataArray);
       
@@ -153,18 +169,30 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
 
   const toggleTest = () => {
     if (isTesting) {
+      console.log('[MicrophoneTest] 🛑 User stopping test');
       stopMicrophone();
     } else {
+      console.log('[MicrophoneTest] ▶️ User starting test');
       setIsTesting(true);
       requestMicrophoneAccess();
     }
   };
 
+  // Cleanup solo quando il componente viene realmente smontato
   useEffect(() => {
     return () => {
-      stopMicrophone();
+      // Pulisci solo se il test era realmente in corso
+      if (micStreamRef.current || audioContextRef.current) {
+        console.log('[MicrophoneTest] Cleanup - stopping microphone');
+        stopMicrophone();
+      }
     };
   }, []);
+
+  // Previeni cleanup durante re-render normali
+  useEffect(() => {
+    // Questo effect non fa cleanup, mantiene lo stream attivo
+  }, [micStatus, audioLevel, isTesting, hasSpoken]);
 
   const getStatusMessage = () => {
     switch (micStatus) {
