@@ -170,7 +170,7 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied, onTest
               noAudioTimeoutRef.current = null;
             }
             
-            onPermissionGranted?.();
+            // Solo onTestSuccess - il padre gestirà tutto (stato + scroll)
             onTestSuccess?.();
           }, 1500);
         }

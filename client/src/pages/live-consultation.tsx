@@ -68,7 +68,7 @@ export default function LiveConsultation() {
     return localStorage.getItem('liveMode_useFullPrompt') === 'true';
   });
   const [layoutMode, setLayoutMode] = useState<'immersive' | 'phone_call'>(() => {
-    return (localStorage.getItem('liveMode_layout') as 'immersive' | 'phone_call') || 'immersive';
+    return (localStorage.getItem('liveMode_layout') as 'immersive' | 'phone_call') || 'phone_call';
   });
   const [isTestMode, setIsTestMode] = useState(false);
   const [consultationId, setConsultationId] = useState<string | null>(null);

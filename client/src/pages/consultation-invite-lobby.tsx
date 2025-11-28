@@ -99,14 +99,19 @@ export default function ConsultationInviteLobby() {
   };
 
   const handleTestSuccess = () => {
+    console.log('[ConsultationInviteLobby] 🎉 Test success! Setting micPermissionGranted and scrolling...');
+    setMicPermissionGranted(true);
+    
+    // Scroll al pulsante dopo un breve delay per permettere il re-render
     setTimeout(() => {
       if (joinButtonRef.current) {
+        console.log('[ConsultationInviteLobby] 📜 Scrolling to join button...');
         joinButtonRef.current.scrollIntoView({ 
           behavior: 'smooth', 
           block: 'center' 
         });
       }
-    }, 500);
+    }, 600);
   };
 
   if (isLoading) {
@@ -205,7 +210,6 @@ export default function ConsultationInviteLobby() {
                     <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 via-violet-600 to-blue-600 rounded-2xl blur-xl opacity-40 group-hover:opacity-60 transition duration-500 animate-pulse" />
                     <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl">
                       <MicrophoneTest
-                        onPermissionGranted={() => setMicPermissionGranted(true)}
                         onPermissionDenied={() => setMicPermissionGranted(false)}
                         onTestSuccess={handleTestSuccess}
                       />

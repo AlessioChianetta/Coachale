@@ -34,7 +34,7 @@ const VOICES = [
   { value: 'aoede', label: 'Aoede', description: '🇬🇧 Femminile Melodiosa' },
 ];
 
-export function SessionTypeSelector({ onSelectType, onBack, voiceName, setVoiceName, useFullPrompt, setUseFullPrompt, layoutMode = 'immersive', setLayoutMode }: SessionTypeSelectorProps) {
+export function SessionTypeSelector({ onSelectType, onBack, voiceName, setVoiceName, useFullPrompt, setUseFullPrompt, layoutMode = 'phone_call', setLayoutMode }: SessionTypeSelectorProps) {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [checkingAccess, setCheckingAccess] = useState(false);
@@ -57,7 +57,7 @@ export function SessionTypeSelector({ onSelectType, onBack, voiceName, setVoiceN
   // Recupera o imposta lo stato iniziale di layoutMode dal localStorage
   const [currentLayoutMode, setCurrentLayoutMode] = useState<'immersive' | 'phone_call'>(() => {
     const saved = localStorage.getItem('liveMode_layout');
-    return (saved as 'immersive' | 'phone_call') || 'immersive';
+    return (saved as 'immersive' | 'phone_call') || 'phone_call';
   });
 
   useEffect(() => {

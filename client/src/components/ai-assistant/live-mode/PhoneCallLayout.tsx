@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Mic, MicOff, User, Clock, ChevronUp, ChevronDown, Grid3x3, X } from 'lucide-react';
+import { Phone, Mic, MicOff, User, Clock, ChevronUp, ChevronDown, Grid3x3, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LiveTranscript } from '../LiveTranscript';
 
@@ -43,9 +43,23 @@ export function PhoneCallLayout({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Determina il colore dell'animazione vocale
-  const voiceColor = liveState === 'listening' ? '#10b981' : '#3b82f6'; // verde per user, blu per AI
-  const currentLevel = liveState === 'listening' ? micLevel : audioLevel;
+  // Soglie per considerare "audio attivo"
+  const USER_AUDIO_THRESHOLD = 10; // Soglia utente (0-255)
+  const AI_AUDIO_THRESHOLD = 3;    // Soglia AI più bassa per catturare più audio
+  
+  // L'AI sta parlando se liveState è 'speaking' (indipendentemente dall'audioLevel perché
+  // tra un chunk e l'altro l'audioLevel scende a 0 brevemente)
+  const isUserSpeaking = liveState === 'listening' && micLevel > USER_AUDIO_THRESHOLD && !isMuted;
+  const isAISpeaking = liveState === 'speaking'; // AI parla quando lo stato è 'speaking'
+  const hasAudioActivity = audioLevel > AI_AUDIO_THRESHOLD; // Per intensità onde
+  const isSomeoneActivelyTalking = isUserSpeaking || isAISpeaking;
+  
+  // Colori: Verde per utente, Blu per AI
+  const voiceColor = isUserSpeaking ? '#10b981' : '#3b82f6';
+  const currentLevel = isUserSpeaking ? micLevel : audioLevel;
+  
+  // Stato di caricamento
+  const isLoading = connectionStatus === 'connecting' || liveState === 'loading';
 
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-gray-900 via-gray-800 to-black flex flex-col">
@@ -100,16 +114,19 @@ export function PhoneCallLayout({
 
         {/* Sottotitolo Stato */}
         <motion.p
-          key={liveState}
+          key={`${liveState}-${connectionStatus}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="text-gray-400 text-sm"
         >
           {sessionClosing ? '🔒 Chiusura in corso...' :
-           liveState === 'loading' ? 'Inizializzazione...' :
+           connectionStatus === 'connecting' ? '⏳ Connessione in corso...' :
+           liveState === 'loading' ? '⏳ Preparazione chiamata...' :
+           isUserSpeaking ? '🎙️ Stai parlando...' :
+           isAISpeaking ? '🔊 AI sta parlando...' :
            liveState === 'listening' ? (isMuted ? '🔇 Microfono silenziato' : '🎤 In ascolto...') :
            liveState === 'thinking' ? '💭 Sta pensando...' :
-           liveState === 'speaking' ? '🔊 Sta parlando...' :
+           connectionStatus === 'connected' ? '✅ Pronto' :
            'Pronto'}
         </motion.p>
 
@@ -129,37 +146,73 @@ export function PhoneCallLayout({
           {/* Avatar di sfondo */}
           <motion.div
             animate={{
-              scale: liveState === 'speaking' || liveState === 'listening' ? [1, 1.05, 1] : 1,
+              scale: isSomeoneActivelyTalking ? [1, 1.05, 1] : 1,
             }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-40 h-40 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-2xl"
+            className={`w-40 h-40 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 ${
+              isLoading 
+                ? 'bg-gradient-to-br from-gray-600 to-gray-700' 
+                : isUserSpeaking 
+                ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
+                : 'bg-gradient-to-br from-blue-500 to-purple-600'
+            }`}
           >
-            <User className="w-20 h-20 text-white" />
+            {isLoading ? (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              >
+                <Loader2 className="w-16 h-16 text-white" />
+              </motion.div>
+            ) : (
+              <User className="w-20 h-20 text-white" />
+            )}
           </motion.div>
 
-          {/* Onde vocali animate */}
+          {/* Overlay di caricamento */}
           <AnimatePresence>
-            {(liveState === 'speaking' || liveState === 'listening') && (
+            {isLoading && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-center"
+              >
+                <motion.div
+                  animate={{
+                    scale: [1, 1.3, 1],
+                    opacity: [0.3, 0.1, 0.3],
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute inset-0 rounded-full bg-yellow-500/20 border-2 border-yellow-400/50"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Onde vocali animate - visibili quando qualcuno parla */}
+          <AnimatePresence>
+            {isSomeoneActivelyTalking && (
               <>
-                {[1, 2, 3].map((ring) => (
+                {[1, 2, 3, 4].map((ring) => (
                   <motion.div
-                    key={ring}
-                    initial={{ scale: 1, opacity: 0.6 }}
+                    key={`${ring}-${isUserSpeaking ? 'user' : 'ai'}`}
+                    initial={{ scale: 1, opacity: 0 }}
                     animate={{
-                      scale: [1, 1.5 + ring * 0.3, 1],
-                      opacity: [0.6, 0, 0.6],
+                      scale: [1, 1.4 + ring * 0.25],
+                      opacity: [0.7, 0],
                     }}
                     exit={{ scale: 1, opacity: 0 }}
                     transition={{
-                      duration: 2,
+                      duration: 1.2,
                       repeat: Infinity,
-                      delay: ring * 0.3,
+                      delay: ring * 0.15,
                       ease: 'easeOut',
                     }}
-                    className="absolute inset-0 rounded-full border-2"
+                    className="absolute inset-0 rounded-full"
                     style={{
-                      borderColor: voiceColor,
-                      opacity: Math.min(currentLevel / 255, 0.6),
+                      border: `3px solid ${voiceColor}`,
+                      boxShadow: `0 0 ${10 + ring * 5}px ${voiceColor}40`,
                     }}
                   />
                 ))}
@@ -169,41 +222,12 @@ export function PhoneCallLayout({
         </div>
       </div>
 
-      {/* Trascrizione Espandibile */}
-      <AnimatePresence>
-        {showTranscript && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="bg-gray-800/50 backdrop-blur-md border-t border-gray-700 overflow-hidden"
-          >
-            <div className="max-h-48 overflow-y-auto p-4 space-y-2">
-              {userTranscript && (
-                <LiveTranscript
-                  text={userTranscript.text}
-                  role={userTranscript.role}
-                  animated={true}
-                />
-              )}
-              {currentTranscript && (
-                <LiveTranscript
-                  text={currentTranscript.text}
-                  role={currentTranscript.role}
-                  animated={true}
-                />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Pulsante Espandi Trascrizione */}
-      <div className="px-6 py-2">
+      {/* Pulsante Espandi Trascrizione - sopra la trascrizione */}
+      <div className="px-6 py-2 shrink-0">
         <Button
           variant="ghost"
           onClick={() => setShowTranscript(!showTranscript)}
-          className="w-full text-gray-400 hover:text-white hover:bg-gray-800/50"
+          className="w-full text-gray-400 hover:text-white hover:bg-gray-800/50 border border-gray-700/50"
         >
           {showTranscript ? (
             <>
@@ -218,6 +242,63 @@ export function PhoneCallLayout({
           )}
         </Button>
       </div>
+
+      {/* Trascrizione Espandibile - Con altezza fissa e scroll interno */}
+      <AnimatePresence>
+        {showTranscript && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="mx-4 mb-4 bg-gray-800/80 backdrop-blur-xl rounded-2xl border border-gray-600/50 shadow-2xl overflow-hidden"
+          >
+            {/* Header della trascrizione */}
+            <div className="px-4 py-3 border-b border-gray-700/50 bg-gray-900/50">
+              <h3 className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                Trascrizione in tempo reale
+              </h3>
+            </div>
+            
+            {/* Contenuto scrollabile */}
+            <div className="max-h-[35vh] min-h-[120px] overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+              {!userTranscript && !currentTranscript ? (
+                <div className="text-center text-gray-500 py-4">
+                  <p className="text-sm">In attesa di conversazione...</p>
+                </div>
+              ) : (
+                <>
+                  {userTranscript && (
+                    <div className="bg-green-500/10 rounded-xl p-3 border border-green-500/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-green-400">Tu</span>
+                      </div>
+                      <LiveTranscript
+                        text={userTranscript.text}
+                        role={userTranscript.role}
+                        animated={true}
+                      />
+                    </div>
+                  )}
+                  {currentTranscript && (
+                    <div className="bg-blue-500/10 rounded-xl p-3 border border-blue-500/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-blue-400">AI</span>
+                      </div>
+                      <LiveTranscript
+                        text={currentTranscript.text}
+                        role={currentTranscript.role}
+                        animated={true}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Controlli Chiamata - Bottom */}
       <div className="pb-10 px-6">

@@ -66,19 +66,20 @@ export default function ConsultationLobby() {
     localStorage.setItem('liveMode_useFullPrompt', String(useFullPrompt));
   }, [useFullPrompt]);
 
-  const handleMicPermissionGranted = () => {
-    setMicPermissionGranted(true);
-  };
-
   const handleTestSuccess = () => {
+    console.log('[ConsultationLobby] 🎉 Test success! Setting micPermissionGranted and scrolling...');
+    setMicPermissionGranted(true);
+    
+    // Scroll al pulsante dopo un breve delay per permettere il re-render
     setTimeout(() => {
       if (enterButtonRef.current) {
+        console.log('[ConsultationLobby] 📜 Scrolling to enter button...');
         enterButtonRef.current.scrollIntoView({ 
           behavior: 'smooth', 
           block: 'center' 
         });
       }
-    }, 500);
+    }, 600);
   };
 
   const handleMicPermissionDenied = () => {
@@ -206,7 +207,6 @@ export default function ConsultationLobby() {
                     <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 via-violet-600 to-blue-600 rounded-2xl blur-xl opacity-40 group-hover:opacity-60 transition duration-500 animate-pulse" />
                     <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl">
                       <MicrophoneTest
-                        onPermissionGranted={handleMicPermissionGranted}
                         onPermissionDenied={handleMicPermissionDenied}
                         onTestSuccess={handleTestSuccess}
                       />

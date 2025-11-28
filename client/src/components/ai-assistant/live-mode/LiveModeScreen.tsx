@@ -45,7 +45,7 @@ interface TranscriptEntry {
   timestamp: number;
 }
 
-export function LiveModeScreen({ mode, consultantType, customPrompt, useFullPrompt, voiceName, sessionType, isTestMode, consultationId, shareToken, salesAgentConversationId, inviteToken, consultationInviteConversationId, layoutMode = 'immersive', onClose, onConversationSaved }: LiveModeScreenProps) {
+export function LiveModeScreen({ mode, consultantType, customPrompt, useFullPrompt, voiceName, sessionType, isTestMode, consultationId, shareToken, salesAgentConversationId, inviteToken, consultationInviteConversationId, layoutMode = 'phone_call', onClose, onConversationSaved }: LiveModeScreenProps) {
   const { toast } = useToast();
   // Refs per timer: uno per websocket session, uno per conversazione totale
   const websocketSessionTimeRef = useRef<number>(Date.now()); // Resettato al refresh
