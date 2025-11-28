@@ -85,6 +85,7 @@ import publicSalesAgentRouter from "./routes/public/sales-agent";
 import publicConsultationInvitesRouter from "./routes/public/consultation-invites";
 import trainingAssistantRouter from "./routes/training-assistant";
 import salesScriptsRouter from "./routes/sales-scripts";
+import scriptBuilderRouter from "./routes/script-builder";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
 import { handleWebhook } from "./whatsapp/webhook-handler";
 import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
@@ -6613,6 +6614,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Sales Scripts Management routes (for editing scripts from frontend)
   app.use("/api/sales-scripts", authenticateToken, salesScriptsRouter);
+
+  // Script Builder routes (visual script construction)
+  app.use("/api/script-builder", authenticateToken, scriptBuilderRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
