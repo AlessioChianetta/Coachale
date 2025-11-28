@@ -196,46 +196,105 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
 
       console.log(`[ScriptBuilder] Using AI provider: ${aiProvider.metadata.name} (${aiProvider.source})`);
 
-      const prompt = `Sei un esperto di vendita telefonica.
+      const prompt = `Sei un esperto coach di vendita telefonica B2B e devi personalizzare uno script per un business specifico.
 
-Hai questo script di vendita con domande generiche:
-${JSON.stringify(structure.phases?.map(p => ({
-  phase: p.name,
-  steps: p.steps?.map(s => ({
-    step: s.name,
-    questions: s.questions?.map(q => q.text)
-  }))
-})), null, 2)}
-
-Devi PERSONALIZZARE le domande per questo specifico business:
-- Nome Business: ${agentContext.businessName}
+## BUSINESS CONTEXT:
+- Nome Business: ${agentContext.businessName || 'Non specificato'}
+- Display Name: ${agentContext.displayName || 'Consulente'}
 - Target Client: ${agentContext.targetClient || 'Non specificato'}
-- USP: ${agentContext.usp || 'Non specificato'}
-- Valori: ${JSON.stringify(agentContext.values || [])}
+- USP (Unique Selling Proposition): ${agentContext.usp || 'Non specificato'}
+- Valori aziendali: ${JSON.stringify(agentContext.values || [])}
+- Mission: ${agentContext.mission || 'Non specificato'}
 - Cosa facciamo: ${agentContext.whatWeDo || 'Non specificato'}
 - Come lo facciamo: ${agentContext.howWeDoIt || 'Non specificato'}
 
-${userComment ? `Commento aggiuntivo dell'utente: ${userComment}` : ''}
+${userComment ? `## COMMENTO UTENTE:\n${userComment}\n` : ''}
 
-REGOLE:
-1. NON cambiare la struttura (fasi, step)
-2. Modifica SOLO il testo delle domande
-3. Rendi le domande più specifiche per il target client
-4. Mantieni lo stesso tono professionale ma adattato al settore
-5. Includi riferimenti specifici al business quando appropriato
+## SCRIPT DA PERSONALIZZARE (struttura completa):
+${JSON.stringify(structure.phases?.map(phase => ({
+  phase: phase.name,
+  phaseNumber: phase.number,
+  description: phase.description,
+  energy: phase.energy ? {
+    level: phase.energy.level,
+    tone: phase.energy.tone,
+    volume: phase.energy.volume,
+    rhythm: phase.energy.rhythm,
+    vocabulary: phase.energy.vocabulary,
+    mindset: phase.energy.mindset
+  } : null,
+  steps: phase.steps?.map(step => ({
+    stepNumber: step.number,
+    name: step.name,
+    objective: step.objective,
+    energy: step.energy ? {
+      level: step.energy.level,
+      tone: step.energy.tone,
+      vocabulary: step.energy.vocabulary,
+      mindset: step.energy.mindset
+    } : null,
+    questions: step.questions?.map(q => ({
+      text: q.text,
+      marker: q.marker,
+      isKey: q.isKey,
+      instructions: q.instructions
+    })),
+    ladder: step.ladder ? {
+      title: step.ladder.title,
+      whenToUse: step.ladder.whenToUse,
+      levels: step.ladder.levels?.map(l => ({
+        number: l.number,
+        name: l.name,
+        objective: l.objective,
+        question: l.question,
+        tone: l.tone,
+        examples: l.examples
+      })),
+      stopWhen: step.ladder.stopWhen,
+      helpfulPhrases: step.ladder.helpfulPhrases
+    } : null,
+    biscottino: step.biscottino,
+    transition: step.transition,
+    notes: step.notes,
+    resistanceHandling: step.resistanceHandling
+  })),
+  checkpoint: phase.checkpoint ? {
+    title: phase.checkpoint.title,
+    checks: phase.checkpoint.checks,
+    resistanceHandling: phase.checkpoint.resistanceHandling,
+    testFinale: phase.checkpoint.testFinale,
+    reminder: phase.checkpoint.reminder
+  } : null
+})), null, 2)}
 
-Rispondi SOLO con un JSON array delle fasi modificate nel formato:
-[
-  {
-    "phaseName": "nome fase",
-    "steps": [
-      {
-        "stepName": "nome step",
-        "questions": ["domanda 1 modificata", "domanda 2 modificata"]
-      }
-    ]
-  }
-]`;
+## REGOLE DI PERSONALIZZAZIONE:
+1. MANTIENI ESATTAMENTE la struttura JSON: stesse fasi, step, numero di domande
+2. PERSONALIZZA per il target client specifico:
+   - Domande: adattale al settore e pain points del target
+   - Vocabulary nelle energy settings: aggiungi termini specifici del settore
+   - Ladder questions: rendi specifiche per i problemi del target
+   - Biscottino phrases: adatta al tono del business
+   - Checkpoint checks: personalizza per il settore
+   - Examples nelle ladder: crea esempi realistici per il settore
+3. SOSTITUISCI placeholder generici con riferimenti al business reale
+4. MANTIENI lo stile e il tono professionale
+5. NON modificare: numeri di step/fase, struttura delle istruzioni, marker
+
+## OUTPUT RICHIESTO:
+Rispondi SOLO con un JSON array delle fasi modificate. Ogni fase deve contenere:
+- phaseName: nome fase originale
+- phaseNumber: numero fase
+- energy: oggetto energy se presente (con vocabulary personalizzato)
+- steps: array di step modificati, ognuno con:
+  - stepNumber, name, objective (personalizzato)
+  - energy: con vocabulary e mindset personalizzati
+  - questions: array di oggetti {text, marker, isKey, instructions}
+  - ladder: se presente, con levels personalizzati (question, examples)
+  - biscottino: {trigger, phrase} personalizzato
+  - resistanceHandling: se presente, personalizzato
+- checkpoint: se presente, con checks e resistanceHandling personalizzati
+
+Rispondi SOLO con il JSON array, nessun testo prima o dopo.`;
 
       const result = await aiProvider.client.generateContent({
         model: 'gemini-3-pro-preview',
@@ -256,21 +315,99 @@ Rispondi SOLO con un JSON array delle fasi modificate nel formato:
         if (structure.phases) {
           for (const modification of aiModifications) {
             const phase = structure.phases.find(p => 
+              p.number === modification.phaseNumber || 
               p.name.toLowerCase().includes(modification.phaseName?.toLowerCase() || '')
             );
             
-            if (phase && modification.steps) {
+            if (!phase) continue;
+
+            if (modification.energy && phase.energy) {
+              if (modification.energy.vocabulary) {
+                phase.energy.vocabulary = modification.energy.vocabulary;
+              }
+              if (modification.energy.mindset) {
+                phase.energy.mindset = modification.energy.mindset;
+              }
+            }
+
+            if (modification.checkpoint && phase.checkpoint) {
+              if (modification.checkpoint.checks) {
+                phase.checkpoint.checks = modification.checkpoint.checks;
+              }
+              if (modification.checkpoint.resistanceHandling) {
+                phase.checkpoint.resistanceHandling = modification.checkpoint.resistanceHandling;
+              }
+              if (modification.checkpoint.testFinale) {
+                phase.checkpoint.testFinale = modification.checkpoint.testFinale;
+              }
+            }
+            
+            if (modification.steps && phase.steps) {
               for (const stepMod of modification.steps) {
-                const step = phase.steps?.find(s => 
-                  s.name.toLowerCase().includes(stepMod.stepName?.toLowerCase() || '')
+                const step = phase.steps.find(s => 
+                  s.number === stepMod.stepNumber ||
+                  s.name.toLowerCase().includes(stepMod.name?.toLowerCase() || '')
                 );
                 
-                if (step && step.questions && stepMod.questions) {
+                if (!step) continue;
+
+                if (stepMod.objective) {
+                  step.objective = stepMod.objective;
+                }
+
+                if (stepMod.energy && step.energy) {
+                  if (stepMod.energy.vocabulary) {
+                    step.energy.vocabulary = stepMod.energy.vocabulary;
+                  }
+                  if (stepMod.energy.mindset) {
+                    step.energy.mindset = stepMod.energy.mindset;
+                  }
+                }
+
+                if (stepMod.questions && step.questions) {
                   for (let i = 0; i < Math.min(step.questions.length, stepMod.questions.length); i++) {
-                    if (stepMod.questions[i]) {
-                      step.questions[i].text = stepMod.questions[i];
+                    const qMod = stepMod.questions[i];
+                    if (qMod) {
+                      if (typeof qMod === 'string') {
+                        step.questions[i].text = qMod;
+                      } else if (qMod.text) {
+                        step.questions[i].text = qMod.text;
+                        if (qMod.instructions) {
+                          step.questions[i].instructions = { ...step.questions[i].instructions, ...qMod.instructions };
+                        }
+                      }
                     }
                   }
+                }
+
+                if (stepMod.ladder && step.ladder) {
+                  if (stepMod.ladder.levels) {
+                    for (let i = 0; i < Math.min(step.ladder.levels.length, stepMod.ladder.levels.length); i++) {
+                      const levelMod = stepMod.ladder.levels[i];
+                      if (levelMod) {
+                        if (levelMod.question) step.ladder.levels[i].question = levelMod.question;
+                        if (levelMod.objective) step.ladder.levels[i].objective = levelMod.objective;
+                        if (levelMod.examples) step.ladder.levels[i].examples = levelMod.examples;
+                      }
+                    }
+                  }
+                  if (stepMod.ladder.helpfulPhrases) {
+                    step.ladder.helpfulPhrases = stepMod.ladder.helpfulPhrases;
+                  }
+                }
+
+                if (stepMod.biscottino && step.biscottino) {
+                  if (stepMod.biscottino.phrase) {
+                    step.biscottino.phrase = stepMod.biscottino.phrase;
+                  }
+                }
+
+                if (stepMod.resistanceHandling && step.resistanceHandling) {
+                  step.resistanceHandling = { ...step.resistanceHandling, ...stepMod.resistanceHandling };
+                }
+
+                if (stepMod.notes) {
+                  step.notes = stepMod.notes;
                 }
               }
             }
