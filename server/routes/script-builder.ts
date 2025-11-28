@@ -6,6 +6,7 @@ import { getDiscoveryScript, getDemoScript, getObjectionsScript } from '../ai/sa
 import { AuthRequest, requireRole } from '../middleware/auth';
 import { parseTextToBlocks } from '../../shared/script-parser';
 import type { ScriptBlockStructure } from '../../shared/script-blocks';
+import { getAIProvider } from '../ai/provider-factory';
 
 const router = Router();
 
@@ -179,11 +180,11 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
     };
 
     try {
-      const { GoogleGenerativeAI } = await import('@google/genai');
-      const apiKey = process.env.GEMINI_API_KEY || process.env.AI_INTEGRATIONS_GOOGLE_GEMINI_API_KEY;
+      console.log('[ScriptBuilder] Getting AI provider for client:', clientId);
+      const aiProvider = await getAIProvider(clientId);
       
-      if (!apiKey) {
-        console.log('[ScriptBuilder] No Gemini API key, returning base template');
+      if (!aiProvider) {
+        console.log('[ScriptBuilder] No AI provider available, returning base template');
         return res.json({
           success: true,
           structure,
@@ -191,8 +192,7 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
         });
       }
 
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      console.log(`[ScriptBuilder] Using AI provider: ${aiProvider.metadata.name} (${aiProvider.source})`);
 
       const prompt = `Sei un esperto di vendita telefonica.
 
@@ -235,8 +235,17 @@ Rispondi SOLO con un JSON array delle fasi modificate nel formato:
   }
 ]`;
 
-      const result = await model.generateContent(prompt);
+      const result = await aiProvider.client.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 1.0,
+          maxOutputTokens: 8192,
+        },
+      });
+      
       const responseText = result.response.text();
+      console.log('[ScriptBuilder] AI response received, parsing...');
       
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
@@ -265,16 +274,21 @@ Rispondi SOLO con un JSON array delle fasi modificate nel formato:
             }
           }
         }
+        console.log('[ScriptBuilder] AI modifications applied successfully');
+      }
+
+      if (aiProvider.cleanup) {
+        await aiProvider.cleanup();
       }
 
       res.json({
         success: true,
         structure,
-        message: 'Script personalizzato con AI',
+        message: `Script personalizzato con ${aiProvider.metadata.name}`,
       });
 
-    } catch (aiError) {
-      console.error('[ScriptBuilder] AI generation error:', aiError);
+    } catch (aiError: any) {
+      console.error('[ScriptBuilder] AI generation error:', aiError.message);
       res.json({
         success: true,
         structure,
