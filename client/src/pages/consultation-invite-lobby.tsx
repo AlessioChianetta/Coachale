@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -40,6 +40,8 @@ export default function ConsultationInviteLobby() {
   const [isJoining, setIsJoining] = useState(false);
   const [micPermissionGranted, setMicPermissionGranted] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  
+  const joinButtonRef = useRef<HTMLButtonElement>(null);
 
   const { data: inviteData, isLoading, error } = useQuery<InviteData>({
     queryKey: ['/public/invite', token],
@@ -94,6 +96,17 @@ export default function ConsultationInviteLobby() {
       description: !isMuted ? "Microfono disattivato" : "Microfono attivo",
       duration: 1500,
     });
+  };
+
+  const handleTestSuccess = () => {
+    setTimeout(() => {
+      if (joinButtonRef.current) {
+        joinButtonRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    }, 500);
   };
 
   if (isLoading) {
@@ -194,6 +207,7 @@ export default function ConsultationInviteLobby() {
                       <MicrophoneTest
                         onPermissionGranted={() => setMicPermissionGranted(true)}
                         onPermissionDenied={() => setMicPermissionGranted(false)}
+                        onTestSuccess={handleTestSuccess}
                       />
                     </div>
                   </div>
@@ -361,6 +375,7 @@ export default function ConsultationInviteLobby() {
 
           {/* CTA Button */}
           <Button
+            ref={joinButtonRef}
             onClick={handleJoin}
             disabled={!micPermissionGranted || isJoining}
             className="w-full h-14 lg:h-16 text-base lg:text-lg font-bold rounded-xl lg:rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 shadow-xl shadow-blue-900/20 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 disabled:cursor-not-allowed"

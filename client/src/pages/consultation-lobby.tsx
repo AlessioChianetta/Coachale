@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -44,6 +44,8 @@ export default function ConsultationLobby() {
   const [isEntering, setIsEntering] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   
+  const enterButtonRef = useRef<HTMLButtonElement>(null);
+  
   // Load saved preferences
   const [voiceName, setVoiceName] = useState(() => {
     const saved = localStorage.getItem('liveMode_voice');
@@ -66,6 +68,17 @@ export default function ConsultationLobby() {
 
   const handleMicPermissionGranted = () => {
     setMicPermissionGranted(true);
+  };
+
+  const handleTestSuccess = () => {
+    setTimeout(() => {
+      if (enterButtonRef.current) {
+        enterButtonRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    }, 500);
   };
 
   const handleMicPermissionDenied = () => {
@@ -195,6 +208,7 @@ export default function ConsultationLobby() {
                       <MicrophoneTest
                         onPermissionGranted={handleMicPermissionGranted}
                         onPermissionDenied={handleMicPermissionDenied}
+                        onTestSuccess={handleTestSuccess}
                       />
                     </div>
                   </div>
@@ -363,6 +377,7 @@ export default function ConsultationLobby() {
 
           {/* CTA Button */}
           <Button
+            ref={enterButtonRef}
             onClick={handleEnterSession}
             disabled={!micPermissionGranted || isEntering}
             className="w-full h-14 lg:h-16 text-base lg:text-lg font-bold rounded-xl lg:rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 shadow-xl shadow-blue-900/20 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 disabled:cursor-not-allowed"

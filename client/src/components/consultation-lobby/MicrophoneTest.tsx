@@ -1,21 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, MicOff, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, CheckCircle2, AlertCircle, AlertTriangle, Headphones } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 interface MicrophoneTestProps {
   onPermissionGranted?: () => void;
   onPermissionDenied?: () => void;
+  onTestSuccess?: () => void;
 }
 
-type MicStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'listening' | 'success';
+type MicStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'listening' | 'success' | 'no_audio';
 
-export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: MicrophoneTestProps) {
+export function MicrophoneTest({ onPermissionGranted, onPermissionDenied, onTestSuccess }: MicrophoneTestProps) {
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
   const [audioLevel, setAudioLevel] = useState(0);
   const [isTesting, setIsTesting] = useState(false);
   const [hasSpoken, setHasSpoken] = useState(false);
+  const [noAudioDetected, setNoAudioDetected] = useState(false);
   
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -23,6 +25,8 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
   const animationFrameRef = useRef<number | null>(null);
   const speechDetectedRef = useRef(false);
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const noAudioTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const audioSamplesRef = useRef<number[]>([]);
 
   const requestMicrophoneAccess = async () => {
     console.log('[MicrophoneTest] 🎤 Requesting microphone access...');
@@ -49,6 +53,9 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
         console.log('[MicrophoneTest] 🎯 All setup complete, updating status to granted');
         setMicStatus('granted');
         onPermissionGranted?.();
+        
+        // Inizia il controllo "nessun audio" dopo 5 secondi
+        startNoAudioDetection();
       }, 100);
       
     } catch (error) {
@@ -91,6 +98,30 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
     }
   };
 
+  const startNoAudioDetection = () => {
+    console.log('[MicrophoneTest] 🔍 Starting no-audio detection (5 second timer)...');
+    audioSamplesRef.current = [];
+    setNoAudioDetected(false);
+    
+    // Dopo 5 secondi, controlla se abbiamo ricevuto audio
+    noAudioTimeoutRef.current = setTimeout(() => {
+      // Calcola la media dei campioni audio raccolti
+      const samples = audioSamplesRef.current;
+      if (samples.length > 0) {
+        const avgLevel = samples.reduce((sum, val) => sum + val, 0) / samples.length;
+        console.log(`[MicrophoneTest] 📊 Average audio level after 5s: ${avgLevel.toFixed(4)}`);
+        
+        // Se la media è troppo bassa (< 0.02), probabilmente non c'è audio reale
+        const NO_AUDIO_THRESHOLD = 0.02;
+        if (avgLevel < NO_AUDIO_THRESHOLD && !speechDetectedRef.current) {
+          console.log('[MicrophoneTest] ⚠️ No audio detected - showing warning');
+          setNoAudioDetected(true);
+          setMicStatus('no_audio');
+        }
+      }
+    }, 5000);
+  };
+
   const startAudioLevelMonitoring = () => {
     if (!analyserRef.current) {
       console.warn('[MicrophoneTest] ⚠️ Cannot start monitoring - analyser not ready');
@@ -113,6 +144,9 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
       
       setAudioLevel(normalizedLevel);
       
+      // Salva campioni per il rilevamento "nessun audio"
+      audioSamplesRef.current.push(normalizedLevel);
+      
       // 🎤 SPEECH DETECTION: Soglia più alta per rilevare voce reale (non rumori di fondo)
       const SPEECH_THRESHOLD = 0.15; // ~15% del massimo - voce parlata normale
       
@@ -130,7 +164,16 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
             speechDetectedRef.current = true;
             setHasSpoken(true);
             setMicStatus('success');
+            setNoAudioDetected(false);
+            
+            // Cancella il timer no-audio se presente
+            if (noAudioTimeoutRef.current) {
+              clearTimeout(noAudioTimeoutRef.current);
+              noAudioTimeoutRef.current = null;
+            }
+            
             onPermissionGranted?.();
+            onTestSuccess?.();
           }, 1500);
         }
       } else {
@@ -169,6 +212,11 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
       clearTimeout(speechTimeoutRef.current);
       speechTimeoutRef.current = null;
     }
+    
+    if (noAudioTimeoutRef.current) {
+      clearTimeout(noAudioTimeoutRef.current);
+      noAudioTimeoutRef.current = null;
+    }
 
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach(track => track.stop());
@@ -184,10 +232,12 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
 
     analyserRef.current = null;
     speechDetectedRef.current = false;
+    audioSamplesRef.current = [];
     setMicStatus('idle');
     setAudioLevel(0);
     setHasSpoken(false);
     setIsTesting(false);
+    setNoAudioDetected(false);
   };
 
   const toggleTest = () => {
@@ -226,6 +276,8 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
         return '✓ Microfono funzionante e testato!';
       case 'denied':
         return 'Permesso negato. Abilita il microfono nelle impostazioni del browser.';
+      case 'no_audio':
+        return 'Il microfono è collegato ma non riceviamo audio. Controlla cuffie e dispositivo.';
       default:
         return '';
     }
@@ -241,6 +293,8 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
         return <AlertCircle className="w-5 h-5 text-red-500" />;
       case 'granted':
         return <Mic className="w-5 h-5 text-orange-500" />;
+      case 'no_audio':
+        return <AlertTriangle className="w-5 h-5 text-amber-500" />;
       default:
         return <MicOff className="w-5 h-5 text-gray-400" />;
     }
@@ -251,6 +305,7 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
       micStatus === 'success' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' :
       micStatus === 'listening' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' :
       micStatus === 'denied' ? 'border-red-500 bg-red-50 dark:bg-red-950/20' :
+      micStatus === 'no_audio' ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20' :
       micStatus === 'idle' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' :
       'border-orange-400 bg-orange-50 dark:bg-orange-950/20'
     }`}>
@@ -261,6 +316,7 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
               micStatus === 'success' ? 'bg-green-500' :
               micStatus === 'listening' ? 'bg-blue-500' :
               micStatus === 'denied' ? 'bg-red-500' :
+              micStatus === 'no_audio' ? 'bg-amber-500' :
               micStatus === 'granted' ? 'bg-orange-500' :
               'bg-gray-400'
             }`}
@@ -282,6 +338,7 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
            micStatus === 'granted' ? '🔊 PARLA nel microfono!' :
            micStatus === 'listening' ? '🎙️ Continua a parlare...' :
            micStatus === 'success' ? '✅ Test Superato!' :
+           micStatus === 'no_audio' ? '⚠️ Nessun Audio Rilevato' :
            '❌ Permesso Negato'}
         </h3>
         
@@ -310,7 +367,7 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
           )}
         </Button>
 
-        {(micStatus === 'granted' || micStatus === 'listening' || micStatus === 'success') ? (
+        {(micStatus === 'granted' || micStatus === 'listening' || micStatus === 'success' || micStatus === 'no_audio') ? (
           <div className="w-full">
             <p className="text-xs text-center mb-2 text-muted-foreground">Livello Audio</p>
             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -320,6 +377,8 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
                     ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700' 
                     : micStatus === 'success'
                     ? 'bg-gradient-to-r from-green-500 via-green-600 to-green-700'
+                    : micStatus === 'no_audio'
+                    ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700'
                     : 'bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700'
                 }`}
                 initial={{ width: 0 }}
@@ -372,6 +431,46 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
           <p className="text-sm md:text-base text-red-700 dark:text-red-300 font-medium text-center">
             ⚠️ Per continuare, abilita il microfono nelle impostazioni del browser e ricarica la pagina.
           </p>
+        </motion.div>
+      )}
+
+      {micStatus === 'no_audio' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 bg-amber-100 dark:bg-amber-950 border-2 border-amber-300 dark:border-amber-700 rounded-lg space-y-3"
+        >
+          <div className="flex items-center gap-2 justify-center">
+            <Headphones className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm md:text-base text-amber-700 dark:text-amber-300 font-semibold">
+              Nessun audio rilevato dal microfono
+            </p>
+          </div>
+          <div className="text-xs md:text-sm text-amber-700 dark:text-amber-300 space-y-1.5">
+            <p className="font-medium">Controlla che:</p>
+            <ul className="list-disc list-inside space-y-1 ml-2">
+              <li>Le cuffie/microfono siano correttamente collegate</li>
+              <li>Il volume del microfono non sia a zero</li>
+              <li>Hai selezionato il dispositivo corretto nel sistema</li>
+              <li>Il microfono non sia mutato nelle impostazioni</li>
+            </ul>
+          </div>
+          <div className="text-center pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                stopMicrophone();
+                setTimeout(() => {
+                  setIsTesting(true);
+                  requestMicrophoneAccess();
+                }, 100);
+              }}
+              className="border-amber-500 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900"
+            >
+              🔄 Riprova Test
+            </Button>
+          </div>
         </motion.div>
       )}
     </Card>
