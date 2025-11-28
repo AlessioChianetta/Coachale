@@ -54,6 +54,7 @@ export interface LadderLevel {
   name: string;
   objective?: string;
   question: string;
+  tone?: string;
   examples?: { clientSays: string; youSay: string }[];
   notes?: string;
 }
@@ -63,6 +64,10 @@ export interface Ladder {
   whenToUse?: string[];
   levels: LadderLevel[];
   stopWhen?: string[];
+  dontStopWhen?: string[];
+  helpfulPhrases?: string[];
+  goldSignals?: string[];
+  resistanceHandling?: ResistanceHandling;
 }
 
 export interface ResistanceStep {
@@ -83,6 +88,7 @@ export interface Checkpoint {
   resistanceHandling?: ResistanceHandling;
   reminder?: string;
   testFinale?: string;
+  testFinaleExamples?: string[];
 }
 
 export interface Step {
@@ -97,6 +103,7 @@ export interface Step {
   ladder?: Ladder;
   notes?: string;
   transition?: string;
+  resistanceHandling?: ResistanceHandling;
 }
 
 export interface Phase {

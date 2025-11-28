@@ -319,12 +319,15 @@ function parseLadder(text: string): Ladder | undefined {
     
     const notesMatch = section.match(/💡\s*(?:NOTA|NOTE)?:?\s*([^\n]+)/i);
     
+    const toneMatch = withoutSeparators.match(/🎵\s*TONO:\s*([^\n]+)/i);
+    
     if (question) {
       levels.push({
         number: levelNum,
         name: levelName,
         objective: objective || undefined,
         question,
+        tone: toneMatch?.[1]?.trim(),
         examples: examples.length > 0 ? examples : undefined,
         notes: notesMatch?.[1]?.trim(),
       });
@@ -376,11 +379,55 @@ function parseLadder(text: string): Ladder | undefined {
     }
   }
 
+  const dontStopWhen: string[] = [];
+  const dontStopMatch = text.match(/❌\s*NON\s*FERMARTI\s*(?:se\s*dice)?:?\s*([\s\S]*?)(?=💡|🎯|---|$)/i);
+  if (dontStopMatch) {
+    const lines = dontStopMatch[1].split('\n').filter(l => l.trim() && !l.trim().startsWith('💡'));
+    dontStopWhen.push(...lines.map(l => l.trim()).filter(l => l.length > 3));
+  }
+
+  const helpfulPhrases: string[] = [];
+  const helpfulMatch = text.match(/💡\s*(?:FRASI\s*UTILI|QUESTO\s*È\s*L['']ORO)[^:]*:?\s*([\s\S]*?)(?=🛑|🎯\s*SEGNALI|---|$)/i);
+  if (helpfulMatch) {
+    const phrases = helpfulMatch[1].match(/"([^"]+)"/g);
+    if (phrases) {
+      helpfulPhrases.push(...phrases.map(p => p.replace(/"/g, '').trim()));
+    } else {
+      const lines = helpfulMatch[1].split('\n').filter(l => l.trim() && l.trim().length > 5);
+      helpfulPhrases.push(...lines.map(l => l.trim()));
+    }
+  }
+
+  const goldSignals: string[] = [];
+  const goldMatch = text.match(/🎯\s*SEGNALI\s*(?:CHE\s*HAI\s*TROVATO\s*L['']ORO)?:?\s*([\s\S]*?)(?=💡|---|$)/i);
+  if (goldMatch) {
+    const items = goldMatch[1].match(/[•✓✅]\s*([^\n]+)/g);
+    if (items) {
+      goldSignals.push(...items.map(i => i.replace(/^[•✓✅]\s*/, '').trim()));
+    }
+  }
+
+  let ladderResistance: ResistanceHandling | undefined;
+  const ladderResistMatch = text.match(/🛡️\s*SE\s*RESISTE:\s*"?([^"\n]+)"?\s*([\s\S]*?)(?=🍪|---|$)/i);
+  if (ladderResistMatch) {
+    const trigger = ladderResistMatch[1]?.trim() || '';
+    const content = ladderResistMatch[2];
+    const responseMatch = content.match(/📌\s*DOMANDA:\s*"([^"]+)"/i);
+    ladderResistance = {
+      trigger,
+      response: responseMatch?.[1]?.trim() || content.trim().split('\n')[0],
+    };
+  }
+
   return {
     title,
     whenToUse: whenToUse.length > 0 ? whenToUse : undefined,
     levels,
     stopWhen: stopWhen.length > 0 ? stopWhen : undefined,
+    dontStopWhen: dontStopWhen.length > 0 ? dontStopWhen : undefined,
+    helpfulPhrases: helpfulPhrases.length > 0 ? helpfulPhrases : undefined,
+    goldSignals: goldSignals.length > 0 ? goldSignals : undefined,
+    resistanceHandling: ladderResistance,
   };
 }
 
@@ -460,7 +507,21 @@ function parseCheckpoint(text: string): Checkpoint | undefined {
 
   const reminderMatch = text.match(/🚨\s*REMINDER\s*(?:CRITICO)?[^🚨\n]*🚨?\s*([\s\S]*?)(?=✅\s*SOLO|---|$)/i);
   
-  const testFinaleMatch = text.match(/📊\s*TEST\s*FINALE[^:]*:\s*"?([^"\n]+)"?/i);
+  const testFinaleMatch = text.match(/📊\s*TEST\s*FINALE[^:]*:\s*([\s\S]*?)(?=🛡️|---|$)/i);
+  let testFinale = '';
+  const testFinaleExamples: string[] = [];
+  
+  if (testFinaleMatch) {
+    const testContent = testFinaleMatch[1];
+    const firstLineMatch = testContent.match(/^"?([^"\n]+)"?/);
+    if (firstLineMatch) {
+      testFinale = firstLineMatch[1].trim();
+    }
+    const exampleMatches = testContent.match(/[✅❌]\s*"([^"]+)"/g);
+    if (exampleMatches) {
+      testFinaleExamples.push(...exampleMatches.map(e => e.replace(/^[✅❌]\s*/, '').replace(/"/g, '').trim()));
+    }
+  }
 
   let title = 'Checkpoint';
   if (phaseNumber) {
@@ -478,19 +539,33 @@ function parseCheckpoint(text: string): Checkpoint | undefined {
     checks,
     resistanceHandling,
     reminder: reminderMatch?.[1]?.trim(),
-    testFinale: testFinaleMatch?.[1]?.trim(),
+    testFinale: testFinale || undefined,
+    testFinaleExamples: testFinaleExamples.length > 0 ? testFinaleExamples : undefined,
+  };
+}
+
+function parseStepResistance(text: string): ResistanceHandling | undefined {
+  const resistMatch = text.match(/🛡️\s*SE\s*RESISTE:\s*([^\n]+)\s*([\s\S]*?)(?=🍪|✅\s*PASSA|---|$)/i);
+  if (!resistMatch) return undefined;
+  
+  const trigger = resistMatch[1].trim();
+  const content = resistMatch[2];
+  
+  const responseMatch = content.match(/📌\s*DOMANDA:\s*"([^"]+)"/i);
+  const response = responseMatch?.[1]?.trim() || '';
+  
+  return {
+    trigger,
+    response,
   };
 }
 
 function parseStep(text: string): Step | undefined {
-  // Match both regular STEP N - NAME: and **STEP N - NAME** formats (with optional bold markers)
   const headerMatch = text.match(/(?:\*\*)?STEP\s*(\d+)\s*[-–—]\s*([^:\n*]+)(?:\*\*)?:?/i);
   if (!headerMatch) return undefined;
 
   const objectiveMatch = text.match(/🎯\s*OBIETTIVO:\s*([^\n]+)/i);
   
-  // Extract text BEFORE ladder section for parsing questions
-  // Ladder sections start with patterns like "🔍 - SCAVO", "📋 LADDER", "LIVELLO 1️⃣"
   const ladderStartPatterns = [
     /🔍\s*[-–—]?\s*SCAVO/i,
     /📋\s*LADDER/i,
@@ -508,6 +583,22 @@ function parseStep(text: string): Step | undefined {
     }
   }
   
+  const transitionMatch = text.match(/✅\s*PASSA\s+(?:allo\s+Step|alla\s+Fase)\s*([^\n]+)/i);
+  const transition = transitionMatch ? `PASSA ${transitionMatch[1].trim()}` : undefined;
+  
+  const notesPatterns = [
+    /⚠️\s*(?:USA\s*L['']INTELLIGENZA|ATTENZIONE|RICORDA)[^:]*:?\s*([^\n]+(?:\n[^⚡📌🎯🔍🛡️🍪✅]+)*)/i,
+    /⚠️\s*(?!SE\s)([^\n]+)/i,
+  ];
+  let notes: string | undefined;
+  for (const pattern of notesPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      notes = match[1].trim();
+      break;
+    }
+  }
+  
   return {
     id: generateBlockId(),
     number: parseInt(headerMatch[1]),
@@ -517,7 +608,9 @@ function parseStep(text: string): Step | undefined {
     questions: parseQuestions(textForQuestions),
     biscottino: parseBiscottino(text),
     ladder: parseLadder(text),
-    notes: undefined,
+    notes,
+    transition,
+    resistanceHandling: parseStepResistance(text),
   };
 }
 
@@ -1058,6 +1151,9 @@ function formatLadder(ladder: Ladder): string {
   
   for (const level of ladder.levels) {
     lines.push(`LIVELLO ${level.number}: ${level.name}`);
+    if (level.tone) {
+      lines.push(`🎵 TONO: ${level.tone}`);
+    }
     if (level.objective) {
       lines.push(`🎯 OBIETTIVO: ${level.objective}`);
     }
@@ -1085,6 +1181,39 @@ function formatLadder(ladder: Ladder): string {
     ladder.stopWhen.forEach(item => {
       lines.push(`✅ ${item}`);
     });
+    lines.push('');
+  }
+  
+  if (ladder.dontStopWhen && ladder.dontStopWhen.length > 0) {
+    lines.push('❌ NON FERMARTI se dice:');
+    ladder.dontStopWhen.forEach(item => {
+      lines.push(item);
+    });
+    lines.push('');
+  }
+  
+  if (ladder.goldSignals && ladder.goldSignals.length > 0) {
+    lines.push('🎯 SEGNALI CHE HAI TROVATO L\'ORO:');
+    ladder.goldSignals.forEach(signal => {
+      lines.push(`• ${signal}`);
+    });
+    lines.push('');
+  }
+  
+  if (ladder.helpfulPhrases && ladder.helpfulPhrases.length > 0) {
+    lines.push('💡 FRASI UTILI:');
+    ladder.helpfulPhrases.forEach(phrase => {
+      lines.push(`"${phrase}"`);
+    });
+    lines.push('');
+  }
+  
+  if (ladder.resistanceHandling) {
+    lines.push(`🛡️ SE RESISTE: ${ladder.resistanceHandling.trigger}`);
+    if (ladder.resistanceHandling.response) {
+      lines.push(`📌 DOMANDA: "${ladder.resistanceHandling.response}"`);
+    }
+    lines.push('');
   }
   
   return lines.join('\n');
@@ -1131,6 +1260,13 @@ function formatCheckpoint(checkpoint: Checkpoint): string {
   if (checkpoint.testFinale) {
     lines.push('');
     lines.push(`📊 TEST FINALE: "${checkpoint.testFinale}"`);
+    if (checkpoint.testFinaleExamples && checkpoint.testFinaleExamples.length > 0) {
+      lines.push('');
+      lines.push('ESEMPI:');
+      checkpoint.testFinaleExamples.forEach(ex => {
+        lines.push(`✅ "${ex}"`);
+      });
+    }
   }
   
   if (checkpoint.reminder) {
@@ -1181,8 +1317,16 @@ function formatStep(step: Step): string {
     lines.push('');
   }
   
+  if (step.resistanceHandling) {
+    lines.push(`🛡️ SE RESISTE: ${step.resistanceHandling.trigger}`);
+    if (step.resistanceHandling.response) {
+      lines.push(`📌 DOMANDA: "${step.resistanceHandling.response}"`);
+    }
+    lines.push('');
+  }
+  
   if (step.notes) {
-    lines.push(`💡 NOTE: ${step.notes}`);
+    lines.push(`⚠️ ${step.notes}`);
     lines.push('');
   }
   
