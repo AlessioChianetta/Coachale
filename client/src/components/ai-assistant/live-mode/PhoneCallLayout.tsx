@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Mic, MicOff, User, Clock, ChevronUp, ChevronDown, Grid3x3 } from 'lucide-react';
+import { Phone, Mic, MicOff, User, Clock, ChevronUp, ChevronDown, Grid3x3, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LiveTranscript } from '../LiveTranscript';
 
@@ -274,27 +274,42 @@ export function PhoneCallLayout({
         </div>
       </div>
 
-      {/* Tastierino Numerico Estetico */}
+      {/* Tastierino Numerico Premium */}
       <AnimatePresence>
         {showKeypad && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 bg-gray-800/95 backdrop-blur-md border-t border-gray-700 p-6 pb-8"
+            transition={{ type: 'spring', damping: 20 }}
+            className="fixed bottom-0 left-0 right-0 bg-gradient-to-b from-gray-800/95 to-gray-900/98 backdrop-blur-xl border-t border-blue-500/30 p-6 pb-8 shadow-2xl shadow-blue-500/20"
           >
-            <div className="max-w-xs mx-auto grid grid-cols-3 gap-4">
+            {/* Header con pulsante chiusura */}
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-sm font-semibold text-gray-300">Immetti numero</h3>
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowKeypad(false)}
+                className="w-8 h-8 rounded-full bg-red-500/20 hover:bg-red-500/40 text-red-400 flex items-center justify-center transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </motion.button>
+            </div>
+
+            <div className="max-w-xs mx-auto grid grid-cols-3 gap-3">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((key) => (
-                <button
+                <motion.button
                   key={key}
-                  className="w-full aspect-square rounded-full bg-gray-700 hover:bg-gray-600 text-white text-2xl font-light transition-colors flex items-center justify-center"
+                  whileHover={{ scale: 1.15, boxShadow: '0 0 20px rgba(59, 130, 246, 0.5)' }}
+                  whileTap={{ scale: 0.9 }}
+                  className="w-full aspect-square rounded-full bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white text-2xl font-semibold transition-all shadow-lg shadow-blue-500/30 active:shadow-blue-500/50 flex items-center justify-center"
                   onClick={() => {
-                    // Estetico - non fa nulla ma dà feedback visivo
                     console.log('Pressed:', key);
                   }}
                 >
                   {key}
-                </button>
+                </motion.button>
               ))}
             </div>
           </motion.div>

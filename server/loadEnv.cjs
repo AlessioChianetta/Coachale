@@ -8,6 +8,18 @@ console.log('━━━━━━━━━━━━━━━━━━━━━━�
 console.log('🔧 [loadEnv.cjs] Caricamento variabili da .env...');
 console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
+// 🆕 FIX: Set REPLIT_DEV_DOMAIN for Vite HMR (dev mode only)
+if (process.env.REPL_ID && !process.env.REPLIT_DEV_DOMAIN) {
+  // In Replit dev environment, construct the domain from REPL_ID and Replit defaults
+  // If REPLIT_DEV_DOMAIN is not set, we're likely in dev and need to prevent HMR errors
+  // Setting a placeholder to make Vite HMR work (will connect via window.location.host in prod)
+  if (process.env.NODE_ENV === 'development') {
+    process.env.VITE_HMR_PROTOCOL = 'wss';
+    process.env.VITE_HMR_HOST = '0.0.0.0';
+    process.env.VITE_HMR_PORT = '443';
+  }
+}
+
 // IMPORTANTE: override: true forza le variabili del .env a sovrascrivere
 // quelle già presenti nell'ambiente (es. DATABASE_URL di Replit)
 const result = dotenv.config({ override: true });
