@@ -5,6 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { BlockType, Phase, Step, Question } from '@shared/script-blocks';
 import { BLOCK_COLORS, BLOCK_ICONS } from '@shared/script-blocks';
@@ -18,6 +24,7 @@ import {
   Target,
   Trash2,
   CheckSquare,
+  Zap,
 } from 'lucide-react';
 
 interface DropZoneProps {
@@ -131,6 +138,7 @@ function PhaseBlock({ phase, phaseIndex }: PhaseBlockProps) {
   const builder = useBuilder();
   const isSelected = builder.selectedBlockId === phase.id;
   const [isOpen, setIsOpen] = useState(true);
+  const stepsCount = phase.steps?.length || 0;
 
   const handleSelect = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -156,76 +164,77 @@ function PhaseBlock({ phase, phaseIndex }: PhaseBlockProps) {
   };
 
   return (
-    <Card
-      onClick={handleSelect}
-      className={cn(
-        'transition-all cursor-pointer',
-        BLOCK_COLORS.phase,
-        isSelected && 'ring-2 ring-primary shadow-md'
-      )}
-    >
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
-                <Target className="h-4 w-4" />
-                <CardTitle className="text-sm">
-                  Fase {phase.number}: {phase.name}
-                </CardTitle>
-                <Badge variant="outline" className="text-xs">
-                  {phase.steps?.length || 0} step
-                </Badge>
+    <TooltipProvider>
+      <Card
+        onClick={handleSelect}
+        className={cn(
+          'transition-all cursor-pointer hover:shadow-md',
+          isSelected && 'ring-2 ring-primary shadow-md'
+        )}
+      >
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="p-3 hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
+                  <Target className="h-4 w-4 text-primary" />
+                  <CardTitle className="text-sm font-semibold">
+                    Fase {phase.number}: {phase.name}
+                  </CardTitle>
+                  <Badge variant="outline" className="text-xs font-normal">
+                    {stepsCount} step
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-1">
+                  {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            </div>
-            {phase.description && (
-              <CardDescription className="text-xs">{phase.description}</CardDescription>
-            )}
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="p-3 pt-0 pl-8 space-y-2">
-            {(phase.steps || []).map((step, stepIndex) => (
-              <StepBlock
-                key={step.id}
-                step={step}
-                phaseId={phase.id}
-                stepIndex={stepIndex}
-              />
-            ))}
+              {phase.description && (
+                <CardDescription className="text-xs pt-1">{phase.description}</CardDescription>
+              )}
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="p-3 pt-0 pl-10 space-y-3">
+              {(phase.steps || []).map((step, stepIndex) => (
+                <StepBlock
+                  key={step.id}
+                  step={step}
+                  phaseId={phase.id}
+                  stepIndex={stepIndex}
+                />
+              ))}
 
-            <DropZone
-              onDrop={handleStepDrop}
-              acceptTypes={['step']}
-              placeholder="Trascina uno Step qui"
-              className="min-h-[40px]"
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full border-dashed"
-                onClick={handleAddStep}
+              <DropZone
+                onDrop={handleStepDrop}
+                acceptTypes={['step']}
+                placeholder="Trascina uno Step qui"
+                className="min-h-[40px]"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Aggiungi Step
-              </Button>
-            </DropZone>
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full border-dashed"
+                  onClick={handleAddStep}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Aggiungi Step
+                </Button>
+              </DropZone>
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+    </TooltipProvider>
   );
 }
 
@@ -239,6 +248,7 @@ function StepBlock({ step, phaseId, stepIndex }: StepBlockProps) {
   const builder = useBuilder();
   const isSelected = builder.selectedBlockId === step.id;
   const [isOpen, setIsOpen] = useState(true);
+  const questionsCount = step.questions?.length || 0;
 
   const handleSelect = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -267,44 +277,46 @@ function StepBlock({ step, phaseId, stepIndex }: StepBlockProps) {
     <Card
       onClick={handleSelect}
       className={cn(
-        'transition-all cursor-pointer',
-        BLOCK_COLORS.step,
+        'transition-all cursor-pointer hover:bg-muted/50',
         isSelected && 'ring-2 ring-indigo-500 shadow-md'
       )}
     >
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="p-2">
+          <CardHeader className="p-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <GripVertical className="h-3 w-3 text-muted-foreground/50 cursor-grab" />
-                <CheckSquare className="h-3 w-3" />
-                <CardTitle className="text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <GripVertical className="h-4 w-4 text-muted-foreground/50 cursor-grab" />
+                <CheckSquare className="h-4 w-4 text-indigo-500" />
+                <CardTitle className="text-sm font-medium">
                   Step {step.number}: {step.name}
                 </CardTitle>
-                <Badge variant="outline" className="text-[10px]">
-                  {step.questions?.length || 0} domande
-                </Badge>
+                {questionsCount > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    <MessageSquare className="h-3 w-3 mr-1" />
+                    {questionsCount} {questionsCount === 1 ? 'domanda' : 'domande'}
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-1">
-                {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6"
+                  className="h-7 w-7"
                   onClick={handleDelete}
                 >
-                  <Trash2 className="h-3 w-3 text-destructive" />
+                  <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             </div>
             {step.objective && (
-              <CardDescription className="text-[10px]">{step.objective}</CardDescription>
+              <CardDescription className="text-xs pt-1">{step.objective}</CardDescription>
             )}
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="p-2 pt-0 pl-6 space-y-1">
+          <CardContent className="p-3 pt-0 pl-8 space-y-2">
             {(step.questions || []).map((question, qIndex) => (
               <QuestionBlock
                 key={question.id}
@@ -323,7 +335,7 @@ function StepBlock({ step, phaseId, stepIndex }: StepBlockProps) {
             >
               <Button
                 variant="outline"
-                size="xs"
+                size="sm"
                 className="w-full border-dashed text-xs"
                 onClick={handleAddQuestion}
               >
@@ -364,17 +376,17 @@ function QuestionBlock({ question, phaseId, stepId, questionIndex }: QuestionBlo
       onClick={handleSelect}
       className={cn(
         'group flex items-start gap-2 p-2 rounded transition-all cursor-pointer',
-        BLOCK_COLORS.question,
-        isSelected && 'ring-2 ring-purple-500 shadow-sm'
+        'hover:bg-muted text-sm text-muted-foreground',
+        isSelected && 'ring-1 ring-purple-500 bg-purple-500/10 text-purple-900 dark:text-purple-200'
       )}
     >
-      <GripVertical className="h-3 w-3 mt-0.5 text-muted-foreground/50 cursor-grab" />
+      <GripVertical className="h-3 w-3 mt-0.5 text-muted-foreground/50 cursor-grab shrink-0" />
       <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
-      <span className="flex-1 text-xs">{question.text}</span>
+      <span className="flex-1 text-xs leading-relaxed">{question.text}</span>
       <Button
         variant="ghost"
         size="icon"
-        className="h-5 w-5 opacity-0 group-hover:opacity-100"
+        className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100"
         onClick={handleDelete}
       >
         <Trash2 className="h-3 w-3 text-destructive" />
