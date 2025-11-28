@@ -139,6 +139,14 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
   };
 
   const stopMicrophone = () => {
+    console.log('[MicrophoneTest] 🛑 stopMicrophone called');
+    
+    // Se non c'è nulla da fermare, esci subito
+    if (!micStreamRef.current && !audioContextRef.current) {
+      console.log('[MicrophoneTest] ⚠️ Nothing to stop - already clean');
+      return;
+    }
+
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -152,11 +160,13 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach(track => track.stop());
       micStreamRef.current = null;
+      console.log('[MicrophoneTest] ✅ Stream stopped');
     }
 
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
+      console.log('[MicrophoneTest] ✅ Audio context closed');
     }
 
     analyserRef.current = null;
@@ -178,21 +188,16 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
     }
   };
 
-  // Cleanup solo quando il componente viene realmente smontato
+  // Cleanup solo quando il componente viene REALMENTE smontato dalla pagina
   useEffect(() => {
     return () => {
       // Pulisci solo se il test era realmente in corso
       if (micStreamRef.current || audioContextRef.current) {
-        console.log('[MicrophoneTest] Cleanup - stopping microphone');
+        console.log('[MicrophoneTest] 🧹 Component unmounting - cleanup');
         stopMicrophone();
       }
     };
-  }, []);
-
-  // Previeni cleanup durante re-render normali
-  useEffect(() => {
-    // Questo effect non fa cleanup, mantiene lo stream attivo
-  }, [micStatus, audioLevel, isTesting, hasSpoken]);
+  }, []); // Empty array = runs only on mount/unmount
 
   const getStatusMessage = () => {
     switch (micStatus) {
