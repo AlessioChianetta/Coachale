@@ -1172,6 +1172,7 @@ export function setupGeminiLiveWSService(server: Server) {
       let userDataContext: string | null = null;
       let userContext: any = null; // Declare here to be accessible throughout the function
       let conversationHistory: Array<{role: 'user' | 'assistant'; content: string; timestamp: Date}> = []; // For sales_agent/consultation_invite modes
+      let agentBusinessContext: { businessName: string; whatWeDo: string; servicesOffered: string[]; targetClient: string; nonTargetClient: string } | undefined = undefined; // 🆕 Business context per feedback
       
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // SALES AGENT / CONSULTATION INVITE MODE - Build prompt from agent config
@@ -1195,6 +1196,16 @@ export function setupGeminiLiveWSService(server: Server) {
         if (!agent) {
           throw new Error('Sales agent not found');
         }
+        
+        // 🆕 Salva business context per uso nel WebSocket handler (Sales Manager feedback)
+        agentBusinessContext = {
+          businessName: agent.businessName || '',
+          whatWeDo: agent.whatWeDo || agent.businessDescription || '',
+          servicesOffered: agent.servicesOffered?.map((s: any) => s.name || s) || [],
+          targetClient: agent.targetClient || agent.whoWeHelp || '',
+          nonTargetClient: agent.nonTargetClient || agent.whoWeDontHelp || ''
+        };
+        console.log(`👤 [${connectionId}] Business context saved: ${agentBusinessContext.businessName}`);
         
         // Load conversation data
         const conversation = await storage.getClientSalesConversationById(conversationId!);
@@ -3284,14 +3295,8 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           pace: currentPhase.energy.pace || 'MODERATO'
                         } : undefined;
                         
-                        // 🆕 Build business context for out-of-scope detection
-                        const businessContext = agent ? {
-                          businessName: agent.businessName || '',
-                          whatWeDo: agent.whatWeDo || agent.businessDescription || '',
-                          servicesOffered: agent.servicesOffered?.map((s: any) => s.name || s) || [],
-                          targetClient: agent.targetClient || agent.whoWeHelp || '',
-                          nonTargetClient: agent.nonTargetClient || agent.whoWeDontHelp || ''
-                        } : undefined;
+                        // 🆕 Use pre-saved business context for feedback
+                        const businessContext = agentBusinessContext;
                         
                         const params: SalesManagerParams = {
                           recentMessages,
