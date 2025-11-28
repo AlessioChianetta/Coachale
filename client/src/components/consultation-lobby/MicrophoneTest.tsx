@@ -9,17 +9,20 @@ interface MicrophoneTestProps {
   onPermissionDenied?: () => void;
 }
 
-type MicStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'active';
+type MicStatus = 'idle' | 'requesting' | 'granted' | 'denied' | 'listening' | 'success';
 
 export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: MicrophoneTestProps) {
   const [micStatus, setMicStatus] = useState<MicStatus>('idle');
   const [audioLevel, setAudioLevel] = useState(0);
   const [isTesting, setIsTesting] = useState(false);
+  const [hasSpoken, setHasSpoken] = useState(false);
   
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const speechDetectedRef = useRef(false);
+  const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const requestMicrophoneAccess = async () => {
     setMicStatus('requesting');
@@ -80,7 +83,38 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
       const normalizedLevel = Math.min(average / 128, 1);
       
       setAudioLevel(normalizedLevel);
-      setMicStatus(normalizedLevel > 0.05 ? 'active' : 'granted');
+      
+      // 🎤 SPEECH DETECTION: Soglia più alta per rilevare voce reale (non rumori di fondo)
+      const SPEECH_THRESHOLD = 0.15; // ~15% del massimo - voce parlata normale
+      
+      if (normalizedLevel > SPEECH_THRESHOLD) {
+        setMicStatus('listening');
+        
+        // Reset timeout ad ogni rilevamento voce
+        if (speechTimeoutRef.current) {
+          clearTimeout(speechTimeoutRef.current);
+        }
+        
+        // Dopo 1.5 secondi di audio continuo sopra soglia = successo
+        if (!speechDetectedRef.current) {
+          speechTimeoutRef.current = setTimeout(() => {
+            speechDetectedRef.current = true;
+            setHasSpoken(true);
+            setMicStatus('success');
+            onPermissionGranted?.();
+          }, 1500);
+        }
+      } else {
+        // Audio sotto soglia - reset timeout
+        if (speechTimeoutRef.current && !speechDetectedRef.current) {
+          clearTimeout(speechTimeoutRef.current);
+          speechTimeoutRef.current = null;
+        }
+        
+        if (!speechDetectedRef.current) {
+          setMicStatus('granted');
+        }
+      }
       
       animationFrameRef.current = requestAnimationFrame(updateLevel);
     };
@@ -94,6 +128,11 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
       animationFrameRef.current = null;
     }
 
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+      speechTimeoutRef.current = null;
+    }
+
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach(track => track.stop());
       micStreamRef.current = null;
@@ -105,8 +144,10 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
     }
 
     analyserRef.current = null;
+    speechDetectedRef.current = false;
     setMicStatus('idle');
     setAudioLevel(0);
+    setHasSpoken(false);
     setIsTesting(false);
   };
 
@@ -132,9 +173,11 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
       case 'requesting':
         return 'Richiesta permessi in corso...';
       case 'granted':
-        return 'Microfono connesso. Prova a parlare!';
-      case 'active':
-        return '✓ Microfono funzionante!';
+        return 'Microfono connesso. PARLA AD ALTA VOCE per 2 secondi!';
+      case 'listening':
+        return '🎙️ Ti stiamo sentendo! Continua a parlare...';
+      case 'success':
+        return '✓ Microfono funzionante e testato!';
       case 'denied':
         return 'Permesso negato. Abilita il microfono nelle impostazioni del browser.';
       default:
@@ -144,12 +187,14 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
 
   const getStatusIcon = () => {
     switch (micStatus) {
-      case 'active':
+      case 'success':
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+      case 'listening':
+        return <Mic className="w-5 h-5 text-blue-500 animate-pulse" />;
       case 'denied':
         return <AlertCircle className="w-5 h-5 text-red-500" />;
       case 'granted':
-        return <Mic className="w-5 h-5 text-blue-500" />;
+        return <Mic className="w-5 h-5 text-orange-500" />;
       default:
         return <MicOff className="w-5 h-5 text-gray-400" />;
     }
@@ -157,26 +202,28 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
 
   return (
     <Card className={`p-6 md:p-8 space-y-6 border-2 ${
-      micStatus === 'active' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' :
+      micStatus === 'success' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' :
+      micStatus === 'listening' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' :
       micStatus === 'denied' ? 'border-red-500 bg-red-50 dark:bg-red-950/20' :
       micStatus === 'idle' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' :
-      'border-blue-400 bg-blue-50 dark:bg-blue-950/20'
+      'border-orange-400 bg-orange-50 dark:bg-orange-950/20'
     }`}>
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center mb-4">
           <motion.div
             className={`w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center ${
-              micStatus === 'active' ? 'bg-green-500' :
+              micStatus === 'success' ? 'bg-green-500' :
+              micStatus === 'listening' ? 'bg-blue-500' :
               micStatus === 'denied' ? 'bg-red-500' :
-              micStatus === 'granted' ? 'bg-blue-500' :
+              micStatus === 'granted' ? 'bg-orange-500' :
               'bg-gray-400'
             }`}
             animate={{
-              scale: micStatus === 'active' ? [1, 1.1, 1] : 1,
+              scale: micStatus === 'listening' ? [1, 1.15, 1] : 1,
             }}
             transition={{
-              duration: 1,
-              repeat: micStatus === 'active' ? Infinity : 0,
+              duration: 0.8,
+              repeat: micStatus === 'listening' ? Infinity : 0,
             }}
           >
             {getStatusIcon()}
@@ -186,8 +233,9 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
         <h3 className="text-xl md:text-2xl font-bold">
           {micStatus === 'idle' ? '🎤 Test Microfono Obbligatorio' :
            micStatus === 'requesting' ? '⏳ Richiesta permessi...' :
-           micStatus === 'granted' ? '🔊 Prova a parlare' :
-           micStatus === 'active' ? '✅ Microfono Funzionante!' :
+           micStatus === 'granted' ? '🔊 PARLA nel microfono!' :
+           micStatus === 'listening' ? '🎙️ Continua a parlare...' :
+           micStatus === 'success' ? '✅ Test Superato!' :
            '❌ Permesso Negato'}
         </h3>
         
@@ -216,12 +264,18 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
           )}
         </Button>
 
-        {micStatus === 'granted' || micStatus === 'active' ? (
+        {(micStatus === 'granted' || micStatus === 'listening' || micStatus === 'success') ? (
           <div className="w-full">
             <p className="text-xs text-center mb-2 text-muted-foreground">Livello Audio</p>
             <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+                className={`h-full ${
+                  micStatus === 'listening' 
+                    ? 'bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700' 
+                    : micStatus === 'success'
+                    ? 'bg-gradient-to-r from-green-500 via-green-600 to-green-700'
+                    : 'bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700'
+                }`}
                 initial={{ width: 0 }}
                 animate={{ width: `${audioLevel * 100}%` }}
                 transition={{ duration: 0.1 }}
@@ -231,7 +285,7 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
         ) : null}
       </div>
 
-      {micStatus === 'active' && (
+      {micStatus === 'success' && (
         <motion.div
           className="flex justify-center"
           initial={{ opacity: 0, scale: 0.8 }}
@@ -253,11 +307,11 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied }: Micr
                 }}
               />
               <div className="relative w-20 h-20 bg-green-500 rounded-full flex items-center justify-center">
-                <Mic className="w-10 h-10 text-white" />
+                <CheckCircle2 className="w-10 h-10 text-white" />
               </div>
             </div>
             <p className="text-lg font-semibold text-green-600 dark:text-green-400">
-              Perfetto! Microfono configurato correttamente
+              Perfetto! Ti sentiamo forte e chiaro 🎉
             </p>
           </div>
         </motion.div>
