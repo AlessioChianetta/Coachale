@@ -442,16 +442,31 @@ export class SalesManagerAgent {
       try {
         stepAdvancement = await this.analyzeStepAdvancement(params);
         
-        // If AI suggests feedback and we don't have higher priority feedback
-        if (!feedbackForAgent && stepAdvancement.reasoning.includes('PROBLEMA')) {
-          feedbackForAgent = {
-            shouldInject: true,
-            priority: 'medium',
-            type: 'advancement',
-            message: stepAdvancement.reasoning,
-            toneReminder: params.currentPhaseEnergy ? 
-              `Tono ${params.currentPhaseEnergy.tone}` : undefined
-          };
+        // 🆕 FIX: Check if reasoning mentions out-of-scope and generate feedback
+        if (!feedbackForAgent) {
+          const reasoningLower = stepAdvancement.reasoning.toLowerCase();
+          const outOfScopeKeywords = ['fuori scope', 'fuori dall\'offerta', 'non rientra', 'non offriamo', 'non vendiamo', 'non forniamo', 'scooter', 'monopattini', 'fisico', 'prodotto fisico'];
+          
+          const isOutOfScope = outOfScopeKeywords.some(keyword => reasoningLower.includes(keyword));
+          
+          if (isOutOfScope) {
+            feedbackForAgent = {
+              shouldInject: true,
+              priority: 'high',
+              type: 'out_of_scope',
+              message: `⛔ RICHIESTA FUORI SCOPE RILEVATA: Il prospect sta chiedendo qualcosa che NON rientra nella nostra offerta.\n→ Guida gentilmente verso i nostri servizi reali`
+            };
+            console.log(`\n⛔ [OUT-OF-SCOPE] Rilevato nel reasoning - generando feedback out_of_scope`);
+          } else if (stepAdvancement.reasoning.includes('PROBLEMA')) {
+            feedbackForAgent = {
+              shouldInject: true,
+              priority: 'medium',
+              type: 'advancement',
+              message: stepAdvancement.reasoning,
+              toneReminder: params.currentPhaseEnergy ? 
+                `Tono ${params.currentPhaseEnergy.tone}` : undefined
+            };
+          }
         }
       } catch (error: any) {
         console.warn(`⚠️ [SALES-MANAGER] AI analysis failed: ${error.message}`);

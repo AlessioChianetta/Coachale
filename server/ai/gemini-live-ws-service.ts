@@ -3312,6 +3312,21 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           totalMessages: conversationMessages.length
                         };
                         
+                        // 🆕 LOG ALWAYS-VISIBLE: Business context at analysis time
+                        console.log(`\n👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:`);
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        if (businessContext) {
+                          console.log(`   🏢 Name: ${businessContext.businessName || 'N/A'}`);
+                          console.log(`   🎯 What we do: ${businessContext.whatWeDo ? businessContext.whatWeDo.substring(0, 100) : 'N/A'}${businessContext.whatWeDo && businessContext.whatWeDo.length > 100 ? '...' : ''}`);
+                          console.log(`   👥 Target client: ${businessContext.targetClient ? businessContext.targetClient.substring(0, 80) : 'N/A'}${businessContext.targetClient && businessContext.targetClient.length > 80 ? '...' : ''}`);
+                          console.log(`   🚫 Non-target: ${businessContext.nonTargetClient ? businessContext.nonTargetClient.substring(0, 80) : 'N/A'}${businessContext.nonTargetClient && businessContext.nonTargetClient.length > 80 ? '...' : ''}`);
+                          console.log(`   📋 Services: ${businessContext.servicesOffered?.slice(0, 3).join(', ') || 'N/A'}`);
+                        } else {
+                          console.log(`   ⚠️  NO business context available - feedback will lack business identity`);
+                        }
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                        
                         console.log(`   📨 Calling SalesManagerAgent.analyze()...`);
                         const analysisStart = Date.now();
                         const analysis: SalesManagerAnalysis = await SalesManagerAgent.analyze(params);
