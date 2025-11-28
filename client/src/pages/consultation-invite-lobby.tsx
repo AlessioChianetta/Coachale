@@ -118,12 +118,12 @@ export default function ConsultationInviteLobby() {
     : 'TU';
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden">
+    <div className="flex flex-col lg:flex-row min-h-screen w-full overflow-x-hidden">
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           LATO SINISTRO: VIDEO PREVIEW (50%) - Full Height Dark Gradient
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-black overflow-hidden">
+      <div className="w-full lg:w-1/2 min-h-[60vh] lg:min-h-screen relative bg-gradient-to-br from-slate-900 via-slate-800 to-black overflow-hidden">
         
         {/* Gradient Overlay dal basso verso l'alto */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none z-10" />
@@ -140,19 +140,19 @@ export default function ConsultationInviteLobby() {
         <div className="relative z-20 h-full flex flex-col items-center justify-center p-8 lg:p-12">
 
           {/* Logo/Brand in alto */}
-          <div className="absolute top-8 left-8 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <Sparkles className="w-5 h-5 text-white" />
+          <div className="absolute top-4 left-4 lg:top-8 lg:left-8 flex items-center gap-2 lg:gap-3">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <Sparkles className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
             </div>
             <div className="text-white">
-              <p className="text-sm font-semibold tracking-tight">Consultation Room</p>
-              <p className="text-xs text-white/60">Studio Privato</p>
+              <p className="text-xs lg:text-sm font-semibold tracking-tight">Consultation Room</p>
+              <p className="text-[10px] lg:text-xs text-white/60">Studio Privato</p>
             </div>
           </div>
 
           {/* Badge Status (in alto a destra) */}
-          <div className="absolute top-8 right-8">
-            <div className={`backdrop-blur-xl px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2.5 transition-all border ${
+          <div className="absolute top-4 right-4 lg:top-8 lg:right-8">
+            <div className={`backdrop-blur-xl px-3 py-2 lg:px-5 lg:py-2.5 rounded-full text-xs lg:text-sm font-semibold flex items-center gap-1.5 lg:gap-2.5 transition-all border ${
               micPermissionGranted 
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30 shadow-lg shadow-emerald-500/20' 
                 : 'bg-white/10 text-white/80 border-white/20'
@@ -166,7 +166,7 @@ export default function ConsultationInviteLobby() {
           </div>
 
           {/* CONTENUTO CENTRALE */}
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-2xl px-4 lg:px-0">
             <AnimatePresence mode="wait">
               {!micPermissionGranted ? (
                 /* ━━━ FASE 1: TEST MICROFONO ━━━ */
@@ -176,13 +176,13 @@ export default function ConsultationInviteLobby() {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -20 }}
                   transition={{ duration: 0.4, ease: "easeOut" }}
-                  className="space-y-8"
+                  className="space-y-6 lg:space-y-8"
                 >
-                  <div className="text-center space-y-4">
-                    <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight">
+                  <div className="text-center space-y-3 lg:space-y-4">
+                    <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white tracking-tight">
                       Setup Audio
                     </h1>
-                    <p className="text-lg text-white/70 max-w-md mx-auto leading-relaxed">
+                    <p className="text-base lg:text-lg text-white/70 max-w-md mx-auto leading-relaxed px-4">
                       Prima di entrare, verifichiamo che il tuo microfono funzioni correttamente.
                     </p>
                   </div>
@@ -206,24 +206,24 @@ export default function ConsultationInviteLobby() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
-                  className="flex flex-col items-center space-y-10"
+                  className="flex flex-col items-center space-y-6 lg:space-y-10"
                 >
                   {/* Avatar con Pulse Ring */}
                   <div className="relative">
                     {/* Animated Rings se non muted */}
                     {!isMuted && (
                       <>
-                        <div className="absolute inset-0 -m-8">
-                          <div className="w-full h-full border-4 border-blue-500/30 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+                        <div className="absolute inset-0 -m-6 lg:-m-8">
+                          <div className="w-full h-full border-2 lg:border-4 border-blue-500/30 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
                         </div>
-                        <div className="absolute inset-0 -m-4">
+                        <div className="absolute inset-0 -m-3 lg:-m-4">
                           <div className="w-full h-full border-2 border-violet-500/20 rounded-full animate-ping" style={{ animationDuration: '1.5s', animationDelay: '0.3s' }} />
                         </div>
                       </>
                     )}
 
-                    <Avatar className="w-40 h-40 lg:w-48 lg:h-48 border-8 border-white/10 shadow-2xl shadow-black/50 relative z-10">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-600 via-violet-600 to-blue-700 text-white text-4xl lg:text-5xl font-bold">
+                    <Avatar className="w-32 h-32 lg:w-40 lg:h-40 xl:w-48 xl:h-48 border-4 lg:border-8 border-white/10 shadow-2xl shadow-black/50 relative z-10">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-600 via-violet-600 to-blue-700 text-white text-3xl lg:text-4xl xl:text-5xl font-bold">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
@@ -237,11 +237,11 @@ export default function ConsultationInviteLobby() {
                   </div>
 
                   {/* Testo Status */}
-                  <div className="text-center space-y-3">
-                    <h2 className="text-3xl lg:text-4xl font-bold text-white">
+                  <div className="text-center space-y-2 lg:space-y-3 px-4">
+                    <h2 className="text-2xl lg:text-3xl xl:text-4xl font-bold text-white">
                       {isMuted ? "Microfono disattivato" : "Tutto pronto!"}
                     </h2>
-                    <p className="text-lg text-white/60">
+                    <p className="text-base lg:text-lg text-white/60">
                       {isMuted ? "Clicca per riattivare" : "Sei pronto per entrare nella stanza"}
                     </p>
                   </div>
@@ -249,7 +249,7 @@ export default function ConsultationInviteLobby() {
                   {/* Controllo Mute */}
                   <button
                     onClick={toggleMute}
-                    className={`group relative p-6 rounded-full transition-all duration-300 shadow-2xl hover:scale-110 ${
+                    className={`group relative p-4 lg:p-6 rounded-full transition-all duration-300 shadow-2xl hover:scale-110 ${
                       isMuted 
                         ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700' 
                         : 'bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/15'
@@ -268,9 +268,10 @@ export default function ConsultationInviteLobby() {
           </div>
 
           {/* Footer Info */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 text-white/40 text-sm">
-            <ShieldCheck className="w-4 h-4" />
-            <span>Anteprima sicura • Crittografia end-to-end</span>
+          <div className="absolute bottom-4 lg:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 text-white/40 text-xs lg:text-sm px-4 text-center">
+            <ShieldCheck className="w-3 h-3 lg:w-4 lg:h-4" />
+            <span className="hidden sm:inline">Anteprima sicura • Crittografia end-to-end</span>
+            <span className="sm:hidden">Sicuro • Crittografato</span>
           </div>
         </div>
       </div>
@@ -278,47 +279,47 @@ export default function ConsultationInviteLobby() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           LATO DESTRO: FORM (50%) - Bianco Puro Elevato
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <div className="flex-1 bg-white relative overflow-y-auto shadow-2xl">
+      <div className="w-full lg:w-1/2 bg-white relative overflow-y-auto shadow-2xl">
         
         {/* Contenuto centrato verticalmente */}
-        <div className="min-h-full flex flex-col justify-center p-8 lg:p-16 max-w-xl mx-auto">
+        <div className="min-h-full flex flex-col justify-center p-6 lg:p-12 xl:p-16 max-w-xl mx-auto py-12 lg:py-0">
 
           {/* Header */}
-          <div className="mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 mb-6">
+          <div className="mb-8 lg:mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 mb-4 lg:mb-6">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Sala d'attesa</span>
             </div>
 
-            <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-3 leading-tight">
+            <h1 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-slate-900 mb-2 lg:mb-3 leading-tight">
               {agentName}
             </h1>
-            <p className="text-lg text-slate-500">
+            <p className="text-base lg:text-lg text-slate-500">
               {inviteData?.agent.businessName || "Consulenza privata"}
             </p>
           </div>
 
           {/* Divider */}
-          <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-10" />
+          <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-8 lg:mb-10" />
 
           {/* Form Fields */}
-          <div className="space-y-6 mb-10">
+          <div className="space-y-5 lg:space-y-6 mb-8 lg:mb-10">
             {/* Nome (required) */}
-            <div className="space-y-3">
-              <Label className="text-slate-700 font-semibold text-base">
+            <div className="space-y-2 lg:space-y-3">
+              <Label className="text-slate-700 font-semibold text-sm lg:text-base">
                 Il tuo nome completo *
               </Label>
               <Input 
                 value={prospectName}
                 onChange={(e) => setProspectName(e.target.value)}
                 placeholder="Mario Rossi"
-                className="h-14 text-base bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                className="h-12 lg:h-14 text-base bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
               />
             </div>
 
             {/* Email (optional) */}
-            <div className="space-y-3">
-              <Label className="text-slate-500 text-sm font-medium uppercase tracking-wide">
+            <div className="space-y-2 lg:space-y-3">
+              <Label className="text-slate-500 text-xs lg:text-sm font-medium uppercase tracking-wide">
                 Email (opzionale)
               </Label>
               <Input 
@@ -326,13 +327,13 @@ export default function ConsultationInviteLobby() {
                 value={prospectEmail}
                 onChange={(e) => setProspectEmail(e.target.value)}
                 placeholder="mario@email.com"
-                className="h-12 bg-slate-50 border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
+                className="h-11 lg:h-12 bg-slate-50 border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
               />
             </div>
 
             {/* Telefono (optional) */}
-            <div className="space-y-3">
-              <Label className="text-slate-500 text-sm font-medium uppercase tracking-wide">
+            <div className="space-y-2 lg:space-y-3">
+              <Label className="text-slate-500 text-xs lg:text-sm font-medium uppercase tracking-wide">
                 Telefono (opzionale)
               </Label>
               <Input 
@@ -340,16 +341,16 @@ export default function ConsultationInviteLobby() {
                 value={prospectPhone}
                 onChange={(e) => setProspectPhone(e.target.value)}
                 placeholder="+39 333..."
-                className="h-12 bg-slate-50 border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
+                className="h-11 lg:h-12 bg-slate-50 border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
               />
             </div>
           </div>
 
           {/* Security Notice */}
-          <div className="bg-gradient-to-br from-blue-50 to-violet-50 border border-blue-100 rounded-2xl p-5 flex gap-4 items-start mb-10">
-            <ShieldCheck className="w-6 h-6 text-blue-600 shrink-0 mt-0.5" />
+          <div className="bg-gradient-to-br from-blue-50 to-violet-50 border border-blue-100 rounded-xl lg:rounded-2xl p-4 lg:p-5 flex gap-3 lg:gap-4 items-start mb-8 lg:mb-10">
+            <ShieldCheck className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-blue-900 mb-1">
+              <p className="text-xs lg:text-sm font-medium text-blue-900 mb-1">
                 Sessione sicura e privata
               </p>
               <p className="text-xs text-blue-700/80 leading-relaxed">
@@ -362,7 +363,7 @@ export default function ConsultationInviteLobby() {
           <Button
             onClick={handleJoin}
             disabled={!micPermissionGranted || isJoining}
-            className="w-full h-16 text-lg font-bold rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 shadow-xl shadow-blue-900/20 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 disabled:cursor-not-allowed"
+            className="w-full h-14 lg:h-16 text-base lg:text-lg font-bold rounded-xl lg:rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 shadow-xl shadow-blue-900/20 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 disabled:cursor-not-allowed"
           >
             {isJoining ? (
               <>
@@ -381,7 +382,7 @@ export default function ConsultationInviteLobby() {
 
           {/* Warning sotto bottone */}
           {!micPermissionGranted && (
-            <p className="text-center text-sm text-red-600 font-medium mt-4 animate-pulse">
+            <p className="text-center text-xs lg:text-sm text-red-600 font-medium mt-3 lg:mt-4 animate-pulse">
               Il test del microfono è obbligatorio per procedere
             </p>
           )}
