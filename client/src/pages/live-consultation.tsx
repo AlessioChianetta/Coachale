@@ -401,6 +401,27 @@ export default function LiveConsultation() {
     mode: config.mode,
   });
 
+  // Phone call layout è fullscreen, senza wrapper
+  if (layoutMode === 'phone_call') {
+    return (
+      <LiveModeScreen
+        key={`${sessionType}-${consultationId || 'normal'}`}
+        mode={config.mode}
+        consultantType={config.consultantType || undefined}
+        customPrompt={customPrompt || undefined}
+        useFullPrompt={useFullPrompt}
+        voiceName={voiceName}
+        sessionType={config.sessionType}
+        isTestMode={isTestMode}
+        consultationId={consultationId || undefined}
+        layoutMode={layoutMode}
+        onClose={handleCloseSession}
+        onConversationSaved={handleConversationSaved}
+      />
+    );
+  }
+
+  // Immersive layout ha il wrapper normale
   return (
     <NormalModeWrapper sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen}>
       <LiveModeScreen

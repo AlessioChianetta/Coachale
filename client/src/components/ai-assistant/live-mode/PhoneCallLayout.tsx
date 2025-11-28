@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Mic, MicOff, User, Clock, ChevronUp, ChevronDown } from 'lucide-react';
+import { Phone, Mic, MicOff, User, Clock, ChevronUp, ChevronDown, Grid3x3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LiveTranscript } from '../LiveTranscript';
 
@@ -35,6 +35,7 @@ export function PhoneCallLayout({
   sessionClosing,
 }: PhoneCallLayoutProps) {
   const [showTranscript, setShowTranscript] = useState(false);
+  const [showKeypad, setShowKeypad] = useState(false);
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -248,8 +249,19 @@ export function PhoneCallLayout({
             <Phone className="w-9 h-9 text-white transform rotate-135" />
           </motion.button>
 
-          {/* Placeholder per simmetria */}
-          <div className="w-16 h-16" />
+          {/* Keypad Button (estetico) */}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setShowKeypad(!showKeypad)}
+            disabled={sessionClosing}
+            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
+              showKeypad
+                ? 'bg-blue-600 shadow-lg shadow-blue-600/50'
+                : 'bg-gray-700 hover:bg-gray-600'
+            }`}
+          >
+            <Grid3x3 className="w-7 h-7 text-white" />
+          </motion.button>
         </div>
 
         {/* Label sotto i pulsanti */}
@@ -258,9 +270,36 @@ export function PhoneCallLayout({
             {isMuted ? 'Riattiva' : 'Muto'}
           </span>
           <span className="w-20 text-center text-xs text-gray-400">Chiudi</span>
-          <span className="w-16" />
+          <span className="w-16 text-center text-xs text-gray-400">Tastiera</span>
         </div>
       </div>
+
+      {/* Tastierino Numerico Estetico */}
+      <AnimatePresence>
+        {showKeypad && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-0 left-0 right-0 bg-gray-800/95 backdrop-blur-md border-t border-gray-700 p-6 pb-8"
+          >
+            <div className="max-w-xs mx-auto grid grid-cols-3 gap-4">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((key) => (
+                <button
+                  key={key}
+                  className="w-full aspect-square rounded-full bg-gray-700 hover:bg-gray-600 text-white text-2xl font-light transition-colors flex items-center justify-center"
+                  onClick={() => {
+                    // Estetico - non fa nulla ma dà feedback visivo
+                    console.log('Pressed:', key);
+                  }}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
