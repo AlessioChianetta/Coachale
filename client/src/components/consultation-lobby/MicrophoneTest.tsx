@@ -52,7 +52,7 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied, onTest
       setTimeout(() => {
         console.log('[MicrophoneTest] 🎯 All setup complete, updating status to granted');
         setMicStatus('granted');
-        onPermissionGranted?.();
+        // NON chiamare onPermissionGranted qui - deve essere chiamato SOLO quando il test vocale ha successo
         
         // Inizia il controllo "nessun audio" dopo 5 secondi
         startNoAudioDetection();
@@ -147,20 +147,18 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied, onTest
       // Salva campioni per il rilevamento "nessun audio"
       audioSamplesRef.current.push(normalizedLevel);
       
-      // 🎤 SPEECH DETECTION: Soglia più alta per rilevare voce reale (non rumori di fondo)
-      const SPEECH_THRESHOLD = 0.15; // ~15% del massimo - voce parlata normale
+      // 🎤 SPEECH DETECTION: Soglia abbassata per rilevare meglio la voce
+      const SPEECH_THRESHOLD = 0.05; // ~5% del massimo - più sensibile
       
       if (normalizedLevel > SPEECH_THRESHOLD) {
         setMicStatus('listening');
         
-        // Reset timeout ad ogni rilevamento voce
-        if (speechTimeoutRef.current) {
-          clearTimeout(speechTimeoutRef.current);
-        }
-        
-        // Dopo 1.5 secondi di audio continuo sopra soglia = successo
-        if (!speechDetectedRef.current) {
+        // Crea il timeout SOLO se non esiste già (non resettare!)
+        // Il timeout deve continuare a scorrere finché c'è audio
+        if (!speechTimeoutRef.current && !speechDetectedRef.current) {
+          console.log('[MicrophoneTest] 🎙️ Speech detected, starting 1.5s timer...');
           speechTimeoutRef.current = setTimeout(() => {
+            console.log('[MicrophoneTest] ✅ Speech sustained for 1.5s - TEST SUCCESS!');
             speechDetectedRef.current = true;
             setHasSpoken(true);
             setMicStatus('success');
@@ -177,8 +175,9 @@ export function MicrophoneTest({ onPermissionGranted, onPermissionDenied, onTest
           }, 1500);
         }
       } else {
-        // Audio sotto soglia - reset timeout
+        // Audio sotto soglia - reset timeout solo se non abbiamo già rilevato voce
         if (speechTimeoutRef.current && !speechDetectedRef.current) {
+          console.log('[MicrophoneTest] 📉 Audio dropped below threshold, resetting timer');
           clearTimeout(speechTimeoutRef.current);
           speechTimeoutRef.current = null;
         }
