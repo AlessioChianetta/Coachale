@@ -143,6 +143,76 @@ function PhaseInspectorPanel({ phase }: { phase: Phase }) {
           </CardContent>
         </Card>
       </div>
+
+      <Separator />
+
+      <div>
+        <h4 className="font-medium text-sm mb-2">⚙️ Riepilogo Completo Impostazioni</h4>
+        <Card className="bg-gradient-to-br from-muted/30 to-muted/50">
+          <CardContent className="p-4 space-y-3 text-xs">
+            {/* Phase Settings */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-primary font-semibold">
+                <Target className="h-4 w-4" />
+                <span>Fase {phase.number}</span>
+              </div>
+              <div className="pl-6 space-y-1.5 text-muted-foreground">
+                <div><span className="font-medium text-foreground">Nome:</span> {phase.name}</div>
+                {phase.description && (
+                  <div><span className="font-medium text-foreground">Descrizione:</span> {phase.description}</div>
+                )}
+                {phase.transition && (
+                  <div><span className="font-medium text-foreground">Transizione:</span> {phase.transition}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Energy Settings */}
+            {phase.energy && (
+              <div className="pt-2 border-t space-y-2">
+                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400 font-semibold">
+                  <Zap className="h-4 w-4" />
+                  <span>Energia</span>
+                </div>
+                <div className="pl-6 space-y-1.5 text-muted-foreground">
+                  <div><span className="font-medium text-foreground">Livello:</span> {phase.energy.level}</div>
+                  {phase.energy.tone && (
+                    <div><span className="font-medium text-foreground">Tono:</span> {phase.energy.tone}</div>
+                  )}
+                  {phase.energy.volume && (
+                    <div><span className="font-medium text-foreground">Volume:</span> {phase.energy.volume}</div>
+                  )}
+                  {phase.energy.rhythm && (
+                    <div><span className="font-medium text-foreground">Ritmo:</span> {phase.energy.rhythm}</div>
+                  )}
+                  {phase.energy.vocabulary && phase.energy.vocabulary.length > 0 && (
+                    <div>
+                      <span className="font-medium text-foreground">Vocabolario:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {phase.energy.vocabulary.map((word, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs">{word}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Steps Summary */}
+            {phase.steps && phase.steps.length > 0 && (
+              <div className="pt-2 border-t">
+                <div className="font-medium text-foreground mb-1">
+                  Step contenuti: {phase.steps.length}
+                </div>
+                <div className="font-medium text-foreground">
+                  Domande totali: {phase.steps.reduce((acc, s) => acc + (s.questions?.length || 0), 0)}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -285,6 +355,85 @@ function StepInspectorPanel({ step, phaseId }: { step: Step; phaseId: string }) 
             {step.biscottino && (
               <div className="mt-2 pt-2 border-t">
                 <span className="text-xs font-medium">🍪 Biscottino: {step.biscottino.phrase}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Separator />
+
+      <div>
+        <h4 className="font-medium text-sm mb-2">⚙️ Riepilogo Completo Impostazioni</h4>
+        <Card className="bg-gradient-to-br from-muted/30 to-muted/50">
+          <CardContent className="p-4 space-y-3 text-xs">
+            {/* Step Settings */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold">
+                <CheckSquare className="h-4 w-4" />
+                <span>Step {step.number}</span>
+              </div>
+              <div className="pl-6 space-y-1.5 text-muted-foreground">
+                <div><span className="font-medium text-foreground">Nome:</span> {step.name}</div>
+                {step.objective && (
+                  <div><span className="font-medium text-foreground">Obiettivo:</span> {step.objective}</div>
+                )}
+                {step.notes && (
+                  <div><span className="font-medium text-foreground">Note AI:</span> {step.notes}</div>
+                )}
+              </div>
+            </div>
+
+            {/* Ladder Settings */}
+            {step.ladder && (
+              <div className="pt-2 border-t space-y-2">
+                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold">
+                  <span>🪜 Ladder dei Perché</span>
+                </div>
+                <div className="pl-6 space-y-1.5 text-muted-foreground">
+                  <div><span className="font-medium text-foreground">Livelli:</span> {step.ladder.levels?.length || 0}</div>
+                  {step.ladder.levels && step.ladder.levels.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      {step.ladder.levels.map((level) => (
+                        <div key={level.number} className="pl-2 border-l-2 border-indigo-200 dark:border-indigo-800">
+                          <div className="font-medium text-foreground">Livello {level.number}: {level.name}</div>
+                          <div className="text-xs italic">{level.question}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Biscottino Settings */}
+            {step.biscottino && (
+              <div className="pt-2 border-t space-y-2">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-semibold">
+                  <span>🍪 Biscottino</span>
+                </div>
+                <div className="pl-6 space-y-1.5 text-muted-foreground">
+                  {step.biscottino.trigger && (
+                    <div><span className="font-medium text-foreground">Trigger:</span> {step.biscottino.trigger}</div>
+                  )}
+                  {step.biscottino.phrase && (
+                    <div><span className="font-medium text-foreground">Frase:</span> {step.biscottino.phrase}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Questions Summary */}
+            {step.questions && step.questions.length > 0 && (
+              <div className="pt-2 border-t">
+                <div className="font-medium text-foreground">
+                  Domande contenute: {step.questions.length}
+                </div>
+                {step.questions.filter(q => q.isKey).length > 0 && (
+                  <div className="text-muted-foreground mt-1">
+                    Di cui chiave: {step.questions.filter(q => q.isKey).length}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -435,6 +584,73 @@ function QuestionInspectorPanel({ question, phaseId, stepId }: { question: Quest
                 ⏱️ {question.instructions.waitDetails}
               </div>
             )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Separator />
+
+      <div>
+        <h4 className="font-medium text-sm mb-2">⚙️ Riepilogo Completo Impostazioni</h4>
+        <Card className="bg-gradient-to-br from-muted/30 to-muted/50">
+          <CardContent className="p-4 space-y-3 text-xs">
+            {/* Question Settings */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-semibold">
+                <MessageSquare className="h-4 w-4" />
+                <span>Domanda</span>
+                {question.isKey && (
+                  <Badge variant="default" className="text-xs ml-2">Chiave</Badge>
+                )}
+              </div>
+              <div className="pl-6 space-y-1.5 text-muted-foreground">
+                <div><span className="font-medium text-foreground">Testo:</span> {question.text}</div>
+                {question.marker && (
+                  <div>
+                    <span className="font-medium text-foreground">Marker:</span>
+                    <Badge variant="outline" className="text-xs ml-2">{question.marker}</Badge>
+                  </div>
+                )}
+                <div><span className="font-medium text-foreground">Domanda Chiave:</span> {question.isKey ? 'Sì' : 'No'}</div>
+                {question.condition && (
+                  <div><span className="font-medium text-foreground">Condizione:</span> {question.condition}</div>
+                )}
+              </div>
+            </div>
+
+            {/* AI Instructions */}
+            {(question.instructions?.wait || question.instructions?.listen || question.instructions?.waitDetails) && (
+              <div className="pt-2 border-t space-y-2">
+                <div className="font-semibold text-foreground">
+                  Istruzioni AI
+                </div>
+                <div className="pl-6 space-y-1.5 text-muted-foreground">
+                  {question.instructions.wait !== undefined && (
+                    <div>
+                      <span className="font-medium text-foreground">Aspetta risposta completa:</span> {question.instructions.wait ? 'Sì' : 'No'}
+                    </div>
+                  )}
+                  {question.instructions.waitDetails && (
+                    <div><span className="font-medium text-foreground">Dettagli attesa:</span> {question.instructions.waitDetails}</div>
+                  )}
+                  {question.instructions.listen && (
+                    <div><span className="font-medium text-foreground">Come ascoltare:</span> {question.instructions.listen}</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Summary Stats */}
+            <div className="pt-2 border-t">
+              <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                <div>
+                  <span className="font-medium text-foreground">Tipo:</span> {question.isKey ? 'Chiave' : 'Standard'}
+                </div>
+                <div>
+                  <span className="font-medium text-foreground">Condizionale:</span> {question.condition ? 'Sì' : 'No'}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
