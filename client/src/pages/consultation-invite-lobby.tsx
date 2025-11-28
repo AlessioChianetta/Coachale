@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'wouter';
@@ -16,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { Separator } from '@/components/ui/separator';
 import { MicrophoneTest } from '@/components/consultation-lobby/MicrophoneTest';
 
 interface InviteData {
@@ -39,8 +39,6 @@ export default function ConsultationInviteLobby() {
   const [prospectPhone, setProspectPhone] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [micPermissionGranted, setMicPermissionGranted] = useState(false);
-
-  // Stato locale per simulare il mute/unmute DOPO aver passato il test
   const [isMuted, setIsMuted] = useState(false);
 
   const { data: inviteData, isLoading, error } = useQuery<InviteData>({
@@ -98,8 +96,21 @@ export default function ConsultationInviteLobby() {
     });
   };
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center bg-[#202124] text-white"><Loader2 className="animate-spin w-8 h-8" /></div>;
-  if (error) return <div className="h-screen flex items-center justify-center bg-[#202124] text-white">Invito non valido</div>;
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-black">
+        <Loader2 className="animate-spin w-8 h-8 text-white" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-black text-white">
+        Invito non valido
+      </div>
+    );
+  }
 
   const agentName = inviteData?.agent.displayName || "Consulente";
   const initials = prospectName 
@@ -107,216 +118,273 @@ export default function ConsultationInviteLobby() {
     : 'TU';
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden bg-[#202124] font-sans">
+    <div className="flex flex-col lg:flex-row h-screen w-full overflow-hidden">
 
-      {/* --- LATO SINISTRO: ANTEPRIMA AUDIO --- */}
-      <div className="flex-1 relative flex flex-col p-4 lg:p-6 bg-[#202124]">
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          LATO SINISTRO: VIDEO PREVIEW (50%) - Full Height Dark Gradient
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <div className="flex-1 relative bg-gradient-to-br from-slate-900 via-slate-800 to-black overflow-hidden">
+        
+        {/* Gradient Overlay dal basso verso l'alto */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none z-10" />
 
-        {/* Header Branding */}
-        <div className="absolute top-6 left-8 z-10 hidden lg:flex items-center gap-2 text-white/90">
-             <div className="bg-blue-600/20 p-1.5 rounded-lg">
-               <Sparkles className="w-4 h-4 text-blue-400" />
-             </div>
-             <span className="font-semibold tracking-tight text-sm">Consultation Room</span>
+        {/* Pattern Background sottile */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+            backgroundSize: '40px 40px'
+          }} />
         </div>
 
-        {/* Container Centrale */}
-        <div className="flex-1 flex items-center justify-center w-full h-full relative">
+        {/* Contenuto Centrato Verticalmente */}
+        <div className="relative z-20 h-full flex flex-col items-center justify-center p-8 lg:p-12">
 
-          {/* IL BOX ANTEPRIMA */}
-          <div className="relative w-full max-w-3xl aspect-video bg-[#282a2d] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/5 flex flex-col items-center justify-center">
-
-            {/* Background pattern sottile */}
-            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-700 via-[#282a2d] to-[#282a2d]" />
-
-            {/* Badge Stato Audio (in alto a destra) */}
-            <div className="absolute top-6 right-6 z-20">
-               <div className={`backdrop-blur-md px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all ${
-                 micPermissionGranted 
-                   ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                   : 'bg-zinc-800/80 text-zinc-400 border border-zinc-700'
-               }`}>
-                 {micPermissionGranted ? (
-                   <><SignalHigh className="w-3 h-3" /> Audio Pronto</>
-                 ) : (
-                   <><Volume2 className="w-3 h-3" /> Configurazione Audio</>
-                 )}
-               </div>
+          {/* Logo/Brand in alto */}
+          <div className="absolute top-8 left-8 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
+            <div className="text-white">
+              <p className="text-sm font-semibold tracking-tight">Consultation Room</p>
+              <p className="text-xs text-white/60">Studio Privato</p>
+            </div>
+          </div>
 
-            {/* CONTENUTO CENTRALE */}
-            <div className="z-10 w-full flex flex-col items-center justify-center p-6 transition-all duration-500">
+          {/* Badge Status (in alto a destra) */}
+          <div className="absolute top-8 right-8">
+            <div className={`backdrop-blur-xl px-5 py-2.5 rounded-full text-sm font-semibold flex items-center gap-2.5 transition-all border ${
+              micPermissionGranted 
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30 shadow-lg shadow-emerald-500/20' 
+                : 'bg-white/10 text-white/80 border-white/20'
+            }`}>
+              {micPermissionGranted ? (
+                <><SignalHigh className="w-4 h-4" /> Audio Pronto</>
+              ) : (
+                <><Volume2 className="w-4 h-4" /> Setup Audio</>
+              )}
+            </div>
+          </div>
 
+          {/* CONTENUTO CENTRALE */}
+          <div className="w-full max-w-2xl">
+            <AnimatePresence mode="wait">
               {!micPermissionGranted ? (
-                /* --- FASE 1: TEST NECESSARIO --- */
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="w-full max-w-md flex flex-col items-center"
+                /* ━━━ FASE 1: TEST MICROFONO ━━━ */
+                <motion.div
+                  key="test-phase"
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="space-y-8"
                 >
-                  <div className="text-center mb-8 space-y-2">
-                    <h2 className="text-2xl text-white font-medium">Controlliamo il tuo audio</h2>
-                    <p className="text-zinc-400 text-sm">Per garantirti la migliore esperienza, verifica il microfono.</p>
+                  <div className="text-center space-y-4">
+                    <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight">
+                      Setup Audio
+                    </h1>
+                    <p className="text-lg text-white/70 max-w-md mx-auto leading-relaxed">
+                      Prima di entrare, verifichiamo che il tuo microfono funzioni correttamente.
+                    </p>
                   </div>
 
-                  {/* Il componente MicrophoneTest viene incapsulato in un design pulito */}
-                  <div className="relative group w-full">
-                    {/* Glow effect dietro la card */}
-                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-violet-600 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                    <div className="relative bg-white dark:bg-zinc-900 rounded-xl p-1 shadow-2xl overflow-hidden">
-                       <MicrophoneTest
-                         onPermissionGranted={() => setMicPermissionGranted(true)}
-                         onPermissionDenied={() => setMicPermissionGranted(false)}
-                       />
+                  {/* Microfono Test con Glow Effect */}
+                  <div className="relative group">
+                    <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 via-violet-600 to-blue-600 rounded-2xl blur-xl opacity-40 group-hover:opacity-60 transition duration-500 animate-pulse" />
+                    <div className="relative bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl">
+                      <MicrophoneTest
+                        onPermissionGranted={() => setMicPermissionGranted(true)}
+                        onPermissionDenied={() => setMicPermissionGranted(false)}
+                      />
                     </div>
                   </div>
                 </motion.div>
               ) : (
-                /* --- FASE 2: PRONTO & AVATAR --- */
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }} 
+                /* ━━━ FASE 2: PREVIEW CON AVATAR ━━━ */
+                <motion.div
+                  key="preview-phase"
+                  initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center gap-8"
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="flex flex-col items-center space-y-10"
                 >
-                  {/* Avatar con visualizzatore onda sonora simulata */}
+                  {/* Avatar con Pulse Ring */}
                   <div className="relative">
-                    {/* Cerchi pulsanti se non mutato */}
+                    {/* Animated Rings se non muted */}
                     {!isMuted && (
                       <>
-                        <div className="absolute inset-0 bg-blue-500/20 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
-                        <div className="absolute inset-0 bg-blue-500/10 rounded-full animate-ping" style={{ animationDuration: '1.5s', animationDelay: '0.5s' }} />
+                        <div className="absolute inset-0 -m-8">
+                          <div className="w-full h-full border-4 border-blue-500/30 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+                        </div>
+                        <div className="absolute inset-0 -m-4">
+                          <div className="w-full h-full border-2 border-violet-500/20 rounded-full animate-ping" style={{ animationDuration: '1.5s', animationDelay: '0.3s' }} />
+                        </div>
                       </>
                     )}
 
-                    <Avatar className="w-32 h-32 border-4 border-[#282a2d] shadow-2xl relative z-10">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white text-3xl font-medium">
+                    <Avatar className="w-40 h-40 lg:w-48 lg:h-48 border-8 border-white/10 shadow-2xl shadow-black/50 relative z-10">
+                      <AvatarFallback className="bg-gradient-to-br from-blue-600 via-violet-600 to-blue-700 text-white text-4xl lg:text-5xl font-bold">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
 
-                    {/* Icona stato muto sull'avatar */}
+                    {/* Mute Overlay */}
                     {isMuted && (
-                      <div className="absolute inset-0 z-20 bg-black/50 rounded-full flex items-center justify-center backdrop-blur-[1px]">
-                        <MicOff className="w-10 h-10 text-white/80" />
+                      <div className="absolute inset-0 z-20 bg-black/60 rounded-full flex items-center justify-center backdrop-blur-sm">
+                        <MicOff className="w-14 h-14 lg:w-16 lg:h-16 text-white/90" />
                       </div>
                     )}
                   </div>
 
-                  <div className="text-center space-y-1">
-                     <h3 className="text-xl text-white font-medium">
-                       {isMuted ? "Microfono disattivato" : "Il microfono funziona"}
-                     </h3>
-                     <p className="text-zinc-500 text-sm">Sei pronto per entrare nella stanza.</p>
+                  {/* Testo Status */}
+                  <div className="text-center space-y-3">
+                    <h2 className="text-3xl lg:text-4xl font-bold text-white">
+                      {isMuted ? "Microfono disattivato" : "Tutto pronto!"}
+                    </h2>
+                    <p className="text-lg text-white/60">
+                      {isMuted ? "Clicca per riattivare" : "Sei pronto per entrare nella stanza"}
+                    </p>
                   </div>
+
+                  {/* Controllo Mute */}
+                  <button
+                    onClick={toggleMute}
+                    className={`group relative p-6 rounded-full transition-all duration-300 shadow-2xl hover:scale-110 ${
+                      isMuted 
+                        ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700' 
+                        : 'bg-white/10 backdrop-blur-xl border border-white/20 hover:bg-white/15'
+                    }`}
+                    title={isMuted ? "Attiva microfono" : "Disattiva microfono"}
+                  >
+                    {isMuted ? (
+                      <MicOff className="w-7 h-7 text-white" />
+                    ) : (
+                      <Mic className="w-7 h-7 text-white" />
+                    )}
+                  </button>
                 </motion.div>
               )}
-            </div>
-
-            {/* BARRA CONTROLLI (Visibile SOLO se permesso accordato) */}
-            {micPermissionGranted && (
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 z-20">
-                <button
-                  onClick={toggleMute}
-                  className={`p-4 rounded-full transition-all duration-200 shadow-lg hover:scale-105 ${
-                    isMuted 
-                      ? 'bg-red-500 hover:bg-red-600 text-white border-2 border-transparent' 
-                      : 'bg-[#3c4043] hover:bg-[#4a4f54] text-white border border-white/10'
-                  }`}
-                  title={isMuted ? "Attiva microfono" : "Disattiva microfono"}
-                >
-                  {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-                </button>
-              </div>
-            )}
-
+            </AnimatePresence>
           </div>
 
-          <p className="absolute bottom-6 text-zinc-600 text-xs hidden lg:block">
-            Anteprima sicura • Solo audio
-          </p>
+          {/* Footer Info */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2 text-white/40 text-sm">
+            <ShieldCheck className="w-4 h-4" />
+            <span>Anteprima sicura • Crittografia end-to-end</span>
+          </div>
         </div>
       </div>
 
-      {/* --- LATO DESTRO: FORM DI ACCESSO --- */}
-      <div className="lg:w-[420px] bg-white w-full flex flex-col shadow-2xl z-30 h-auto lg:h-full overflow-y-auto">
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          LATO DESTRO: FORM (50%) - Bianco Puro Elevato
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <div className="flex-1 bg-white relative overflow-y-auto shadow-2xl">
+        
+        {/* Contenuto centrato verticalmente */}
+        <div className="min-h-full flex flex-col justify-center p-8 lg:p-16 max-w-xl mx-auto">
 
-        {/* Intestazione */}
-        <div className="p-8 pt-12 pb-2">
-          <p className="text-xs font-bold text-blue-600 tracking-wider uppercase mb-2 flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"/> Sala d'attesa
-          </p>
-          <h1 className="text-3xl font-bold text-slate-900 mb-1">{agentName}</h1>
-          <p className="text-slate-500 text-sm">
-            {inviteData?.agent.businessName || "Consulenza privata"}
-          </p>
-        </div>
+          {/* Header */}
+          <div className="mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-100 mb-6">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Sala d'attesa</span>
+            </div>
 
-        <div className="px-8">
-           <Separator className="my-6" />
-        </div>
-
-        {/* Campi Form */}
-        <div className="px-8 space-y-5 flex-1">
-          <div className="space-y-2">
-            <Label className="text-slate-700 font-medium">Il tuo Nome completo</Label>
-            <Input 
-              value={prospectName}
-              onChange={(e) => setProspectName(e.target.value)}
-              placeholder="Mario Rossi"
-              className="h-12 bg-slate-50 border-slate-200 focus:ring-blue-500 text-base"
-            />
+            <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-3 leading-tight">
+              {agentName}
+            </h1>
+            <p className="text-lg text-slate-500">
+              {inviteData?.agent.businessName || "Consulenza privata"}
+            </p>
           </div>
 
-          <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-slate-600 text-xs uppercase font-semibold">Email (opzionale)</Label>
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-10" />
+
+          {/* Form Fields */}
+          <div className="space-y-6 mb-10">
+            {/* Nome (required) */}
+            <div className="space-y-3">
+              <Label className="text-slate-700 font-semibold text-base">
+                Il tuo nome completo *
+              </Label>
               <Input 
+                value={prospectName}
+                onChange={(e) => setProspectName(e.target.value)}
+                placeholder="Mario Rossi"
+                className="h-14 text-base bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+              />
+            </div>
+
+            {/* Email (optional) */}
+            <div className="space-y-3">
+              <Label className="text-slate-500 text-sm font-medium uppercase tracking-wide">
+                Email (opzionale)
+              </Label>
+              <Input 
+                type="email"
                 value={prospectEmail}
                 onChange={(e) => setProspectEmail(e.target.value)}
                 placeholder="mario@email.com"
-                className="h-10 bg-slate-50"
+                className="h-12 bg-slate-50 border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-slate-600 text-xs uppercase font-semibold">Telefono (opzionale)</Label>
+
+            {/* Telefono (optional) */}
+            <div className="space-y-3">
+              <Label className="text-slate-500 text-sm font-medium uppercase tracking-wide">
+                Telefono (opzionale)
+              </Label>
               <Input 
-                 value={prospectPhone}
-                 onChange={(e) => setProspectPhone(e.target.value)}
-                 placeholder="+39 333..."
-                 className="h-10 bg-slate-50"
+                type="tel"
+                value={prospectPhone}
+                onChange={(e) => setProspectPhone(e.target.value)}
+                placeholder="+39 333..."
+                className="h-12 bg-slate-50 border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
               />
             </div>
           </div>
 
-          <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-lg flex gap-3 items-start mt-4">
-             <ShieldCheck className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
-             <p className="text-xs text-blue-800/80 leading-relaxed">
-               Sessione crittografata end-to-end. Nessuno oltre al consulente potrà ascoltare.
-             </p>
+          {/* Security Notice */}
+          <div className="bg-gradient-to-br from-blue-50 to-violet-50 border border-blue-100 rounded-2xl p-5 flex gap-4 items-start mb-10">
+            <ShieldCheck className="w-6 h-6 text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-blue-900 mb-1">
+                Sessione sicura e privata
+              </p>
+              <p className="text-xs text-blue-700/80 leading-relaxed">
+                Connessione crittografata end-to-end. Solo tu e il consulente potrete partecipare.
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Footer Action */}
-        <div className="p-8 mt-auto bg-white">
-           <Button
-             onClick={handleJoin}
-             disabled={!micPermissionGranted || isJoining}
-             className="w-full h-14 text-lg rounded-full font-semibold bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed shadow-xl shadow-blue-900/10 transition-all"
-           >
-             {isJoining ? (
-               <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Connessione...</>
-             ) : !micPermissionGranted ? (
-               "Completa test audio a sinistra"
-             ) : (
-               "Partecipa ora"
-             )}
-           </Button>
+          {/* CTA Button */}
+          <Button
+            onClick={handleJoin}
+            disabled={!micPermissionGranted || isJoining}
+            className="w-full h-16 text-lg font-bold rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-700 hover:to-violet-700 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 shadow-xl shadow-blue-900/20 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 disabled:cursor-not-allowed"
+          >
+            {isJoining ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-3 animate-spin" />
+                Connessione in corso...
+              </>
+            ) : !micPermissionGranted ? (
+              "⚠ Completa il test audio"
+            ) : (
+              <>
+                Partecipa alla consulenza
+                <span className="ml-2">→</span>
+              </>
+            )}
+          </Button>
 
-           {!micPermissionGranted && (
-             <p className="text-xs text-center text-red-500 font-medium mt-3 animate-pulse">
-               ⚠ Il test microfono è obbligatorio
-             </p>
-           )}
+          {/* Warning sotto bottone */}
+          {!micPermissionGranted && (
+            <p className="text-center text-sm text-red-600 font-medium mt-4 animate-pulse">
+              Il test del microfono è obbligatorio per procedere
+            </p>
+          )}
         </div>
       </div>
     </div>
