@@ -20,6 +20,7 @@ export interface EnergySettings {
   rhythm: string;
   inflections?: string;
   vocabulary: string[];
+  negativeVocabulary?: string[];
   mindset?: string;
   example?: string;
 }
@@ -30,6 +31,7 @@ export interface QuestionInstructions {
   listen?: string;
   react?: string[];
   reactContext?: string;
+  additionalInstructions?: string[];
 }
 
 export interface Question {
@@ -50,7 +52,9 @@ export interface Biscottino {
 export interface LadderLevel {
   number: number;
   name: string;
+  objective?: string;
   question: string;
+  examples?: { clientSays: string; youSay: string }[];
   notes?: string;
 }
 
@@ -74,9 +78,11 @@ export interface ResistanceHandling {
 
 export interface Checkpoint {
   title: string;
+  phaseNumber?: string;
   checks: string[];
   resistanceHandling?: ResistanceHandling;
   reminder?: string;
+  testFinale?: string;
 }
 
 export interface Step {
@@ -90,6 +96,7 @@ export interface Step {
   biscottino?: Biscottino;
   ladder?: Ladder;
   notes?: string;
+  transition?: string;
 }
 
 export interface Phase {

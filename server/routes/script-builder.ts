@@ -145,6 +145,8 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
       return res.status(404).json({ error: 'Agente non trovato' });
     }
 
+    const consultantId = agent.consultantId;
+
     let content: string;
     switch (template.type) {
       case 'discovery':
@@ -180,8 +182,8 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
     };
 
     try {
-      console.log('[ScriptBuilder] Getting AI provider for client:', clientId);
-      const aiProvider = await getAIProvider(clientId);
+      console.log('[ScriptBuilder] Getting AI provider for client:', clientId, 'consultant:', consultantId);
+      const aiProvider = await getAIProvider(clientId, consultantId);
       
       if (!aiProvider) {
         console.log('[ScriptBuilder] No AI provider available, returning base template');
