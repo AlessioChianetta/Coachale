@@ -404,20 +404,28 @@ export default function LiveConsultation() {
   // Phone call layout è fullscreen, senza wrapper
   if (layoutMode === 'phone_call') {
     return (
-      <LiveModeScreen
-        key={`${sessionType}-${consultationId || 'normal'}`}
-        mode={config.mode}
-        consultantType={config.consultantType || undefined}
-        customPrompt={customPrompt || undefined}
-        useFullPrompt={useFullPrompt}
-        voiceName={voiceName}
-        sessionType={config.sessionType}
-        isTestMode={isTestMode}
-        consultationId={consultationId || undefined}
-        layoutMode={layoutMode}
-        onClose={handleCloseSession}
-        onConversationSaved={handleConversationSaved}
-      />
+      <>
+        <LiveModeScreen
+          key={`${sessionType}-${consultationId || 'normal'}`}
+          mode={config.mode}
+          consultantType={config.consultantType || undefined}
+          customPrompt={customPrompt || undefined}
+          useFullPrompt={useFullPrompt}
+          voiceName={voiceName}
+          sessionType={config.sessionType}
+          isTestMode={isTestMode}
+          consultationId={consultationId || undefined}
+          layoutMode={layoutMode}
+          onClose={handleCloseSession}
+          onConversationSaved={handleConversationSaved}
+        />
+        {/* Hide FloatingButton during live session */}
+        <style>{`
+          .floating-ai-button {
+            display: none !important;
+          }
+        `}</style>
+      </>
     );
   }
 
@@ -438,6 +446,12 @@ export default function LiveConsultation() {
         onClose={handleCloseSession}
         onConversationSaved={handleConversationSaved}
       />
+      {/* Hide FloatingButton during live session */}
+      <style>{`
+        .floating-ai-button {
+          display: none !important;
+        }
+      `}</style>
     </NormalModeWrapper>
   );
 }

@@ -68,7 +68,7 @@ export function FloatingButton({ onClick, isOpen }: FloatingButtonProps) {
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0, opacity: 0 }}
-          className="fixed bottom-6 right-6 z-50"
+          className="floating-ai-button fixed bottom-6 right-6 z-50"
         >
           <div className="relative">
             {/* Pulsing ring effect - subtle but visible */}
