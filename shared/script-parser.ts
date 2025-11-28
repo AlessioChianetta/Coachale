@@ -442,29 +442,50 @@ function parseBiscottino(text: string): Biscottino | undefined {
 }
 
 function parseCheckpoint(text: string): Checkpoint | undefined {
-  const titleMatch = text.match(/(?:⛔|🚨)\s*CHECKPOINT\s*(?:OBBLIGATORIO)?\s*(?:FASE\s*)?#?(\d+)?[^⛔🚨\n]*/i);
-  if (!titleMatch) return undefined;
+  const checkpointStartMatch = text.match(/(?:⛔|🚨)\s*CHECKPOINT\s*(?:OBBLIGATORIO)?\s*(?:FASE\s*)?#?(\d+)?/i);
+  if (!checkpointStartMatch || checkpointStartMatch.index === undefined) return undefined;
 
-  const phaseNumber = titleMatch[1] || undefined;
+  const phaseNumber = checkpointStartMatch[1] || undefined;
+  
+  const checkpointStart = checkpointStartMatch.index;
+  const endPatterns = [
+    /═{10,}/g,
+    /\*\*FASE\s*#?\d+/gi,
+    /\*\*STEP\s*\d+/gi,
+    /^STEP\s*\d+\s*[-–—]/gim,
+  ];
+  
+  let checkpointEnd = text.length;
+  for (const pattern of endPatterns) {
+    pattern.lastIndex = checkpointStart + 20;
+    const match = pattern.exec(text);
+    if (match && match.index < checkpointEnd && match.index > checkpointStart + 20) {
+      checkpointEnd = match.index;
+    }
+  }
+  
+  const checkpointBlock = text.slice(checkpointStart, checkpointEnd);
   
   const checks: string[] = [];
-  const checksMatches = text.match(/[✓✅]\s*([^\n?]+\??)/g);
-  if (checksMatches) {
-    const filteredChecks = checksMatches
-      .map(c => c.replace(/^[✓✅]\s*/, '').trim())
-      .filter(c => 
-        !c.match(/SOLO\s*DOPO\s*QUESTO\s*CHECKPOINT/i) &&
-        !c.match(/^PASSA\s+allo\s+Step/i) &&
-        !c.match(/^Quando\s+la\s+risposta\s+è/i) &&
-        !c.match(/^Quando\s+dice\s+concetti/i) &&
-        !c.match(/^Tu\s+dici:/i)
-      );
-    checks.push(...filteredChecks);
+  const verifySection = checkpointBlock.match(/VERIFICA:?\s*([\s\S]*?)(?=❌|🛡️|🚨|📊|✅\s*SOLO|$)/i);
+  if (verifySection) {
+    const checksMatches = verifySection[1].match(/[✓✅]\s*([^\n?]+\??)/g);
+    if (checksMatches) {
+      const filteredChecks = checksMatches
+        .map(c => c.replace(/^[✓✅]\s*/, '').trim())
+        .filter(c => 
+          c.length > 3 &&
+          !c.match(/SOLO\s*DOPO\s*QUESTO\s*CHECKPOINT/i) &&
+          !c.match(/^PASSA\s+/i) &&
+          !c.match(/^Tu\s+dici:/i)
+        );
+      checks.push(...filteredChecks);
+    }
   }
 
   let resistanceHandling: ResistanceHandling | undefined;
   
-  const resistanceMatch = text.match(/(?:🛡️)\s*(?:SE\s*RESISTE|GESTIONE\s*RESISTENZA)[^:]*:?\s*"?([^"\n]+)"?\s*([\s\S]*?)(?=✅\s*(?:SOLO|SE)|🚨|📊|---|$)/i);
+  const resistanceMatch = checkpointBlock.match(/(?:🛡️)\s*(?:SE\s*RESISTE|GESTIONE\s*RESISTENZA)[^:]*:?\s*"?([^"\n]+)"?\s*([\s\S]*?)(?=✅\s*(?:SOLO|SE)|🚨|📊|---|$)/i);
   if (resistanceMatch) {
     const trigger = resistanceMatch[1]?.trim() || 'Prospect resiste';
     const restContent = resistanceMatch[2];
@@ -496,7 +517,7 @@ function parseCheckpoint(text: string): Checkpoint | undefined {
     };
   }
 
-  const warningMatch = text.match(/⚠️\s*SE\s*[^\n]+/gi);
+  const warningMatch = checkpointBlock.match(/⚠️\s*SE\s*[^\n]+/gi);
   if (warningMatch && !resistanceHandling) {
     const warnings = warningMatch.map(w => w.replace(/^⚠️\s*/, '').trim());
     resistanceHandling = {
@@ -505,9 +526,9 @@ function parseCheckpoint(text: string): Checkpoint | undefined {
     };
   }
 
-  const reminderMatch = text.match(/🚨\s*REMINDER\s*(?:CRITICO)?[^🚨\n]*🚨?\s*([\s\S]*?)(?=✅\s*SOLO|---|$)/i);
+  const reminderMatch = checkpointBlock.match(/🚨\s*REMINDER\s*(?:CRITICO)?[^🚨\n]*🚨?\s*([\s\S]*?)(?=✅\s*SOLO|---|$)/i);
   
-  const testFinaleMatch = text.match(/📊\s*TEST\s*FINALE[^:]*:\s*([\s\S]*?)(?=🛡️|---|$)/i);
+  const testFinaleMatch = checkpointBlock.match(/📊\s*TEST\s*FINALE[^:]*:\s*([\s\S]*?)(?=🛡️|---|$)/i);
   let testFinale = '';
   const testFinaleExamples: string[] = [];
   
@@ -527,7 +548,7 @@ function parseCheckpoint(text: string): Checkpoint | undefined {
   if (phaseNumber) {
     title = `FASE #${phaseNumber}`;
   } else {
-    const titleContentMatch = text.match(/CHECKPOINT\s*(?:OBBLIGATORIO)?\s*([^\n⛔🚨]+)/i);
+    const titleContentMatch = checkpointBlock.match(/CHECKPOINT\s*(?:OBBLIGATORIO)?\s*([^\n⛔🚨]+)/i);
     if (titleContentMatch && titleContentMatch[1].trim()) {
       title = titleContentMatch[1].trim();
     }

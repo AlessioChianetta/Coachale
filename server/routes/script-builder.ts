@@ -220,8 +220,11 @@ ${JSON.stringify(structure.phases?.map(phase => ({
     tone: phase.energy.tone,
     volume: phase.energy.volume,
     rhythm: phase.energy.rhythm,
+    inflections: phase.energy.inflections,
     vocabulary: phase.energy.vocabulary,
-    mindset: phase.energy.mindset
+    negativeVocabulary: phase.energy.negativeVocabulary,
+    mindset: phase.energy.mindset,
+    example: phase.energy.example
   } : null,
   steps: phase.steps?.map(step => ({
     stepNumber: step.number,
@@ -230,13 +233,19 @@ ${JSON.stringify(structure.phases?.map(phase => ({
     energy: step.energy ? {
       level: step.energy.level,
       tone: step.energy.tone,
+      volume: step.energy.volume,
+      rhythm: step.energy.rhythm,
+      inflections: step.energy.inflections,
       vocabulary: step.energy.vocabulary,
-      mindset: step.energy.mindset
+      negativeVocabulary: step.energy.negativeVocabulary,
+      mindset: step.energy.mindset,
+      example: step.energy.example
     } : null,
     questions: step.questions?.map(q => ({
       text: q.text,
       marker: q.marker,
       isKey: q.isKey,
+      condition: q.condition,
       instructions: q.instructions
     })),
     ladder: step.ladder ? {
@@ -248,10 +257,14 @@ ${JSON.stringify(structure.phases?.map(phase => ({
         objective: l.objective,
         question: l.question,
         tone: l.tone,
-        examples: l.examples
+        examples: l.examples,
+        notes: l.notes
       })),
       stopWhen: step.ladder.stopWhen,
-      helpfulPhrases: step.ladder.helpfulPhrases
+      dontStopWhen: step.ladder.dontStopWhen,
+      helpfulPhrases: step.ladder.helpfulPhrases,
+      goldSignals: step.ladder.goldSignals,
+      resistanceHandling: step.ladder.resistanceHandling
     } : null,
     biscottino: step.biscottino,
     transition: step.transition,
@@ -263,6 +276,7 @@ ${JSON.stringify(structure.phases?.map(phase => ({
     checks: phase.checkpoint.checks,
     resistanceHandling: phase.checkpoint.resistanceHandling,
     testFinale: phase.checkpoint.testFinale,
+    testFinaleExamples: phase.checkpoint.testFinaleExamples,
     reminder: phase.checkpoint.reminder
   } : null
 })), null, 2)}
