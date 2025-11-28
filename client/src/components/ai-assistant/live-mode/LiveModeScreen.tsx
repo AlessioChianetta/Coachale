@@ -2238,6 +2238,8 @@ registerProcessor('pcm-processor', PCMProcessor);
         isMuted={isMuted}
         onToggleMute={toggleMute}
         onEndCall={() => setShowDisconnectDialog(true)}
+        onDisconnectTemporarily={disconnectTemporarily}
+        onEndSession={endSession}
         liveState={liveState}
         connectionStatus={connectionStatus}
         currentTranscript={currentTranscript}
@@ -2246,6 +2248,7 @@ registerProcessor('pcm-processor', PCMProcessor);
         audioLevel={audioLevel}
         isTestMode={isTestMode}
         sessionClosing={isSessionClosing}
+        sessionType={sessionType}
       />
     );
   }

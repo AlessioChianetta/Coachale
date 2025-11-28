@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Phone, Mic, MicOff, User, Clock, ChevronUp, ChevronDown, Grid3x3, X, Loader2 } from 'lucide-react';
+import { Phone, Mic, MicOff, User, Clock, ChevronUp, ChevronDown, Grid3x3, X, Loader2, LogOut, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LiveTranscript } from '../LiveTranscript';
 
@@ -10,6 +10,8 @@ interface PhoneCallLayoutProps {
   isMuted: boolean;
   onToggleMute: () => void;
   onEndCall: () => void;
+  onDisconnectTemporarily?: () => void;
+  onEndSession?: (reason: 'manual' | 'auto_90min') => void;
   liveState: 'idle' | 'loading' | 'listening' | 'thinking' | 'speaking';
   connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error';
   currentTranscript: { role: 'user' | 'assistant'; text: string; timestamp: number } | null;
@@ -18,6 +20,7 @@ interface PhoneCallLayoutProps {
   audioLevel: number;
   isTestMode?: boolean;
   sessionClosing?: boolean;
+  sessionType?: 'weekly_consultation';
 }
 
 export function PhoneCallLayout({
@@ -25,6 +28,8 @@ export function PhoneCallLayout({
   isMuted,
   onToggleMute,
   onEndCall,
+  onDisconnectTemporarily,
+  onEndSession,
   liveState,
   connectionStatus,
   currentTranscript,
@@ -33,9 +38,11 @@ export function PhoneCallLayout({
   audioLevel,
   isTestMode,
   sessionClosing,
+  sessionType,
 }: PhoneCallLayoutProps) {
   const [showTranscript, setShowTranscript] = useState(false);
   const [showKeypad, setShowKeypad] = useState(false);
+  const [showEndCallMenu, setShowEndCallMenu] = useState(false);
 
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -403,8 +410,15 @@ export function PhoneCallLayout({
           {/* End Call Button */}
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={onEndCall}
-            className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center justify-center shadow-2xl shadow-red-500/50 transition-all"
+            onClick={() => {
+              if (onDisconnectTemporarily && onEndSession) {
+                setShowEndCallMenu(true);
+              } else {
+                onEndCall();
+              }
+            }}
+            disabled={sessionClosing}
+            className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 flex items-center justify-center shadow-2xl shadow-red-500/50 transition-all disabled:opacity-50"
           >
             <Phone className="w-9 h-9 text-white transform rotate-135" />
           </motion.button>
@@ -473,6 +487,123 @@ export function PhoneCallLayout({
               ))}
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Menu Chiusura Chiamata - Bottom Sheet Premium */}
+      <AnimatePresence>
+        {showEndCallMenu && (
+          <>
+            {/* Overlay scuro */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowEndCallMenu(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            />
+            
+            {/* Bottom Sheet */}
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-b from-gray-800 to-gray-900 rounded-t-3xl border-t border-gray-700/50 shadow-2xl"
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-12 h-1.5 rounded-full bg-gray-600" />
+              </div>
+
+              {/* Header */}
+              <div className="px-6 pb-4 text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Phone className="w-5 h-5 text-red-400 transform rotate-135" />
+                  <h3 className="text-lg font-semibold text-white">Termina chiamata</h3>
+                </div>
+                <p className="text-sm text-gray-400">
+                  {sessionType === 'weekly_consultation'
+                    ? 'Come vuoi terminare la consulenza?'
+                    : 'Come vuoi terminare la sessione?'}
+                </p>
+              </div>
+
+              {/* Info Box per consulenze */}
+              {sessionType === 'weekly_consultation' && (
+                <div className="mx-6 mb-4 p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20">
+                  <div className="flex items-center gap-2 text-blue-300 mb-2">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm font-medium">
+                      Tempo rimanente: {Math.max(0, 90 - Math.floor(conversationDuration / 60))} min
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    Puoi tornare entro questo tempo per riprendere la conversazione
+                  </p>
+                </div>
+              )}
+
+              {/* Opzioni */}
+              <div className="px-6 pb-8 space-y-3">
+                {/* Esci Temporaneamente */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowEndCallMenu(false);
+                    onDisconnectTemporarily?.();
+                  }}
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-orange-500/20 to-amber-500/20 border border-orange-500/30 hover:border-orange-400/50 transition-all"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
+                    <LogOut className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h4 className="text-base font-semibold text-orange-200">Esci Temporaneamente</h4>
+                    <p className="text-xs text-gray-400">
+                      {sessionType === 'weekly_consultation'
+                        ? 'Puoi tornare entro 90 min per riprendere'
+                        : 'Salva la conversazione ed esci'}
+                    </p>
+                  </div>
+                </motion.button>
+
+                {/* Chiudi Definitivamente */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowEndCallMenu(false);
+                    onEndSession?.('manual');
+                  }}
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-red-500/20 to-rose-500/20 border border-red-500/30 hover:border-red-400/50 transition-all"
+                >
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/30">
+                    <XCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h4 className="text-base font-semibold text-red-200">Chiudi Definitivamente</h4>
+                    <p className="text-xs text-gray-400">
+                      {sessionType === 'weekly_consultation'
+                        ? 'Termina la consulenza definitivamente'
+                        : 'Termina la sessione senza possibilità di ripresa'}
+                    </p>
+                  </div>
+                </motion.button>
+
+                {/* Annulla */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowEndCallMenu(false)}
+                  className="w-full p-4 rounded-2xl bg-gray-700/50 border border-gray-600/30 hover:bg-gray-700 transition-all"
+                >
+                  <span className="text-base font-medium text-gray-300">Annulla</span>
+                </motion.button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>
