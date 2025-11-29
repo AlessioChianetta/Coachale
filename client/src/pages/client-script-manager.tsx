@@ -856,7 +856,11 @@ export default function ClientScriptManager() {
             </div>
         </header>
 
-        <ResizablePanelGroup direction="horizontal" className="flex-1">
+        <ResizablePanelGroup 
+          direction="horizontal" 
+          className="flex-1"
+          id={showBuilder ? "builder-layout" : "normal-layout"}
+        >
           {/* COLONNA 1: LISTA SCRIPT */}
           <ResizablePanel 
             id="sidebar-panel"
