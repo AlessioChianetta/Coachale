@@ -773,16 +773,16 @@ export async function getVertexAITokenForLive(
  * 3. Google AI Studio (fallback) - if preferredAiProvider != 'custom'
  * 
  * @param clientId - Client user ID
- * @param consultantId - Consultant user ID
+ * @param consultantId - Consultant user ID (optional - if undefined, skip consultant-tier lookups)
  * @returns AI provider result with client, metadata, source, and optional cleanup
  */
 export async function getAIProvider(
   clientId: string,
-  consultantId: string
+  consultantId?: string
 ): Promise<AiProviderResult> {
   const now = new Date();
 
-  console.log(`🔍 Finding AI provider for client ${clientId} (consultant: ${consultantId})...`);
+  console.log(`🔍 Finding AI provider for client ${clientId} (consultant: ${consultantId ?? 'none'})...`);
 
   // Get client's AI provider preference
   const [client] = await db
@@ -815,11 +815,12 @@ export async function getAIProvider(
   // If google_studio preference: Skip Vertex AI tiers, go directly to Google AI Studio
   if (preferredProvider === "google_studio") {
     console.log(`✅ Using GOOGLE STUDIO provider (consultant's fallback keys)`);
-    const result = await createGoogleAIStudioClient(consultantId);
+    const googleStudioUserId = consultantId ?? clientId;
+    const result = await createGoogleAIStudioClient(googleStudioUserId);
     if (!result) {
       throw new Error(
         "❌ Failed to initialize Google AI Studio provider. " +
-        "No valid Gemini API keys found for consultant. " +
+        "No valid Gemini API keys found. " +
         "Please add API keys or configure Vertex AI."
       );
     }
@@ -830,94 +831,149 @@ export async function getAIProvider(
     };
   }
 
-  // TIER 2: Try Vertex AI (consultant-managed)
-  // Find all enabled Vertex AI settings for the consultant and iterate until one passes usageScope check
-  // This handles cases where consultant has multiple settings with different managedBy/usageScope combinations
+  // TIER 1: Try client-managed Vertex AI (userId = clientId, managedBy = 'self')
+  // This allows clients with their own Vertex AI credentials to use them
   try {
-    const isConsultantUsingOwnAI = clientId === consultantId;
+    console.log(`🔍 TIER 1: Looking for client-managed Vertex AI (clientId: ${clientId})...`);
     
-    console.log(`🔍 Finding Vertex AI settings for consultant ${consultantId} (isConsultantUsingOwnAI: ${isConsultantUsingOwnAI})`);
-    
-    // Get ALL enabled Vertex AI settings for consultant, ordered by managedBy
-    // Priority: 'admin' settings first (for clients), then 'self' (for consultant's own use)
-    const allVertexSettings = await db
+    const clientVertexSettings = await db
       .select()
       .from(vertexAiSettings)
       .where(
         and(
-          eq(vertexAiSettings.userId, consultantId),
+          eq(vertexAiSettings.userId, clientId),
+          eq(vertexAiSettings.managedBy, "self"),
           eq(vertexAiSettings.enabled, true)
         )
       )
-      .orderBy(vertexAiSettings.managedBy); // 'admin' comes before 'self' alphabetically
+      .limit(1);
 
-    if (allVertexSettings.length === 0) {
-      console.log(`⚠️ No Vertex AI settings found for consultant ${consultantId}`);
-    } else {
-      console.log(`📋 Found ${allVertexSettings.length} Vertex AI setting(s) for consultant`);
+    if (clientVertexSettings.length > 0) {
+      const vertexSettings = clientVertexSettings[0];
+      console.log(`📋 Found client-managed Vertex AI setting`);
       
-      // Try each setting until we find one that passes all checks
-      for (const vertexSettings of allVertexSettings) {
-        try {
-          console.log(`🔍 Checking Vertex AI setting: managedBy=${vertexSettings.managedBy}, usageScope=${vertexSettings.usageScope}`);
+      if (isValidAndNotExpired(vertexSettings)) {
+        const result = await createVertexAIClient(vertexSettings);
+        if (result) {
+          console.log(`✅ TIER 1: Successfully created client-managed Vertex AI client`);
           
-          if (!isValidAndNotExpired(vertexSettings)) {
-            console.log(`⚠️ Setting expired or invalid, skipping`);
-            continue;
-          }
-          
-          // Check usageScope to determine if this user can use this Vertex AI
-          const canUse = await checkUsageScope(vertexSettings, clientId, isConsultantUsingOwnAI);
-          
-          if (!canUse) {
-            console.log(`⚠️ usageScope '${vertexSettings.usageScope}' prevents this user from using this setting, trying next`);
-            continue;
-          }
-          
-          // Try to create client with this setting
-          const result = await createVertexAIClient(vertexSettings);
-          if (result) {
-            console.log(`✅ Successfully created Vertex AI client (managedBy: ${vertexSettings.managedBy}, usageScope: ${vertexSettings.usageScope})`);
-            
-            // Update usage metrics asynchronously
-            updateUsageMetrics(vertexSettings.id);
+          updateUsageMetrics(vertexSettings.id);
 
-            return {
-              client: result.client,
-              vertexClient: result.vertexClient,
-              metadata: result.metadata,
-              source: "admin",
-              cleanup: async () => {
-                // Cleanup: clear cache entry if needed
-                credentialsCache.delete(vertexSettings.id);
-              },
-            };
-          } else {
-            console.log(`⚠️ Failed to create client with this setting, trying next`);
-          }
-        } catch (settingError: any) {
-          console.error(`❌ Error processing Vertex AI setting (managedBy: ${vertexSettings.managedBy}):`, settingError.message);
-          console.log(`⚠️ Continuing to next setting...`);
-          // Continue to next setting instead of failing entire tier
+          return {
+            client: result.client,
+            vertexClient: result.vertexClient,
+            metadata: result.metadata,
+            source: "client",
+            cleanup: async () => {
+              credentialsCache.delete(vertexSettings.id);
+            },
+          };
+        } else {
+          console.log(`⚠️ TIER 1: Failed to create client with this setting, continuing to TIER 2`);
         }
+      } else {
+        console.log(`⚠️ TIER 1: Client Vertex AI setting expired or invalid, continuing to TIER 2`);
       }
-      
-      console.log(`⚠️ No valid Vertex AI settings available for this user, falling back to Tier 3`);
+    } else {
+      console.log(`⚠️ TIER 1: No client-managed Vertex AI settings found`);
     }
   } catch (error: any) {
-    console.error(`❌ Error checking Vertex AI:`, error.message);
-    // Continue to next tier
+    console.error(`❌ TIER 1 Error:`, error.message);
   }
 
-  // TIER 3: Fallback to Google AI Studio (consultant keys)
-  console.log(`⚠️ No Vertex AI available, falling back to Google AI Studio (consultant keys)`);
+  // TIER 2: Try Vertex AI (consultant-managed)
+  // Only run if consultantId is provided
+  // Find all enabled Vertex AI settings for the consultant and iterate until one passes usageScope check
+  if (consultantId) {
+    try {
+      const isConsultantUsingOwnAI = clientId === consultantId;
+      
+      console.log(`🔍 TIER 2: Finding Vertex AI settings for consultant ${consultantId} (isConsultantUsingOwnAI: ${isConsultantUsingOwnAI})`);
+      
+      // Get ALL enabled Vertex AI settings for consultant, ordered by managedBy
+      // Priority: 'admin' settings first (for clients), then 'self' (for consultant's own use)
+      const allVertexSettings = await db
+        .select()
+        .from(vertexAiSettings)
+        .where(
+          and(
+            eq(vertexAiSettings.userId, consultantId),
+            eq(vertexAiSettings.enabled, true)
+          )
+        )
+        .orderBy(vertexAiSettings.managedBy); // 'admin' comes before 'self' alphabetically
+
+      if (allVertexSettings.length === 0) {
+        console.log(`⚠️ TIER 2: No Vertex AI settings found for consultant ${consultantId}`);
+      } else {
+        console.log(`📋 TIER 2: Found ${allVertexSettings.length} Vertex AI setting(s) for consultant`);
+        
+        // Try each setting until we find one that passes all checks
+        for (const vertexSettings of allVertexSettings) {
+          try {
+            console.log(`🔍 Checking Vertex AI setting: managedBy=${vertexSettings.managedBy}, usageScope=${vertexSettings.usageScope}`);
+            
+            if (!isValidAndNotExpired(vertexSettings)) {
+              console.log(`⚠️ Setting expired or invalid, skipping`);
+              continue;
+            }
+            
+            // Check usageScope to determine if this user can use this Vertex AI
+            const canUse = await checkUsageScope(vertexSettings, clientId, isConsultantUsingOwnAI);
+            
+            if (!canUse) {
+              console.log(`⚠️ usageScope '${vertexSettings.usageScope}' prevents this user from using this setting, trying next`);
+              continue;
+            }
+            
+            // Try to create client with this setting
+            const result = await createVertexAIClient(vertexSettings);
+            if (result) {
+              console.log(`✅ TIER 2: Successfully created Vertex AI client (managedBy: ${vertexSettings.managedBy}, usageScope: ${vertexSettings.usageScope})`);
+              
+              // Update usage metrics asynchronously
+              updateUsageMetrics(vertexSettings.id);
+
+              return {
+                client: result.client,
+                vertexClient: result.vertexClient,
+                metadata: result.metadata,
+                source: "admin",
+                cleanup: async () => {
+                  // Cleanup: clear cache entry if needed
+                  credentialsCache.delete(vertexSettings.id);
+                },
+              };
+            } else {
+              console.log(`⚠️ Failed to create client with this setting, trying next`);
+            }
+          } catch (settingError: any) {
+            console.error(`❌ Error processing Vertex AI setting (managedBy: ${vertexSettings.managedBy}):`, settingError.message);
+            console.log(`⚠️ Continuing to next setting...`);
+            // Continue to next setting instead of failing entire tier
+          }
+        }
+        
+        console.log(`⚠️ TIER 2: No valid Vertex AI settings available for this user, falling back to TIER 3`);
+      }
+    } catch (error: any) {
+      console.error(`❌ TIER 2 Error:`, error.message);
+      // Continue to next tier
+    }
+  } else {
+    console.log(`⚠️ TIER 2: Skipped (no consultantId provided)`);
+  }
+
+  // TIER 3: Fallback to Google AI Studio (use consultant keys if available, otherwise client keys)
+  const fallbackUserId = consultantId ?? clientId;
+  console.log(`⚠️ TIER 3: No Vertex AI available, falling back to Google AI Studio (user: ${fallbackUserId})`);
   
-  const result = await createGoogleAIStudioClient(consultantId);
+  const result = await createGoogleAIStudioClient(fallbackUserId);
   if (!result) {
     throw new Error(
       "❌ Failed to initialize AI provider. " +
       "No valid Vertex AI configuration found and Google AI Studio fallback failed. " +
-      "Please configure Vertex AI or add Gemini API keys to your consultant account."
+      "Please configure Vertex AI or add Gemini API keys."
     );
   }
 
@@ -925,7 +981,6 @@ export async function getAIProvider(
     client: result.client,
     metadata: result.metadata,
     source: "google",
-    // No cleanup needed for Google AI Studio
   };
 }
 

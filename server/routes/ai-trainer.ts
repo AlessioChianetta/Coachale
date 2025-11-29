@@ -127,7 +127,7 @@ router.post(
         .select({ consultantId: users.consultantId })
         .from(users)
         .where(eq(users.id, clientId));
-      const consultantId = userProfile?.consultantId || req.user?.consultantId || clientId;
+      const consultantId = userProfile?.consultantId ?? req.user?.consultantId ?? undefined;
 
       const sessionId = randomUUID();
       
@@ -350,6 +350,14 @@ router.get(
   async (req: AuthRequest, res) => {
     try {
       const { sessionId } = req.params;
+
+      // Disable caching for real-time transcript updates
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
+      });
 
       const session = await db.select()
         .from(aiTrainingSessions)
