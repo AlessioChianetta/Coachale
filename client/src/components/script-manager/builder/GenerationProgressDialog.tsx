@@ -276,19 +276,21 @@ export function GenerationProgressDialog({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 min-h-0 pr-4">
-          <div className="py-2">
-            <AnimatePresence mode="popLayout">
-              {progress.phases.map((phase, idx) => (
-                <PhaseItem 
-                  key={phase.index} 
-                  phase={phase} 
-                  isLast={idx === progress.phases.length - 1}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        </ScrollArea>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full max-h-[40vh]">
+            <div className="py-2 pr-4">
+              <AnimatePresence mode="popLayout">
+                {progress.phases.map((phase, idx) => (
+                  <PhaseItem 
+                    key={phase.index} 
+                    phase={phase} 
+                    isLast={idx === progress.phases.length - 1}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          </ScrollArea>
+        </div>
 
         {progress.errorMessage && (
           <div className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800">
