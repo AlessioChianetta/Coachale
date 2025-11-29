@@ -644,6 +644,79 @@ export default function ClientScriptManager() {
               <h1 className="text-lg font-semibold flex items-center gap-2">
                   <Package className="h-5 w-5 text-primary" /> Script Manager
               </h1>
+              <Button 
+                variant={showBuilder ? "secondary" : "default"} 
+                size="sm"
+                onClick={() => setShowBuilder(!showBuilder)}
+              >
+                <Wand2 className="h-4 w-4 mr-2" /> 
+                {showBuilder ? 'Chiudi Builder' : 'Script Builder'}
+              </Button>
+              <Dialog open={showNewScriptDialog} onOpenChange={setShowNewScriptDialog}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-2" /> Nuovo Script
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Crea Nuovo Script</DialogTitle>
+                    <DialogDescription>
+                      Crea un nuovo script di vendita per il tuo AI Sales Agent
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <Select value={newScriptType} onValueChange={(v) => setNewScriptType(v as any)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="discovery">Discovery Call</SelectItem>
+                          <SelectItem value="demo">Demo Call</SelectItem>
+                          <SelectItem value="objections">Gestione Obiezioni</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="use-template-header" className="text-sm font-medium">
+                          Usa Template Base
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Inizia con lo script base completo già configurato
+                        </p>
+                      </div>
+                      <Switch
+                        id="use-template-header"
+                        checked={useTemplate}
+                        onCheckedChange={setUseTemplate}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Nome Script {!useTemplate && <span className="text-destructive">*</span>}</Label>
+                      <Input
+                        placeholder={useTemplate ? "(opzionale - usa nome default)" : "Es. Discovery Call v2.0"}
+                        value={newScriptName}
+                        onChange={(e) => setNewScriptName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowNewScriptDialog(false)}>
+                      Annulla
+                    </Button>
+                    <Button 
+                      onClick={() => createFromTemplateMutation.mutate({ name: newScriptName.trim() || '', scriptType: newScriptType })}
+                      disabled={createFromTemplateMutation.isPending}
+                    >
+                      {createFromTemplateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Crea da Template
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
               <Dialog open={showGuideDialog} onOpenChange={setShowGuideDialog}>
                 <DialogTrigger asChild>
                   <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
@@ -873,82 +946,8 @@ export default function ClientScriptManager() {
                   ))}
                 </div>
               </ScrollArea>
-              <div className="p-2 border-t space-y-2">
-                <Button 
-                  variant={showBuilder ? "secondary" : "default"} 
-                  className="w-full" 
-                  onClick={() => setShowBuilder(!showBuilder)}
-                >
-                  <Wand2 className="h-4 w-4 mr-2" /> 
-                  {showBuilder ? 'Chiudi Builder' : 'Script Builder'}
-                </Button>
-                <Dialog open={showNewScriptDialog} onOpenChange={setShowNewScriptDialog}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full">
-                      <Plus className="h-4 w-4 mr-2" /> Nuovo Script
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Crea Nuovo Script</DialogTitle>
-                      <DialogDescription>
-                        Crea un nuovo script di vendita per il tuo AI Sales Agent
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Tipo</Label>
-                        <Select value={newScriptType} onValueChange={(v) => setNewScriptType(v as any)}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="discovery">Discovery Call</SelectItem>
-                            <SelectItem value="demo">Demo Call</SelectItem>
-                            <SelectItem value="objections">Gestione Obiezioni</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="use-template" className="text-sm font-medium">
-                            Usa Template Base
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            Inizia con lo script base completo già configurato
-                          </p>
-                        </div>
-                        <Switch
-                          id="use-template"
-                          checked={useTemplate}
-                          onCheckedChange={setUseTemplate}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Nome Script {!useTemplate && <span className="text-destructive">*</span>}</Label>
-                        <Input
-                          placeholder={useTemplate ? "(opzionale - usa nome default)" : "Es. Discovery Call v2.0"}
-                          value={newScriptName}
-                          onChange={(e) => setNewScriptName(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowNewScriptDialog(false)}>
-                        Annulla
-                      </Button>
-                      <Button 
-                        onClick={() => createFromTemplateMutation.mutate({ name: newScriptName.trim() || '', scriptType: newScriptType })}
-                        disabled={createFromTemplateMutation.isPending}
-                      >
-                        {createFromTemplateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                        Crea da Template
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
 
-                {/* Dialog Selezione Agente per Attivazione Script */}
+              {/* Dialog Selezione Agente per Attivazione Script */}
                 <Dialog open={showAgentSelectDialog} onOpenChange={(open) => {
                   setShowAgentSelectDialog(open);
                   if (!open) setScriptToActivate(null);
