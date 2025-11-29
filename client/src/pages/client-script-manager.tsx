@@ -854,7 +854,12 @@ export default function ClientScriptManager() {
 
         <ResizablePanelGroup direction="horizontal" className="flex-1">
           {/* COLONNA 1: LISTA SCRIPT */}
-          <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+          <ResizablePanel 
+            defaultSize={showBuilder ? 5 : 20} 
+            minSize={showBuilder ? 3 : 15} 
+            maxSize={showBuilder ? 8 : 30}
+            collapsible={showBuilder}
+          >
             <div className="h-full flex flex-col bg-background">
               <div className="p-2 border-b">
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
@@ -1036,7 +1041,7 @@ export default function ClientScriptManager() {
           
           {showBuilder ? (
             /* SCRIPT BUILDER VIEW - Full width when active */
-            <ResizablePanel defaultSize={80} minSize={60}>
+            <ResizablePanel defaultSize={95} minSize={80}>
               <ScriptBuilderTab 
                 onSave={handleBuilderSave} 
                 isSaving={isSavingBuilder}
