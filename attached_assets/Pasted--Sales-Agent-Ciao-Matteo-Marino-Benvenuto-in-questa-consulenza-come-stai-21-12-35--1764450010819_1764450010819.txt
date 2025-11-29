@@ -1,0 +1,471 @@
+🤖 Sales Agent
+
+Ciao Matteo Marino! Benvenuto in questa consulenza, come stai?
+
+
+
+21:12:35
+
+🧑 Prospect AI
+
+Ciao Giusy! Sto benissimo, grazie mille per avermelo chiesto! Sono super entusiasta di essere qui, non vedevo l'ora di scoprire di più sui vostri programmi, ne ho sentito parlare benissimo e sono davvero curioso di capire come potrebbero aiutarmi.
+
+
+
+21:12:41
+
+🤖 Sales Agent
+
+EVVAI! Che bello sentirti così entusiasta! Fantastico! Senti, ma da dove mi chiami?
+
+
+
+21:12:46
+
+🧑 Prospect AI
+
+Ciao Giusy! Chiamo da Milano, una città che non dorme mai! E io non vedo l'ora di capire come i vostri programmi possono aiutarmi a non fermarmi mai nemmeno io, sono davvero curioso!
+
+
+
+21:12:53
+
+🤖 Sales Agent
+
+Fantastico! Milano, che bella città! Super! Conosco, bellissima zona! Allora, Matteo Marino, per ottimizzare al meglio il nostro tempo, ti spiego come funziona: ti farò alcune domande per capire la tua situazione attuale, i tuoi obiettivi di performance e le sfide che stai affrontando nel tuo percorso sportivo. In base alle tue risposte, farò una prima valutazione: se capisco che possiamo davvero supportarti, ti proporrò di fissare una seconda call dove ti presenterò il percorso più adatto per te. Se invece vedo che posso darti un aiuto immediato, ti farò una proposta diretta alla fine di questa chiamata. OK?
+
+
+
+21:13:06
+
+🧑 Prospect AI
+
+Fantastico Giusy, mi sembra un approccio super chiaro e molto efficiente! Sono prontissimo a raccontarti tutto e non vedo l'ora di capire come Premium può aiutarmi a spingermi oltre. Vai pure con le domande, sono qui per questo!
+
+
+
+21:13:12
+
+🤖 Sales Agent
+
+EVVAI! Iniziamo subito allora! Dimmi, perché hai deciso di partecipare a questa call?
+
+
+
+21:13:17
+
+🧑 Prospect AI
+
+Ma certo, Giusy! Dunque, sono un atleta e onestamente, sento che ultimamente ho un po' toccato un "muro", sai? Mi alleno tanto, ma fatico nel recupero e sento che potrei fare molto di più se solo il mio corpo rispondesse meglio. Ho sentito parlare tantissimo della vostra "Tecnica Flow e Ricalibrazione" e sono super incuriosito da come potrebbe aiutarmi a sbloccare nuove performance e a sentirmi finalmente al top!
+
+
+
+21:13:26
+
+🤖 Sales Agent
+
+Interessante! Capisco perfettamente questa sensazione del "muro". Cosa intendi esattamente quando dici che "potresti fare molto di più se solo il tuo corpo rispondesse meglio"?
+
+
+
+21:13:33
+
+🧑 Prospect AI
+
+Ah, Giusy, ottima domanda! Dico che mi sento come se ci fosse sempre un "freno a mano" tirato, capisci? Dopo allenamenti intensi, mi sento le gambe pesanti e fatico a recuperare velocemente per la sessione successiva, e questo mi impedisce di dare il massimo. Vorrei avere quella fluidità e quell'energia pura che a volte mi mancano, quasi come se ci fossero dei blocchi che mi impediscono di esprimere il mio vero potenziale e prevenire quei piccoli acciacchi che ogni tanto si fanno sentire.
+
+
+
+21:13:41
+
+🤖 Sales Agent
+
+è proprio una questione di limitazione nel recupero e nel non poterti esprimere al massimo per questa sensazione di pesantezza. E perché questa sensazione di "freno a mano tirato" ti preoccupa così tanto, Matteo Marino?
+
+
+
+21:13:49
+
+🧑 Prospect AI
+
+Ah, Giusy, mi preoccupa un sacco! Perché è come se fosse un freno che mi impedisce di esprimere il mio vero potenziale in gara e negli allenamenti più importanti. E onestamente, ho paura che questa fatica e questi blocchi, a lungo andare, possano anche portare a qualche infortunio serio, e quello proprio non lo voglio! Io punto sempre a migliorare e a eccellere, e questa situazione mi sta un po' bloccando nel raggiungere i miei obiettivi più ambiziosi.
+
+
+
+21:13:57
+
+🤖 Sales Agent
+
+Capisco perfettamente che questa sensazione di "freno a mano tirato" ti preoccupi molto, specialmente per il rischio di infortuni e per la difficoltà a raggiungere i tuoi obiettivi ambiziosi. E dimmi, da quanto tempo senti che questa situazione sta influenzando le tue performance o il tuo benessere?
+
+
+
+21:14:06
+
+🧑 Prospect AI
+
+Guarda, Giusy, direi che è almeno da sei-otto mesi che sento questa cosa, e purtroppo sta diventando sempre più evidente, soprattutto quando la posta in gioco è alta! Prima riuscivo a gestirla meglio, ma ora... voglio davvero superare questo limite e non lasciare che rallenti il mio progresso e la mia capacità di competere al top.
+
+
+
+21:14:11
+
+🤖 Sales Agent
+
+Capisco, parecchio tempo! E in questi sei-otto mesi, hai già provato a fare qualcosa per risolvere questa sensazione di "freno a mano tirato" e migliorare il tuo recupero?
+
+
+
+21:14:18
+
+🧑 Prospect AI
+
+Assolutamente sì, Giusy! In questi mesi mi sono dato da fare, eh! Ho provato un po' di tutto: massaggi sportivi, ho curato di più la mobilità e lo stretching, e anche l'integrazione alimentare. Ma, onestamente, sono tutti rimedi che mi danno un sollievo momentaneo, un po' superficiale, non riesco a sbloccare quel "nodo" profondo. È per questo che sono così interessato alla vostra tecnica, sento che mi serve un approccio diverso e più efficace!
+
+
+
+21:14:26
+
+🤖 Sales Agent
+
+Capisco, hai già provato diverse strategie ma senti che il risultato è solo superficiale. E cosa ti fa pensare che questi approcci non ti abbiano dato il risultato che cercavi?
+
+
+
+21:14:33
+
+🧑 Prospect AI
+
+Beh, Giusy, è proprio quello che dicevo: mi danno un sollievo momentaneo, un po' superficiale, ma la causa del mio recupero lento o quei blocchi che sento non li risolvono. Non riesco a trovare quel 'sblocco' profondo, capisci? È per questo che cerco qualcosa di più trasformativo.
+
+
+
+21:14:41
+
+🤖 Sales Agent
+
+Certo, capisco perfettamente che tu cerchi qualcosa di più trasformativo! E qual è l'obiettivo di performance che sogni di raggiungere superando questi blocchi?
+
+
+
+21:14:47
+
+🧑 Prospect AI
+
+Sì, Giusy, l'obiettivo è ambizioso ma super chiaro! Voglio abbattere i miei record personali, sentirmi totalmente fluido e inarrestabile durante le gare, con la certezza di un recupero perfetto. E, soprattutto, eliminare ogni paura di infortunio per mantenere una performance costante e sempre al top!
+
+
+
+21:14:54
+
+🤖 Sales Agent
+
+EVVAI! Obiettivo super chiaro e ambizioso! E immagina di raggiungere questi obiettivi: come ti sentiresti ed cosa cambierebbe per te?
+
+
+
+21:15:00
+
+🧑 Prospect AI
+
+Giusy, mi sentirei... liberato, incredibile! È come se mi togliessi un peso enorme, potrei spingere al massimo senza paure, con una fiducia totale nel mio corpo. Cambierebbe tutto, potrei raggiungere obiettivi che ora mi sembrano quasi impossibili, e potrei finalmente concentrarmi solo sulla performance, non più sulle limitazioni!
+
+
+
+21:15:06
+
+🤖 Sales Agent
+
+INCREDIBILE! Sentirsi liberato e poter spingere al massimo senza paure è una prospettiva fantastica! E dimmi, se c'è una cosa che ti emoziona particolarmente del nostro programma di "Tecnica Flow e Ricalibrazione", qual sarebbe?
+
+
+
+21:15:14
+
+🧑 Prospect AI
+
+Oh, Giusy, è proprio il nome stesso, "Tecnica Flow e Ricalibrazione", che mi emoziona un sacco! Mi dà l'idea di qualcosa che non solo sistema un problema superficiale, ma ti rimette completamente 'in bolla', capisci? Sento che potrebbe essere la chiave per sbloccare finalmente la mia vera fluidità e per farmi sentire in armonia con il mio corpo come mai prima, risolvendo alla radice il problema del recupero e dei blocchi. Sono davvero curioso di capire come funziona nel dettaglio!
+
+
+
+21:15:20
+
+🤖 Sales Agent
+
+EVVAI! Sentire che il nome stesso del nostro programma ti trasmette questa emozione e l'idea di una ricalibrazione completa è fantastico! E per quanto riguarda la "Tecnica Flow", cosa ti incuriosisce di più o cosa immagini sia
+
+
+
+21:15:28
+
+🧑 Prospect AI
+
+Ah, Giusy, mi immagino che la "Tecnica Flow" sia qualcosa che lavora proprio sulla *fluidità* del movimento, no? Sulla capacità del corpo di muoversi senza impedimenti, come un fiume che scorre! Spero che sia un metodo che scioglie quelle tensioni che mi bloccano e mi impediscono di avere quella leggerezza che cerco, magari agendo proprio sui punti dove sento più resistenza. È così? Sono curiosissimo di sapere come funziona esattamente!
+
+
+
+21:15:34
+
+🤖 Sales Agent
+
+È proprio così! La "Tecnica Flow" agisce esattamente sulla fluidità del movimento, aiutandoti a sbloccare le tensioni e a ritrovare quella leggerezza che cerchi, agendo proprio sui punti di maggiore resistenza e migliorando il recupero. Ti piacerebbe sapere come funziona nel dettaglio?
+
+
+
+21:15:43
+
+🧑 Prospect AI
+
+Sì, Giusy, ASSOLUTAMENTE sì! Non vedo l'ora di capire come funziona questa magia, specialmente come riesce a sbloccare quelle tensioni di cui parlavamo prima. Ho davvero bisogno di capire cosa la rende così efficace rispetto a quello che ho già provato!
+
+
+
+21:15:47
+
+🤖 Sales Agent
+
+EVVAI! Allora per capire come funziona al meglio la "Tecnica Flow" nel tuo caso specifico, è fondamentale che tu mi dica: qual è il tuo livello di attività sportiva? Sei un atleta di livello agonistico o ti stai allenando per obiettivi specifici?
+
+
+
+21:15:55
+
+🧑 Prospect AI
+
+Certo, Giusy! Sono un atleta agonista, mi alleno seriamente quasi tutti i giorni per partecipare a competizioni a livello nazionale, e punto sempre al podio. Diciamo che gli obiettivi specifici non mancano mai e cerco sempre di superare i miei limiti!
+
+
+
+21:15:58
+
+🤖 Sales Agent
+
+Perfetto, un livello agonistico e con obiettivi chiari! E per quanto riguarda il tuo recupero muscolare, come lo definiresti in una scala da uno a dieci, dove uno è lentissimo e dieci è ottimale? E cosa ti fa pensare che sia così?
+
+
+
+21:16:07
+
+🧑 Prospect AI
+
+Uh, Giusy, se devo essere sincero, direi un 4, forse un 5 nei giorni buoni. Mi sento sempre con questo "freno a mano tirato", fatico a smaltire la stanchezza e a volte la sensazione di gambe pesanti mi accompagna per giorni, impedendomi di dare il massimo nelle sedute successive.
+
+
+
+21:16:12
+
+🤖 Sales Agent
+
+Capisco, un recupero classificato a 4-5 è decisamente limitante per un atleta agonista e non permette di esprimere il massimo potenziale. E che impatto ha avuto questo recupero non ottimale sulle tue performance o sul modo in cui affronti gli allenamenti?
+
+
+
+21:16:20
+
+🧑 Prospect AI
+
+Giusy, l'impatto è enorme! Mi trovo spesso a dover "frenare" negli allenamenti, non riuscendo a dare il 100% per paura di strafare e peggiorare il recupero o di infortunarmi. E in gara, sento che non riesco a mantenere il ritmo o l'intensità che vorrei, proprio perché il corpo non è al massimo della sua reattività. È frustrante!
+
+
+
+21:16:24
+
+🤖 Sales Agent
+
+Capisco, è davvero frustrante non potersi esprimere al massimo per via di queste limitazioni. E dimmi, se fossimo al tuo fianco con la "Tecnica Flow e Ricalibrazione", quale sarebbe la prima cosa che vorresti sbloccare?
+
+
+
+21:16:32
+
+🧑 Prospect AI
+
+Giusy, senza pensarci un attimo: la prima cosa che vorrei sbloccare è proprio quella sensazione di 'freno a mano tirato'! Voglio liberarmi di quella pesantezza che mi rallenta e impedisce al mio corpo di esprimersi al massimo. Voglio sentire finalmente quella leggerezza e reattività che so di avere, ma che ora è un po' bloccata, capisci? E poi, subito dopo, migliorare il recupero per essere sempre pronto a spingere al 100% senza paura di infortuni!
+
+
+
+21:16:39
+
+🤖 Sales Agent
+
+EVVAI! Sbloccare la sensazione di "freno a mano tirato" e ritrovare leggerezza e reattività sono obiettivi potentissimi! E dimmi, se avessi finalmente questo "sblocco" completo, come cambierebbe il modo in cui affronti le tue competizioni o i tuoi allenamenti più intensi?
+
+
+
+21:16:48
+
+🧑 Prospect AI
+
+Oh, Giusy, cambierebbe *tutto*! Potrei affrontare ogni gara e ogni allenamento intenso con una sicurezza e una grinta pazzesche, sapendo che il mio corpo è al 100% e pronto a spingere oltre ogni limite! Non avrei più paura di infortunarmi e potrei concentrarmi solo su come superare me stesso. Sarebbe incredibile!
+
+
+
+21:16:52
+
+🤖 Sales Agent
+
+Fantastico! Avere la sicurezza di spingere al massimo senza paura di infortuni e potersi concentrare solo sul superare se stessi è eccezionale! E dimmi, se avessi finalmente questo sblocco, quali obiettivi di performance punteresti a raggiungere per primo?
+
+
+
+21:17:01
+
+🧑 Prospect AI
+
+Oh, Giusy, se avessi questo sblocco... la prima cosa sarebbe puntare a un nuovo record personale, quello che mi sfugge da un po'! E poi, voglio vincere la prossima competizione importante, quella che ho segnato in rosso sul calendario. Sarei un altro atleta, proprio!
+
+
+
+21:17:05
+
+🤖 Sales Agent
+
+EVVAI! Nuovi record personali e vincere la prossima competizione importante! Grandissimi obiettivi! E dimmi, cosa ti emoziona di più nell'idea di raggiungere queste performance straordinarie?
+
+
+
+21:17:13
+
+🧑 Prospect AI
+
+Oh, Giusy, mi emoziona l'idea di sentire il mio corpo rispondere perfettamente ad ogni comando, senza esitazioni o blocchi! È come se potessi esprimere appieno il mio potenziale, sentire quella fluidità perfetta e la leggerezza di cui parlavamo. Sarei finalmente libero di puntare sempre più in alto e godermi ogni singolo momento della competizione!
+
+
+
+21:17:20
+
+🤖 Sales Agent
+
+Meraviglioso! Sentire il corpo rispondere perfettamente, esprimere appieno il proprio potenziale e godersi ogni momento della competizione è una sensazione eccezionale! E dimmi, qual è il tuo prossimo obiettivo sportivo più importante?
+
+
+
+21:17:28
+
+🧑 Prospect AI
+
+Oh, Giusy, il mio prossimo obiettivo è puntare alla Maratona Nazionale, quella di Milano! È il mio sogno da tempo e quest'anno voglio davvero non solo finirla, ma fare un tempo da podio. Sento che con il vostro aiuto, questa volta ce la posso fare!
+
+
+
+21:17:32
+
+🤖 Sales Agent
+
+EVVAI! La Maratona
+
+
+
+21:17:36
+
+🧑 Prospect AI
+
+Sì, Giusy, la Maratona di Milano è IL mio obiettivo! E sono convinto che con la vostra "Tecnica Flow e Ricalibrazione" potrò finalmente prepararla al meglio e spaccare tutto, senza quel fastidioso "freno a mano" di cui parlavamo! Non vedo l'ora di iniziare!
+
+
+
+21:17:41
+
+🤖 Sales Agent
+
+Fantastico! La Maratona di Milano è un obiettivo eccezionale! E per raggiungere questo risultato straordinario con la "Tecnica Flow e Ricalibrazione", saresti disposto a investire tempo ed energie per un percorso di trasformazione completo?
+
+
+
+21:17:49
+
+🧑 Prospect AI
+
+Assolutamente sì, Giusy! Ma certo che sì! Sono qui proprio perché cerco una trasformazione completa, non solo un palliativo. Sono super motivato a investire tutto il necessario, tempo ed energie, per raggiungere i miei obiettivi con la Maratona di Milano! Ma mi chiedo, cosa intendi esattamente per "percorso di trasformazione completo"? Sono curioso di capire come si concretizza questo investimento!
+
+
+
+21:17:56
+
+🤖 Sales Agent
+
+EVVAI! Sentire che sei pronto a investire tutto il necessario è esattamente ciò che ci serve! Un percorso di trasformazione completo include la nostra "Tecnica Flow e Ricalibrazione" in pacchetti ad alto valore, specificamente designed per atleti agonisti come te, con un focus sui risultati e la trasformazione a lungo termine. E proprio per garantirti il massimo risultato, offriamo pacchetti che vanno da 10 a più sessioni per garantirti un percorso completo e mirato come quello che ti porterà al podio della Maratona di Milano! Come ti sembra come approccio?
+
+
+
+21:18:09
+
+🧑 Prospect AI
+
+Wow, Giusy, mi sembra un approccio davvero super mirato e che calza a pennello per le mie esigenze! L'idea di pacchetti dedicati agli atleti e focalizzati sulla trasformazione a lungo termine mi entusiasma un sacco! Ma, uhm, queste 10 o più sessioni... sono molto curioso di sapere come sono strutturate, c'è una progressione specifica tra l'una e l'altra? E soprattutto, la "Ricalibrazione" come si integra e a che punto del percorso entra in gioco?
+
+
+
+21:18:16
+
+🤖 Sales Agent
+
+Fantastico che l'approccio ti entusiasmi! Le sessioni di "Tecnica Flow e Ricalibrazione" sono strutturate in una progressione mirata a sbloccare gradualmente le tensioni, migliorare la fluidità e ottimizzare il recupero, con la "Ricalibrazione" che entra in gioco per fissare questa nuova fluidità e reattività muscolare, in modo che tu possa esprimere il massimo potenziale in allenamento e in gara. E dimmi, sei convinto che questo approccio possa davvero fare la differenza per te?
+
+
+
+21:18:28
+
+🧑 Prospect AI
+
+Sì, Giusy, assolutamente! Sono convinto che questo approccio possa fare una differenza enorme per me, mi dà proprio l'idea di un percorso completo, non di una soluzione rapida! Però, giusto per capire meglio, questa "progressione mirata" come si concretizza sessione dopo sessione? C'è magari un esempio pratico di come si evolve il lavoro?
+
+
+
+21:18:36
+
+🤖 Sales Agent
+
+EVVAI! Sentire che sei convinto è fantastico! E la progressione mirata delle sessioni si concretizza agendo gradualmente su tensioni e blocchi muscolari per migliorare la tua fluidità e reattività, con focus specifici per riallineare il corpo e ottimizzare il recupero, integrando la "Ricalibrazione" per fissare questi sblocchi e portarti al massimo delle performance. E dimmi, cosa cambierebbe per te avere questo sblocco completo e mirato?
+
+
+
+21:18:47
+
+🧑 Prospect AI
+
+Oh, Giusy, cambierebbe il mondo! Potrei finalmente affrontare la Maratona di Milano con la consapevolezza di aver dato il massimo anche nella preparazione, senza quel 'freno a mano' che mi ha sempre bloccato. Sarei in grado di spingere al 100% e superare ogni limite, concentrandomi solo sulla gara e sul podio! Ma dimmi, per questi 'focus specifici' di cui parli, come fate a capire esattamente dove intervenire su ogni atleta? C'è una valutazione iniziale approfondita?
+
+
+
+21:18:57
+
+🤖 Sales Agent
+
+Fantastico! Poter affrontare la Maratona di Milano con la consapevolezza di aver dato il massimo e superare ogni limite è incredibile! E per capire esattamente dove intervenire, effettuiamo una valutazione approfondita delle tue esigenze specifiche, in modo da creare un percorso di "Tecnica Flow e Ricalibrazione" su misura per te, che agisca realmente sulle tue resistenze e ottimizzando il tuo recupero. Sei pronto a iniziare questo percorso di trasformazione?
+
+
+
+21:19:08
+
+🧑 Prospect AI
+
+Sì, Giusy, assolutamente pronto! Sono super carico all'idea di iniziare un percorso così mirato e approfondito. Questa valutazione iniziale su misura è proprio quello che speravo, mi dà tanta fiducia! Ma dimmi, come funziona esattamente questa valutazione? È il primo step che si fa? E, uhm, quanto tempo dura più o meno? Voglio capire bene i prossimi passi per organizzarmi al meglio!
+
+
+
+21:19:14
+
+🤖 Sales Agent
+
+EVVAI! Allora la valutazione iniziale è proprio il primo step! Ci permette di analizzare a fondo la tua situazione attuale, i tuoi obiettivi di performance ambiziosi e le sfide che stai affrontando, in modo da creare un percorso di "Tecnica Flow e Ricalibrazione" su misura per te! Dura circa un'ora e ci permette di definire insieme i prossimi passi. Sei pronto a fissarla?
+
+
+
+21:19:25
+
+🧑 Prospect AI
+
+Sì, Giusy, assolutamente pronto! Fissiamola pure! Ma, uhm, sarà una valutazione che facciamo online o in presenza? E c'è qualcosa che dovrei prepararmi a portare o a raccontarti in particolare per quest'ora? Voglio essere sicuro di dare il massimo anche lì!
+
+
+
+21:19:32
+
+🤖 Sales Agent
+
+Perfetto! La valutazione è online, così possiamo farla comodamente dove preferisci. Per prepararti non c'è bisogno di portare nulla in particolare, ti basterà essere pronto a raccontarmi nel dettaglio la tua situazione attuale, i tuoi obiettivi sportivi e le sfide che stai affrontando, così da capire meglio come possiamo davvero aiutarti a sbloccare il tuo massimo potenziale. Ti andrebbe bene vederci direttamente domani?
+
+
+
+21:19:43
