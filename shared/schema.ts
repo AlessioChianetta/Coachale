@@ -3885,3 +3885,43 @@ export const insertAgentScriptAssignmentSchema = createInsertSchema(agentScriptA
   id: true,
   assignedAt: true,
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI Training Sessions - Sessioni di training automatico con AI Prospect
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const aiTrainingSessions = pgTable("ai_training_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull(),
+  scriptId: varchar("script_id").references(() => salesScripts.id).notNull(),
+  scriptName: text("script_name"),
+  
+  personaId: text("persona_id").notNull(),
+  prospectName: text("prospect_name").notNull(),
+  prospectEmail: text("prospect_email"),
+  
+  status: text("status").notNull().$type<"running" | "completed" | "stopped">().default("running"),
+  
+  conversationId: varchar("conversation_id"),
+  
+  currentPhase: text("current_phase").default("starting"),
+  completionRate: real("completion_rate").default(0),
+  ladderActivations: integer("ladder_activations").default(0),
+  messageCount: integer("message_count").default(0),
+  lastMessage: text("last_message"),
+  
+  startedAt: timestamp("started_at").default(sql`now()`).notNull(),
+  endedAt: timestamp("ended_at"),
+  
+  resultScore: real("result_score"),
+  resultNotes: text("result_notes"),
+}, (table) => {
+  return {
+    agentIdx: index("ai_training_sessions_agent_idx").on(table.agentId),
+    statusIdx: index("ai_training_sessions_status_idx").on(table.status),
+  };
+});
+
+export type AITrainingSession = typeof aiTrainingSessions.$inferSelect;
+export type InsertAITrainingSession = typeof aiTrainingSessions.$inferInsert;

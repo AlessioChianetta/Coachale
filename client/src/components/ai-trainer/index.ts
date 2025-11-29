@@ -1,0 +1,1 @@
+export { AITrainerTab } from './AITrainerTab';

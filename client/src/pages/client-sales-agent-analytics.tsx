@@ -66,6 +66,7 @@ import { PhaseFlowTab } from '@/components/training/PhaseFlowTab';
 import { LadderAnalyticsTab } from '@/components/training/LadderAnalyticsTab';
 import { ObjectionHandlingTab } from '@/components/training/ObjectionHandlingTab';
 import { AIReasoningTab } from '@/components/training/AIReasoningTab';
+import { AITrainerTab } from '@/components/ai-trainer';
 
 interface SalesAgent {
   id: string;
@@ -453,6 +454,10 @@ export default function ClientSalesAgentAnalytics() {
                 <TabsTrigger value="ai-training">
                   <Sparkles className="h-4 w-4 mr-2" />
                   AI Training Assistant
+                </TabsTrigger>
+                <TabsTrigger value="ai-trainer">
+                  <Bot className="h-4 w-4 mr-2" />
+                  AI Trainer
                 </TabsTrigger>
                 <TabsTrigger value="guide">
                   <BookOpen className="h-4 w-4 mr-2" />
@@ -908,7 +913,12 @@ export default function ClientSalesAgentAnalytics() {
                 </motion.div>
               </TabsContent>
 
-              {/* Tab 5: Guida */}
+              {/* Tab 5: AI Trainer - Campo di Battaglia */}
+              <TabsContent value="ai-trainer" className="space-y-6">
+                <AITrainerTab agentId={agentId!} />
+              </TabsContent>
+
+              {/* Tab 6: Guida */}
               <TabsContent value="guide" className="space-y-6">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
