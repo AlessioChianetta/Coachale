@@ -192,8 +192,6 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
   const runningSessions = activeSessions.filter(s => s.status === 'running');
   const completedSessions = activeSessions.filter(s => s.status !== 'running').slice(0, 5);
 
-  const selectedScript = scripts.find(s => s.id === selectedScriptId);
-
   const handleStartTraining = () => {
     if (!selectedPersona || !selectedScriptId) return;
     startSessionMutation.mutate({
