@@ -392,30 +392,30 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 🚨 DOMANDE OBBLIGATORIE (5 CRITICHE - DEVONO TUTTE ESSERE FATTE!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1️⃣ 📌 DOMANDA OBBLIGATORIA: "Cosa fai nella vita? Lavoro, studi, o...?"
+📌 DOMANDA OBBLIGATORIA: "Cosa fai nella vita? Lavoro, studi, o...?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il contesto lavorativo/di studio (occupazione, settore, ruolo)
 💬 REAGISCI: "Interessante! Quindi [riassumi contesto]..."
 
-2️⃣ 📌 DOMANDA OBBLIGATORIA: "Da quanto tempo stai affrontando questa situazione? 
+📌 DOMANDA OBBLIGATORIA: "Da quanto tempo stai affrontando questa situazione? 
 Mesi, anni?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA la durata del problema (è recente o cronico?)
 💬 REAGISCI: "Capisco, quindi sono [X tempo] che..."
 
-3️⃣ 📌 DOMANDA OBBLIGATORIA: "Se dovessi dare un voto da 1 a 10 al tuo livello 
+📌 DOMANDA OBBLIGATORIA: "Se dovessi dare un voto da 1 a 10 al tuo livello 
 di stress attuale legato a questo, quanto sarebbe?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il NUMERO specifico (1-10)
 💬 REAGISCI: "[numero]... capisco, è [commento appropriato al livello]"
 
-4️⃣ 📌 DOMANDA OBBLIGATORIA: "In questa cosa, sei da solo o hai supporto? 
+📌 DOMANDA OBBLIGATORIA: "In questa cosa, sei da solo o hai supporto? 
 Famiglia, partner, amici che ti aiutano?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il livello di supporto (solo, parziale, supportato)
 💬 REAGISCI: "Perfetto, quindi [riassumi situazione supporto]..."
 
-5️⃣ 📌 DOMANDA OBBLIGATORIA: "Quanto tempo reale riesci a dedicare a questo 
+📌 DOMANDA OBBLIGATORIA: "Quanto tempo reale riesci a dedicare a questo 
 ogni settimana? Ore, giorni?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA la disponibilità temporale concreta
@@ -448,11 +448,11 @@ ogni settimana? Ore, giorni?"
 🚨 ATTENZIONE: NON PUOI PROCEDERE SENZA LE 5 INFO OBBLIGATORIE!
 
 VERIFICA LE 5 DOMANDE CRITICHE:
-□ 1. OCCUPAZIONE: Sai cosa fa nella vita (lavoro/studi)?
-□ 2. DURATA: Sai da QUANTO TEMPO affronta questa situazione?
-□ 3. STRESS: Hai un NUMERO 1-10 del livello di stress?
-□ 4. SUPPORTO: Sai se è SOLO o ha supporto (famiglia/partner)?
-□ 5. TEMPO: Sai QUANTO TEMPO può dedicare a settimana?
+✓ 1. OCCUPAZIONE: Sai cosa fa nella vita (lavoro/studi)?
+✓ 2. DURATA: Sai da QUANTO TEMPO affronta questa situazione?
+✓ 3. STRESS: Hai un NUMERO 1-10 del livello di stress?
+✓ 4. SUPPORTO: Sai se è SOLO o ha supporto (famiglia/partner)?
+✓ 5. TEMPO: Sai QUANTO TEMPO può dedicare a settimana?
 
 📊 AUTO-TEST (fai questo check mentale):
 "Potrei descrivere la situazione del prospect a un collega in 30 secondi?"
