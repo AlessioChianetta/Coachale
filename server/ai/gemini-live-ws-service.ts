@@ -3775,6 +3775,58 @@ ${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
             }
           }
           
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          // 🆕 FIX AI TRAINER: Gestire input testuale dal ProspectSimulator
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          if (msg.type === 'text_input' && msg.text) {
+            console.log(`\n📝 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`📝 [${connectionId}] TEXT INPUT RECEIVED (AI Trainer Mode)`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`   📄 Text: "${msg.text.substring(0, 100)}${msg.text.length > 100 ? '...' : ''}"`);
+            console.log(`   📏 Length: ${msg.text.length} chars`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+            
+            if (geminiSession && isSessionActive && geminiSession.readyState === WebSocket.OPEN) {
+              const textPayload = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: msg.text }]
+                  }],
+                  turnComplete: true
+                }
+              };
+              
+              geminiSession.send(JSON.stringify(textPayload));
+              console.log(`✅ [${connectionId}] Text input sent to Gemini`);
+              
+              if (salesTracker) {
+                try {
+                  await salesTracker.trackUserMessage(msg.text);
+                  console.log(`✅ [${connectionId}] User message tracked for sales script`);
+                } catch (trackError: any) {
+                  console.error(`⚠️ [${connectionId}] Sales tracking error:`, trackError.message);
+                }
+              }
+              
+              const timestamp = new Date().toISOString();
+              conversationMessages.push({
+                role: 'user',
+                transcript: msg.text,
+                timestamp: timestamp,
+              });
+              savedMessageTimestamps.add(timestamp);
+              
+              clientWs.send(JSON.stringify({
+                type: 'user_transcript',
+                text: msg.text
+              }));
+              
+            } else {
+              console.error(`❌ [${connectionId}] Cannot send text - Gemini session not active`);
+            }
+          }
+          
           if (msg.type === 'end_session') {
             console.log(`👋 [${connectionId}] Client requested session end`);
             

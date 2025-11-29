@@ -1,0 +1,280 @@
+💰 COST BREAKDOWN:
+   Fresh Text Input: 26,871 tokens × $0.50/1M = $0.013435
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [cac3hs] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 26,871 tokens → $0.013435 ($0.50/1M)
+   - Audio Output: 111 tokens → $0.001332 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.014767 USD
+
+📊 Session totals:
+   - Text Input: 26,871 tokens → $0.013435
+   - Audio Output: 111 tokens → $0.001332
+   - SESSION TOTAL: $0.014767 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 17,175 (~17.2k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 26,871 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 26,871 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (17,175 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~17,175 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 17,175 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [cac3hs] SESSION RESUMPTION UPDATE received
+   - New handle: d61a6825-9bd3-4fdc-89ea-2d9fda...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [cac3hs] Usage tracked → DB saved (Turn cost: $0.014767)
+✅ [cac3hs] Turn complete
+🔇 [cac3hs] AI finished speaking (turn complete)
+💾 [cac3hs] Saved AI message (server-side): 1 total messages
+   ✅ Handle saved to database with ownership metadata
+      → Mode: sales_agent
+      → ShareToken: 0VofB8MRiBPG0MGz, ConversationId: 089cad3e-3801-4c4c-8a77-ff356385cddd
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Ciao Francesco Conti! Benvenuto in questa consulenza, come                   │
+│ Time: 18:21:23                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [cac3hs] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Sales Manager Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [cac3hs] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_1
+   📍 Current Step: phase_1_step_1
+   📍 Phase Index: 0, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 1 messages
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [cac3hs] MESSAGGI PASSATI AL SALES MANAGER (1):
+   1. [ASSISTANT]: "Ciao Francesco Conti! Benvenuto in questa consulenza, come"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏢 Name: Premium
+   🎯 What we do: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibr...
+   👥 Target client: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le ...
+   🚫 Non-target: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che p...
+   📋 Services: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📨 Calling SalesManagerAgent.analyze()...
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Starting comprehensive analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_1 / phase_1_step_1
+   💬 Messages: 1
+   💰 Buy signals: 0
+   🛡️ Objections: 0
+   🎭 Tone issues: 0
+   ⛔ Checkpoint: undefined missing
+   👤 Business: Premium
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+🔄 Switching model from gemini-2.5-flash to gemini-2.0-flash-lite
+🤖 [SALES-MANAGER] Raw AI response (212 chars): ```json
+{
+  "shouldAdvance": false,
+  "nextPhaseId": null,
+  "nextStepId": null,
+  "reasoning": "L'ultimo messaggio è dell'agente. Per avanzare, è necessario un messaggio del prospect.",
+  "confidence": 0.9
+}
+```
+✅ [SALES-MANAGER] Extracted JSON via regex
+✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=false, confidence=0.9
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Analysis complete in 904ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → Step advance: false (90%)
+   → Feedback: none
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [cac3hs] SALES MANAGER AGENT - RESULT (904ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 90%
+   💡 reasoning: L'ultimo messaggio è dell'agente. Per avanzare, è necessario un messaggio del prospect.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=0.9, hasIds=false
+🔓 [cac3hs] Sales Manager lock released
+6:21:25 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 339ms …
+6:21:26 PM [express] POST /api/activity/session/heartbeat 200 in 229ms :: {"success":true,"lastActiv…
+6:21:28 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+6:21:32 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+6:21:35 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+6:21:39 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 339ms …
+6:21:42 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+6:21:46 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+6:21:49 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+💾 [cac3hs] Autosave: Saving 1 new messages...
+✅ [cac3hs] Autosave: 1 messages saved successfully (total saved: 1/1)
+6:21:53 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 341ms …
+6:21:56 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+6:22:00 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-11-16T01:55:16.000Z
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-11-16T01:55:16.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+6:22:03 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 342ms …
+6:22:07 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 339ms …
+6:22:10 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+6:22:14 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 340ms …
+6:22:17 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+💾 [cac3hs] Autosave: No new messages to save (1 total, all persisted)
+6:22:21 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 341ms …
+6:22:24 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+6:22:28 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+6:22:31 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+6:22:35 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+6:22:38 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+6:22:42 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+6:22:45 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+6:22:47 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:22:49 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+6:22:50 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+💾 [cac3hs] Autosave: No new messages to save (1 total, all persisted)
+6:22:52 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:22:53 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+6:22:54 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:22:56 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 339ms …
+6:22:57 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:22:59 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+6:23:00 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 1032ms…
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-11-16T01:55:16.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-11-16T01:55:16.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+6:23:02 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:04 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+6:23:04 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:06 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:07 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+6:23:09 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:11 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 343ms …
+6:23:11 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:14 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:14 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 340ms …
+6:23:16 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:18 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 344ms …
+6:23:18 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+💾 [cac3hs] Autosave: No new messages to save (1 total, all persisted)
+6:23:21 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:21 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+6:23:23 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:25 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+6:23:26 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:28 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:29 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 1012ms…
+6:23:30 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:32 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 335ms …
+6:23:33 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:35 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:36 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+6:23:38 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:40 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+6:23:40 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:42 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:43 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+6:23:45 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:47 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+6:23:47 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:50 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:50 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 337ms …
+💾 [cac3hs] Autosave: No new messages to save (1 total, all persisted)
+6:23:52 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:54 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+6:23:54 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:56 PM [express] POST /api/activity/session/heartbeat 200 in 227ms :: {"success":true,"lastActiv…
+6:23:57 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:23:57 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 335ms …
+6:23:59 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 3 consultant(s)...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+6:24:01 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-11-16T01:55:16.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-11-16T01:55:16.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+6:24:01 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:24:04 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:24:04 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+6:24:06 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:24:08 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 334ms …
+6:24:09 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:24:11 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:24:11 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 336ms …
+6:24:13 PM [express] GET /api/ai-trainer/session/70b8654d-e3fb-4db7-9f48-f29f81ebf429/transcript 200…
+6:24:15 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 341ms …
+6:24:17 PM [express] GET /api/training/analytics/11cd9e7b-f181-4052-9541-e8d0bb91c956 200 in 779ms :…
+💾 [cac3hs] Autosave: No new messages to save (1 total, all persisted)

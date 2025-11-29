@@ -191,6 +191,33 @@ export class ProspectSimulator {
         break;
 
       case 'audio':
+      case 'audio_output':
+        break;
+
+      case 'ai_transcript':
+        if (message.text) {
+          console.log(`📝 [PROSPECT SIMULATOR] AI transcript received: "${message.text.substring(0, 60)}${message.text.length > 60 ? '...' : ''}"`);
+          
+          this.responseBuffer.push(message.text);
+          this.pendingAgentResponse = true;
+          
+          if (this.responseTimeout) {
+            clearTimeout(this.responseTimeout);
+          }
+          
+          this.responseTimeout = setTimeout(async () => {
+            if (this.responseBuffer.length > 0 && this.pendingAgentResponse) {
+              const fullResponse = this.responseBuffer.join(' ');
+              this.responseBuffer = [];
+              this.pendingAgentResponse = false;
+              console.log(`🎯 [PROSPECT SIMULATOR] Processing full AI message (${fullResponse.length} chars)`);
+              await this.handleAgentMessage(fullResponse);
+            }
+          }, 2000);
+        }
+        break;
+
+      case 'user_transcript':
         break;
 
       case 'transcript':
