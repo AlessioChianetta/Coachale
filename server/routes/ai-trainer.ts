@@ -417,17 +417,10 @@ router.get(
       const simulator = activeSimulators.get(sessionId);
       if (simulator) {
         const transcript = simulator.getTranscript();
-        const managerData = simulator.getManagerData();
-        return res.json({
-          transcript,
-          managerData
-        });
+        return res.json(transcript);
       }
 
-      res.json({
-        transcript: [],
-        managerData: []
-      });
+      res.json([]);
 
     } catch (error) {
       console.error('Error fetching transcript:', error);

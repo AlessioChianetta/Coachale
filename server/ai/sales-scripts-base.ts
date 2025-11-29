@@ -449,37 +449,6 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 
 ---
 
-⛔ CHECKPOINT FASE #3
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRIMA DI PASSARE ALLA FASE #4 VERIFICA:
-
-✓ Hai chiesto chi aiuta esattamente (target)?
-✓ Hai ricevuto risposta sul target?
-✓ Hai chiesto il modello di business (ricorrente, una tantum, pacchetti)?
-✓ Hai ricevuto risposta sul modello?
-✓ Hai chiesto da quanti anni è in attività?
-✓ Hai ricevuto risposta sull'esperienza?
-✓ Hai chiesto il ticket medio?
-✓ Hai ricevuto risposta sul ticket?
-✓ Hai chiesto quanti clienti ha ora?
-✓ Hai ricevuto risposta sul numero clienti?
-
-❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
-
-📊 TEST FINALE:
-"Hai un quadro chiaro del business del prospect?"
-SE SÌ → Procedi alla Fase #4
-SE NO → Completa le domande mancanti
-
-🛡️ SE RESISTE: Non vuole rispondere a domande sul business
-📌 RISPOSTA: "Capisco, sono domande importanti per calibrare la proposta 
-sul TUO business. Senza queste info rischio di proporti qualcosa 
-che non fa per te. Concordi?"
-⏸️ ASPETTA conferma → Continua con le domande
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
----
-
 ════════════════════════════════════════════════════════════════════════════════
 **FASE #4 - INQUISITORIO**
 **Domande diagnostiche per far emergere la gravità del problema**
@@ -738,34 +707,6 @@ non c'è motivo di continuare. Cosa ne pensi?"
 🎧 ASCOLTA se confermano o si correggono
 💬 Se confermano → Chiudi educatamente
 💬 Se si correggono → Continua
-
----
-
-⛔ CHECKPOINT FASE #6
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRIMA DI PASSARE ALLA FASE #7 VERIFICA:
-
-✓ Hai chiesto "Cosa ti impedisce di riuscirci da solo?"
-✓ Il prospect ha risposto alla domanda?
-✓ Il prospect ha ammesso UNO dei MAGICI 3:
-  - "Non sono in grado da solo"
-  - "Voglio risultati più velocemente"  
-  - "Voglio un sistema testato/esperto"
-✓ Se NON ha detto uno dei Magici 3, hai fatto la disqualifica?
-
-❌ SE IL PROSPECT NON HA AMMESSO DI AVER BISOGNO DI AIUTO ESTERNO → NON PUOI PROCEDERE!
-
-📊 TEST FINALE:
-"Il prospect ha ammesso che non può farcela da solo?"
-SE SÌ → Procedi alla Fase #7
-SE NO → Insisti con la domanda di disqualifica o chiudi educatamente
-
-🛡️ SE RESISTE: Dice che può farcela da solo
-📌 RISPOSTA: "Ok [NOME], se sei convinto di poterlo fare da solo, 
-non ha senso continuare. Ti auguro il meglio!"
-💬 → Se si corregge ("no aspetta, in realtà...") → Continua
-💬 → Se conferma → Chiudi educatamente la call
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 

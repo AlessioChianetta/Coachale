@@ -15,15 +15,10 @@ import {
   AlertCircle,
   Loader2,
   ChevronRight,
-  ChevronDown,
   Users,
   FileText,
   CheckCircle2,
   Library,
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  MessageCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,22 +82,6 @@ interface TranscriptMessage {
   timestamp: string;
 }
 
-interface ManagerDataEntry {
-  timestamp: string;
-  currentPhase: string;
-  currentStep?: string;
-  checkpointStatus: string;
-  reasoning: string;
-  feedback?: string;
-  shouldAdvance?: boolean;
-  confidence?: number;
-}
-
-interface TranscriptResponse {
-  transcript: TranscriptMessage[];
-  managerData: ManagerDataEntry[];
-}
-
 type ResponseSpeed = 'fast' | 'normal' | 'slow' | 'disabled';
 
 const RESPONSE_SPEED_OPTIONS: { value: ResponseSpeed; label: string; description: string; icon: string }[] = [
@@ -118,7 +97,6 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
   const [scriptSelectionTab, setScriptSelectionTab] = useState<'active' | 'all'>('active');
   const [observeSessionId, setObserveSessionId] = useState<string | null>(null);
   const [responseSpeed, setResponseSpeed] = useState<ResponseSpeed>('normal');
-  const [isManagerExpanded, setIsManagerExpanded] = useState<boolean>(true);
   const queryClient = useQueryClient();
 
   const { data: allScripts = [], isLoading: scriptsLoading } = useQuery<SalesScript[]>({
@@ -170,22 +148,19 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
     refetchInterval: 3000,
   });
 
-  const { data: transcriptResponse, refetch: refetchTranscript } = useQuery<TranscriptResponse>({
+  const { data: transcript = [], refetch: refetchTranscript } = useQuery<TranscriptMessage[]>({
     queryKey: [`/api/ai-trainer/session/${observeSessionId}/transcript`],
     queryFn: async () => {
-      if (!observeSessionId) return { transcript: [], managerData: [] };
+      if (!observeSessionId) return [];
       const response = await fetch(`/api/ai-trainer/session/${observeSessionId}/transcript`, {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) return { transcript: [], managerData: [] };
+      if (!response.ok) return [];
       return response.json();
     },
     enabled: !!observeSessionId,
     refetchInterval: observeSessionId ? 2000 : false,
   });
-  
-  const transcript = transcriptResponse?.transcript ?? [];
-  const managerData = transcriptResponse?.managerData ?? [];
 
   const startSessionMutation = useMutation({
     mutationFn: async ({ scriptId, personaId, responseSpeed }: { scriptId: string; personaId: string; responseSpeed: ResponseSpeed }) => {
@@ -760,7 +735,7 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
 
       {/* Observe Modal */}
       <Dialog open={!!observeSessionId} onOpenChange={() => setObserveSessionId(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh]">
+        <DialogContent className="max-w-2xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
@@ -770,127 +745,37 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
               Transcript in tempo reale della conversazione tra AI Prospect e Sales Agent
             </DialogDescription>
           </DialogHeader>
-          
-          <ScrollArea className="h-[70vh] pr-4">
+          <ScrollArea className="h-[60vh] pr-4">
             <div className="space-y-4">
-              {/* Sales Manager Section - Collapsible */}
-              {managerData.length > 0 && (
-                <div className="mb-4">
-                  <button
-                    onClick={() => setIsManagerExpanded(!isManagerExpanded)}
-                    className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950 dark:to-orange-950 rounded-lg border border-amber-200 dark:border-amber-800 hover:border-amber-300 dark:hover:border-amber-700 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <BarChart3 className="h-5 w-5 text-amber-600" />
-                      <span className="font-semibold text-amber-800 dark:text-amber-200">
-                        📊 Sales Manager Analisi
-                      </span>
-                      <Badge variant="secondary" className="ml-2">
-                        {managerData.length} aggiornamenti
-                      </Badge>
-                    </div>
-                    {isManagerExpanded ? (
-                      <ChevronDown className="h-5 w-5 text-amber-600" />
-                    ) : (
-                      <ChevronRight className="h-5 w-5 text-amber-600" />
-                    )}
-                  </button>
-                  
-                  {isManagerExpanded && (
-                    <div className="mt-2 space-y-2 pl-2 border-l-2 border-amber-300 dark:border-amber-700">
-                      {managerData.map((entry, idx) => (
-                        <div 
-                          key={idx}
-                          className="p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 text-sm"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <Badge variant={entry.shouldAdvance ? 'default' : 'secondary'} className="text-xs">
-                                {entry.currentPhase}
-                                {entry.currentStep && ` / ${entry.currentStep}`}
-                              </Badge>
-                              {entry.shouldAdvance ? (
-                                <span className="flex items-center gap-1 text-green-600 text-xs">
-                                  <TrendingUp className="h-3 w-3" />
-                                  Avanza
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1 text-gray-500 text-xs">
-                                  <TrendingDown className="h-3 w-3" />
-                                  Non avanza
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              <span>Checkpoint: {entry.checkpointStatus}</span>
-                              {entry.confidence !== undefined && (
-                                <Badge variant="outline" className="text-xs">
-                                  {Math.round((entry.confidence || 0) * 100)}%
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="text-gray-700 dark:text-gray-300 text-xs mb-2 bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                            <strong>Ragionamento:</strong> {entry.reasoning}
-                          </div>
-                          
-                          {entry.feedback && (
-                            <div className="flex items-start gap-1 text-xs text-blue-600 dark:text-blue-400">
-                              <MessageCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                              <span><strong>Feedback:</strong> {entry.feedback}</span>
-                            </div>
-                          )}
-                          
-                          <div className="text-xs text-gray-400 mt-1 text-right">
-                            {new Date(entry.timestamp).toLocaleTimeString('it-IT')}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              {transcript.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
+                  <p>In attesa di messaggi...</p>
                 </div>
-              )}
-              
-              {/* Transcript Section */}
-              <div className="border-t pt-4 mt-4">
-                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                  <MessageSquare className="h-4 w-4" />
-                  Transcript Conversazione
-                </h4>
-                
-                {transcript.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
-                    <p>In attesa di messaggi...</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {transcript.map((msg, i) => (
-                      <div
-                        key={i}
-                        className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
-                      >
-                        <div
-                          className={`max-w-[80%] p-3 rounded-lg ${
-                            msg.role === 'user'
-                              ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
-                              : 'bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100'
-                          }`}
-                        >
-                          <div className="text-xs font-semibold mb-1">
-                            {msg.role === 'user' ? '🧑 Prospect AI' : '🤖 Sales Agent'}
-                          </div>
-                          <p className="text-sm">{msg.content}</p>
-                          <div className="text-xs opacity-60 mt-1">
-                            {new Date(msg.timestamp).toLocaleTimeString('it-IT')}
-                          </div>
-                        </div>
+              ) : (
+                transcript.map((msg, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] p-3 rounded-lg ${
+                        msg.role === 'user'
+                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                          : 'bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100'
+                      }`}
+                    >
+                      <div className="text-xs font-semibold mb-1">
+                        {msg.role === 'user' ? '🧑 Prospect AI' : '🤖 Sales Agent'}
                       </div>
-                    ))}
+                      <p className="text-sm">{msg.content}</p>
+                      <div className="text-xs opacity-60 mt-1">
+                        {new Date(msg.timestamp).toLocaleTimeString('it-IT')}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+                ))
+              )}
             </div>
           </ScrollArea>
         </DialogContent>

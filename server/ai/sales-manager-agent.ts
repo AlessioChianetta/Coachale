@@ -85,8 +85,8 @@ export interface SalesManagerAnalysis {
     objections: DetectedObjection[];
   };
   
-  // Checkpoint status (never null - always returns blocking state if issues)
-  checkpointStatus: CheckpointStatus;
+  // Checkpoint status
+  checkpointStatus: CheckpointStatus | null;
   
   // Tone analysis
   toneAnalysis: ToneAnalysis;
@@ -372,16 +372,14 @@ export class SalesManagerAgent {
     const buySignals = this.detectBuySignals(params.recentMessages);
     const objections = this.detectObjections(params.recentMessages, params.script.objections);
     const toneAnalysis = this.analyzeTone(params.recentMessages, params.currentPhaseEnergy);
+    const checkpointStatus = this.validateCheckpoint(params);
     // 🆕 Business context per feedback (Gemini decide semanticamente se qualcosa è fuori scope)
     const businessCtx = this.getBusinessContextForFeedback(params.businessContext);
-    
-    // 🆕 AI-powered checkpoint validation (replaces keyword-based)
-    const checkpointStatus = await this.validateCheckpointWithAI(params);
     
     console.log(`   💰 Buy signals: ${buySignals.detected ? buySignals.signals.length : 0}`);
     console.log(`   🛡️ Objections: ${objections.detected ? objections.objections.length : 0}`);
     console.log(`   🎭 Tone issues: ${toneAnalysis.issues.length}`);
-    console.log(`   ⛔ Checkpoint: ${checkpointStatus.isComplete ? '✅ COMPLETE' : `❌ ${checkpointStatus.missingItems.length} missing (canAdvance=${checkpointStatus.canAdvance})`}`);
+    console.log(`   ⛔ Checkpoint: ${checkpointStatus?.isComplete ? 'COMPLETE' : checkpointStatus?.missingItems.length + ' missing' || 'N/A'}`);
     console.log(`   👤 Business: ${businessCtx?.identity || 'N/A'}`);
     
     // 2. AI analysis for step advancement (only if needed)
@@ -429,48 +427,18 @@ export class SalesManagerAgent {
         toneReminder: params.currentPhaseEnergy ? 
           `Ricorda: tono ${params.currentPhaseEnergy.tone}, energia ${params.currentPhaseEnergy.level}, ritmo ${params.currentPhaseEnergy.pace}` : undefined
       };
-    }
-    
-    // 🆕 FIX PROBLEMA 2: CONTROLLO CHECKPOINT SEMPRE (non più else if)
-    // Se checkpoint non è completo, BLOCCA SEMPRE l'avanzamento, indipendentemente da altre condizioni
-    if (!checkpointStatus.canAdvance) {
-      // 🆕 CRITICAL priority: checkpoint not complete = BLOCK advancement
-      // Sovrascrive qualsiasi feedback precedente se c'è un problema di checkpoint
-      if (!feedbackForAgent || feedbackForAgent.priority !== 'high') {
-        feedbackForAgent = {
-          shouldInject: true,
-          priority: 'critical',
-          type: 'checkpoint',
-          message: `⛔ CHECKPOINT INCOMPLETO - NON PUOI AVANZARE!\n\n` +
-                   `📋 Checkpoint: "${checkpointStatus.checkpointName}"\n` +
-                   `❌ Mancano ${checkpointStatus.missingItems.length} verifiche OBBLIGATORIE:\n` +
-                   `→ ${checkpointStatus.missingItems.join('\n→ ')}\n\n` +
-                   `⚠️ DEVI fare queste domande PRIMA di procedere alla fase successiva!`,
-        };
-      }
-      
-      // 🆕 FORZA shouldAdvance = false (checkpoint incompleto = blocco totale)
-      stepAdvancement = {
-        shouldAdvance: false,
-        nextPhaseId: null,
-        nextStepId: null,
-        confidence: 1.0,
-        reasoning: `⛔ BLOCCATO: Checkpoint "${checkpointStatus.checkpointName}" incompleto. ` +
-                   `Mancano: ${checkpointStatus.missingItems.join(', ')}`
+    } else if (checkpointStatus && !checkpointStatus.canAdvance && checkpointStatus.missingItems.length > 0) {
+      // Medium priority: checkpoint not complete
+      feedbackForAgent = {
+        shouldInject: true,
+        priority: 'medium',
+        type: 'checkpoint',
+        message: `⛔ CHECKPOINT INCOMPLETO: Mancano ${checkpointStatus.missingItems.length} verifiche\n→ ${checkpointStatus.missingItems.slice(0, 2).join('\n→ ')}`,
       };
-      
-      console.log(`\n⛔ [SALES-MANAGER] CHECKPOINT BLOCK ACTIVE`);
-      console.log(`   📋 Checkpoint: ${checkpointStatus.checkpointName}`);
-      console.log(`   ❌ Missing: ${checkpointStatus.missingItems.length} items`);
-      console.log(`   🚫 Step advancement BLOCKED until checkpoint complete`);
     }
     
-    // 4. Call AI for step advancement analysis (ONLY if checkpoint is OK AND no critical issues)
-    // 🆕 FIX PROBLEMA 2: Esplicitamente verifica che checkpoint sia completo PRIMA di chiamare AI
-    const checkpointOK = checkpointStatus.canAdvance && checkpointStatus.isComplete;
-    const hasCriticalFeedback = feedbackForAgent && feedbackForAgent.priority === 'critical';
-    
-    if (checkpointOK && !hasCriticalFeedback) {
+    // 4. Call AI for step advancement analysis (if no critical issues)
+    if (!feedbackForAgent || feedbackForAgent.priority !== 'critical') {
       try {
         stepAdvancement = await this.analyzeStepAdvancement(params);
         
@@ -748,206 +716,47 @@ export class SalesManagerAgent {
   }
   
   /**
-   * 🆕 AI-powered checkpoint validation
-   * Usa lo STESSO pattern di analyzeStepAdvancement per decidere
-   * semanticamente se il checkpoint è stato completato.
-   * Legge dinamicamente il checkpoint dalla fase corrente dello script.
-   * 
-   * ⚠️ CRITICAL FIX: NON ritorna MAI null - ritorna sempre uno stato BLOCKING
-   * se mancano checkpoint, fase non trovata, o checks vuoti.
+   * Validate checkpoint completion (local, fast)
    */
-  private static async validateCheckpointWithAI(params: SalesManagerParams): Promise<CheckpointStatus> {
+  private static validateCheckpoint(params: SalesManagerParams): CheckpointStatus | null {
     const currentPhase = params.script.phases.find(p => p.id === params.currentPhaseId);
-    
-    // 🆕 FIX PROBLEMA 1: Se la fase non esiste, ritorna stato blocking
-    if (!currentPhase) {
-      console.warn(`⚠️ [CHECKPOINT-AI] Phase not found: ${params.currentPhaseId} - BLOCKING`);
-      return {
-        checkpointId: 'missing_phase',
-        checkpointName: `Fase non trovata: ${params.currentPhaseId}`,
-        isComplete: false,
-        missingItems: [`La fase "${params.currentPhaseId}" non esiste nello script`],
-        completedItems: [],
-        canAdvance: false
-      };
-    }
-    
-    // 🆕 FIX PROBLEMA 1: Se non c'è checkpoint definito per la fase, ritorna stato blocking
-    if (!currentPhase.checkpoint) {
-      console.warn(`⚠️ [CHECKPOINT-AI] No checkpoint defined for phase ${currentPhase.name} - BLOCKING`);
-      return {
-        checkpointId: 'missing_checkpoint',
-        checkpointName: `Checkpoint mancante per fase: ${currentPhase.name}`,
-        isComplete: false,
-        missingItems: [`Nessun checkpoint definito per la fase "${currentPhase.name}" (${currentPhase.id})`],
-        completedItems: [],
-        canAdvance: false
-      };
-    }
+    if (!currentPhase?.checkpoint) return null;
     
     const checkpoint = currentPhase.checkpoint;
+    const completedItems: string[] = [];
+    const missingItems: string[] = [];
     
-    // 🆕 FIX PROBLEMA 1: Se checks array è vuoto, ritorna stato blocking
-    if (!checkpoint.checks || checkpoint.checks.length === 0) {
-      console.warn(`⚠️ [CHECKPOINT-AI] Empty checks array for checkpoint ${checkpoint.title} - BLOCKING`);
-      return {
-        checkpointId: checkpoint.id,
-        checkpointName: checkpoint.title,
-        isComplete: false,
-        missingItems: [`Il checkpoint "${checkpoint.title}" non ha verifiche definite (checks array vuoto)`],
-        completedItems: [],
-        canAdvance: false
-      };
-    }
+    // Simple keyword-based check for checkpoint items
+    const allMessages = params.recentMessages.map(m => m.content.toLowerCase()).join(' ');
     
-    console.log(`\n⛔ [CHECKPOINT-AI] Validating checkpoint: ${checkpoint.title}`);
-    console.log(`   📋 Checks to verify: ${checkpoint.checks.length}`);
-    
-    const { client: aiClient, cleanup } = await getAIProvider(params.clientId, params.consultantId);
-    
-    try {
-      const prompt = this.buildCheckpointValidationPrompt(params, currentPhase, checkpoint);
+    for (const check of checkpoint.checks) {
+      // Extract keywords from check
+      const keywords = check.toLowerCase()
+        .replace(/[?¿!¡.,;:]/g, '')
+        .split(' ')
+        .filter(w => w.length > 3);
       
-      const response = await Promise.race([
-        aiClient.generateContent({
-          model: this.MODEL,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0,
-            maxOutputTokens: 800,
-          }
-        }),
-        this.timeout(this.TIMEOUT_MS)
-      ]);
+      // Check if at least 50% of keywords are mentioned
+      const matchedKeywords = keywords.filter(kw => allMessages.includes(kw));
+      const matchRatio = matchedKeywords.length / keywords.length;
       
-      if (!response || typeof response === 'string') {
-        console.warn(`⚠️ [CHECKPOINT-AI] Timeout - assuming incomplete for safety`);
-        return {
-          checkpointId: checkpoint.id,
-          checkpointName: checkpoint.title,
-          isComplete: false,
-          missingItems: ['Timeout validazione AI - assumo incompleto per sicurezza'],
-          completedItems: [],
-          canAdvance: false
-        };
+      if (matchRatio >= 0.5) {
+        completedItems.push(check);
+      } else {
+        missingItems.push(check);
       }
-      
-      const responseText = response.response.text();
-      return this.parseCheckpointResponse(responseText, checkpoint);
-      
-    } catch (error: any) {
-      console.error(`❌ [CHECKPOINT-AI] Error: ${error.message}`);
-      return {
-        checkpointId: checkpoint.id,
-        checkpointName: checkpoint.title,
-        isComplete: false,
-        missingItems: [`Errore validazione AI: ${error.message}`],
-        completedItems: [],
-        canAdvance: false
-      };
-    } finally {
-      if (cleanup) await cleanup();
     }
-  }
-  
-  /**
-   * Build prompt for AI checkpoint validation
-   */
-  private static buildCheckpointValidationPrompt(
-    params: SalesManagerParams,
-    currentPhase: ScriptPhase,
-    checkpoint: ScriptCheckpoint
-  ): string {
-    const messagesText = params.recentMessages
-      .slice(-12) // Ultimi 12 messaggi per contesto più ampio
-      .map(m => `${m.role === 'user' ? 'PROSPECT' : 'AGENTE'}: ${m.content}`)
-      .join('\n');
     
-    const checksText = checkpoint.checks
-      .map((check, i) => `${i + 1}. ${check}`)
-      .join('\n');
+    const isComplete = missingItems.length === 0;
     
-    return `Sei un supervisore di vendita esperto. Analizza la conversazione e verifica RIGOROSAMENTE se il checkpoint è stato completato.
-
-📍 FASE CORRENTE: ${currentPhase.name} (${currentPhase.number})
-
-📋 CHECKPOINT DA VERIFICARE: "${checkpoint.title}"
-
-🔍 VERIFICHE OBBLIGATORIE:
-${checksText}
-
-💬 CONVERSAZIONE RECENTE:
-${messagesText}
-
-🎯 ISTRUZIONI DI VALIDAZIONE:
-Per OGNI verifica, devi controllare ENTRAMBE le condizioni:
-1. L'AGENTE ha effettivamente FATTO la domanda (o una variante semanticamente equivalente)
-2. Il PROSPECT ha RISPOSTO in modo concreto e specifico
-
-⚠️ REGOLE CRITICHE:
-- Una verifica è "completata" SOLO se c'è sia domanda dell'agente CHE risposta del prospect
-- Se la domanda NON è stata fatta dall'agente → NON è completata
-- Se il prospect NON ha risposto o ha risposto in modo vago → NON è completata
-- Sii MOLTO RIGOROSO: nel dubbio, segna come NON completata
-- Non dare per scontato che una domanda sia stata fatta se non la vedi chiaramente
-
-📤 RISPONDI SOLO CON QUESTO JSON (nient'altro):
-{
-  "isComplete": boolean,
-  "completedItems": ["descrizione verifica 1 completata", ...],
-  "missingItems": ["descrizione verifica X: motivo per cui non è completata", ...],
-  "reasoning": "breve spiegazione della tua analisi"
-}`;
-  }
-  
-  /**
-   * Parse AI response for checkpoint validation
-   */
-  private static parseCheckpointResponse(
-    responseText: string,
-    checkpoint: ScriptCheckpoint
-  ): CheckpointStatus {
-    console.log(`🤖 [CHECKPOINT-AI] Raw response (${responseText.length} chars):`,
-      responseText.substring(0, 300) + (responseText.length > 300 ? '...' : ''));
-    
-    try {
-      const jsonMatch = responseText.match(/\{[\s\S]*?"isComplete"[\s\S]*?\}/);
-      if (!jsonMatch) throw new Error('No JSON found in response');
-      
-      const parsed = JSON.parse(jsonMatch[0]);
-      
-      const result: CheckpointStatus = {
-        checkpointId: checkpoint.id,
-        checkpointName: checkpoint.title,
-        isComplete: Boolean(parsed.isComplete),
-        completedItems: Array.isArray(parsed.completedItems) ? parsed.completedItems : [],
-        missingItems: Array.isArray(parsed.missingItems) ? parsed.missingItems : [],
-        canAdvance: Boolean(parsed.isComplete)
-      };
-      
-      console.log(`✅ [CHECKPOINT-AI] Parsed: isComplete=${result.isComplete}, ` +
-        `completed=${result.completedItems.length}, missing=${result.missingItems.length}`);
-      
-      if (parsed.reasoning) {
-        console.log(`   💭 Reasoning: ${parsed.reasoning}`);
-      }
-      
-      return result;
-      
-    } catch (error: any) {
-      console.error(`❌ [CHECKPOINT-AI] Parse error: ${error.message}`);
-      console.error(`❌ [CHECKPOINT-AI] Full response was:`, responseText);
-      
-      // Fallback sicuro: se non riesco a parsare, assumo checkpoint incompleto
-      return {
-        checkpointId: checkpoint.id,
-        checkpointName: checkpoint.title,
-        isComplete: false,
-        missingItems: [`Errore parsing risposta AI: ${error.message}`],
-        completedItems: [],
-        canAdvance: false
-      };
-    }
+    return {
+      checkpointId: checkpoint.id,
+      checkpointName: checkpoint.title,
+      isComplete,
+      missingItems,
+      completedItems,
+      canAdvance: isComplete
+    };
   }
   
   /**

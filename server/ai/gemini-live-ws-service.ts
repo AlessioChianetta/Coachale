@@ -3511,7 +3511,7 @@ ${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                           
                           await salesTracker.addReasoning('sales_manager_feedback', 
-                            `SalesManager feedback BUFFERED (${analysis.feedbackForAgent.type}/${analysis.feedbackForAgent.priority}): ${analysis.feedbackForAgent.message}${analysis.feedbackForAgent.toneReminder ? ` | Tone: ${analysis.feedbackForAgent.toneReminder}` : ''}`
+                            `SalesManager feedback BUFFERED (${feedback.type}/${feedback.priority}): ${feedback.message}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
                           );
                         }
                         
@@ -3524,34 +3524,6 @@ ${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
                           analysisLog += ` | 🛡️ Objections: ${analysis.objections.objections.length}`;
                         }
                         await salesTracker.addReasoning('sales_manager_analysis', analysisLog);
-                        
-                        // 🆕 SEND MANAGER UPDATE TO CLIENT FOR FRONTEND VISIBILITY
-                        const pendingCheckpoints = state.checkpointsCompleted?.filter((cp: any) => cp.status === 'pending') || [];
-                        const completedCheckpoints = state.checkpointsCompleted?.filter((cp: any) => cp.status === 'completed') || [];
-                        const checkpointStatus = completedCheckpoints.length > 0 
-                          ? `${completedCheckpoints.length} completati` 
-                          : (pendingCheckpoints.length > 0 ? `${pendingCheckpoints.length} in attesa` : 'nessuno');
-                        
-                        const managerUpdatePayload = {
-                          type: 'manager_update',
-                          data: {
-                            timestamp: new Date().toISOString(),
-                            currentPhase: state.currentPhase,
-                            currentStep: state.currentStep,
-                            checkpointStatus,
-                            reasoning: stepResult.reasoning || analysisLog,
-                            feedback: analysis.feedbackForAgent ? `${analysis.feedbackForAgent.type}: ${analysis.feedbackForAgent.message}` : undefined,
-                            shouldAdvance: stepResult.shouldAdvance,
-                            confidence: stepResult.confidence,
-                          }
-                        };
-                        
-                        try {
-                          clientWs.send(JSON.stringify(managerUpdatePayload));
-                          console.log(`📊 [${connectionId}] Manager update sent to client`);
-                        } catch (wsError: any) {
-                          console.warn(`⚠️ [${connectionId}] Failed to send manager update: ${wsError.message}`);
-                        }
                         
                         // If agent says to advance, call advanceTo on tracker
                         // 🔒 IDEMPOTENCY CHECK: Skip if we already advanced to this state
