@@ -3525,6 +3525,34 @@ ${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
                         }
                         await salesTracker.addReasoning('sales_manager_analysis', analysisLog);
                         
+                        // 🆕 SEND MANAGER UPDATE TO CLIENT FOR FRONTEND VISIBILITY
+                        const pendingCheckpoints = state.checkpointsCompleted?.filter((cp: any) => cp.status === 'pending') || [];
+                        const completedCheckpoints = state.checkpointsCompleted?.filter((cp: any) => cp.status === 'completed') || [];
+                        const checkpointStatus = completedCheckpoints.length > 0 
+                          ? `${completedCheckpoints.length} completati` 
+                          : (pendingCheckpoints.length > 0 ? `${pendingCheckpoints.length} in attesa` : 'nessuno');
+                        
+                        const managerUpdatePayload = {
+                          type: 'manager_update',
+                          data: {
+                            timestamp: new Date().toISOString(),
+                            currentPhase: state.currentPhase,
+                            currentStep: state.currentStep,
+                            checkpointStatus,
+                            reasoning: stepResult.reasoning || analysisLog,
+                            feedback: feedback ? `${feedback.type}: ${feedback.message}` : undefined,
+                            shouldAdvance: stepResult.shouldAdvance,
+                            confidence: stepResult.confidence,
+                          }
+                        };
+                        
+                        try {
+                          clientWs.send(JSON.stringify(managerUpdatePayload));
+                          console.log(`📊 [${connectionId}] Manager update sent to client`);
+                        } catch (wsError: any) {
+                          console.warn(`⚠️ [${connectionId}] Failed to send manager update: ${wsError.message}`);
+                        }
+                        
                         // If agent says to advance, call advanceTo on tracker
                         // 🔒 IDEMPOTENCY CHECK: Skip if we already advanced to this state
                         if (stepResult.shouldAdvance && stepResult.nextPhaseId && stepResult.nextStepId && stepResult.confidence >= 0.6) {

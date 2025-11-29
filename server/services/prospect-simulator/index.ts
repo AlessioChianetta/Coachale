@@ -67,12 +67,24 @@ interface TranscriptMessage {
   timestamp: string;
 }
 
+interface ManagerDataEntry {
+  timestamp: string;
+  currentPhase: string;
+  currentStep?: string;
+  checkpointStatus: string;
+  reasoning: string;
+  feedback?: string;
+  shouldAdvance?: boolean;
+  confidence?: number;
+}
+
 export class ProspectSimulator {
   private options: ProspectSimulatorOptions;
   private ws: WebSocket | null = null;
   private aiClient: GeminiClient | null = null;
   private aiCleanup?: () => Promise<void>;
   private transcript: TranscriptMessage[] = [];
+  private managerData: ManagerDataEntry[] = [];
   private isRunning = false;
   private messageCount = 0;
   private currentPhase = 'starting';
@@ -300,6 +312,23 @@ export class ProspectSimulator {
 
       case 'error':
         console.error(`❌ [PROSPECT SIMULATOR] Server error:`, message.message || message.error);
+        break;
+
+      case 'manager_update':
+        if (message.data) {
+          const managerEntry: ManagerDataEntry = {
+            timestamp: message.data.timestamp || new Date().toISOString(),
+            currentPhase: message.data.currentPhase || this.currentPhase,
+            currentStep: message.data.currentStep,
+            checkpointStatus: message.data.checkpointStatus || 'pending',
+            reasoning: message.data.reasoning || '',
+            feedback: message.data.feedback,
+            shouldAdvance: message.data.shouldAdvance,
+            confidence: message.data.confidence,
+          };
+          this.managerData.push(managerEntry);
+          console.log(`📊 [PROSPECT SIMULATOR] Manager update received: phase=${managerEntry.currentPhase}, advance=${managerEntry.shouldAdvance}`);
+        }
         break;
 
       default:
@@ -688,5 +717,9 @@ I TUOI PROBLEMI devono essere coerenti con "${targetDescription}":
 
   getConversationId(): string | null {
     return this.conversationId;
+  }
+
+  getManagerData(): ManagerDataEntry[] {
+    return [...this.managerData];
   }
 }
