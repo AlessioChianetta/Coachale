@@ -1,0 +1,52 @@
+ SERVIZI: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+
+📍 FASE: 1 di 7 - APERTURA ED IMPOSTAZIONE
+   STEP: APERTURA ENTUSIASTA
+🔋 ENERGIA: MEDIO | TONO: ENTUSIASTA | RITMO: MODERATO
+
+🎯 OBIETTIVO: Creare connessione iniziale, rompere il ghiaccio e costruire rapport
+✅ FAI BENE: Stai seguendo lo script
+⚠️ MIGLIORA: 🎭 CORREZIONE TONO: Tono non abbastanza entusiasta
+🚦 STATO: Rimani in questa fase - correggi il tono prima
+📋 TI SERVE: Ricorda: tono ENTUSIASTA, energia MEDIO, ritmo MODERATO
+🎵 REMINDER TONO: Ricorda: tono ENTUSIASTA, energia MEDIO, ritmo MODERATO
+<<</SALES_MANAGER_INSTRUCTION>>>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Feedback SENT to Gemini with turnComplete:false
+   💾 Feedback also saved to DB (for reconnection backup)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=0.9, hasIds=false
+🔓 [dfbu7i] Sales Manager lock released
+6:50:56 PM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 338ms …
+🔄 Switching model from gemini-2.5-flash to gemini-1.5-flash
+❌ [PROSPECT SIMULATOR] Error generating response: ClientError: [VertexAI.ClientError]: got status: 404 Not Found. {"error":{"code":404,"message":"Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-1.5-flash` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions","status":"NOT_FOUND"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:47:21)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    ... 4 lines matching cause stack trace ...
+    at async Timeout._onTimeout (/home/runner/workspace/server/services/prospect-simulator/index.ts:214:15) {
+  stackTrace: GoogleApiError: Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-1.5-flash` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+      at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:49:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+      at async generateContent (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/generate_content.ts:94:3)
+      at async VertexAIClientAdapter.generateContent (/home/runner/workspace/server/ai/provider-factory.ts:70:20)
+      at async ProspectSimulator.generateAndSendResponse (/home/runner/workspace/server/services/prospect-simulator/index.ts:333:24)
+      at async ProspectSimulator.handleAgentMessage (/home/runner/workspace/server/services/prospect-simulator/index.ts:298:7)
+      at async Timeout._onTimeout (/home/runner/workspace/server/services/prospect-simulator/index.ts:214:15) {
+    code: 404,
+    status: 'NOT_FOUND',
+    errorDetails: undefined
+  },
+  [cause]: GoogleApiError: Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-1.5-flash` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+      at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:49:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+      at async generateContent (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/generate_content.ts:94:3)
+      at async VertexAIClientAdapter.generateContent (/home/runner/workspace/server/ai/provider-factory.ts:70:20)
+      at async ProspectSimulator.generateAndSendResponse (/home/runner/workspace/server/services/prospect-simulator/index.ts:333:24)
+      at async ProspectSimulator.handleAgentMessage (/home/runner/workspace/server/services/prospect-simulator/index.ts:298:7)
+      at async Timeout._onTimeout (/home/runner/workspace/server/services/prospect-simulator/index.ts:214:15) {
+    code: 404,
+    status: 'NOT_FOUND',
+    errorDetails: undefined
+  }
+}
