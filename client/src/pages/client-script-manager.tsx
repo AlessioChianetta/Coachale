@@ -1028,7 +1028,6 @@ export default function ClientScriptManager() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-              </div>
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
