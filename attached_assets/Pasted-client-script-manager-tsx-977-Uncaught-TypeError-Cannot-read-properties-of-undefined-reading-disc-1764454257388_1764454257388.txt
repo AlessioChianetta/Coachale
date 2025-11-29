@@ -1,0 +1,41 @@
+client-script-manager.tsx:977 Uncaught TypeError: Cannot read properties of undefined (reading 'discovery')
+    at client-script-manager.tsx:977:37
+    at Array.map (<anonymous>)
+    at ClientScriptManager (client-script-manager.tsx:974:32)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=0fb3bcf2:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=0fb3bcf2:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=0fb3bcf2:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=0fb3bcf2:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=0fb3bcf2:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=0fb3bcf2:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=0fb3bcf2:19765:15)Understand this error
+injected.js:37 The above error occurred in the <ClientScriptManager> component:
+
+    at ClientScriptManager (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/src/pages/client-script-manager.tsx:95:21)
+    at AuthGuard (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0fb3bcf2:323:16)
+    at Switch (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0fb3bcf2:379:17)
+    at Suspense
+    at Router (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/src/App.tsx?v=MI2zRFsjBh8fBwEe87Nwb:181:35)
+    at Provider (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=0fb3bcf2:38:15)
+    at TooltipProvider (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=0fb3bcf2:64:5)
+    at TourProvider (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at QueryClientProvider (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=0fb3bcf2:2805:3)
+    at V (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=0fb3bcf2:44:25)
+    at J (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=0fb3bcf2:42:18)
+    at App (https://1875c967-b00b-450d-a54d-3786cd4bb523-00-3ejctg7483ejf.riker.replit.dev/src/App.tsx?v=MI2zRFsjBh8fBwEe87Nwb:1157:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+(anonymous) @ injected.js:37Understand this error
+chunk-RPCDYKBN.js?v=0fb3bcf2:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'discovery')
+    at client-script-manager.tsx:977:37
+    at Array.map (<anonymous>)
+    at ClientScriptManager (client-script-manager.tsx:974:32)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=0fb3bcf2:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=0fb3bcf2:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=0fb3bcf2:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=0fb3bcf2:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=0fb3bcf2:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=0fb3bcf2:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=0fb3bcf2:19116:15)
