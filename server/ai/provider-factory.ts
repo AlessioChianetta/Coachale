@@ -461,15 +461,6 @@ async function createVertexAIClient(
   }
 ): Promise<{ client: GeminiClient; metadata: AiProviderMetadata } | null> {
   try {
-    // FIRST: Log the RAW JSON from database
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("📄 RAW SERVICE ACCOUNT JSON FROM DATABASE");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("Settings ID:", settings.id);
-    console.log("serviceAccountJson length:", settings.serviceAccountJson?.length || 0);
-    console.log("First 300 chars:", settings.serviceAccountJson?.substring(0, 300));
-    console.log("Last 200 chars:", settings.serviceAccountJson?.substring(settings.serviceAccountJson.length - 200));
-    
     // Get parsed credentials (with caching)
     const credentials = await getParsedCredentials(
       settings.id,
@@ -480,23 +471,6 @@ async function createVertexAIClient(
     if (!credentials) {
       return null;
     }
-
-    // Debug: Check environment variables and credentials
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("🔍 DEBUG VERTEX AI CREDENTIALS");
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    console.log("GOOGLE_API_KEY presente?", !!process.env.GOOGLE_API_KEY);
-    console.log("GOOGLE_APPLICATION_CREDENTIALS presente?", !!process.env.GOOGLE_APPLICATION_CREDENTIALS);
-    console.log("credentials.type:", credentials.type);
-    console.log("credentials.project_id:", credentials.project_id);
-    console.log("credentials.private_key_id:", credentials.private_key_id);
-    console.log("credentials.client_email:", credentials.client_email);
-    console.log("credentials.client_id:", credentials.client_id);
-    console.log("credentials.private_key length:", credentials.private_key?.length || 0);
-    console.log("credentials.private_key starts with:", credentials.private_key?.substring(0, 50));
-    console.log("settings.projectId:", settings.projectId);
-    console.log("settings.location:", settings.location);
-    console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     // Use shared helper to create Vertex AI client
     const client = createVertexGeminiClient(

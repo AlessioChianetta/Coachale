@@ -375,8 +375,8 @@ Rispondi SOLO con il JSON array, nessun testo prima o dopo.`;
         model: 'gemini-2.5-pro',
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 1.0,
-          maxOutputTokens: 8192,
+          temperature: 0.7,
+          maxOutputTokens: 65536,
           responseMimeType: 'application/json',
         },
       });
@@ -535,10 +535,10 @@ Rispondi SOLO con il JSON array, nessun testo prima o dopo.`;
 
     } catch (aiError: any) {
       console.error('[ScriptBuilder] AI generation error:', aiError.message);
-      res.json({
-        success: true,
-        structure,
-        message: 'Template base caricato (errore AI)',
+      return res.status(500).json({
+        success: false,
+        error: 'Errore nella generazione AI. Riprova.',
+        details: aiError.message,
       });
     }
 
