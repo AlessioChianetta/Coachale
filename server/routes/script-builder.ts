@@ -237,7 +237,7 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
 
       const targetTypeLabel = isB2C ? 'B2C (Individui: atleti, studenti, pazienti, professionisti)' : 'B2B (Business: imprenditori, aziende)';
       
-      const b2cSpecificInstructions = isB2C ? `
+      const targetSpecificInstructions = isB2C ? `
 ## 🚨 ISTRUZIONI SPECIFICHE B2C - QUESTO È UN TARGET INDIVIDUALE! 🚨
 Stai personalizzando uno script per INDIVIDUI (atleti, studenti, pazienti, privati), NON per imprenditori!
 
@@ -262,7 +262,36 @@ Stai personalizzando uno script per INDIVIDUI (atleti, studenti, pazienti, priva
 - ❌ "Qual è il tuo fatturato mensile?" → ✅ "A che livello sei ora da 1 a 10?"
 - ❌ "Quanti clienti hai?" → ✅ "Quante ore dedichi a settimana a questo?"
 - ❌ "Problemi con il marketing?" → ✅ "Dove ti blocchi di più nel quotidiano?"
-` : '';
+` : `
+## 🚨 ISTRUZIONI SPECIFICHE B2B - QUESTO È UN TARGET BUSINESS! 🚨
+Stai personalizzando uno script per IMPRENDITORI e AZIENDE, NON per individui privati!
+
+⛔ NON USARE questi concetti personali/B2C:
+- Obiettivi personali generici, sogni vaghi
+- Livello personale 1-10
+- Tempo libero, hobby
+- Famiglia come supporto decisionale
+- Emozioni personali, autostima
+- Blocchi mentali personali
+
+✅ USA INVECE questi concetti B2B:
+- Fatturato mensile/annuale, revenue, margini
+- Numero clienti, lead, CAC, LTV, ticket medio
+- Marketing, advertising, funnel, conversioni
+- Team, dipendenti, collaboratori, struttura aziendale
+- Modello di business (B2B, B2C, servizi, prodotti)
+- ROI, investimenti, budget aziendale
+- Crescita aziendale, scalabilità, automazione
+
+📝 DOMANDE TIPICHE B2B:
+- "Qual è il tuo fatturato mensile attuale?"
+- "Quanti clienti acquisisci al mese?"
+- "Come funziona il tuo marketing attualmente?"
+- "Quante persone hai nel team?"
+- "Qual è il tuo ticket medio?"
+- "Dove investi di più: acquisizione o fidelizzazione?"
+- "Chi prende le decisioni di investimento nella tua azienda?"
+`;
 
       const baseContextPrompt = `## CONTEXT AGENTE:
 - Nome Business: ${agentContext.businessName || 'Non specificato'}
@@ -303,7 +332,7 @@ ${userComment ? `## ISTRUZIONI AGGIUNTIVE UTENTE:\n${userComment}\n` : ''}`;
           const phasePrompt = `Sei un esperto coach di vendita telefonica. Devi personalizzare UNA SINGOLA FASE di uno script di vendita.
 
 ## 🎯 TIPO DI TARGET: ${targetTypeLabel}
-${b2cSpecificInstructions}
+${targetSpecificInstructions}
 
 ${baseContextPrompt}
 
