@@ -76,6 +76,7 @@ export function ModeSelector() {
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [showAIDialog, setShowAIDialog] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ScriptType>('discovery');
+  const [templateTargetType, setTemplateTargetType] = useState<'b2b' | 'b2c'>('b2b');
   
   const [aiStep, setAiStep] = useState(1);
   const [aiTemplate, setAiTemplate] = useState<ScriptType>('discovery');
@@ -179,15 +180,8 @@ export function ModeSelector() {
         throw new Error('Stream non disponibile');
       }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        let eventType = '';
+      const processSSELines = (lines: string[], currentEventType: string) => {
+        let eventType = currentEventType;
         for (const line of lines) {
           if (line.startsWith('event: ')) {
             eventType = line.slice(7).trim();
@@ -196,11 +190,35 @@ export function ModeSelector() {
               const data = JSON.parse(line.slice(6));
               handleSSEEvent(eventType, data, scriptName);
             } catch (e) {
-              console.error('Error parsing SSE data:', e);
+              console.error('Error parsing SSE data:', e, 'Line:', line);
             }
             eventType = '';
           }
         }
+        return eventType;
+      };
+
+      let currentEventType = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          // Process any remaining data in buffer when stream ends
+          if (buffer.trim()) {
+            console.log('[SSE] Processing remaining buffer:', buffer);
+            const remainingLines = buffer.split('\n');
+            processSSELines(remainingLines, currentEventType);
+          }
+          console.log('[SSE] Stream ended');
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        currentEventType = processSSELines(lines, currentEventType);
       }
 
     } catch (error: any) {
@@ -218,8 +236,11 @@ export function ModeSelector() {
   };
 
   const handleSSEEvent = useCallback((eventType: string, data: any, scriptName: string) => {
+    console.log(`[SSE] Received event: ${eventType}`, data);
+    
     switch (eventType) {
       case 'connected':
+        console.log('[SSE] Connection established');
         setGenerationProgress(prev => ({
           ...prev,
           status: 'connecting',
@@ -227,6 +248,7 @@ export function ModeSelector() {
         break;
 
       case 'generationStarted':
+        console.log('[SSE] Generation started with phases:', data.totalPhases);
         setGenerationProgress(prev => ({
           ...prev,
           status: 'generating',
@@ -243,6 +265,7 @@ export function ModeSelector() {
         break;
 
       case 'phaseStarted':
+        console.log(`[SSE] Phase ${data.phaseIndex + 1} started: ${data.phaseName}`);
         setGenerationProgress(prev => ({
           ...prev,
           currentPhaseIndex: data.phaseIndex,
@@ -253,6 +276,7 @@ export function ModeSelector() {
         break;
 
       case 'phaseCompleted':
+        console.log(`[SSE] Phase ${data.phaseIndex + 1} completed: ${data.phaseName}`, data.stats);
         setGenerationProgress(prev => ({
           ...prev,
           completedCount: data.progress.completed,
@@ -275,6 +299,7 @@ export function ModeSelector() {
         break;
 
       case 'phaseFailed':
+        console.log(`[SSE] Phase ${data.phaseIndex + 1} failed: ${data.phaseName}`, data.error);
         setGenerationProgress(prev => ({
           ...prev,
           failedCount: data.progress.failed,
@@ -288,23 +313,39 @@ export function ModeSelector() {
         break;
 
       case 'generationCompleted':
-        setGeneratedStructure(data.structure);
-        setGenerationProgress(prev => ({
-          ...prev,
-          status: 'completed',
-          completedCount: data.stats.successfulPhases,
-          failedCount: data.stats.failedPhases,
-          totalTimeMs: Date.now() - generationStartTime,
-        }));
+        console.log('[SSE] ✅ GENERATION COMPLETED!', {
+          hasStructure: !!data.structure,
+          stats: data.stats,
+          phasesCount: data.structure?.phases?.length
+        });
+        if (data.structure) {
+          setGeneratedStructure(data.structure);
+        } else {
+          console.error('[SSE] WARNING: generationCompleted received but no structure in data!');
+        }
+        setGenerationProgress(prev => {
+          console.log('[SSE] Setting status to completed, previous status:', prev.status);
+          return {
+            ...prev,
+            status: 'completed',
+            completedCount: data.stats?.successfulPhases ?? prev.completedCount,
+            failedCount: data.stats?.failedPhases ?? prev.failedCount,
+            totalTimeMs: Date.now() - generationStartTime,
+          };
+        });
         break;
 
       case 'error':
+        console.error('[SSE] Error received:', data);
         setGenerationProgress(prev => ({
           ...prev,
           status: 'error',
           errorMessage: data.error || data.details || 'Errore sconosciuto',
         }));
         break;
+        
+      default:
+        console.log(`[SSE] Unknown event type: ${eventType}`, data);
     }
   }, [generationStartTime]);
 
@@ -354,11 +395,12 @@ export function ModeSelector() {
     builder.setIsLoading(true);
     builder.setMode('template');
     builder.setScriptType(selectedTemplate);
-    builder.setScriptName(`${SCRIPT_TYPE_LABELS[selectedTemplate]} - Nuovo`);
+    const targetLabel = templateTargetType === 'b2c' ? '(B2C)' : '(B2B)';
+    builder.setScriptName(`${SCRIPT_TYPE_LABELS[selectedTemplate]} ${targetLabel} - Nuovo`);
     
     try {
       const templateId = `${selectedTemplate}-base`;
-      const response = await fetch(`/api/script-builder/templates/${templateId}`, {
+      const response = await fetch(`/api/script-builder/templates/${templateId}?targetType=${templateTargetType}`, {
         headers: getAuthHeaders(),
       });
       if (response.ok) {
@@ -375,6 +417,7 @@ export function ModeSelector() {
     } finally {
       builder.setIsLoading(false);
       setShowTemplateDialog(false);
+      setTemplateTargetType('b2b'); // Reset to default
     }
   };
 
@@ -422,36 +465,82 @@ export function ModeSelector() {
               Scegli Template Base
             </DialogTitle>
             <DialogDescription>
-              Seleziona il tipo di script da cui partire. Potrai personalizzarlo completamente.
+              Seleziona il tipo di script e il target da cui partire. Potrai personalizzarlo completamente.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Label>Tipo di Script</Label>
-            <Select value={selectedTemplate} onValueChange={(v) => setSelectedTemplate(v as ScriptType)}>
-              <SelectTrigger className="mt-2">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="discovery">
-                  <div className="flex items-center gap-2">
-                    <span>🔍</span>
-                    <span>Discovery Call - Qualifica iniziale</span>
+          <div className="py-4 space-y-6">
+            <div className="space-y-2">
+              <Label>Tipo di Script</Label>
+              <Select value={selectedTemplate} onValueChange={(v) => setSelectedTemplate(v as ScriptType)}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="discovery">
+                    <div className="flex items-center gap-2">
+                      <span>🔍</span>
+                      <span>Discovery Call - Qualifica iniziale</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="demo">
+                    <div className="flex items-center gap-2">
+                      <span>🎬</span>
+                      <span>Demo Call - Presentazione offerta</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="objections">
+                    <div className="flex items-center gap-2">
+                      <span>💬</span>
+                      <span>Gestione Obiezioni - Risposte comuni</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Tipo di Target</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTemplateTargetType('b2b')}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                    templateTargetType === 'b2b'
+                      ? 'border-green-600 bg-green-50 dark:bg-green-950/30'
+                      : 'border-muted hover:border-muted-foreground/30'
+                  }`}
+                >
+                  <Building2 className={`h-6 w-6 ${templateTargetType === 'b2b' ? 'text-green-600' : 'text-muted-foreground'}`} />
+                  <div className="text-center">
+                    <div className={`font-medium text-sm ${templateTargetType === 'b2b' ? 'text-green-700 dark:text-green-300' : ''}`}>
+                      B2B - Business
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Imprenditori, aziende, professionisti con business
+                    </div>
                   </div>
-                </SelectItem>
-                <SelectItem value="demo">
-                  <div className="flex items-center gap-2">
-                    <span>🎬</span>
-                    <span>Demo Call - Presentazione offerta</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTemplateTargetType('b2c')}
+                  className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                    templateTargetType === 'b2c'
+                      ? 'border-green-600 bg-green-50 dark:bg-green-950/30'
+                      : 'border-muted hover:border-muted-foreground/30'
+                  }`}
+                >
+                  <Users className={`h-6 w-6 ${templateTargetType === 'b2c' ? 'text-green-600' : 'text-muted-foreground'}`} />
+                  <div className="text-center">
+                    <div className={`font-medium text-sm ${templateTargetType === 'b2c' ? 'text-green-700 dark:text-green-300' : ''}`}>
+                      B2C - Individui
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Atleti, studenti, pazienti, privati
+                    </div>
                   </div>
-                </SelectItem>
-                <SelectItem value="objections">
-                  <div className="flex items-center gap-2">
-                    <span>💬</span>
-                    <span>Gestione Obiezioni - Risposte comuni</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+                </button>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>

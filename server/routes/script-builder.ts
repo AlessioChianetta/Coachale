@@ -57,6 +57,10 @@ router.get('/templates', requireClient, async (req: AuthRequest, res: Response) 
 router.get('/templates/:templateId', requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const { templateId } = req.params;
+    const targetType = req.query.targetType as string || 'b2b';
+    const isB2C = targetType === 'b2c';
+    
+    console.log(`📄 [ScriptBuilder] Loading template: ${templateId}, targetType: ${targetType}`);
     
     const template = AVAILABLE_TEMPLATES.find(t => t.id === templateId);
     if (!template) {
@@ -66,24 +70,29 @@ router.get('/templates/:templateId', requireClient, async (req: AuthRequest, res
     let content: string;
     switch (template.type) {
       case 'discovery':
-        content = getDiscoveryScript();
+        content = isB2C ? getDiscoveryScriptB2C() : getDiscoveryScript();
         break;
       case 'demo':
-        content = getDemoScript('Il Tuo Business', 'Il Tuo Nome', [], [], null);
+        content = isB2C 
+          ? getDemoScriptB2C('Il Tuo Business', 'Il Tuo Nome', [], [], null)
+          : getDemoScript('Il Tuo Business', 'Il Tuo Nome', [], [], null);
         break;
       case 'objections':
-        content = getObjectionsScript();
+        content = isB2C ? getObjectionsScriptB2C() : getObjectionsScript();
         break;
       default:
         return res.status(400).json({ error: 'Tipo template non valido' });
     }
 
     const structure = parseTextToBlocks(content, template.type);
+    
+    console.log(`✅ [ScriptBuilder] Template loaded: ${template.type} (${isB2C ? 'B2C' : 'B2B'}), phases: ${structure.phases?.length || 0}`);
 
     res.json({
       ...template,
       content,
       structure,
+      targetType,
     });
   } catch (error) {
     console.error('Error fetching template:', error);
@@ -138,18 +147,25 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
 
     const sendSSE = (event: string, data: any) => {
       if (useSSE && !res.writableEnded) {
-        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+        res.write(message);
+        // Force flush to prevent buffering - send events immediately
+        if (typeof (res as any).flush === 'function') {
+          (res as any).flush();
+        }
+        console.log(`📤 [SSE] Sent event: ${event}`);
       }
     };
 
     if (useSSE) {
       res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
+      res.setHeader('Transfer-Encoding', 'chunked');
       res.flushHeaders();
       
-      sendSSE('connected', { message: 'Connessione SSE stabilita' });
+      sendSSE('connected', { message: 'Connessione SSE stabilita', timestamp: Date.now() });
     }
 
     if (!templateId || !agentId) {
@@ -475,11 +491,11 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
             console.log(`   📏 Lunghezza prompt: ${phasePrompt.length} caratteri`);
 
             const result = await aiProvider.client.generateContent({
-              model: 'gemini-2.5-pro',
+              model: 'gemini-2.5-flash',
               contents: [{ role: 'user', parts: [{ text: phasePrompt }] }],
               generationConfig: {
                 temperature: 0.5,
-                maxOutputTokens: 16384,
+                maxOutputTokens: 20384,
                 responseMimeType: 'application/json',
               },
             });
