@@ -3511,7 +3511,7 @@ ${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                           
                           await salesTracker.addReasoning('sales_manager_feedback', 
-                            `SalesManager feedback BUFFERED (${feedback.type}/${feedback.priority}): ${feedback.message}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
+                            `SalesManager feedback BUFFERED (${analysis.feedbackForAgent.type}/${analysis.feedbackForAgent.priority}): ${analysis.feedbackForAgent.message}${analysis.feedbackForAgent.toneReminder ? ` | Tone: ${analysis.feedbackForAgent.toneReminder}` : ''}`
                           );
                         }
                         
@@ -3540,7 +3540,7 @@ ${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
                             currentStep: state.currentStep,
                             checkpointStatus,
                             reasoning: stepResult.reasoning || analysisLog,
-                            feedback: feedback ? `${feedback.type}: ${feedback.message}` : undefined,
+                            feedback: analysis.feedbackForAgent ? `${analysis.feedbackForAgent.type}: ${analysis.feedbackForAgent.message}` : undefined,
                             shouldAdvance: stepResult.shouldAdvance,
                             confidence: stepResult.confidence,
                           }
