@@ -154,6 +154,7 @@ export function ModeSelector() {
     const scriptName = `${SCRIPT_TYPE_LABELS[aiTemplate]} - ${selectedAgent?.businessName || 'AI'}`;
 
     try {
+      // Start generation and get generationId
       const response = await fetch('/api/script-builder/ai-generate', {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
@@ -164,7 +165,7 @@ export function ModeSelector() {
           scriptType: aiTemplate,
           scriptName,
           targetType,
-          useSSE: true,
+          usePolling: true,
         }),
       });
 
@@ -172,54 +173,65 @@ export function ModeSelector() {
         throw new Error('Errore nella connessione');
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      const { generationId, totalPhases: initialTotalPhases } = await response.json();
+      console.log('[Polling] Generation started, ID:', generationId, 'Total phases:', initialTotalPhases);
 
-      if (!reader) {
-        throw new Error('Stream non disponibile');
-      }
+      // Start polling for updates
+      const pollInterval = 1000; // 1 second
+      let isPolling = true;
 
-      const processSSELines = (lines: string[], currentEventType: string) => {
-        let eventType = currentEventType;
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            eventType = line.slice(7).trim();
-          } else if (line.startsWith('data: ') && eventType) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              handleSSEEvent(eventType, data, scriptName);
-            } catch (e) {
-              console.error('Error parsing SSE data:', e, 'Line:', line);
+      const pollStatus = async () => {
+        while (isPolling) {
+          try {
+            const statusRes = await fetch(`/api/script-builder/generation-status/${generationId}`, {
+              headers: getAuthHeaders(),
+            });
+
+            if (!statusRes.ok) {
+              console.error('[Polling] Status fetch failed:', statusRes.status);
+              await new Promise(r => setTimeout(r, pollInterval));
+              continue;
             }
-            eventType = '';
+
+            const status = await statusRes.json();
+            console.log('[Polling] Status update:', status.status, 'completed:', status.completedCount, '/', status.totalPhases);
+
+            // Update progress state
+            setGenerationProgress(prev => ({
+              ...prev,
+              status: status.status,
+              totalPhases: status.totalPhases,
+              currentPhaseIndex: status.currentPhaseIndex,
+              phases: status.phases || prev.phases,
+              completedCount: status.completedCount,
+              failedCount: status.failedCount,
+              totalTimeMs: Date.now() - generationStartTime,
+              errorMessage: status.errorMessage,
+            }));
+
+            // If completed or error, stop polling and handle result
+            if (status.status === 'completed') {
+              isPolling = false;
+              if (status.structure) {
+                console.log('[Polling] Generation completed, structure received');
+                setGeneratedStructure(status.structure);
+              }
+              break;
+            } else if (status.status === 'error') {
+              isPolling = false;
+              console.error('[Polling] Generation error:', status.errorMessage);
+              break;
+            }
+
+            await new Promise(r => setTimeout(r, pollInterval));
+          } catch (pollError) {
+            console.error('[Polling] Poll error:', pollError);
+            await new Promise(r => setTimeout(r, pollInterval * 2));
           }
         }
-        return eventType;
       };
 
-      let currentEventType = '';
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) {
-          // Process any remaining data in buffer when stream ends
-          if (buffer.trim()) {
-            console.log('[SSE] Processing remaining buffer:', buffer);
-            const remainingLines = buffer.split('\n');
-            processSSELines(remainingLines, currentEventType);
-          }
-          console.log('[SSE] Stream ended');
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        
-        currentEventType = processSSELines(lines, currentEventType);
-      }
+      await pollStatus();
 
     } catch (error: any) {
       console.error('AI generation error:', error);

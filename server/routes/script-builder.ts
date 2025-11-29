@@ -8,10 +8,52 @@ import { AuthRequest, requireRole } from '../middleware/auth';
 import { parseTextToBlocks } from '../../shared/script-parser';
 import type { ScriptBlockStructure } from '../../shared/script-blocks';
 import { getAIProvider } from '../ai/provider-factory';
+import { randomBytes } from 'crypto';
 
 const router = Router();
 
 const requireClient = requireRole('client');
+
+// In-memory storage for generation progress (polling-based approach)
+interface GenerationState {
+  clientId: string;
+  status: 'connecting' | 'generating' | 'completed' | 'error';
+  totalPhases: number;
+  currentPhaseIndex: number;
+  phases: Array<{
+    index: number;
+    name: string;
+    number: string;
+    stepsCount: number;
+    hasCheckpoint: boolean;
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    stats?: {
+      stepsModified: number;
+      totalSteps: number;
+      questionsModified: number;
+      timeMs: number;
+    };
+    error?: string;
+  }>;
+  completedCount: number;
+  failedCount: number;
+  structure?: any;
+  errorMessage?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+const generationStates = new Map<string, GenerationState>();
+
+// Cleanup old generation states (older than 30 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, state] of generationStates.entries()) {
+    if (now - state.createdAt > 30 * 60 * 1000) {
+      generationStates.delete(id);
+    }
+  }
+}, 5 * 60 * 1000);
 
 interface TemplateInfo {
   id: string;
@@ -129,59 +171,64 @@ router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => 
   }
 });
 
+// Polling endpoint for generation progress
+router.get('/generation-status/:generationId', requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const { generationId } = req.params;
+    const clientId = req.user!.id;
+    
+    const state = generationStates.get(generationId);
+    
+    if (!state) {
+      return res.status(404).json({ error: 'Generazione non trovata' });
+    }
+    
+    if (state.clientId !== clientId) {
+      return res.status(403).json({ error: 'Non autorizzato' });
+    }
+    
+    res.json({
+      status: state.status,
+      totalPhases: state.totalPhases,
+      currentPhaseIndex: state.currentPhaseIndex,
+      phases: state.phases,
+      completedCount: state.completedCount,
+      failedCount: state.failedCount,
+      structure: state.structure,
+      errorMessage: state.errorMessage,
+    });
+  } catch (error) {
+    console.error('Error fetching generation status:', error);
+    res.status(500).json({ error: 'Errore nel recupero dello stato' });
+  }
+});
+
 router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const clientId = req.user!.id;
-    const { templateId, agentId, userComment, targetType, useSSE } = req.body;
+    const { templateId, agentId, userComment, targetType, usePolling } = req.body;
     const isB2C = targetType === 'b2c';
 
+    // Generate a unique ID for this generation
+    const generationId = randomBytes(16).toString('hex');
+    
     console.log('\n' + '═'.repeat(80));
     console.log('🚀 [ScriptBuilder] INIZIO GENERAZIONE AI FASE-PER-FASE');
     console.log('═'.repeat(80));
+    console.log(`🆔 Generation ID: ${generationId}`);
     console.log(`📋 Template: ${templateId}`);
     console.log(`👤 Agent ID: ${agentId}`);
     console.log(`🎯 Target Type: ${isB2C ? 'B2C (Individui)' : 'B2B (Business)'}`);
     console.log(`💬 User Comment: ${userComment || 'Nessuno'}`);
-    console.log(`📡 SSE Mode: ${useSSE ? 'Sì' : 'No'}`);
+    console.log(`📡 Polling Mode: ${usePolling ? 'Sì' : 'No'}`);
     console.log('─'.repeat(80));
 
-    const sendSSE = (event: string, data: any) => {
-      if (useSSE && !res.writableEnded) {
-        const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-        res.write(message);
-        // Force flush to prevent buffering - send events immediately
-        if (typeof (res as any).flush === 'function') {
-          (res as any).flush();
-        }
-        console.log(`📤 [SSE] Sent event: ${event}`);
-      }
-    };
-
-    if (useSSE) {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache, no-transform');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no');
-      res.setHeader('Transfer-Encoding', 'chunked');
-      res.flushHeaders();
-      
-      sendSSE('connected', { message: 'Connessione SSE stabilita', timestamp: Date.now() });
-    }
-
     if (!templateId || !agentId) {
-      if (useSSE) {
-        sendSSE('error', { error: 'templateId e agentId sono obbligatori' });
-        return res.end();
-      }
       return res.status(400).json({ error: 'templateId e agentId sono obbligatori' });
     }
 
     const template = AVAILABLE_TEMPLATES.find(t => t.id === templateId);
     if (!template) {
-      if (useSSE) {
-        sendSSE('error', { error: 'Template non trovato' });
-        return res.end();
-      }
       return res.status(404).json({ error: 'Template non trovato' });
     }
 
@@ -194,21 +241,12 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
       ));
 
     if (!agent) {
-      if (useSSE) {
-        sendSSE('error', { error: 'Agente non trovato' });
-        return res.end();
-      }
       return res.status(404).json({ error: 'Agente non trovato' });
     }
 
     console.log(`✅ Agent trovato: ${agent.displayName || agent.agentName}`);
     console.log(`   Business: ${agent.businessName}`);
     console.log(`   Target: ${agent.targetClient}`);
-
-    sendSSE('agentLoaded', { 
-      agentName: agent.displayName || agent.agentName,
-      businessName: agent.businessName 
-    });
 
     const consultantId = agent.consultantId;
 
@@ -238,10 +276,6 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
         content = isB2C ? getObjectionsScriptB2C() : getObjectionsScript();
         break;
       default:
-        if (useSSE) {
-          sendSSE('error', { error: 'Tipo template non valido' });
-          return res.end();
-        }
         return res.status(400).json({ error: 'Tipo template non valido' });
     }
     
@@ -274,25 +308,57 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
       guarantees: agent.guarantees,
     };
 
-    try {
-      console.log('\n🔌 Connessione AI Provider...');
-      const aiProvider = await getAIProvider(clientId, consultantId);
-      
-      if (!aiProvider) {
-        console.log('⚠️ Nessun AI provider disponibile, ritorno template base');
-        const fallbackResult = {
-          success: true,
-          structure,
-          message: 'Template base caricato (AI non disponibile)',
-        };
-        if (useSSE) {
-          sendSSE('generationCompleted', fallbackResult);
-          return res.end();
-        }
-        return res.json(fallbackResult);
-      }
+    // Initialize generation state for polling
+    const initialPhases = structure.phases?.map((p, idx) => ({
+      index: idx,
+      name: p.name,
+      number: p.number || String(idx + 1),
+      stepsCount: p.steps?.length || 0,
+      hasCheckpoint: !!p.checkpoint,
+      status: 'pending' as const,
+    })) || [];
 
-      console.log(`✅ AI Provider: ${aiProvider.metadata.name} (${aiProvider.source})`);
+    const generationState: GenerationState = {
+      clientId,
+      status: 'connecting',
+      totalPhases,
+      currentPhaseIndex: -1,
+      phases: initialPhases,
+      completedCount: 0,
+      failedCount: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    
+    generationStates.set(generationId, generationState);
+    
+    // Respond immediately with generationId - client will poll for updates
+    res.json({ generationId, totalPhases });
+    
+    // Update state helper
+    const updateState = (updates: Partial<GenerationState>) => {
+      const state = generationStates.get(generationId);
+      if (state) {
+        Object.assign(state, updates, { updatedAt: Date.now() });
+      }
+    };
+
+    // Run generation in background (not awaited)
+    (async () => {
+      try {
+        console.log('\n🔌 Connessione AI Provider...');
+        const aiProvider = await getAIProvider(clientId, consultantId);
+        
+        if (!aiProvider) {
+          console.log('⚠️ Nessun AI provider disponibile, ritorno template base');
+          updateState({
+            status: 'completed',
+            structure,
+          });
+          return;
+        }
+
+        console.log(`✅ AI Provider: ${aiProvider.metadata.name} (${aiProvider.source})`);
 
       const targetTypeLabel = isB2C ? 'B2C (Individui: atleti, studenti, pazienti, professionisti)' : 'B2B (Business: imprenditori, aziende)';
       
@@ -376,18 +442,8 @@ ${userComment ? `## ISTRUZIONI AGGIUNTIVE UTENTE:\n${userComment}\n` : ''}`;
       let failedPhases = 0;
       const phaseResults: { phase: string; success: boolean; error?: string; stepsModified?: number; questionsModified?: number }[] = [];
 
-      sendSSE('generationStarted', {
-        totalPhases,
-        templateType: template.type,
-        targetType: isB2C ? 'B2C' : 'B2B',
-        phases: structure.phases?.map((p, idx) => ({
-          index: idx,
-          name: p.name,
-          number: p.number,
-          stepsCount: p.steps?.length || 0,
-          hasCheckpoint: !!p.checkpoint
-        }))
-      });
+      // Update state to generating
+      updateState({ status: 'generating' });
 
       if (structure.phases) {
         for (let phaseIndex = 0; phaseIndex < structure.phases.length; phaseIndex++) {
@@ -401,14 +457,15 @@ ${userComment ? `## ISTRUZIONI AGGIUNTIVE UTENTE:\n${userComment}\n` : ''}`;
           console.log(`   📝 Steps: ${phase.steps?.length || 0}`);
           console.log(`   ✓ Checkpoint: ${phase.checkpoint ? 'Sì' : 'No'}`);
 
-          sendSSE('phaseStarted', {
-            phaseIndex,
-            phaseName: phase.name,
-            phaseNumber: phase.number,
-            totalPhases,
-            stepsCount: phase.steps?.length || 0,
-            hasCheckpoint: !!phase.checkpoint
-          });
+          // Update phase to in_progress
+          const currentState = generationStates.get(generationId);
+          if (currentState) {
+            currentState.currentPhaseIndex = phaseIndex;
+            currentState.phases = currentState.phases.map((p, idx) =>
+              idx === phaseIndex ? { ...p, status: 'in_progress' as const } : p
+            );
+            currentState.updatedAt = Date.now();
+          }
 
           const phasePrompt = `Sei un esperto coach di vendita telefonica. Devi personalizzare UNA SINGOLA FASE di uno script di vendita.
 
@@ -629,23 +686,24 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
               questionsModified
             });
 
-            sendSSE('phaseCompleted', {
-              phaseIndex,
-              phaseName: phase.name,
-              phaseNumber: phase.number,
-              success: true,
-              stats: {
-                stepsModified,
-                totalSteps: phase.steps?.length || 0,
-                questionsModified,
-                timeMs: responseTime
-              },
-              progress: {
-                completed: successfulPhases,
-                failed: failedPhases,
-                total: totalPhases
-              }
-            });
+            // Update phase to completed
+            const stateAfterComplete = generationStates.get(generationId);
+            if (stateAfterComplete) {
+              stateAfterComplete.completedCount = successfulPhases;
+              stateAfterComplete.phases = stateAfterComplete.phases.map((p, idx) =>
+                idx === phaseIndex ? {
+                  ...p,
+                  status: 'completed' as const,
+                  stats: {
+                    stepsModified,
+                    totalSteps: phase.steps?.length || 0,
+                    questionsModified,
+                    timeMs: responseTime
+                  }
+                } : p
+              );
+              stateAfterComplete.updatedAt = Date.now();
+            }
 
           } catch (phaseError: any) {
             console.log(`   ❌ ERRORE FASE #${phase.number}: ${phaseError.message}`);
@@ -656,17 +714,15 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
               error: phaseError.message
             });
 
-            sendSSE('phaseFailed', {
-              phaseIndex,
-              phaseName: phase.name,
-              phaseNumber: phase.number,
-              error: phaseError.message,
-              progress: {
-                completed: successfulPhases,
-                failed: failedPhases,
-                total: totalPhases
-              }
-            });
+            // Update phase to failed
+            const stateAfterFail = generationStates.get(generationId);
+            if (stateAfterFail) {
+              stateAfterFail.failedCount = failedPhases;
+              stateAfterFail.phases = stateAfterFail.phases.map((p, idx) =>
+                idx === phaseIndex ? { ...p, status: 'failed' as const, error: phaseError.message } : p
+              );
+              stateAfterFail.updatedAt = Date.now();
+            }
           }
 
           if (phaseIndex < structure.phases.length - 1) {
@@ -694,44 +750,32 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
         await aiProvider.cleanup();
       }
 
-      const finalResult = {
-        success: true,
+      // Update final state to completed
+      updateState({
+        status: 'completed',
         structure,
-        message: `Script personalizzato: ${successfulPhases}/${totalPhases} fasi completate`,
-        stats: {
-          totalPhases,
-          successfulPhases,
-          failedPhases,
-          phaseResults
-        }
-      };
+        completedCount: successfulPhases,
+        failedCount: failedPhases,
+      });
 
-      if (useSSE) {
-        sendSSE('generationCompleted', finalResult);
-        res.end();
-      } else {
-        res.json(finalResult);
-      }
+      console.log(`✅ [ScriptBuilder] Generation ${generationId} completed`);
 
     } catch (aiError: any) {
       console.error('\n❌ [ScriptBuilder] ERRORE CRITICO:', aiError.message);
       console.error(aiError.stack);
       
-      if (useSSE && !res.writableEnded) {
-        sendSSE('error', {
-          success: false,
-          error: 'Errore nella generazione AI. Riprova.',
-          details: aiError.message,
-        });
-        res.end();
-      } else if (!res.headersSent) {
-        return res.status(500).json({
-          success: false,
-          error: 'Errore nella generazione AI. Riprova.',
-          details: aiError.message,
-        });
-      }
+      updateState({
+        status: 'error',
+        errorMessage: aiError.message || 'Errore nella generazione AI',
+      });
     }
+    })().catch(err => {
+      console.error('[ScriptBuilder] Background generation error:', err);
+      updateState({
+        status: 'error',
+        errorMessage: err.message || 'Errore nella generazione AI',
+      });
+    });
 
   } catch (error: any) {
     console.error('\n❌ [ScriptBuilder] Errore generale:', error);
