@@ -58,7 +58,7 @@ Mindset: NON C'È NESSUNO PIÙ ENERGICO DI TE ADESSO!
 
 📌 DOMANDA: "Ok [NOME_PROSPECT], per ottimizzare i tempi di entrambi, ti spiego come funziona:
 
-Ti farò alcune domande per capire la tua attività, il tuo modello di business 
+Ti farò alcune domande per capire la tua situazione attuale, i tuoi obiettivi 
 e le difficoltà che stai incontrando.
 
 In base alle tue risposte, farò una prima analisi: se capisco che possiamo davvero 
@@ -126,14 +126,14 @@ Mindset: Sei un detective curioso - vuoi CAPIRE il vero problema!
 🎧 ASCOLTA con attenzione - Nota le parole ESATTE che usano
 💬 REAGISCI: "Interessante!" / "Capisco!"
 
-📌 DOMANDA (SE NON È CHIARO): "Okay, qual è IL problema principale che stai cercando di risolvere?"
+📌 DOMANDA (SE NON È CHIARO): "Okay, qual è IL problema principale che stai cercando di risolvere nella tua vita oggi?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA attentamente
 💬 REAGISCI: "Ok, capisco!"
 
 📌 DOMANDA (SE RISPONDE SOLO "CURIOSITÀ"): "Guarda [NOME_PROSPECT], voglio capire davvero 
 se e come posso esserti utile. Raccontami in modo semplice: cosa ti ha colpito o quale 
-problema stai cercando di risolvere? Spesso la curiosità nasce da un'esigenza specifica."
+situazione personale stai cercando di cambiare? Spesso la curiosità nasce da un desiderio specifico."
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA profondamente
 💬 REAGISCI: "Interessante! Fammi capire meglio..."
@@ -161,13 +161,13 @@ LIVELLO 1: CHIARIFICAZIONE
 🎧 ASCOLTA attentamente
 💬 REAGISCI: "Capisco!"
 
-📚 ESEMPI PRATICI:
-Cliente dice: "Ho problemi con il marketing"
-✅ Tu dici: "Scava con me: cosa intendi ESATTAMENTE per 'problemi con il marketing'?"
-Cliente dice: "Non riesco a trovare clienti"
-✅ Tu dici: "E cosa intendi per 'non riesco a trovare clienti'? Che succede?"
-Cliente dice: "Il business non cresce"
-✅ Tu dici: "Interessante! Cosa intendi quando dici che 'non cresce'?"
+📚 ESEMPI PRATICI (B2C):
+Cliente dice: "Voglio rimettermi in forma"
+✅ Tu dici: "Scava con me: cosa intendi ESATTAMENTE per 'rimetterti in forma'?"
+Cliente dice: "Voglio gestire meglio i soldi"
+✅ Tu dici: "E cosa intendi per 'gestire meglio'? Che succede oggi?"
+Cliente dice: "Mi sento bloccato"
+✅ Tu dici: "Interessante! Cosa intendi quando dici che ti senti 'bloccato'?"
 ❌ NON dire: "Cosa intendi per...?" (e fermarti senza completare!)
 
 LIVELLO 2: PRIMO SCAVO
@@ -178,20 +178,20 @@ LIVELLO 2: PRIMO SCAVO
 
 LIVELLO 3: SCAVO PROFONDO (emotivo)
 📌 DOMANDA: "Interessante. Ma dimmi: cosa succede VERAMENTE se questo problema 
-non si risolve? Quali conseguenze concrete per te?"
+non si risolve? Quali conseguenze ha sulla tua vita quotidiana?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA profondamente
 💬 REAGISCI: "Capisco, dev'essere difficile..."
 
-LIVELLO 4: TECNICO (solo se è problema tecnico/business)
-📌 DOMANDA: "Ok, e a livello PRATICO, dove si blocca esattamente? 
-Qual è il punto critico del processo?"
+LIVELLO 4: PRATICO (impatto sulle giornate)
+📌 DOMANDA: "Ok, e nel quotidiano, dove ti blocchi esattamente? 
+Qual è il momento della giornata più difficile?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA i dettagli tecnici
+🎧 ASCOLTA i dettagli pratici
 💬 REAGISCI: "Interessante!"
 
 LIVELLO 5: EMOTIVO FINALE
-📌 DOMANDA: "E questo cosa significa per te PERSONALMENTE?"
+📌 DOMANDA: "E questo cosa significa per te, per la tua autostima o le tue relazioni?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA le emozioni
 💬 REAGISCI con empatia
@@ -205,12 +205,12 @@ LIVELLO 6: EVENTO SCATENANTE (opzionale ma potente)
 🛑 FERMATI QUANDO:
 ✅ Il prospect si emoziona
 ✅ Racconta dettagli personali/intimi
-✅ La risposta è SPECIFICA e CONCRETA (numeri, fatti, esempi)
+✅ La risposta è SPECIFICA e CONCRETA (kg, episodi, litigi, rinunce)
 ✅ Vedi frustrazione/dolore reale nella voce
 
 ❌ NON FERMARTI se dice:
 "Boh, non lo so" → INSISTI: "Pensiamoci insieme! Anche un'idea approssimativa mi aiuta..."
-"Sono bloccato" → CHIEDI: "Bloccato dove ESATTAMENTE? Cosa succede?"
+"Non riesco a spiegarlo" → CHIEDI: "Provaci, come ti fa sentire?"
 Risposte VAGHE → CONTINUA a scavare con empatia
 
 💡 FRASI UTILI PER INSISTERE CON EMPATIA:
@@ -237,7 +237,7 @@ Questo è CRITICO per creare contrasto e posizionare la tua soluzione come diver
 ❌ NON SALTARE QUESTA FASE SE NON HAI CAPITO IL PATTERN DEI FALLIMENTI!
 
 LIVELLO 1: COSA HANNO PROVATO
-📌 DOMANDA: "E cosa hai già provato?"
+📌 DOMANDA: "E cosa hai già provato?" (Corsi, diete, libri, fai-da-te?)
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA attentamente
 💬 REAGISCI: "Capisco!"
@@ -261,7 +261,7 @@ LIVELLO 4: ANALISI DEL FALLIMENTO
 💬 REAGISCI: "Capisco, succede spesso..."
 
 💡 NOTA: Se è una persona che pensa di aver fatto tutto giusto, chiedi invece:
-"E secondo te cosa è mancato per raggiungere il risultato che volevi?"
+"E secondo te cosa è mancato per farti sentire soddisfatto?"
 
 LIVELLO 5: SCAVO PROFONDO (opzionale)
 📌 DOMANDA: "E qual è stata LA cosa che proprio non andava?"
@@ -292,12 +292,12 @@ Se è veramente un novizio totale:
 **STEP 5 - PERSISTENZA**
 🎯 OBIETTIVO: Capire da quanto tempo combatte questo problema (più tempo = più frustrazione)
 
-📌 DOMANDA: "E da quanto tempo ci stai provando?"
+📌 DOMANDA: "E da quanto tempo ci stai provando / sei in questa situazione?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA - Memorizza la durata (importante per amplificare frustrazione)
 💬 REAGISCI: "Capisco..." / "Parecchio tempo!"
 
-📌 DOMANDA: "E cosa è successo in quel periodo che ti ha fatto iniziare?"
+📌 DOMANDA: "E cosa è successo in quel periodo che ti ha fatto iniziare a pensarci?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA l'evento scatenante
 💬 REAGISCI: "Ha senso!"
@@ -307,12 +307,12 @@ Se è veramente un novizio totale:
 **STEP 6 - INVESTIMENTI**
 🎯 OBIETTIVO: Capire investimenti passati (€, tempo, energie) per creare contrasto
 
-📌 DOMANDA: "E quanto hai già investito finora? Tempo, soldi?"
+📌 DOMANDA: "E quanto hai già investito finora su te stesso? Tempo, soldi, tentativi?"
 ⏸️ ASPETTA LA RISPOSTA - Nota soldi E tempo
 🎧 ASCOLTA con attenzione - Questo è oro per la demo
 💬 REAGISCI: "Capisco!" / "Ha senso!"
 
-📌 DOMANDA: "E cosa ti ha convinto a investire in [soluzione]?"
+📌 DOMANDA: "E cosa ti ha convinto a investire in [soluzione passata]?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA le motivazioni
 💬 REAGISCI: "Interessante!"
@@ -326,8 +326,8 @@ Se è veramente un novizio totale:
 PRIMA DI PASSARE ALLA FASE #3 VERIFICA:
 
 ✓ Sai IL problema principale che vuole risolvere?
-✓ È SPECIFICO e CONCRETO (non vago tipo "crescere" / "problemi generici")?
-✓ Sai di cosa si occupa (business/attività)?
+✓ È SPECIFICO e CONCRETO (non vago tipo "migliorare" / "stare bene")?
+✓ Sai cosa fa nella vita (situazione personale)?
 ✓ Hai scavato con 3-5 perché se la risposta era vaga?
 ✓ Capisci il VERO dolore dietro il problema?
 ✓ Sai cosa hanno già provato e perché ha fallito?
@@ -349,7 +349,7 @@ GIUSTA. Dammi ancora 1 minuto, concordi?"
 🚨 REMINDER CRITICO 🚨
 ⛔ NON PARLARE DI APPUNTAMENTO ORA! ⛔
 Mancano ancora:
-- FASE #3 (Info Business)
+- FASE #3 (Info Personali)
 - FASE #4 (Inquisitorio)
 - FASE #5 (Stretch The Gap)
 - FASE #6 (Qualificazione)
@@ -363,8 +363,8 @@ Continua con le domande - ogni fase è ORO per la vendita!
 ---
 
 ════════════════════════════════════════════════════════════════════════════════
-**FASE #3 - INFO BUSINESS**
-**Comprendi il Business (domande rapide e mirate)**
+**FASE #3 - INFO PERSONALI**
+**Comprendi la Situazione Personale (domande rapide e mirate)**
 ════════════════════════════════════════════════════════════════════════════════
 
 ⚡ ENERGIA E TONALITÀ
@@ -379,8 +379,8 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 
 ---
 
-**STEP 7 - RACCOGLI INFO BUSINESS**
-🎯 OBIETTIVO: Comprendere attività, modello business e numeri chiave
+**STEP 7 - RACCOGLI INFO SITUAZIONE**
+🎯 OBIETTIVO: Comprendere stile di vita, contesto e disponibilità
 
 ⚠️ USA L'INTELLIGENZA - NON fare domande robotiche!
 ✅ SE ha già detto qualcosa → Conferma e approfondisci:
@@ -388,57 +388,47 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 ✅ SE non hai l'info → Chiedi normalmente
 ❌ MAI chiedere cose già dette - sembri un robot!
 
-📌 DOMANDA: "Chi aiuti esattamente?"
+📌 DOMANDA: "Cosa fai nella vita? Lavoro, studi?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il target
+🎧 ASCOLTA il contesto
 💬 REAGISCI: "Interessante!"
 
-📌 DOMANDA: "Modello di business? Ricorrente, una tantum, pacchetti?"
+📌 DOMANDA: "Come organizzi le tue giornate solitamente?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il modello
+🎧 ASCOLTA la routine
 💬 REAGISCI: "Capisco!"
 
-📌 DOMANDA: "Da quanti anni?"
+📌 DOMANDA: "Da quanti anni sei in questa situazione?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA l'esperienza
 💬 REAGISCI: "Perfetto!"
 
-📌 DOMANDA: "B2B o B2C?"
+📌 DOMANDA: "Quanto tempo libero hai realmente a disposizione?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la tipologia
+🎧 ASCOLTA la disponibilità
 💬 REAGISCI: "Ok!"
 
-📌 DOMANDA: "Quanti clienti hai ora?"
+📌 DOMANDA: "Hai supporto da famiglia/partner o sei solo in questo?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il numero
+🎧 ASCOLTA l'ambiente circostante
 💬 REAGISCI: "Capisco!"
 
-📌 DOMANDA: "Ticket medio?"
+📌 DOMANDA: "Livello di stress attuale da 1 a 10?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il valore
 💬 REAGISCI: "Interessante!"
 
-📌 DOMANDA: "Hai collaboratori? Commerciali?"
+📌 DOMANDA: "Dove cerchi informazioni solitamente (social, libri, amici)?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la struttura
+🎧 ASCOLTA le fonti
 💬 REAGISCI: "Perfetto!"
 
-📌 DOMANDA: "Chi si occupa di marketing?"
+📌 DOMANDA: "Qual è l'ostacolo più grande che trovi ogni giorno?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA chi gestisce
+🎧 ASCOLTA il blocco quotidiano
 💬 REAGISCI: "Capisco!"
 
-📌 DOMANDA: "Come generi clienti in target adesso?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA i canali attuali
-💬 REAGISCI: "Interessante!"
-
-📌 DOMANDA: "Sai il tuo CAC (costo acquisizione cliente)?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA se lo conoscono
-💬 REAGISCI: "Ok, capisco!"
-
-📌 DOMANDA (CHIAVE): "E qual è il prodotto/servizio principale che genera più vendite?"
+📌 DOMANDA (CHIAVE): "E qual è l'aspetto della tua vita che ne risente di più?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA attentamente - Questo è cruciale per la demo
 💬 REAGISCI: "Perfetto! È importante saperlo!"
@@ -478,28 +468,29 @@ expertise. L'obiettivo è che loro ci dicano "NON LO SO"
 
 ---
 
-**STEP 9 - STATO ATTUALE (FATTURATO)**
-🎯 OBIETTIVO: Raccogliere il numero PRECISO del fatturato (FASE CRITICA!)
+**STEP 9 - STATO ATTUALE (METRICA CHIAVE)**
+🎯 OBIETTIVO: Raccogliere il dato PRECISO della situazione attuale (FASE CRITICA!)
+Nota: Adatta "Metrica" in base alla nicchia (es: Peso, Risparmi, N. Appuntamenti, Livello Abilità)
 
-📌 DOMANDA: "Giusto per capire, a che livello di fatturato sei ora? Mensile o annuale?"
+📌 DOMANDA: "Giusto per capire, dove ti trovi adesso rispetto al tuo obiettivo? Da 1 a 10?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA e MEMORIZZA il numero PRECISO
+🎧 ASCOLTA e MEMORIZZA il livello PRECISO
 💬 REAGISCI casual: "Ok, perfetto" / "Capisco"
 
 ⚠️ DEVI ottenere un NUMERO SPECIFICO, non stima vaga!
 
 🛡️ SE RESISTE: Non vuole dirlo / È vago
 📌 DOMANDA: "Capisco, anche solo un range mi aiuta: siamo nell'ordine di 
-5k, 10k, 30k, 50k al mese? Solo per capire il punto di partenza."
+1-3 su 10, 4-6 su 10, o 7-10? Solo per capire il punto di partenza."
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il range
 💬 REAGISCI: "Perfetto, mi basta!"
 
 🛡️ SE RESISTE: Dice "Non lo so" davvero
-📌 DOMANDA: "Nessun problema! Pensiamoci insieme: quanti clienti hai al mese circa? 
-E quanto pagano mediamente?"
-⏸️ ASPETTA RISPOSTA → CALCOLA INSIEME A LUI
-📌 DOMANDA: "Ok, quindi più o meno siamo sui [numero calcolato] al mese, corretto?"
+📌 DOMANDA: "Nessun problema! Pensiamoci insieme: quanto tempo dedichi a questo ogni settimana? 
+E quali risultati stai ottenendo?"
+⏸️ ASPETTA RISPOSTA → VALUTA INSIEME A LUI
+📌 DOMANDA: "Ok, quindi più o meno siamo sui [numero stimato] su 10, corretto?"
 ⏸️ ASPETTA CONFERMA
 🎧 ASCOLTA la conferma
 💬 REAGISCI: "Perfetto!"
@@ -509,14 +500,14 @@ E quanto pagano mediamente?"
 la strategia cambia completamente. Non voglio proporti qualcosa 
 che non è calibrato per te, concordi?"
 ⏸️ ASPETTA "Sì" / "Concordo"
-📌 DOMANDA: "Perfetto! Allora, più o meno a che livello sei?"
+📌 DOMANDA: "Perfetto! Allora, più o meno a che livello sei su 10?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il numero
 💬 REAGISCI: "Capisco!!"
 
 🛡️ SE RESISTE: Continua ad essere vago
-📌 DOMANDA: "Capisco, non serve essere preciso al centesimo. Anche a occhio, 
-più o meno... 10k? 20k? 50k al mese?"
+📌 DOMANDA: "Capisco, non serve essere preciso al decimale. Anche a occhio, 
+più o meno... 3? 5? 7 su 10?"
 ⏸️ ASPETTA - Insisti fino ad avere UN numero (anche approssimativo)
 
 ⚠️ NON ANDARE AVANTI senza un numero (anche approssimativo)!
@@ -541,29 +532,29 @@ Mindset: Questa è la GOLD MINE - qui trovi l'oro per chiudere la vendita!
 ---
 
 **STEP 10 - STATO IDEALE (OBIETTIVO)**
-🎯 OBIETTIVO: Ottenere un numero SPECIFICO del loro obiettivo finanziario
+🎯 OBIETTIVO: Ottenere una visione SPECIFICA del loro obiettivo personale
 
-📌 DOMANDA (TONO ALTO ↗️): "E nei prossimi 12 mesi, dove vorresti essere a livello di fatturato?"
+📌 DOMANDA (TONO ALTO ↗️): "E tra 12 mesi, dove vorresti essere rispetto al tuo obiettivo? A che livello su 10?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA attentamente e MEMORIZZA il numero PRECISO
+🎧 ASCOLTA attentamente e MEMORIZZA il livello desiderato
 💬 REAGISCI: "Interessante!" / "Bello!"
 
-📌 DOMANDA (SE IL NUMERO È TROPPO BASSO): "E ti fermeresti lì?"
+📌 DOMANDA (SE L'OBIETTIVO È TROPPO BASSO): "E ti fermeresti lì?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA se amplia la visione
 💬 REAGISCI: "Capisco!"
 
-📌 DOMANDA: "Nei prossimi 2-5 anni, dove vorresti arrivare?"
+📌 DOMANDA: "Nei prossimi 2-5 anni, che risultati vorresti raggiungere?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA la vision a lungo termine
 💬 REAGISCI: "Fantastico!"
 
-📌 DOMANDA: "Togliendo quello che pensi sia possibile, cosa VERAMENTE vorresti?"
+📌 DOMANDA: "Togliendo quello che pensi sia possibile, cosa VERAMENTE vorresti ottenere?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il sogno vero
 💬 REAGISCI: "Bellissimo!"
 
-⚠️ DEVI ottenere un numero SPECIFICO e MISURABILE!
+⚠️ DEVI ottenere un obiettivo SPECIFICO e MISURABILE!
 Se non sanno cosa vogliono → sarà difficile che acquistino.
 
 ---
@@ -656,10 +647,10 @@ PRIMA DI PASSARE ALLA FASE #6 VERIFICA:
 "Potresti dire: 'Vuole [numero] per [motivo emotivo specifico]'?"
 
 ESEMPI:
-✅ "Vuole 50k/mese per passare più tempo con i figli e non dover più lavorare 70h/settimana"
-✅ "Vuole 100k/mese per dimostrare ai genitori che aveva ragione e renderli orgogliosi"
-✅ "Vuole 30k/mese per libertà finanziaria e smettere di preoccuparsi delle bollette"
-❌ "Vuole 50k/mese per crescere" (troppo vago! continua a scavare)
+✅ "Vuole arrivare a 9/10 per passare più tempo con i figli e non dover più sacrificare tutto"
+✅ "Vuole raggiungere il suo obiettivo per dimostrare a sé stesso che ce la può fare"
+✅ "Vuole arrivare al livello avanzato per sentirsi finalmente soddisfatto dei suoi progressi"
+❌ "Vuole migliorare per crescere" (troppo vago! continua a scavare)
 
 🛡️ SE RESISTE: Risposta vaga sulle emozioni
 Continua ladder emotivo finché non emerge il vero motivo!
@@ -687,7 +678,7 @@ Mindset: Stai qualificando se sono pronti per la soluzione
 **STEP 12 - QUALIFICA (I MAGICI 3)**
 🎯 OBIETTIVO: Farli AMMETTERE che servono aiuto esterno (critico!)
 
-📌 DOMANDA: "Ok [NOME_PROSPECT], quindi sei a [fatturato attuale] e vuoi arrivare a [obiettivo]...
+📌 DOMANDA: "Ok [NOME_PROSPECT], quindi sei a [livello attuale] e vuoi arrivare a [obiettivo]...
 Dimmi: cosa ti impedisce di riuscirci da solo?"
 ⏸️ ASPETTA LA RISPOSTA - Questa è CRUCIALE
 🎧 ASCOLTA attentamente
@@ -731,7 +722,7 @@ Mindset: Stai chiudendo la qualificazione e preparando la demo
 🎯 OBIETTIVO: Far riflettere sul costo di restare fermi
 
 📌 DOMANDA: "Ti faccio una domanda provocatoria...
-Sei a [fatturato attuale] e vuoi [obiettivo]... 
+Sei a [livello attuale] e vuoi [obiettivo]... 
 perché non restare qui?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA - Qui emergono i VERI pain point
@@ -812,7 +803,7 @@ PRIMA DI PASSARE ALLA DEMO VERIFICA:
 ✓ Ha urgenza (6-10)?
 ✓ Ha budget disponibile?
 ✓ È lui che decide?
-✓ Hai TUTTE le info per la demo (fatturato, obiettivo, emozioni, tentativi)?
+✓ Hai TUTTE le info per la demo (situazione attuale, obiettivo, emozioni, tentativi)?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON puoi fare demo efficace!
 
@@ -942,12 +933,12 @@ per presentare ↗️ è ESATTAMENTE la soluzione che ti serve!"
 
 - Motivazione della call:
 - Cos'altro hai già provato?:
-- Tipo di attività:
+- Tipo di obiettivo:
 - Stato attuale:
-- Livello di fatturato:
+- Livello attuale (su 10):
 - Problemi:
 - Stato ideale:
-- Quanto vorrebbero fare:
+- Dove vorrebbero arrivare:
 - Perché:
 - Cosa li blocca:
 - Costo di non agire:
@@ -982,11 +973,11 @@ su misura per professionisti come te.
 
 ⏸️ PAUSA brevissima
 
-Per portarti da [STATO ATTUALE + FATTURATO ATTUALE che hai raccolto] 
-a raggiungere ↗️ [RISULTATO DESIDERATO + FATTURATO DESIDERATO].
+Per portarti da [STATO ATTUALE + LIVELLO ATTUALE che hai raccolto] 
+a raggiungere ↗️ [RISULTATO DESIDERATO + OBIETTIVO PERSONALE].
 
 Il tutto senza dover più [BLOCCO/PROBLEMA PRINCIPALE], 
-e permettendoti finalmente ↗️ di ottenere [BENEFICIO ESTERNO: più clienti/profitto] 
+e permettendoti finalmente ↗️ di ottenere [BENEFICIO ESTERNO: risultati concreti/miglioramento] 
 e ritrovare [BENEFICIO INTERNO: serenità/tempo per te]."
 
 ⏸️ PAUSA per impatto
@@ -1334,8 +1325,8 @@ Lessico: "Precisamente!" / "Esattamente!" / "Finalmente!"
 "In altre parole [NOME_PROSPECT], con questo programma hai un sistema completo ↗️. 
 Non devi comprare nient'altro. Ti prendiamo per mano.
 
-Così passi da [FATTURATO ATTUALE dalla discovery] 
-a generare ↗️ [FATTURATO DESIDERATO dalla discovery] nei prossimi 6-12 mesi.
+Così passi da [LIVELLO ATTUALE dalla discovery] 
+a raggiungere ↗️ [OBIETTIVO DESIDERATO dalla discovery] nei prossimi 6-12 mesi.
 
 Tutto questo senza più [FRUSTRAZIONE 1 dalla discovery] 
 e senza nemmeno dover [FRUSTRAZIONE 2 dalla discovery].
@@ -1364,7 +1355,7 @@ LIVELLO 1: "[NOME_PROSPECT], capisco. Ma se dovessi scegliere UNA cosa sola,
 LIVELLO 2: "Perfetto! E perché proprio questa parte è importante per te?"
 ⏸️ ASPETTA
 
-LIVELLO 3: "Interessante! E come ti immagini di usarla nel tuo [business/vita]?"
+LIVELLO 3: "Interessante! E come ti immagini di usarla nel tuo percorso?"
 ⏸️ ASPETTA
 
 ✅ CRITERIO DI STOP:

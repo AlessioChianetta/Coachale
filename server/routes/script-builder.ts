@@ -3,6 +3,7 @@ import { db } from '../db';
 import { clientSalesAgents, users } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { getDiscoveryScript, getDemoScript, getObjectionsScript } from '../ai/sales-scripts-base';
+import { getDiscoveryScript as getDiscoveryScriptB2C, getDemoScript as getDemoScriptB2C, getObjectionsScript as getObjectionsScriptB2C } from '../ai/sales-scripts-base-B2C';
 import { AuthRequest, requireRole } from '../middleware/auth';
 import { parseTextToBlocks } from '../../shared/script-parser';
 import type { ScriptBlockStructure } from '../../shared/script-blocks';
@@ -122,7 +123,8 @@ router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => 
 router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const clientId = req.user!.id;
-    const { templateId, agentId, userComment } = req.body;
+    const { templateId, agentId, userComment, targetType } = req.body;
+    const isB2C = targetType === 'b2c';
 
     if (!templateId || !agentId) {
       return res.status(400).json({ error: 'templateId e agentId sono obbligatori' });
@@ -150,23 +152,33 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
     let content: string;
     switch (template.type) {
       case 'discovery':
-        content = getDiscoveryScript();
+        content = isB2C ? getDiscoveryScriptB2C() : getDiscoveryScript();
         break;
       case 'demo':
-        content = getDemoScript(
-          agent.businessName || 'Il Tuo Business',
-          agent.displayName || 'Consulente',
-          [],
-          [],
-          null
-        );
+        content = isB2C 
+          ? getDemoScriptB2C(
+              agent.businessName || 'Il Tuo Business',
+              agent.displayName || 'Consulente',
+              [],
+              [],
+              null
+            )
+          : getDemoScript(
+              agent.businessName || 'Il Tuo Business',
+              agent.displayName || 'Consulente',
+              [],
+              [],
+              null
+            );
         break;
       case 'objections':
-        content = getObjectionsScript();
+        content = isB2C ? getObjectionsScriptB2C() : getObjectionsScript();
         break;
       default:
         return res.status(400).json({ error: 'Tipo template non valido' });
     }
+    
+    console.log(`[ScriptBuilder] Using ${isB2C ? 'B2C' : 'B2B'} template for ${template.type}`);
 
     const structure = parseTextToBlocks(content, template.type);
 
@@ -208,9 +220,48 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
 
       console.log(`[ScriptBuilder] Using AI provider: ${aiProvider.metadata.name} (${aiProvider.source})`);
 
-      const prompt = `Sei un esperto coach di vendita telefonica B2B e devi personalizzare uno script per un business specifico.
+      const targetTypeLabel = isB2C ? 'B2C (Individui: atleti, studenti, pazienti, professionisti)' : 'B2B (Business: imprenditori, aziende)';
+      
+      const b2cSpecificInstructions = isB2C ? `
+## 🚨 ISTRUZIONI SPECIFICHE B2C - QUESTO È UN TARGET INDIVIDUALE! 🚨
+Stai personalizzando uno script per INDIVIDUI (atleti, studenti, pazienti, privati), NON per imprenditori!
 
-## BUSINESS CONTEXT:
+⛔ NON USARE MAI questi concetti B2B:
+- Fatturato, revenue, margini
+- Clienti, lead, CAC, LTV
+- Marketing, advertising, funnel
+- Team, dipendenti, collaboratori
+- B2B, B2C come modello di business
+- Ticket medio, scontrino
+
+✅ USA INVECE questi concetti B2C:
+- Obiettivi personali, traguardi, sogni
+- Livello attuale (1-10), performance, progressi
+- Tempo libero, ore dedicate, costanza
+- Famiglia, partner, supporto sociale
+- Stress, emozioni, autostima, relazioni
+- Ostacoli quotidiani, blocchi mentali
+- Motivazione, disciplina, abitudini
+
+📝 ESEMPIO TRASFORMAZIONE:
+- ❌ "Qual è il tuo fatturato mensile?" → ✅ "A che livello sei ora da 1 a 10?"
+- ❌ "Quanti clienti hai?" → ✅ "Quante ore dedichi a settimana a questo?"
+- ❌ "Problemi con il marketing?" → ✅ "Dove ti blocchi di più nel quotidiano?"
+` : '';
+
+      const prompt = `Sei un esperto coach di vendita telefonica che sa ADATTARSI COMPLETAMENTE al contesto del cliente target.
+Il tuo compito è personalizzare uno script in modo che sia PERFETTAMENTE RILEVANTE per il target specifico.
+
+## 🎯 TIPO DI TARGET SELEZIONATO: ${targetTypeLabel}
+${b2cSpecificInstructions}
+## ⚠️ ANALIZZA IL TARGET:
+Leggi attentamente "Target Client" e "Cosa facciamo". Chiediti:
+- Questo target gestisce un BUSINESS? → Domande su fatturato, clienti, marketing sono appropriate
+- Questo target è un INDIVIDUO (atleta, studente, paziente)? → Domande su obiettivi personali, performance, situazione
+
+QUESTA ANALISI DETERMINA COMPLETAMENTE COME PERSONALIZZARE LE DOMANDE!
+
+## CONTEXT:
 - Nome Business: ${agentContext.businessName || 'Non specificato'}
 - Display Name: ${agentContext.displayName || 'Consulente'}
 - Descrizione Business: ${agentContext.businessDescription || 'Non specificata'}
@@ -334,37 +385,69 @@ ${JSON.stringify({
   }))
 }, null, 2)}
 
-## REGOLE DI PERSONALIZZAZIONE:
-1. MANTIENI ESATTAMENTE la struttura JSON: stesse fasi, step, numero di domande
-2. PERSONALIZZA usando i dati del business:
-   - Domande: adattale al settore e pain points del TARGET CLIENT
-   - Vocabulary: usa termini dal settore del business
-   - Ladder questions: rendi specifiche per i problemi del TARGET CLIENT
-   - Biscottino: adatta al tono e personalità del consulente
-   - Examples nelle ladder: USA I CASE STUDIES REALI se disponibili
-   - Checkpoint checks: personalizza per il settore
-3. USA LA CREDIBILITÀ:
-   - Inserisci riferimenti agli anni di esperienza
-   - Cita il numero di clienti aiutati quando opportuno
-   - Fai riferimento ai risultati generati
-   - Usa i case studies come esempi concreti nelle ladder
-4. USA SERVIZI E GARANZIE:
-   - Adatta le domande ai servizi specifici offerti
-   - Includi le garanzie nelle fasi di chiusura/obiezioni
-5. ESCLUDI il NON-TARGET CLIENT:
-   - Le domande dovrebbero qualificare OUT chi non è il cliente ideale
-6. NON modificare: numeri di step/fase, struttura delle istruzioni, marker
+## 🔥 REGOLE DI PERSONALIZZAZIONE CRITICHE:
 
-## OUTPUT RICHIESTO:
+### 1. PERSONALIZZARE = SOSTITUIRE SE NON PERTINENTE
+NON "adattare le parole" ma CAMBIARE IL CONCETTO se non ha senso per il target.
+- Se il target NON gestisce un business → ELIMINA domande su fatturato, clienti, marketing, B2B/B2C, CAC
+- Se il target è un atleta → SOSTITUISCI con domande su performance, obiettivi sportivi, allenamento
+- Se il target è uno studente → SOSTITUISCI con domande su studio, esami, obiettivi accademici
+
+### 2. FASE #3 (INFO BUSINESS/PERSONALI) - ATTENZIONE SPECIALE:
+Questa fase raccoglie info sul CONTESTO del prospect.
+- TARGET BUSINESS: domande su modello, clienti, fatturato, team, marketing → OK
+- TARGET INDIVIDUO: domande sulla SUA situazione personale, obiettivi, livello, risorse → SOSTITUISCI COMPLETAMENTE
+
+### 3. STEP 9 (STATO ATTUALE) - CAMBIA LA METRICA:
+Questa fase raccoglie un NUMERO per capire il punto di partenza.
+- TARGET BUSINESS: fatturato mensile/annuale → OK
+- TARGET INDIVIDUO: livello su 10, tempo dedicato, performance attuale → SOSTITUISCI
+
+### 4. ESEMPI NELLE LADDER - RISCRIVILI:
+Gli esempi devono essere PERTINENTI al target:
+- TARGET BUSINESS: "Ho problemi con il marketing", "Non trovo clienti" → OK
+- TARGET INDIVIDUO: "Non miglioro i risultati", "Sono in stallo", "Non raggiungo gli obiettivi" → SOSTITUISCI
+
+### 5. USA "COSA FACCIAMO" E "COME LO FACCIAMO":
+Questi dati ti dicono ESATTAMENTE in che ambito opera l'agente.
+Le domande devono essere COERENTI con questo ambito!
+
+### 6. USA LA CREDIBILITÀ:
+- Inserisci riferimenti agli anni di esperienza quando opportuno
+- Cita il numero di clienti aiutati
+- Usa i case studies come esempi concreti nelle ladder
+
+### 7. USA SERVIZI E GARANZIE:
+- Adatta le domande ai servizi specifici offerti
+- Includi le garanzie nelle fasi di chiusura/obiezioni
+
+### 8. ESCLUDI il NON-TARGET CLIENT:
+- Le domande dovrebbero qualificare OUT chi non è il cliente ideale
+
+### 9. MANTIENI LA STRUTTURA TECNICA:
+- NON modificare: numeri di step/fase, marker, struttura JSON
+- SÌ modificare: testo domande, esempi, vocabulary, objective, mindset
+
+### 10. CHAIN OF THOUGHT - RAGIONA COSÌ PER OGNI STEP:
+Prima di personalizzare, chiediti:
+1. Chi è il target? (business owner o individuo?)
+2. Questa domanda ha senso per lui?
+3. Se NO → qual è la domanda equivalente nel suo contesto?
+4. Scrivi la domanda modificata
+
+## ⚠️ OUTPUT OBBLIGATORIO - TUTTE LE FASI:
+Devi restituire TUTTE le fasi dello script, non solo alcune.
+Se lo script ha 7 fasi, devi restituire 7 fasi modificate.
+
 Rispondi SOLO con un JSON array delle fasi modificate. Ogni fase deve contenere:
 - phaseName: nome fase originale
 - phaseNumber: numero fase
-- energy: oggetto energy se presente (con vocabulary personalizzato)
+- energy: oggetto energy se presente (con vocabulary personalizzato per il target)
 - steps: array di step modificati, ognuno con:
-  - stepNumber, name, objective (personalizzato)
+  - stepNumber, name, objective (personalizzato per il target)
   - energy: con vocabulary e mindset personalizzati
-  - questions: array di oggetti {text, marker, isKey, instructions}
-  - ladder: se presente, con levels personalizzati (question, examples)
+  - questions: array di oggetti {text, marker, isKey, instructions} - DOMANDE RISCRITTE per il target!
+  - ladder: se presente, con levels personalizzati (question, examples PERTINENTI al target)
   - biscottino: {trigger, phrase} personalizzato
   - resistanceHandling: se presente, personalizzato
 - checkpoint: se presente, con checks e resistanceHandling personalizzati

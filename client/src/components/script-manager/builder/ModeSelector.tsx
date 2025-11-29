@@ -28,7 +28,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, Hand, Sparkles, Wand2, Building2, Target, Lightbulb } from 'lucide-react';
+import { Loader2, ChevronDown, ChevronLeft, ChevronRight, FileText, Hand, Sparkles, Wand2, Building2, Target, Lightbulb, Users } from 'lucide-react';
 import type { BuilderMode, ScriptType } from './types';
 
 interface AgentForBuilder {
@@ -78,6 +78,7 @@ export function ModeSelector() {
   
   const [aiStep, setAiStep] = useState(1);
   const [aiTemplate, setAiTemplate] = useState<ScriptType>('discovery');
+  const [targetType, setTargetType] = useState<'b2b' | 'b2c'>('b2b');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [userComment, setUserComment] = useState('');
   const [agents, setAgents] = useState<AgentForBuilder[]>([]);
@@ -134,6 +135,7 @@ export function ModeSelector() {
           userComment,
           scriptType: aiTemplate,
           scriptName,
+          targetType,
         }),
       });
       
@@ -164,6 +166,7 @@ export function ModeSelector() {
   const resetAIDialog = () => {
     setAiStep(1);
     setAiTemplate('discovery');
+    setTargetType('b2b');
     setUserComment('');
     setShowAIDialog(false);
   };
@@ -332,33 +335,79 @@ export function ModeSelector() {
           </div>
 
           {aiStep === 1 && (
-            <div className="py-4 space-y-4">
-              <Label>Tipo di Script</Label>
-              <Select value={aiTemplate} onValueChange={(v) => setAiTemplate(v as ScriptType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="discovery">
-                    <div className="flex items-center gap-2">
-                      <span>🔍</span>
-                      <span>Discovery Call - Qualifica iniziale</span>
+            <div className="py-4 space-y-6">
+              <div className="space-y-2">
+                <Label>Tipo di Script</Label>
+                <Select value={aiTemplate} onValueChange={(v) => setAiTemplate(v as ScriptType)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="discovery">
+                      <div className="flex items-center gap-2">
+                        <span>🔍</span>
+                        <span>Discovery Call - Qualifica iniziale</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="demo">
+                      <div className="flex items-center gap-2">
+                        <span>🎬</span>
+                        <span>Demo Call - Presentazione offerta</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="objections">
+                      <div className="flex items-center gap-2">
+                        <span>💬</span>
+                        <span>Gestione Obiezioni - Risposte comuni</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tipo di Target</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTargetType('b2b')}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                      targetType === 'b2b'
+                        ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/30'
+                        : 'border-muted hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    <Building2 className={`h-6 w-6 ${targetType === 'b2b' ? 'text-purple-600' : 'text-muted-foreground'}`} />
+                    <div className="text-center">
+                      <div className={`font-medium text-sm ${targetType === 'b2b' ? 'text-purple-700 dark:text-purple-300' : ''}`}>
+                        B2B - Business
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Imprenditori, aziende, professionisti con business
+                      </div>
                     </div>
-                  </SelectItem>
-                  <SelectItem value="demo">
-                    <div className="flex items-center gap-2">
-                      <span>🎬</span>
-                      <span>Demo Call - Presentazione offerta</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTargetType('b2c')}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                      targetType === 'b2c'
+                        ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/30'
+                        : 'border-muted hover:border-muted-foreground/30'
+                    }`}
+                  >
+                    <Users className={`h-6 w-6 ${targetType === 'b2c' ? 'text-purple-600' : 'text-muted-foreground'}`} />
+                    <div className="text-center">
+                      <div className={`font-medium text-sm ${targetType === 'b2c' ? 'text-purple-700 dark:text-purple-300' : ''}`}>
+                        B2C - Individui
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Atleti, studenti, pazienti, privati
+                      </div>
                     </div>
-                  </SelectItem>
-                  <SelectItem value="objections">
-                    <div className="flex items-center gap-2">
-                      <span>💬</span>
-                      <span>Gestione Obiezioni - Risposte comuni</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -453,6 +502,7 @@ export function ModeSelector() {
                 <h4 className="font-medium text-sm mb-2">Riepilogo generazione:</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
                   <li>• Tipo: {SCRIPT_TYPE_LABELS[aiTemplate]}</li>
+                  <li>• Target: <span className="font-medium">{targetType === 'b2b' ? 'B2B (Business)' : 'B2C (Individui)'}</span></li>
                   <li>• Agente: {selectedAgent?.displayName || selectedAgent?.agentName}</li>
                   <li>• Business: {selectedAgent?.businessName}</li>
                   <li>• Modello AI: Gemini 3.0 Pro (Vertex AI)</li>

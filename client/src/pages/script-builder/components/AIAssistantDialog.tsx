@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, Bot, MessageSquare, Loader2, AlertCircle } from 'lucide-react';
+import { Sparkles, Bot, MessageSquare, Loader2, AlertCircle, Building2, Users } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,7 @@ export function AIAssistantDialog({ open, onOpenChange, onGenerate, currentStruc
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [customPrompt, setCustomPrompt] = useState('');
   const [selectedTemplateType, setSelectedTemplateType] = useState<'discovery' | 'demo' | 'objections'>('discovery');
+  const [targetType, setTargetType] = useState<'b2b' | 'b2c'>('b2b');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,6 +80,7 @@ export function AIAssistantDialog({ open, onOpenChange, onGenerate, currentStruc
         body: JSON.stringify({
           agentId: selectedAgentId,
           templateType: selectedTemplateType,
+          targetType,
           customPrompt,
           baseStructure: currentStructure.phases.length > 0 ? currentStructure : null
         })
@@ -182,6 +184,48 @@ export function AIAssistantDialog({ open, onOpenChange, onGenerate, currentStruc
                 <SelectItem value="objections">Gestione Obiezioni</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Tipo di Target</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTargetType('b2b')}
+                className={cn(
+                  "flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left",
+                  targetType === 'b2b'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/30'
+                    : 'border-muted hover:border-muted-foreground/30'
+                )}
+              >
+                <Building2 className={cn("h-5 w-5", targetType === 'b2b' ? 'text-purple-600' : 'text-muted-foreground')} />
+                <div>
+                  <div className={cn("font-medium text-sm", targetType === 'b2b' && 'text-purple-700 dark:text-purple-300')}>
+                    B2B - Business
+                  </div>
+                  <div className="text-xs text-muted-foreground">Imprenditori, aziende</div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTargetType('b2c')}
+                className={cn(
+                  "flex items-center gap-2 p-3 rounded-lg border-2 transition-all text-left",
+                  targetType === 'b2c'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/30'
+                    : 'border-muted hover:border-muted-foreground/30'
+                )}
+              >
+                <Users className={cn("h-5 w-5", targetType === 'b2c' ? 'text-purple-600' : 'text-muted-foreground')} />
+                <div>
+                  <div className={cn("font-medium text-sm", targetType === 'b2c' && 'text-purple-700 dark:text-purple-300')}>
+                    B2C - Individui
+                  </div>
+                  <div className="text-xs text-muted-foreground">Atleti, studenti, privati</div>
+                </div>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-2">
