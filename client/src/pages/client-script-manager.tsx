@@ -806,70 +806,55 @@ export default function ClientScriptManager() {
               </Dialog>
             </div>
             <div className="flex items-center gap-2">
-                {!showBuilder && (
-                  <>
-                    {isEditing ? (
-                        <>
-                            <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Annulla</Button>
-                            <Button size="sm" onClick={handleSave} disabled={updateScriptMutation.isPending}>
-                                {updateScriptMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                                <Save className="h-4 w-4 mr-2" /> Salva
+                {isEditing ? (
+                    <>
+                        <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Annulla</Button>
+                        <Button size="sm" onClick={handleSave} disabled={updateScriptMutation.isPending}>
+                            {updateScriptMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                            <Save className="h-4 w-4 mr-2" /> Salva
+                        </Button>
+                    </>
+                ) : selectedScriptId && (
+                    <>
+                        <div className="flex items-center gap-1">
+                            <Button variant={editorMode === 'blocks' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('blocks')} disabled={parsingFailed}>
+                                <Blocks className="h-4 w-4 mr-1" />
+                                Blocchi
                             </Button>
-                        </>
-                    ) : selectedScriptId && (
-                        <>
-                            <div className="flex items-center gap-1">
-                                <Button variant={editorMode === 'blocks' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('blocks')} disabled={parsingFailed}>
-                                    <Blocks className="h-4 w-4 mr-1" />
-                                    Blocchi
-                                </Button>
-                                <Button variant={editorMode === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('text')}>
-                                    <Code className="h-4 w-4 mr-1" />
-                                    Testo
-                                </Button>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                                <Edit3 className="h-4 w-4 mr-2" /> Modifica
+                            <Button variant={editorMode === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('text')}>
+                                <Code className="h-4 w-4 mr-1" />
+                                Testo
                             </Button>
-                            <Button 
-                              size="sm" 
-                              onClick={() => {
-                                setScriptToActivate(selectedScript.id);
-                                setShowAgentSelectDialog(true);
-                              }} 
-                              disabled={activateScriptMutation.isPending}
-                            >
-                              <Play className="h-4 w-4 mr-2" />
-                              {selectedScript?.isActive ? 'Cambia Agente' : 'Attiva'}
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => {
-                              if (confirm('Sei sicuro di voler eliminare questo script?')) {
-                                deleteScriptMutation.mutate(selectedScriptId);
-                              }
-                            }} disabled={deleteScriptMutation.isPending}>
-                                <Trash2 className="h-4 w-4 mr-2" /> Elimina
-                            </Button>
-                        </>
-                    )}
-                  </>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                            <Edit3 className="h-4 w-4 mr-2" /> Modifica
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => {
+                            setScriptToActivate(selectedScript.id);
+                            setShowAgentSelectDialog(true);
+                          }} 
+                          disabled={activateScriptMutation.isPending}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          {selectedScript?.isActive ? 'Cambia Agente' : 'Attiva'}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => {
+                          if (confirm('Sei sicuro di voler eliminare questo script?')) {
+                            deleteScriptMutation.mutate(selectedScriptId);
+                          }
+                        }} disabled={deleteScriptMutation.isPending}>
+                            <Trash2 className="h-4 w-4 mr-2" /> Elimina
+                        </Button>
+                    </>
                 )}
             </div>
         </header>
 
-        <ResizablePanelGroup 
-          direction="horizontal" 
-          className="flex-1"
-          key={showBuilder ? "builder-layout" : "normal-layout"}
-        >
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
           {/* COLONNA 1: LISTA SCRIPT */}
-          <ResizablePanel 
-            id="sidebar-panel"
-            order={1}
-            defaultSize={showBuilder ? 0 : 20} 
-            minSize={showBuilder ? 0 : 15} 
-            maxSize={showBuilder ? 0 : 30}
-            collapsible={true}
-          >
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
             <div className="h-full flex flex-col bg-background">
               <div className="p-2 border-b">
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
@@ -1049,91 +1034,92 @@ export default function ClientScriptManager() {
           </ResizablePanel>
           <ResizableHandle withHandle />
           
-          {/* COLONNA 2: EDITOR / BUILDER */}
-          <ResizablePanel id="editor-panel" order={2} defaultSize={showBuilder ? 95 : 50} minSize={showBuilder ? 80 : 30}>
-            <div className="h-full flex flex-col bg-background">
-              {showBuilder ? (
-                <ScriptBuilderTab 
-                  onSave={handleBuilderSave} 
-                  isSaving={isSavingBuilder}
-                  initialStructure={selectedScript ? blockStructure : undefined}
-                  initialScriptType={selectedScript?.scriptType}
-                  initialScriptName={selectedScript?.name}
-                />
-              ) : (
-                <>
-                  {!selectedScriptId ? <EditorWelcomeMessage /> :
-                   isLoadingScript ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> :
-                   isError ? <EditorErrorMessage /> :
-                   selectedScript && (
-                      <div className="flex-1 flex flex-col overflow-hidden">
-                         <div className="p-3 border-b flex items-center justify-between">
-                           <EditableScriptName isEditing={isEditing} value={editedName} onChange={setEditedName} />
-                         </div>
-                         <ScrollArea className="flex-1">
-                           <div className="p-4">
-                             {isEditing && !parsingFailed && (
-                                 blockStructure ? 
-                                 <BlockEditor 
-                                   structure={blockStructure} 
-                                   selectedBlock={selectedBlock} 
-                                   onSelectBlock={setSelectedBlock} 
-                                   onAddBlock={handleBlockAdd}
-                                   onDeleteBlock={handleBlockDelete}
-                                   isEditing
-                                   energySettings={selectedScript?.energySettings}
-                                   ladderOverrides={selectedScript?.ladderOverrides}
-                                   stepQuestions={selectedScript?.stepQuestions}
-                                 /> 
-                                 : <Loader2 className="h-6 w-6 animate-spin mx-auto mt-10" />
-                             )}
-                             {isEditing && parsingFailed && (
-                                 <ParsingFailedEditor value={editedContent} onChange={setEditedContent} />
-                             )}
-                             {!isEditing && editorMode === 'blocks' && !parsingFailed && blockStructure && (
-                                 <BlockEditor 
-                                   structure={blockStructure} 
-                                   selectedBlock={selectedBlock} 
-                                   onSelectBlock={setSelectedBlock} 
-                                   onAddBlock={handleBlockAdd}
-                                   onDeleteBlock={handleBlockDelete}
-                                   isEditing={false}
-                                   energySettings={selectedScript?.energySettings}
-                                   ladderOverrides={selectedScript?.ladderOverrides}
-                                   stepQuestions={selectedScript?.stepQuestions}
-                                 />
-                             )}
-                             {!isEditing && editorMode === 'text' && (
-                                 <pre className="whitespace-pre-wrap text-sm font-mono">{selectedScript.content}</pre>
-                             )}
-                             {!isEditing && parsingFailed && editorMode === 'blocks' && (
-                                 <Alert variant="destructive">
-                                     <AlertCircle className="h-4 w-4" />
-                                     <AlertTitle>Parsing Non Valido</AlertTitle>
-                                     <AlertDescription>
-                                         Visualizzazione blocchi non disponibile. Clicca "Testo" per vedere il contenuto.
-                                     </AlertDescription>
-                                 </Alert>
-                             )}
-                           </div>
-                         </ScrollArea>
-                      </div>
-                  )}
-                </>
-              )}
-            </div>
-          </ResizablePanel>
-          {!showBuilder && <ResizableHandle withHandle />}
-
-          {/* COLONNA 3: ISPETTORE/DETTAGLI */}
-          {!showBuilder && (
-            <ResizablePanel id="inspector-panel" order={3} defaultSize={30} minSize={20} maxSize={40}>
-                <div className="h-full flex flex-col bg-background border-l">
-                    <ScrollArea className="flex-1 p-4">
-                        {renderInspector()}
-                    </ScrollArea>
-                </div>
+          {showBuilder ? (
+            /* SCRIPT BUILDER VIEW - Full width when active */
+            <ResizablePanel defaultSize={80} minSize={60}>
+              <ScriptBuilderTab 
+                onSave={handleBuilderSave} 
+                isSaving={isSavingBuilder}
+                initialStructure={selectedScript ? blockStructure : undefined}
+                initialScriptType={selectedScript?.scriptType}
+                initialScriptName={selectedScript?.name}
+              />
             </ResizablePanel>
+          ) : (
+            <>
+              {/* COLONNA 2: EDITOR */}
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <div className="h-full flex flex-col bg-background">
+                    {!selectedScriptId ? <EditorWelcomeMessage /> :
+                     isLoadingScript ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> :
+                     isError ? <EditorErrorMessage /> :
+                     selectedScript && (
+                        <div className="flex-1 flex flex-col overflow-hidden">
+                           <div className="p-3 border-b flex items-center justify-between">
+                             <EditableScriptName isEditing={isEditing} value={editedName} onChange={setEditedName} />
+                           </div>
+                           <ScrollArea className="flex-1">
+                             <div className="p-4">
+                               {isEditing && !parsingFailed && (
+                                   blockStructure ? 
+                                   <BlockEditor 
+                                     structure={blockStructure} 
+                                     selectedBlock={selectedBlock} 
+                                     onSelectBlock={setSelectedBlock} 
+                                     onAddBlock={handleBlockAdd}
+                                     onDeleteBlock={handleBlockDelete}
+                                     isEditing
+                                     energySettings={selectedScript?.energySettings}
+                                     ladderOverrides={selectedScript?.ladderOverrides}
+                                     stepQuestions={selectedScript?.stepQuestions}
+                                   /> 
+                                   : <Loader2 className="h-6 w-6 animate-spin mx-auto mt-10" />
+                               )}
+                               {isEditing && parsingFailed && (
+                                   <ParsingFailedEditor value={editedContent} onChange={setEditedContent} />
+                               )}
+                               {!isEditing && editorMode === 'blocks' && !parsingFailed && blockStructure && (
+                                   <BlockEditor 
+                                     structure={blockStructure} 
+                                     selectedBlock={selectedBlock} 
+                                     onSelectBlock={setSelectedBlock} 
+                                     onAddBlock={handleBlockAdd}
+                                     onDeleteBlock={handleBlockDelete}
+                                     isEditing={false}
+                                     energySettings={selectedScript?.energySettings}
+                                     ladderOverrides={selectedScript?.ladderOverrides}
+                                     stepQuestions={selectedScript?.stepQuestions}
+                                   />
+                               )}
+                               {!isEditing && editorMode === 'text' && (
+                                   <pre className="whitespace-pre-wrap text-sm font-mono">{selectedScript.content}</pre>
+                               )}
+                               {!isEditing && parsingFailed && editorMode === 'blocks' && (
+                                   <Alert variant="destructive">
+                                       <AlertCircle className="h-4 w-4" />
+                                       <AlertTitle>Parsing Non Valido</AlertTitle>
+                                       <AlertDescription>
+                                           Visualizzazione blocchi non disponibile. Clicca "Testo" per vedere il contenuto.
+                                       </AlertDescription>
+                                   </Alert>
+                               )}
+                             </div>
+                           </ScrollArea>
+                        </div>
+                    )}
+                </div>
+              </ResizablePanel>
+              <ResizableHandle withHandle />
+
+              {/* COLONNA 3: ISPETTORE/DETTAGLI */}
+              <ResizablePanel defaultSize={30} minSize={20} maxSize={40}>
+                  <div className="h-full flex flex-col bg-background border-l">
+                      <ScrollArea className="flex-1 p-4">
+                          {renderInspector()}
+                      </ScrollArea>
+                  </div>
+              </ResizablePanel>
+            </>
           )}
         </ResizablePanelGroup>
       </div>
