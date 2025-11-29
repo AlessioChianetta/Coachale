@@ -859,6 +859,8 @@ export default function ClientScriptManager() {
         <ResizablePanelGroup direction="horizontal" className="flex-1">
           {/* COLONNA 1: LISTA SCRIPT */}
           <ResizablePanel 
+            id="sidebar-panel"
+            order={1}
             defaultSize={showBuilder ? 5 : 20} 
             minSize={showBuilder ? 3 : 15} 
             maxSize={showBuilder ? 8 : 30}
@@ -1045,7 +1047,7 @@ export default function ClientScriptManager() {
           
           {showBuilder ? (
             /* SCRIPT BUILDER VIEW - Full width when active */
-            <ResizablePanel defaultSize={95} minSize={80}>
+            <ResizablePanel id="builder-panel" order={2} defaultSize={95} minSize={80}>
               <ScriptBuilderTab 
                 onSave={handleBuilderSave} 
                 isSaving={isSavingBuilder}
@@ -1057,7 +1059,7 @@ export default function ClientScriptManager() {
           ) : (
             <>
               {/* COLONNA 2: EDITOR */}
-              <ResizablePanel defaultSize={50} minSize={30}>
+              <ResizablePanel id="editor-panel" order={2} defaultSize={50} minSize={30}>
                 <div className="h-full flex flex-col bg-background">
                     {!selectedScriptId ? <EditorWelcomeMessage /> :
                      isLoadingScript ? <div className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> :
@@ -1121,7 +1123,7 @@ export default function ClientScriptManager() {
               <ResizableHandle withHandle />
 
               {/* COLONNA 3: ISPETTORE/DETTAGLI */}
-              <ResizablePanel defaultSize={30} minSize={20} maxSize={40}>
+              <ResizablePanel id="inspector-panel" order={3} defaultSize={30} minSize={20} maxSize={40}>
                   <div className="h-full flex flex-col bg-background border-l">
                       <ScrollArea className="flex-1 p-4">
                           {renderInspector()}
