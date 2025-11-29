@@ -16,17 +16,14 @@ import {
   Loader2,
   ChevronRight,
   Users,
+  FileText,
+  CheckCircle2,
+  Library,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +45,17 @@ interface SalesScript {
   name: string;
   scriptType: 'discovery' | 'demo' | 'objections';
   isActive: boolean;
+}
+
+interface AgentWithAssignments {
+  id: string;
+  agentName: string;
+  displayName: string;
+  assignments: {
+    scriptId: string;
+    scriptType: string;
+    scriptName: string;
+  }[];
 }
 
 interface TrainingSession {
@@ -77,19 +85,43 @@ interface TranscriptMessage {
 export function AITrainerTab({ agentId }: AITrainerTabProps) {
   const [selectedPersona, setSelectedPersona] = useState<ProspectPersona | null>(null);
   const [selectedScriptId, setSelectedScriptId] = useState<string>('');
+  const [scriptSelectionTab, setScriptSelectionTab] = useState<'active' | 'all'>('active');
   const [observeSessionId, setObserveSessionId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: scripts = [], isLoading: scriptsLoading } = useQuery<SalesScript[]>({
-    queryKey: [`/api/sales-scripts/${agentId}`],
+  const { data: allScripts = [], isLoading: scriptsLoading } = useQuery<SalesScript[]>({
+    queryKey: ['/api/sales-scripts'],
     queryFn: async () => {
-      const response = await fetch(`/api/sales-scripts/${agentId}`, {
+      const response = await fetch('/api/sales-scripts', {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to fetch scripts');
       return response.json();
     },
   });
+
+  const { data: agentsData = [], isLoading: agentsLoading } = useQuery<AgentWithAssignments[]>({
+    queryKey: ['/api/sales-scripts/agents'],
+    queryFn: async () => {
+      const response = await fetch('/api/sales-scripts/agents', {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error('Failed to fetch agents');
+      return response.json();
+    },
+  });
+
+  const currentAgentData = agentsData.find(a => a.id === agentId);
+  const activeScripts = currentAgentData?.assignments?.map(a => ({
+    id: a.scriptId,
+    name: a.scriptName || 'Script senza nome',
+    scriptType: a.scriptType as 'discovery' | 'demo' | 'objections',
+    isActive: true,
+  })) || [];
+
+  const selectedScript = selectedScriptId 
+    ? (activeScripts.find(s => s.id === selectedScriptId) || allScripts.find(s => s.id === selectedScriptId))
+    : null;
 
   const { data: activeSessions = [], isLoading: sessionsLoading, refetch: refetchSessions } = useQuery<TrainingSession[]>({
     queryKey: [`/api/ai-trainer/sessions/${agentId}`],
@@ -216,34 +248,132 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Script Selection */}
-            <div className="space-y-2">
+            {/* Script Selection with Tabs */}
+            <div className="space-y-3">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 1. Seleziona lo Script da testare
               </label>
-              <Select value={selectedScriptId} onValueChange={setSelectedScriptId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Scegli uno script..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {scriptsLoading ? (
-                    <SelectItem value="loading" disabled>Caricamento...</SelectItem>
-                  ) : scripts.length === 0 ? (
-                    <SelectItem value="none" disabled>Nessuno script disponibile</SelectItem>
+              
+              <Tabs value={scriptSelectionTab} onValueChange={(v) => {
+                setScriptSelectionTab(v as 'active' | 'all');
+                setSelectedScriptId('');
+              }}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="active" className="flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Script Attivi ({activeScripts.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="all" className="flex items-center gap-2">
+                    <Library className="h-4 w-4" />
+                    Tutti gli Script ({allScripts.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="active" className="mt-3">
+                  {agentsLoading ? (
+                    <div className="text-center py-4 text-gray-500">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                      Caricamento...
+                    </div>
+                  ) : activeScripts.length === 0 ? (
+                    <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Nessuno script attivato per questo agente</p>
+                      <p className="text-xs mt-1">Attiva uno script dallo Script Manager</p>
+                    </div>
                   ) : (
-                    scripts.map((script) => (
-                      <SelectItem key={script.id} value={script.id}>
-                        <div className="flex items-center gap-2">
-                          <span>{script.name}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {script.scriptType}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    ))
+                    <div className="grid gap-2">
+                      {activeScripts.map((script) => (
+                        <button
+                          key={script.id}
+                          onClick={() => setSelectedScriptId(script.id)}
+                          className={`p-3 rounded-lg border-2 text-left transition-all ${
+                            selectedScriptId === script.id
+                              ? 'border-purple-500 bg-purple-50 dark:bg-purple-950'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              <span className="font-medium">{script.name}</span>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {script.scriptType}
+                            </Badge>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   )}
-                </SelectContent>
-              </Select>
+                </TabsContent>
+
+                <TabsContent value="all" className="mt-3">
+                  {scriptsLoading ? (
+                    <div className="text-center py-4 text-gray-500">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                      Caricamento...
+                    </div>
+                  ) : allScripts.length === 0 ? (
+                    <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Nessuno script disponibile</p>
+                      <p className="text-xs mt-1">Crea uno script dallo Script Manager</p>
+                    </div>
+                  ) : (
+                    <ScrollArea className="h-[200px]">
+                      <div className="grid gap-2 pr-4">
+                        {allScripts.map((script) => {
+                          const isActive = activeScripts.some(a => a.id === script.id);
+                          return (
+                            <button
+                              key={script.id}
+                              onClick={() => setSelectedScriptId(script.id)}
+                              className={`p-3 rounded-lg border-2 text-left transition-all ${
+                                selectedScriptId === script.id
+                                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-950'
+                                  : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {isActive ? (
+                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                  ) : (
+                                    <FileText className="h-4 w-4 text-gray-400" />
+                                  )}
+                                  <span className="font-medium">{script.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {isActive && (
+                                    <Badge className="bg-green-100 text-green-700 text-xs">
+                                      Attivo
+                                    </Badge>
+                                  )}
+                                  <Badge variant="outline" className="text-xs">
+                                    {script.scriptType}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </ScrollArea>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              {selectedScript && (
+                <div className="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg border border-purple-200 dark:border-purple-800">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Target className="h-4 w-4 text-purple-600" />
+                    <span className="text-gray-600 dark:text-gray-400">Script selezionato:</span>
+                    <span className="font-semibold text-purple-700 dark:text-purple-300">{selectedScript.name}</span>
+                    <Badge variant="outline" className="text-xs">{selectedScript.scriptType}</Badge>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Persona Grid */}
