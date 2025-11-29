@@ -2,7 +2,7 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { db } from '../db';
-import { clientSalesAgents, salesScripts, aiTrainingSessions, agentScriptAssignments } from '@shared/schema';
+import { clientSalesAgents, salesScripts, aiTrainingSessions, agentScriptAssignments, users } from '@shared/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { PROSPECT_PERSONAS, getPersonaById, generateProspectData } from '@shared/prospect-personas';
 import { ProspectSimulator } from '../services/prospect-simulator';
@@ -121,6 +121,13 @@ router.post(
       }
 
       const prospectData = generateProspectData(persona);
+      
+      const clientId = req.user!.id;
+      const [userProfile] = await db
+        .select({ consultantId: users.consultantId })
+        .from(users)
+        .where(eq(users.id, clientId));
+      const consultantId = userProfile?.consultantId || req.user?.consultantId || clientId;
 
       const sessionId = randomUUID();
       
@@ -206,6 +213,8 @@ router.post(
         const simulator = new ProspectSimulator({
           sessionId,
           agentId,
+          clientId,
+          consultantId,
           agent: agent[0],
           script: script[0],
           persona,

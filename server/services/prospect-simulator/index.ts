@@ -1,10 +1,12 @@
 import WebSocket from 'ws';
-import { GoogleGenAI } from '@google/genai';
 import type { ProspectPersona } from '@shared/prospect-personas';
+import { getAIProvider, type GeminiClient } from '../../ai/provider-factory';
 
 interface ProspectSimulatorOptions {
   sessionId: string;
   agentId: string;
+  clientId: string;
+  consultantId: string;
   agent: {
     id: string;
     agentName: string;
@@ -44,7 +46,8 @@ interface TranscriptMessage {
 export class ProspectSimulator {
   private options: ProspectSimulatorOptions;
   private ws: WebSocket | null = null;
-  private genAI: GoogleGenAI | null = null;
+  private aiClient: GeminiClient | null = null;
+  private aiCleanup?: () => Promise<void>;
   private transcript: TranscriptMessage[] = [];
   private isRunning = false;
   private messageCount = 0;
@@ -69,16 +72,17 @@ export class ProspectSimulator {
     console.log(`   Persona: ${this.options.persona.emoji} ${this.options.persona.name}`);
     console.log(`   Prospect: ${this.options.prospectData.name}`);
     console.log(`   ShareToken: ${this.options.agent.shareToken}`);
+    console.log(`   ClientId: ${this.options.clientId}`);
+    console.log(`   ConsultantId: ${this.options.consultantId}`);
     
     this.isRunning = true;
 
     try {
-      const apiKey = process.env.GOOGLE_AI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('No Gemini API key found in environment');
-      }
+      const providerResult = await getAIProvider(this.options.clientId, this.options.consultantId);
+      this.aiClient = providerResult.client;
+      this.aiCleanup = providerResult.cleanup;
       
-      this.genAI = new GoogleGenAI({ apiKey });
+      console.log(`✅ [PROSPECT SIMULATOR] AI Provider initialized: ${providerResult.metadata.name} (source: ${providerResult.source})`);
 
       await this.createSalesSession();
       await this.connectToWebSocket();
@@ -299,12 +303,12 @@ Rispondi in italiano, in modo colloquiale e naturale.
 
 LA TUA RISPOSTA:`;
 
-      const response = await this.genAI!.models.generateContent({
+      const response = await this.aiClient!.generateContent({
         model: 'gemini-1.5-flash',
-        contents: prompt,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
 
-      let prospectResponse = response.text || '';
+      let prospectResponse = response.response.text() || '';
       
       const shouldEnd = prospectResponse.includes('[FINE_CONVERSAZIONE]');
       prospectResponse = prospectResponse.replace('[FINE_CONVERSAZIONE]', '').trim();
@@ -408,6 +412,12 @@ REGOLE:
       this.ws.close();
     }
 
+    if (this.aiCleanup) {
+      try {
+        await this.aiCleanup();
+      } catch (e) {}
+    }
+
     await this.options.onStatusUpdate({
       status: 'completed',
       currentPhase: this.currentPhase,
@@ -446,6 +456,12 @@ REGOLE:
         this.ws.send(JSON.stringify({ type: 'end_session' }));
       } catch (e) {}
       this.ws.close();
+    }
+
+    if (this.aiCleanup) {
+      try {
+        await this.aiCleanup();
+      } catch (e) {}
     }
 
     await this.options.onStatusUpdate({

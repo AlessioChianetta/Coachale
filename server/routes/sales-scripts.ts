@@ -77,16 +77,16 @@ router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => 
     // Get all script assignments for these agents
     const agentIds = agents.map(a => a.id);
     
-    let assignments: Array<{
+    let rawAssignments: Array<{
       agentId: string;
       scriptId: string;
       scriptType: string;
-      scriptName?: string;
+      scriptName: string | null;
     }> = [];
     
     if (agentIds.length > 0) {
       // Get assignments with script names
-      const rawAssignments = await db
+      const dbAssignments = await db
         .select({
           agentId: agentScriptAssignments.agentId,
           scriptId: agentScriptAssignments.scriptId,
@@ -96,18 +96,25 @@ router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => 
         .from(agentScriptAssignments)
         .leftJoin(salesScripts, eq(agentScriptAssignments.scriptId, salesScripts.id));
       
-      assignments = rawAssignments.filter(a => agentIds.includes(a.agentId));
+      rawAssignments = dbAssignments.filter(a => agentIds.includes(a.agentId));
     }
     
-    // Combine agents with their assignments
-    const agentsWithAssignments = agents.map(agent => ({
-      ...agent,
-      scriptAssignments: {
-        discovery: assignments.find(a => a.agentId === agent.id && a.scriptType === 'discovery') || null,
-        demo: assignments.find(a => a.agentId === agent.id && a.scriptType === 'demo') || null,
-        objections: assignments.find(a => a.agentId === agent.id && a.scriptType === 'objections') || null,
-      }
-    }));
+    // Combine agents with their assignments as ARRAY (not object)
+    // Frontend expects: assignments: { scriptId, scriptType, scriptName }[]
+    const agentsWithAssignments = agents.map(agent => {
+      const agentAssignments = rawAssignments
+        .filter(a => a.agentId === agent.id)
+        .map(a => ({
+          scriptId: a.scriptId,
+          scriptType: a.scriptType,
+          scriptName: a.scriptName || 'Script senza nome',
+        }));
+      
+      return {
+        ...agent,
+        assignments: agentAssignments,
+      };
+    });
     
     console.log(`[ScriptsAPI] Found ${agents.length} agents for client ${clientId}`);
     res.json(agentsWithAssignments);
