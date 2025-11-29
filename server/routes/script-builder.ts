@@ -123,7 +123,7 @@ router.get('/agents', requireClient, async (req: AuthRequest, res: Response) => 
 router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const clientId = req.user!.id;
-    const { templateId, agentId, userComment, targetType } = req.body;
+    const { templateId, agentId, userComment, targetType, useSSE } = req.body;
     const isB2C = targetType === 'b2c';
 
     console.log('\n' + '═'.repeat(80));
@@ -133,14 +133,39 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
     console.log(`👤 Agent ID: ${agentId}`);
     console.log(`🎯 Target Type: ${isB2C ? 'B2C (Individui)' : 'B2B (Business)'}`);
     console.log(`💬 User Comment: ${userComment || 'Nessuno'}`);
+    console.log(`📡 SSE Mode: ${useSSE ? 'Sì' : 'No'}`);
     console.log('─'.repeat(80));
 
+    const sendSSE = (event: string, data: any) => {
+      if (useSSE && !res.writableEnded) {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      }
+    };
+
+    if (useSSE) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.flushHeaders();
+      
+      sendSSE('connected', { message: 'Connessione SSE stabilita' });
+    }
+
     if (!templateId || !agentId) {
+      if (useSSE) {
+        sendSSE('error', { error: 'templateId e agentId sono obbligatori' });
+        return res.end();
+      }
       return res.status(400).json({ error: 'templateId e agentId sono obbligatori' });
     }
 
     const template = AVAILABLE_TEMPLATES.find(t => t.id === templateId);
     if (!template) {
+      if (useSSE) {
+        sendSSE('error', { error: 'Template non trovato' });
+        return res.end();
+      }
       return res.status(404).json({ error: 'Template non trovato' });
     }
 
@@ -153,12 +178,21 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
       ));
 
     if (!agent) {
+      if (useSSE) {
+        sendSSE('error', { error: 'Agente non trovato' });
+        return res.end();
+      }
       return res.status(404).json({ error: 'Agente non trovato' });
     }
 
     console.log(`✅ Agent trovato: ${agent.displayName || agent.agentName}`);
     console.log(`   Business: ${agent.businessName}`);
     console.log(`   Target: ${agent.targetClient}`);
+
+    sendSSE('agentLoaded', { 
+      agentName: agent.displayName || agent.agentName,
+      businessName: agent.businessName 
+    });
 
     const consultantId = agent.consultantId;
 
@@ -188,6 +222,10 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
         content = isB2C ? getObjectionsScriptB2C() : getObjectionsScript();
         break;
       default:
+        if (useSSE) {
+          sendSSE('error', { error: 'Tipo template non valido' });
+          return res.end();
+        }
         return res.status(400).json({ error: 'Tipo template non valido' });
     }
     
@@ -226,11 +264,16 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
       
       if (!aiProvider) {
         console.log('⚠️ Nessun AI provider disponibile, ritorno template base');
-        return res.json({
+        const fallbackResult = {
           success: true,
           structure,
           message: 'Template base caricato (AI non disponibile)',
-        });
+        };
+        if (useSSE) {
+          sendSSE('generationCompleted', fallbackResult);
+          return res.end();
+        }
+        return res.json(fallbackResult);
       }
 
       console.log(`✅ AI Provider: ${aiProvider.metadata.name} (${aiProvider.source})`);
@@ -317,6 +360,19 @@ ${userComment ? `## ISTRUZIONI AGGIUNTIVE UTENTE:\n${userComment}\n` : ''}`;
       let failedPhases = 0;
       const phaseResults: { phase: string; success: boolean; error?: string; stepsModified?: number; questionsModified?: number }[] = [];
 
+      sendSSE('generationStarted', {
+        totalPhases,
+        templateType: template.type,
+        targetType: isB2C ? 'B2C' : 'B2B',
+        phases: structure.phases?.map((p, idx) => ({
+          index: idx,
+          name: p.name,
+          number: p.number,
+          stepsCount: p.steps?.length || 0,
+          hasCheckpoint: !!p.checkpoint
+        }))
+      });
+
       if (structure.phases) {
         for (let phaseIndex = 0; phaseIndex < structure.phases.length; phaseIndex++) {
           const phase = structure.phases[phaseIndex];
@@ -328,6 +384,15 @@ ${userComment ? `## ISTRUZIONI AGGIUNTIVE UTENTE:\n${userComment}\n` : ''}`;
           console.log(`   📌 Numero fase: #${phase.number}`);
           console.log(`   📝 Steps: ${phase.steps?.length || 0}`);
           console.log(`   ✓ Checkpoint: ${phase.checkpoint ? 'Sì' : 'No'}`);
+
+          sendSSE('phaseStarted', {
+            phaseIndex,
+            phaseName: phase.name,
+            phaseNumber: phase.number,
+            totalPhases,
+            stepsCount: phase.steps?.length || 0,
+            hasCheckpoint: !!phase.checkpoint
+          });
 
           const phasePrompt = `Sei un esperto coach di vendita telefonica. Devi personalizzare UNA SINGOLA FASE di uno script di vendita.
 
@@ -548,6 +613,24 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
               questionsModified
             });
 
+            sendSSE('phaseCompleted', {
+              phaseIndex,
+              phaseName: phase.name,
+              phaseNumber: phase.number,
+              success: true,
+              stats: {
+                stepsModified,
+                totalSteps: phase.steps?.length || 0,
+                questionsModified,
+                timeMs: responseTime
+              },
+              progress: {
+                completed: successfulPhases,
+                failed: failedPhases,
+                total: totalPhases
+              }
+            });
+
           } catch (phaseError: any) {
             console.log(`   ❌ ERRORE FASE #${phase.number}: ${phaseError.message}`);
             failedPhases++;
@@ -555,6 +638,18 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
               phase: phase.name,
               success: false,
               error: phaseError.message
+            });
+
+            sendSSE('phaseFailed', {
+              phaseIndex,
+              phaseName: phase.name,
+              phaseNumber: phase.number,
+              error: phaseError.message,
+              progress: {
+                completed: successfulPhases,
+                failed: failedPhases,
+                total: totalPhases
+              }
             });
           }
 
@@ -583,7 +678,7 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
         await aiProvider.cleanup();
       }
 
-      res.json({
+      const finalResult = {
         success: true,
         structure,
         message: `Script personalizzato: ${successfulPhases}/${totalPhases} fasi completate`,
@@ -593,21 +688,40 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
           failedPhases,
           phaseResults
         }
-      });
+      };
+
+      if (useSSE) {
+        sendSSE('generationCompleted', finalResult);
+        res.end();
+      } else {
+        res.json(finalResult);
+      }
 
     } catch (aiError: any) {
       console.error('\n❌ [ScriptBuilder] ERRORE CRITICO:', aiError.message);
       console.error(aiError.stack);
-      return res.status(500).json({
-        success: false,
-        error: 'Errore nella generazione AI. Riprova.',
-        details: aiError.message,
-      });
+      
+      if (useSSE && !res.writableEnded) {
+        sendSSE('error', {
+          success: false,
+          error: 'Errore nella generazione AI. Riprova.',
+          details: aiError.message,
+        });
+        res.end();
+      } else if (!res.headersSent) {
+        return res.status(500).json({
+          success: false,
+          error: 'Errore nella generazione AI. Riprova.',
+          details: aiError.message,
+        });
+      }
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('\n❌ [ScriptBuilder] Errore generale:', error);
-    res.status(500).json({ error: 'Errore nella generazione AI' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Errore nella generazione AI' });
+    }
   }
 });
 

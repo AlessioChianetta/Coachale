@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useBuilder } from './BuilderContext';
 import { Button } from '@/components/ui/button';
 import { getAuthHeaders } from '@/lib/auth';
+import { GenerationProgressDialog, type GenerationProgress, type PhaseInfo } from './GenerationProgressDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,6 +85,19 @@ export function ModeSelector() {
   const [agents, setAgents] = useState<AgentForBuilder[]>([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  const [generationProgress, setGenerationProgress] = useState<GenerationProgress>({
+    isOpen: false,
+    status: 'connecting',
+    totalPhases: 0,
+    currentPhaseIndex: -1,
+    phases: [],
+    completedCount: 0,
+    failedCount: 0,
+    totalTimeMs: 0,
+  });
+  const [generatedStructure, setGeneratedStructure] = useState<any>(null);
+  const [generationStartTime, setGenerationStartTime] = useState<number>(0);
 
   const currentMode = MODE_CONFIG[builder.mode];
   const CurrentIcon = currentMode.icon;
@@ -120,12 +134,25 @@ export function ModeSelector() {
     if (!selectedAgentId) return;
     
     setIsGenerating(true);
-    builder.setIsLoading(true);
+    setShowAIDialog(false);
+    setGenerationStartTime(Date.now());
+    setGeneratedStructure(null);
     
+    setGenerationProgress({
+      isOpen: true,
+      status: 'connecting',
+      totalPhases: 0,
+      currentPhaseIndex: -1,
+      phases: [],
+      completedCount: 0,
+      failedCount: 0,
+      totalTimeMs: 0,
+    });
+
+    const templateId = `${aiTemplate}-base`;
+    const scriptName = `${SCRIPT_TYPE_LABELS[aiTemplate]} - ${selectedAgent?.businessName || 'AI'}`;
+
     try {
-      const templateId = `${aiTemplate}-base`;
-      const scriptName = `${SCRIPT_TYPE_LABELS[aiTemplate]} - ${selectedAgent?.businessName || 'AI'}`;
-      
       const response = await fetch('/api/script-builder/ai-generate', {
         method: 'POST',
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
@@ -136,31 +163,166 @@ export function ModeSelector() {
           scriptType: aiTemplate,
           scriptName,
           targetType,
+          useSSE: true,
         }),
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.structure) {
-          builder.setMode('ai');
-          builder.setScriptType(aiTemplate);
-          builder.setScriptName(scriptName);
-          builder.loadFromStructure(data.structure);
-        }
-      } else {
-        const error = await response.json();
-        builder.setError(error.error || 'Errore nella generazione AI');
+
+      if (!response.ok) {
+        throw new Error('Errore nella connessione');
       }
-    } catch (error) {
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      if (!reader) {
+        throw new Error('Stream non disponibile');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        let eventType = '';
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            eventType = line.slice(7).trim();
+          } else if (line.startsWith('data: ') && eventType) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              handleSSEEvent(eventType, data, scriptName);
+            } catch (e) {
+              console.error('Error parsing SSE data:', e);
+            }
+            eventType = '';
+          }
+        }
+      }
+
+    } catch (error: any) {
       console.error('AI generation error:', error);
-      builder.setError('Errore di rete nella generazione AI');
+      setGenerationProgress(prev => ({
+        ...prev,
+        status: 'error',
+        errorMessage: error.message || 'Errore di rete nella generazione AI',
+      }));
     } finally {
       setIsGenerating(false);
-      builder.setIsLoading(false);
-      setShowAIDialog(false);
       setAiStep(1);
       setUserComment('');
     }
+  };
+
+  const handleSSEEvent = useCallback((eventType: string, data: any, scriptName: string) => {
+    switch (eventType) {
+      case 'connected':
+        setGenerationProgress(prev => ({
+          ...prev,
+          status: 'connecting',
+        }));
+        break;
+
+      case 'generationStarted':
+        setGenerationProgress(prev => ({
+          ...prev,
+          status: 'generating',
+          totalPhases: data.totalPhases,
+          phases: data.phases?.map((p: any) => ({
+            index: p.index,
+            name: p.name,
+            number: p.number,
+            stepsCount: p.stepsCount,
+            hasCheckpoint: p.hasCheckpoint,
+            status: 'pending' as const,
+          })) || [],
+        }));
+        break;
+
+      case 'phaseStarted':
+        setGenerationProgress(prev => ({
+          ...prev,
+          currentPhaseIndex: data.phaseIndex,
+          phases: prev.phases.map((p, idx) => 
+            idx === data.phaseIndex ? { ...p, status: 'in_progress' as const } : p
+          ),
+        }));
+        break;
+
+      case 'phaseCompleted':
+        setGenerationProgress(prev => ({
+          ...prev,
+          completedCount: data.progress.completed,
+          totalTimeMs: Date.now() - generationStartTime,
+          phases: prev.phases.map((p, idx) => 
+            idx === data.phaseIndex 
+              ? { 
+                  ...p, 
+                  status: 'completed' as const,
+                  stats: {
+                    stepsModified: data.stats.stepsModified,
+                    totalSteps: data.stats.totalSteps,
+                    questionsModified: data.stats.questionsModified,
+                    timeMs: data.stats.timeMs,
+                  }
+                } 
+              : p
+          ),
+        }));
+        break;
+
+      case 'phaseFailed':
+        setGenerationProgress(prev => ({
+          ...prev,
+          failedCount: data.progress.failed,
+          totalTimeMs: Date.now() - generationStartTime,
+          phases: prev.phases.map((p, idx) => 
+            idx === data.phaseIndex 
+              ? { ...p, status: 'failed' as const, error: data.error } 
+              : p
+          ),
+        }));
+        break;
+
+      case 'generationCompleted':
+        setGeneratedStructure(data.structure);
+        setGenerationProgress(prev => ({
+          ...prev,
+          status: 'completed',
+          completedCount: data.stats.successfulPhases,
+          failedCount: data.stats.failedPhases,
+          totalTimeMs: Date.now() - generationStartTime,
+        }));
+        break;
+
+      case 'error':
+        setGenerationProgress(prev => ({
+          ...prev,
+          status: 'error',
+          errorMessage: data.error || data.details || 'Errore sconosciuto',
+        }));
+        break;
+    }
+  }, [generationStartTime]);
+
+  const handleProgressComplete = () => {
+    if (generatedStructure) {
+      const scriptName = `${SCRIPT_TYPE_LABELS[aiTemplate]} - ${selectedAgent?.businessName || 'AI'}`;
+      builder.setMode('ai');
+      builder.setScriptType(aiTemplate);
+      builder.setScriptName(scriptName);
+      builder.loadFromStructure(generatedStructure);
+    }
+    setGenerationProgress(prev => ({ ...prev, isOpen: false }));
+    setGeneratedStructure(null);
+  };
+
+  const handleProgressClose = () => {
+    setGenerationProgress(prev => ({ ...prev, isOpen: false }));
+    setGeneratedStructure(null);
   };
 
   const resetAIDialog = () => {
@@ -551,6 +713,12 @@ export function ModeSelector() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <GenerationProgressDialog
+        progress={generationProgress}
+        onClose={handleProgressClose}
+        onComplete={handleProgressComplete}
+      />
     </>
   );
 }
