@@ -1,0 +1,142 @@
+🔇 [xoev5f] AI finished speaking (turn complete)
+💾 [xoev5f] Saved AI message (server-side): 1 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_1)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Ciao Alessandro Rossi! Benvenuto in questa consulenza, come stai?            │
+│ Time: 22:17:51                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [xoev5f] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Sales Manager Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [xoev5f] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_1
+   📍 Current Step: phase_1_step_1
+   📍 Phase Index: 0, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 1 messages
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [xoev5f] MESSAGGI PASSATI AL SALES MANAGER (1):
+   1. [ASSISTANT]: "Ciao Alessandro Rossi! Benvenuto in questa consulenza, come stai?"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏢 Name: Premium
+   🎯 What we do: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibr...
+   👥 Target client: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le ...
+   🚫 Non-target: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che p...
+   📋 Services: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📨 Calling SalesManagerAgent.analyze()...
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Starting comprehensive analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_1 / phase_1_step_1
+   💬 Messages: 1
+⚠️ [CHECKPOINT-AI] No checkpoint defined for phase APERTURA ED IMPOSTAZIONE - BLOCKING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   💰 Buy signals: 0
+   🛡️ Objections: 0
+   🎭 Tone issues: 0
+   ⛔ Checkpoint: ❌ 1 missing (canAdvance=false)
+   👤 Business: Premium
+
+⛔ [SALES-MANAGER] CHECKPOINT BLOCK ACTIVE
+   📋 Checkpoint: Checkpoint mancante per fase: APERTURA ED IMPOSTAZIONE
+   ❌ Missing: 1 items
+   🚫 Step advancement BLOCKED until checkpoint complete
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Analysis complete in 3ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → Step advance: false (100%)
+   → Feedback: checkpoint (critical)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [xoev5f] SALES MANAGER AGENT - RESULT (4ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 100%
+   💡 reasoning: ⛔ BLOCCATO: Checkpoint "Checkpoint mancante per fase: APERTURA ED IMPOSTAZIONE" incompleto. Mancano: Nessun checkpoint definito per la fase "APERTURA ED IMPOSTAZIONE" (phase_1)
+   🔧 FEEDBACK (checkpoint): ⛔ CHECKPOINT INCOMPLETO - NON PUOI AVANZARE!
+
+📋 Checkpoint: "Checkpoint mancante per fase: APERTURA...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 [xoev5f] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📢 Priority: CRITICAL
+   📋 Type: checkpoint
+   📝 Message: ⛔ CHECKPOINT INCOMPLETO - NON PUOI AVANZARE!
+
+📋 Checkpoint: "Checkpoint mancante per fase: APERTURA ED IMPOSTAZIONE"
+❌ Mancano 1 verifiche OBBLIGATOR...
+   🎵 Tone: N/A
+   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 FEEDBACK CONTENT COMPLETO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<<<SALES_MANAGER_INSTRUCTION>>>
+👤 SEI: Premium
+🎯 COSA FAI: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibrazione'. Questi programmi sono strutturati in pacchetti ad alto valore, pensati per gli atleti che cercano un percorso di trasformazione per migliorare le loro prestazioni e il recupero. L'offerta si discosta dalle singole sessioni per proporre un approccio olistico e orientato al risultato.
+👥 CHI AIUTI: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le prestazioni e il benessere.
+🚫 CHI NON AIUTI: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che programmi di trasformazione.
+📋 SERVIZI: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+
+📍 FASE: 1 di 7 - APERTURA ED IMPOSTAZIONE
+   STEP: APERTURA ENTUSIASTA
+🔋 ENERGIA: MEDIO | TONO: ENTUSIASTA | RITMO: MODERATO
+
+🎯 OBIETTIVO: Creare connessione iniziale, rompere il ghiaccio e costruire rapport
+✅ FAI BENE: Stai procedendo nella conversazione
+⚠️ MIGLIORA: ⛔ CHECKPOINT INCOMPLETO - NON PUOI AVANZARE!
+
+📋 Checkpoint: "Checkpoint mancante per fase: APERTURA ED IMPOSTAZIONE"
+❌ Mancano 1 verifiche OBBLIGATORIE:
+→ Nessun checkpoint definito per la fase "APERTURA ED IMPOSTAZIONE" (phase_1)
+
+⚠️ DEVI fare queste domande PRIMA di procedere alla fase successiva!
+🚦 STATO: Rimani in questa fase - checkpoint incompleto
+📋 TI SERVE: Completa le verifiche del checkpoint prima di avanzare
+
+<<</SALES_MANAGER_INSTRUCTION>>>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Feedback SENT to Gemini with turnComplete:false
+   💾 Feedback also saved to DB (for reconnection backup)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+❌ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ [xoev5f] SALES MANAGER AGENT ERROR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Error: feedback is not defined
+   Stack: ReferenceError: feedback is not defined
+    at <anonymous> (/home/runner/workspace/server/ai/gemini-live-ws-service.ts:3543:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔓 [xoev5f] Sales Manager lock released
+10:17:52 PM [express] GET /api/ai-trainer/session/d2eba9f6-8b94-40c4-8c11-42fe4af1a92e/transcript 200…
+10:17:53 PM [express] GET /api/ai-train
