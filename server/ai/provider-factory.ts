@@ -60,7 +60,7 @@ class VertexAIClientAdapter implements GeminiClient {
     
     // If a different model is requested and we have access to vertexAI, create new model instance
     let modelToUse = this.model;
-    if (params.model !== this.currentModelName && this.vertexAI) {
+    if (params.model && params.model !== this.currentModelName && this.vertexAI) {
       console.log(`🔄 Switching model from ${this.currentModelName} to ${params.model}`);
       modelToUse = this.vertexAI.preview.getGenerativeModel({ model: params.model });
       this.currentModelName = params.model;
@@ -143,7 +143,7 @@ class VertexAIClientAdapter implements GeminiClient {
     
     // If a different model is requested and we have access to vertexAI, create new model instance
     let modelToUse = this.model;
-    if (params.model !== this.currentModelName && this.vertexAI) {
+    if (params.model && params.model !== this.currentModelName && this.vertexAI) {
       console.log(`🔄 Switching model from ${this.currentModelName} to ${params.model}`);
       modelToUse = this.vertexAI.preview.getGenerativeModel({ model: params.model });
       this.currentModelName = params.model;
