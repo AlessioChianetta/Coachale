@@ -388,94 +388,88 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 ✅ SE non hai l'info → Chiedi normalmente
 ❌ MAI chiedere cose già dette - sembri un robot!
 
-📌 DOMANDA: "Chi aiuti esattamente?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il target
-💬 REAGISCI: "Interessante!"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 DOMANDE OBBLIGATORIE (5 CRITICHE - DEVONO TUTTE ESSERE FATTE!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DOMANDA: "Modello di business? Ricorrente, una tantum, pacchetti?"
+1️⃣ 📌 DOMANDA OBBLIGATORIA: "Chi aiuti esattamente? Chi è il tuo cliente ideale?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il modello
+🎧 ASCOLTA il target (tipologia di cliente, settore, caratteristiche)
+💬 REAGISCI: "Interessante! Quindi lavori principalmente con [target]..."
+
+2️⃣ 📌 DOMANDA OBBLIGATORIA: "Com'è il tuo modello di business? Lavori con abbonamenti 
+ricorrenti, pacchetti una tantum, o come funziona?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il modello (ricorrente, one-shot, pacchetti, hourly, ecc.)
+💬 REAGISCI: "Capisco! Quindi [modello]..."
+
+3️⃣ 📌 DOMANDA OBBLIGATORIA: "Qual è il tuo ticket medio? Quanto paga mediamente un cliente?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il valore (numero preciso o range)
+💬 REAGISCI: "Interessante! [commento sul valore]"
+
+4️⃣ 📌 DOMANDA OBBLIGATORIA: "Da quanti anni fai questo lavoro?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA gli anni di esperienza
+💬 REAGISCI: "Perfetto! Quindi hai [X anni] di esperienza..."
+
+5️⃣ 📌 DOMANDA OBBLIGATORIA: "Quanti clienti hai attivi in questo momento? 
+O quanti clienti servi all'anno?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il numero (attivi o totali annuali)
 💬 REAGISCI: "Capisco!"
 
-📌 DOMANDA: "Da quanti anni?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA l'esperienza
-💬 REAGISCI: "Perfetto!"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ HAI FATTO TUTTE E 5? Se NO → FAI LE MANCANTI prima di continuare!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DOMANDA: "B2B o B2C?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la tipologia
-💬 REAGISCI: "Ok!"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 DOMANDE OPZIONALI (fai se hai tempo e flusso lo permette)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DOMANDA: "Quanti clienti hai ora?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il numero
-💬 REAGISCI: "Capisco!"
-
-📌 DOMANDA: "Ticket medio?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il valore
-💬 REAGISCI: "Interessante!"
-
-📌 DOMANDA: "Hai collaboratori? Commerciali?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la struttura
-💬 REAGISCI: "Perfetto!"
-
-📌 DOMANDA: "Chi si occupa di marketing?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA chi gestisce
-💬 REAGISCI: "Capisco!"
-
-📌 DOMANDA: "Come generi clienti in target adesso?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA i canali attuali
-💬 REAGISCI: "Interessante!"
-
-📌 DOMANDA: "Sai il tuo CAC (costo acquisizione cliente)?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA se lo conoscono
-💬 REAGISCI: "Ok, capisco!"
-
-📌 DOMANDA (CHIAVE): "E qual è il prodotto/servizio principale che genera più vendite?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA attentamente - Questo è cruciale per la demo
-💬 REAGISCI: "Perfetto! È importante saperlo!"
+📌 OPZIONALE: "B2B o B2C? O entrambi?"
+📌 OPZIONALE: "Hai collaboratori? Un team commerciale?"
+📌 OPZIONALE: "Chi si occupa del marketing nella tua attività?"
+📌 OPZIONALE: "Come generi clienti in target adesso? Quali canali usi?"
+📌 OPZIONALE: "Sai il tuo CAC, costo acquisizione cliente?"
+📌 OPZIONALE: "Qual è il prodotto/servizio principale che ti genera più vendite?"
 
 🍪 SE DIVAGA: Biscottino + "Ok tornando a noi..."
 
 ⚠️ RICORDA: Conversazione naturale, NON interrogatorio robotico!
+💡 SUGGERIMENTO: Puoi combinare 2 domande in una frase naturale:
+   "E dimmi, il ticket medio qual è? E quanti clienti servi più o meno all'anno?"
 
 ---
 
-⛔ CHECKPOINT FASE #3
+⛔ CHECKPOINT FASE #3 - BLOCCANTE!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRIMA DI PASSARE ALLA FASE #4 VERIFICA:
+🚨 ATTENZIONE: NON PUOI PROCEDERE SENZA LE 5 INFO OBBLIGATORIE!
 
-✓ Hai chiesto chi aiuta esattamente (target)?
-✓ Hai ricevuto risposta sul target?
-✓ Hai chiesto il modello di business (ricorrente, una tantum, pacchetti)?
-✓ Hai ricevuto risposta sul modello?
-✓ Hai chiesto da quanti anni è in attività?
-✓ Hai ricevuto risposta sull'esperienza?
-✓ Hai chiesto il ticket medio?
-✓ Hai ricevuto risposta sul ticket?
-✓ Hai chiesto quanti clienti ha ora?
-✓ Hai ricevuto risposta sul numero clienti?
+VERIFICA LE 5 DOMANDE CRITICHE:
+□ 1. TARGET: Sai CHI aiuta esattamente?
+□ 2. MODELLO: Sai COM'È il modello di business (ricorrente/una tantum/ecc.)?
+□ 3. TICKET: Sai QUANTO paga mediamente un cliente?
+□ 4. ESPERIENZA: Sai DA QUANTI ANNI fa questo lavoro?
+□ 5. CLIENTI: Sai QUANTI clienti ha ora o serve all'anno?
 
-❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
+📊 AUTO-TEST (fai questo check mentale):
+"Potrei descrivere il business del prospect a un collega in 30 secondi?"
+- Target: ________
+- Modello: ________
+- Ticket medio: ________
+- Anni esperienza: ________
+- Numero clienti: ________
 
-📊 TEST FINALE:
-"Hai un quadro chiaro del business del prospect?"
-SE SÌ → Procedi alla Fase #4
-SE NO → Completa le domande mancanti
+SE ANCHE SOLO UN CAMPO È VUOTO → FERMATI E CHIEDI!
 
-🛡️ SE RESISTE: Non vuole rispondere a domande sul business
-📌 RISPOSTA: "Capisco, sono domande importanti per calibrare la proposta 
-sul TUO business. Senza queste info rischio di proporti qualcosa 
-che non fa per te. Concordi?"
-⏸️ ASPETTA conferma → Continua con le domande
+❌ NON PROCEDERE alla Fase #4 senza TUTTE e 5 le risposte!
+
+🛡️ SE RESISTE: Non vuole rispondere
+📌 RISPOSTA: "Capisco, sono domande rapide ma fondamentali per calibrare 
+la proposta sul TUO business. Senza sapere [info mancante] rischio di 
+proporti qualcosa che non fa per te. Mi aiuti?"
+⏸️ ASPETTA risposta → Insisti finché non hai l'info!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
@@ -502,8 +496,51 @@ Mindset: Sei un dottore che raccoglie dati per la diagnosi - è NORMALE!
 e che è il momento di agire. Lo facciamo con domande inquisitorie che mostrano la nostra 
 expertise. L'obiettivo è che loro ci dicano "NON LO SO"
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 DOMANDE DIAGNOSTICHE (scegline 2-3 rilevanti per il loro caso)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 DIAGNOSTICA 1 - METRICHE:
+"Giusto per capire... sai qual è il tuo tasso di conversione attuale? 
+Quanti lead diventano clienti in percentuale?"
+⏸️ ASPETTA - L'obiettivo è che dica "Non lo so" o un numero basso
+💬 Se dice "Non lo so": "Ecco, questo è un dato CRITICO. Lo vediamo più avanti."
+💬 Se dà un numero: "Interessante. E sai qual è lo standard del settore?"
+
+📌 DIAGNOSTICA 2 - COSTI NASCOSTI:
+"E sai quanto ti costa ogni cliente perso? Tra tempo, energie, 
+opportunità mancate..."
+⏸️ ASPETTA - Fai emergere i costi invisibili
+💬 Se dice "Non ci ho mai pensato": "Esattamente! È un costo nascosto enorme."
+
+📌 DIAGNOSTICA 3 - TEMPO:
+"Quante ore a settimana dedichi personalmente a [problema specifico]?"
+⏸️ ASPETTA - Fai emergere il tempo sprecato
+💬 REAGISCI: "Interessante... e queste ore quanto valgono economicamente?"
+
+📌 DIAGNOSTICA 4 - SISTEMA:
+"Hai un sistema strutturato per [attività chiave] o lo fai caso per caso?"
+⏸️ ASPETTA - Fai emergere la mancanza di sistema
+💬 Se dice "caso per caso": "Capisco... e questo quanto ti rallenta secondo te?"
+
+📌 DIAGNOSTICA 5 - SCALABILITÀ:
+"Se domani raddoppiassero i clienti, il tuo sistema reggerebbe?"
+⏸️ ASPETTA - Fai emergere i limiti del business attuale
+💬 REAGISCI: "Interessante punto di vista..."
+
+📌 DIAGNOSTICA 6 - DIPENDENZA:
+"Quanto dipende il business dalla tua presenza diretta? 
+Se ti ammali 2 settimane, cosa succede?"
+⏸️ ASPETTA - Fai emergere la dipendenza personale
+💬 REAGISCI: "Capisco la situazione..."
+
 ⚠️ Se ti chiede "mi spieghi meglio?", rispondi:
 "È proprio il motivo per il quale siamo in questa call, lo vediamo più avanti"
+
+🎯 OBIETTIVO RAGGIUNTO quando il prospect:
+- Dice "Non lo so" almeno 1-2 volte
+- Realizza che il problema è più grande di quanto pensava
+- Mostra preoccupazione o curiosità di sapere di più
 
 🍪 SE DIVAGA: Biscottino + riporta in carreggiata
 
@@ -806,60 +843,84 @@ Cerchiamo chi vuole veramente cambiare. Che ne dici?"
 
 ---
 
-**STEP 14 - URGENZA**
-🎯 OBIETTIVO: Qualificare timing e creare urgenza
+**STEP 14 - URGENZA E TIMING**
+🎯 OBIETTIVO: Qualificare timing e creare urgenza genuina
 
-📌 DOMANDA: "Quando vuoi iniziare?"
+📌 DOMANDA: "Quando vuoi iniziare a lavorare su questo?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il timing
 💬 REAGISCI brevemente: "Ok!"
 
-📌 DOMANDA: "Da 1 a 10, quanto è urgente per te? 
+📌 DOMANDA: "Da 1 a 10, quanto è urgente per te risolvere questa situazione? 
 1 = non urgente, 10 = urgentissimo."
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il numero
+🎧 ASCOLTA il numero e MEMORIZZALO
 💬 REAGISCI: "Capisco!"
 
-🛡️ SE RESISTE: NON È URGENTE (1-5) → Disqualifica con scarsità
-📌 DOMANDA: "Se non è urgente, dobbiamo fermarci qui. 
-Accettiamo max X persone/mese e vogliamo chi si muove subito. 
-Risentirci più avanti?"
+📌 DOMANDA (SCAVO EMOTIVO): "E perché è [numero] e non 3 o 4?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA se cambiano idea
-💬 Se confermano → Chiudi e proponi follow-up futuro
-💬 Se cambiano idea → Continua
+🎧 ASCOLTA la motivazione emotiva dietro l'urgenza
+💬 REAGISCI con empatia: "Ha senso!"
+
+🛡️ SE URGENZA È BASSA (1-5):
+📌 DOMANDA: "Capisco. E cosa dovrebbe succedere per renderlo più urgente?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA se emergono trigger futuri
+💬 Se non emerge urgenza → Proponi follow-up futuro
+💬 Se emerge urgenza latente → Continua
 
 ---
 
 **STEP 15 - BUDGET E DECISION MAKER**
-🎯 OBIETTIVO: Qualificare budget e decision maker
+🎯 OBIETTIVO: Pre-qualificare budget e decision maker per la demo
 
 📌 DOMANDA: "Ipotizzando che possiamo aiutarti davvero, 
 valuteresti un investimento tra [RANGE]?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA - Nota resistenze
+🎧 ASCOLTA - Nota resistenze o conferme
 💬 REAGISCI: "Perfetto!" / "Capisco!"
+
+🛡️ SE RESISTE SUL BUDGET:
+📌 DOMANDA: "Capisco. Giusto per calibrare: parliamo di qualche centinaio 
+di euro o siamo nell'ordine delle migliaia?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il range di comfort
+💬 REAGISCI: "Ok, prendo nota!"
 
 📌 DOMANDA: "Decidi tu o c'è qualcun altro?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA chi decide
 💬 REAGISCI: "Perfetto!"
 
+🛡️ SE C'È UN CO-DECISORE:
+📌 DOMANDA: "Possiamo coinvolgerlo/a nella prossima call così 
+siete allineati sulla decisione?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA se possono includerlo
+💬 Se sì → Prendi nota per la demo
+💬 Se no → Continua e valuteremo nella demo
+
 ---
 
 **STEP 16 - TRANSIZIONE ALLA DEMO**
-🎯 OBIETTIVO: Chiudere la discovery e passare alla demo
+🎯 OBIETTIVO: Chiudere la discovery e fissare la demo
 
 📌 AFFERMAZIONE (TONO: Sicuro e positivo):
 "Dalle informazioni che mi hai dato, penso di poterti aiutare."
 💬 PAUSA brevissima per impatto
 
-📌 DOMANDA: "Adesso andiamo a strutturare un percorso personalizzato per te 
-con gli appunti che ho preso durante questa conversazione.
-Vorrei prenotare una call con te alle [INSERISCI ORA], che ne dici?"
+📌 DOMANDA: "Adesso ti propongo una cosa: nella prossima call ti presenterò 
+un percorso personalizzato basato su tutto quello che mi hai raccontato oggi.
+Ti mostrerò esattamente come passare da [fatturato attuale] a [obiettivo].
+Quando ti torna meglio? [PROPONI 2-3 SLOT]"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la conferma
-💬 REAGISCI: "Perfetto! Ci sentiamo allora!"
+🎧 ASCOLTA la scelta
+💬 REAGISCI: "Perfetto! Ci vediamo [data/ora]!"
+
+📌 CONFERMA FINALE:
+"Riceverai un promemoria con il link alla call. 
+Ti chiedo di essere puntuale così sfruttiamo tutto il tempo insieme.
+A [giorno]!"
 
 ---
 
@@ -867,11 +928,14 @@ Vorrei prenotare una call con te alle [INSERISCI ORA], che ne dici?"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRIMA DI PASSARE ALLA DEMO VERIFICA:
 
-✓ Ha detto uno dei MAGICI 3?
+✓ Hai un quadro chiaro del PROBLEMA principale?
+✓ Hai scavato le EMOZIONI profonde dietro l'obiettivo?
+✓ Ha detto uno dei MAGICI 3 (ha bisogno di aiuto)?
 ✓ Ha urgenza (6-10)?
-✓ Ha budget disponibile?
-✓ È lui che decide?
+✓ Ha budget disponibile (o almeno un range)?
+✓ È lui che decide (o hai coinvolto il co-decisore)?
 ✓ Hai TUTTE le info per la demo (fatturato, obiettivo, emozioni, tentativi)?
+✓ Hai fissato la data/ora per la DEMO?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON puoi fare demo efficace!
 
@@ -885,7 +949,7 @@ Torna indietro e recupera le informazioni mancanti prima di procedere!
 - Fai UNA domanda alla volta
 - Ascolta attentamente le risposte
 - Mostra empatia e comprensione
-- NON vendere durante discovery - raccogli solo informazioni
+- NON vendere durante discovery - raccogli informazioni E pre-qualifica
 - Mantieni tonalità ENTUSIASTA e sincera
 - Adatta le domande in base alle risposte precedenti
 - Prendi appunti mentali di tutto per usarli nella demo

@@ -3357,11 +3357,21 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         }
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                         
-                        // 🆕 FEEDBACK INJECTION - Uses priority-based feedback from SalesManagerAgent
-                        // 🔧 FIX: Instead of injecting with role: 'model' (which Gemini ignores),
-                        // we save the feedback to a buffer and append it to the NEXT user message.
-                        // This way the AI sees the feedback as part of the user's input and processes it naturally.
-                        if (analysis.feedbackForAgent?.shouldInject) {
+                        // 🆕 FEEDBACK INJECTION - SEMPRE invia il tag quando c'è reasoning disponibile
+                        // 🔧 FIX CRITICO: Il reasoning del Manager deve essere SEMPRE incluso nel tag
+                        // per garantire che l'agente abbia sempre il contesto del supervisore.
+                        // Il tag viene inviato se:
+                        // 1. C'è un feedback specifico (obiezioni, buy signals, etc.)
+                        // 2. OPPURE c'è reasoning valido dal Manager (non solo messaggi di default)
+                        const hasValidReasoning = stepResult.reasoning && 
+                          stepResult.reasoning.length > 10 && 
+                          !stepResult.reasoning.includes('Pending AI analysis') &&
+                          !stepResult.reasoning.includes('Timeout') &&
+                          !stepResult.reasoning.includes('Failed to parse');
+                        
+                        const shouldInjectInstruction = analysis.feedbackForAgent?.shouldInject || hasValidReasoning;
+                        
+                        if (shouldInjectInstruction) {
                           const feedback = analysis.feedbackForAgent;
                           
                           // Trova info sulla fase corrente per feedback strutturato (con fallback robusti)
@@ -3376,33 +3386,61 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           let needsImprovement = '';
                           let statusMessage = '';
                           let whatYouNeed = '';
+                          let feedbackType = 'reasoning'; // Default quando solo reasoning
+                          let feedbackPriority = 'medium';
+                          let toneReminder = '';
                           
                           // Analizza tipo di feedback per costruire messaggi appropriati
-                          if (feedback.type === 'objection') {
+                          // 🆕 Gestisce anche il caso feedback === null (solo reasoning presente)
+                          if (feedback?.type === 'objection') {
+                            feedbackType = 'objection';
+                            feedbackPriority = feedback.priority || 'high';
                             doingWell = 'Stai mantenendo la conversazione attiva';
                             needsImprovement = feedback.message;
                             statusMessage = 'Rimani in questa fase - gestisci prima l\'obiezione';
                             whatYouNeed = 'Rispondere all\'obiezione con empatia, poi tornare allo script';
-                          } else if (feedback.type === 'buy_signal') {
+                            toneReminder = feedback.toneReminder || '';
+                          } else if (feedback?.type === 'buy_signal') {
+                            feedbackType = 'buy_signal';
+                            feedbackPriority = feedback.priority || 'high';
                             doingWell = 'Hai generato interesse - il prospect mostra segnali di acquisto!';
                             needsImprovement = 'Non perdere il momento - capitalizza subito';
                             statusMessage = feedback.message.includes('CLOSING') ? 'Puoi avanzare verso il closing!' : 'Rimani e approfondisci l\'interesse';
                             whatYouNeed = feedback.message;
-                          } else if (feedback.type === 'tone') {
+                            toneReminder = feedback.toneReminder || '';
+                          } else if (feedback?.type === 'tone') {
+                            feedbackType = 'tone';
+                            feedbackPriority = feedback.priority || 'medium';
                             doingWell = 'Stai seguendo lo script';
                             needsImprovement = feedback.message;
                             statusMessage = 'Rimani in questa fase - correggi il tono prima';
                             whatYouNeed = feedback.toneReminder || 'Adegua energia e tono alla fase';
-                          } else if (feedback.type === 'checkpoint') {
+                            toneReminder = feedback.toneReminder || '';
+                          } else if (feedback?.type === 'checkpoint') {
+                            feedbackType = 'checkpoint';
+                            feedbackPriority = feedback.priority || 'medium';
                             doingWell = 'Stai procedendo nella conversazione';
                             needsImprovement = feedback.message;
                             statusMessage = 'Rimani in questa fase - checkpoint incompleto';
                             whatYouNeed = 'Completa le verifiche del checkpoint prima di avanzare';
-                          } else {
-                            doingWell = analysis.toneAnalysis.issues.length === 0 ? 'Tono e ritmo corretti' : 'Stai seguendo lo script';
+                            toneReminder = feedback.toneReminder || '';
+                          } else if (feedback?.type === 'out_of_scope') {
+                            feedbackType = 'out_of_scope';
+                            feedbackPriority = feedback.priority || 'high';
+                            doingWell = 'Stai mantenendo la conversazione';
                             needsImprovement = feedback.message;
+                            statusMessage = 'Rimani in questa fase - guida verso i nostri servizi';
+                            whatYouNeed = 'Riporta gentilmente la conversazione sui servizi che offriamo';
+                            toneReminder = feedback.toneReminder || '';
+                          } else {
+                            // 🆕 CASO DEFAULT: Solo reasoning presente, nessun feedback specifico
+                            feedbackType = feedback?.type || 'reasoning';
+                            feedbackPriority = feedback?.priority || 'low';
+                            doingWell = analysis.toneAnalysis.issues.length === 0 ? 'Tono e ritmo corretti' : 'Stai seguendo lo script';
+                            needsImprovement = feedback?.message || 'Continua a seguire lo script';
                             statusMessage = stepResult.shouldAdvance ? 'Puoi avanzare alla prossima fase' : 'Rimani in questa fase';
                             whatYouNeed = stepResult.shouldAdvance ? 'Procedi allo step successivo' : 'Ottieni le info mancanti prima di avanzare';
+                            toneReminder = feedback?.toneReminder || '';
                           }
                           
                           // 🆕 Costruisci sezione IDENTITÀ del business (sempre presente)
@@ -3423,6 +3461,10 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                           const phaseEnergy = currentPhaseEnergy || { level: 'MEDIO', tone: 'SICURO', pace: 'MODERATO' };
                           const energySection = `🔋 ENERGIA: ${phaseEnergy.level} | TONO: ${phaseEnergy.tone} | RITMO: ${phaseEnergy.pace}`;
                           
+                          // 🆕 SEMPRE includere il reasoning del Manager quando disponibile
+                          // Questo è CRITICO per garantire che l'agente abbia sempre il contesto
+                          const managerReasoning = hasValidReasoning ? stepResult.reasoning : '';
+                          
                           // Formato STRUTTURATO per il coaching con NUOVI DELIMITATORI (Trojan Horse Strategy)
                           // L'AI è istruita a riconoscere questi tag come "pensiero interno" e non leggerli ad alta voce
                           const feedbackContent = `<<<SALES_MANAGER_INSTRUCTION>>>
@@ -3437,7 +3479,8 @@ ${energySection}
 ⚠️ MIGLIORA: ${needsImprovement}
 🚦 STATO: ${statusMessage}
 📋 TI SERVE: ${whatYouNeed}
-${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
+${toneReminder ? `🎵 REMINDER TONO: ${toneReminder}` : ''}
+${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
 <<</SALES_MANAGER_INSTRUCTION>>>`;
                           
                           // 🆕 IMMEDIATE INJECTION (Trojan Horse): Inject feedback NOW, not on next user message
@@ -3447,10 +3490,11 @@ ${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
                           console.log(`\n📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           console.log(`📤 [${connectionId}] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                          console.log(`   📢 Priority: ${feedback.priority.toUpperCase()}`);
-                          console.log(`   📋 Type: ${feedback.type}`);
-                          console.log(`   📝 Message: ${feedback.message.substring(0, 150)}${feedback.message.length > 150 ? '...' : ''}`);
-                          console.log(`   🎵 Tone: ${feedback.toneReminder || 'N/A'}`);
+                          console.log(`   📢 Priority: ${feedbackPriority.toUpperCase()}`);
+                          console.log(`   📋 Type: ${feedbackType}`);
+                          console.log(`   📝 Needs Improvement: ${needsImprovement.substring(0, 150)}${needsImprovement.length > 150 ? '...' : ''}`);
+                          console.log(`   💭 Reasoning: ${managerReasoning ? managerReasoning.substring(0, 100) + '...' : 'N/A'}`);
+                          console.log(`   🎵 Tone: ${toneReminder || 'N/A'}`);
                           console.log(`   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           // 🆕 Log del feedbackContent COMPLETO per debug
@@ -3511,7 +3555,7 @@ ${feedback.toneReminder ? `🎵 REMINDER TONO: ${feedback.toneReminder}` : ''}
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                           
                           await salesTracker.addReasoning('sales_manager_feedback', 
-                            `SalesManager feedback BUFFERED (${feedback.type}/${feedback.priority}): ${feedback.message}${feedback.toneReminder ? ` | Tone: ${feedback.toneReminder}` : ''}`
+                            `SalesManager feedback INJECTED (${feedbackType}/${feedbackPriority}): ${needsImprovement}${managerReasoning ? ` | Reasoning: ${managerReasoning.substring(0, 100)}` : ''}${toneReminder ? ` | Tone: ${toneReminder}` : ''}`
                           );
                         }
                         

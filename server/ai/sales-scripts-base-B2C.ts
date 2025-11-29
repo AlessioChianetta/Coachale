@@ -388,82 +388,89 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 ✅ SE non hai l'info → Chiedi normalmente
 ❌ MAI chiedere cose già dette - sembri un robot!
 
-📌 DOMANDA: "Cosa fai nella vita? Lavoro, studi?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il contesto
-💬 REAGISCI: "Interessante!"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 DOMANDE OBBLIGATORIE (5 CRITICHE - DEVONO TUTTE ESSERE FATTE!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DOMANDA: "Come organizzi le tue giornate solitamente?"
+1️⃣ 📌 DOMANDA OBBLIGATORIA: "Cosa fai nella vita? Lavoro, studi, o...?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la routine
-💬 REAGISCI: "Capisco!"
+🎧 ASCOLTA il contesto lavorativo/di studio (occupazione, settore, ruolo)
+💬 REAGISCI: "Interessante! Quindi [riassumi contesto]..."
 
-📌 DOMANDA: "Da quanti anni sei in questa situazione?"
+2️⃣ 📌 DOMANDA OBBLIGATORIA: "Da quanto tempo stai affrontando questa situazione? 
+Mesi, anni?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA l'esperienza
-💬 REAGISCI: "Perfetto!"
+🎧 ASCOLTA la durata del problema (è recente o cronico?)
+💬 REAGISCI: "Capisco, quindi sono [X tempo] che..."
 
-📌 DOMANDA: "Quanto tempo libero hai realmente a disposizione?"
+3️⃣ 📌 DOMANDA OBBLIGATORIA: "Se dovessi dare un voto da 1 a 10 al tuo livello 
+di stress attuale legato a questo, quanto sarebbe?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la disponibilità
-💬 REAGISCI: "Ok!"
+🎧 ASCOLTA il NUMERO specifico (1-10)
+💬 REAGISCI: "[numero]... capisco, è [commento appropriato al livello]"
 
-📌 DOMANDA: "Hai supporto da famiglia/partner o sei solo in questo?"
+4️⃣ 📌 DOMANDA OBBLIGATORIA: "In questa cosa, sei da solo o hai supporto? 
+Famiglia, partner, amici che ti aiutano?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA l'ambiente circostante
-💬 REAGISCI: "Capisco!"
+🎧 ASCOLTA il livello di supporto (solo, parziale, supportato)
+💬 REAGISCI: "Perfetto, quindi [riassumi situazione supporto]..."
 
-📌 DOMANDA: "Livello di stress attuale da 1 a 10?"
+5️⃣ 📌 DOMANDA OBBLIGATORIA: "Quanto tempo reale riesci a dedicare a questo 
+ogni settimana? Ore, giorni?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il valore
-💬 REAGISCI: "Interessante!"
+🎧 ASCOLTA la disponibilità temporale concreta
+💬 REAGISCI: "Capisco! [commento sulla disponibilità]"
 
-📌 DOMANDA: "Dove cerchi informazioni solitamente (social, libri, amici)?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA le fonti
-💬 REAGISCI: "Perfetto!"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ HAI FATTO TUTTE E 5? Se NO → FAI LE MANCANTI prima di continuare!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DOMANDA: "Qual è l'ostacolo più grande che trovi ogni giorno?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il blocco quotidiano
-💬 REAGISCI: "Capisco!"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 DOMANDE OPZIONALI (fai se hai tempo e flusso lo permette)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DOMANDA (CHIAVE): "E qual è l'aspetto della tua vita che ne risente di più?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA attentamente - Questo è cruciale per la demo
-💬 REAGISCI: "Perfetto! È importante saperlo!"
+📌 OPZIONALE: "Come organizzi le tue giornate solitamente?"
+📌 OPZIONALE: "Dove cerchi informazioni su questo? Social, libri, amici?"
+📌 OPZIONALE: "Qual è l'ostacolo più grande che trovi ogni giorno?"
+📌 OPZIONALE: "Qual è l'aspetto della tua vita che ne risente di più?"
+📌 OPZIONALE: "Hai già provato altre soluzioni in passato?"
 
 🍪 SE DIVAGA: Biscottino + "Ok tornando a noi..."
 
 ⚠️ RICORDA: Conversazione naturale, NON interrogatorio robotico!
+💡 SUGGERIMENTO: Puoi combinare 2 domande in una frase naturale:
+   "E dimmi, da quanto tempo è così? E quanto ti sta stressando, da 1 a 10?"
 
 ---
 
-⛔ CHECKPOINT FASE #3
+⛔ CHECKPOINT FASE #3 - BLOCCANTE!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PRIMA DI PASSARE ALLA FASE #4 VERIFICA:
+🚨 ATTENZIONE: NON PUOI PROCEDERE SENZA LE 5 INFO OBBLIGATORIE!
 
-✓ Hai chiesto cosa fa nella vita (lavoro/studi)?
-✓ Hai ricevuto risposta sul lavoro/studio?
-✓ Hai chiesto come organizza le sue giornate?
-✓ Hai ricevuto risposta sull'organizzazione giornaliera?
-✓ Hai chiesto il livello di stress da 1 a 10?
-✓ Hai ricevuto un NUMERO specifico (1-10)?
-✓ Hai chiesto se ha supporto da famiglia/partner?
-✓ Hai ricevuto risposta sul supporto?
+VERIFICA LE 5 DOMANDE CRITICHE:
+□ 1. OCCUPAZIONE: Sai cosa fa nella vita (lavoro/studi)?
+□ 2. DURATA: Sai da QUANTO TEMPO affronta questa situazione?
+□ 3. STRESS: Hai un NUMERO 1-10 del livello di stress?
+□ 4. SUPPORTO: Sai se è SOLO o ha supporto (famiglia/partner)?
+□ 5. TEMPO: Sai QUANTO TEMPO può dedicare a settimana?
 
-❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
+📊 AUTO-TEST (fai questo check mentale):
+"Potrei descrivere la situazione del prospect a un collega in 30 secondi?"
+- Occupazione: ________
+- Durata problema: ________
+- Stress (1-10): ________
+- Supporto: ________
+- Tempo disponibile: ________
 
-📊 TEST FINALE:
-"Hai un quadro chiaro della situazione personale del prospect?"
-SE SÌ → Procedi alla Fase #4
-SE NO → Completa le domande mancanti
+SE ANCHE SOLO UN CAMPO È VUOTO → FERMATI E CHIEDI!
 
-🛡️ SE RESISTE: Non vuole rispondere a domande personali
-📌 RISPOSTA: "Capisco, sono domande importanti per calibrare la proposta 
-sulla TUA situazione. Senza queste info rischio di proporti qualcosa 
-che non fa per te. Concordi?"
-⏸️ ASPETTA conferma → Continua con le domande
+❌ NON PROCEDERE alla Fase #4 senza TUTTE e 5 le risposte!
+
+🛡️ SE RESISTE: Non vuole rispondere
+📌 RISPOSTA: "Capisco, sono domande rapide ma fondamentali per calibrare 
+la proposta sulla TUA situazione. Senza sapere [info mancante] rischio di 
+proporti qualcosa che non fa per te. Mi aiuti?"
+⏸️ ASPETTA risposta → Insisti finché non hai l'info!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
@@ -490,8 +497,53 @@ Mindset: Sei un dottore che raccoglie dati per la diagnosi - è NORMALE!
 e che è il momento di agire. Lo facciamo con domande inquisitorie che mostrano la nostra 
 expertise. L'obiettivo è che loro ci dicano "NON LO SO"
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 DOMANDE DIAGNOSTICHE (scegline 2-3 rilevanti per il loro caso)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 DIAGNOSTICA 1 - IMPATTO QUOTIDIANO:
+"Giusto per capire... quanto questo problema sta influenzando 
+le altre aree della tua vita? Lavoro, relazioni, salute?"
+⏸️ ASPETTA - Fai emergere l'effetto domino
+💬 REAGISCI: "Interessante... quindi sta impattando anche [area]..."
+
+📌 DIAGNOSTICA 2 - COSTO NASCOSTO:
+"E se dovessi quantificare, quanto ti sta costando questo problema? 
+In termini di tempo, energia, opportunità perse..."
+⏸️ ASPETTA - Fai emergere i costi invisibili
+💬 Se dice "Non ci ho mai pensato": "Esattamente! È un costo nascosto enorme."
+
+📌 DIAGNOSTICA 3 - TENTATIVI PASSATI:
+"Quante volte hai già provato a risolvere questo problema? 
+E cosa è successo ogni volta?"
+⏸️ ASPETTA - Fai emergere i fallimenti passati
+💬 REAGISCI: "Capisco... e secondo te perché non ha funzionato?"
+
+📌 DIAGNOSTICA 4 - CONSAPEVOLEZZA:
+"Sai esattamente cosa ti sta bloccando? O senti che c'è qualcosa 
+che non riesci a identificare?"
+⏸️ ASPETTA - L'obiettivo è che dica "Non lo so"
+💬 Se dice "Non lo so": "Ecco, questo è il punto CRITICO. Lo vediamo più avanti."
+
+📌 DIAGNOSTICA 5 - PROIEZIONE FUTURA:
+"Se non cambi nulla, dove pensi di essere tra 1 anno? 
+Meglio, uguale, o peggio?"
+⏸️ ASPETTA - Fai emergere la paura del non-cambiamento
+💬 REAGISCI: "Interessante... e questo come ti fa sentire?"
+
+📌 DIAGNOSTICA 6 - DIPENDENZE:
+"Quanto dipendi da altri per risolvere questo? 
+O stai cercando di fare tutto da solo?"
+⏸️ ASPETTA - Fai emergere isolamento o dipendenza eccessiva
+💬 REAGISCI: "Capisco la situazione..."
+
 ⚠️ Se ti chiede "mi spieghi meglio?", rispondi:
 "È proprio il motivo per il quale siamo in questa call, lo vediamo più avanti"
+
+🎯 OBIETTIVO RAGGIUNTO quando il prospect:
+- Dice "Non lo so" almeno 1-2 volte
+- Realizza che il problema è più grande di quanto pensava
+- Mostra preoccupazione o curiosità di sapere di più
 
 🍪 SE DIVAGA: Biscottino + riporta in carreggiata
 
@@ -795,60 +847,84 @@ Cerchiamo chi vuole veramente cambiare. Che ne dici?"
 
 ---
 
-**STEP 14 - URGENZA**
-🎯 OBIETTIVO: Qualificare timing e creare urgenza
+**STEP 14 - URGENZA E TIMING**
+🎯 OBIETTIVO: Qualificare timing e creare urgenza genuina
 
-📌 DOMANDA: "Quando vuoi iniziare?"
+📌 DOMANDA: "Quando vuoi iniziare a lavorare su questo?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il timing
 💬 REAGISCI brevemente: "Ok!"
 
-📌 DOMANDA: "Da 1 a 10, quanto è urgente per te? 
+📌 DOMANDA: "Da 1 a 10, quanto è urgente per te risolvere questa situazione? 
 1 = non urgente, 10 = urgentissimo."
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il numero
+🎧 ASCOLTA il numero e MEMORIZZALO
 💬 REAGISCI: "Capisco!"
 
-🛡️ SE RESISTE: NON È URGENTE (1-5) → Disqualifica con scarsità
-📌 DOMANDA: "Se non è urgente, dobbiamo fermarci qui. 
-Accettiamo max X persone/mese e vogliamo chi si muove subito. 
-Risentirci più avanti?"
+📌 DOMANDA (SCAVO EMOTIVO): "E perché è [numero] e non 3 o 4?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA se cambiano idea
-💬 Se confermano → Chiudi e proponi follow-up futuro
-💬 Se cambiano idea → Continua
+🎧 ASCOLTA la motivazione emotiva dietro l'urgenza
+💬 REAGISCI con empatia: "Ha senso!"
+
+🛡️ SE URGENZA È BASSA (1-5):
+📌 DOMANDA: "Capisco. E cosa dovrebbe succedere per renderlo più urgente?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA se emergono trigger futuri
+💬 Se non emerge urgenza → Proponi follow-up futuro
+💬 Se emerge urgenza latente → Continua
 
 ---
 
 **STEP 15 - BUDGET E DECISION MAKER**
-🎯 OBIETTIVO: Qualificare budget e decision maker
+🎯 OBIETTIVO: Pre-qualificare budget e decision maker per la demo
 
 📌 DOMANDA: "Ipotizzando che possiamo aiutarti davvero, 
 valuteresti un investimento tra [RANGE]?"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA - Nota resistenze
+🎧 ASCOLTA - Nota resistenze o conferme
 💬 REAGISCI: "Perfetto!" / "Capisco!"
+
+🛡️ SE RESISTE SUL BUDGET:
+📌 DOMANDA: "Capisco. Giusto per calibrare: parliamo di qualche centinaio 
+di euro o siamo nell'ordine delle migliaia?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il range di comfort
+💬 REAGISCI: "Ok, prendo nota!"
 
 📌 DOMANDA: "Decidi tu o c'è qualcun altro?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA chi decide
 💬 REAGISCI: "Perfetto!"
 
+🛡️ SE C'È UN CO-DECISORE:
+📌 DOMANDA: "Possiamo coinvolgerlo/a nella prossima call così 
+siete allineati sulla decisione?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA se possono includerlo
+💬 Se sì → Prendi nota per la demo
+💬 Se no → Continua e valuteremo nella demo
+
 ---
 
 **STEP 16 - TRANSIZIONE ALLA DEMO**
-🎯 OBIETTIVO: Chiudere la discovery e passare alla demo
+🎯 OBIETTIVO: Chiudere la discovery e fissare la demo
 
 📌 AFFERMAZIONE (TONO: Sicuro e positivo):
 "Dalle informazioni che mi hai dato, penso di poterti aiutare."
 💬 PAUSA brevissima per impatto
 
-📌 DOMANDA: "Adesso andiamo a strutturare un percorso personalizzato per te 
-con gli appunti che ho preso durante questa conversazione.
-Vorrei prenotare una call con te alle [INSERISCI ORA], che ne dici?"
+📌 DOMANDA: "Adesso ti propongo una cosa: nella prossima call ti presenterò 
+un percorso personalizzato basato su tutto quello che mi hai raccontato oggi.
+Ti mostrerò esattamente come passare da [livello attuale] a [obiettivo].
+Quando ti torna meglio? [PROPONI 2-3 SLOT]"
 ⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la conferma
-💬 REAGISCI: "Perfetto! Ci sentiamo allora!"
+🎧 ASCOLTA la scelta
+💬 REAGISCI: "Perfetto! Ci vediamo [data/ora]!"
+
+📌 CONFERMA FINALE:
+"Riceverai un promemoria con il link alla call. 
+Ti chiedo di essere puntuale così sfruttiamo tutto il tempo insieme.
+A [giorno]!"
 
 ---
 
@@ -856,11 +932,14 @@ Vorrei prenotare una call con te alle [INSERISCI ORA], che ne dici?"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRIMA DI PASSARE ALLA DEMO VERIFICA:
 
-✓ Ha detto uno dei MAGICI 3?
+✓ Hai un quadro chiaro del PROBLEMA principale?
+✓ Hai scavato le EMOZIONI profonde dietro l'obiettivo?
+✓ Ha detto uno dei MAGICI 3 (ha bisogno di aiuto)?
 ✓ Ha urgenza (6-10)?
-✓ Ha budget disponibile?
-✓ È lui che decide?
+✓ Ha budget disponibile (o almeno un range)?
+✓ È lui che decide (o hai coinvolto il co-decisore)?
 ✓ Hai TUTTE le info per la demo (situazione attuale, obiettivo, emozioni, tentativi)?
+✓ Hai fissato la data/ora per la DEMO?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON puoi fare demo efficace!
 
@@ -874,7 +953,7 @@ Torna indietro e recupera le informazioni mancanti prima di procedere!
 - Fai UNA domanda alla volta
 - Ascolta attentamente le risposte
 - Mostra empatia e comprensione
-- NON vendere durante discovery - raccogli solo informazioni
+- NON vendere durante discovery - raccogli informazioni E pre-qualifica
 - Mantieni tonalità ENTUSIASTA e sincera
 - Adatta le domande in base alle risposte precedenti
 - Prendi appunti mentali di tutto per usarli nella demo
