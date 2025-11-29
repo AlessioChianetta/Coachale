@@ -82,11 +82,21 @@ interface TranscriptMessage {
   timestamp: string;
 }
 
+type ResponseSpeed = 'fast' | 'normal' | 'slow' | 'disabled';
+
+const RESPONSE_SPEED_OPTIONS: { value: ResponseSpeed; label: string; description: string; icon: string }[] = [
+  { value: 'fast', label: 'Veloce', description: '~1 sec', icon: '⚡' },
+  { value: 'normal', label: 'Normale', description: '2-3 sec', icon: '🎯' },
+  { value: 'slow', label: 'Lento', description: '4-6 sec', icon: '🐢' },
+  { value: 'disabled', label: 'Disabilitato', description: 'Manuale', icon: '⏸️' },
+];
+
 export function AITrainerTab({ agentId }: AITrainerTabProps) {
   const [selectedPersona, setSelectedPersona] = useState<ProspectPersona | null>(null);
   const [selectedScriptId, setSelectedScriptId] = useState<string>('');
   const [scriptSelectionTab, setScriptSelectionTab] = useState<'active' | 'all'>('active');
   const [observeSessionId, setObserveSessionId] = useState<string | null>(null);
+  const [responseSpeed, setResponseSpeed] = useState<ResponseSpeed>('normal');
   const queryClient = useQueryClient();
 
   const { data: allScripts = [], isLoading: scriptsLoading } = useQuery<SalesScript[]>({
@@ -153,14 +163,14 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
   });
 
   const startSessionMutation = useMutation({
-    mutationFn: async ({ scriptId, personaId }: { scriptId: string; personaId: string }) => {
+    mutationFn: async ({ scriptId, personaId, responseSpeed }: { scriptId: string; personaId: string; responseSpeed: ResponseSpeed }) => {
       const response = await fetch('/api/ai-trainer/start-session', {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ agentId, scriptId, personaId }),
+        body: JSON.stringify({ agentId, scriptId, personaId, responseSpeed }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -197,6 +207,7 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
     startSessionMutation.mutate({
       scriptId: selectedScriptId,
       personaId: selectedPersona.id,
+      responseSpeed,
     });
   };
 
@@ -394,6 +405,30 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                     <div className="text-xs text-center font-medium truncate">
                       {persona.name}
                     </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Response Speed */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                3. Velocità Risposta Prospect
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {RESPONSE_SPEED_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setResponseSpeed(option.value)}
+                    className={`p-2 rounded-lg border-2 transition-all ${
+                      responseSpeed === option.value
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-950'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                    }`}
+                  >
+                    <div className="text-lg text-center">{option.icon}</div>
+                    <div className="text-xs text-center font-medium">{option.label}</div>
+                    <div className="text-[10px] text-center text-gray-500">{option.description}</div>
                   </button>
                 ))}
               </div>

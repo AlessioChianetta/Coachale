@@ -2,6 +2,8 @@ import WebSocket from 'ws';
 import type { ProspectPersona } from '@shared/prospect-personas';
 import { getAIProvider, type GeminiClient } from '../../ai/provider-factory';
 
+type ResponseSpeed = 'fast' | 'normal' | 'slow' | 'disabled';
+
 interface ProspectSimulatorOptions {
   sessionId: string;
   agentId: string;
@@ -23,6 +25,7 @@ interface ProspectSimulatorOptions {
     name: string;
     email: string;
   };
+  responseSpeed?: ResponseSpeed;
   onStatusUpdate: (status: StatusUpdate) => Promise<void>;
   onSessionEnd?: () => Promise<void>;
 }
@@ -299,6 +302,22 @@ export class ProspectSimulator {
     }
   }
 
+  private getResponseDelay(): number {
+    const speed = this.options.responseSpeed || 'normal';
+    switch (speed) {
+      case 'fast':
+        return 800 + Math.random() * 400;
+      case 'normal':
+        return 1500 + Math.random() * 1500;
+      case 'slow':
+        return 4000 + Math.random() * 2000;
+      case 'disabled':
+        return -1;
+      default:
+        return 1500 + Math.random() * 1500;
+    }
+  }
+
   private async generateAndSendResponse(agentMessage: string): Promise<void> {
     this.currentTurn++;
     
@@ -308,8 +327,17 @@ export class ProspectSimulator {
       return;
     }
 
+    const delay = this.getResponseDelay();
+    
+    if (delay < 0) {
+      console.log(`⏸️ [PROSPECT SIMULATOR] Response disabled - waiting for manual trigger`);
+      this.pendingAgentResponse = true;
+      return;
+    }
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1500));
+      console.log(`⏱️ [PROSPECT SIMULATOR] Waiting ${Math.round(delay)}ms before responding (speed: ${this.options.responseSpeed || 'normal'})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
 
       const systemPrompt = this.buildSystemPrompt();
       const conversationContext = this.conversationHistory

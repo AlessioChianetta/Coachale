@@ -83,11 +83,14 @@ router.post(
   requireRole('client'),
   async (req: AuthRequest, res) => {
     try {
-      const { agentId, scriptId, personaId } = req.body;
+      const { agentId, scriptId, personaId, responseSpeed } = req.body;
 
       if (!agentId || !scriptId || !personaId) {
         return res.status(400).json({ message: 'Missing required fields: agentId, scriptId, personaId' });
       }
+
+      const validSpeeds = ['fast', 'normal', 'slow', 'disabled'];
+      const speed = validSpeeds.includes(responseSpeed) ? responseSpeed : 'normal';
 
       const agent = await db.select()
         .from(clientSalesAgents)
@@ -219,6 +222,7 @@ router.post(
           script: script[0],
           persona,
           prospectData,
+          responseSpeed: speed as 'fast' | 'normal' | 'slow' | 'disabled',
           onSessionEnd: restoreScriptAssignment,
           onStatusUpdate: async (status) => {
             const updateData: any = {
