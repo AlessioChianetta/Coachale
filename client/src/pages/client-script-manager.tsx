@@ -973,7 +973,7 @@ export default function ClientScriptManager() {
                       ) : (
                         agents.map((agent) => {
                           const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
-                          const currentAssignment = scriptToActivateData 
+                          const currentAssignment = scriptToActivateData && agent.scriptAssignments
                             ? agent.scriptAssignments[scriptToActivateData.scriptType as keyof typeof agent.scriptAssignments]
                             : null;
                           const isCurrentlyAssigned = currentAssignment?.scriptId === scriptToActivate;
