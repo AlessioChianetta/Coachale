@@ -859,15 +859,14 @@ export default function ClientScriptManager() {
         <ResizablePanelGroup 
           direction="horizontal" 
           className="flex-1"
-          key={showBuilder ? "builder-layout" : "normal-layout"}
         >
           {/* COLONNA 1: LISTA SCRIPT */}
           <ResizablePanel 
             id="sidebar-panel"
             order={1}
-            defaultSize={showBuilder ? 0 : 20} 
-            minSize={showBuilder ? 0 : 15} 
-            maxSize={showBuilder ? 0 : 30}
+            defaultSize={20} 
+            minSize={15} 
+            maxSize={30}
             collapsible={true}
           >
             <div className="h-full flex flex-col bg-background">
@@ -1050,7 +1049,7 @@ export default function ClientScriptManager() {
           <ResizableHandle withHandle />
           
           {/* COLONNA 2: EDITOR / BUILDER */}
-          <ResizablePanel id="editor-panel" order={2} defaultSize={showBuilder ? 95 : 50} minSize={showBuilder ? 80 : 30}>
+          <ResizablePanel id="editor-panel" order={2} defaultSize={50} minSize={30}>
             <div className="h-full flex flex-col bg-background">
               {showBuilder ? (
                 <ScriptBuilderTab 
@@ -1123,18 +1122,22 @@ export default function ClientScriptManager() {
               )}
             </div>
           </ResizablePanel>
-          {!showBuilder && <ResizableHandle withHandle />}
+          <ResizableHandle withHandle />
 
           {/* COLONNA 3: ISPETTORE/DETTAGLI */}
-          {!showBuilder && (
-            <ResizablePanel id="inspector-panel" order={3} defaultSize={30} minSize={20} maxSize={40}>
+          <ResizablePanel id="inspector-panel" order={3} defaultSize={30} minSize={20} maxSize={40}>
+              {showBuilder ? (
+                <div className="h-full flex items-center justify-center text-muted-foreground p-4 text-center">
+                  <p>Ispettore non disponibile in modalità Builder</p>
+                </div>
+              ) : (
                 <div className="h-full flex flex-col bg-background border-l">
                     <ScrollArea className="flex-1 p-4">
                         {renderInspector()}
                     </ScrollArea>
                 </div>
-            </ResizablePanel>
-          )}
+              )}
+          </ResizablePanel>
         </ResizablePanelGroup>
       </div>
     </div>
