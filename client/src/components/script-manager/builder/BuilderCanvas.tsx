@@ -18,7 +18,6 @@ import {
   ChevronDown,
   ChevronRight,
   GripVertical,
-  Lock,
   MessageSquare,
   Plus,
   Target,
@@ -89,43 +88,7 @@ function DropZone({ onDrop, children, className, placeholder, acceptTypes }: Dro
   );
 }
 
-interface LockedSectionProps {
-  type: 'initial' | 'final';
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}
 
-function LockedSection({ type, title, description, children }: LockedSectionProps) {
-  const [isOpen, setIsOpen] = useState(true);
-
-  return (
-    <Card className="transition-all hover:shadow-md">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="p-3 hover:bg-muted/50 transition-colors cursor-pointer">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Lock className="h-4 w-4 text-primary" />
-                <CardTitle className="text-sm font-semibold">{title}</CardTitle>
-                <Badge variant="outline" className="text-xs font-normal">
-                  Obbligatorio
-                </Badge>
-              </div>
-              {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </div>
-            <CardDescription className="text-xs pt-1">{description}</CardDescription>
-          </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <CardContent className="p-3 pt-0 space-y-3">
-            {children}
-          </CardContent>
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
-  );
-}
 
 interface PhaseBlockProps {
   phase: Phase;
@@ -404,42 +367,6 @@ export function BuilderCanvas() {
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
-      <LockedSection
-        type="initial"
-        title="Sezione Iniziale"
-        description="Apertura, saluto e impostazione della call (sempre presente)"
-      >
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Saluto</label>
-            <Textarea
-              value={builder.initialSection.greeting}
-              onChange={(e) => builder.updateInitialSection({ greeting: e.target.value })}
-              className="text-sm min-h-[60px]"
-              placeholder="Come saluti il prospect..."
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Introduzione</label>
-            <Textarea
-              value={builder.initialSection.introduction}
-              onChange={(e) => builder.updateInitialSection({ introduction: e.target.value })}
-              className="text-sm min-h-[60px]"
-              placeholder="Presentazione e contesto..."
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Agenda Setting</label>
-            <Textarea
-              value={builder.initialSection.agendaSetting}
-              onChange={(e) => builder.updateInitialSection({ agendaSetting: e.target.value })}
-              className="text-sm min-h-[60px]"
-              placeholder="Cosa farete in questa call..."
-            />
-          </div>
-        </div>
-      </LockedSection>
-
       <DropZone
         onDrop={handlePhaseDrop}
         acceptTypes={['phase']}
@@ -474,42 +401,6 @@ export function BuilderCanvas() {
           </div>
         )}
       </DropZone>
-
-      <LockedSection
-        type="final"
-        title="Sezione Finale"
-        description="Recap, CTA e chiusura della call (sempre presente)"
-      >
-        <div className="space-y-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Recap</label>
-            <Textarea
-              value={builder.finalSection.recap}
-              onChange={(e) => builder.updateFinalSection({ recap: e.target.value })}
-              className="text-sm min-h-[60px]"
-              placeholder="Riassunto dei punti chiave..."
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Call to Action</label>
-            <Textarea
-              value={builder.finalSection.cta}
-              onChange={(e) => builder.updateFinalSection({ cta: e.target.value })}
-              className="text-sm min-h-[60px]"
-              placeholder="Proposta e prossimi passi..."
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Chiusura</label>
-            <Textarea
-              value={builder.finalSection.closing}
-              onChange={(e) => builder.updateFinalSection({ closing: e.target.value })}
-              className="text-sm min-h-[60px]"
-              placeholder="Saluti finali..."
-            />
-          </div>
-        </div>
-      </LockedSection>
     </div>
   );
 }

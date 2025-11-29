@@ -18,25 +18,13 @@ export interface CanvasSection {
   content?: string;
 }
 
-export interface InitialSectionData {
-  greeting: string;
-  introduction: string;
-  agendaSetting: string;
-}
 
-export interface FinalSectionData {
-  recap: string;
-  cta: string;
-  closing: string;
-}
 
 export interface BuilderState {
   mode: BuilderMode;
   scriptType: ScriptType;
   scriptName: string;
   phases: Phase[];
-  initialSection: InitialSectionData;
-  finalSection: FinalSectionData;
   selectedBlockId: string | null;
   selectedBlockType: 'phase' | 'step' | 'question' | null;
   isDirty: boolean;
