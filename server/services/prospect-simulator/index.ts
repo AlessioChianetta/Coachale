@@ -4,6 +4,26 @@ import { getAIProvider, type GeminiClient } from '../../ai/provider-factory';
 
 type ResponseSpeed = 'fast' | 'normal' | 'slow' | 'disabled';
 
+interface SalesAgentConfig {
+  businessName: string;
+  businessDescription?: string | null;
+  displayName: string;
+  consultantBio?: string | null;
+  vision?: string | null;
+  mission?: string | null;
+  values?: string[];
+  usp?: string | null;
+  targetClient?: string | null;
+  nonTargetClient?: string | null;
+  whatWeDo?: string | null;
+  howWeDoIt?: string | null;
+  servicesOffered?: Array<{name: string; description: string; price: string}>;
+  guarantees?: string | null;
+  yearsExperience?: number;
+  clientsHelped?: number;
+  resultsGenerated?: string | null;
+}
+
 interface ProspectSimulatorOptions {
   sessionId: string;
   agentId: string;
@@ -15,6 +35,7 @@ interface ProspectSimulatorOptions {
     shareToken: string;
     clientId: string;
   };
+  agentConfig: SalesAgentConfig;
   script: {
     id: string;
     name: string;
@@ -65,6 +86,18 @@ export class ProspectSimulator {
   private pendingAgentResponse = false;
   private responseBuffer: string[] = [];
   private responseTimeout: NodeJS.Timeout | null = null;
+  
+  private isAgentSpeaking = false;
+  private lastFragmentTime = 0;
+  private fragmentCount = 0;
+  private isProcessingResponse = false;
+  private lastProcessedMessageHash = '';
+  private lastProcessedTime = 0;
+  
+  private static readonly MESSAGE_COMPLETION_TIMEOUT = 3500;
+  private static readonly MIN_SILENCE_GAP = 2000;
+  private static readonly MIN_FRAGMENTS_FOR_COMPLETE = 1;
+  private static readonly DEDUP_WINDOW_MS = 5000;
 
   constructor(options: ProspectSimulatorOptions) {
     this.options = options;
@@ -199,24 +232,7 @@ export class ProspectSimulator {
 
       case 'ai_transcript':
         if (message.text) {
-          console.log(`📝 [PROSPECT SIMULATOR] AI transcript received: "${message.text.substring(0, 60)}${message.text.length > 60 ? '...' : ''}"`);
-          
-          this.responseBuffer.push(message.text);
-          this.pendingAgentResponse = true;
-          
-          if (this.responseTimeout) {
-            clearTimeout(this.responseTimeout);
-          }
-          
-          this.responseTimeout = setTimeout(async () => {
-            if (this.responseBuffer.length > 0 && this.pendingAgentResponse) {
-              const fullResponse = this.responseBuffer.join(' ');
-              this.responseBuffer = [];
-              this.pendingAgentResponse = false;
-              console.log(`🎯 [PROSPECT SIMULATOR] Processing full AI message (${fullResponse.length} chars)`);
-              await this.handleAgentMessage(fullResponse);
-            }
-          }, 2000);
+          this.handleAgentFragment(message.text, 'ai_transcript');
         }
         break;
 
@@ -229,20 +245,7 @@ export class ProspectSimulator {
           
           if (message.role === 'model' || message.speaker === 'ai' || message.source === 'ai') {
             if (isFinal) {
-              this.responseBuffer.push(message.text);
-              
-              if (this.responseTimeout) {
-                clearTimeout(this.responseTimeout);
-              }
-              
-              this.responseTimeout = setTimeout(async () => {
-                if (this.responseBuffer.length > 0 && this.pendingAgentResponse) {
-                  const fullResponse = this.responseBuffer.join(' ');
-                  this.responseBuffer = [];
-                  this.pendingAgentResponse = false;
-                  await this.handleAgentMessage(fullResponse);
-                }
-              }, 2000);
+              this.handleAgentFragment(message.text, 'transcript');
             }
           }
         }
@@ -251,6 +254,27 @@ export class ProspectSimulator {
       case 'ai_response':
         if (message.text || message.content) {
           const agentText = message.text || message.content;
+          
+          if (this.responseBuffer.length > 0) {
+            console.log(`⏸️ [PROSPECT SIMULATOR] Ignoring ai_response - fragments already buffered (${this.responseBuffer.length} fragments)`);
+            break;
+          }
+          
+          if (this.isProcessingResponse) {
+            console.log(`⏸️ [PROSPECT SIMULATOR] Ignoring ai_response - already processing`);
+            break;
+          }
+          
+          const messageHash = agentText.substring(0, 100);
+          const now = Date.now();
+          if (this.lastProcessedMessageHash === messageHash && 
+              (now - this.lastProcessedTime) < ProspectSimulator.DEDUP_WINDOW_MS) {
+            console.log(`⏸️ [PROSPECT SIMULATOR] Ignoring duplicate ai_response within ${ProspectSimulator.DEDUP_WINDOW_MS}ms window`);
+            break;
+          }
+          
+          this.lastProcessedMessageHash = messageHash;
+          this.lastProcessedTime = now;
           await this.handleAgentMessage(agentText);
         }
         break;
@@ -281,6 +305,75 @@ export class ProspectSimulator {
       default:
         break;
     }
+  }
+
+  private handleAgentFragment(text: string, source: string): void {
+    if (this.isProcessingResponse) {
+      console.log(`⏸️ [PROSPECT SIMULATOR] Ignoring fragment while processing response`);
+      return;
+    }
+    
+    const now = Date.now();
+    this.isAgentSpeaking = true;
+    this.lastFragmentTime = now;
+    this.fragmentCount++;
+    this.pendingAgentResponse = true;
+    
+    this.responseBuffer.push(text);
+    
+    console.log(`📝 [PROSPECT SIMULATOR] Fragment #${this.fragmentCount} from ${source}: "${text.substring(0, 60)}${text.length > 60 ? '...' : ''}"`);
+    
+    if (this.responseTimeout) {
+      clearTimeout(this.responseTimeout);
+    }
+    
+    this.scheduleMessageCompletion();
+  }
+
+  private scheduleMessageCompletion(): void {
+    this.responseTimeout = setTimeout(async () => {
+      const silenceGap = Date.now() - this.lastFragmentTime;
+      
+      if (silenceGap < ProspectSimulator.MIN_SILENCE_GAP) {
+        console.log(`⏳ [PROSPECT SIMULATOR] Silence gap too short (${silenceGap}ms < ${ProspectSimulator.MIN_SILENCE_GAP}ms), rescheduling...`);
+        this.scheduleMessageCompletion();
+        return;
+      }
+      
+      if (this.fragmentCount < ProspectSimulator.MIN_FRAGMENTS_FOR_COMPLETE) {
+        console.log(`⏳ [PROSPECT SIMULATOR] Not enough fragments (${this.fragmentCount} < ${ProspectSimulator.MIN_FRAGMENTS_FOR_COMPLETE}), rescheduling...`);
+        this.scheduleMessageCompletion();
+        return;
+      }
+      
+      if (this.responseBuffer.length > 0 && this.pendingAgentResponse && !this.isProcessingResponse) {
+        this.isProcessingResponse = true;
+        this.isAgentSpeaking = false;
+        
+        const fullResponse = this.responseBuffer.join(' ').trim();
+        
+        const cleanedResponse = fullResponse
+          .replace(/\s+/g, ' ')
+          .replace(/(\w)\s*\.\s*(\w)/g, '$1. $2')
+          .trim();
+        
+        this.responseBuffer = [];
+        this.pendingAgentResponse = false;
+        this.fragmentCount = 0;
+        
+        const messageHash = cleanedResponse.substring(0, 100);
+        this.lastProcessedMessageHash = messageHash;
+        this.lastProcessedTime = Date.now();
+        
+        console.log(`🎯 [PROSPECT SIMULATOR] Message complete after ${silenceGap}ms silence (${cleanedResponse.length} chars)`);
+        
+        try {
+          await this.handleAgentMessage(cleanedResponse);
+        } finally {
+          this.isProcessingResponse = false;
+        }
+      }
+    }, ProspectSimulator.MESSAGE_COMPLETION_TIMEOUT);
   }
 
   private async handleAgentMessage(agentText: string): Promise<void> {
@@ -388,24 +481,80 @@ LA TUA RISPOSTA:`;
 
   private buildSystemPrompt(): string {
     const persona = this.options.persona;
+    const config = this.options.agentConfig;
+    
+    const servicesText = config.servicesOffered && config.servicesOffered.length > 0
+      ? config.servicesOffered.map(s => `- ${s.name}: ${s.description}`).join('\n')
+      : 'Non specificati';
+    
+    const targetDescription = config.targetClient || 'imprenditori e professionisti';
+    const businessPurpose = config.whatWeDo || config.businessDescription || 'aiutare i clienti a raggiungere i loro obiettivi';
+    
     return `Sei un prospect in una conversazione con un sales agent. ${persona.systemPrompt}
 
-CONTESTO:
-- Ti chiami: ${this.options.prospectData.name}
+═══════════════════════════════════════════════════════
+📋 CHI SEI TU (IL PROSPECT)
+═══════════════════════════════════════════════════════
+- Nome: ${this.options.prospectData.name}
 - Email: ${this.options.prospectData.email}
-- Stai parlando con "${this.options.agent.agentName}"
-- Lo script di vendita è: ${this.options.script.name}
+- Personalità: ${persona.name} - ${persona.description}
 
-REGOLE:
-1. Rispondi SOLO come il prospect, mai come l'agente o con meta-commenti
-2. Mantieni la personalità "${persona.name}" per tutta la conversazione
-3. Usa le obiezioni tipiche quando appropriato: ${persona.typicalObjections.join(', ')}
+🎯 IMPORTANTE - TU SEI PARTE DEL TARGET DEL SALES AGENT:
+Tu fai parte di: "${targetDescription}"
+Hai problemi che ${config.businessName} può risolvere.
+Il tuo ruolo è testare la capacità del Sales Agent di qualificarti e guidarti.
+
+═══════════════════════════════════════════════════════
+🏢 CHI È IL SALES AGENT CHE TI STA PARLANDO
+═══════════════════════════════════════════════════════
+- Rappresenta: ${config.businessName}
+- Nome agente: ${config.displayName}
+- Cosa fa l'azienda: ${businessPurpose}
+- Chi aiutano: ${targetDescription}
+${config.nonTargetClient ? `- Chi NON aiutano: ${config.nonTargetClient}` : ''}
+${config.mission ? `- Mission: ${config.mission}` : ''}
+${config.usp ? `- USP: ${config.usp}` : ''}
+
+📦 SERVIZI OFFERTI:
+${servicesText}
+
+${config.yearsExperience ? `⏳ Anni di esperienza: ${config.yearsExperience}` : ''}
+${config.clientsHelped ? `👥 Clienti aiutati: ${config.clientsHelped}` : ''}
+${config.resultsGenerated ? `📈 Risultati generati: ${config.resultsGenerated}` : ''}
+
+═══════════════════════════════════════════════════════
+🎭 COME DEVI COMPORTARTI
+═══════════════════════════════════════════════════════
+1. SEI UN PROSPECT REALISTICO che rientra nel target "${targetDescription}"
+2. Hai problemi PERTINENTI a quello che ${config.businessName} risolve
+3. Mantieni la personalità "${persona.name}" per tutta la conversazione
 4. Stile comunicativo: ${persona.communicationStyle}
 5. Il tuo obiettivo: ${persona.goal}
-6. Rispondi sempre in italiano
-7. Sii realistico - non troppo facile né troppo difficile
-8. Le risposte devono essere naturali, come in una vera telefonata
-9. Evita risposte troppo lunghe - massimo 2-3 frasi per volta`;
+
+═══════════════════════════════════════════════════════
+💬 OBIEZIONI CONTESTUALI DA USARE
+═══════════════════════════════════════════════════════
+Quando sollevi obiezioni, ADATTALE al contesto di ${config.businessName}.
+Le tue obiezioni tipiche sono: ${persona.typicalObjections.join(', ')}
+
+Ma devi RIFORMULARLE in modo pertinente. Esempi:
+- Se l'azienda fa coaching → chiedi "Come faccio a sapere che funzionerà per la mia situazione?"
+- Se l'azienda fa consulenza → chiedi "Qual è il ROI concreto che posso aspettarmi?"
+- Se l'azienda fa servizi → chiedi "Quanto tempo ci vuole per vedere risultati?"
+
+I TUOI PROBLEMI devono essere coerenti con "${targetDescription}":
+- Se sei un imprenditore → problemi di tempo, team, crescita, processi
+- Se sei un professionista → problemi di clienti, posizionamento, fatturato
+- Se sei un manager → problemi di produttività, obiettivi, leadership
+
+📏 REGOLE RIGIDE:
+- Rispondi SOLO come il prospect, MAI come l'agente o con meta-commenti
+- Rispondi sempre in italiano
+- Sii realistico - non troppo facile né troppo difficile
+- Le risposte devono essere naturali, come in una vera telefonata
+- MASSIMO 2-3 frasi per risposta
+- I tuoi problemi e desideri devono essere COERENTI con il target del Sales Agent
+- NON rispondere MAI a messaggi parziali o incompleti dell'agente`;
   }
 
   private async sendProspectMessage(text: string): Promise<void> {

@@ -213,12 +213,54 @@ router.post(
       };
 
       try {
+        const agentData = agent[0];
+        
+        const parseJsonArray = <T>(value: any, defaultValue: T[]): T[] => {
+          if (!value) return defaultValue;
+          if (Array.isArray(value)) return value as T[];
+          if (typeof value === 'string') {
+            try {
+              const parsed = JSON.parse(value);
+              return Array.isArray(parsed) ? parsed : defaultValue;
+            } catch {
+              return defaultValue;
+            }
+          }
+          return defaultValue;
+        };
+        
+        const agentConfig = {
+          businessName: agentData.businessName || 'Business',
+          businessDescription: agentData.businessDescription || null,
+          displayName: agentData.displayName || agentData.agentName || 'Agente',
+          consultantBio: agentData.consultantBio || null,
+          vision: agentData.vision || null,
+          mission: agentData.mission || null,
+          values: parseJsonArray<string>(agentData.values, []),
+          usp: agentData.usp || null,
+          targetClient: agentData.targetClient || null,
+          nonTargetClient: agentData.nonTargetClient || null,
+          whatWeDo: agentData.whatWeDo || null,
+          howWeDoIt: agentData.howWeDoIt || null,
+          servicesOffered: parseJsonArray<{name: string; description: string; price: string}>(agentData.servicesOffered, []),
+          guarantees: agentData.guarantees || null,
+          yearsExperience: agentData.yearsExperience ?? 0,
+          clientsHelped: agentData.clientsHelped ?? 0,
+          resultsGenerated: agentData.resultsGenerated || null,
+        };
+        
+        console.log(`📋 [AI TRAINER] Agent config loaded:`);
+        console.log(`   Business: ${agentConfig.businessName}`);
+        console.log(`   Target: ${agentConfig.targetClient || 'Non specificato'}`);
+        console.log(`   Services: ${agentConfig.servicesOffered?.length || 0} servizi`);
+        
         const simulator = new ProspectSimulator({
           sessionId,
           agentId,
           clientId,
           consultantId,
-          agent: agent[0],
+          agent: agentData,
+          agentConfig,
           script: script[0],
           persona,
           prospectData,
