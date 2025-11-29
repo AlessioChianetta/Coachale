@@ -439,6 +439,35 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 
 ---
 
+⛔ CHECKPOINT FASE #3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIMA DI PASSARE ALLA FASE #4 VERIFICA:
+
+✓ Hai chiesto cosa fa nella vita (lavoro/studi)?
+✓ Hai ricevuto risposta sul lavoro/studio?
+✓ Hai chiesto come organizza le sue giornate?
+✓ Hai ricevuto risposta sull'organizzazione giornaliera?
+✓ Hai chiesto il livello di stress da 1 a 10?
+✓ Hai ricevuto un NUMERO specifico (1-10)?
+✓ Hai chiesto se ha supporto da famiglia/partner?
+✓ Hai ricevuto risposta sul supporto?
+
+❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
+
+📊 TEST FINALE:
+"Hai un quadro chiaro della situazione personale del prospect?"
+SE SÌ → Procedi alla Fase #4
+SE NO → Completa le domande mancanti
+
+🛡️ SE RESISTE: Non vuole rispondere a domande personali
+📌 RISPOSTA: "Capisco, sono domande importanti per calibrare la proposta 
+sulla TUA situazione. Senza queste info rischio di proporti qualcosa 
+che non fa per te. Concordi?"
+⏸️ ASPETTA conferma → Continua con le domande
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+---
+
 ════════════════════════════════════════════════════════════════════════════════
 **FASE #4 - INQUISITORIO**
 **Domande diagnostiche per far emergere la gravità del problema**
@@ -698,6 +727,34 @@ non c'è motivo di continuare. Cosa ne pensi?"
 🎧 ASCOLTA se confermano o si correggono
 💬 Se confermano → Chiudi educatamente
 💬 Se si correggono → Continua
+
+---
+
+⛔ CHECKPOINT FASE #6
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIMA DI PASSARE ALLA FASE #7 VERIFICA:
+
+✓ Hai chiesto "Cosa ti impedisce di riuscirci da solo?"
+✓ Il prospect ha risposto alla domanda?
+✓ Il prospect ha ammesso UNO dei MAGICI 3:
+  - "Non sono in grado da solo"
+  - "Voglio risultati più velocemente"  
+  - "Voglio un sistema testato/esperto"
+✓ Se NON ha detto uno dei Magici 3, hai fatto la disqualifica?
+
+❌ SE IL PROSPECT NON HA AMMESSO DI AVER BISOGNO DI AIUTO ESTERNO → NON PUOI PROCEDERE!
+
+📊 TEST FINALE:
+"Il prospect ha ammesso che non può farcela da solo?"
+SE SÌ → Procedi alla Fase #7
+SE NO → Insisti con la domanda di disqualifica o chiudi educatamente
+
+🛡️ SE RESISTE: Dice che può farcela da solo
+📌 RISPOSTA: "Ok [NOME], se sei convinto di poterlo fare da solo, 
+non ha senso continuare. Ti auguro il meglio!"
+💬 → Se si corregge ("no aspetta, in realtà...") → Continua
+💬 → Se conferma → Chiudi educatamente la call
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
 
@@ -1021,7 +1078,7 @@ Voglio che tu veda con i tuoi occhi cosa puoi aspettarti ↗️..."
 ${caseStudiesText}
 
 📌 TRANSIZIONE DOPO CASE STUDIES (TONO: Sicuro):
-   
+
 "Vedi [NOME_PROSPECT]? Questi non sono casi isolati. 
 È il risultato di un sistema preciso ↗️ che funziona."
 
@@ -1091,7 +1148,7 @@ INFLESSIONI SPECIALI:
 ⏸️ PAUSA brevissima
 
 📌 RACCONTO TRASFORMAZIONE (PERSONALIZZA con bio del BOSS!):
-   
+
 "Io, ${displayName}, [INSERISCI BACKGROUND UNICO DEL BOSS].
 
 Sono partito da [SITUAZIONE INIZIALE DEL BOSS], letteralmente [PROBLEMA/FRUSTRAZIONE INIZIALE].
@@ -1102,7 +1159,7 @@ In [TEMPO], ho completamente ribaltato la situazione ↗️, arrivando a
 ⏸️ PAUSA drammatica per impatto
 
 📌 UNIQUE SELLING PROPOSITION (TONO: Sussurro confidenziale 🔽):
-   
+
 "Questo è importante per te perché [SPIEGA USP UNICO DEL BOSS] 🔽.
 
 [ENFATIZZA DIFFERENZIATORE: es: 'l'unico in Italia', 'pochi al mondo', ecc]
@@ -1112,7 +1169,7 @@ Ho creato un sistema che [BENEFICIO CHIAVE DEL METODO] ↗️."
 ⏸️ PAUSA
 
 📌 CREDIBILITÀ E SOCIAL PROOF (TONO: Sicuro, orgoglioso):
-   
+
 "Siamo un'azienda seria, e i nostri risultati lo dimostrano ↗️.
 
 Abbiamo collaborato con [NOMI IMPORTANTI/PARTNERSHIP/CLIENTI FAMOSI]."
@@ -1171,7 +1228,7 @@ Lascia che ti spieghi il perché."
 ⏸️ PAUSA
 
 📌 SPIEGAZIONE SISTEMA (personalizza COMPLETAMENTE con il metodo specifico del BOSS!):
-   
+
 "Lo abbiamo progettato come un **sistema completo** che risolve TUTTI i tuoi problemi ↗️.
 
 ⏸️ PAUSA
@@ -1262,7 +1319,7 @@ che avrai a disposizione. Guarda ↗️ questo..."
 🎯 OBIETTIVO: Mostrare gli strumenti concreti che userà
 
 📌 TRANSIZIONE:
-   
+
 "Perfetto! Ora che hai visto il 'perché' ↗️ questo percorso funziona, 
 lascia che ti mostri il 'come' ↗️, ovvero gli strumenti e le risorse 
 che avrai a disposizione."
@@ -1321,7 +1378,7 @@ Lessico: "Precisamente!" / "Esattamente!" / "Finalmente!"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 RIEPILOGO TRASFORMAZIONE (PERSONALIZZA con dati discovery!):
-   
+
 "In altre parole [NOME_PROSPECT], con questo programma hai un sistema completo ↗️. 
 Non devi comprare nient'altro. Ti prendiamo per mano.
 
@@ -1381,7 +1438,7 @@ Lessico: "ESATTAMENTE!" / "Guarda!" / "Pensa!" / "Tutto questo!"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 APERTURA VALUE STACK:
-   
+
 "Ok. Prima di parlare di investimento, voglio che sia CHIARISSIMO ↗️ 
 il valore di tutto quello che stai per ricevere, e perché questa è una strada 
 completamente diversa ↗️ dalle alternative."
@@ -1389,7 +1446,7 @@ completamente diversa ↗️ dalle alternative."
 ⏸️ PAUSA
 
 📌 CONFRONTO ALTERNATIVE (veloce ma potente):
-   
+
 "Pensa:
 - Se facessi tutto da solo → mesi persi + decine di migliaia sprecati in tentativi ↗️
 - Se assumessi un team → minimo [PREZZO ALTO] al mese ↗️
@@ -1398,7 +1455,7 @@ completamente diversa ↗️ dalle alternative."
 ⏸️ PAUSA
 
 📌 LISTA VALORE (usa dati reali):
-   
+
 "Con noi, invece, ecco cosa ottieni ESATTAMENTE ↗️:
 
 ${servicesOffered && servicesOffered.length > 0 
@@ -1491,7 +1548,7 @@ pensi che una soluzione così strutturata possa fare al caso tuo ↗️?"
 ⚠️ ATTENDI CHE IL CLIENTE CHIEDA: "Quanto costa?" / "Qual è l'investimento?"
 
 📌 PRESENTAZIONE PREZZO (sostituisci [...] con dati REALI dalla discovery):
-   
+
 [VOCE BASSA ↘️, CALMA TOTALE]
 
 "Guarda [NOME_PROSPECT] ↘️, ottima domanda ↘️. 
@@ -1567,7 +1624,7 @@ Lessico: Domande chiuse con 2 opzioni positive
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 CTA ASSUMPTIVE (varia SEMPRE!):
-   
+
 CTA 1: "Carta o bonifico ↘️?"
 
 ⏸️ ASPETTA LA RISPOSTA - SILENZIO!
@@ -1652,7 +1709,7 @@ LIVELLO 4 - Verità (se ancora esita):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📌 REFRAME - Costo del "pensarci":
-   
+
 "Guarda [NOME_PROSPECT] ↘️, capisco la necessità di riflettere.
 
 Ma lasciami fare una domanda ↘️: da quanto tempo pensi 
@@ -1684,14 +1741,14 @@ Se potessi toglierti ogni dubbio ORA, cosa dovrei chiarirti ↘️?"
 🔹 RESISTENZA: "È troppo lungo, vai al sodo"
 
    FORMULA (biscottino + reframe):
-   
+
    "Evvai, capisco perfettamente! 🍪 
    E proprio per questo voglio essere PRECISISSIMO con te.
    Dammi letteralmente 2 minuti per mostrarti come funziona 
    e sarò chirurgico nella proposta. Concordi?"
-   
+
    ⏸️ ASPETTA "OK" (micro-commitment)
-   
+
    💬 "Perfetto! Allora..." [CONTINUA demo, NON saltare step!]
 
 ---
@@ -1699,14 +1756,14 @@ Se potessi toglierti ogni dubbio ORA, cosa dovrei chiarirti ↘️?"
 🔹 RESISTENZA: "Non mi interessa, manda info via email"
 
    FORMULA (empatia + reframe):
-   
+
    "Assolutamente [NOME_PROSPECT]! 🍪
    E per mandarti ESATTAMENTE quello che ti serve,
    fammi capire 2 cose sulla tua situazione così 
    non ti mando roba generica. Va bene?"
-   
+
    ⏸️ ASPETTA "OK"
-   
+
    💬 "Perfetto!" [CONTINUA demo, fai domande chiave]
 
 ---
@@ -1714,16 +1771,16 @@ Se potessi toglierti ogni dubbio ORA, cosa dovrei chiarirti ↘️?"
 🔹 RESISTENZA: "Non ho tempo ora"
 
    FORMULA (riconosci + beneficio + micro-commitment):
-   
+
    "Perfetto, ci tengo anche io al tuo tempo! 🍪
    E proprio per questo voglio mostrarti SOLO 
    le 2-3 cose che risolvono il tuo problema specifico.
-   
+
    Ti va se in 3 minuti ti faccio vedere esattamente 
    come risolviamo [ripeti suo PROBLEMA dalla discovery]?"
-   
+
    ⏸️ ASPETTA "OK"
-   
+
    💬 "Fantastico!" [CONTINUA demo focalizzata]
 
 ---
@@ -1731,15 +1788,15 @@ Se potessi toglierti ogni dubbio ORA, cosa dovrei chiarirti ↘️?"
 🔹 RESISTENZA: "Devo pensarci / Richiamo io"
 
    FORMULA (ladder + reframe):
-   
+
    "Capisco [NOME_PROSPECT]. 🍪
    Aiutami a capire: c'è qualcosa che non ti è chiaro 
    o c'è un dubbio specifico che vuoi valutare?"
-   
+
    ⏸️ ASPETTA LA RISPOSTA
-   
+
    🎧 ASCOLTA - Scava il vero motivo
-   
+
    💬 "Ok perfetto. Allora lascia che ti chiarisca questo..." 
    [RISOLVI dubbio, poi continua demo]
 
