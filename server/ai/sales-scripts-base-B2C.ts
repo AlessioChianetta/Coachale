@@ -156,7 +156,7 @@ Questo è il FULCRO della call!
 
 LIVELLO 1: CHIARIFICAZIONE
 🎯 OBIETTIVO: Far ripetere il problema con DETTAGLI concreti
-📌 DOMANDA: "Scava con me: cosa intendi ESATTAMENTE per [ripeti sue parole]?"
+📌 DOMANDA: "Bene, cosa intendi ESATTAMENTE per [ripeti sue parole]?"
 ⏸️ ASPETTA LA RISPOSTA - Lascia che spieghino in dettaglio
 🎧 ASCOLTA attentamente
 💬 REAGISCI: "Capisco!"
@@ -307,7 +307,7 @@ Se è veramente un novizio totale:
 **STEP 6 - INVESTIMENTI**
 🎯 OBIETTIVO: Capire investimenti passati (€, tempo, energie) per creare contrasto
 
-📌 DOMANDA: "E quanto hai già investito finora su te stesso? Tempo, soldi, tentativi?"
+📌 DOMANDA: "E quanto hai già investito finora per raggiungere [ Obiettivo che ti ha detto ]? Tempo, soldi, tentativi?"
 ⏸️ ASPETTA LA RISPOSTA - Nota soldi E tempo
 🎧 ASCOLTA con attenzione - Questo è oro per la demo
 💬 REAGISCI: "Capisco!" / "Ha senso!"
@@ -472,7 +472,7 @@ expertise. L'obiettivo è che loro ci dicano "NON LO SO"
 🎯 OBIETTIVO: Raccogliere il dato PRECISO della situazione attuale (FASE CRITICA!)
 Nota: Adatta "Metrica" in base alla nicchia (es: Peso, Risparmi, N. Appuntamenti, Livello Abilità)
 
-📌 DOMANDA: "Giusto per capire, dove ti trovi adesso rispetto al tuo obiettivo? Da 1 a 10?"
+📌 DOMANDA: "Per capire il tuo punto di partenza, oggi, concretamente, qual è la tua situazione attuale riguardo a [ARGOMENTO/OBIETTIVO]?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA e MEMORIZZA il livello PRECISO
 💬 REAGISCI casual: "Ok, perfetto" / "Capisco"
@@ -534,7 +534,7 @@ Mindset: Questa è la GOLD MINE - qui trovi l'oro per chiudere la vendita!
 **STEP 10 - STATO IDEALE (OBIETTIVO)**
 🎯 OBIETTIVO: Ottenere una visione SPECIFICA del loro obiettivo personale
 
-📌 DOMANDA (TONO ALTO ↗️): "E tra 12 mesi, dove vorresti essere rispetto al tuo obiettivo? A che livello su 10?"
+📌 DOMANDA (TONO ALTO ↗️): "E tra 12 mesi, dove vorresti essere rispetto al tuo obiettivo?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA attentamente e MEMORIZZA il livello desiderato
 💬 REAGISCI: "Interessante!" / "Bello!"
