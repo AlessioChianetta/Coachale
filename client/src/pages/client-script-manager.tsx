@@ -410,6 +410,18 @@ export default function ClientScriptManager() {
         return;
       }
     }
+    
+    // Se siamo in modalità builder, carica lo script nel builder
+    if (showBuilder) {
+      const scriptToLoad = scripts.find(s => s.id === id);
+      if (scriptToLoad) {
+        // Il caricamento effettivo avverrà tramite l'effect che monitora selectedScriptId
+        setSelectedScriptId(id);
+        setSelectedBlock(null);
+      }
+      return;
+    }
+    
     setSelectedScriptId(id);
     setSelectedBlock(null);
   };
@@ -557,6 +569,15 @@ export default function ClientScriptManager() {
       setSelectedBlock(null);
     }
   }, [selectedScript]);
+
+  // Carica lo script selezionato nel Builder quando è aperto
+  useEffect(() => {
+    if (showBuilder && selectedScript && blockStructure) {
+      console.log('🔧 [Builder] Caricamento script esistente nel Builder:', selectedScript.name);
+      // Il Builder Context espone un metodo loadFromStructure tramite BuilderContext
+      // Questo verrà gestito passando la structure come prop al Builder
+    }
+  }, [showBuilder, selectedScript, blockStructure]);
 
   // Handlers for enhanced mutations
   const handleSaveEnergy = useCallback((phaseOrStepId: string, settings: EnergySettingsData) => {
@@ -1016,7 +1037,13 @@ export default function ClientScriptManager() {
           {showBuilder ? (
             /* SCRIPT BUILDER VIEW - Full width when active */
             <ResizablePanel defaultSize={80} minSize={60}>
-              <ScriptBuilderTab onSave={handleBuilderSave} isSaving={isSavingBuilder} />
+              <ScriptBuilderTab 
+                onSave={handleBuilderSave} 
+                isSaving={isSavingBuilder}
+                initialStructure={selectedScript ? blockStructure : undefined}
+                initialScriptType={selectedScript?.scriptType}
+                initialScriptName={selectedScript?.name}
+              />
             </ResizablePanel>
           ) : (
             <>

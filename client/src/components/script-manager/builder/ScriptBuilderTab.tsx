@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BuilderProvider, useBuilder } from './BuilderContext';
+import type { ScriptBlockStructure } from '@shared/script-blocks';
 import { BlockPalette } from './BlockPalette';
 import { BuilderCanvas } from './BuilderCanvas';
 import { BlockInspector } from './BlockInspector';
@@ -13,10 +14,24 @@ import { cn } from '@/lib/utils';
 interface ScriptBuilderTabProps {
   onSave: (structure: ReturnType<ReturnType<typeof useBuilder>['toStructure']>, scriptType: string, scriptName: string) => Promise<void>;
   isSaving?: boolean;
+  initialStructure?: ScriptBlockStructure;
+  initialScriptType?: 'discovery' | 'demo' | 'objections';
+  initialScriptName?: string;
 }
 
-function ScriptBuilderContent({ onSave, isSaving }: ScriptBuilderTabProps) {
+function ScriptBuilderContent({ onSave, isSaving, initialStructure, initialScriptType, initialScriptName }: ScriptBuilderTabProps) {
   const builder = useBuilder();
+
+  // Carica lo script iniziale se fornito
+  useEffect(() => {
+    if (initialStructure && initialScriptType && initialScriptName) {
+      console.log('📥 [Builder] Caricamento script esistente:', initialScriptName);
+      builder.setScriptType(initialScriptType);
+      builder.setScriptName(initialScriptName);
+      builder.loadFromStructure(initialStructure);
+      builder.setIsDirty(false); // Non considerarlo come modificato subito
+    }
+  }, [initialStructure, initialScriptType, initialScriptName]);
 
   const handleSave = async () => {
     const structure = builder.toStructure();
