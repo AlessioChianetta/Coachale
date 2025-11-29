@@ -126,6 +126,15 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
     const { templateId, agentId, userComment, targetType } = req.body;
     const isB2C = targetType === 'b2c';
 
+    console.log('\n' + '═'.repeat(80));
+    console.log('🚀 [ScriptBuilder] INIZIO GENERAZIONE AI FASE-PER-FASE');
+    console.log('═'.repeat(80));
+    console.log(`📋 Template: ${templateId}`);
+    console.log(`👤 Agent ID: ${agentId}`);
+    console.log(`🎯 Target Type: ${isB2C ? 'B2C (Individui)' : 'B2B (Business)'}`);
+    console.log(`💬 User Comment: ${userComment || 'Nessuno'}`);
+    console.log('─'.repeat(80));
+
     if (!templateId || !agentId) {
       return res.status(400).json({ error: 'templateId e agentId sono obbligatori' });
     }
@@ -146,6 +155,10 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
     if (!agent) {
       return res.status(404).json({ error: 'Agente non trovato' });
     }
+
+    console.log(`✅ Agent trovato: ${agent.displayName || agent.agentName}`);
+    console.log(`   Business: ${agent.businessName}`);
+    console.log(`   Target: ${agent.targetClient}`);
 
     const consultantId = agent.consultantId;
 
@@ -178,9 +191,11 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
         return res.status(400).json({ error: 'Tipo template non valido' });
     }
     
-    console.log(`[ScriptBuilder] Using ${isB2C ? 'B2C' : 'B2B'} template for ${template.type}`);
+    console.log(`📜 Template ${isB2C ? 'B2C' : 'B2B'} caricato per: ${template.type}`);
 
     const structure = parseTextToBlocks(content, template.type);
+    const totalPhases = structure.phases?.length || 0;
+    console.log(`📊 Script parsato: ${totalPhases} fasi trovate`);
 
     const agentContext = {
       businessName: agent.businessName,
@@ -206,11 +221,11 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
     };
 
     try {
-      console.log('[ScriptBuilder] Getting AI provider for client:', clientId, 'consultant:', consultantId);
+      console.log('\n🔌 Connessione AI Provider...');
       const aiProvider = await getAIProvider(clientId, consultantId);
       
       if (!aiProvider) {
-        console.log('[ScriptBuilder] No AI provider available, returning base template');
+        console.log('⚠️ Nessun AI provider disponibile, ritorno template base');
         return res.json({
           success: true,
           structure,
@@ -218,7 +233,7 @@ router.post('/ai-generate', requireClient, async (req: AuthRequest, res: Respons
         });
       }
 
-      console.log(`[ScriptBuilder] Using AI provider: ${aiProvider.metadata.name} (${aiProvider.source})`);
+      console.log(`✅ AI Provider: ${aiProvider.metadata.name} (${aiProvider.source})`);
 
       const targetTypeLabel = isB2C ? 'B2C (Individui: atleti, studenti, pazienti, professionisti)' : 'B2B (Business: imprenditori, aziende)';
       
@@ -249,309 +264,202 @@ Stai personalizzando uno script per INDIVIDUI (atleti, studenti, pazienti, priva
 - ❌ "Problemi con il marketing?" → ✅ "Dove ti blocchi di più nel quotidiano?"
 ` : '';
 
-      const prompt = `Sei un esperto coach di vendita telefonica che sa ADATTARSI COMPLETAMENTE al contesto del cliente target.
-Il tuo compito è personalizzare uno script in modo che sia PERFETTAMENTE RILEVANTE per il target specifico.
-
-## 🎯 TIPO DI TARGET SELEZIONATO: ${targetTypeLabel}
-${b2cSpecificInstructions}
-## ⚠️ ANALIZZA IL TARGET:
-Leggi attentamente "Target Client" e "Cosa facciamo". Chiediti:
-- Questo target gestisce un BUSINESS? → Domande su fatturato, clienti, marketing sono appropriate
-- Questo target è un INDIVIDUO (atleta, studente, paziente)? → Domande su obiettivi personali, performance, situazione
-
-QUESTA ANALISI DETERMINA COMPLETAMENTE COME PERSONALIZZARE LE DOMANDE!
-
-## CONTEXT:
+      const baseContextPrompt = `## CONTEXT AGENTE:
 - Nome Business: ${agentContext.businessName || 'Non specificato'}
 - Display Name: ${agentContext.displayName || 'Consulente'}
 - Descrizione Business: ${agentContext.businessDescription || 'Non specificata'}
-- Bio Consulente: ${agentContext.consultantBio || 'Non specificata'}
-- Vision: ${agentContext.vision || 'Non specificata'}
-- Mission: ${agentContext.mission || 'Non specificata'}
 - Target Client: ${agentContext.targetClient || 'Non specificato'}
 - NON Target Client: ${agentContext.nonTargetClient || 'Non specificato'}
 - USP: ${agentContext.usp || 'Non specificato'}
 - Valori: ${JSON.stringify(agentContext.values || [])}
 - Cosa facciamo: ${agentContext.whatWeDo || 'Non specificato'}
 - Come lo facciamo: ${agentContext.howWeDoIt || 'Non specificato'}
-
-## CREDIBILITÀ E PROVA SOCIALE:
-- Anni di esperienza: ${agentContext.yearsExperience || 0}
+- Anni esperienza: ${agentContext.yearsExperience || 0}
 - Clienti aiutati: ${agentContext.clientsHelped || 0}
-- Risultati generati: ${agentContext.resultsGenerated || 'Non specificati'}
-- Software creati: ${JSON.stringify(agentContext.softwareCreated || [])}
-- Libri pubblicati: ${JSON.stringify(agentContext.booksPublished || [])}
-- Case Studies: ${JSON.stringify(agentContext.caseStudies || [])}
+- Servizi: ${JSON.stringify(agentContext.servicesOffered || [])}
 
-## SERVIZI E GARANZIE:
-- Servizi offerti: ${JSON.stringify(agentContext.servicesOffered || [])}
-- Garanzie: ${agentContext.guarantees || 'Non specificate'}
+${userComment ? `## ISTRUZIONI AGGIUNTIVE UTENTE:\n${userComment}\n` : ''}`;
 
-${userComment ? `## COMMENTO UTENTE:\n${userComment}\n` : ''}
+      console.log('\n' + '═'.repeat(80));
+      console.log('🔄 INIZIO GENERAZIONE FASE-PER-FASE');
+      console.log('═'.repeat(80));
 
-## METADATA SCRIPT:
-${JSON.stringify(structure.metadata || {}, null, 2)}
+      let successfulPhases = 0;
+      let failedPhases = 0;
+      const phaseResults: { phase: string; success: boolean; error?: string; stepsModified?: number; questionsModified?: number }[] = [];
 
-## REGOLE GLOBALI (da rispettare SEMPRE):
-${JSON.stringify(structure.globalRules || [], null, 2)}
+      if (structure.phases) {
+        for (let phaseIndex = 0; phaseIndex < structure.phases.length; phaseIndex++) {
+          const phase = structure.phases[phaseIndex];
+          const phaseStartTime = Date.now();
+          
+          console.log('\n' + '─'.repeat(60));
+          console.log(`📍 FASE ${phaseIndex + 1}/${totalPhases}: ${phase.name}`);
+          console.log('─'.repeat(60));
+          console.log(`   📌 Numero fase: #${phase.number}`);
+          console.log(`   📝 Steps: ${phase.steps?.length || 0}`);
+          console.log(`   ✓ Checkpoint: ${phase.checkpoint ? 'Sì' : 'No'}`);
 
-${structure.finalRules?.length ? `## REGOLE FINALI:\n${JSON.stringify(structure.finalRules, null, 2)}` : ''}
+          const phasePrompt = `Sei un esperto coach di vendita telefonica. Devi personalizzare UNA SINGOLA FASE di uno script di vendita.
 
-## SCRIPT DA PERSONALIZZARE (struttura completa):
+## 🎯 TIPO DI TARGET: ${targetTypeLabel}
+${b2cSpecificInstructions}
+
+${baseContextPrompt}
+
+## ⚠️ REGOLE CRITICHE PER QUESTA FASE:
+
+### CHECKPOINT - MANTIENI I CONTROLLI ORIGINALI!
+Il checkpoint di ogni fase deve verificare SOLO le azioni di QUELLA fase:
+- FASE #1 (Apertura): verifica saluto, "da dove chiami", spiegazione processo
+- FASE #2 (Pain Point): verifica problema principale, tentativi passati, persistenza
+- FASE #3 (Info Personali): verifica situazione personale, contesto
+- FASE #4 (Inquisitorio): verifica domande diagnostiche
+- FASE #5 (Stretch The Gap): verifica obiettivo e emozioni
+- FASE #6 (Qualificazione): verifica bisogno aiuto esterno
+- FASE #7 (Serietà): verifica urgenza, budget, decision maker
+
+❌ NON MESCOLARE i controlli di fasi diverse nel checkpoint!
+❌ NON mettere controlli su budget/urgenza nella FASE #1!
+
+### PERSONALIZZAZIONE DOMANDE:
+- Personalizza il TESTO delle domande per il target B2C/B2B
+- Mantieni la STRUTTURA e i MARKER originali
+- NON aggiungere o rimuovere domande, solo modifica il testo
+
+## FASE DA PERSONALIZZARE:
 ${JSON.stringify({
-  phases: structure.phases?.map(phase => ({
-    phase: phase.name,
-    phaseNumber: phase.number,
-    description: phase.description,
-    transition: phase.transition,
-    energy: phase.energy ? {
-      level: phase.energy.level,
-      tone: phase.energy.tone,
-      volume: phase.energy.volume,
-      rhythm: phase.energy.rhythm,
-      inflections: phase.energy.inflections,
-      vocabulary: phase.energy.vocabulary,
-      negativeVocabulary: phase.energy.negativeVocabulary,
-      mindset: phase.energy.mindset,
-      example: phase.energy.example
-    } : null,
-    steps: phase.steps?.map(step => ({
-      stepNumber: step.number,
-      name: step.name,
-      objective: step.objective,
-      energy: step.energy ? {
-        level: step.energy.level,
-        tone: step.energy.tone,
-        volume: step.energy.volume,
-        rhythm: step.energy.rhythm,
-        inflections: step.energy.inflections,
-        vocabulary: step.energy.vocabulary,
-        negativeVocabulary: step.energy.negativeVocabulary,
-        mindset: step.energy.mindset,
-        example: step.energy.example
-      } : null,
-      questions: step.questions?.map(q => ({
-        text: q.text,
-        marker: q.marker,
-        isKey: q.isKey,
-        condition: q.condition,
-        instructions: q.instructions
-      })),
-      ladder: step.ladder ? {
-        title: step.ladder.title,
-        whenToUse: step.ladder.whenToUse,
-        levels: step.ladder.levels?.map(l => ({
-          number: l.number,
-          name: l.name,
-          objective: l.objective,
-          question: l.question,
-          tone: l.tone,
-          examples: l.examples,
-          notes: l.notes
-        })),
-        stopWhen: step.ladder.stopWhen,
-        dontStopWhen: step.ladder.dontStopWhen,
-        helpfulPhrases: step.ladder.helpfulPhrases,
-        goldSignals: step.ladder.goldSignals,
-        resistanceHandling: step.ladder.resistanceHandling
-      } : null,
-      biscottino: step.biscottino,
-      transition: step.transition,
-      notes: step.notes,
-      resistanceHandling: step.resistanceHandling
+  phaseName: phase.name,
+  phaseNumber: phase.number,
+  description: phase.description,
+  energy: phase.energy,
+  steps: phase.steps?.map(step => ({
+    stepNumber: step.number,
+    name: step.name,
+    objective: step.objective,
+    energy: step.energy,
+    questions: step.questions?.map(q => ({
+      text: q.text,
+      marker: q.marker,
+      isKey: q.isKey,
+      condition: q.condition,
+      instructions: q.instructions
     })),
-    checkpoint: phase.checkpoint ? {
-      title: phase.checkpoint.title,
-      phaseNumber: phase.checkpoint.phaseNumber,
-      checks: phase.checkpoint.checks,
-      resistanceHandling: phase.checkpoint.resistanceHandling,
-      testFinale: phase.checkpoint.testFinale,
-      testFinaleExamples: phase.checkpoint.testFinaleExamples,
-      reminder: phase.checkpoint.reminder
-    } : null
+    ladder: step.ladder,
+    biscottino: step.biscottino,
+    resistanceHandling: step.resistanceHandling
   })),
-  objections: structure.objections?.map(obj => ({
-    number: obj.number,
-    title: obj.title,
-    variants: obj.variants,
-    objective: obj.objective,
-    energy: obj.energy,
-    ladder: obj.ladder,
-    reframe: obj.reframe,
-    keyQuestion: obj.keyQuestion,
-    cta: obj.cta,
-    analogy: obj.analogy,
-    steps: obj.steps
-  }))
+  checkpoint: phase.checkpoint
 }, null, 2)}
 
-## 🔥 REGOLE DI PERSONALIZZAZIONE CRITICHE:
+## OUTPUT RICHIESTO:
+Restituisci UN SINGOLO oggetto JSON (NON un array) con la fase personalizzata:
+{
+  "phaseName": "${phase.name}",
+  "phaseNumber": "${phase.number}",
+  "energy": { vocabulary, mindset personalizzati },
+  "steps": [
+    {
+      "stepNumber": numero,
+      "name": "nome step",
+      "objective": "obiettivo personalizzato per target",
+      "questions": [{ "text": "domanda personalizzata", "marker": "marker originale" }],
+      "ladder": { levels con question/examples personalizzati },
+      "resistanceHandling": personalizzato
+    }
+  ],
+  "checkpoint": {
+    "checks": [lista controlli CORRETTI per QUESTA fase],
+    "resistanceHandling": personalizzato
+  }
+}
 
-### 1. PERSONALIZZARE = SOSTITUIRE SE NON PERTINENTE
-NON "adattare le parole" ma CAMBIARE IL CONCETTO se non ha senso per il target.
-- Se il target NON gestisce un business → ELIMINA domande su fatturato, clienti, marketing, B2B/B2C, CAC
-- Se il target è un atleta → SOSTITUISCI con domande su performance, obiettivi sportivi, allenamento
-- Se il target è uno studente → SOSTITUISCI con domande su studio, esami, obiettivi accademici
+Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
 
-### 2. FASE #3 (INFO BUSINESS/PERSONALI) - ATTENZIONE SPECIALE:
-Questa fase raccoglie info sul CONTESTO del prospect.
-- TARGET BUSINESS: domande su modello, clienti, fatturato, team, marketing → OK
-- TARGET INDIVIDUO: domande sulla SUA situazione personale, obiettivi, livello, risorse → SOSTITUISCI COMPLETAMENTE
-
-### 3. STEP 9 (STATO ATTUALE) - CAMBIA LA METRICA:
-Questa fase raccoglie un NUMERO per capire il punto di partenza.
-- TARGET BUSINESS: fatturato mensile/annuale → OK
-- TARGET INDIVIDUO: livello su 10, tempo dedicato, performance attuale → SOSTITUISCI
-
-### 4. ESEMPI NELLE LADDER - RISCRIVILI:
-Gli esempi devono essere PERTINENTI al target:
-- TARGET BUSINESS: "Ho problemi con il marketing", "Non trovo clienti" → OK
-- TARGET INDIVIDUO: "Non miglioro i risultati", "Sono in stallo", "Non raggiungo gli obiettivi" → SOSTITUISCI
-
-### 5. USA "COSA FACCIAMO" E "COME LO FACCIAMO":
-Questi dati ti dicono ESATTAMENTE in che ambito opera l'agente.
-Le domande devono essere COERENTI con questo ambito!
-
-### 6. USA LA CREDIBILITÀ:
-- Inserisci riferimenti agli anni di esperienza quando opportuno
-- Cita il numero di clienti aiutati
-- Usa i case studies come esempi concreti nelle ladder
-
-### 7. USA SERVIZI E GARANZIE:
-- Adatta le domande ai servizi specifici offerti
-- Includi le garanzie nelle fasi di chiusura/obiezioni
-
-### 8. ESCLUDI il NON-TARGET CLIENT:
-- Le domande dovrebbero qualificare OUT chi non è il cliente ideale
-
-### 9. MANTIENI LA STRUTTURA TECNICA:
-- NON modificare: numeri di step/fase, marker, struttura JSON
-- SÌ modificare: testo domande, esempi, vocabulary, objective, mindset
-
-### 10. CHAIN OF THOUGHT - RAGIONA COSÌ PER OGNI STEP:
-Prima di personalizzare, chiediti:
-1. Chi è il target? (business owner o individuo?)
-2. Questa domanda ha senso per lui?
-3. Se NO → qual è la domanda equivalente nel suo contesto?
-4. Scrivi la domanda modificata
-
-## ⚠️ OUTPUT OBBLIGATORIO - TUTTE LE FASI:
-Devi restituire TUTTE le fasi dello script, non solo alcune.
-Se lo script ha 7 fasi, devi restituire 7 fasi modificate.
-
-Rispondi SOLO con un JSON array delle fasi modificate. Ogni fase deve contenere:
-- phaseName: nome fase originale
-- phaseNumber: numero fase
-- energy: oggetto energy se presente (con vocabulary personalizzato per il target)
-- steps: array di step modificati, ognuno con:
-  - stepNumber, name, objective (personalizzato per il target)
-  - energy: con vocabulary e mindset personalizzati
-  - questions: array di oggetti {text, marker, isKey, instructions} - DOMANDE RISCRITTE per il target!
-  - ladder: se presente, con levels personalizzati (question, examples PERTINENTI al target)
-  - biscottino: {trigger, phrase} personalizzato
-  - resistanceHandling: se presente, personalizzato
-- checkpoint: se presente, con checks e resistanceHandling personalizzati
-
-Rispondi SOLO con il JSON array, nessun testo prima o dopo.`;
-
-      const result = await aiProvider.client.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 65536,
-          responseMimeType: 'application/json',
-        },
-      });
-      
-      const responseText = result.response.text();
-      console.log('[ScriptBuilder] AI response received, length:', responseText.length);
-
-      let cleanedResponse = responseText
-        .replace(/```json\s*/gi, '')
-        .replace(/```\s*/gi, '')
-        .replace(/^\s*[\r\n]+/, '')
-        .replace(/[\r\n]+\s*$/, '')
-        .trim();
-
-      let aiModifications;
-      try {
-        aiModifications = JSON.parse(cleanedResponse);
-      } catch (directError) {
-        console.log('[ScriptBuilder] Direct parse failed, trying regex extraction...');
-        const jsonMatch = cleanedResponse.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
           try {
-            aiModifications = JSON.parse(jsonMatch[0]);
-          } catch (regexError) {
-            console.error('[ScriptBuilder] Regex extraction also failed:', regexError);
-            console.log('[ScriptBuilder] Raw response (first 500 chars):', cleanedResponse.substring(0, 500));
-            throw new Error('Failed to parse AI response as JSON');
-          }
-        } else {
-          console.error('[ScriptBuilder] No JSON array found in response');
-          console.log('[ScriptBuilder] Raw response (first 500 chars):', cleanedResponse.substring(0, 500));
-          throw new Error('No JSON array found in AI response');
-        }
-      }
+            console.log(`   🤖 Invio richiesta AI per FASE #${phase.number}...`);
+            console.log(`   📏 Lunghezza prompt: ${phasePrompt.length} caratteri`);
 
-      if (!Array.isArray(aiModifications)) {
-        console.error('[ScriptBuilder] Parsed result is not an array');
-        throw new Error('AI response is not a valid array');
-      }
-
-      console.log('[ScriptBuilder] Successfully parsed', aiModifications.length, 'phase modifications');
-        
-      if (structure.phases) {
-        for (const modification of aiModifications) {
-            const phase = structure.phases.find(p => 
-              p.number === modification.phaseNumber || 
-              p.name.toLowerCase().includes(modification.phaseName?.toLowerCase() || '')
-            );
+            const result = await aiProvider.client.generateContent({
+              model: 'gemini-2.5-pro',
+              contents: [{ role: 'user', parts: [{ text: phasePrompt }] }],
+              generationConfig: {
+                temperature: 0.5,
+                maxOutputTokens: 16384,
+                responseMimeType: 'application/json',
+              },
+            });
             
-            if (!phase) continue;
+            const responseText = result.response.text();
+            const responseTime = Date.now() - phaseStartTime;
+            
+            console.log(`   ✅ Risposta ricevuta in ${responseTime}ms`);
+            console.log(`   📏 Lunghezza risposta: ${responseText.length} caratteri`);
 
-            if (modification.energy && phase.energy) {
-              if (modification.energy.vocabulary) {
-                phase.energy.vocabulary = modification.energy.vocabulary;
-              }
-              if (modification.energy.mindset) {
-                phase.energy.mindset = modification.energy.mindset;
+            let cleanedResponse = responseText
+              .replace(/```json\s*/gi, '')
+              .replace(/```\s*/gi, '')
+              .replace(/^\s*[\r\n]+/, '')
+              .replace(/[\r\n]+\s*$/, '')
+              .trim();
+
+            let phaseModification;
+            try {
+              phaseModification = JSON.parse(cleanedResponse);
+              console.log(`   ✅ JSON parsato correttamente`);
+            } catch (parseError) {
+              console.log(`   ⚠️ Parse diretto fallito, provo estrazione...`);
+              const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                phaseModification = JSON.parse(jsonMatch[0]);
+                console.log(`   ✅ JSON estratto con regex`);
+              } else {
+                throw new Error('Nessun JSON valido trovato nella risposta');
               }
             }
 
-            if (modification.checkpoint && phase.checkpoint) {
-              if (modification.checkpoint.checks) {
-                phase.checkpoint.checks = modification.checkpoint.checks;
+            let stepsModified = 0;
+            let questionsModified = 0;
+
+            if (phaseModification.energy && phase.energy) {
+              if (phaseModification.energy.vocabulary) {
+                phase.energy.vocabulary = phaseModification.energy.vocabulary;
               }
-              if (modification.checkpoint.resistanceHandling) {
-                phase.checkpoint.resistanceHandling = modification.checkpoint.resistanceHandling;
-              }
-              if (modification.checkpoint.testFinale) {
-                phase.checkpoint.testFinale = modification.checkpoint.testFinale;
+              if (phaseModification.energy.mindset) {
+                phase.energy.mindset = phaseModification.energy.mindset;
               }
             }
-            
-            if (modification.steps && phase.steps) {
-              for (const stepMod of modification.steps) {
+
+            if (phaseModification.checkpoint && phase.checkpoint) {
+              if (phaseModification.checkpoint.checks) {
+                console.log(`   📋 Checkpoint: ${phaseModification.checkpoint.checks.length} controlli`);
+                phase.checkpoint.checks = phaseModification.checkpoint.checks;
+              }
+              if (phaseModification.checkpoint.resistanceHandling) {
+                phase.checkpoint.resistanceHandling = phaseModification.checkpoint.resistanceHandling;
+              }
+              if (phaseModification.checkpoint.testFinale) {
+                phase.checkpoint.testFinale = phaseModification.checkpoint.testFinale;
+              }
+            }
+
+            if (phaseModification.steps && phase.steps) {
+              for (const stepMod of phaseModification.steps) {
                 const step = phase.steps.find(s => 
                   s.number === stepMod.stepNumber ||
-                  s.name.toLowerCase().includes(stepMod.name?.toLowerCase() || '')
+                  s.name?.toLowerCase().includes(stepMod.name?.toLowerCase() || '')
                 );
                 
                 if (!step) continue;
+                stepsModified++;
 
                 if (stepMod.objective) {
                   step.objective = stepMod.objective;
                 }
 
                 if (stepMod.energy && step.energy) {
-                  if (stepMod.energy.vocabulary) {
-                    step.energy.vocabulary = stepMod.energy.vocabulary;
-                  }
-                  if (stepMod.energy.mindset) {
-                    step.energy.mindset = stepMod.energy.mindset;
-                  }
+                  if (stepMod.energy.vocabulary) step.energy.vocabulary = stepMod.energy.vocabulary;
+                  if (stepMod.energy.mindset) step.energy.mindset = stepMod.energy.mindset;
                 }
 
                 if (stepMod.questions && step.questions) {
@@ -560,8 +468,10 @@ Rispondi SOLO con il JSON array, nessun testo prima o dopo.`;
                     if (qMod) {
                       if (typeof qMod === 'string') {
                         step.questions[i].text = qMod;
+                        questionsModified++;
                       } else if (qMod.text) {
                         step.questions[i].text = qMod.text;
+                        questionsModified++;
                         if (qMod.instructions) {
                           step.questions[i].instructions = { ...step.questions[i].instructions, ...qMod.instructions };
                         }
@@ -570,15 +480,13 @@ Rispondi SOLO con il JSON array, nessun testo prima o dopo.`;
                   }
                 }
 
-                if (stepMod.ladder && step.ladder) {
-                  if (stepMod.ladder.levels) {
-                    for (let i = 0; i < Math.min(step.ladder.levels.length, stepMod.ladder.levels.length); i++) {
-                      const levelMod = stepMod.ladder.levels[i];
-                      if (levelMod) {
-                        if (levelMod.question) step.ladder.levels[i].question = levelMod.question;
-                        if (levelMod.objective) step.ladder.levels[i].objective = levelMod.objective;
-                        if (levelMod.examples) step.ladder.levels[i].examples = levelMod.examples;
-                      }
+                if (stepMod.ladder && step.ladder && stepMod.ladder.levels) {
+                  for (let i = 0; i < Math.min(step.ladder.levels.length, stepMod.ladder.levels.length); i++) {
+                    const levelMod = stepMod.ladder.levels[i];
+                    if (levelMod) {
+                      if (levelMod.question) step.ladder.levels[i].question = levelMod.question;
+                      if (levelMod.objective) step.ladder.levels[i].objective = levelMod.objective;
+                      if (levelMod.examples) step.ladder.levels[i].examples = levelMod.examples;
                     }
                   }
                   if (stepMod.ladder.helpfulPhrases) {
@@ -587,24 +495,60 @@ Rispondi SOLO con il JSON array, nessun testo prima o dopo.`;
                 }
 
                 if (stepMod.biscottino && step.biscottino) {
-                  if (stepMod.biscottino.phrase) {
-                    step.biscottino.phrase = stepMod.biscottino.phrase;
-                  }
+                  if (stepMod.biscottino.phrase) step.biscottino.phrase = stepMod.biscottino.phrase;
                 }
 
                 if (stepMod.resistanceHandling && step.resistanceHandling) {
                   step.resistanceHandling = { ...step.resistanceHandling, ...stepMod.resistanceHandling };
                 }
 
-                if (stepMod.notes) {
-                  step.notes = stepMod.notes;
-                }
+                if (stepMod.notes) step.notes = stepMod.notes;
               }
             }
+
+            console.log(`   ✅ FASE #${phase.number} COMPLETATA`);
+            console.log(`      → Steps modificati: ${stepsModified}/${phase.steps?.length || 0}`);
+            console.log(`      → Domande modificate: ${questionsModified}`);
+            console.log(`      → Tempo totale: ${responseTime}ms`);
+
+            successfulPhases++;
+            phaseResults.push({
+              phase: phase.name,
+              success: true,
+              stepsModified,
+              questionsModified
+            });
+
+          } catch (phaseError: any) {
+            console.log(`   ❌ ERRORE FASE #${phase.number}: ${phaseError.message}`);
+            failedPhases++;
+            phaseResults.push({
+              phase: phase.name,
+              success: false,
+              error: phaseError.message
+            });
+          }
+
+          if (phaseIndex < structure.phases.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
-      
-      console.log('[ScriptBuilder] AI modifications applied successfully');
+      }
+
+      console.log('\n' + '═'.repeat(80));
+      console.log('📊 RIEPILOGO GENERAZIONE');
+      console.log('═'.repeat(80));
+      console.log(`✅ Fasi completate: ${successfulPhases}/${totalPhases}`);
+      console.log(`❌ Fasi fallite: ${failedPhases}/${totalPhases}`);
+      console.log('\n📋 Dettaglio per fase:');
+      phaseResults.forEach((result, idx) => {
+        if (result.success) {
+          console.log(`   ${idx + 1}. ${result.phase}: ✅ OK (${result.stepsModified} steps, ${result.questionsModified} domande)`);
+        } else {
+          console.log(`   ${idx + 1}. ${result.phase}: ❌ ERRORE - ${result.error}`);
+        }
+      });
+      console.log('═'.repeat(80) + '\n');
 
       if (aiProvider.cleanup) {
         await aiProvider.cleanup();
@@ -613,11 +557,18 @@ Rispondi SOLO con il JSON array, nessun testo prima o dopo.`;
       res.json({
         success: true,
         structure,
-        message: `Script personalizzato con ${aiProvider.metadata.name}`,
+        message: `Script personalizzato: ${successfulPhases}/${totalPhases} fasi completate`,
+        stats: {
+          totalPhases,
+          successfulPhases,
+          failedPhases,
+          phaseResults
+        }
       });
 
     } catch (aiError: any) {
-      console.error('[ScriptBuilder] AI generation error:', aiError.message);
+      console.error('\n❌ [ScriptBuilder] ERRORE CRITICO:', aiError.message);
+      console.error(aiError.stack);
       return res.status(500).json({
         success: false,
         error: 'Errore nella generazione AI. Riprova.',
@@ -626,7 +577,7 @@ Rispondi SOLO con il JSON array, nessun testo prima o dopo.`;
     }
 
   } catch (error) {
-    console.error('Error in AI generation:', error);
+    console.error('\n❌ [ScriptBuilder] Errore generale:', error);
     res.status(500).json({ error: 'Errore nella generazione AI' });
   }
 });
