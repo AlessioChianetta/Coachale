@@ -806,48 +806,52 @@ export default function ClientScriptManager() {
               </Dialog>
             </div>
             <div className="flex items-center gap-2">
-                {isEditing ? (
-                    <>
-                        <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Annulla</Button>
-                        <Button size="sm" onClick={handleSave} disabled={updateScriptMutation.isPending}>
-                            {updateScriptMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                            <Save className="h-4 w-4 mr-2" /> Salva
-                        </Button>
-                    </>
-                ) : selectedScriptId && (
-                    <>
-                        <div className="flex items-center gap-1">
-                            <Button variant={editorMode === 'blocks' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('blocks')} disabled={parsingFailed}>
-                                <Blocks className="h-4 w-4 mr-1" />
-                                Blocchi
+                {!showBuilder && (
+                  <>
+                    {isEditing ? (
+                        <>
+                            <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)}>Annulla</Button>
+                            <Button size="sm" onClick={handleSave} disabled={updateScriptMutation.isPending}>
+                                {updateScriptMutation.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                                <Save className="h-4 w-4 mr-2" /> Salva
                             </Button>
-                            <Button variant={editorMode === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('text')}>
-                                <Code className="h-4 w-4 mr-1" />
-                                Testo
+                        </>
+                    ) : selectedScriptId && (
+                        <>
+                            <div className="flex items-center gap-1">
+                                <Button variant={editorMode === 'blocks' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('blocks')} disabled={parsingFailed}>
+                                    <Blocks className="h-4 w-4 mr-1" />
+                                    Blocchi
+                                </Button>
+                                <Button variant={editorMode === 'text' ? 'default' : 'outline'} size="sm" onClick={() => setEditorMode('text')}>
+                                    <Code className="h-4 w-4 mr-1" />
+                                    Testo
+                                </Button>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                                <Edit3 className="h-4 w-4 mr-2" /> Modifica
                             </Button>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
-                            <Edit3 className="h-4 w-4 mr-2" /> Modifica
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          onClick={() => {
-                            setScriptToActivate(selectedScript.id);
-                            setShowAgentSelectDialog(true);
-                          }} 
-                          disabled={activateScriptMutation.isPending}
-                        >
-                          <Play className="h-4 w-4 mr-2" />
-                          {selectedScript?.isActive ? 'Cambia Agente' : 'Attiva'}
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => {
-                          if (confirm('Sei sicuro di voler eliminare questo script?')) {
-                            deleteScriptMutation.mutate(selectedScriptId);
-                          }
-                        }} disabled={deleteScriptMutation.isPending}>
-                            <Trash2 className="h-4 w-4 mr-2" /> Elimina
-                        </Button>
-                    </>
+                            <Button 
+                              size="sm" 
+                              onClick={() => {
+                                setScriptToActivate(selectedScript.id);
+                                setShowAgentSelectDialog(true);
+                              }} 
+                              disabled={activateScriptMutation.isPending}
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              {selectedScript?.isActive ? 'Cambia Agente' : 'Attiva'}
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => {
+                              if (confirm('Sei sicuro di voler eliminare questo script?')) {
+                                deleteScriptMutation.mutate(selectedScriptId);
+                              }
+                            }} disabled={deleteScriptMutation.isPending}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Elimina
+                            </Button>
+                        </>
+                    )}
+                  </>
                 )}
             </div>
         </header>
