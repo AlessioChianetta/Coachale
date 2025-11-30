@@ -18,6 +18,7 @@ import { buildSalesAgentPrompt, buildStaticSalesAgentPrompt, buildSalesAgentDyna
 import { getOrCreateTracker, removeTracker, SalesScriptTracker } from './sales-script-tracker';
 import { createSalesLogger, SalesScriptLogger } from './sales-script-logger';
 import { SalesManagerAgent } from './sales-manager-agent';
+import { generateDiscoveryRec, type DiscoveryRec } from './discovery-rec-generator';
 import type { SalesManagerParams, SalesManagerAnalysis, BusinessContext } from './sales-manager-agent';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -4270,9 +4271,10 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                 console.log(`   📊 Current Phase: ${conversation.currentPhase.toUpperCase()}`);
                 
                 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                // 1. PHASE TRANSITION DETECTION
+                // 1. PHASE TRANSITION DETECTION + DISCOVERY REC GENERATION
                 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 let newPhase = conversation.currentPhase;
+                let generatedDiscoveryRec: DiscoveryRec | null = null;
                 
                 if (conversation.currentPhase === 'discovery') {
                   if (lowerTranscript.includes('passiamo alla demo') || 
@@ -4281,6 +4283,29 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                       lowerTranscript.includes('vediamo come funziona')) {
                     newPhase = 'demo';
                     console.log(`   🔄 PHASE TRANSITION: discovery → demo`);
+                    
+                    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    // 📋 DISCOVERY REC GENERATION (usa Gemini 2.5 Flash)
+                    // Genera un riassunto strutturato della discovery per la demo
+                    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    console.log(`   📋 Generating Discovery REC...`);
+                    try {
+                      generatedDiscoveryRec = await generateDiscoveryRec(
+                        fullTranscript,
+                        conversation.prospectName || 'Prospect'
+                      );
+                      
+                      if (generatedDiscoveryRec) {
+                        console.log(`   ✅ Discovery REC generated successfully`);
+                        console.log(`      - Motivazione: ${generatedDiscoveryRec.motivazioneCall?.substring(0, 50)}...`);
+                        console.log(`      - Urgenza: ${generatedDiscoveryRec.urgenza}`);
+                        console.log(`      - Decision Maker: ${generatedDiscoveryRec.decisionMaker}`);
+                      } else {
+                        console.log(`   ⚠️ Discovery REC generation returned null`);
+                      }
+                    } catch (recError: any) {
+                      console.error(`   ❌ Error generating Discovery REC:`, recError.message);
+                    }
                   }
                 } else if (conversation.currentPhase === 'demo') {
                   if (lowerTranscript.includes('hai qualche domanda') || 
@@ -4457,13 +4482,24 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                 console.log(`      - Objections: ${allObjections.length} total`);
                 console.log(`      - Outcome: ${outcome}`);
                 console.log(`      - Collected Data fields: ${Object.keys(collectedData).length}`);
+                if (generatedDiscoveryRec) {
+                  console.log(`      - Discovery REC: ✅ INCLUDED`);
+                }
                 
-                await storage.updateClientSalesConversation(conversationId!, {
+                // Build update object
+                const updateData: any = {
                   currentPhase: newPhase,
                   collectedData: collectedData,
                   objectionsRaised: allObjections,
                   outcome: outcome
-                });
+                };
+                
+                // Include Discovery REC if generated (at discovery→demo transition)
+                if (generatedDiscoveryRec) {
+                  updateData.discoveryRec = generatedDiscoveryRec;
+                }
+                
+                await storage.updateClientSalesConversation(conversationId!, updateData);
                 
                 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 // 6. SAVE NEW MESSAGES TO AI CONVERSATION (for session continuity)
