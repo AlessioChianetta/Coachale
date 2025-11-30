@@ -1684,12 +1684,21 @@ export function setupGeminiLiveWSService(server: Server) {
         // FULL context - goes in chunks after setup (33k+ tokens, split into ~5 chunks)
         // Uses async version to automatically load custom scripts from database
         // 🆕 Now includes script position for dynamic navigation map
+        // 🆕 Passa discoveryRec se presente (fasi demo/objections/closing)
+        const savedDiscoveryRec = conversation.discoveryRec as DiscoveryRec | undefined;
+        if (savedDiscoveryRec && conversation.currentPhase !== 'discovery') {
+          console.log(`📋 [${connectionId}] Discovery REC found in DB - will inject into prompt`);
+          console.log(`   → Motivazione: ${savedDiscoveryRec.motivazioneCall?.substring(0, 40)}...`);
+          console.log(`   → Urgenza: ${savedDiscoveryRec.urgenza || 'N/D'}`);
+        }
+        
         userDataContext = await buildFullSalesAgentContextAsync(
           agent,
           prospectData,
           conversation.currentPhase,
           conversationHistory,
-          scriptPosition  // 🆕 Pass exact script position
+          scriptPosition,
+          savedDiscoveryRec  // 🆕 Pass Discovery REC if available
         );
         
         // Replace [NOME_PROSPECT] placeholders with actual name
