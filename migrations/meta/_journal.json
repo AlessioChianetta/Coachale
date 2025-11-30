@@ -162,6 +162,13 @@
       "when": 1764464836423,
       "tag": "0022_lyrical_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1764495586574,
+      "tag": "0023_supreme_menace",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "client_sales_conversations" ADD COLUMN "discovery_rec" jsonb;
