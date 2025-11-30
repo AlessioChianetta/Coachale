@@ -650,22 +650,27 @@ function generateArchetypeInstruction(
   const playbook = getPlaybookById(archetype);
   const filler = getRandomFiller(archetype);
   
-  // 🆕 Costruisci istruzione completa con MIRRORING TIPS
+  // 🆕 Costruisci istruzione completa con MIRRORING TIPS + SCRIPT CONTINUATION
   const mirroringSection = playbook.mirroringTips 
     ? `\n\n🪞 MIRRORING: ${playbook.mirroringTips}` 
+    : '';
+  
+  // 🆕 Aggiungi istruzione per continuare lo script (per archetipi difficili)
+  const scriptSection = playbook.scriptContinuation
+    ? `\n\n📜 SCRIPT: ${playbook.scriptContinuation}`
     : '';
   
   if (antiPattern) {
     return {
       filler,
-      instruction: `${antiPattern.instruction}${mirroringSection}`,
+      instruction: `${antiPattern.instruction}${mirroringSection}${scriptSection}`,
       ttsParams: playbook.ttsParams
     };
   }
   
   return {
     filler,
-    instruction: `${playbook.instruction}${mirroringSection}`,
+    instruction: `${playbook.instruction}${mirroringSection}${scriptSection}`,
     ttsParams: playbook.ttsParams
   };
 }
@@ -1583,14 +1588,22 @@ ${messagesText}
 ${getAIIntuitionPrompt()}
 
 🎯 COMPITI:
-1. L'obiettivo dello step corrente è stato completato?
+1. L'obiettivo dello step corrente è stato raggiunto O il prospect ha fornito una risposta (anche negativa/scettica)?
 2. Qual è l'ARCHETIPO PSICOLOGICO del prospect basandoti sul CONTESTO e TONO?
 
-REGOLE STEP:
+REGOLE STEP (IMPORTANTE - LEGGI BENE):
 1. DEVI vedere un messaggio PROSPECT dopo la domanda dell'agente
 2. Se vedi solo messaggi AGENTE → shouldAdvance = false
 3. Non assumere risposte non presenti
 4. Se shouldAdvance=true, USA ESATTAMENTE questi IDs: nextPhaseId="${nextPhaseIdValue}", nextStepId="${nextStepIdValue}"
+
+⚠️ REGOLE SPECIALI PER PROSPECT DIFFICILI:
+- Se il prospect risponde (anche con scetticismo, obiezioni, o resistenza) → LO STEP È COMPLETATO
+- L'avanzamento NON dipende dalla "soddisfazione" del prospect
+- L'obiettivo è raccogliere INFO e guidare la conversazione, non "convincere"
+- Se l'agente ha fatto la domanda e il prospect ha risposto → shouldAdvance = true
+- NON bloccarti sullo stesso step solo perché il prospect è difficile
+- L'agente può gestire le obiezioni MENTRE avanza nello script
 
 REGOLE ARCHETIPO (IMPORTANTE):
 - IGNORA le keyword se il CONTESTO suggerisce altro
@@ -1646,6 +1659,9 @@ REGOLE ARCHETIPO (IMPORTANTE):
         detectedArchetype = rawArchetype as ArchetypeId;
       }
       
+      // Estrai l'archetype_reasoning dalla risposta AI
+      const archetypeReasoningRaw = parsed.archetype_reasoning || parsed.archetypeReasoning || null;
+      
       const result = {
         shouldAdvance: Boolean(parsed.shouldAdvance),
         nextPhaseId: parsed.shouldAdvance ? (parsed.nextPhaseId || null) : null,
@@ -1653,7 +1669,7 @@ REGOLE ARCHETIPO (IMPORTANTE):
         reasoning: String(parsed.reasoning || 'No reasoning'),
         confidence: Math.min(1, Math.max(0, Number(parsed.confidence) || 0.5)),
         detectedArchetype,
-        archetypeReasoning: rawReasoning ? String(rawReasoning) : null
+        archetypeReasoning: archetypeReasoningRaw ? String(archetypeReasoningRaw) : null
       };
       
       console.log(`✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=${result.shouldAdvance}, confidence=${result.confidence}`);

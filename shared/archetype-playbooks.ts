@@ -36,6 +36,7 @@ export interface ArchetypePlaybook {
   techniques: string[];
   avoid: string[];
   mirroringTips: string;
+  scriptContinuation?: string; // 🆕 Istruzione per continuare lo script
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -174,7 +175,10 @@ Se insiste con scetticismo: "Forse hai ragione, forse non fa per te. Ma lasciami
 NON cercare di convincerlo - lascia che si convinca da solo.`,
     techniques: ['Negative Reverse Selling', 'Frame Control', 'Pattern Interrupt'],
     avoid: ['Essere troppo entusiasta', 'Difendere il prodotto', 'Fare promesse', 'Essere insistente'],
-    mirroringTips: 'Tono calmo, sicuro, leggermente distaccato. Pause più lunghe. Non riempire i silenzi.'
+    mirroringTips: 'Tono calmo, sicuro, leggermente distaccato. Pause più lunghe. Non riempire i silenzi.',
+    scriptContinuation: `⚠️ IMPORTANTE: Non restare bloccato! Anche se è scettico, CONTINUA A SEGUIRE LO SCRIPT.
+Riconosci brevemente le sue obiezioni, poi avanza: "Capisco il tuo punto. Lasciami farti un'altra domanda..."
+L'obiettivo NON è convincerlo, ma raccogliere informazioni. Procedi con le domande dello script.`
   },
 
   busy: {
@@ -264,7 +268,10 @@ NON vendere - informa: "Non ti chiedo di fidarti. Ti chiedo solo di valutare i f
 Offri controllo: "Sei tu che decidi. Nessuna pressione. Cosa vorresti sapere per sentirti più tranquillo?"`,
     techniques: ['Fear Validation', 'Control Giving', 'Transparency'],
     avoid: ['Minimizzare paure', 'Essere aggressivo', 'Promesse eccessive', 'Pressione'],
-    mirroringTips: 'Tono molto calmo, basso, rassicurante. Movimenti lenti. Zero aggressività.'
+    mirroringTips: 'Tono molto calmo, basso, rassicurante. Movimenti lenti. Zero aggressività.',
+    scriptContinuation: `⚠️ IMPORTANTE: Valida le sue paure MA poi CONTINUA LO SCRIPT.
+Dopo ogni validazione, guida la conversazione: "Capisco. Detto questo, mi permetti di farti una domanda?"
+Non restare in loop sulla rassicurazione - avanza raccogliendo informazioni.`
   },
 
   analytical: {
