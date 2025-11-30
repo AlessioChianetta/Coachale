@@ -828,21 +828,12 @@ export class SalesManagerAgent {
     // 3. Determine priority feedback
     let feedbackForAgent: FeedbackForAgent | null = null;
     
-    // Priority order: Objections > Buy signals > Tone > Checkpoint > Advancement
+    // Priority order: Buy signals > Tone > Checkpoint > Advancement
     // 🆕 L'identità business (chi sei, cosa fai, cosa NON fai) viene SEMPRE inclusa nel feedbackContent
     // e Gemini decide semanticamente se una richiesta è fuori scope
-    if (objections.detected && objections.objections.length > 0) {
-      // High priority: objection needs handling
-      const topObjection = objections.objections[0];
-      feedbackForAgent = {
-        shouldInject: true,
-        priority: 'high',
-        type: 'objection',
-        message: `🛡️ OBIEZIONE RILEVATA: "${topObjection.phrase}"\n→ Risposta suggerita: ${topObjection.suggestedResponse}`,
-        toneReminder: params.currentPhaseEnergy ? 
-          `Mantieni tono ${params.currentPhaseEnergy.tone}, energia ${params.currentPhaseEnergy.level}` : undefined
-      };
-    } else if (buySignals.detected && buySignals.signals.length > 0) {
+    // 🚨 RIMOSSO: Feedback "OBIEZIONE RILEVATA" - non guidiamo lo script con suggerimenti!
+    // Le obiezioni vengono ancora RILEVATE per logging/analytics ma NON generano feedback all'agent
+    if (buySignals.detected && buySignals.signals.length > 0) {
       const topSignal = buySignals.signals[0];
       
       // 🆕 PAYMENT GATING LOGIC: Blocca discussioni prezzo se checkpoint incompleti
