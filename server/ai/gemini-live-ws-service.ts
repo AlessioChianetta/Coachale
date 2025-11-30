@@ -4296,24 +4296,43 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                     // 📋 DISCOVERY REC GENERATION (usa Gemini 2.5 Flash)
                     // Genera un riassunto strutturato della discovery per la demo
+                    // NOTA: Se fallisce, la demo procede comunque ma senza REC
                     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                     console.log(`   📋 Generating Discovery REC...`);
-                    try {
-                      generatedDiscoveryRec = await generateDiscoveryRec(
-                        fullTranscript,
-                        conversation.prospectName || 'Prospect'
-                      );
-                      
-                      if (generatedDiscoveryRec) {
-                        console.log(`   ✅ Discovery REC generated successfully`);
-                        console.log(`      - Motivazione: ${generatedDiscoveryRec.motivazioneCall?.substring(0, 50)}...`);
-                        console.log(`      - Urgenza: ${generatedDiscoveryRec.urgenza}`);
-                        console.log(`      - Decision Maker: ${generatedDiscoveryRec.decisionMaker}`);
-                      } else {
-                        console.log(`   ⚠️ Discovery REC generation returned null`);
+                    
+                    // Retry logic for REC generation
+                    const maxRecRetries = 2;
+                    for (let recAttempt = 1; recAttempt <= maxRecRetries; recAttempt++) {
+                      try {
+                        generatedDiscoveryRec = await generateDiscoveryRec(
+                          fullTranscript,
+                          conversation.prospectName || 'Prospect'
+                        );
+                        
+                        if (generatedDiscoveryRec) {
+                          console.log(`   ✅ Discovery REC generated successfully (attempt ${recAttempt})`);
+                          console.log(`      - Motivazione: ${generatedDiscoveryRec.motivazioneCall?.substring(0, 50)}...`);
+                          console.log(`      - Urgenza: ${generatedDiscoveryRec.urgenza || 'N/D'}`);
+                          console.log(`      - Decision Maker: ${generatedDiscoveryRec.decisionMaker || 'N/D'}`);
+                          break; // Success - exit retry loop
+                        } else {
+                          console.log(`   ⚠️ Discovery REC generation returned null (attempt ${recAttempt}/${maxRecRetries})`);
+                          if (recAttempt < maxRecRetries) {
+                            await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
+                          }
+                        }
+                      } catch (recError: any) {
+                        console.error(`   ❌ Error generating Discovery REC (attempt ${recAttempt}/${maxRecRetries}):`, recError.message);
+                        if (recAttempt < maxRecRetries) {
+                          await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
+                        }
                       }
-                    } catch (recError: any) {
-                      console.error(`   ❌ Error generating Discovery REC:`, recError.message);
+                    }
+                    
+                    // Log warning if REC generation failed after all retries
+                    if (!generatedDiscoveryRec) {
+                      console.log(`   ⚠️ Discovery REC NOT GENERATED after ${maxRecRetries} attempts`);
+                      console.log(`      Demo will proceed without structured discovery summary`);
                     }
                   }
                 } else if (conversation.currentPhase === 'demo') {

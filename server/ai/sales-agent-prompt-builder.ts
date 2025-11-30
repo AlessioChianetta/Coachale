@@ -33,7 +33,7 @@ export async function fetchClientScripts(clientId: string, agentId?: string): Pr
     console.log(`✅ [ScriptLoader] ✨ USING CACHED SCRIPTS FOR ${agentId ? `AGENT ${agentId}` : `CLIENT ${clientId}`}`);
     if (agentId) {
       const types = Object.keys(cached.scripts);
-      console.log(`   📌 Active scripts: ${types.length > 0 ? types.join(', ').toUpperCase() : 'NONE (using defaults)'}`);
+      console.log(`   📌 Active scripts: ${types.length > 0 ? types.join(', ').toUpperCase() : 'NONE - will use meta-instructions only (NO FALLBACK)'}`);
     }
     return cached.scripts;
   }
@@ -70,7 +70,7 @@ export async function fetchClientScripts(clientId: string, agentId?: string): Pr
       if (assignedTypes.length > 0) {
         console.log(`✅ [ScriptLoader] ✨ AGENT SCRIPTS LOADED: ${assignedTypes.join(' + ')}`);
       } else {
-        console.log(`⚠️  [ScriptLoader] No scripts assigned to agent ${agentId} - USING DEFAULT SCRIPTS`);
+        console.log(`⚠️  [ScriptLoader] No scripts assigned to agent ${agentId} - will use meta-instructions only (NO FALLBACK)`);
       }
     } else {
       // LEGACY: Fetch scripts via isActive flag (for backward compatibility)
@@ -1076,13 +1076,15 @@ ${currentPhase === 'discovery'
 }
 
 // Backward compatibility wrapper (combines static + dynamic)
+// NOTA: Questa funzione è deprecata - usa buildFullSalesAgentContextAsync per nuove implementazioni
 export function buildSalesAgentPrompt(
   agentConfig: SalesAgentConfig,
   prospectData: ProspectData,
   currentPhase: 'discovery' | 'demo' | 'objections' | 'closing',
   conversationHistory?: Array<{role: 'user' | 'assistant'; content: string; timestamp: Date}>
 ): string {
-  const staticPart = buildStaticSalesAgentPrompt(agentConfig);
+  // FIXED: Pass currentPhase to buildStaticSalesAgentPrompt for phase-specific script loading
+  const staticPart = buildStaticSalesAgentPrompt(agentConfig, undefined, currentPhase);
   const dynamicPart = buildSalesAgentDynamicContext(agentConfig, prospectData, currentPhase, conversationHistory);
   return staticPart + '\n\n' + dynamicPart;
 }
