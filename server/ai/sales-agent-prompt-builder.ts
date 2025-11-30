@@ -679,7 +679,8 @@ Nel prossimo messaggio riceverai il contesto completo con:
 ║  Se il prospect ha fatto 3+ domande consecutive senza che TU abbia fatto     ║
 ║  una domanda di discovery → FERMATI! Riprendi controllo con:                 ║
 ║  "Apprezzo le domande! Per risponderti bene però ho bisogno di capire        ║
-║   meglio la tua situazione. Dimmi: [DOMANDA DISCOVERY]"                      ║
+║   meglio la tua situazione, se no rischio di darti una                       ║
+║soluzione errata, se per te va bene continuiamo, intantoDimmi: [DOMANDA DISCOVERY]"║
 ║                                                                              ║
 ║  📌 RICORDA: In Discovery TU conduci l'intervista, non lui!                  ║
 ║                                                                              ║
