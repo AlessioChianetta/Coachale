@@ -4348,9 +4348,11 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                       console.log(`      Demo will proceed without structured discovery summary`);
                     }
                     } else {
-                      // Demo mode is NOT enabled - stay in discovery phase
-                      console.log(`   ⚠️ PHASE TRANSITION BLOCKED: discovery → demo (enableDemo=false)`);
-                      console.log(`      Agent configured for discovery-only mode. Staying in discovery phase.`);
+                      // ⚠️ Demo mode is NOT enabled - stay in discovery phase
+                      // This is discovery-only mode: no transition allowed
+                      console.log(`   ⛔ PHASE TRANSITION BLOCKED: discovery → demo`);
+                      console.log(`      Reason: enableDemo=${agentEnableDemo} (discovery-only mode)`);
+                      console.log(`      Action: Staying in discovery phase`);
                     }
                   }
                 } else if (conversation.currentPhase === 'demo') {

@@ -1,6 +1,24 @@
 # Overview
 This full-stack web application serves as a consultation platform, connecting consultants with clients for exercise assignment, progress tracking, and performance analytics. Its core ambition is to provide personalized financial insights through an integrated AI assistant, leveraging real-time financial data for context-aware advice, alongside advanced client management and communication tools.
 # Recent Changes
+## November 30, 2025 - Sales Agent Mode Configuration (Modalità Venditore)
+- **Feature**: Users can now configure which sales phases the AI agent will execute
+- **Configuration Options** (in sales-agent-config.tsx):
+  - **enableDiscovery**: Enable/disable discovery phase
+  - **enableDemo**: Enable/disable demo phase
+- **Behavior Based on Settings**:
+  - `enableDiscovery=true` only → AI stays in discovery phase only (no transition to demo)
+  - `enableDemo=true` only → AI starts directly from demo phase (skips discovery)
+  - Both enabled → AI does Discovery → then transitions to Demo
+- **Implementation**:
+  - Initial phase determination in `sales-agent.ts` and `consultation-invites.ts` now respects these settings
+  - Phase transition logic in `gemini-live-ws-service.ts` checks `agentEnableDemo` before discovery→demo transition
+  - When transition is blocked, logs show: "⛔ PHASE TRANSITION BLOCKED" with reason
+- **Files Modified**: 
+  - `server/routes/public/sales-agent.ts` - Initial phase determination
+  - `server/routes/public/consultation-invites.ts` - Initial phase determination
+  - `server/ai/gemini-live-ws-service.ts` - Phase transition gating
+
 ## November 30, 2025 - Sales Agent Token Optimization (~27k → ~8-10k tokens)
 - **Goal**: Reduce Sales Agent AI token usage by ~65% through dynamic script loading
 - **Phase-Specific Script Loading**:
