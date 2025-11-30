@@ -1611,6 +1611,11 @@ REGOLE STEP (IMPORTANTE - LEGGI BENE):
 - Il reasoning deve essere SPECIFICO: quali domande fatte, quali mancano, qualità risposte
 - Solo se TUTTE le domande fatte + risposte ESAUSTIVE → shouldAdvance = true
 
+🚦 CHECKPOINT DI FASE (prima di passare a nuova fase):
+- Se è l'ultimo step della fase, verifica INTERNAMENTE i checkpoint dello script
+- Se manca qualcosa → shouldAdvance = FALSE + feedback NATURALE
+- Feedback naturale: "Approfondisci questo aspetto" (NON dire "manca checkpoint"!)
+
 REGOLE ARCHETIPO (IMPORTANTE):
 - IGNORA le keyword se il CONTESTO suggerisce altro
 - "Il prezzo non è un problema" → ENTHUSIAST, non PRICE_FOCUSED

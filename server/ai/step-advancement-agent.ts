@@ -288,8 +288,9 @@ L'agente DEVE fare le DOMANDE previste per questo step (vedi "DOMANDE DA FARE IN
 
 PRIMA di dire shouldAdvance=true, VERIFICA:
 1. L'agente ha fatto le domande elencate sopra? (anche in forma diversa ma stesso significato)
-2. Il prospect ha risposto a CIASCUNA domanda?
-3. Se MANCANO domande → shouldAdvance = FALSE + genera feedback correttivo
+2. Il prospect ha risposto a CIASCUNA domanda in modo ESAUSTIVO? (non "ok", "sì", "va bene")
+3. Le risposte contengono le INFORMAZIONI che il venditore cerca?
+4. Se MANCANO domande O risposte insufficienti → shouldAdvance = FALSE + feedback correttivo
 
 ⛔ NON AVANZARE SE:
 - L'agente ha saltato domande fondamentali dello step
@@ -301,6 +302,29 @@ PRIMA di dire shouldAdvance=true, VERIFICA:
 - Il prospect ha dato una risposta ESAUSTIVA (non solo "ok", "sì", "va bene")
 - La risposta contiene le INFORMAZIONI che il venditore cerca
 - L'obiettivo dello step è stato raggiunto
+
+🚦 CHECKPOINT DI FASE (CONTROLLO INTERNO):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Se lo step corrente è l'ULTIMO della fase, PRIMA di avanzare alla fase successiva
+devi verificare INTERNAMENTE che tutti i checkpoint della fase siano stati completati.
+
+I checkpoint sono elencati nello script (es. "⛔ CHECKPOINT FASE #1").
+Scorri la conversazione e verifica che OGNI punto del checkpoint sia stato coperto.
+
+SE UN CHECKPOINT NON È SODDISFATTO:
+→ shouldAdvance = FALSE
+→ Genera feedback NATURALE (NON dire "manca checkpoint"!)
+
+ESEMPI DI FEEDBACK NATURALE:
+❌ SBAGLIATO: "Manca checkpoint: non hai chiesto da dove chiama"
+✅ GIUSTO: "Prima di proseguire, chiedi al prospect da dove ti sta chiamando"
+
+❌ SBAGLIATO: "Checkpoint fase 2 incompleto"  
+✅ GIUSTO: "Approfondisci il problema principale prima di passare alla soluzione"
+
+❌ SBAGLIATO: "Non hai completato il checkpoint sul budget"
+✅ GIUSTO: "Cerca di capire meglio la sua situazione economica prima di presentare il prezzo"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚠️ RISPOSTA INSUFFICIENTE:
 Se il prospect risponde troppo brevemente (es. "ok", "sì", "bene", "capito"):
