@@ -902,6 +902,135 @@ export function setupGeminiLiveWSService(server: Server) {
     // feedback to the next user message so it gets processed naturally.
     let pendingFeedbackForAI: string | null = null;
     
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🕐 RESPONSE WATCHDOG - Rileva quando Gemini non risponde
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    let responseWatchdogTimer: NodeJS.Timeout | null = null;
+    let userMessagePendingResponse = false;
+    let lastUserFinalTranscript = '';
+    let lastUserMessageTimestamp = 0;
+    let responseWatchdogRetries = 0;
+    const RESPONSE_WATCHDOG_TIMEOUT_MS = 2000; // 2 secondi dopo isFinal
+    const MAX_WATCHDOG_RETRIES = 2;
+    
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔄 LOOP DETECTION - Rileva quando l'AI ripete la stessa domanda
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const lastAiResponses: string[] = [];
+    const MAX_TRACKED_RESPONSES = 5;
+    let consecutiveLoopCount = 0;
+    let isLooping = false;
+    const SIMILARITY_THRESHOLD = 0.75; // 75% similarità = loop
+    
+    /**
+     * Calcola la similarità tra due stringhe (0-1)
+     * Usa Jaccard similarity sui primi 100 caratteri normalizzati
+     */
+    function calculateTextSimilarity(str1: string, str2: string): number {
+      // Normalizza: lowercase, rimuovi punteggiatura, trim
+      const normalize = (s: string) => 
+        s.toLowerCase()
+         .replace(/[.,!?;:'"()\[\]{}]/g, '')
+         .trim()
+         .substring(0, 100); // Solo primi 100 char per velocità
+      
+      const s1 = normalize(str1);
+      const s2 = normalize(str2);
+      
+      if (s1 === s2) return 1; // Identici
+      if (!s1 || !s2) return 0;
+      
+      // Jaccard similarity sulle parole
+      const words1 = new Set(s1.split(/\s+/));
+      const words2 = new Set(s2.split(/\s+/));
+      
+      const intersection = new Set([...words1].filter(x => words2.has(x)));
+      const union = new Set([...words1, ...words2]);
+      
+      return intersection.size / union.size;
+    }
+    
+    /**
+     * Avvia il watchdog timer per rilevare mancate risposte da Gemini
+     */
+    function startResponseWatchdog(transcript: string, session: any) {
+      // Cancella timer precedente se esiste
+      if (responseWatchdogTimer) {
+        clearTimeout(responseWatchdogTimer);
+      }
+      
+      userMessagePendingResponse = true;
+      lastUserFinalTranscript = transcript;
+      lastUserMessageTimestamp = Date.now();
+      
+      console.log(`\n🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`🕐 [${connectionId}] WATCHDOG STARTED - Aspetto risposta Gemini entro ${RESPONSE_WATCHDOG_TIMEOUT_MS}ms`);
+      console.log(`   📝 Messaggio utente: "${transcript.substring(0, 60)}${transcript.length > 60 ? '...' : ''}"`);
+      console.log(`🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      
+      responseWatchdogTimer = setTimeout(() => {
+        if (userMessagePendingResponse) {
+          const elapsedMs = Date.now() - lastUserMessageTimestamp;
+          
+          console.log(`\n⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`⚠️ [${connectionId}] WATCHDOG TIMEOUT - Gemini non ha risposto in ${elapsedMs}ms!`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          
+          if (responseWatchdogRetries < MAX_WATCHDOG_RETRIES) {
+            responseWatchdogRetries++;
+            console.log(`🔄 [${connectionId}] RETRY ${responseWatchdogRetries}/${MAX_WATCHDOG_RETRIES} - Reinvio sollecito...`);
+            
+            // Reinvia sollecito per stimolare risposta
+            const retryMessage = {
+              clientContent: {
+                turns: [{
+                  role: 'user',
+                  parts: [{ text: `[SISTEMA: L'utente ha detto "${lastUserFinalTranscript.substring(0, 100)}..." - Per favore rispondi ora.]` }]
+                }],
+                turnComplete: true
+              }
+            };
+            
+            try {
+              session.send(JSON.stringify(retryMessage));
+              console.log(`   ✅ Sollecito inviato a Gemini`);
+            } catch (sendErr: any) {
+              console.error(`   ❌ Errore invio sollecito: ${sendErr.message}`);
+            }
+            
+            // Riavvia il timer per il prossimo tentativo
+            startResponseWatchdog(lastUserFinalTranscript, session);
+          } else {
+            console.log(`🔴 [${connectionId}] MAX RETRY RAGGIUNTO (${MAX_WATCHDOG_RETRIES}) - Invio errore AI_TIMEOUT al client`);
+            userMessagePendingResponse = false;
+            responseWatchdogRetries = 0;
+            
+            clientWs.send(JSON.stringify({
+              type: 'ai_timeout',
+              message: 'L\'AI non sta rispondendo. Riprova a parlare.',
+              retries: responseWatchdogRetries,
+              elapsedMs
+            }));
+          }
+          console.log(`⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        }
+      }, RESPONSE_WATCHDOG_TIMEOUT_MS);
+    }
+    
+    /**
+     * Cancella il watchdog (quando Gemini inizia a rispondere)
+     */
+    function cancelResponseWatchdog() {
+      if (responseWatchdogTimer) {
+        const responseTime = Date.now() - lastUserMessageTimestamp;
+        console.log(`✅ [${connectionId}] WATCHDOG CANCELLED - Gemini ha risposto in ${responseTime}ms`);
+        clearTimeout(responseWatchdogTimer);
+        responseWatchdogTimer = null;
+      }
+      userMessagePendingResponse = false;
+      responseWatchdogRetries = 0;
+    }
+    
     /**
      * 🔧 FIX: Helper to add user message to conversationMessages (deduped)
      * This was missing - only AI messages were being added to conversationMessages,
@@ -2768,6 +2897,11 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
 
           // Audio output da Gemini
           if (response.serverContent?.modelTurn?.parts) {
+            // 🆕 WATCHDOG: Gemini sta rispondendo - cancella il timer!
+            if (userMessagePendingResponse) {
+              cancelResponseWatchdog();
+            }
+            
             for (const part of response.serverContent.modelTurn.parts) {
               // 🛑 BARGE-IN: Check interruption flag in each part
               if (part.interrupted) {
@@ -3080,6 +3214,11 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                   }
                   
                   pendingUserTranscript = { text: '', hasFinalChunk: false };
+                  
+                  // 🆕 WATCHDOG: Avvia il timer - Gemini deve rispondere entro 2 secondi
+                  if (geminiSession) {
+                    startResponseWatchdog(finalTranscript, geminiSession);
+                  }
                 }
               }
               
@@ -3171,6 +3310,79 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
             // Salva il messaggio AI completo se ha trascritto qualcosa
             if (currentAiTranscript.trim()) {
               const trimmedTranscript = currentAiTranscript.trim();
+              
+              // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              // 🆕 LOOP DETECTION: Controlla se l'AI sta ripetendo la stessa risposta
+              // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              const lastResponse = lastAiResponses[lastAiResponses.length - 1];
+              if (lastResponse) {
+                const similarity = calculateTextSimilarity(trimmedTranscript, lastResponse);
+                
+                if (similarity > SIMILARITY_THRESHOLD) {
+                  consecutiveLoopCount++;
+                  isLooping = true;
+                  
+                  console.log(`\n🔴 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                  console.log(`🔴 [${connectionId}] LOOP DETECTED! AI sta ripetendo la stessa risposta!`);
+                  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                  console.log(`   📊 Similarità: ${(similarity * 100).toFixed(0)}% (soglia: ${SIMILARITY_THRESHOLD * 100}%)`);
+                  console.log(`   🔢 Conteggio consecutivo: ${consecutiveLoopCount}`);
+                  console.log(`   📝 Risposta attuale: "${trimmedTranscript.substring(0, 60)}..."`);
+                  console.log(`   📝 Risposta precedente: "${lastResponse.substring(0, 60)}..."`);
+                  
+                  // 🆕 AZIONE 1: Se loop rilevato 2+ volte, prepara feedback CRITICO
+                  if (consecutiveLoopCount >= 2) {
+                    const loopFeedback = `
+⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ ATTENZIONE CRITICA - STAI RIPETENDO LA STESSA DOMANDA!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ Il prospect ha GIÀ RISPOSTO a questa domanda.
+❌ NON ripetere MAI la stessa frase!
+🔴 DEVI fare una domanda COMPLETAMENTE DIVERSA!
+📍 Passa SUBITO al prossimo step dello script.
+🚫 NON dire più: "${lastResponse.substring(0, 50)}..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+                    // Prepend al feedback esistente o crea nuovo
+                    if (pendingFeedbackForAI) {
+                      pendingFeedbackForAI = loopFeedback + '\n\n' + pendingFeedbackForAI;
+                    } else {
+                      pendingFeedbackForAI = loopFeedback;
+                    }
+                    console.log(`   📤 Feedback CRITICO anti-loop preparato per injection`);
+                  }
+                  
+                  // 🆕 AZIONE 2: Se loop 3+ volte, FORZA avanzamento step
+                  if (consecutiveLoopCount >= 3 && salesTracker) {
+                    console.log(`   🔴 LOOP CRITICO (${consecutiveLoopCount}x) - Tentativo FORCE ADVANCE!`);
+                    try {
+                      const advanced = salesTracker.forceAdvanceToNextStep();
+                      if (advanced) {
+                        console.log(`   ✅ Step avanzato forzatamente per uscire dal loop`);
+                      } else {
+                        console.log(`   ⚠️ Impossibile avanzare - già all'ultimo step`);
+                      }
+                    } catch (forceErr: any) {
+                      console.log(`   ❌ Errore force advance: ${forceErr.message}`);
+                    }
+                  }
+                  
+                  console.log(`🔴 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                } else {
+                  // Non è un loop - reset contatore
+                  if (consecutiveLoopCount > 0) {
+                    console.log(`✅ [${connectionId}] LOOP RESET - Risposta diversa (similarità: ${(similarity * 100).toFixed(0)}%)`);
+                  }
+                  consecutiveLoopCount = 0;
+                  isLooping = false;
+                }
+              }
+              
+              // Aggiorna array risposte (FIFO)
+              lastAiResponses.push(trimmedTranscript);
+              if (lastAiResponses.length > MAX_TRACKED_RESPONSES) {
+                lastAiResponses.shift();
+              }
               
               // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
               // ✅ QUALITY VALIDATION: Check AI message for common issues

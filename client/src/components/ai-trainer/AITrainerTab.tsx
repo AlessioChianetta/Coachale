@@ -88,6 +88,7 @@ interface TranscriptMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  phase?: string;
 }
 
 interface SalesManagerAnalysisData {
@@ -836,13 +837,29 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
             <TabsContent value="conversation" className="mt-4">
               <ScrollArea className="h-[60vh] pr-4">
                 <div className="space-y-4">
-                  {transcript.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
-                      <p>In attesa di messaggi...</p>
-                    </div>
-                  ) : (
-                    transcript.map((msg, i) => (
+                  {(() => {
+                    const observedSession = activeSessions.find(s => s.id === observeSessionId);
+                    const isSessionRunning = observedSession?.status === 'running';
+                    
+                    if (transcript.length === 0) {
+                      if (isSessionRunning) {
+                        return (
+                          <div className="text-center py-8 text-gray-500">
+                            <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
+                            <p>In attesa di messaggi...</p>
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div className="text-center py-8 text-gray-500">
+                            <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>Sessione terminata - nessun messaggio registrato</p>
+                          </div>
+                        );
+                      }
+                    }
+                    
+                    return transcript.map((msg, i) => (
                       <div
                         key={i}
                         className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
@@ -854,8 +871,15 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                               : 'bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100'
                           }`}
                         >
-                          <div className="text-xs font-semibold mb-1">
-                            {msg.role === 'user' ? '🧑 Prospect AI' : '🤖 Sales Agent'}
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-xs font-semibold">
+                              {msg.role === 'user' ? '🧑 Prospect AI' : '🤖 Sales Agent'}
+                            </span>
+                            {msg.phase && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                                {msg.phase}
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm">{msg.content}</p>
                           <div className="text-xs opacity-60 mt-1">
@@ -863,8 +887,8 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                           </div>
                         </div>
                       </div>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </div>
               </ScrollArea>
             </TabsContent>

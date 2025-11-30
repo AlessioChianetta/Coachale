@@ -120,6 +120,7 @@ interface TranscriptMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  phase?: string;
 }
 
 export class ProspectSimulator {
@@ -474,6 +475,7 @@ export class ProspectSimulator {
       role: 'assistant',
       content: agentText,
       timestamp: new Date().toISOString(),
+      phase: this.currentPhase,
     });
 
     this.conversationHistory.push({
@@ -660,6 +662,7 @@ I TUOI PROBLEMI devono essere coerenti con "${targetDescription}":
       role: 'user',
       content: text,
       timestamp: new Date().toISOString(),
+      phase: this.currentPhase,
     });
 
     this.conversationHistory.push({

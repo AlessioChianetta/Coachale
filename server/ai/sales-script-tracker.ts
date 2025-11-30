@@ -713,6 +713,84 @@ export class SalesScriptTracker {
   }
   
   /**
+   * 🆕 FORCE ADVANCE: Forza l'avanzamento al prossimo step (usato dal loop detector)
+   * Questo metodo bypassa i controlli normali di sequenzialità per uscire da loop
+   * @returns true se avanzato, false se già all'ultimo step
+   */
+  forceAdvanceToNextStep(): boolean {
+    console.log(`\n🔴 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🔴 [TRACKER] FORCE ADVANCE - Forzatura avanzamento step richiesta`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   📍 Fase corrente: ${this.state.currentPhase}`);
+    console.log(`   📍 Step corrente: ${this.state.currentStep || 'N/A'}`);
+    
+    const currentPhase = this.scriptStructure.phases.find(p => p.id === this.state.currentPhase);
+    if (!currentPhase) {
+      console.log(`   ❌ Fase non trovata!`);
+      console.log(`🔴 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      return false;
+    }
+    
+    const currentStepIndex = currentPhase.steps.findIndex(s => s.id === this.state.currentStep);
+    
+    // Prova ad avanzare al prossimo step nella stessa fase
+    if (currentStepIndex >= 0 && currentStepIndex < currentPhase.steps.length - 1) {
+      const nextStep = currentPhase.steps[currentStepIndex + 1];
+      const previousStep = this.state.currentStep;
+      this.state.currentStep = nextStep.id;
+      
+      // Log l'avanzamento nel reasoning
+      this.state.aiReasoning.push({
+        timestamp: new Date().toISOString(),
+        phase: this.state.currentPhase,
+        decision: 'force_advance_step',
+        reasoning: `🔴 FORCE ADVANCE: Loop detected, forced advancement from step "${previousStep}" to "${nextStep.id}"`
+      });
+      
+      console.log(`   ✅ Avanzato a step: ${nextStep.id} (${nextStep.name})`);
+      console.log(`🔴 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      return true;
+    }
+    
+    // Altrimenti prova ad avanzare alla prossima fase
+    const currentPhaseIndex = this.scriptStructure.phases.findIndex(p => p.id === this.state.currentPhase);
+    if (currentPhaseIndex >= 0 && currentPhaseIndex < this.scriptStructure.phases.length - 1) {
+      const nextPhase = this.scriptStructure.phases[currentPhaseIndex + 1];
+      const previousPhase = this.state.currentPhase;
+      
+      // Aggiungi fase corrente a completate
+      if (!this.state.phasesReached.includes(currentPhase.id)) {
+        this.state.phasesReached.push(currentPhase.id);
+      }
+      
+      this.state.currentPhase = nextPhase.id;
+      this.state.currentStep = nextPhase.steps[0]?.id || undefined;
+      
+      // Aggiungi anche la nuova fase a phasesReached
+      if (!this.state.phasesReached.includes(nextPhase.id)) {
+        this.state.phasesReached.push(nextPhase.id);
+      }
+      
+      // Log l'avanzamento nel reasoning
+      this.state.aiReasoning.push({
+        timestamp: new Date().toISOString(),
+        phase: nextPhase.id,
+        decision: 'force_advance_phase',
+        reasoning: `🔴 FORCE ADVANCE: Loop detected at last step of phase, forced advancement from phase "${previousPhase}" to "${nextPhase.id}"`
+      });
+      
+      console.log(`   ✅ Avanzato a FASE: ${nextPhase.id} (${nextPhase.name})`);
+      console.log(`   📍 Primo step: ${this.state.currentStep || 'N/A'}`);
+      console.log(`🔴 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      return true;
+    }
+    
+    console.log(`   ⚠️ Già all'ultimo step dell'ultima fase - impossibile avanzare`);
+    console.log(`🔴 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    return false;
+  }
+  
+  /**
    * Get current phase number (e.g., "phase_3" -> 3, "phase_1_2" -> 1)
    */
   private getCurrentPhaseNumber(): number {
