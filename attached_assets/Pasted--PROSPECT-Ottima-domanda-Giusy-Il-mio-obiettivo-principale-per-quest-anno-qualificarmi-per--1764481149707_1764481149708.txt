@@ -1,0 +1,245 @@
+👤 [PROSPECT] "Ottima domanda, Giusy! Il mio obiettivo principale per quest'anno è qualificarmi per l'Ironman World..."
+
+📝 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 [slnwke] TEXT INPUT RECEIVED (AI Trainer Mode)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📄 Text: "Ottima domanda, Giusy! Il mio obiettivo principale per quest'anno è qualificarmi per l'Ironman World..."
+   📏 Length: 483 chars
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [slnwke] Text input sent to Gemini
+
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🕐 [slnwke] WATCHDOG STARTED - Aspetto risposta Gemini entro 2000ms
+   📝 Messaggio utente: "Ottima domanda, Giusy! Il mio obiettivo principale per quest..."
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ [TRACKER] Checkpoint progress detected: User confirmed in phase_1
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_1
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_1
+✅ [slnwke] User message tracked for sales script
+5:36:04 AM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 200 in 568ms …
+5:36:05 AM [express] GET /api/ai-trainer/session/86b068da-bb21-4582-84c9-868092ce986c/manager-analys…
+
+⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ [slnwke] WATCHDOG TIMEOUT - Gemini non ha risposto in 2001ms!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [slnwke] RETRY 1/2 - Reinvio sollecito...
+   ✅ Sollecito inviato a Gemini
+
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🕐 [slnwke] WATCHDOG STARTED - Aspetto risposta Gemini entro 2000ms
+   📝 Messaggio utente: "Ottima domanda, Giusy! Il mio obiettivo principale per quest..."
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 13293,
+  "totalTokenCount": 13293,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 10906
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 2387
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT"
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 13,293 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 13,293 tokens × $0.50/1M = $0.006646
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [slnwke] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 13,293 tokens → $0.006646 ($0.50/1M)
+   - Audio Output: 0 tokens → $0.000000 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.006646 USD
+
+📊 Session totals:
+   - Text Input: 172,253 tokens → $0.086126
+   - Audio Output: 2,777 tokens → $0.033324
+   - SESSION TOTAL: $0.119450 USD
+Se va in errore, fai dire semplicemente, non ti ho sentito bene, puoi ripetere perfavore?
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 18,296 (~18.3k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 172,253 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 172,253 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (18,296 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~18,296 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 18,296 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [slnwke] SESSION RESUMPTION UPDATE received
+   - New handle: ec5127d9-8bfa-4c54-a8af-454a01...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+5:36:06 AM [express] GET /api/ai-trainer/session/86b068da-bb21-4582-84c9-868092ce986c/transcript 200…
+💾 [slnwke] Usage tracked → DB saved (Turn cost: $0.006646)
+✅ [slnwke] Turn complete
+   ✅ Handle saved to database with ownership metadata
+      → Mode: sales_agent
+      → ShareToken: 0VofB8MRiBPG0MGz, ConversationId: 3c03a2de-eb42-464f-b9b5-5c2b38be9074
+5:36:07 AM [express] GET /api/ai-trainer/session/86b068da-bb21-4582-84c9-868092ce986c/manager-analys…
+
+⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ [slnwke] WATCHDOG TIMEOUT - Gemini non ha risposto in 2000ms!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [slnwke] RETRY 2/2 - Reinvio sollecito...
+   ✅ Sollecito inviato a Gemini
+
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🕐 [slnwke] WATCHDOG STARTED - Aspetto risposta Gemini entro 2000ms
+   📝 Messaggio utente: "Ottima domanda, Giusy! Il mio obiettivo principale per quest..."
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 13336,
+  "totalTokenCount": 13336,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 10949
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 2387
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT"
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 13,336 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 13,336 tokens × $0.50/1M = $0.006668
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [slnwke] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 13,336 tokens → $0.006668 ($0.50/1M)
+   - Audio Output: 0 tokens → $0.000000 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.006668 USD
+
+📊 Session totals:
+   - Text Input: 185,589 tokens → $0.092795
+   - Audio Output: 2,777 tokens → $0.033324
+   - SESSION TOTAL: $0.126118 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 18,296 (~18.3k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 185,589 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 185,589 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (18,296 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~18,296 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 18,296 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [slnwke] SESSION RESUMPTION UPDATE received
+   - New handle: a6dd5ff4-4cd8-45d7-b2d6-5eb9e7...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [slnwke] Usage tracked → DB saved (Turn cost: $0.006668)
+✅ [slnwke] Turn complete
+   ✅ Handle saved to database with ownership metadata
+      → Mode: sales_agent
+      → ShareToken: 0VofB8MRiBPG0MGz, ConversationId: 3c03a2de-eb42-464f-b9b5-5c2b38be9074
+5:36:08 AM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 573ms …
+5:36:09 AM [express] GET /api/ai-trainer/session/86b068da-bb21-4582-84c9-868092ce986c/transcript 200…
+5:36:10 AM [express] GET /api/ai-trainer/session/86b068da-bb21-4582-84c9-868092ce986c/manager-analys…
+
+⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ [slnwke] WATCHDOG TIMEOUT - Gemini non ha risposto in 1999ms!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔴 [slnwke] MAX RETRY RAGGIUNTO (2) - Invio errore AI_TIMEOUT al client
+⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
