@@ -4258,13 +4258,18 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                 console.log(`💾 [${connectionId}] Saving ${modeLabel} conversation...`);
                 
                 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-                // LOAD CONVERSATION DATA
+                // LOAD CONVERSATION DATA + AGENT CONFIG
                 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 const conversation = await storage.getClientSalesConversationById(conversationId!);
                 if (!conversation) {
                   console.error(`❌ [${connectionId}] Conversation not found: ${conversationId}`);
                   throw new Error('Conversation not found');
                 }
+                
+                // Load agent config to check enableDiscovery/enableDemo settings
+                const agentConfig = await storage.getClientSalesAgentById(conversation.agentId);
+                const agentEnableDiscovery = agentConfig?.enableDiscovery ?? true;
+                const agentEnableDemo = agentConfig?.enableDemo ?? true;
                 
                 // Build full transcript
                 const fullTranscript = msg.conversationData.messages
@@ -4278,10 +4283,15 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                 console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                 console.log(`   📝 Transcript length: ${fullTranscript.length} chars`);
                 console.log(`   📊 Current Phase: ${conversation.currentPhase.toUpperCase()}`);
+                console.log(`   🎯 Agent Mode: discovery=${agentEnableDiscovery}, demo=${agentEnableDemo}`);
                 
                 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                 // 1. PHASE TRANSITION DETECTION + DISCOVERY REC GENERATION
                 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                // IMPORTANT: Phase transitions respect enableDiscovery/enableDemo settings
+                // - discovery → demo: only if enableDemo = true
+                // - demo → objections: only if in demo phase
+                // - objections → closing: always allowed
                 let newPhase = conversation.currentPhase;
                 let generatedDiscoveryRec: DiscoveryRec | null = null;
                 
@@ -4290,8 +4300,11 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                       lowerTranscript.includes('ti mostro come funziona') ||
                       lowerTranscript.includes('adesso ti mostro') ||
                       lowerTranscript.includes('vediamo come funziona')) {
-                    newPhase = 'demo';
-                    console.log(`   🔄 PHASE TRANSITION: discovery → demo`);
+                    
+                    // ⚠️ CHECK: Can we transition to demo?
+                    if (agentEnableDemo) {
+                      newPhase = 'demo';
+                      console.log(`   🔄 PHASE TRANSITION: discovery → demo (enableDemo=true)`);
                     
                     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
                     // 📋 DISCOVERY REC GENERATION (usa Gemini 2.5 Flash)
@@ -4333,6 +4346,11 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                     if (!generatedDiscoveryRec) {
                       console.log(`   ⚠️ Discovery REC NOT GENERATED after ${maxRecRetries} attempts`);
                       console.log(`      Demo will proceed without structured discovery summary`);
+                    }
+                    } else {
+                      // Demo mode is NOT enabled - stay in discovery phase
+                      console.log(`   ⚠️ PHASE TRANSITION BLOCKED: discovery → demo (enableDemo=false)`);
+                      console.log(`      Agent configured for discovery-only mode. Staying in discovery phase.`);
                     }
                   }
                 } else if (conversation.currentPhase === 'demo') {
