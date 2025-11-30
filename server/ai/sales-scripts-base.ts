@@ -392,28 +392,28 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 🚨 DOMANDE OBBLIGATORIE (5 CRITICHE - DEVONO TUTTE ESSERE FATTE!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1️⃣ 📌 DOMANDA OBBLIGATORIA: "Chi aiuti esattamente? Chi è il tuo cliente ideale?"
+📌 DOMANDA: "Chi aiuti esattamente? Chi è il tuo cliente ideale?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il target (tipologia di cliente, settore, caratteristiche)
 💬 REAGISCI: "Interessante! Quindi lavori principalmente con [target]..."
 
-2️⃣ 📌 DOMANDA OBBLIGATORIA: "Com'è il tuo modello di business? Lavori con abbonamenti 
+📌 DOMANDA: "Com'è il tuo modello di business? Lavori con abbonamenti 
 ricorrenti, pacchetti una tantum, o come funziona?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il modello (ricorrente, one-shot, pacchetti, hourly, ecc.)
 💬 REAGISCI: "Capisco! Quindi [modello]..."
 
-3️⃣ 📌 DOMANDA OBBLIGATORIA: "Qual è il tuo ticket medio? Quanto paga mediamente un cliente?"
+📌 DOMANDA: "Qual è il tuo ticket medio? Quanto paga mediamente un cliente?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il valore (numero preciso o range)
 💬 REAGISCI: "Interessante! [commento sul valore]"
 
-4️⃣ 📌 DOMANDA OBBLIGATORIA: "Da quanti anni fai questo lavoro?"
+📌 DOMANDA: "Da quanti anni fai questo lavoro?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA gli anni di esperienza
 💬 REAGISCI: "Perfetto! Quindi hai [X anni] di esperienza..."
 
-5️⃣ 📌 DOMANDA OBBLIGATORIA: "Quanti clienti hai attivi in questo momento? 
+📌 DOMANDA: "Quanti clienti hai attivi in questo momento? 
 O quanti clienti servi all'anno?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il numero (attivi o totali annuali)
@@ -442,34 +442,25 @@ O quanti clienti servi all'anno?"
 
 ---
 
-⛔ CHECKPOINT FASE #3 - BLOCCANTE!
+⛔ CHECKPOINT FASE #3
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚨 ATTENZIONE: NON PUOI PROCEDERE SENZA LE 5 INFO OBBLIGATORIE!
+PRIMA DI PASSARE ALLA FASE #4 VERIFICA:
 
-VERIFICA LE 5 DOMANDE CRITICHE:
-□ 1. TARGET: Sai CHI aiuta esattamente?
-□ 2. MODELLO: Sai COM'È il modello di business (ricorrente/una tantum/ecc.)?
-□ 3. TICKET: Sai QUANTO paga mediamente un cliente?
-□ 4. ESPERIENZA: Sai DA QUANTI ANNI fa questo lavoro?
-□ 5. CLIENTI: Sai QUANTI clienti ha ora o serve all'anno?
-
-📊 AUTO-TEST (fai questo check mentale):
-"Potrei descrivere il business del prospect a un collega in 30 secondi?"
-- Target: ________
-- Modello: ________
-- Ticket medio: ________
-- Anni esperienza: ________
-- Numero clienti: ________
-
-SE ANCHE SOLO UN CAMPO È VUOTO → FERMATI E CHIEDI!
+✓ TARGET: Sai CHI aiuta esattamente?
+✓ MODELLO: Sai COM'È il modello di business (ricorrente/una tantum/ecc.)?
+✓ TICKET: Sai QUANTO paga mediamente un cliente?
+✓ ESPERIENZA: Sai DA QUANTI ANNI fa questo lavoro?
+✓ CLIENTI: Sai QUANTI clienti ha ora o serve all'anno?
 
 ❌ NON PROCEDERE alla Fase #4 senza TUTTE e 5 le risposte!
 
 🛡️ SE RESISTE: Non vuole rispondere
-📌 RISPOSTA: "Capisco, sono domande rapide ma fondamentali per calibrare 
+RISPOSTA OBBLIGATORIA: 
+"Capisco, sono domande rapide ma fondamentali per calibrare 
 la proposta sul TUO business. Senza sapere [info mancante] rischio di 
 proporti qualcosa che non fa per te. Mi aiuti?"
 ⏸️ ASPETTA risposta → Insisti finché non hai l'info!
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ---
@@ -784,18 +775,15 @@ PRIMA DI PASSARE ALLA FASE #7 VERIFICA:
 
 ✓ Hai chiesto "Cosa ti impedisce di riuscirci da solo?"
 ✓ Il prospect ha risposto alla domanda?
-✓ Il prospect ha ammesso UNO dei MAGICI 3:
-  - "Non sono in grado da solo"
-  - "Voglio risultati più velocemente"  
-  - "Voglio un sistema testato/esperto"
+✓ Il prospect ha ammesso UNO dei MAGICI 3: - "Non sono in grado da solo"  - "Voglio risultati più velocemente"     - "Voglio un sistema testato/esperto"
 ✓ Se NON ha detto uno dei Magici 3, hai fatto la disqualifica?
 
 ❌ SE IL PROSPECT NON HA AMMESSO DI AVER BISOGNO DI AIUTO ESTERNO → NON PUOI PROCEDERE!
 
 📊 TEST FINALE:
-"Il prospect ha ammesso che non può farcela da solo?"
-SE SÌ → Procedi alla Fase #7
-SE NO → Insisti con la domanda di disqualifica o chiudi educatamente
+"Il prospect ha ammesso che non può farcela da solo?" SE SÌ → Procedi alla Fase #7 SE NO → Insisti con la domanda di disqualifica o chiudi educatamente
+
+
 
 🛡️ SE RESISTE: Dice che può farcela da solo
 📌 RISPOSTA: "Ok [NOME], se sei convinto di poterlo fare da solo, 
@@ -905,11 +893,8 @@ siete allineati sulla decisione?"
 **STEP 16 - TRANSIZIONE ALLA DEMO**
 🎯 OBIETTIVO: Chiudere la discovery e fissare la demo
 
-📌 AFFERMAZIONE (TONO: Sicuro e positivo):
-"Dalle informazioni che mi hai dato, penso di poterti aiutare."
-💬 PAUSA brevissima per impatto
-
-📌 DOMANDA: "Adesso ti propongo una cosa: nella prossima call ti presenterò 
+📌 DOMANDA: "Dalle informazioni che mi hai dato, penso di poterti aiutare. 
+Adesso ti propongo una cosa: nella prossima call ti presenterò 
 un percorso personalizzato basato su tutto quello che mi hai raccontato oggi.
 Ti mostrerò esattamente come passare da [fatturato attuale] a [obiettivo].
 Quando ti torna meglio? [PROPONI 2-3 SLOT]"

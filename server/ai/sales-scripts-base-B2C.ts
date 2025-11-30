@@ -392,30 +392,30 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 🚨 DOMANDE OBBLIGATORIE (5 CRITICHE - DEVONO TUTTE ESSERE FATTE!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DOMANDA OBBLIGATORIA: "Cosa fai nella vita? Lavoro, studi, o...?"
+📌 DOMANDA: "Cosa fai nella vita? Lavoro, studi, o...?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il contesto lavorativo/di studio (occupazione, settore, ruolo)
 💬 REAGISCI: "Interessante! Quindi [riassumi contesto]..."
 
-📌 DOMANDA OBBLIGATORIA: "Da quanto tempo stai affrontando questa situazione? 
+📌 DOMANDA: "Da quanto tempo stai affrontando questa situazione? 
 Mesi, anni?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA la durata del problema (è recente o cronico?)
 💬 REAGISCI: "Capisco, quindi sono [X tempo] che..."
 
-📌 DOMANDA OBBLIGATORIA: "Se dovessi dare un voto da 1 a 10 al tuo livello 
+📌 DOMANDA: "Se dovessi dare un voto da 1 a 10 al tuo livello 
 di stress attuale legato a questo, quanto sarebbe?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il NUMERO specifico (1-10)
 💬 REAGISCI: "[numero]... capisco, è [commento appropriato al livello]"
 
-📌 DOMANDA OBBLIGATORIA: "In questa cosa, sei da solo o hai supporto? 
+📌 DOMANDA: "In questa cosa, sei da solo o hai supporto? 
 Famiglia, partner, amici che ti aiutano?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il livello di supporto (solo, parziale, supportato)
 💬 REAGISCI: "Perfetto, quindi [riassumi situazione supporto]..."
 
-📌 DOMANDA OBBLIGATORIA: "Quanto tempo reale riesci a dedicare a questo 
+📌 DOMANDA: "Quanto tempo reale riesci a dedicare a questo 
 ogni settimana? Ore, giorni?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA la disponibilità temporale concreta
@@ -445,22 +445,13 @@ ogni settimana? Ore, giorni?"
 
 ⛔ CHECKPOINT FASE #3 - BLOCCANTE!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚨 ATTENZIONE: NON PUOI PROCEDERE SENZA LE 5 INFO OBBLIGATORIE!
+PRIMA DI PASSARE ALLA FASE #4 VERIFICA:
 
-VERIFICA LE 5 DOMANDE CRITICHE:
-✓ 1. OCCUPAZIONE: Sai cosa fa nella vita (lavoro/studi)?
-✓ 2. DURATA: Sai da QUANTO TEMPO affronta questa situazione?
-✓ 3. STRESS: Hai un NUMERO 1-10 del livello di stress?
-✓ 4. SUPPORTO: Sai se è SOLO o ha supporto (famiglia/partner)?
-✓ 5. TEMPO: Sai QUANTO TEMPO può dedicare a settimana?
-
-📊 AUTO-TEST (fai questo check mentale):
-"Potrei descrivere la situazione del prospect a un collega in 30 secondi?"
-- Occupazione: ________
-- Durata problema: ________
-- Stress (1-10): ________
-- Supporto: ________
-- Tempo disponibile: ________
+✓ OCCUPAZIONE: Sai cosa fa nella vita (lavoro/studi)?
+✓ DURATA: Sai da QUANTO TEMPO affronta questa situazione?
+✓ STRESS: Hai un NUMERO 1-10 del livello di stress?
+✓ SUPPORTO: Sai se è SOLO o ha supporto (famiglia/partner)?
+✓ TEMPO: Sai QUANTO TEMPO può dedicare a settimana?
 
 SE ANCHE SOLO UN CAMPO È VUOTO → FERMATI E CHIEDI!
 
@@ -788,18 +779,15 @@ PRIMA DI PASSARE ALLA FASE #7 VERIFICA:
 
 ✓ Hai chiesto "Cosa ti impedisce di riuscirci da solo?"
 ✓ Il prospect ha risposto alla domanda?
-✓ Il prospect ha ammesso UNO dei MAGICI 3:
-  - "Non sono in grado da solo"
-  - "Voglio risultati più velocemente"  
-  - "Voglio un sistema testato/esperto"
+✓ Il prospect ha ammesso UNO dei MAGICI 3:   - "Non sono in grado da solo"   - "Voglio risultati più velocemente"     - "Voglio un sistema testato/esperto"
 ✓ Se NON ha detto uno dei Magici 3, hai fatto la disqualifica?
 
 ❌ SE IL PROSPECT NON HA AMMESSO DI AVER BISOGNO DI AIUTO ESTERNO → NON PUOI PROCEDERE!
 
 📊 TEST FINALE:
-"Il prospect ha ammesso che non può farcela da solo?"
-SE SÌ → Procedi alla Fase #7
-SE NO → Insisti con la domanda di disqualifica o chiudi educatamente
+"Il prospect ha ammesso che non può farcela da solo?" SE SÌ → Procedi alla Fase #7 SE NO → Insisti con la domanda di disqualifica o chiudi educatamente
+ 
+
 
 🛡️ SE RESISTE: Dice che può farcela da solo
 📌 RISPOSTA: "Ok [NOME], se sei convinto di poterlo fare da solo, 
@@ -909,11 +897,9 @@ siete allineati sulla decisione?"
 **STEP 16 - TRANSIZIONE ALLA DEMO**
 🎯 OBIETTIVO: Chiudere la discovery e fissare la demo
 
-📌 AFFERMAZIONE (TONO: Sicuro e positivo):
-"Dalle informazioni che mi hai dato, penso di poterti aiutare."
-💬 PAUSA brevissima per impatto
 
-📌 DOMANDA: "Adesso ti propongo una cosa: nella prossima call ti presenterò 
+📌 DOMANDA: "Dalle informazioni che mi hai dato, penso di poterti aiutare. 
+Adesso ti propongo una cosa: nella prossima call ti presenterò 
 un percorso personalizzato basato su tutto quello che mi hai raccontato oggi.
 Ti mostrerò esattamente come passare da [livello attuale] a [obiettivo].
 Quando ti torna meglio? [PROPONI 2-3 SLOT]"
