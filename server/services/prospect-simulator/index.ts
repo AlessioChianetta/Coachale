@@ -547,13 +547,32 @@ Rispondi in italiano, in modo colloquiale e naturale.
 
 LA TUA RISPOSTA:`;
 
-      const response = await this.aiClient!.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      });
+      // 🔄 RETRY LOGIC: Se la risposta è vuota, riprova fino a 3 volte
+      let prospectResponse = '';
+      let retries = 0;
+      const maxRetries = 3;
 
-      let prospectResponse = response.response.text() || '';
-      
+      while (!prospectResponse && retries < maxRetries) {
+        if (retries > 0) {
+          console.log(`🔄 [PROSPECT SIMULATOR] Retry ${retries}/${maxRetries - 1} - Response was empty, trying again...`);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Piccola pausa prima di riprovare
+        }
+
+        const response = await this.aiClient!.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        });
+
+        prospectResponse = response.response.text() || '';
+        retries++;
+      }
+
+      if (!prospectResponse) {
+        console.error(`❌ [PROSPECT SIMULATOR] Failed to get response after ${maxRetries} attempts - ending session`);
+        await this.completeSession();
+        return;
+      }
+
       const shouldEnd = prospectResponse.includes('[FINE_CONVERSAZIONE]');
       prospectResponse = prospectResponse.replace('[FINE_CONVERSAZIONE]', '').trim();
 
