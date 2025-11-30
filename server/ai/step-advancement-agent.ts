@@ -289,19 +289,41 @@ L'agente DEVE fare le DOMANDE previste per questo step (vedi "DOMANDE DA FARE IN
 PRIMA di dire shouldAdvance=true, VERIFICA:
 1. L'agente ha fatto le domande elencate sopra? (anche in forma diversa ma stesso significato)
 2. Il prospect ha risposto a CIASCUNA domanda in modo ESAUSTIVO? (non "ok", "sì", "va bene")
-3. Le risposte contengono le INFORMAZIONI che il venditore cerca?
+3. Le risposte contengono le INFORMAZIONI CONCRETE che il venditore cerca?
 4. Se MANCANO domande O risposte insufficienti → shouldAdvance = FALSE + feedback correttivo
+
+🚨 REGOLA CRITICA - IGNORA LE EMOZIONI PER L'AVANZAMENTO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+L'EMOZIONE del prospect (entusiasmo, interesse, positività) NON È MAI un criterio valido per avanzare!
+
+ESEMPI DI ERRORE DA EVITARE:
+❌ "Il prospect è entusiasta, possiamo avanzare" → SBAGLIATO! L'entusiasmo non è una risposta
+❌ "Il prospect mostra interesse, obiettivo raggiunto" → SBAGLIATO! L'interesse non è un'informazione
+❌ "Il prospect sembra convinto, passiamo oltre" → SBAGLIATO! La convinzione non risponde alle domande
+
+ESEMPI CORRETTI:
+✅ "Il prospect ha risposto 'Milano' alla domanda 'da dove chiami?' - info raccolta, possiamo avanzare"
+✅ "Il prospect ha spiegato il suo problema principale nel dettaglio - obiettivo raggiunto"
+✅ "Il prospect ha detto il suo budget approssimativo - checkpoint completato"
+
+SCENARIO TIPICO DA GESTIRE:
+Domanda: "Qual è la sfida principale che stai affrontando?"
+Risposta: "Wow, fantastico! Questa tecnica mi piace molto!"
+→ Il prospect ha espresso ENTUSIASMO ma NON ha risposto alla domanda!
+→ shouldAdvance = FALSE
+→ Feedback: "Il prospect non ha risposto alla domanda. Riformula: 'Sono contento che ti piaccia! Ma tornando a te, qual è il problema principale che vuoi risolvere?'"
 
 ⛔ NON AVANZARE SE:
 - L'agente ha saltato domande fondamentali dello step
 - L'agente è passato avanti senza fare le domande previste
+- Il prospect ha risposto con EMOZIONE ma SENZA INFORMAZIONI CONCRETE
 - Il prospect ha risposto ma l'agente NON ha fatto TUTTE le domande
 
 ✅ AVANZA SOLO SE:
 - L'agente ha fatto TUTTE le domande dello step corrente
-- Il prospect ha dato una risposta ESAUSTIVA (non solo "ok", "sì", "va bene")
-- La risposta contiene le INFORMAZIONI che il venditore cerca
-- L'obiettivo dello step è stato raggiunto
+- Il prospect ha dato una risposta ESAUSTIVA CON INFORMAZIONI CONCRETE (non emozioni!)
+- La risposta contiene i DATI/FATTI che il venditore cerca (luoghi, numeri, problemi specifici, nomi)
+- L'obiettivo dello step è stato raggiunto con INFORMAZIONI VERIFICABILI
 
 🚦 CHECKPOINT DI FASE (CONTROLLO INTERNO):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
