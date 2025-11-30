@@ -298,8 +298,19 @@ PRIMA di dire shouldAdvance=true, VERIFICA:
 
 ✅ AVANZA SOLO SE:
 - L'agente ha fatto TUTTE le domande dello step corrente
-- Il prospect ha risposto (anche brevemente, anche negativamente)
+- Il prospect ha dato una risposta ESAUSTIVA (non solo "ok", "sì", "va bene")
+- La risposta contiene le INFORMAZIONI che il venditore cerca
 - L'obiettivo dello step è stato raggiunto
+
+⚠️ RISPOSTA INSUFFICIENTE:
+Se il prospect risponde troppo brevemente (es. "ok", "sì", "bene", "capito"):
+→ shouldAdvance = FALSE
+→ Feedback: "Il prospect ha risposto troppo brevemente. Approfondisci: [domanda di follow-up]"
+
+ESEMPIO:
+Domanda: "Qual è la sfida principale che stai affrontando?"
+Risposta: "Eh, vari problemi" ← INSUFFICIENTE! Non sappiamo QUALE problema
+→ L'agente deve approfondire: "Capisco, ma quale di questi problemi ti preoccupa di più?"
 
 ESEMPIO DI BLOCCO:
 Step richiede: "Da dove chiami?" + "Cosa ti ha spinto a prenotare?"

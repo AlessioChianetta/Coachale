@@ -1051,11 +1051,16 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     const analysisTimeMs = Date.now() - startTime;
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 🎭 INTEGRA PROFILING NEL FEEDBACK (PRIORITÀ ALTA!)
+    // 🎭 STICKY ARCHETYPE: Inietta solo ogni 4 turni (non ad ogni messaggio!)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 🆕 FIX: Il profiling va ALL'INIZIO del feedback, non in fondo!
-    // L'archetipo è la PRIMA cosa che l'Agent deve vedere.
-    // Priority order: AntiPattern > Archetype > existing feedback
+    // Regole:
+    // 1. AntiPattern critico → inietta SEMPRE (priorità massima)
+    // 2. Archetype → inietta solo ogni 4 turni O se appena cambiato
+    // 3. Evita di confondere l'agente con troppi feedback archetipo
+    
+    const archetypeJustChanged = updatedArchetypeState.turnsSinceUpdate === 0;
+    const shouldInjectArchetype = (currentTurn % 4 === 0) || archetypeJustChanged;
+    
     if (antiPatternDetected && antiPatternDetected.priority === 'critical') {
       feedbackForAgent = {
         shouldInject: true,
@@ -1064,30 +1069,30 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
         message: `${archetypeInstruction.instruction}`,
         toneReminder: `Filler: "${archetypeInstruction.filler}"`
       };
-    } else if (updatedArchetypeState.current !== 'neutral' && updatedArchetypeState.confidence > 0.6) {
+    } else if (shouldInjectArchetype && updatedArchetypeState.current !== 'neutral' && updatedArchetypeState.confidence > 0.6) {
       const archetypeTag = formatArchetypeTag(updatedArchetypeState.current);
       const existingMessage = feedbackForAgent?.message || '';
       
-      // 🆕 PROFILING ALL'INIZIO - L'Agent vede PRIMA l'archetipo
-      const profilingHeader = `🎭 ARCHETIPO RILEVATO: ${archetypeTag} (${(updatedArchetypeState.confidence * 100).toFixed(0)}%)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${archetypeInstruction.instruction}
-💬 Filler: "${archetypeInstruction.filler}"
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+      // 🆕 PROFILING solo ogni 4 turni - non confondere l'agente
+      const profilingHeader = `🎭 ARCHETIPO: ${archetypeTag}
+${archetypeInstruction.instruction}`;
+      
+      console.log(`   📢 ARCHETYPE INJECTION at turn ${currentTurn} (${archetypeJustChanged ? 'just changed' : 'periodic refresh'})`);
       
       if (feedbackForAgent) {
-        // 🆕 Profiling PRIMA, feedback esistente DOPO
-        feedbackForAgent.message = `${profilingHeader}\n\n📋 FEEDBACK AGGIUNTIVO:\n${existingMessage}`;
+        feedbackForAgent.message = `${existingMessage}\n\n${profilingHeader}`;
         feedbackForAgent.toneReminder = `Adatta il tuo stile a ${archetypeTag}`;
       } else {
         feedbackForAgent = {
           shouldInject: true,
-          priority: antiPatternDetected ? 'high' : 'medium',
+          priority: 'medium',
           type: 'tone',
           message: profilingHeader,
           toneReminder: `Adatta il tuo stile a ${archetypeTag}`
         };
       }
+    } else if (updatedArchetypeState.current !== 'neutral') {
+      console.log(`   🔇 ARCHETYPE SKIPPED at turn ${currentTurn} (next injection at turn ${Math.ceil((currentTurn + 1) / 4) * 4})`);
     }
     
     console.log(`\n🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -1598,12 +1603,13 @@ REGOLE STEP (IMPORTANTE - LEGGI BENE):
 3. Non assumere risposte non presenti
 4. Se shouldAdvance=true, USA ESATTAMENTE questi IDs: nextPhaseId="${nextPhaseIdValue}", nextStepId="${nextStepIdValue}"
 
-⚠️ REGOLA FONDAMENTALE - VERIFICA DOMANDE DELLO STEP:
+⚠️ REGOLA FONDAMENTALE - VERIFICA DOMANDE E QUALITÀ RISPOSTE:
 - L'agente DEVE fare le domande previste per lo step corrente (vedi Obiettivo)
 - Se l'agente SALTA domande fondamentali → shouldAdvance = FALSE
-- Il reasoning deve essere SPECIFICO: quali domande fatte, quali mancano
-- Se mancano domande → genera feedback: "Devi prima chiedere: [domande mancanti]"
-- Solo se TUTTE le domande sono state fatte E il prospect ha risposto → shouldAdvance = true
+- La risposta del prospect deve essere ESAUSTIVA (non solo "ok", "sì", "va bene")
+- Se la risposta è troppo breve o vaga → shouldAdvance = FALSE + feedback per approfondire
+- Il reasoning deve essere SPECIFICO: quali domande fatte, quali mancano, qualità risposte
+- Solo se TUTTE le domande fatte + risposte ESAUSTIVE → shouldAdvance = true
 
 REGOLE ARCHETIPO (IMPORTANTE):
 - IGNORA le keyword se il CONTESTO suggerisce altro
