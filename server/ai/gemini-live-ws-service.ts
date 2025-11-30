@@ -3277,6 +3277,11 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                 }
               }
               
+              // 🆕 FIX: Start watchdog in fallback path too!
+              // When turnComplete arrives without isFinal, we still need to watch for Gemini response
+              // Previously this was missing, causing potential silent failures
+              startResponseWatchdog(trimmedUserTranscript, geminiSession);
+              
               pendingUserTranscript = { text: '', hasFinalChunk: false }; // Reset
             }
             
@@ -4119,6 +4124,11 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
               
               geminiSession.send(JSON.stringify(textPayload));
               console.log(`✅ [${connectionId}] Text input sent to Gemini`);
+              
+              // 🆕 FIX: Start watchdog for text messages too!
+              // Previously watchdog was only started for audio messages with isFinal=true
+              // This caused Gemini to sometimes not respond to text messages without detection
+              startResponseWatchdog(msg.text, geminiSession);
               
               if (salesTracker) {
                 try {

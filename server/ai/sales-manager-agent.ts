@@ -23,7 +23,7 @@ import { StepAdvancementAgent, type CheckpointAnalysisResult } from "./step-adva
 export type BuySignalType = 'price_inquiry' | 'timeline' | 'interest' | 'commitment' | 'comparison';
 export type ObjectionType = 'no_time' | 'need_to_think' | 'too_expensive' | 'not_interested' | 'competitor' | 'timing' | 'authority' | 'other';
 export type FeedbackPriority = 'critical' | 'high' | 'medium' | 'low';
-export type FeedbackType = 'correction' | 'buy_signal' | 'objection' | 'checkpoint' | 'tone' | 'advancement' | 'out_of_scope';
+export type FeedbackType = 'correction' | 'buy_signal' | 'objection' | 'checkpoint' | 'tone' | 'advancement' | 'out_of_scope' | 'control_loss';
 
 export interface BuySignal {
   type: BuySignalType;
@@ -54,6 +54,13 @@ export interface ToneAnalysis {
   lastMessageTooLong: boolean;
   energyMismatch: boolean;
   issues: string[];
+}
+
+export interface ControlAnalysis {
+  isLosingControl: boolean;
+  consecutiveProspectQuestions: number;
+  salesQuestionsInWindow: number;
+  isDiscoveryPhase: boolean;
 }
 
 export interface FeedbackForAgent {
@@ -373,6 +380,8 @@ export class SalesManagerAgent {
     const buySignals = this.detectBuySignals(params.recentMessages);
     const objections = this.detectObjections(params.recentMessages, params.script.objections);
     const toneAnalysis = this.analyzeTone(params.recentMessages, params.currentPhaseEnergy);
+    // 🆕 Control analysis - detect if sales is losing control (only in Discovery)
+    const controlAnalysis = this.analyzeConversationControl(params.recentMessages, params.currentPhaseId);
     
     // 🆕 CHECKPOINT: Ora usa AI SEMANTIC ANALYSIS invece di keyword matching
     const checkpointStatus = await this.validateCheckpointWithAI(params);
@@ -382,6 +391,7 @@ export class SalesManagerAgent {
     console.log(`   💰 Buy signals: ${buySignals.detected ? buySignals.signals.length : 0}`);
     console.log(`   🛡️ Objections: ${objections.detected ? objections.objections.length : 0}`);
     console.log(`   🎭 Tone issues: ${toneAnalysis.issues.length}`);
+    console.log(`   🎯 Control: ${controlAnalysis.isLosingControl ? `LOSING (${controlAnalysis.consecutiveProspectQuestions} prospect Q)` : 'OK'}`);
     console.log(`   ⛔ Checkpoint: ${checkpointStatus?.isComplete ? 'COMPLETE' : checkpointStatus?.missingItems.length + ' missing' || 'N/A'}`);
     console.log(`   👤 Business: ${businessCtx?.identity || 'N/A'}`);
     
@@ -483,6 +493,29 @@ Dimmi: [DOMANDA DAL CHECKPOINT MANCANTE]"
           message: `💰 SEGNALE DI ACQUISTO: "${topSignal.phrase}" (${topSignal.type})\n→ ${topSignal.suggestedAction}`,
         };
       }
+    } else if (controlAnalysis.isLosingControl) {
+      // 🆕 HIGH PRIORITY: Sales is losing control during Discovery
+      // Il prospect sta facendo troppe domande consecutive senza che il sales faccia le sue domande
+      feedbackForAgent = {
+        shouldInject: true,
+        priority: 'high',
+        type: 'control_loss',
+        message: `🎯 ATTENZIONE: STAI PERDENDO IL CONTROLLO DELLA CONVERSAZIONE!
+
+Il prospect ha fatto ${controlAnalysis.consecutiveProspectQuestions} domande consecutive senza che tu facessi le tue domande di discovery.
+
+⚠️ REGOLA "BISCOTTINO + RIPRENDI CONTROLLO":
+1. Dai una risposta BREVE alla domanda del prospect (max 1-2 frasi, il "biscottino")
+2. SUBITO DOPO, fai TU una domanda di discovery per riprendere il controllo
+
+📋 ESEMPIO:
+Prospect: "Ma quanto costa?"
+Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento molto accessibile.
+     Piuttosto dimmi, qual è il problema principale che stai cercando di risolvere?"
+
+🎯 RICORDA: Sei TU che devi guidare la conversazione, non il prospect!`,
+        toneReminder: 'Tono sicuro e direttivo. Riprendi il controllo con una domanda!'
+      };
     } else if (toneAnalysis.isRobotic || toneAnalysis.issues.length > 0) {
       // Medium priority: tone correction
       feedbackForAgent = {
@@ -669,6 +702,83 @@ Dimmi: [DOMANDA DAL CHECKPOINT MANCANTE]"
       identity: businessContext.businessName || 'Il consulente',
       whatWeDo: businessContext.whatWeDo || 'Offriamo servizi specializzati',
       whatWeDontDo: businessContext.nonTargetClient || ''
+    };
+  }
+  
+  /**
+   * 🆕 Analyze conversation control - detect if sales is losing control
+   * Only applies during Discovery phase (phase_1 to phase_4)
+   * 
+   * Rileva quando il prospect fa troppe domande consecutive
+   * senza che il sales faccia le sue domande di discovery
+   */
+  private static analyzeConversationControl(
+    messages: ConversationMessage[],
+    currentPhaseId: string
+  ): ControlAnalysis {
+    // Check if we're in Discovery phase (phase_1 to phase_4)
+    const phaseNum = parseInt(currentPhaseId.replace('phase_', ''), 10) || 0;
+    const isDiscoveryPhase = phaseNum >= 1 && phaseNum <= 4;
+    
+    if (!isDiscoveryPhase) {
+      return {
+        isLosingControl: false,
+        consecutiveProspectQuestions: 0,
+        salesQuestionsInWindow: 0,
+        isDiscoveryPhase: false
+      };
+    }
+    
+    // Analyze last 10 messages
+    const recentMessages = messages.slice(-10);
+    
+    // Count consecutive prospect questions without sales asking a question
+    let consecutiveProspectQuestions = 0;
+    let salesQuestionsInWindow = 0;
+    
+    // Go backwards from most recent message
+    for (let i = recentMessages.length - 1; i >= 0; i--) {
+      const msg = recentMessages[i];
+      
+      if (msg.role === 'user') {
+        // Check if prospect message contains a question
+        const hasQuestion = msg.content.includes('?') || 
+          /^(cosa|come|quando|perché|perche|quanto|chi|dove|quale)/i.test(msg.content.trim());
+        
+        if (hasQuestion) {
+          consecutiveProspectQuestions++;
+        }
+      } else if (msg.role === 'assistant') {
+        // Check if sales made a question
+        const hasQuestion = msg.content.includes('?');
+        
+        if (hasQuestion) {
+          salesQuestionsInWindow++;
+          // Sales made a question, reset the counter
+          break;
+        }
+        // If sales didn't ask a question, continue counting
+      }
+    }
+    
+    // Losing control if 3+ consecutive prospect questions without sales asking any
+    const isLosingControl = consecutiveProspectQuestions >= 3 && salesQuestionsInWindow === 0;
+    
+    if (isLosingControl) {
+      console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`🎯 [CONTROL ANALYSIS] Sales is LOSING CONTROL!`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`   📍 Phase: ${currentPhaseId} (Discovery: ${isDiscoveryPhase})`);
+      console.log(`   ❓ Consecutive prospect questions: ${consecutiveProspectQuestions}`);
+      console.log(`   📋 Sales questions in window: ${salesQuestionsInWindow}`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    }
+    
+    return {
+      isLosingControl,
+      consecutiveProspectQuestions,
+      salesQuestionsInWindow,
+      isDiscoveryPhase
     };
   }
   
