@@ -348,15 +348,31 @@ ESEMPI DI FEEDBACK NATURALE:
 ✅ GIUSTO: "Cerca di capire meglio la sua situazione economica prima di presentare il prezzo"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-⚠️ RISPOSTA INSUFFICIENTE:
-Se il prospect risponde troppo brevemente (es. "ok", "sì", "bene", "capito"):
+⚠️ RISPOSTA INSUFFICIENTE O EMOTIVA:
+Se il prospect risponde troppo brevemente O con sole emozioni senza informazioni:
 → shouldAdvance = FALSE
-→ Feedback: "Il prospect ha risposto troppo brevemente. Approfondisci: [domanda di follow-up]"
+→ Genera feedback con istruzione di RIFORMULARE la domanda
 
-ESEMPIO:
+TIPI DI RISPOSTE NON ESAUSTIVE:
+1. Troppo breve: "ok", "sì", "bene", "capito"
+2. Solo emozione: "Fantastico!", "Wow!", "Interessante!", "Mi piace molto!"
+3. Vaga: "Eh, vari problemi", "Dipende", "Forse"
+4. Cambio argomento: Il prospect parla di altro invece di rispondere
+
+ESEMPIO 1 - Risposta vaga:
 Domanda: "Qual è la sfida principale che stai affrontando?"
 Risposta: "Eh, vari problemi" ← INSUFFICIENTE! Non sappiamo QUALE problema
-→ L'agente deve approfondire: "Capisco, ma quale di questi problemi ti preoccupa di più?"
+→ Feedback: "Approfondisci: 'Capisco, ma quale di questi problemi ti preoccupa di più?'"
+
+ESEMPIO 2 - Risposta emotiva senza informazione:
+Domanda: "Qual è il problema che vuoi risolvere?"
+Risposta: "Wow, fantastico! Questa tecnica è incredibile!" ← SOLO EMOZIONE! Nessuna info
+→ Feedback: "Il prospect non ha risposto alla domanda. Riformula: 'Sono contento che ti piaccia! Ma tornando a te, qual è il problema principale che vuoi risolvere?'"
+
+ESEMPIO 3 - Cambio argomento:
+Domanda: "Da dove chiami?"
+Risposta: "Sai, stavo pensando che questo metodo potrebbe funzionare..." ← NON HA RISPOSTO!
+→ Feedback: "Il prospect ha cambiato argomento. Riportalo: 'Interessante! Ma prima, da dove mi stai chiamando?'"
 
 ESEMPIO DI BLOCCO:
 Step richiede: "Da dove chiami?" + "Cosa ti ha spinto a prenotare?"
