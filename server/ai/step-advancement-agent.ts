@@ -282,31 +282,37 @@ Per decidere, considera:
 2. Il prospect ha risposto in modo che permette di andare avanti?
 3. L'obiettivo dello step è stato raggiunto?
 
-⚠️ REGOLA CRITICA - DOMANDE MULTIPLE IN UNA FRASE:
+⚠️ REGOLA FONDAMENTALE - VERIFICA DOMANDE OBBLIGATORIE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-L'agente potrebbe fare PIÙ DOMANDE o coprire PIÙ STEP in una singola frase!
+L'agente DEVE fare le DOMANDE previste per questo step (vedi "DOMANDE DA FARE IN QUESTO STEP").
 
-ESEMPIO: "Ciao Luigi! Benvenuto alla nostra consulenza. Come stai? E dimmi, da dove mi chiami?"
-→ Questa frase copre STEP 1 (benvenuto) + STEP 2 (come stai) + STEP 3 (da dove chiami)
-→ Se il prospect risponde, TUTTI e 3 gli step sono completati!
+PRIMA di dire shouldAdvance=true, VERIFICA:
+1. L'agente ha fatto le domande elencate sopra? (anche in forma diversa ma stesso significato)
+2. Il prospect ha risposto a CIASCUNA domanda?
+3. Se MANCANO domande → shouldAdvance = FALSE + genera feedback correttivo
 
-COME VALUTARE:
-1. Conta TUTTE le domande/azioni fatte dall'agente nella frase
-2. Verifica che il prospect abbia risposto a ciascuna
-3. Se ha risposto a tutto → l'agente è già avanti di N step
-4. shouldAdvance = true verso lo step SUCCESSIVO a quelli coperti
+⛔ NON AVANZARE SE:
+- L'agente ha saltato domande fondamentali dello step
+- L'agente è passato avanti senza fare le domande previste
+- Il prospect ha risposto ma l'agente NON ha fatto TUTTE le domande
 
-NON dire "l'agente non sta seguendo lo script" se ha fatto TUTTO insieme!
-Se l'agente ha combinato step 1+2+3 in una frase e il prospect ha risposto,
-l'obiettivo è COMPLETATO e si deve avanzare allo step 4.
+✅ AVANZA SOLO SE:
+- L'agente ha fatto TUTTE le domande dello step corrente
+- Il prospect ha risposto (anche brevemente, anche negativamente)
+- L'obiettivo dello step è stato raggiunto
+
+ESEMPIO DI BLOCCO:
+Step richiede: "Da dove chiami?" + "Cosa ti ha spinto a prenotare?"
+Agente dice: "Ciao! Come stai? Parliamo del nostro metodo..."
+→ L'agente ha SALTATO le domande! → shouldAdvance = FALSE
+→ Feedback: "STOP! Devi prima chiedere: 'Da dove chiami?' e 'Cosa ti ha spinto a prenotare?'"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 IMPORTANTE:
 - NON avanzare troppo presto. Meglio rimanere uno step in più che saltare.
-- Se il prospect ha risposto brevemente (es. "ok", "sì", "va bene") dopo che l'agente ha fatto la domanda, probabilmente si può avanzare.
-- Se l'agente sta ancora esplorando o il prospect non ha risposto alla domanda, NON avanzare.
+- Se l'agente salta domande → genera SEMPRE feedback correttivo con le domande mancanti.
 - Se siamo all'ultimo step dell'ultima fase, NON si può avanzare.
-- CONTA le domande fatte dall'agente in ogni messaggio - potrebbero coprire più step!
+- Il reasoning deve essere SPECIFICO: quali domande fatte, quali mancano, perché avanzare o no.
 
 ⛔ REGOLA FONDAMENTALE - MAI ASSUMERE RISPOSTE DEL PROSPECT:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

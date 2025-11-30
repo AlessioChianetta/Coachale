@@ -1598,13 +1598,12 @@ REGOLE STEP (IMPORTANTE - LEGGI BENE):
 3. Non assumere risposte non presenti
 4. Se shouldAdvance=true, USA ESATTAMENTE questi IDs: nextPhaseId="${nextPhaseIdValue}", nextStepId="${nextStepIdValue}"
 
-⚠️ REGOLE SPECIALI PER PROSPECT DIFFICILI:
-- Se il prospect risponde (anche con scetticismo, obiezioni, o resistenza) → LO STEP È COMPLETATO
-- L'avanzamento NON dipende dalla "soddisfazione" del prospect
-- L'obiettivo è raccogliere INFO e guidare la conversazione, non "convincere"
-- Se l'agente ha fatto la domanda e il prospect ha risposto → shouldAdvance = true
-- NON bloccarti sullo stesso step solo perché il prospect è difficile
-- L'agente può gestire le obiezioni MENTRE avanza nello script
+⚠️ REGOLA FONDAMENTALE - VERIFICA DOMANDE DELLO STEP:
+- L'agente DEVE fare le domande previste per lo step corrente (vedi Obiettivo)
+- Se l'agente SALTA domande fondamentali → shouldAdvance = FALSE
+- Il reasoning deve essere SPECIFICO: quali domande fatte, quali mancano
+- Se mancano domande → genera feedback: "Devi prima chiedere: [domande mancanti]"
+- Solo se TUTTE le domande sono state fatte E il prospect ha risposto → shouldAdvance = true
 
 REGOLE ARCHETIPO (IMPORTANTE):
 - IGNORA le keyword se il CONTESTO suggerisce altro
