@@ -1,6 +1,33 @@
 # Overview
 This full-stack web application serves as a consultation platform, connecting consultants with clients for exercise assignment, progress tracking, and performance analytics. Its core ambition is to provide personalized financial insights through an integrated AI assistant, leveraging real-time financial data for context-aware advice, alongside advanced client management and communication tools.
 # Recent Changes
+## November 30, 2025 - Prospect Profiling System ("Fast Reflexes, Slow Brain")
+- **New Feature**: Intelligent prospect personality profiling during voice calls with dynamic sales strategy adaptation
+- **Hybrid Detection Approach**:
+  - **Fast Reflexes (Regex)**: Instant pattern matching (~5ms) for preliminary archetype signals
+  - **Slow Brain (AI Intuition)**: Context-aware override using Gemini - AI has final say when conflicts with regex
+  - Example: "Il prezzo non è un problema" → AI detects ENTHUSIAST (positive sentiment), overrides regex PRICE_FOCUSED (keyword match)
+- **Sticky Archetype Logic** (Anti-Schizofrenia):
+  - Archetype change requires: confidence > 0.8 OR 2+ consecutive matching signals
+  - Recalculates only every 3-4 turns OR on strong anomaly detection
+  - Prevents rapid archetype switching that would confuse the sales agent
+- **8 Behavioral Archetypes** with specific playbooks:
+  - SKEPTIC: Frame Control, Negative Reverse, social proof
+  - BUSY: Ultra-synthesis, "30 secondi" hook, speed-focused
+  - PRICE_FOCUSED: ROI framing, value-before-price strategy
+  - TECHNICAL: Specifications, data, precise numbers
+  - ENTHUSIAST: Guide to closing, maintain momentum
+  - INDECISIVE: Decision facilitation, reduce overwhelm
+  - DEFENSIVE: Empathy, acknowledgment, barrier reduction
+  - NEUTRAL: Discovery questions, active listening
+- **Anti-Pattern Detection** (Critical Priority):
+  - Repeated questions (Jaccard similarity > 65%) → STOP instruction
+  - Ignored requests → Immediate correction
+  - Prospect frustration signals → Strategy adjustment
+- **Integration with TTS**: Archetype-specific voice parameters (speed, tone, pause) for natural adaptation
+- **Output Structure**: profilingResult, archetypeState, and ttsParams added to SalesManagerAnalysis
+- **Files Modified**: `shared/archetype-playbooks.ts`, `server/ai/sales-manager-agent.ts`
+
 ## November 27, 2025 - Sales Manager Agent Improvements
 - **Structured Coaching Feedback**: AI sales agent now receives structured coaching from Sales Manager with clear format:
   - `[COACHING SALES MANAGER]...[FINE COACHING]` format with FASE, STEP, OBIETTIVO, FAI BENE, MIGLIORA, STATO, TI SERVE fields
