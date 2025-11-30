@@ -561,6 +561,25 @@ QUESTA REGOLA È PIÙ IMPORTANTE DI QUALSIASI ALTRA!
 
 🎯 FORMULA: RISPONDI → VALIDA → TORNA ALLO SCRIPT
 
+🔄 TRANSIZIONE DISCOVERY → DEMO (REGOLA CRITICA)
+
+⚠️ QUANDO COMPLETI LA FASE 7 DELLA DISCOVERY (o ultima fase disponibile):
+
+1️⃣ FAI UN RECAP NATURALE delle informazioni raccolte:
+   "Perfetto [NOME], lasciami ricapitolare quello che ho capito..."
+   - Situazione attuale
+   - Obiettivi/stato ideale
+   - Problemi principali
+   - Urgenza
+
+2️⃣ CHIEDI CONFERMA E ANNUNCIA LA DEMO:
+   "Ho capito bene? ...Ottimo! Allora adesso ti mostro esattamente come possiamo aiutarti a [OBIETTIVO]. Passiamo alla demo?"
+
+3️⃣ ASPETTA LA CONFERMA del prospect, poi inizia con lo SCRIPT DEMO
+
+⚠️ IMPORTANTE: NON saltare direttamente alla demo senza recap!
+⚠️ IMPORTANTE: Il recap serve a far sentire il prospect ASCOLTATO
+
 🎯 CONTROLLO CONVERSAZIONE - STATUS DELTA (SOLO DISCOVERY)
 
 ⚠️ QUESTA REGOLA VALE SOLO DURANTE LA FASE DISCOVERY!

@@ -642,58 +642,60 @@ router.get(
     try {
       const conversationId = req.params.id;
       
-      if (!conversationId || conversationId === 'NaN' || conversationId === 'undefined') {
-        return res.status(400).json({ message: 'Invalid conversation ID' });
+      if (!conversationId || conversationId === 'NaN' || conversationId === 'undefined' || conversationId === 'null') {
+        return res.status(400).json({ message: 'Invalid conversation ID', hasDiscoveryRec: false });
       }
 
       // Ottieni la conversazione con REC (ID is VARCHAR/UUID in database)
-      const conversation = await db.select({
-        id: clientSalesConversations.id,
-        agentId: clientSalesConversations.agentId,
-        discoveryRec: clientSalesConversations.discoveryRec,
-        fullTranscript: clientSalesConversations.fullTranscript,
-        createdAt: clientSalesConversations.createdAt,
-      })
+      const conversation = await db.select()
         .from(clientSalesConversations)
         .where(eq(clientSalesConversations.id, conversationId))
         .limit(1);
 
-      if (!conversation[0]) {
-        return res.status(404).json({ message: 'Conversation not found' });
+      if (!conversation || !conversation[0]) {
+        return res.status(404).json({ message: 'Conversation not found', hasDiscoveryRec: false });
+      }
+      
+      const conv = conversation[0];
+      
+      // Null safety check for agentId
+      if (!conv.agentId) {
+        return res.status(400).json({ message: 'Conversation has no agent assigned', hasDiscoveryRec: false });
       }
 
       // Verifica che l'utente sia proprietario dell'agent
-      const agent = await db.select({
-        clientId: clientSalesAgents.clientId,
-      })
+      const agent = await db.select()
         .from(clientSalesAgents)
-        .where(eq(clientSalesAgents.id, conversation[0].agentId))
+        .where(eq(clientSalesAgents.id, conv.agentId))
         .limit(1);
 
-      if (!agent[0] || agent[0].clientId !== req.user?.id) {
+      if (!agent || !agent[0] || agent[0].clientId !== req.user?.id) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
       // Verifica transcript - potrebbe essere array o string
-      const transcriptData = conversation[0].fullTranscript;
+      const transcriptData = conv.fullTranscript;
       let transcriptStr = '';
-      if (Array.isArray(transcriptData)) {
-        transcriptStr = JSON.stringify(transcriptData);
-      } else if (typeof transcriptData === 'string') {
-        transcriptStr = transcriptData;
+      if (transcriptData) {
+        if (Array.isArray(transcriptData)) {
+          transcriptStr = JSON.stringify(transcriptData);
+        } else if (typeof transcriptData === 'string') {
+          transcriptStr = transcriptData;
+        }
       }
       
       // Ritorna il REC (potrebbe essere null)
       res.json({
-        conversationId: conversation[0].id,
-        discoveryRec: conversation[0].discoveryRec,
+        conversationId: conv.id,
+        discoveryRec: conv.discoveryRec || null,
+        hasDiscoveryRec: !!conv.discoveryRec,
         hasTranscript: transcriptStr.length > 100,
-        createdAt: conversation[0].createdAt?.toISOString(),
+        createdAt: conv.createdAt ? conv.createdAt.toISOString() : null,
       });
 
     } catch (error) {
       console.error('Error fetching discovery REC:', error);
-      res.status(500).json({ message: 'Failed to fetch discovery REC' });
+      res.status(500).json({ message: 'Failed to fetch discovery REC', hasDiscoveryRec: false });
     }
   }
 );
