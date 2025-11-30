@@ -1,0 +1,239 @@
+ 👤 USER MESSAGE (phase_2)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ da Roma                                                                      │
+│ Time: 10:03:16                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🕐 [moqy4a] WATCHDOG STARTED - Aspetto risposta Gemini entro 2000ms
+   📝 Messaggio utente: "da Roma"
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔇 [moqy4a] AI finished speaking (turn complete)
+
+⚠️  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[moqy4a] AI MESSAGE QUALITY WARNING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📏 TOO LONG: 616 chars (may be reading script robotically)
+   📝 Message: "Super! Conosco, bellissima zona! Ok romolo, per ottimizzare i tempi di entrambi, ti spiego come funziona: ti farò alcune domande per capire la tua sit..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [moqy4a] Saved AI message (server-side): 6 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_2)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Super! Conosco, bellissima zona! Ok romolo, per ottimizzare i tempi di       │
+│ entrambi, ti spiego come funziona: ti farò alcune domande per capire la tua  │
+│ ...                                                                          │
+│ Time: 10:03:16                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [moqy4a] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Sales Manager Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [moqy4a] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_2
+   📍 Current Step: phase_2_step_3
+   📍 Phase Index: 1, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 6 messages
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [moqy4a] MESSAGGI PASSATI AL SALES MANAGER (6):
+   1. [ASSISTANT]: "Buongiorno, mi senti?"
+   2. [USER]: "Sí ."
+   3. [ASSISTANT]: "Evvai! Ciao romolo! Benvenuto in questa consulenza, come stai oggi?"
+   4. [ASSISTANT]: "Fantastico! Allora dimmi: da dove mi chiami?"
+   5. [USER]: "da Roma"
+   6. [ASSISTANT]: "Super! Conosco, bellissima zona! Ok romolo, per ottimizzare i tempi di entrambi,..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏢 Name: Premium
+   🎯 What we do: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibr...
+   👥 Target client: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le ...
+   🚫 Non-target: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che p...
+   📋 Services: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📨 Calling SalesManagerAgent.analyze()...
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Starting comprehensive analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_2 / phase_2_step_3
+   💬 Messages: 6
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   💰 Buy signals: 0
+   🛡️ Objections: 0
+   🎭 Tone issues: 0
+   🎯 Control: OK
+   ⛔ Checkpoint: undefined missing
+   👤 Business: Premium
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_a86YyCp-Kew9cnXn, ConversationId: 90f1acf8-c031-4fc1-a956-147a2a033586
+🤖 [SALES-MANAGER] Raw AI response (491 chars): ```json
+{
+  "shouldAdvance": false,
+  "nextPhaseId": null,
+  "nextStepId": null,
+  "reasoning": "L'agente ha appena iniziato la chiamata e ha spiegato il processo. Il prospect non ha ancora risposto a nessuna domanda relativa ai suoi pain point. È necessario attendere la risposta del prospect per po...
+✅ [SALES-MANAGER] Extracted JSON (479 chars)
+✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=false, confidence=1
+   🧠 AI Archetype Intuition: neutral - "Il prospect non ha ancora fornito informazioni sufficienti per determinarne l'archetipo."
+   🧠 AI Intuition: neutral - "Il prospect non ha ancora fornito informazioni sufficienti per determinarne l'archetipo."
+   🧠 AI Intuition WINS: neutral (confidence: 85%)
+   🎭 Final Archetype: 😐 NEUTRO (85%)
+      ⚡ Regex suggested: neutral → 🧠 AI overrode to: neutral
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Analysis complete in 1106ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → Step advance: false (100%)
+   → Feedback: none
+   → Archetype: 😐 NEUTRO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🎭 Archetype state SAVED: neutral (85%)
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [moqy4a] SALES MANAGER AGENT - RESULT (1106ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 100%
+   💡 reasoning: L'agente ha appena iniziato la chiamata e ha spiegato il processo. Il prospect non ha ancora risposto a nessuna domanda relativa ai suoi pain point. È necessario attendere la risposta del prospect per poter avanzare.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 [moqy4a] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📢 Priority: LOW
+   📋 Type: reasoning
+   📝 Needs Improvement: Continua a seguire lo script
+   💭 Reasoning: L'agente ha appena iniziato la chiamata e ha spiegato il processo. Il prospect non ha ancora rispost...
+   🎵 Tone: N/A
+   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 FEEDBACK CONTENT COMPLETO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<<<SALES_MANAGER_INSTRUCTION>>>
+👤 SEI: Premium
+🎯 COSA FAI: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibrazione'. Questi programmi sono strutturati in pacchetti ad alto valore, pensati per gli atleti che cercano un percorso di trasformazione per migliorare le loro prestazioni e il recupero. L'offerta si discosta dalle singole sessioni per proporre un approccio olistico e orientato al risultato.
+👥 CHI AIUTI: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le prestazioni e il benessere.
+🚫 CHI NON AIUTI: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che programmi di trasformazione.
+📋 SERVIZI: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+
+📍 FASE: 2 di 7 - PAIN POINT DISCOVERY
+   STEP: TROVA IL PAIN POINT PRINCIPALE
+🔋 ENERGIA: MEDIO | TONO: SICURO | RITMO: MODERATO
+
+🎯 OBIETTIVO: Capire il VERO motivo dietro la call e il problema PRINCIPALE che l'atleta vuole risolvere per le sue prestazioni o il suo benessere
+✅ FAI BENE: Tono e ritmo corretti
+⚠️ MIGLIORA: Continua a seguire lo script
+🚦 STATO: Rimani in questa fase
+📋 TI SERVE: Ottieni le info mancanti prima di avanzare
+
+
+💭 REASONING MANAGER: L'agente ha appena iniziato la chiamata e ha spiegato il processo. Il prospect non ha ancora risposto a nessuna domanda relativa ai suoi pain point. È necessario attendere la risposta del prospect per poter avanzare.
+<<</SALES_MANAGER_INSTRUCTION>>>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Feedback SENT to Gemini with turnComplete:false
+   💾 Feedback also saved to DB (for reconnection backup)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📡 Sent sales_manager_analysis event to client
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=1, hasIds=false
+🔓 [moqy4a] Sales Manager lock released
+
+⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ [moqy4a] WATCHDOG TIMEOUT - Gemini non ha risposto in 2001ms!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [moqy4a] RETRY 1/2 - Reinvio sollecito...
+   ✅ Sollecito inviato a Gemini
+
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🕐 [moqy4a] WATCHDOG STARTED - Aspetto risposta Gemini entro 2000ms
+   📝 Messaggio utente: "da Roma"
+🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [moqy4a] AI transcript (output): Fantastico! Evvai,
+✅ [moqy4a] WATCHDOG CANCELLED - Gemini ha risposto in 679ms
+🎤 [moqy4a] AI started speaking (audio streaming)
+📝 [moqy4a] AI transcript (output):  iniziamo
+📝 [moqy4a] AI transcript (output):  subito
+📝 [moqy4a] AI transcript (output):  allora!
+📝 [moqy4a] AI transcript (output):  Dimmi,
+📝 [moqy4a] AI transcript (output):  perché
+📝 [moqy4a] AI transcript (output):  hai deciso
+📝 [moqy4a] AI transcript (output):  di partecipare
+📝 [moqy4a] AI transcript (output):  a questa
+📝 [moqy4a] AI transcript (output):  call?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 21423,
+  "candidatesTokenCount": 196,
+  "totalTokenCount": 21619,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 20189
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 1234
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 23
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 173
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 21,423 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
