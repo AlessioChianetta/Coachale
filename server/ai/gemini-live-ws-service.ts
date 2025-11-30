@@ -530,6 +530,10 @@ async function getUserIdFromRequest(req: any): Promise<{
         console.log(`🎯 [AI TRAINER] Test mode from WebSocket: ${testMode}`);
       }
 
+      // 🔊 Use agent's configured voice, fallback to URL param or default
+      const agentVoice = agent.voiceName || voiceName || 'Puck';
+      console.log(`🎙️ [Sales Agent] Using voice: ${agentVoice} (agent: ${agent.voiceName}, url: ${voiceName})`);
+      
       return {
         userId: null, // No user for sales agent mode
         role: 'prospect', // Virtual role
@@ -538,7 +542,7 @@ async function getUserIdFromRequest(req: any): Promise<{
         consultantType: null,
         customPrompt: null,
         useFullPrompt: false,
-        voiceName: voiceName,
+        voiceName: agentVoice,
         resumeHandle: resumeHandle,
         sessionType: null,
         // Sales Agent specific
@@ -625,6 +629,10 @@ async function getUserIdFromRequest(req: any): Promise<{
 
       console.log(`✅ WebSocket authenticated: Consultation Invite - Conversation ${conversation.id} - Prospect: ${conversation.prospectName} - Invite: ${inviteToken}`);
 
+      // 🔊 Use agent's configured voice, fallback to URL param or default
+      const agentVoice = agent.voiceName || voiceName || 'Puck';
+      console.log(`🎙️ [Consultation Invite] Using voice: ${agentVoice} (agent: ${agent.voiceName}, url: ${voiceName})`);
+      
       return {
         userId: null, // No user for consultation invite mode
         role: 'prospect', // Virtual role
@@ -633,7 +641,7 @@ async function getUserIdFromRequest(req: any): Promise<{
         consultantType: null,
         customPrompt: null,
         useFullPrompt: false,
-        voiceName: voiceName,
+        voiceName: agentVoice,
         resumeHandle: resumeHandle,
         sessionType: null,
         // Consultation Invite specific

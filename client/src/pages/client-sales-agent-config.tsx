@@ -76,15 +76,14 @@ interface MagicButtonState {
 }
 
 const AVAILABLE_VOICES = [
-  { value: 'achernar', label: 'Achernar (Italiano)', description: 'Voce italiana femminile' },
-  { value: 'puck', label: 'Puck', description: 'Default Gemini' },
-  { value: 'charon', label: 'Charon', description: 'Voce maschile profonda' },
-  { value: 'kore', label: 'Kore', description: 'Voce femminile naturale' },
-  { value: 'fenrir', label: 'Fenrir', description: 'Voce maschile energica' },
-  { value: 'aoede', label: 'Aoede', description: 'Voce femminile melodica' },
-  { value: 'leda', label: 'Leda', description: 'Voce femminile chiara' },
-  { value: 'orus', label: 'Orus', description: 'Voce maschile calma' },
-  { value: 'zephyr', label: 'Zephyr', description: 'Voce neutra leggera' },
+  { value: 'Puck', label: 'Puck', description: 'Default Gemini - Voce neutra' },
+  { value: 'Charon', label: 'Charon', description: 'Voce maschile profonda' },
+  { value: 'Kore', label: 'Kore', description: 'Voce femminile naturale' },
+  { value: 'Fenrir', label: 'Fenrir', description: 'Voce maschile energica' },
+  { value: 'Aoede', label: 'Aoede', description: 'Voce femminile melodica' },
+  { value: 'Leda', label: 'Leda', description: 'Voce femminile chiara' },
+  { value: 'Orus', label: 'Orus', description: 'Voce maschile calma' },
+  { value: 'Zephyr', label: 'Zephyr', description: 'Voce neutra leggera' },
 ];
 
 export default function ClientSalesAgentConfig() {
@@ -111,7 +110,7 @@ export default function ClientSalesAgentConfig() {
     businessName: '',
     businessDescription: '',
     consultantBio: '',
-    voiceName: 'achernar',
+    voiceName: 'Puck',
     vision: '',
     mission: '',
     values: [],

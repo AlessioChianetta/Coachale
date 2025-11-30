@@ -3298,7 +3298,7 @@ export const clientSalesAgents = pgTable("client_sales_agents", {
   enablePayment: boolean("enable_payment").default(false).notNull(),
   
   // Voice configuration
-  voiceName: varchar("voice_name", { length: 50 }).default("achernar"), // Voice name for Gemini Live (e.g., "achernar", "puck", "kore")
+  voiceName: varchar("voice_name", { length: 50 }).default("Puck"), // Voice name for Gemini Live (Puck, Charon, Kore, Fenrir, Aoede, Leda, Orus, Zephyr)
   
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
