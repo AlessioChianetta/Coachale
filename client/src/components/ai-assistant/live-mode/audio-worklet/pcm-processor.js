@@ -3,6 +3,8 @@
 /**
  * AudioWorklet Processor for capturing raw PCM audio
  * Captures mono audio at 16kHz and sends it to the main thread
+ * 
+ * NOISE GATE: Filters out background noise to prevent false AI interruptions
  */
 
 class PCMProcessor extends AudioWorkletProcessor {
@@ -18,7 +20,14 @@ class PCMProcessor extends AudioWorkletProcessor {
     /** @type {Float32Array[]} */
     this.audioBuffer = [];
     
-    console.log('🎙️ PCMProcessor initialized');
+    /** 
+     * @type {number} - Noise Gate Threshold
+     * Values below this are considered background noise (silence)
+     * 0.02 = good balance between sensitivity and noise rejection
+     */
+    this.NOISE_THRESHOLD = 0.02;
+    
+    console.log('🎙️ PCMProcessor initialized with Noise Gate (threshold: 0.02)');
   }
 
   /**
@@ -56,7 +65,21 @@ class PCMProcessor extends AudioWorkletProcessor {
   }
 
   /**
-   * Send buffered audio data to main thread
+   * Calculate RMS (Root Mean Square) volume of audio data
+   * @param {Float32Array} data 
+   * @returns {number} RMS value (0.0 to 1.0+)
+   * @private
+   */
+  calculateRMS(data) {
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+      sum += data[i] * data[i];
+    }
+    return Math.sqrt(sum / data.length);
+  }
+
+  /**
+   * Send buffered audio data to main thread with Noise Gate filtering
    * @private
    */
   sendAudioData() {
@@ -74,11 +97,29 @@ class PCMProcessor extends AudioWorkletProcessor {
       offset += chunk.length;
     }
 
+    // 🎚️ NOISE GATE LOGIC
+    // Calculate volume (RMS) to determine if this is real speech or just noise
+    const rms = this.calculateRMS(concatenated);
+    
+    // If volume is below threshold, send silence instead
+    let dataToSend;
+    if (rms < this.NOISE_THRESHOLD) {
+      // Background noise detected - send zeros (digital silence)
+      dataToSend = new Float32Array(totalLength).fill(0);
+      // console.log('🔇 Noise Gate: Filtering background noise (RMS:', rms.toFixed(4), ')');
+    } else {
+      // Real speech detected - send actual audio
+      dataToSend = concatenated;
+      // console.log('🎤 Noise Gate: Passing speech (RMS:', rms.toFixed(4), ')');
+    }
+
     // Send to main thread
     this.port.postMessage({
       type: 'audio',
-      data: concatenated,
+      data: dataToSend,
       timestamp: globalThis.currentTime || Date.now(),
+      rms: rms, // Include RMS for debugging/visualization
+      isFiltered: rms < this.NOISE_THRESHOLD
     });
 
     // Reset buffer
