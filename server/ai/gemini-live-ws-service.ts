@@ -1001,16 +1001,32 @@ export function setupGeminiLiveWSService(server: Server) {
             // Riavvia il timer per il prossimo tentativo
             startResponseWatchdog(lastUserFinalTranscript, session);
           } else {
-            console.log(`🔴 [${connectionId}] MAX RETRY RAGGIUNTO (${MAX_WATCHDOG_RETRIES}) - Invio errore AI_TIMEOUT al client`);
+            console.log(`🔴 [${connectionId}] MAX RETRY RAGGIUNTO (${MAX_WATCHDOG_RETRIES}) - Mandando fallback phrase al Gemini`);
             userMessagePendingResponse = false;
             responseWatchdogRetries = 0;
             
-            clientWs.send(JSON.stringify({
-              type: 'ai_timeout',
-              message: 'L\'AI non sta rispondendo. Riprova a parlare.',
-              retries: responseWatchdogRetries,
-              elapsedMs
-            }));
+            // 🎤 Manda a Gemini di dire la fallback phrase
+            const fallbackMessage = {
+              clientContent: {
+                turns: [{
+                  role: 'user',
+                  parts: [{ text: `[SISTEMA: L'utente non ha risposto. Rispondi semplicemente e naturalmente con questa frase in italiano: "Non ti ho sentito bene, puoi ripetere perfavore?"]` }]
+                }],
+                turnComplete: true
+              }
+            };
+            
+            try {
+              session.send(JSON.stringify(fallbackMessage));
+              console.log(`   ✅ Fallback phrase inviata a Gemini - farà lui la sintesi vocale`);
+            } catch (sendErr: any) {
+              console.error(`   ❌ Errore invio fallback: ${sendErr.message}`);
+              clientWs.send(JSON.stringify({
+                type: 'ai_timeout',
+                message: 'L\'AI non sta rispondendo. Riprova a parlare.',
+                elapsedMs
+              }));
+            }
           }
           console.log(`⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         }
