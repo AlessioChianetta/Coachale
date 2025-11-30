@@ -153,7 +153,7 @@ export class ProspectSimulator {
   private latestManagerAnalysis: SalesManagerAnalysisData | null = null;
   private managerAnalysisHistory: SalesManagerAnalysisData[] = [];
   
-  private static readonly MESSAGE_COMPLETION_TIMEOUT = 3500;
+  private static readonly MESSAGE_COMPLETION_TIMEOUT = 5000;
   private static readonly MIN_SILENCE_GAP = 2000;
   private static readonly MIN_FRAGMENTS_FOR_COMPLETE = 1;
   private static readonly DEDUP_WINDOW_MS = 5000;
