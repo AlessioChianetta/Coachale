@@ -577,4 +577,175 @@ router.get(
   }
 );
 
+// ========================================================================================
+// REC ANALYTICS ENDPOINTS - Per visualizzare e rigenerare REC nelle analytics
+// ========================================================================================
+
+/**
+ * GET /conversations/:id/discovery-rec
+ * Ottiene il Discovery REC di una conversazione specifica
+ */
+router.get(
+  '/conversations/:id/discovery-rec',
+  authenticateToken,
+  requireRole('client'),
+  async (req: AuthRequest, res) => {
+    try {
+      const conversationId = parseInt(req.params.id, 10);
+      
+      if (isNaN(conversationId)) {
+        return res.status(400).json({ message: 'Invalid conversation ID' });
+      }
+
+      // Ottieni la conversazione con REC
+      const conversation = await db.select({
+        id: clientSalesConversations.id,
+        agentId: clientSalesConversations.agentId,
+        discoveryRec: clientSalesConversations.discoveryRec,
+        fullTranscript: clientSalesConversations.fullTranscript,
+        createdAt: clientSalesConversations.createdAt,
+      })
+        .from(clientSalesConversations)
+        .where(eq(clientSalesConversations.id, conversationId))
+        .limit(1);
+
+      if (!conversation[0]) {
+        return res.status(404).json({ message: 'Conversation not found' });
+      }
+
+      // Verifica che l'utente sia proprietario dell'agent
+      const agent = await db.select({
+        clientId: clientSalesAgents.clientId,
+      })
+        .from(clientSalesAgents)
+        .where(eq(clientSalesAgents.id, conversation[0].agentId))
+        .limit(1);
+
+      if (!agent[0] || agent[0].clientId !== req.user?.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      // Ritorna il REC (potrebbe essere null)
+      res.json({
+        conversationId: conversation[0].id,
+        discoveryRec: conversation[0].discoveryRec,
+        hasTranscript: !!conversation[0].fullTranscript && conversation[0].fullTranscript.length > 100,
+        createdAt: conversation[0].createdAt?.toISOString(),
+      });
+
+    } catch (error) {
+      console.error('Error fetching discovery REC:', error);
+      res.status(500).json({ message: 'Failed to fetch discovery REC' });
+    }
+  }
+);
+
+/**
+ * POST /conversations/:id/discovery-rec/generate
+ * Genera o rigenera il Discovery REC di una conversazione
+ */
+router.post(
+  '/conversations/:id/discovery-rec/generate',
+  authenticateToken,
+  requireRole('client'),
+  async (req: AuthRequest, res) => {
+    try {
+      const conversationId = parseInt(req.params.id, 10);
+      
+      if (isNaN(conversationId)) {
+        return res.status(400).json({ message: 'Invalid conversation ID' });
+      }
+
+      // Ottieni la conversazione
+      const conversation = await db.select({
+        id: clientSalesConversations.id,
+        agentId: clientSalesConversations.agentId,
+        fullTranscript: clientSalesConversations.fullTranscript,
+        mode: clientSalesConversations.mode,
+      })
+        .from(clientSalesConversations)
+        .where(eq(clientSalesConversations.id, conversationId))
+        .limit(1);
+
+      if (!conversation[0]) {
+        return res.status(404).json({ message: 'Conversation not found' });
+      }
+
+      // Verifica accesso
+      const agent = await db.select({
+        clientId: clientSalesAgents.clientId,
+        geminiApiKey: clientSalesAgents.geminiApiKey,
+      })
+        .from(clientSalesAgents)
+        .where(eq(clientSalesAgents.id, conversation[0].agentId))
+        .limit(1);
+
+      if (!agent[0] || agent[0].clientId !== req.user?.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      // Verifica che ci sia un transcript
+      if (!conversation[0].fullTranscript || conversation[0].fullTranscript.length < 100) {
+        return res.status(400).json({ 
+          message: 'Transcript troppo breve o mancante. Il REC può essere generato solo da conversazioni con trascrizione completa.',
+          transcriptLength: conversation[0].fullTranscript?.length || 0
+        });
+      }
+
+      // Import dinamico per evitare circular dependencies
+      const { generateDiscoveryRec } = await import('../ai/discovery-rec-generator');
+      
+      // Ottieni API key (prova agent, poi env var)
+      const apiKey = agent[0].geminiApiKey || process.env.GEMINI_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(500).json({ message: 'Gemini API key non configurata' });
+      }
+
+      console.log(`🔄 [REC GENERATION] Starting manual REC generation for conversation ${conversationId}`);
+      
+      // Genera il REC
+      const discoveryRec = await generateDiscoveryRec(
+        conversation[0].fullTranscript,
+        apiKey
+      );
+
+      if (!discoveryRec) {
+        return res.status(500).json({ message: 'Failed to generate Discovery REC' });
+      }
+
+      // Verifica che il REC abbia contenuto significativo
+      const hasContent = discoveryRec.motivazioneCall || 
+                         discoveryRec.tipoAttivita || 
+                         discoveryRec.problemi?.length || 
+                         discoveryRec.statoAttuale;
+      
+      if (!hasContent) {
+        return res.status(400).json({ 
+          message: 'Il REC generato è vuoto. Probabilmente il transcript non contiene informazioni di discovery sufficienti.',
+          discoveryRec 
+        });
+      }
+
+      // Salva nel database
+      await db.update(clientSalesConversations)
+        .set({ discoveryRec })
+        .where(eq(clientSalesConversations.id, conversationId));
+
+      console.log(`✅ [REC GENERATION] REC generated and saved for conversation ${conversationId}`);
+
+      res.json({
+        success: true,
+        conversationId,
+        discoveryRec,
+        generatedAt: discoveryRec.generatedAt,
+      });
+
+    } catch (error) {
+      console.error('Error generating discovery REC:', error);
+      res.status(500).json({ message: 'Failed to generate discovery REC' });
+    }
+  }
+);
+
 export default router;

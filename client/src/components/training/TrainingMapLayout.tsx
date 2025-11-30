@@ -23,6 +23,7 @@ import { VisualFlowRoadmap } from './VisualFlowRoadmap';
 import { AIReasoningPanel } from './AIReasoningPanel';
 import { CheckpointDetailPanel } from './CheckpointDetailPanel';
 import { GeminiReportPanel } from './GeminiReportPanel';
+import { DiscoveryRecPanel } from '@/components/ai-trainer/DiscoveryRecPanel';
 import { cn } from '@/lib/utils';
 
 interface ScriptStructure {
@@ -289,6 +290,13 @@ export function TrainingMapLayout({
                   <GeminiReportPanel conversationDetail={conversationDetail} />
                 </section>
               )}
+
+              {/* 1.5 Discovery REC - Mappa Cliente */}
+              <section className="mb-8 animate-in fade-in slide-in-from-top-4 duration-700" style={{ animationDelay: '100ms' }}>
+                <DiscoveryRecPanel 
+                  conversationId={parseInt(conversationDetail.conversationId, 10)} 
+                />
+              </section>
 
               <Separator className="my-8" />
 
