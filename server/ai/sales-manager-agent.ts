@@ -828,84 +828,13 @@ export class SalesManagerAgent {
     // 3. Determine priority feedback
     let feedbackForAgent: FeedbackForAgent | null = null;
     
-    // Priority order: Buy signals > Tone > Checkpoint > Advancement
+    // Priority order: Tone > Checkpoint > Advancement
     // 🆕 L'identità business (chi sei, cosa fai, cosa NON fai) viene SEMPRE inclusa nel feedbackContent
     // e Gemini decide semanticamente se una richiesta è fuori scope
     // 🚨 RIMOSSO: Feedback "OBIEZIONE RILEVATA" - non guidiamo lo script con suggerimenti!
-    // Le obiezioni vengono ancora RILEVATE per logging/analytics ma NON generano feedback all'agent
-    if (buySignals.detected && buySignals.signals.length > 0) {
-      const topSignal = buySignals.signals[0];
-      
-      // 🆕 PAYMENT GATING LOGIC: Blocca discussioni prezzo se checkpoint incompleti
-      // Se il prospect chiede del prezzo MA i checkpoint non sono completi → BLOCCA
-      if (topSignal.type === 'price_inquiry') {
-        // Verifica se ci sono checkpoint incompleti
-        const hasIncompleteCheckpoint = checkpointStatus && !checkpointStatus.isComplete;
-        
-        // Definisci le fasi essenziali che devono essere complete prima di parlare di prezzo
-        // Tipicamente: discovery, qualificazione, value building
-        const essentialPhases = ['phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5'];
-        const currentPhaseNum = parseInt(params.currentPhaseId.replace('phase_', ''), 10) || 1;
-        const isInEarlyPhase = currentPhaseNum <= 4; // Se siamo nelle prime 4 fasi, è troppo presto
-        
-        if (hasIncompleteCheckpoint || isInEarlyPhase) {
-          // 🚫 PAYMENT GATING ATTIVO: Blocca discussione prezzo
-          console.log(`\n🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`🚫 [PAYMENT GATING] BLOCCATA discussione prezzo prematura!`);
-          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-          console.log(`   📍 Current phase: ${params.currentPhaseId} (early: ${isInEarlyPhase})`);
-          console.log(`   ⛔ Checkpoint incomplete: ${hasIncompleteCheckpoint}`);
-          if (checkpointStatus?.missingItems) {
-            console.log(`   ❌ Missing items: ${checkpointStatus.missingItems.length}`);
-            checkpointStatus.missingItems.slice(0, 3).forEach((item, i) => {
-              console.log(`      ${i + 1}. ${item}`);
-            });
-          }
-          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-          
-          // Genera feedback di blocco con priorità CRITICAL
-          const missingInfo = checkpointStatus?.missingItems?.slice(0, 2).join(', ') || 'informazioni sulla situazione del prospect';
-          
-          feedbackForAgent = {
-            shouldInject: true,
-            priority: 'critical',
-            type: 'correction',
-            message: `🚫 STOP! Il prospect chiede del prezzo ma NON HAI ANCORA COMPLETATO LA DISCOVERY!
-
-⛔ NON parlare di prezzi, investimento o costi adesso!
-
-📋 COSA DEVI FARE:
-1. Riconosci l'interesse: "Ottima domanda! Prima di parlare di numeri voglio essere sicuro di proporti la soluzione giusta..."
-2. Torna alla discovery: "Permettimi di capire meglio: ${missingInfo}"
-3. Solo DOPO aver completato il checkpoint → potrai parlare di investimento
-
-🎯 SCRIPT DA SEGUIRE:
-"Apprezzo che tu voglia capire l'investimento! È una domanda importante.
-Per poterti dare numeri PRECISI e non sparare nel mucchio, ho bisogno di capire ancora alcune cose sulla tua situazione.
-Dimmi: [DOMANDA DAL CHECKPOINT MANCANTE]"
-
-⚠️ SE INSISTE: "Capisco l'urgenza! Ma senza queste info rischierei di proporti qualcosa che non fa per te. 2 minuti e ti do numeri precisi."`,
-            toneReminder: 'Tono empatico ma fermo. NON cedere alla pressione sul prezzo!'
-          };
-        } else {
-          // ✅ Checkpoint completi, può parlare di prezzo (segnale normale)
-          feedbackForAgent = {
-            shouldInject: true,
-            priority: 'high',
-            type: 'buy_signal',
-            message: `💰 SEGNALE DI ACQUISTO: "${topSignal.phrase}" (${topSignal.type})\n→ ${topSignal.suggestedAction}\n\n✅ Checkpoint completato - puoi procedere a discutere l'investimento!`,
-          };
-        }
-      } else {
-        // Altri buy signals (timeline, interest, commitment, comparison)
-        feedbackForAgent = {
-          shouldInject: true,
-          priority: 'high',
-          type: 'buy_signal',
-          message: `💰 SEGNALE DI ACQUISTO: "${topSignal.phrase}" (${topSignal.type})\n→ ${topSignal.suggestedAction}`,
-        };
-      }
-    } else if (controlAnalysis.isLosingControl) {
+    // 🚨 RIMOSSO: Feedback "SEGNALE DI ACQUISTO" - non guidiamo lo script con suggerimenti!
+    // Buy signals e Obiezioni vengono ancora RILEVATE per logging/analytics ma NON generano feedback all'agent
+    if (controlAnalysis.isLosingControl) {
       // 🆕 HIGH PRIORITY: Sales is losing control during Discovery
       // Il prospect sta facendo troppe domande consecutive senza che il sales faccia le sue domande
       feedbackForAgent = {
