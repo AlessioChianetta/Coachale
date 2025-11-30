@@ -1,6 +1,30 @@
 # Overview
 This full-stack web application serves as a consultation platform, connecting consultants with clients for exercise assignment, progress tracking, and performance analytics. Its core ambition is to provide personalized financial insights through an integrated AI assistant, leveraging real-time financial data for context-aware advice, alongside advanced client management and communication tools.
 # Recent Changes
+## November 30, 2025 - Sales Agent Token Optimization (~27k → ~8-10k tokens)
+- **Goal**: Reduce Sales Agent AI token usage by ~65% through dynamic script loading
+- **Phase-Specific Script Loading**:
+  - `buildStaticSalesAgentPrompt()` now accepts `currentPhase` parameter
+  - Loads ONLY the script for the current phase (discovery/demo/objections)
+  - Discovery phase: ~8k tokens | Demo phase: ~10k tokens (includes REC) | Objections: ~9k tokens
+- **Database-Only Scripts (NO Fallback)**:
+  - Scripts load EXCLUSIVELY from database via `fetchClientScripts()`
+  - When no script found, shows "NESSUNO SCRIPT ASSOCIATO" warning
+  - Removed all fallback paths to hardcoded scripts in `sales-scripts-base.ts`
+  - Template generation routes still use base scripts (for generating templates to save to DB)
+- **Discovery REC Integration**:
+  - New file: `server/ai/discovery-rec-generator.ts`
+  - Auto-generates structured summary at discovery→demo transition using Gemini 2.5 Flash
+  - 15+ fields: motivazioneCall, cosAltroHaiProvato, tipoAttivita, statoAttuale, urgenza, decisionMaker, etc.
+  - Saved to database in `discoveryRec` JSONB field on `clientSalesConversations` table
+  - Loaded and injected into prompt for demo/objections/closing phases
+  - Retry logic (2 attempts) with 1s delay between attempts
+- **Files Modified**: 
+  - `server/ai/sales-agent-prompt-builder.ts` - Phase-specific loading, no fallbacks
+  - `server/ai/discovery-rec-generator.ts` - New file for REC generation
+  - `server/ai/gemini-live-ws-service.ts` - REC generation at phase transition
+  - `shared/schema.ts` - Added `discoveryRec` JSONB column
+
 ## November 30, 2025 - Prospect Profiling System ("Fast Reflexes, Slow Brain")
 - **New Feature**: Intelligent prospect personality profiling during voice calls with dynamic sales strategy adaptation
 - **Hybrid Detection Approach**:

@@ -153,6 +153,18 @@ router.post("/:token/join", async (req, res) => {
       return res.status(404).json({ message: "Questo consulente non è più attivo" });
     }
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎯 DETERMINE INITIAL PHASE based on enableDiscovery/enableDemo
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    let initialPhase: 'discovery' | 'demo' | 'objections' | 'closing' = 'discovery';
+    
+    if (agent.enableDiscovery) {
+      initialPhase = 'discovery';
+    } else if (agent.enableDemo) {
+      initialPhase = 'demo';
+    }
+    console.log(`[PublicInvite] Initial phase: ${initialPhase} (enableDiscovery=${agent.enableDiscovery}, enableDemo=${agent.enableDemo})`);
+
     let conversation;
 
     if (invite.conversationId) {
@@ -164,7 +176,7 @@ router.post("/:token/join", async (req, res) => {
           prospectName: prospectName.trim(),
           prospectEmail: prospectEmail?.trim() || null,
           prospectPhone: prospectPhone?.trim() || null,
-          currentPhase: 'discovery',
+          currentPhase: initialPhase,
           collectedData: {},
           objectionsRaised: [],
           outcome: 'pending',
@@ -178,7 +190,7 @@ router.post("/:token/join", async (req, res) => {
         prospectName: prospectName.trim(),
         prospectEmail: prospectEmail?.trim() || null,
         prospectPhone: prospectPhone?.trim() || null,
-        currentPhase: 'discovery',
+        currentPhase: initialPhase,
         collectedData: {},
         objectionsRaised: [],
         outcome: 'pending',

@@ -123,13 +123,34 @@ router.post("/:shareToken/session", async (req, res) => {
 
     console.log(`[PublicSalesAgent] Agent found: ${agent.agentName} (${agent.id})`);
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🎯 DETERMINE INITIAL PHASE based on enableDiscovery/enableDemo
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Logic:
+    // - enableDiscovery = true → start from 'discovery'
+    // - enableDiscovery = false && enableDemo = true → start from 'demo'
+    // - Both false → fallback to 'discovery'
+    let initialPhase: 'discovery' | 'demo' | 'objections' | 'closing' = 'discovery';
+    
+    if (agent.enableDiscovery) {
+      initialPhase = 'discovery';
+      console.log(`[PublicSalesAgent] Initial phase: discovery (enableDiscovery=true)`);
+    } else if (agent.enableDemo) {
+      initialPhase = 'demo';
+      console.log(`[PublicSalesAgent] Initial phase: demo (enableDiscovery=false, enableDemo=true)`);
+    } else {
+      // Fallback - shouldn't happen if at least one is enabled
+      initialPhase = 'discovery';
+      console.log(`[PublicSalesAgent] Initial phase: discovery (fallback - no modes enabled)`);
+    }
+
     // Create conversation record
     const conversation = await storage.createClientSalesConversation({
       agentId: agent.id,
       prospectName: prospectName.trim(),
       prospectEmail: prospectEmail?.trim() || null,
       prospectPhone: prospectPhone?.trim() || null,
-      currentPhase: 'discovery',
+      currentPhase: initialPhase,
       collectedData: {},
       objectionsRaised: [],
       outcome: 'pending',
