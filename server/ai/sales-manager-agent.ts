@@ -650,7 +650,11 @@ function generateArchetypeInstruction(
   const playbook = getPlaybookById(archetype);
   const filler = getRandomFiller(archetype);
   
-  // 🆕 Costruisci istruzione completa con MIRRORING TIPS + SCRIPT CONTINUATION
+  // 🆕 Costruisci istruzione completa con WELCOME + MIRRORING + SCRIPT CONTINUATION
+  const welcomeSection = playbook.welcomeInstructions
+    ? `\n\n🎯 BENVENUTO: ${playbook.welcomeInstructions}`
+    : '';
+  
   const mirroringSection = playbook.mirroringTips 
     ? `\n\n🪞 MIRRORING: ${playbook.mirroringTips}` 
     : '';
@@ -663,14 +667,14 @@ function generateArchetypeInstruction(
   if (antiPattern) {
     return {
       filler,
-      instruction: `${antiPattern.instruction}${mirroringSection}${scriptSection}`,
+      instruction: `${antiPattern.instruction}${welcomeSection}${mirroringSection}${scriptSection}`,
       ttsParams: playbook.ttsParams
     };
   }
   
   return {
     filler,
-    instruction: `${playbook.instruction}${mirroringSection}${scriptSection}`,
+    instruction: `${playbook.instruction}${welcomeSection}${mirroringSection}${scriptSection}`,
     ttsParams: playbook.ttsParams
   };
 }

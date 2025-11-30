@@ -1,0 +1,65 @@
+🤖 Sales Agent
+starting
+Ciao Giuseppe
+
+06:24:14
+🧑 Prospect AI
+starting
+Ciao.
+
+06:24:21
+🤖 Sales Agent
+starting
+Ciao! Super energica, eh? Fantastico! Senti, da dove mi chiami?
+
+06:24:27
+🧑 Prospect AI
+starting
+Sono qui in zona. Ma a dire il vero, Giusy, mi chiedevo più che altro il motivo preciso di questa chiamata. Ho poco tempo e non sono qui per chiacchiere generiche, ho già avuto brutte esperienze in passato con promesse non mantenute.
+
+06:24:34
+🤖 Sales Agent
+starting
+Capisco perfettamente e apprezzo la tua schiettezza! L'obiettivo di questa chiamata è proprio capire insieme se posso realmente aiutarti a migliorare le tue performance e il tuo recupero con la Tecnica Flow. Non voglio farti perdere tempo se non possiamo esserti utili! Che ne dici se in meno di cinque minuti ti spiego esattamente come funziona? Così sarai tu a decidere se vale la pena continuare. Ti va come approccio?
+
+06:24:48
+🧑 Prospect AI
+starting
+Capisco. Cinque minuti sono pochi per entrare nel merito di una vera trasformazione, ma va bene. La mia domanda è: in questi cinque minuti, mi dirà solo 'cosa' fate, o mi darà anche qualche dato concreto o un'idea di come la vostra Tecnica Flow si distingue da altre che ho già provato e che non hanno funzionato?
+
+06:24:55
+🤖 Sales Agent
+starting
+Capisco la tua posizione. In questi cinque minuti mi concentrerò sullo spiegarti come la nostra Tecnica Flow è strutturata per gli atleti che cercano un percorso di trasformazione ad alto valore, diverso dalle singole sedute. Non sarò io a convincerti, sarai tu a capire se questo approccio può fare per te. Sei d'accordo?
+
+06:25:07
+🧑 Prospect AI
+starting
+D'accordo, Giusy. Mi va bene ascoltare. Però le anticipo che il mio "capire" dovrà basarsi su qualcosa di più solido delle solite promesse. Ho avuto esperienze dove l'approccio sembrava ottimo, ma poi i risultati veri non sono mai arrivati.
+
+06:25:15
+🤖 Sales Agent
+starting
+Interessante punto. Senti, andando al sodo, qual è la sfida principale che stai affrontando o l'obiettivo che vuoi raggiungere in questo momento per le tue prestazioni o il tuo benessere?
+
+06:25:24
+🧑 Prospect AI
+starting
+Mah, guardi, il mio obiettivo sarebbe superare un po' questo stallo nelle prestazioni. Mi alleno con regolarità, ma ultimamente sento che il recupero non è mai completo e c'è una rigidità di fondo che mi impedisce di spingermi oltre. Il fatto è che ho già provato diversi approcci, tra massaggi specifici e terapie varie, senza mai avere risultati duraturi. La vostra "Tecnica Flow" come pensa di aggirare questo scoglio che altri non hanno superato?
+
+06:25:30
+🤖 Sales Agent
+starting
+Capisco. Quindi l'obiettivo è superare lo stallo nelle prestazioni e migliorare il recupero e la rigidità, dopo aver provato diverse soluzioni che non hanno funzionato. È corretto? E cosa esattamente ti ha deluso dei metodi che hai provato finora? Cosa mancava?
+
+06:25:41
+🧑 Prospect AI
+starting
+Sì, è corretto. Quello che mi ha deluso è stata soprattutto la mancanza di risultati duraturi. Spesso sembrava più un palliativo, un approccio molto generico, piuttosto che una soluzione mirata e profonda. Insomma, le promesse erano tante, ma la sostanza poca.
+
+06:25:45
+🤖 Sales Agent
+starting
+Capisco, quindi la mancanza di risultati duraturi e un approccio troppo generico sono stati i motivi di delusione. Da quanto tempo stai affrontando questo stallo nelle prestazioni e questa rigidità?
+
+06:25:54

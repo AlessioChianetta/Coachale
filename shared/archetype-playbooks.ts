@@ -37,6 +37,7 @@ export interface ArchetypePlaybook {
   avoid: string[];
   mirroringTips: string;
   scriptContinuation?: string; // 🆕 Istruzione per continuare lo script
+  welcomeInstructions?: string; // 🆕 Istruzioni FONDAMENTALI per il benvenuto
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -176,6 +177,16 @@ NON cercare di convincerlo - lascia che si convinca da solo.`,
     techniques: ['Negative Reverse Selling', 'Frame Control', 'Pattern Interrupt'],
     avoid: ['Essere troppo entusiasta', 'Difendere il prodotto', 'Fare promesse', 'Essere insistente'],
     mirroringTips: 'Tono calmo, sicuro, leggermente distaccato. Pause più lunghe. Non riempire i silenzi.',
+    welcomeInstructions: `🎯 BENVENUTO FONDAMENTALE per SKEPTIC:
+Il benvenuto NON può essere saltato o affrettato, ANCHE SE CORRIAMO VELOCE.
+DOPO il primo "Ciao [Nome]", aspetta la risposta. QUINDI:
+✅ Presenta il tuo nome (es: "Sono Giusy")
+✅ Tono CALMO e PROFESSIONALE - NON "super energica"
+✅ UNA domanda chiara: "Hai qualche minuto?"
+❌ NON dire: "Ciao! Super energica, eh? Fantastico!" - è l'opposto di quello che serve
+❌ NON fare multiple domande nel benvenuto
+❌ NON essere eccessivamente cordiale/informale
+Il benvenuto stabilisce CREDIBILITÀ. Uno scettico GIUDICA il tuo primo messaggio.`,
     scriptContinuation: `⚠️ IMPORTANTE: Non restare bloccato! Anche se è scettico, CONTINUA A SEGUIRE LO SCRIPT.
 Riconosci brevemente le sue obiezioni, poi avanza: "Capisco il tuo punto. Lasciami farti un'altra domanda..."
 L'obiettivo NON è convincerlo, ma raccogliere informazioni. Procedi con le domande dello script.`
@@ -193,7 +204,16 @@ Se interrompe: "Perfetto, vado al sodo: [punto chiave]"
 MAX 2-3 frasi per risposta.`,
     techniques: ['BLUF', 'Rispetto del tempo', 'Sintesi estrema'],
     avoid: ['Divagare', 'Storie lunghe', 'Dettagli non richiesti', 'Ripetizioni'],
-    mirroringTips: 'Parla veloce, tono energico, frasi corte. Vai al punto immediatamente.'
+    mirroringTips: 'Parla veloce, tono energico, frasi corte. Vai al punto immediatamente.',
+    welcomeInstructions: `🎯 BENVENUTO FONDAMENTALE per BUSY:
+Il benvenuto NON può essere saltato, ANCHE SE CORRIAMO VELOCE.
+DOPO il primo "Ciao [Nome]", rispetta il loro tempo:
+✅ Nome + proposizione BLUF in UNA frase: "Sono [X], ho scoperto [risultato], dimmi in 30 secondi se fa per te?"
+✅ Tono VELOCE, energico, RISPETTOSO del tempo
+✅ Una sola domanda: "Hai 30 secondi?"
+❌ NON fare small talk
+❌ NON divagare anche se corriamo veloce
+Il benvenuto dimostra RISPETTO del loro tempo - fondamentale per guadagnare attenzione.`
   },
 
   price_focused: {
@@ -269,6 +289,16 @@ Offri controllo: "Sei tu che decidi. Nessuna pressione. Cosa vorresti sapere per
     techniques: ['Fear Validation', 'Control Giving', 'Transparency'],
     avoid: ['Minimizzare paure', 'Essere aggressivo', 'Promesse eccessive', 'Pressione'],
     mirroringTips: 'Tono molto calmo, basso, rassicurante. Movimenti lenti. Zero aggressività.',
+    welcomeInstructions: `🎯 BENVENUTO FONDAMENTALE per DEFENSIVE:
+Il benvenuto NON può essere saltato, ANCHE SE CORRIAMO VELOCE.
+DOPO il primo "Ciao [Nome]", stabilisci FIDUCIA e CONTROLLO:
+✅ Nome + rassicurazione: "Sono [X], questa è solo una conversazione - nessuna pressione"
+✅ Tono CALMO, BASSO, RASSICURANTE
+✅ Una sola domanda dolce: "Hai un momento?"
+❌ NON essere entusiasta o troppo cordiale - crea diffidenza
+❌ NON fare multiple domande
+❌ NON promettere nulla
+Il benvenuto deve dire: "Sei al sicuro, puoi abbassare la guardia."`,
     scriptContinuation: `⚠️ IMPORTANTE: Valida le sue paure MA poi CONTINUA LO SCRIPT.
 Dopo ogni validazione, guida la conversazione: "Capisco. Detto questo, mi permetti di farti una domanda?"
 Non restare in loop sulla rassicurazione - avanza raccogliendo informazioni.`
