@@ -125,6 +125,9 @@ interface TranscriptMessage {
   phase?: string;
 }
 
+// 🆕 State machine for discovery_demo mode
+type SimulatorState = 'discovery' | 'transitioning_to_demo' | 'demo' | 'completed';
+
 export class ProspectSimulator {
   private options: ProspectSimulatorOptions;
   private ws: WebSocket | null = null;
@@ -154,6 +157,11 @@ export class ProspectSimulator {
   
   private latestManagerAnalysis: SalesManagerAnalysisData | null = null;
   private managerAnalysisHistory: SalesManagerAnalysisData[] = [];
+  
+  // 🆕 State machine for discovery_demo mode
+  private simulatorState: SimulatorState = 'discovery';
+  private discoveryPhaseCount = 7; // Standard discovery has 7 phases
+  private hasTriggeredDemoTransition = false;
   
   private static readonly MESSAGE_COMPLETION_TIMEOUT = 5000;
   private static readonly MIN_SILENCE_GAP = 2000;
@@ -355,6 +363,14 @@ export class ProspectSimulator {
           this.ladderActivations++;
         }
         console.log(`📊 [PROSPECT SIMULATOR] Phase update: ${this.currentPhase} (${Math.round(this.completionRate * 100)}%)`);
+        
+        // 🆕 Check for discovery→demo transition in discovery_demo mode
+        if (this.options.testMode === 'discovery_demo' && 
+            this.simulatorState === 'discovery' && 
+            !this.hasTriggeredDemoTransition) {
+          await this.checkDiscoveryCompletion();
+        }
+        
         await this.updateStatus();
         break;
 
@@ -407,6 +423,73 @@ export class ProspectSimulator {
       default:
         break;
     }
+  }
+
+  /**
+   * 🆕 Check if discovery phase is complete and trigger transition to demo
+   * Called in discovery_demo mode to automate the full training cycle
+   */
+  private async checkDiscoveryCompletion(): Promise<void> {
+    // Check if we're in the last phase of discovery (phase_7) or high completion rate
+    const isLastDiscoveryPhase = this.currentPhase.toLowerCase().includes('phase_7') || 
+                                  this.currentPhase.toLowerCase().includes('fase_7') ||
+                                  this.currentPhase.toLowerCase().includes('closing') ||
+                                  this.currentPhase.toLowerCase().includes('chiusura');
+    
+    const isHighCompletion = this.completionRate >= 0.85; // 85%+ completion
+    
+    // Also check Sales Manager analysis for phase completion
+    const managerSaysComplete = this.latestManagerAnalysis?.currentPhase?.id?.includes('phase_7') ||
+                                 this.latestManagerAnalysis?.currentPhase?.id?.includes('closing');
+    
+    if ((isLastDiscoveryPhase || isHighCompletion || managerSaysComplete) && !this.hasTriggeredDemoTransition) {
+      console.log(`\n🔄 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`🔄 [PROSPECT SIMULATOR] DISCOVERY COMPLETE - TRANSITIONING TO DEMO`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`   📍 Current Phase: ${this.currentPhase}`);
+      console.log(`   📊 Completion Rate: ${Math.round(this.completionRate * 100)}%`);
+      console.log(`   🎯 Triggering demo transition...`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+      
+      this.hasTriggeredDemoTransition = true;
+      this.simulatorState = 'transitioning_to_demo';
+      
+      // Send a natural transition message that will trigger REC generation on the server
+      // The server's gemini-live-ws-service detects keywords like "passiamo alla demo"
+      // and automatically generates the Discovery REC before transitioning
+      await this.sendDemoTransitionMessage();
+    }
+  }
+
+  /**
+   * 🆕 Send a natural message to trigger the demo transition
+   * This message will be detected by the server and trigger REC generation
+   */
+  private async sendDemoTransitionMessage(): Promise<void> {
+    // Wait a moment for the agent to finish speaking
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Send a message that signals readiness for demo
+    // The server detects "passiamo alla demo" and triggers REC generation
+    const transitionMessage = "Perfetto, ho capito tutto. Sono curioso di vedere come funziona nella pratica. Passiamo alla demo?";
+    
+    console.log(`🎯 [PROSPECT SIMULATOR] Sending demo transition trigger: "${transitionMessage}"`);
+    
+    await this.sendProspectMessage(transitionMessage);
+    
+    // Update state after sending
+    this.simulatorState = 'demo';
+    
+    // Notify status update
+    await this.options.onStatusUpdate({
+      status: 'running',
+      currentPhase: 'demo_transition',
+      completionRate: this.completionRate,
+      messageCount: this.messageCount,
+      conversationId: this.conversationId || undefined,
+    });
+    
+    console.log(`✅ [PROSPECT SIMULATOR] Demo transition triggered - server will generate REC and switch script`);
   }
 
   private handleAgentFragment(text: string, source: string): void {

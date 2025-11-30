@@ -929,7 +929,7 @@ export function setupGeminiLiveWSService(server: Server) {
     let lastUserMessageTimestamp = 0;
     let responseWatchdogRetries = 0;
     let modelResponsePending = false; // 🆕 Flag: Gemini ha iniziato a elaborare (qualsiasi serverContent ricevuto)
-    const RESPONSE_WATCHDOG_TIMEOUT_MS = 3500; // 🔧 FIX: silence_duration_ms (2000) + buffer (1500)
+    const RESPONSE_WATCHDOG_TIMEOUT_MS = 5500; // 🔧 FIX: Aumentato per dare più tempo a Gemini (silence 2000 + elaborazione 3500)
     const MAX_WATCHDOG_RETRIES = 2;
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -979,7 +979,7 @@ export function setupGeminiLiveWSService(server: Server) {
       }
       
       userMessagePendingResponse = true;
-      modelResponsePending = false; // 🆕 Reset: nuovo turno, aspettiamo nuova risposta
+      modelResponsePending = false; // Reset per nuovo turno
       lastUserFinalTranscript = transcript;
       lastUserMessageTimestamp = Date.now();
       
@@ -3066,6 +3066,11 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
           if (response.serverContent?.outputTranscription?.text) {
             const transcriptText = response.serverContent.outputTranscription.text;
             console.log(`📝 [${connectionId}] AI transcript (output): ${transcriptText}`);
+            
+            // 🔧 FIX WATCHDOG: Gemini ha iniziato a rispondere! Cancella il watchdog
+            if (userMessagePendingResponse) {
+              cancelResponseWatchdog();
+            }
             
             // Accumula per tracciamento server-side
             currentAiTranscript += transcriptText;
