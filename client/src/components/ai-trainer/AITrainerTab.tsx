@@ -232,30 +232,26 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
     refetchInterval: observeSessionId ? 2000 : false,
   });
 
-  const { data: managerAnalysis, isLoading: managerAnalysisLoading, isError: managerAnalysisError } = useQuery<SalesManagerAnalysisData | null>({
+  const { data: managerAnalysisArray = [], isLoading: managerAnalysisLoading, isError: managerAnalysisError } = useQuery<SalesManagerAnalysisData[]>({
     queryKey: [`/api/ai-trainer/session/${observeSessionId}/manager-analysis`],
     queryFn: async () => {
-      if (!observeSessionId) return null;
+      if (!observeSessionId) return [];
       const response = await fetch(`/api/ai-trainer/session/${observeSessionId}/manager-analysis`, {
         headers: getAuthHeaders(),
       });
-      if (!response.ok) return null;
+      if (!response.ok) return [];
       const data = await response.json();
-      return data;
+      return Array.isArray(data) ? data : (data ? [data] : []);
     },
     enabled: !!observeSessionId,
-    refetchInterval: observeSessionId ? 3000 : false,
+    refetchInterval: observeSessionId ? 2000 : false,
   });
 
   useEffect(() => {
-    if (managerAnalysis && managerAnalysis.timestamp) {
-      setAnalysisHistory(prev => {
-        const isDuplicate = prev.some(a => a.timestamp === managerAnalysis.timestamp);
-        if (isDuplicate) return prev;
-        return [...prev, managerAnalysis];
-      });
+    if (managerAnalysisArray.length > 0) {
+      setAnalysisHistory(managerAnalysisArray);
     }
-  }, [managerAnalysis]);
+  }, [managerAnalysisArray]);
 
   const handleExportAnalysis = () => {
     if (analysisHistory.length === 0) return;

@@ -2,7 +2,7 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { db } from '../db';
-import { clientSalesAgents, salesScripts, aiTrainingSessions, agentScriptAssignments, users } from '@shared/schema';
+import { clientSalesAgents, salesScripts, aiTrainingSessions, agentScriptAssignments, users, salesConversationTraining } from '@shared/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { PROSPECT_PERSONAS, getPersonaById, generateProspectData } from '@shared/prospect-personas';
 import { ProspectSimulator } from '../services/prospect-simulator';
@@ -414,10 +414,30 @@ router.get(
         return res.status(404).json({ message: 'Session not found' });
       }
 
+      // First check if simulator is active (live session)
       const simulator = activeSimulators.get(sessionId);
       if (simulator) {
         const transcript = simulator.getTranscript();
         return res.json(transcript);
+      }
+
+      // Session ended - try to get transcript from database
+      if (session[0].conversationId) {
+        const training = await db.select()
+          .from(salesConversationTraining)
+          .where(eq(salesConversationTraining.conversationId, session[0].conversationId))
+          .limit(1);
+
+        if (training[0]?.fullTranscript) {
+          // Convert from DB format to TranscriptMessage format
+          const transcriptFromDb = (training[0].fullTranscript as any[]).map(msg => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: msg.timestamp,
+            phase: msg.phase,
+          }));
+          return res.json(transcriptFromDb);
+        }
       }
 
       res.json([]);
@@ -464,13 +484,14 @@ router.get(
 
       const simulator = activeSimulators.get(sessionId);
       if (simulator) {
-        const analysis = simulator.getManagerAnalysis();
-        if (analysis) {
-          return res.json(analysis);
-        }
+        // Return complete analysis history array
+        const analysisHistory = simulator.getManagerAnalysisHistory();
+        return res.json(analysisHistory);
       }
 
-      res.json(null);
+      // Session ended - analysis history is not persisted yet
+      // TODO: Add DB persistence for manager analysis history
+      res.json([]);
 
     } catch (error) {
       console.error('Error fetching manager analysis:', error);

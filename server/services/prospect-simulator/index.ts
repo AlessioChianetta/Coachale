@@ -151,6 +151,7 @@ export class ProspectSimulator {
   private lastProcessedTime = 0;
   
   private latestManagerAnalysis: SalesManagerAnalysisData | null = null;
+  private managerAnalysisHistory: SalesManagerAnalysisData[] = [];
   
   private static readonly MESSAGE_COMPLETION_TIMEOUT = 3500;
   private static readonly MIN_SILENCE_GAP = 2000;
@@ -383,6 +384,8 @@ export class ProspectSimulator {
         
         // Store the analysis locally for API access
         this.latestManagerAnalysis = message.analysis as SalesManagerAnalysisData;
+        // Also add to history array for complete analysis log
+        this.managerAnalysisHistory.push(message.analysis as SalesManagerAnalysisData);
         
         // Forward the analysis to the status update callback
         await this.options.onStatusUpdate({
@@ -786,5 +789,9 @@ I TUOI PROBLEMI devono essere coerenti con "${targetDescription}":
 
   getManagerAnalysis(): SalesManagerAnalysisData | null {
     return this.latestManagerAnalysis;
+  }
+
+  getManagerAnalysisHistory(): SalesManagerAnalysisData[] {
+    return [...this.managerAnalysisHistory];
   }
 }
