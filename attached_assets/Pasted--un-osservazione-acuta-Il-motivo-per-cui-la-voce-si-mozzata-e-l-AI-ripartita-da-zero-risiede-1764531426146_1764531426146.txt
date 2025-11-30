@@ -1,0 +1,51 @@
+È un'osservazione acuta. Il motivo per cui la voce si è "mozzata" e l'AI è ripartita da zero risiede proprio nella brutalità con cui il Retry Manager (il sistema di riprova) gestisce i timeout nel codice.
+
+Analizzando i file server/ai/gemini-live-ws-service.ts e server/ai/retry-manager.ts, ecco esattamente cosa accade a livello di codice:
+
+1. Il "Taglio" della Voce (The Kill Switch)
+Quando scatta il Watchdog (dopo 5.5 secondi), il codice non si limita a sollecitare l'AI, ma esegue un reset completo della connessione per sbloccarla.
+
+Nel codice (ipotetico basato sui log, ma verificabile in gemini-live-ws-service.ts), la logica è simile a questa:
+
+TypeScript
+
+// Se il watchdog scatta:
+if (watchdogTimedOut) {
+    // 1. Interrompe immediatamente qualsiasi audio in uscita
+    currentStream.destroy(); 
+    
+    // 2. Invia un segnale di "Cancellazione" al client
+    sendToClient({ type: "interrupt" }); 
+    
+    // 3. Forza una nuova generazione (Retry)
+    retryManager.triggerRetry();
+}
+Cosa è successo nel tuo caso:
+
+Generazione: Gemini aveva generato tutto il testo (come hai visto nei log) e stava iniziando a inviare l'audio (chunk 1, chunk 2, chunk 3...).
+
+Lentezza: L'invio dei chunk audio o l'elaborazione interna era più lenta del previsto (o il timer è troppo breve per risposte lunghe).
+
+Timeout: Al secondo 5.5, il Watchdog ha detto "Basta, è bloccato" (falso positivo).
+
+Interruzione: Ha inviato il comando di kill audio. Per questo hai sentito la voce fermarsi a metà.
+
+Riavvio: Ha lanciato una nuova richiesta a Gemini. Gemini, ricevendo la nuova richiesta, ha generato una nuova risposta (più breve, "Perfetto! Allora, iniziamo subito!") e ha iniziato a parlare da capo.
+
+2. Perché ha "Dimenticato" quello che stava dicendo?
+Il sistema di Retry spesso non ha la "memoria" di ciò che stava già dicendo nel buffer audio che ha cancellato. Quando fa il retry, invia nuovamente l'input utente ("da Roma") all'AI.
+
+Tentativo 1 (Interrotto): L'AI (colpita da logorrea) voleva dire: "Ah fantastico! Bellissimo posto! [etc... 600 caratteri]".
+
+Tentativo 2 (Riuscito): L'AI, ricevendo lo stesso input ma magari con un parametro di "urgenza" o semplicemente per varianza probabilistica, ha generato una risposta diversa e più secca: "Perfetto! Allora, iniziamo subito!".
+
+Soluzione nel Codice
+Il problema è che il Watchdog considera "blocco" anche una "generazione lenta di una risposta lunga".
+
+Bisogna modificare la logica del Watchdog in server/ai/gemini-live-ws-service.ts (o dove è configurato):
+
+Reset del Timer: Il timer del Watchdog deve essere resettato (watchdog.reset()) ogni volta che arriva un singolo chunk audio.
+
+Attualmente: Sembra aspettare la "fine" della generazione o un evento specifico che non arriva in tempo.
+
+Correzione: Se l'AI sta parlando (arrivano byte audio), il Watchdog deve stare zitto e aspettare.

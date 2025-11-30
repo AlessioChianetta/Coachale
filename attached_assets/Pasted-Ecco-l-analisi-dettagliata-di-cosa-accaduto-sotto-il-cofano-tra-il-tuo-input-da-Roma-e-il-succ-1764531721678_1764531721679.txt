@@ -1,0 +1,45 @@
+Ecco l'analisi dettagliata di cosa è accaduto "sotto il cofano" tra il tuo input "da Roma" e il successivo Retry.
+
+Il problema non è stato il tuo input ("da Roma"), ma il tempo di reazione dell'AI nel processare le istruzioni interne rispetto al timer di sicurezza (Watchdog).
+
+🔍 Cronologia dell'Incidente (Step-by-Step)
+Ecco la sequenza esatta estratta dai log:
+
+L'Input Utente: Tu dici "da Roma".
+
+La Risposta (Troppo Lunga) dell'AI: L'AI riceve l'input e genera immediatamente una risposta massiccia di 602 caratteri (spiegando tutto il processo della call).
+
+Log: ⚠️ TOO LONG: 602 chars (may be reading script robotically)
+
+L'Analisi del Manager: Mentre l'AI sta preparando/dicendo questa frase, il Sales Manager Agent analizza la situazione. Decide che l'AI non deve avanzare di step, ma deve rimanere lì e fare domande.
+
+L'Iniezione del Feedback (Trojan Horse): Il sistema invia un comando nascosto all'AI: "Rimani in questa fase, ottieni le info mancanti".
+
+Il CRASH (Watchdog Timeout): Qui avviene il problema. Il sistema (Watchdog) ha un timer di 5500ms (5,5 secondi). Si aspettava una reazione dell'AI a questo feedback entro quel tempo.
+
+L'AI era probabilmente "impegnata" a gestire il lungo monologo precedente o a elaborare il nuovo feedback.
+
+Il timer scade: ⚠️ WATCHDOG TIMEOUT - Gemini non ha risposto in 5501ms!
+
+Il Rettry: Il sistema pensa che l'AI si sia bloccata e forza un RETRY (1/2) (un secondo tentativo di invio).
+
+La Risoluzione: Al secondo tentativo, l'AI risponde velocemente ("Perfetto! Allora, iniziamo subito!") in 664ms.
+
+🛠 Perché è successo? (Diagnosi Tecnica)
+Il problema è un "conflitto di velocità" causato dalla lunghezza della risposta.
+
+Carico Cognitivo/Elaborazione: L'AI ha generato un blocco di testo enorme (602 caratteri). Questo richiede risorse.
+
+Finestra Temporale Stretta: Il Watchdog è impostato a 5.5 secondi. È un tempo molto aggressivo per un modello che deve:
+
+Ricevere l'audio utente.
+
+Trascrivere.
+
+Generare la risposta (lunga).
+
+Ricevere il feedback del Sales Manager.
+
+Generare la correzione o il pezzo successivo.
+
+Falso Positivo: L'AI non era rotta, era solo lenta. Il Watchdog è intervenuto troppo presto, interpretando il ritardo di elaborazione come un blocco del sistema.

@@ -929,8 +929,10 @@ export function setupGeminiLiveWSService(server: Server) {
     let lastUserMessageTimestamp = 0;
     let responseWatchdogRetries = 0;
     let modelResponsePending = false; // 🆕 Flag: Gemini ha iniziato a elaborare (qualsiasi serverContent ricevuto)
+    let lastAiTurnCompleteTimestamp = 0; // 🆕 FIX: Traccia quando l'AI ha completato l'ultimo turno
     const RESPONSE_WATCHDOG_TIMEOUT_MS = 5500; // 🔧 FIX: Aumentato per dare più tempo a Gemini (silence 2000 + elaborazione 3500)
     const MAX_WATCHDOG_RETRIES = 2;
+    const MIN_TIME_AFTER_AI_RESPONSE_MS = 2000; // 🆕 Non avviare watchdog se AI ha risposto negli ultimi 2 sec
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🔄 LOOP DETECTION - Rileva quando l'AI ripete la stessa domanda
@@ -973,6 +975,14 @@ export function setupGeminiLiveWSService(server: Server) {
      * Avvia il watchdog timer per rilevare mancate risposte da Gemini
      */
     function startResponseWatchdog(transcript: string, session: any) {
+      // 🆕 FIX: Non avviare watchdog se l'AI ha appena completato un turno
+      // Questo previene retry inutili quando il messaggio utente arriva durante/dopo una risposta
+      const timeSinceLastAiResponse = Date.now() - lastAiTurnCompleteTimestamp;
+      if (lastAiTurnCompleteTimestamp > 0 && timeSinceLastAiResponse < MIN_TIME_AFTER_AI_RESPONSE_MS) {
+        console.log(`⏭️  [${connectionId}] WATCHDOG SKIPPED - AI ha appena risposto (${timeSinceLastAiResponse}ms fa, min: ${MIN_TIME_AFTER_AI_RESPONSE_MS}ms)`);
+        return;
+      }
+      
       // Cancella timer precedente se esiste
       if (responseWatchdogTimer) {
         clearTimeout(responseWatchdogTimer);
@@ -3357,10 +3367,12 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                 }
               }
               
-              // 🆕 FIX: Start watchdog in fallback path too!
-              // When turnComplete arrives without isFinal, we still need to watch for Gemini response
-              // Previously this was missing, causing potential silent failures
-              startResponseWatchdog(trimmedUserTranscript, geminiSession);
+              // 🔧 FIX: NON avviare watchdog nel fallback path!
+              // Quando turnComplete arriva, significa che l'AI HA GIÀ RISPOSTO.
+              // Avviare il watchdog qui causa retry inutili perché aspetta una risposta
+              // che non arriverà mai (Gemini ha già completato il turno).
+              // Il fallback serve SOLO per salvare il messaggio utente, non per aspettare risposta.
+              console.log(`📝 [${connectionId}] Fallback: User message saved, NO watchdog needed (AI already responded)`);
               
               pendingUserTranscript = { text: '', hasFinalChunk: false }; // Reset
             }
@@ -3368,6 +3380,7 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
             // 🔒 AI has finished speaking
             const wasAiSpeaking = isAiSpeaking;
             isAiSpeaking = false;
+            lastAiTurnCompleteTimestamp = Date.now(); // 🆕 FIX: Traccia quando l'AI ha completato il turno
             if (wasAiSpeaking) {
               console.log(`🔇 [${connectionId}] AI finished speaking (turn complete)`);
             }
