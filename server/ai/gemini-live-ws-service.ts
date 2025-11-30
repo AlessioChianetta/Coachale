@@ -3779,10 +3779,12 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                         // 🆕 SEND SALES MANAGER ANALYSIS TO CLIENT FOR UI VISUALIZATION
                         // This enables the frontend to display the Manager's thought process
                         try {
+                          const analysisTimestamp = new Date().toISOString();
                           const managerAnalysisPayload = {
                             type: 'sales_manager_analysis',
-                            timestamp: new Date().toISOString(),
+                            timestamp: analysisTimestamp,
                             analysis: {
+                              timestamp: analysisTimestamp,
                               stepAdvancement: {
                                 shouldAdvance: stepResult.shouldAdvance,
                                 nextPhaseId: stepResult.nextPhaseId,
