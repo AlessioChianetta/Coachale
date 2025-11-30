@@ -3761,6 +3761,7 @@ export const salesScripts = pgTable("sales_scripts", {
   // Stato
   isActive: boolean("is_active").default(false).notNull(), // Solo uno attivo per tipo
   isDraft: boolean("is_draft").default(true).notNull(), // Bozza o pubblicato
+  isArchived: boolean("is_archived").default(false).notNull(), // Script archiviato (non eliminabile se ha sessioni training)
   
   // Metadati - Chi possiede lo script
   clientId: varchar("client_id").references(() => users.id).notNull(), // Il client che possiede questo script

@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { db } from '../db';
-import { salesScripts, salesScriptVersions, users, clientSalesAgents, agentScriptAssignments } from '../../shared/schema';
+import { salesScripts, salesScriptVersions, users, clientSalesAgents, agentScriptAssignments, aiTrainingSessions } from '../../shared/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { getDiscoveryScript, getDemoScript, getObjectionsScript } from '../ai/sales-scripts-base';
 import { AuthRequest, requireRole } from '../middleware/auth';
@@ -12,7 +12,7 @@ const router = Router();
 // Middleware to require client role (clients manage their own sales agents' scripts)
 const requireClient = requireRole('client');
 
-// GET /api/sales-scripts - Get all scripts for the client
+// GET /api/sales-scripts - Get all scripts for the client (excluding archived ones)
 router.get('/', requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const clientId = req.user!.id;
@@ -20,7 +20,10 @@ router.get('/', requireClient, async (req: AuthRequest, res: Response) => {
     const scripts = await db
       .select()
       .from(salesScripts)
-      .where(eq(salesScripts.clientId, clientId))
+      .where(and(
+        eq(salesScripts.clientId, clientId),
+        eq(salesScripts.isArchived, false)
+      ))
       .orderBy(desc(salesScripts.updatedAt));
     
     res.json(scripts);
@@ -555,7 +558,8 @@ router.post('/:id/duplicate', requireClient, async (req: AuthRequest, res: Respo
   }
 });
 
-// DELETE /api/sales-scripts/:id - Delete a script
+// DELETE /api/sales-scripts/:id - Delete or Archive a script
+// If script has training sessions, it will be archived instead of deleted
 router.delete('/:id', requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -573,16 +577,56 @@ router.delete('/:id', requireClient, async (req: AuthRequest, res: Response) => 
       return res.status(404).json({ error: 'Script non trovato' });
     }
     
-    // Nessun controllo - permetti cancellazione anche se attivo
-    await db.delete(salesScripts).where(eq(salesScripts.id, id));
+    // Check if script has training sessions
+    const trainingSessions = await db
+      .select({ id: aiTrainingSessions.id })
+      .from(aiTrainingSessions)
+      .where(eq(aiTrainingSessions.scriptId, id))
+      .limit(1);
     
-    // Clear script cache in case deleted script was cached
-    clearScriptCache(clientId);
-    console.log(`🔄 [ScriptDelete] Cleared script cache for client ${clientId}`);
+    const hasTrainingSessions = trainingSessions.length > 0;
     
-    res.json({ success: true });
+    if (hasTrainingSessions) {
+      // Archive instead of delete
+      await db
+        .update(salesScripts)
+        .set({ 
+          isArchived: true, 
+          isActive: false, // Also deactivate
+          updatedAt: new Date() 
+        })
+        .where(eq(salesScripts.id, id));
+      
+      // Remove from agent assignments
+      await db
+        .delete(agentScriptAssignments)
+        .where(eq(agentScriptAssignments.scriptId, id));
+      
+      clearScriptCache(clientId);
+      console.log(`📦 [ScriptArchive] Script ${id} archived (has ${trainingSessions.length}+ training sessions)`);
+      
+      res.json({ 
+        success: true, 
+        archived: true,
+        message: 'Lo script è stato archiviato perché ha sessioni di training associate. Non può essere eliminato definitivamente.'
+      });
+    } else {
+      // No training sessions - safe to delete
+      // First remove from assignments
+      await db
+        .delete(agentScriptAssignments)
+        .where(eq(agentScriptAssignments.scriptId, id));
+      
+      // Then delete the script
+      await db.delete(salesScripts).where(eq(salesScripts.id, id));
+      
+      clearScriptCache(clientId);
+      console.log(`🗑️ [ScriptDelete] Script ${id} permanently deleted`);
+      
+      res.json({ success: true, archived: false });
+    }
   } catch (error) {
-    console.error('Error deleting script:', error);
+    console.error('Error deleting/archiving script:', error);
     res.status(500).json({ error: 'Errore nell\'eliminazione dello script' });
   }
 });

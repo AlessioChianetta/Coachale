@@ -282,10 +282,20 @@ export default function ClientScriptManager() {
       if (!res.ok) throw new Error((await res.json()).error || 'Errore nell\'eliminazione');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
       setSelectedScriptId(null);
-      toast({ title: 'Script eliminato', description: 'Lo script è stato eliminato' });
+      if (data.archived) {
+        toast({ 
+          title: 'Script archiviato', 
+          description: 'Lo script è stato archiviato perché ha sessioni di training associate e non può essere eliminato.' 
+        });
+      } else {
+        toast({ 
+          title: 'Script eliminato', 
+          description: 'Lo script è stato eliminato permanentemente.' 
+        });
+      }
     },
     onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
   });
