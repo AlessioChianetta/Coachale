@@ -5,9 +5,12 @@
  * usando Gemini 2.5 Flash per analizzare la trascrizione.
  * 
  * Viene chiamato quando si rileva la transizione discovery → demo (phase_3)
+ * 
+ * Supporta sia API key diretta che Vertex AI tramite provider-factory
  */
 
 import { GoogleGenAI } from "@google/genai";
+import { getAIProvider, GeminiClient } from "./provider-factory";
 
 export interface DiscoveryRec {
   motivazioneCall?: string;
@@ -202,4 +205,89 @@ ${rec.noteAggiuntive}`);
 `);
 
   return sections.join('\n');
+}
+
+/**
+ * Genera il Discovery REC usando il provider factory (Vertex AI o Google AI Studio)
+ * 
+ * Usa il sistema a 3-tier del provider-factory:
+ * 1. Client Vertex AI (self-managed)
+ * 2. Admin Vertex AI (consultant-managed)  
+ * 3. Google AI Studio (fallback)
+ * 
+ * @param transcript - Trascrizione completa della fase discovery
+ * @param clientId - ID del cliente per la selezione del provider
+ * @param consultantId - ID del consulente (opzionale) per il fallback
+ * @returns DiscoveryRec strutturato o null se errore
+ */
+export async function generateDiscoveryRecWithProvider(
+  transcript: string,
+  clientId: string,
+  consultantId?: string
+): Promise<DiscoveryRec | null> {
+  
+  console.log(`\n🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`[DiscoveryRecGenerator] Starting REC generation with Provider Factory...`);
+  console.log(`   📝 Transcript length: ${transcript.length} chars`);
+  console.log(`   👤 Client: ${clientId}`);
+  console.log(`   👔 Consultant: ${consultantId || 'none'}`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+  
+  if (!transcript || transcript.length < 100) {
+    console.log(`⚠️ [DiscoveryRecGenerator] Transcript too short, skipping REC generation`);
+    return null;
+  }
+  
+  try {
+    const providerResult = await getAIProvider(clientId, consultantId);
+    const client = providerResult.client;
+    
+    console.log(`✅ [DiscoveryRecGenerator] Using provider: ${providerResult.source}`);
+    
+    const prompt = DISCOVERY_REC_PROMPT.replace("{{TRANSCRIPT}}", transcript);
+    
+    const startTime = Date.now();
+    
+    const response = await client.generateContent({
+      model: "gemini-2.5-flash-preview-05-20",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 2048,
+      }
+    });
+    
+    const elapsedMs = Date.now() - startTime;
+    const text = response.response.text();
+    
+    console.log(`✅ [DiscoveryRecGenerator] Response received in ${elapsedMs}ms`);
+    
+    let jsonText = text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    const rec = JSON.parse(jsonText) as DiscoveryRec;
+    
+    rec.generatedAt = new Date().toISOString();
+    
+    console.log(`📋 [DiscoveryRecGenerator] REC generated successfully:`);
+    console.log(`   - Provider: ${providerResult.source}`);
+    console.log(`   - Problemi identificati: ${rec.problemi?.length || 0}`);
+    console.log(`   - Urgenza: ${rec.urgenza || 'N/A'}`);
+    console.log(`   - Decision Maker: ${rec.decisionMaker}`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    
+    if (providerResult.cleanup) {
+      await providerResult.cleanup();
+    }
+    
+    return rec;
+    
+  } catch (error) {
+    console.error(`❌ [DiscoveryRecGenerator] Error generating REC:`, error);
+    return null;
+  }
 }

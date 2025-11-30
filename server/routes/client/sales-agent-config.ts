@@ -9,6 +9,9 @@ import { SalesScriptTracker } from "../../ai/sales-script-tracker";
 import { db } from "../../db";
 import { eq, and, desc } from "drizzle-orm";
 import { parseScriptContentToStructure } from "../../ai/sales-script-structure-parser";
+import { generateDiscoveryRecWithProvider } from "../../ai/discovery-rec-generator";
+import { getAIProvider } from "../../ai/provider-factory";
+import { clientSalesConversations } from "@shared/schema";
 
 const router = Router();
 
@@ -1052,6 +1055,10 @@ router.get("/:agentId/training/conversation/:conversationId", authenticateToken,
 
     const training = trainingData[0];
 
+    const isDiscoveryScript = training.usedScriptType === 'discovery';
+    const hasAllPhasesCompleted = training.completionRate >= 1.0;
+    const canGenerateRec = isDiscoveryScript && hasAllPhasesCompleted && !conversation.discoveryRec;
+
     // Return complete training details
     const response = {
       conversationId: training.conversationId,
@@ -1083,6 +1090,8 @@ router.get("/:agentId/training/conversation/:conversationId", authenticateToken,
       usedScriptSource: conversation.usedScriptSource || null, // From clientSalesConversations table
       createdAt: training.createdAt,
       updatedAt: training.updatedAt,
+      discoveryRec: conversation.discoveryRec || null,
+      canGenerateRec: canGenerateRec,
     };
 
     console.log(`[TrainingAPI] Returning complete training data for conversation ${conversationId}`);
@@ -1092,6 +1101,103 @@ router.get("/:agentId/training/conversation/:conversationId", authenticateToken,
     console.error(`[TrainingAPI] GET conversation details error:`, error);
     res.status(500).json({
       message: "Errore durante il recupero dei dettagli training",
+      error: error.message
+    });
+  }
+});
+
+// POST /:agentId/training/conversation/:conversationId/generate-rec - Genera Discovery REC manualmente
+router.post("/:agentId/training/conversation/:conversationId/generate-rec", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const { agentId, conversationId } = req.params;
+
+    if (userRole !== "client") {
+      return res.status(403).json({ message: "Solo i clienti possono generare REC" });
+    }
+
+    console.log(`[TrainingAPI] POST generate-rec for conversation ${conversationId}, agent ${agentId}, client ${userId}`);
+
+    const agent = await storage.getClientSalesAgentById(agentId);
+    if (!agent) {
+      return res.status(404).json({ message: "Agente non trovato" });
+    }
+
+    if (agent.clientId !== userId) {
+      return res.status(403).json({ message: "Non hai i permessi per questo agente" });
+    }
+
+    const conversation = await storage.getClientSalesConversationById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversazione non trovata" });
+    }
+
+    if (conversation.agentId !== agentId) {
+      return res.status(403).json({ message: "Questa conversazione non appartiene a questo agente" });
+    }
+
+    if (conversation.discoveryRec) {
+      return res.status(400).json({ message: "REC già generata per questa conversazione" });
+    }
+
+    const trainingData = await db
+      .select()
+      .from(salesConversationTraining)
+      .where(eq(salesConversationTraining.conversationId, conversationId))
+      .limit(1);
+
+    if (trainingData.length === 0) {
+      return res.status(404).json({ message: "Dati training non trovati" });
+    }
+
+    const training = trainingData[0];
+
+    if (training.usedScriptType !== 'discovery') {
+      return res.status(400).json({ message: "La REC può essere generata solo per conversazioni Discovery" });
+    }
+
+    if (training.completionRate < 1.0) {
+      return res.status(400).json({ message: "La Discovery non è stata completata. Completa tutte le fasi prima di generare la REC." });
+    }
+
+    const fullTranscript = training.fullTranscript as Array<{ role: string; content: string }>;
+    const transcriptText = fullTranscript
+      .map((m: any) => `${m.role === 'user' ? 'Prospect' : 'AI'}: ${m.content}`)
+      .join('\n');
+
+    if (transcriptText.length < 100) {
+      return res.status(400).json({ message: "Trascrizione troppo breve per generare la REC" });
+    }
+
+    const apiKey = await getGeminiApiKey(userId, agent.consultantId);
+    if (!apiKey) {
+      return res.status(500).json({ message: "API key Gemini non disponibile" });
+    }
+
+    console.log(`[TrainingAPI] Generating REC with transcript length: ${transcriptText.length} chars`);
+    const rec = await generateDiscoveryRec(transcriptText, apiKey);
+
+    if (!rec) {
+      return res.status(500).json({ message: "Errore durante la generazione della REC" });
+    }
+
+    await db.update(clientSalesConversations)
+      .set({ discoveryRec: rec })
+      .where(eq(clientSalesConversations.id, conversationId));
+
+    console.log(`[TrainingAPI] REC generated and saved for conversation ${conversationId}`);
+
+    res.json({ 
+      success: true, 
+      discoveryRec: rec,
+      message: "REC generata con successo" 
+    });
+
+  } catch (error: any) {
+    console.error(`[TrainingAPI] POST generate-rec error:`, error);
+    res.status(500).json({
+      message: "Errore durante la generazione della REC",
       error: error.message
     });
   }
