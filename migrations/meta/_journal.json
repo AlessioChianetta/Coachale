@@ -169,6 +169,13 @@
       "when": 1764495586574,
       "tag": "0023_supreme_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1764532829568,
+      "tag": "0024_aromatic_layla_miller",
+      "breakpoints": true
     }
   ]
 }

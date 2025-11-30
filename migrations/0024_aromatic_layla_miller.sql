@@ -1,0 +1,1 @@
+ALTER TABLE "client_sales_agents" ADD COLUMN "voice_name" varchar(50) DEFAULT 'achernar';

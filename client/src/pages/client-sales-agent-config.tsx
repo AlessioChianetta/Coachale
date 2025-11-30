@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getAuthHeaders } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/sidebar';
@@ -40,6 +41,7 @@ interface SalesAgent {
   businessName: string;
   businessDescription: string | null;
   consultantBio: string | null;
+  voiceName: string | null;
   vision: string | null;
   mission: string | null;
   values: string[];
@@ -73,6 +75,18 @@ interface MagicButtonState {
   extractedData: any | null;
 }
 
+const AVAILABLE_VOICES = [
+  { value: 'achernar', label: 'Achernar (Italiano)', description: 'Voce italiana femminile' },
+  { value: 'puck', label: 'Puck', description: 'Default Gemini' },
+  { value: 'charon', label: 'Charon', description: 'Voce maschile profonda' },
+  { value: 'kore', label: 'Kore', description: 'Voce femminile naturale' },
+  { value: 'fenrir', label: 'Fenrir', description: 'Voce maschile energica' },
+  { value: 'aoede', label: 'Aoede', description: 'Voce femminile melodica' },
+  { value: 'leda', label: 'Leda', description: 'Voce femminile chiara' },
+  { value: 'orus', label: 'Orus', description: 'Voce maschile calma' },
+  { value: 'zephyr', label: 'Zephyr', description: 'Voce neutra leggera' },
+];
+
 export default function ClientSalesAgentConfig() {
   const { agentId } = useParams<{ agentId: string }>();
   const [, setLocation] = useLocation();
@@ -97,6 +111,7 @@ export default function ClientSalesAgentConfig() {
     businessName: '',
     businessDescription: '',
     consultantBio: '',
+    voiceName: 'achernar',
     vision: '',
     mission: '',
     values: [],
@@ -433,6 +448,27 @@ export default function ClientSalesAgentConfig() {
                   value={formData.displayName || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
                 />
+              </div>
+              <div>
+                <Label htmlFor="voiceName">Voce Agente</Label>
+                <Select
+                  value={formData.voiceName || 'achernar'}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, voiceName: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona una voce" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AVAILABLE_VOICES.map(voice => (
+                      <SelectItem key={voice.value} value={voice.value}>
+                        {voice.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-gray-500 mt-1">
+                  La voce che userà l'agente durante le conversazioni
+                </p>
               </div>
             </div>
 
