@@ -1,12 +1,18 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 🎭 ARCHETYPE PLAYBOOKS - Strategie di vendita per archetipo
+// 🎭 ARCHETYPE PLAYBOOKS - Feedback SOLO sul TONO per archetipo
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Ogni playbook contiene:
 // 1. filler: Risposta immediata (0ms) mentre il Manager pensa
 // 2. ttsParams: Parametri per Text-To-Speech (velocità, stabilità)
-// 3. instruction: Template istruzione per l'Agent
-// 4. techniques: Tecniche di vendita da usare
+// 3. instruction: Feedback SOLO sul TONO (energia, voce, ritmo, stile)
+//    ⚠️ MAI istruzioni su cosa fare o dove andare nello script!
+// 4. techniques: Tecniche di vendita (per reference)
 // 5. avoid: Cosa NON fare con questo archetipo
+// 
+// 🚨 REGOLA CRITICA: Le instruction contengono SOLO indicazioni su
+// come COMUNICARE (tono, energia, velocità), MAI su cosa CHIEDERE
+// o quando AVANZARE nello script. L'avanzamento è controllato
+// separatamente dal step-advancement-agent.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export type ArchetypeId = 
@@ -32,12 +38,10 @@ export interface ArchetypePlaybook {
   name: string;
   fillers: string[];
   ttsParams: TTSParams;
-  instruction: string;
+  instruction: string;  // 🆕 Ora contiene SOLO feedback sul tono, MAI istruzioni script
   techniques: string[];
   avoid: string[];
   mirroringTips: string;
-  scriptContinuation?: string; // 🆕 Istruzione per continuare lo script
- 
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -170,16 +174,13 @@ export const ARCHETYPE_PLAYBOOKS: Record<ArchetypeId, ArchetypePlaybook> = {
     name: 'Scettico',
     fillers: ['Mmh, capisco...', 'Interessante punto...', 'Capisco la tua posizione...'],
     ttsParams: { speed: 0.95, stability: 0.7 },
-    instruction: `[SKEPTIC] Tono DISTACCATO e professionale. NON fare l'amicone. NON difendere il prodotto.
-Usa NEGATIVE REVERSE SELLING: "Sembra che tu abbia già provato soluzioni che non hanno funzionato. Cosa esattamente ti ha deluso?"
-Se insiste con scetticismo: "Forse hai ragione, forse non fa per te. Ma lasciami capire: cosa dovrebbe avere una soluzione per convincerti?"
-NON cercare di convincerlo - lascia che si convinca da solo.`,
+    instruction: `🎭 TONO: Scettico
+🎤 Energia: MEDIA | Ritmo: LENTO
+🗣️ Voce: Calmo, sicuro, leggermente distaccato
+🪞 Stile: Professionale e non difensivo. Pause più lunghe. Non riempire i silenzi.`,
     techniques: ['Negative Reverse Selling', 'Frame Control', 'Pattern Interrupt'],
     avoid: ['Essere troppo entusiasta', 'Difendere il prodotto', 'Fare promesse', 'Essere insistente'],
-    mirroringTips: 'Tono calmo, sicuro, leggermente distaccato. Pause più lunghe. Non riempire i silenzi.',
-    scriptContinuation: `⚠️ IMPORTANTE: Non restare bloccato! Anche se è scettico, CONTINUA A SEGUIRE LO SCRIPT.
-Riconosci brevemente le sue obiezioni, poi avanza: "Capisco il tuo punto. Lasciami farti un'altra domanda..."
-L'obiettivo NON è convincerlo, ma raccogliere informazioni. Procedi con le domande dello script.`
+    mirroringTips: 'Tono calmo, sicuro, leggermente distaccato. Pause più lunghe. Non riempire i silenzi.'
   },
 
   busy: {
@@ -188,14 +189,13 @@ L'obiettivo NON è convincerlo, ma raccogliere informazioni. Procedi con le doma
     name: 'Frettoloso',
     fillers: ['Ok!', 'Sì!', 'Allora...', 'Subito!'],
     ttsParams: { speed: 1.3, stability: 0.5 },
-    instruction: `[BUSY] Vai DRITTO al punto. ZERO convenevoli. Risposte BREVI.
-BLUF (Bottom Line Up Front): "In 30 secondi: aiutiamo [X] a ottenere [Y]. Due domande veloci e ti dico se fa per te."
-Se interrompe: "Perfetto, vado al sodo: [punto chiave]"
-MAX 2-3 frasi per risposta.`,
+    instruction: `🎭 TONO: Frettoloso
+🎤 Energia: ALTA | Ritmo: VELOCE
+🗣️ Voce: Diretto, conciso, rispettoso del tempo
+🪞 Stile: Risposte brevi e incisive. Zero convenevoli. Vai al punto.`,
     techniques: ['BLUF', 'Rispetto del tempo', 'Sintesi estrema'],
     avoid: ['Divagare', 'Storie lunghe', 'Dettagli non richiesti', 'Ripetizioni'],
-    mirroringTips: 'Parla veloce, tono energico, frasi corte. Vai al punto immediatamente ma senza saltare le fasi.',
-    
+    mirroringTips: 'Parla veloce, tono energico, frasi corte. Vai al punto immediatamente.'
   },
 
   price_focused: {
@@ -204,10 +204,10 @@ MAX 2-3 frasi per risposta.`,
     name: 'Focus Prezzo',
     fillers: ['Capisco...', 'Certo...', 'Giusto...'],
     ttsParams: { speed: 1.0, stability: 0.6 },
-    instruction: `[PRICE] NON difendere il prezzo. NON giustificare. Fai REFRAME sul costo dell'inazione.
-"Prima di parlare di numeri: quanto ti sta costando NON risolvere questo problema ogni mese?"
-"Capisco che il budget sia importante. Aiutami a capire: se avessi la soluzione perfetta, quale valore economico avrebbe per te?"
-Mai dire "è un investimento" o "costa poco" - lascia che calcoli lui il valore.`,
+    instruction: `🎭 TONO: Focus Prezzo
+🎤 Energia: MEDIA | Ritmo: MODERATO
+🗣️ Voce: Calmo, razionale, non emotivo
+🪞 Stile: Parla di numeri e valore. Tono business-like.`,
     techniques: ['Cost of Inaction', 'Value Reframe', 'ROI Discussion'],
     avoid: ['Difendere il prezzo', 'Offrire sconti subito', 'Dire "è economico"', 'Giustificarsi'],
     mirroringTips: 'Tono calmo e razionale. Non emotivo. Parla di numeri e valore.'
@@ -219,10 +219,10 @@ Mai dire "è un investimento" o "costa poco" - lascia che calcoli lui il valore.
     name: 'Tecnico',
     fillers: ['Ottima domanda...', 'Buon punto tecnico...', 'Interessante...'],
     ttsParams: { speed: 1.0, stability: 0.7 },
-    instruction: `[TECHNICAL] Usa gergo tecnico appropriato. NIENTE marketing fluff.
-Parla di dati, metriche, processi: "Il nostro metodo si basa su [framework/metodologia]. In pratica: step 1 [X], step 2 [Y], risultato [Z]."
-Se non sai un dettaglio tecnico: "Ottima domanda, su quello specifico ti faccio avere la documentazione tecnica."
-Sii preciso e specifico.`,
+    instruction: `🎭 TONO: Tecnico
+🎤 Energia: MEDIA | Ritmo: MODERATO
+🗣️ Voce: Professionale, preciso, metodico
+🪞 Stile: Usa terminologia appropriata. Sii strutturato e logico.`,
     techniques: ['Technical Depth', 'Process Clarity', 'Data-driven Arguments'],
     avoid: ['Marketing speak', 'Promesse vaghe', 'Generalizzazioni', 'Evitare domande tecniche'],
     mirroringTips: 'Tono professionale, preciso. Usa terminologia tecnica. Sii metodico.'
@@ -234,10 +234,10 @@ Sii preciso e specifico.`,
     name: 'Entusiasta',
     fillers: ['Fantastico!', 'Evvai!', 'Super interessante!', 'Bellissimo!'],
     ttsParams: { speed: 1.2, stability: 0.4 },
-    instruction: `[ENTHUSIAST] Cavalca l'entusiasmo ma GUIDA verso il closing.
-"Fantastico che ti piaccia! Cosa ti ha colpito di più?"
-NON perdere tempo - l'entusiasmo può svanire. Porta verso la decisione:
-"Vedo che ci siamo capiti! Allora facciamo così: [prossimo step concreto]"`,
+    instruction: `🎭 TONO: Entusiasta
+🎤 Energia: ALTA | Ritmo: VELOCE
+🗣️ Voce: Energico, vivace, entusiasta
+🪞 Stile: Match l'energia positiva. Voce alta, ritmo veloce.`,
     techniques: ['Momentum Building', 'Assumptive Close', 'Enthusiasm Matching'],
     avoid: ['Raffreddare l\'entusiasmo', 'Troppi dettagli', 'Rallentare', 'Dubbi non richiesti'],
     mirroringTips: 'Tono energico, vivace! Voce alta, ritmo veloce. Match l\'energia positiva.'
@@ -249,10 +249,10 @@ NON perdere tempo - l'entusiasmo può svanire. Porta verso la decisione:
     name: 'Indeciso',
     fillers: ['Sì, capisco...', 'È normale avere dubbi...', 'Comprendo...'],
     ttsParams: { speed: 0.95, stability: 0.65 },
-    instruction: `[INDECISIVE] NON spingerlo a decidere - aumenteresti la paralisi.
-Riduci le opzioni: "Semplifico: hai due strade. A oppure B. Quale senti più tua?"
-Dai sicurezza: "Molti clienti avevano gli stessi dubbi. Poi hanno scoperto che [risultato]."
-Togli pressione: "Non devi decidere oggi. Ma dimmi: cosa ti aiuterebbe a sentirti più sicuro?"`,
+    instruction: `🎭 TONO: Indeciso
+🎤 Energia: BASSA | Ritmo: LENTO
+🗣️ Voce: Rassicurante, calmo, paziente
+🪞 Stile: Dai tempo. Non riempire i silenzi. Sii paziente.`,
     techniques: ['Choice Reduction', 'Social Proof', 'Fear Removal'],
     avoid: ['Pressare', 'Troppe opzioni', 'Urgenza artificiale', 'Forzare decisioni'],
     mirroringTips: 'Tono rassicurante, calmo, paziente. Dai tempo. Non riempire i silenzi.'
@@ -264,16 +264,13 @@ Togli pressione: "Non devi decidere oggi. Ma dimmi: cosa ti aiuterebbe a sentirt
     name: 'Difensivo',
     fillers: ['Capisco perfettamente...', 'Hai ragione a essere cauto...', 'Comprendo...'],
     ttsParams: { speed: 0.9, stability: 0.7 },
-    instruction: `[DEFENSIVE] Prima VALIDA le sue paure, poi costruisci fiducia lentamente.
-"Hai assolutamente ragione a essere cauto. Anch'io al tuo posto lo sarei dopo un'esperienza del genere."
-NON vendere - informa: "Non ti chiedo di fidarti. Ti chiedo solo di valutare i fatti."
-Offri controllo: "Sei tu che decidi. Nessuna pressione. Cosa vorresti sapere per sentirti più tranquillo?"`,
+    instruction: `🎭 TONO: Difensivo
+🎤 Energia: BASSA | Ritmo: LENTO
+🗣️ Voce: Molto calmo, basso, rassicurante
+🪞 Stile: Movimenti lenti. Zero aggressività. Rispetta i suoi confini.`,
     techniques: ['Fear Validation', 'Control Giving', 'Transparency'],
     avoid: ['Minimizzare paure', 'Essere aggressivo', 'Promesse eccessive', 'Pressione'],
-    mirroringTips: 'Tono molto calmo, basso, rassicurante. Movimenti lenti. Zero aggressività.',
-    scriptContinuation: `⚠️ IMPORTANTE: Valida le sue paure MA poi CONTINUA LO SCRIPT.
-Dopo ogni validazione, guida la conversazione: "Capisco. Detto questo, mi permetti di farti una domanda?"
-Non restare in loop sulla rassicurazione - avanza raccogliendo informazioni.`
+    mirroringTips: 'Tono molto calmo, basso, rassicurante. Movimenti lenti. Zero aggressività.'
   },
 
   analytical: {
@@ -282,10 +279,10 @@ Non restare in loop sulla rassicurazione - avanza raccogliendo informazioni.`
     name: 'Analitico',
     fillers: ['Ottima osservazione...', 'Buon punto...', 'Interessante analisi...'],
     ttsParams: { speed: 1.0, stability: 0.7 },
-    instruction: `[ANALYTICAL] Porta DATI, non opinioni. Numeri reali, case study con metriche.
-"Ti porto i dati: cliente X, situazione simile alla tua, risultato Y in Z mesi. Ecco le metriche..."
-Se non hai dati precisi: "Non ho il numero esatto qui, ma posso farti avere il report dettagliato."
-Sii metodico e strutturato nella presentazione.`,
+    instruction: `🎭 TONO: Analitico
+🎤 Energia: MEDIA | Ritmo: MODERATO
+🗣️ Voce: Razionale, calmo, strutturato
+🪞 Stile: Presenta informazioni in modo logico e ordinato.`,
     techniques: ['Data Presentation', 'Logical Flow', 'Evidence-based Arguments'],
     avoid: ['Opinioni non supportate', 'Entusiasmo eccessivo', 'Promesse senza dati', 'Fretta'],
     mirroringTips: 'Tono razionale, calmo. Presenta informazioni in modo strutturato e logico.'
@@ -297,10 +294,10 @@ Sii metodico e strutturato nella presentazione.`,
     name: 'Decision Maker',
     fillers: ['Assolutamente...', 'Certamente...', 'Perfetto...'],
     ttsParams: { speed: 1.1, stability: 0.55 },
-    instruction: `[DECISION_MAKER] Parla di VALORE STRATEGICO, non di feature.
-"A livello strategico, questo impatta [area business] perché [motivo]."
-Sii diretto e rispetta il suo tempo. Porta il quadro generale, non i dettagli operativi.
-"I tuoi competitor stanno già [X]. La domanda è: vuoi essere leader o follower?"`,
+    instruction: `🎭 TONO: Decision Maker
+🎤 Energia: ALTA | Ritmo: MODERATO
+🗣️ Voce: Sicuro, autorevole, diretto
+🪞 Stile: Parla da pari a pari. Sii conciso e rispetta il suo ruolo.`,
     techniques: ['Strategic Framing', 'Competitive Positioning', 'Big Picture'],
     avoid: ['Dettagli operativi', 'Tecnicismi', 'Perdere tempo', 'Essere indeciso'],
     mirroringTips: 'Tono sicuro, autorevole. Parla da pari a pari. Sii conciso e diretto.'
@@ -312,9 +309,10 @@ Sii diretto e rispetta il suo tempo. Porta il quadro generale, non i dettagli op
     name: 'Neutro',
     fillers: ['Sì...', 'Capisco...', 'Ok...'],
     ttsParams: { speed: 1.05, stability: 0.55 },
-    instruction: `[NEUTRAL] Segui lo script normale. Cerca di capire meglio chi hai davanti.
-Fai domande aperte per far emergere la personalità: "Cosa ti ha portato a questa chiamata oggi?"
-Osserva le reazioni per identificare l'archetipo reale.`,
+    instruction: `🎭 TONO: Neutro
+🎤 Energia: MEDIA | Ritmo: MODERATO
+🗣️ Voce: Equilibrato, professionale, adattabile
+🪞 Stile: Tono standard. Osserva e adattati man mano.`,
     techniques: ['Active Listening', 'Open Questions', 'Observation'],
     avoid: ['Assumere un archetipo senza segnali', 'Essere robotico'],
     mirroringTips: 'Tono equilibrato, professionale. Adattati man mano che capisci meglio.'
