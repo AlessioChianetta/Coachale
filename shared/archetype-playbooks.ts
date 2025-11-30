@@ -322,6 +322,147 @@ Osserva le reazioni per identificare l'archetipo reale.`,
 };
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🆕 TONE-ONLY INSTRUCTIONS (Nessuna istruzione script!)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Questi template contengono SOLO indicazioni su:
+// - Tono vocale
+// - Energia
+// - Stile comunicativo
+// MAI istruzioni su cosa chiedere o dove andare nello script!
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+export interface ToneOnlyInstruction {
+  archetype: ArchetypeId;
+  emoji: string;
+  name: string;
+  voiceEnergy: 'BASSA' | 'MEDIA' | 'ALTA';
+  voicePace: 'LENTO' | 'MODERATO' | 'VELOCE';
+  voiceTone: string;
+  communicationStyle: string;
+  emotionalCue: string;
+}
+
+export const TONE_ONLY_INSTRUCTIONS: Record<ArchetypeId, ToneOnlyInstruction> = {
+  skeptic: {
+    archetype: 'skeptic',
+    emoji: '🤨',
+    name: 'Scettico',
+    voiceEnergy: 'MEDIA',
+    voicePace: 'LENTO',
+    voiceTone: 'Calmo, sicuro, leggermente distaccato',
+    communicationStyle: 'Professionale e non difensivo. Pause più lunghe. Non riempire i silenzi.',
+    emotionalCue: 'Trasmetti sicurezza tranquilla, non cercare approvazione'
+  },
+  
+  enthusiast: {
+    archetype: 'enthusiast',
+    emoji: '😊',
+    name: 'Entusiasta',
+    voiceEnergy: 'ALTA',
+    voicePace: 'VELOCE',
+    voiceTone: 'Energico, vivace, entusiasta',
+    communicationStyle: 'Match l\'energia positiva. Voce alta, ritmo veloce.',
+    emotionalCue: 'Trasmetti entusiasmo genuino, condividi la positività'
+  },
+  
+  busy: {
+    archetype: 'busy',
+    emoji: '⏰',
+    name: 'Frettoloso',
+    voiceEnergy: 'ALTA',
+    voicePace: 'VELOCE',
+    voiceTone: 'Diretto, conciso, rispettoso del tempo',
+    communicationStyle: 'Risposte brevi e incisive. Zero convenevoli. Vai al punto.',
+    emotionalCue: 'Trasmetti efficienza e rispetto per il suo tempo'
+  },
+  
+  price_focused: {
+    archetype: 'price_focused',
+    emoji: '💰',
+    name: 'Focus Prezzo',
+    voiceEnergy: 'MEDIA',
+    voicePace: 'MODERATO',
+    voiceTone: 'Calmo, razionale, non emotivo',
+    communicationStyle: 'Parla di numeri e valore. Tono business-like.',
+    emotionalCue: 'Trasmetti competenza e comprensione delle sue priorità economiche'
+  },
+  
+  technical: {
+    archetype: 'technical',
+    emoji: '🔧',
+    name: 'Tecnico',
+    voiceEnergy: 'MEDIA',
+    voicePace: 'MODERATO',
+    voiceTone: 'Professionale, preciso, metodico',
+    communicationStyle: 'Usa terminologia appropriata. Sii strutturato e logico.',
+    emotionalCue: 'Trasmetti competenza tecnica e precisione'
+  },
+  
+  indecisive: {
+    archetype: 'indecisive',
+    emoji: '🤔',
+    name: 'Indeciso',
+    voiceEnergy: 'BASSA',
+    voicePace: 'LENTO',
+    voiceTone: 'Rassicurante, calmo, paziente',
+    communicationStyle: 'Dai tempo. Non riempire i silenzi. Sii paziente.',
+    emotionalCue: 'Trasmetti tranquillità e assenza di pressione'
+  },
+  
+  defensive: {
+    archetype: 'defensive',
+    emoji: '🛡️',
+    name: 'Difensivo',
+    voiceEnergy: 'BASSA',
+    voicePace: 'LENTO',
+    voiceTone: 'Molto calmo, basso, rassicurante',
+    communicationStyle: 'Movimenti lenti. Zero aggressività. Rispetta i suoi confini.',
+    emotionalCue: 'Trasmetti sicurezza e rispetto, non minaccia'
+  },
+  
+  analytical: {
+    archetype: 'analytical',
+    emoji: '📊',
+    name: 'Analitico',
+    voiceEnergy: 'MEDIA',
+    voicePace: 'MODERATO',
+    voiceTone: 'Razionale, calmo, strutturato',
+    communicationStyle: 'Presenta informazioni in modo logico e ordinato.',
+    emotionalCue: 'Trasmetti competenza e approccio basato sui fatti'
+  },
+  
+  decision_maker: {
+    archetype: 'decision_maker',
+    emoji: '🎯',
+    name: 'Decision Maker',
+    voiceEnergy: 'ALTA',
+    voicePace: 'MODERATO',
+    voiceTone: 'Sicuro, autorevole, diretto',
+    communicationStyle: 'Parla da pari a pari. Sii conciso e rispetta il suo ruolo.',
+    emotionalCue: 'Trasmetti autorevolezza e visione strategica'
+  },
+  
+  neutral: {
+    archetype: 'neutral',
+    emoji: '😐',
+    name: 'Neutro',
+    voiceEnergy: 'MEDIA',
+    voicePace: 'MODERATO',
+    voiceTone: 'Equilibrato, professionale, adattabile',
+    communicationStyle: 'Tono standard. Osserva e adattati man mano.',
+    emotionalCue: 'Trasmetti professionalità e apertura'
+  }
+};
+
+export function getToneOnlyFeedback(archetype: ArchetypeId): string {
+  const tone = TONE_ONLY_INSTRUCTIONS[archetype];
+  return `🎭 TONO: ${tone.name}
+🎤 Energia: ${tone.voiceEnergy} | Ritmo: ${tone.voicePace}
+🗣️ Voce: ${tone.voiceTone}
+🪞 Stile: ${tone.communicationStyle}`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // ANTI-PATTERN DEFINITIONS
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
