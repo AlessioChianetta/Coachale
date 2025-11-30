@@ -560,7 +560,8 @@ function updateArchetypeState(
     lastSignalType: null,
     regexSignals: [],
     aiIntuition: null,
-    lastInjectionTurn: 0  // 🆕 Inizializza a 0 per permettere prima iniezione
+    lastInjectionTurn: 0,
+    lastInjectedArchetype: null  // 🆕 Per evitare ripetizioni feedback
   };
   
   if (!currentState) {
@@ -629,7 +630,8 @@ function updateArchetypeState(
       lastSignalType: detectedArchetype,
       regexSignals: regexSignals.map(s => s.archetype),
       aiIntuition,
-      lastInjectionTurn: currentState.lastInjectionTurn  // 🆕 Preserva il valore
+      lastInjectionTurn: currentState.lastInjectionTurn,
+      lastInjectedArchetype: currentState.lastInjectedArchetype  // 🆕 Preserva per evitare ripetizioni
     };
   }
   
@@ -641,7 +643,8 @@ function updateArchetypeState(
     lastSignalType: detectedArchetype !== 'neutral' ? detectedArchetype : currentState.lastSignalType,
     regexSignals: regexSignals.map(s => s.archetype),
     aiIntuition,
-    lastInjectionTurn: currentState.lastInjectionTurn  // 🆕 Preserva il valore
+    lastInjectionTurn: currentState.lastInjectionTurn,
+    lastInjectedArchetype: currentState.lastInjectedArchetype  // 🆕 Preserva per evitare ripetizioni
   };
 }
 
@@ -1054,17 +1057,19 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     const analysisTimeMs = Date.now() - startTime;
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 🎭 STICKY ARCHETYPE: Inietta solo ogni 5 turni (non ad ogni messaggio!)
+    // 🎭 TONE-ONLY FEEDBACK: Inietta SOLO quando archetipo CAMBIA
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // Regole:
+    // Regole FIX:
     // 1. AntiPattern critico → inietta SEMPRE (priorità massima)
-    // 2. Archetype → inietta solo ogni 5 turni O se appena cambiato
-    // 3. Evita di confondere l'agente con troppi feedback archetipo
+    // 2. Archetype → inietta SOLO SE è CAMBIATO rispetto all'ultimo iniettato
+    // 3. NON iniettare periodicamente se è lo stesso archetipo!
+    // 4. Il feedback contiene SOLO indicazioni sul TONO, MAI istruzioni script
     
-    const INJECTION_INTERVAL = 5;  // Inietta ogni 5 turni
     const archetypeJustChanged = updatedArchetypeState.turnsSinceUpdate === 0;
-    const turnsSinceLastInjection = currentTurn - (updatedArchetypeState.lastInjectionTurn || 0);
-    const shouldInjectArchetype = (turnsSinceLastInjection >= INJECTION_INTERVAL) || archetypeJustChanged;
+    const isDifferentFromLastInjected = updatedArchetypeState.current !== (updatedArchetypeState.lastInjectedArchetype || 'neutral');
+    
+    // 🆕 FIX: Inietta SOLO SE archetipo è cambiato O è diverso dall'ultimo iniettato
+    const shouldInjectArchetype = archetypeJustChanged || isDifferentFromLastInjected;
     
     if (antiPatternDetected && antiPatternDetected.priority === 'critical') {
       feedbackForAgent = {
@@ -1078,14 +1083,15 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       const archetypeTag = formatArchetypeTag(updatedArchetypeState.current);
       const existingMessage = feedbackForAgent?.message || '';
       
-      // 🆕 PROFILING solo ogni 5 turni - non confondere l'agente
+      // 🆕 Feedback SOLO-TONO (nessuna istruzione script!)
       const profilingHeader = `🎭 ARCHETIPO: ${archetypeTag}
 ${archetypeInstruction.instruction}`;
       
-      console.log(`   📢 ARCHETYPE INJECTION at turn ${currentTurn} (${archetypeJustChanged ? 'just changed' : `periodic refresh after ${turnsSinceLastInjection} turns`})`);
+      console.log(`   📢 ARCHETYPE INJECTION at turn ${currentTurn} (${archetypeJustChanged ? 'archetype just changed' : `different from last injected (${updatedArchetypeState.lastInjectedArchetype || 'none'})`})`);
       
-      // 🆕 Aggiorna lastInjectionTurn DOPO l'iniezione
+      // 🆕 Aggiorna tracking dopo iniezione
       updatedArchetypeState.lastInjectionTurn = currentTurn;
+      updatedArchetypeState.lastInjectedArchetype = updatedArchetypeState.current;  // 🆕 Traccia quale archetipo è stato iniettato
       
       if (feedbackForAgent) {
         feedbackForAgent.message = `${existingMessage}\n\n${profilingHeader}`;
@@ -1100,8 +1106,8 @@ ${archetypeInstruction.instruction}`;
         };
       }
     } else if (updatedArchetypeState.current !== 'neutral') {
-      const nextInjectionTurn = (updatedArchetypeState.lastInjectionTurn || 0) + INJECTION_INTERVAL;
-      console.log(`   🔇 ARCHETYPE SKIPPED at turn ${currentTurn} (next injection at turn ${nextInjectionTurn}, in ${nextInjectionTurn - currentTurn} turns)`);
+      // 🆕 Log: stesso archetipo già iniettato, skip
+      console.log(`   🔇 ARCHETYPE SKIPPED at turn ${currentTurn} (stesso archetipo "${updatedArchetypeState.current}" già iniettato)`);
     }
     
     console.log(`\n🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
