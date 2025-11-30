@@ -625,11 +625,20 @@ router.get(
         return res.status(403).json({ message: 'Access denied' });
       }
 
+      // Verifica transcript - potrebbe essere array o string
+      const transcriptData = conversation[0].fullTranscript;
+      let transcriptStr = '';
+      if (Array.isArray(transcriptData)) {
+        transcriptStr = JSON.stringify(transcriptData);
+      } else if (typeof transcriptData === 'string') {
+        transcriptStr = transcriptData;
+      }
+      
       // Ritorna il REC (potrebbe essere null)
       res.json({
         conversationId: conversation[0].id,
         discoveryRec: conversation[0].discoveryRec,
-        hasTranscript: !!conversation[0].fullTranscript && conversation[0].fullTranscript.length > 100,
+        hasTranscript: transcriptStr.length > 100,
         createdAt: conversation[0].createdAt?.toISOString(),
       });
 

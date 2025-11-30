@@ -221,7 +221,8 @@ ${rec.noteAggiuntive || 'Nessuna'}
                 variant="outline"
                 size="sm"
                 onClick={() => generateMutation.mutate()}
-                disabled={generateMutation.isPending || !hasTranscript}
+                disabled={generateMutation.isPending}
+                title={!hasTranscript ? 'La trascrizione potrebbe non essere disponibile' : ''}
                 className="h-8"
               >
                 {generateMutation.isPending ? (
