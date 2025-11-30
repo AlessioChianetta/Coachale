@@ -15,10 +15,17 @@ import {
   AlertCircle,
   Loader2,
   ChevronRight,
+  ChevronDown,
   Users,
   FileText,
   CheckCircle2,
   Library,
+  Brain,
+  AlertTriangle,
+  XCircle,
+  TrendingUp,
+  Volume2,
+  ShoppingCart,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,6 +40,7 @@ import {
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { getAuthHeaders } from '@/lib/auth';
 import { PROSPECT_PERSONAS, type ProspectPersona } from '@shared/prospect-personas';
 
@@ -80,6 +88,58 @@ interface TranscriptMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+}
+
+interface SalesManagerAnalysisData {
+  timestamp: string;
+  stepAdvancement: {
+    shouldAdvance: boolean;
+    nextPhaseId: string | null;
+    nextStepId: string | null;
+    confidence: number;
+    reasoning: string;
+  };
+  checkpointStatus: {
+    checkpointId: string;
+    checkpointName: string;
+    isComplete: boolean;
+    completedItems: string[];
+    missingItems: string[];
+    canAdvance: boolean;
+  } | null;
+  buySignals: {
+    detected: boolean;
+    signals: Array<{
+      type: string;
+      phrase: string;
+      confidence: number;
+    }>;
+  };
+  objections: {
+    detected: boolean;
+    objections: Array<{
+      type: string;
+      phrase: string;
+    }>;
+  };
+  toneAnalysis: {
+    isRobotic: boolean;
+    energyMismatch: boolean;
+    issues: string[];
+  };
+  feedbackForAgent: {
+    shouldInject: boolean;
+    priority: string;
+    type: string;
+    message: string;
+    toneReminder?: string;
+  } | null;
+  currentPhase: {
+    id: string;
+    name: string;
+    stepName: string;
+  };
+  analysisTimeMs: number;
 }
 
 type ResponseSpeed = 'fast' | 'normal' | 'slow' | 'disabled';
@@ -160,6 +220,21 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
     },
     enabled: !!observeSessionId,
     refetchInterval: observeSessionId ? 2000 : false,
+  });
+
+  const { data: managerAnalysis, isLoading: managerAnalysisLoading, isError: managerAnalysisError } = useQuery<SalesManagerAnalysisData | null>({
+    queryKey: [`/api/ai-trainer/session/${observeSessionId}/manager-analysis`],
+    queryFn: async () => {
+      if (!observeSessionId) return null;
+      const response = await fetch(`/api/ai-trainer/session/${observeSessionId}/manager-analysis`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data;
+    },
+    enabled: !!observeSessionId,
+    refetchInterval: observeSessionId ? 3000 : false,
   });
 
   const startSessionMutation = useMutation({
@@ -735,49 +810,314 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
 
       {/* Observe Modal */}
       <Dialog open={!!observeSessionId} onOpenChange={() => setObserveSessionId(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="max-w-5xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              Osserva Conversazione
+              Osserva Sessione di Training
             </DialogTitle>
             <DialogDescription>
-              Transcript in tempo reale della conversazione tra AI Prospect e Sales Agent
+              Visualizza transcript e analisi del Sales Manager AI in tempo reale
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[60vh] pr-4">
-            <div className="space-y-4">
-              {transcript.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
-                  <p>In attesa di messaggi...</p>
-                </div>
-              ) : (
-                transcript.map((msg, i) => (
-                  <div
-                    key={i}
-                    className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
-                        msg.role === 'user'
-                          ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
-                          : 'bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100'
-                      }`}
-                    >
-                      <div className="text-xs font-semibold mb-1">
-                        {msg.role === 'user' ? '🧑 Prospect AI' : '🤖 Sales Agent'}
-                      </div>
-                      <p className="text-sm">{msg.content}</p>
-                      <div className="text-xs opacity-60 mt-1">
-                        {new Date(msg.timestamp).toLocaleTimeString('it-IT')}
-                      </div>
+          
+          <Tabs defaultValue="conversation" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="conversation" className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                Conversazione
+              </TabsTrigger>
+              <TabsTrigger value="manager" className="flex items-center gap-2">
+                <Brain className="h-4 w-4" />
+                Manager AI
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="conversation" className="mt-4">
+              <ScrollArea className="h-[60vh] pr-4">
+                <div className="space-y-4">
+                  {transcript.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
+                      <p>In attesa di messaggi...</p>
                     </div>
+                  ) : (
+                    transcript.map((msg, i) => (
+                      <div
+                        key={i}
+                        className={`flex ${msg.role === 'user' ? 'justify-start' : 'justify-end'}`}
+                      >
+                        <div
+                          className={`max-w-[80%] p-3 rounded-lg ${
+                            msg.role === 'user'
+                              ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                              : 'bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-100'
+                          }`}
+                        >
+                          <div className="text-xs font-semibold mb-1">
+                            {msg.role === 'user' ? '🧑 Prospect AI' : '🤖 Sales Agent'}
+                          </div>
+                          <p className="text-sm">{msg.content}</p>
+                          <div className="text-xs opacity-60 mt-1">
+                            {new Date(msg.timestamp).toLocaleTimeString('it-IT')}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            
+            <TabsContent value="manager" className="mt-4">
+              <ScrollArea className="h-[60vh] pr-4">
+                {managerAnalysisLoading ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
+                    <p>Caricamento analisi Manager...</p>
                   </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
+                ) : managerAnalysisError ? (
+                  <div className="text-center py-12">
+                    <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
+                    <p className="text-red-600 dark:text-red-400">Impossibile caricare l'analisi del Manager</p>
+                  </div>
+                ) : !managerAnalysis ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nessuna analisi disponibile ancora</p>
+                    <p className="text-sm mt-2">L'analisi apparirà dopo il primo scambio di messaggi</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Current State - Always Visible */}
+                    <Card className="border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                          <Target className="h-4 w-4 text-purple-600" />
+                          Stato Corrente
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Fase / Step:</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{managerAnalysis.currentPhase?.name || 'N/A'}</Badge>
+                            <ChevronRight className="h-3 w-3 text-gray-400" />
+                            <Badge variant="secondary">{managerAnalysis.currentPhase?.stepName || 'N/A'}</Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Confidence:</span>
+                          <div className="flex items-center gap-2">
+                            <Progress value={(managerAnalysis.stepAdvancement?.confidence || 0) * 100} className="w-24 h-2" />
+                            <span className="text-sm font-medium">{Math.round((managerAnalysis.stepAdvancement?.confidence || 0) * 100)}%</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Avanzamento:</span>
+                          <Badge className={managerAnalysis.stepAdvancement?.shouldAdvance 
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                            : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                          }>
+                            {managerAnalysis.stepAdvancement?.shouldAdvance ? '✓ Pronto' : '✗ Non Pronto'}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-gray-500 text-right">
+                          Analisi in {managerAnalysis.analysisTimeMs}ms
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Reasoning Section */}
+                    <Collapsible defaultOpen>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <Brain className="h-4 w-4 text-blue-600" />
+                          <span className="font-medium text-sm">Reasoning</span>
+                        </div>
+                        <ChevronDown className="h-4 w-4 text-gray-500 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <Card className="bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                          <CardContent className="pt-4">
+                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                              {managerAnalysis.stepAdvancement?.reasoning || 'Nessun reasoning disponibile'}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      </CollapsibleContent>
+                    </Collapsible>
+
+                    {/* Checkpoint Status */}
+                    {managerAnalysis.checkpointStatus && (
+                      <Collapsible defaultOpen>
+                        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-orange-600" />
+                            <span className="font-medium text-sm">Checkpoint: {managerAnalysis.checkpointStatus.checkpointName}</span>
+                          </div>
+                          <Badge className={managerAnalysis.checkpointStatus.isComplete 
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                            : 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+                          }>
+                            {managerAnalysis.checkpointStatus.isComplete ? 'Completo' : 'Incompleto'}
+                          </Badge>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2">
+                          <Card className="bg-orange-50/50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
+                            <CardContent className="pt-4 space-y-3">
+                              {managerAnalysis.checkpointStatus.completedItems?.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-2">Completati:</p>
+                                  <div className="space-y-1">
+                                    {managerAnalysis.checkpointStatus.completedItems.map((item, idx) => (
+                                      <div key={idx} className="flex items-center gap-2 text-sm">
+                                        <CheckCircle className="h-3 w-3 text-green-500" />
+                                        <span className="text-gray-700 dark:text-gray-300">{item}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {managerAnalysis.checkpointStatus.missingItems?.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-2">Mancanti:</p>
+                                  <div className="space-y-1">
+                                    {managerAnalysis.checkpointStatus.missingItems.map((item, idx) => (
+                                      <div key={idx} className="flex items-center gap-2 text-sm">
+                                        <XCircle className="h-3 w-3 text-red-500" />
+                                        <span className="text-gray-700 dark:text-gray-300">{item}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Feedback for Agent */}
+                    {managerAnalysis.feedbackForAgent?.shouldInject && (
+                      <Collapsible defaultOpen>
+                        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-amber-600" />
+                            <span className="font-medium text-sm">Feedback per Agent</span>
+                          </div>
+                          <Badge className={
+                            managerAnalysis.feedbackForAgent.priority === 'critical' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                            managerAnalysis.feedbackForAgent.priority === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' :
+                            managerAnalysis.feedbackForAgent.priority === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                          }>
+                            {managerAnalysis.feedbackForAgent.priority}
+                          </Badge>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2">
+                          <Card className="bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                            <CardContent className="pt-4 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500">Tipo:</span>
+                                <Badge variant="outline">{managerAnalysis.feedbackForAgent.type}</Badge>
+                              </div>
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                {managerAnalysis.feedbackForAgent.message}
+                              </p>
+                              {managerAnalysis.feedbackForAgent.toneReminder && (
+                                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded text-xs text-amber-800 dark:text-amber-200">
+                                  <Volume2 className="h-3 w-3 inline mr-1" />
+                                  {managerAnalysis.feedbackForAgent.toneReminder}
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+
+                    {/* Detected Signals */}
+                    {(managerAnalysis.buySignals?.detected || managerAnalysis.objections?.detected || managerAnalysis.toneAnalysis?.issues?.length > 0) && (
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-teal-600" />
+                            <span className="font-medium text-sm">Segnali Rilevati</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {managerAnalysis.buySignals?.detected && (
+                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">
+                                {managerAnalysis.buySignals.signals?.length || 0} buy
+                              </Badge>
+                            )}
+                            {managerAnalysis.objections?.detected && (
+                              <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 text-xs">
+                                {managerAnalysis.objections.objections?.length || 0} obiezioni
+                              </Badge>
+                            )}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-2">
+                          <Card className="bg-teal-50/50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800">
+                            <CardContent className="pt-4 space-y-4">
+                              {/* Buy Signals */}
+                              {managerAnalysis.buySignals?.signals?.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-2 flex items-center gap-1">
+                                    <ShoppingCart className="h-3 w-3" /> Buy Signals:
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {managerAnalysis.buySignals.signals.map((signal, idx) => (
+                                      <Badge key={idx} className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300" title={signal.phrase}>
+                                        {signal.type} ({Math.round(signal.confidence * 100)}%)
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {/* Objections */}
+                              {managerAnalysis.objections?.objections?.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-red-600 dark:text-red-400 mb-2 flex items-center gap-1">
+                                    <AlertTriangle className="h-3 w-3" /> Obiezioni:
+                                  </p>
+                                  <div className="space-y-1">
+                                    {managerAnalysis.objections.objections.map((obj, idx) => (
+                                      <div key={idx} className="flex items-start gap-2 text-sm">
+                                        <Badge variant="destructive" className="text-xs">{obj.type}</Badge>
+                                        <span className="text-gray-600 dark:text-gray-400 text-xs italic">"{obj.phrase}"</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {/* Tone Issues */}
+                              {managerAnalysis.toneAnalysis?.issues?.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1">
+                                    <Volume2 className="h-3 w-3" /> Problemi di Tono:
+                                  </p>
+                                  <div className="space-y-1">
+                                    {managerAnalysis.toneAnalysis.issues.map((issue, idx) => (
+                                      <div key={idx} className="flex items-center gap-2 text-sm">
+                                        <AlertCircle className="h-3 w-3 text-amber-500" />
+                                        <span className="text-gray-700 dark:text-gray-300">{issue}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>

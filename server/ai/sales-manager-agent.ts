@@ -14,6 +14,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 import { getAIProvider } from "./provider-factory";
+import { StepAdvancementAgent, type CheckpointAnalysisResult } from "./step-advancement-agent";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // TYPES
@@ -368,11 +369,13 @@ export class SalesManagerAgent {
     console.log(`   📍 Current: ${params.currentPhaseId} / ${params.currentStepId || 'N/A'}`);
     console.log(`   💬 Messages: ${params.recentMessages.length}`);
     
-    // 1. Quick local analysis (no AI call needed)
+    // 1. Quick local analysis (no AI call needed) + AI checkpoint validation
     const buySignals = this.detectBuySignals(params.recentMessages);
     const objections = this.detectObjections(params.recentMessages, params.script.objections);
     const toneAnalysis = this.analyzeTone(params.recentMessages, params.currentPhaseEnergy);
-    const checkpointStatus = this.validateCheckpoint(params);
+    
+    // 🆕 CHECKPOINT: Ora usa AI SEMANTIC ANALYSIS invece di keyword matching
+    const checkpointStatus = await this.validateCheckpointWithAI(params);
     // 🆕 Business context per feedback (Gemini decide semanticamente se qualcosa è fuori scope)
     const businessCtx = this.getBusinessContextForFeedback(params.businessContext);
     
@@ -409,14 +412,77 @@ export class SalesManagerAgent {
           `Mantieni tono ${params.currentPhaseEnergy.tone}, energia ${params.currentPhaseEnergy.level}` : undefined
       };
     } else if (buySignals.detected && buySignals.signals.length > 0) {
-      // High priority: buy signal to capitalize
       const topSignal = buySignals.signals[0];
-      feedbackForAgent = {
-        shouldInject: true,
-        priority: 'high',
-        type: 'buy_signal',
-        message: `💰 SEGNALE DI ACQUISTO: "${topSignal.phrase}" (${topSignal.type})\n→ ${topSignal.suggestedAction}`,
-      };
+      
+      // 🆕 PAYMENT GATING LOGIC: Blocca discussioni prezzo se checkpoint incompleti
+      // Se il prospect chiede del prezzo MA i checkpoint non sono completi → BLOCCA
+      if (topSignal.type === 'price_inquiry') {
+        // Verifica se ci sono checkpoint incompleti
+        const hasIncompleteCheckpoint = checkpointStatus && !checkpointStatus.isComplete;
+        
+        // Definisci le fasi essenziali che devono essere complete prima di parlare di prezzo
+        // Tipicamente: discovery, qualificazione, value building
+        const essentialPhases = ['phase_1', 'phase_2', 'phase_3', 'phase_4', 'phase_5'];
+        const currentPhaseNum = parseInt(params.currentPhaseId.replace('phase_', ''), 10) || 1;
+        const isInEarlyPhase = currentPhaseNum <= 4; // Se siamo nelle prime 4 fasi, è troppo presto
+        
+        if (hasIncompleteCheckpoint || isInEarlyPhase) {
+          // 🚫 PAYMENT GATING ATTIVO: Blocca discussione prezzo
+          console.log(`\n🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`🚫 [PAYMENT GATING] BLOCCATA discussione prezzo prematura!`);
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.log(`   📍 Current phase: ${params.currentPhaseId} (early: ${isInEarlyPhase})`);
+          console.log(`   ⛔ Checkpoint incomplete: ${hasIncompleteCheckpoint}`);
+          if (checkpointStatus?.missingItems) {
+            console.log(`   ❌ Missing items: ${checkpointStatus.missingItems.length}`);
+            checkpointStatus.missingItems.slice(0, 3).forEach((item, i) => {
+              console.log(`      ${i + 1}. ${item}`);
+            });
+          }
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          
+          // Genera feedback di blocco con priorità CRITICAL
+          const missingInfo = checkpointStatus?.missingItems?.slice(0, 2).join(', ') || 'informazioni sulla situazione del prospect';
+          
+          feedbackForAgent = {
+            shouldInject: true,
+            priority: 'critical',
+            type: 'correction',
+            message: `🚫 STOP! Il prospect chiede del prezzo ma NON HAI ANCORA COMPLETATO LA DISCOVERY!
+
+⛔ NON parlare di prezzi, investimento o costi adesso!
+
+📋 COSA DEVI FARE:
+1. Riconosci l'interesse: "Ottima domanda! Prima di parlare di numeri voglio essere sicuro di proporti la soluzione giusta..."
+2. Torna alla discovery: "Permettimi di capire meglio: ${missingInfo}"
+3. Solo DOPO aver completato il checkpoint → potrai parlare di investimento
+
+🎯 SCRIPT DA SEGUIRE:
+"Apprezzo che tu voglia capire l'investimento! È una domanda importante.
+Per poterti dare numeri PRECISI e non sparare nel mucchio, ho bisogno di capire ancora alcune cose sulla tua situazione.
+Dimmi: [DOMANDA DAL CHECKPOINT MANCANTE]"
+
+⚠️ SE INSISTE: "Capisco l'urgenza! Ma senza queste info rischierei di proporti qualcosa che non fa per te. 2 minuti e ti do numeri precisi."`,
+            toneReminder: 'Tono empatico ma fermo. NON cedere alla pressione sul prezzo!'
+          };
+        } else {
+          // ✅ Checkpoint completi, può parlare di prezzo (segnale normale)
+          feedbackForAgent = {
+            shouldInject: true,
+            priority: 'high',
+            type: 'buy_signal',
+            message: `💰 SEGNALE DI ACQUISTO: "${topSignal.phrase}" (${topSignal.type})\n→ ${topSignal.suggestedAction}\n\n✅ Checkpoint completato - puoi procedere a discutere l'investimento!`,
+          };
+        }
+      } else {
+        // Altri buy signals (timeline, interest, commitment, comparison)
+        feedbackForAgent = {
+          shouldInject: true,
+          priority: 'high',
+          type: 'buy_signal',
+          message: `💰 SEGNALE DI ACQUISTO: "${topSignal.phrase}" (${topSignal.type})\n→ ${topSignal.suggestedAction}`,
+        };
+      }
     } else if (toneAnalysis.isRobotic || toneAnalysis.issues.length > 0) {
       // Medium priority: tone correction
       feedbackForAgent = {
@@ -716,29 +782,87 @@ export class SalesManagerAgent {
   }
   
   /**
-   * Validate checkpoint completion (local, fast)
+   * 🆕 Validate checkpoint completion using AI SEMANTIC ANALYSIS
+   * 
+   * CAMBIAMENTO CRITICO:
+   * - PRIMA: keyword matching locale (matchRatio >= 0.5)
+   * - ADESSO: analisi semantica AI via StepAdvancementAgent.analyzeCheckpointCompletion()
+   * 
+   * L'AI capisce il SIGNIFICATO, non solo le parole:
+   * - "Da quale città mi contatti?" = "Da dove chiami?" ✅
+   * - "Come va la giornata?" = "Come stai?" ✅
    */
-  private static validateCheckpoint(params: SalesManagerParams): CheckpointStatus | null {
+  private static async validateCheckpointWithAI(params: SalesManagerParams): Promise<CheckpointStatus | null> {
     const currentPhase = params.script.phases.find(p => p.id === params.currentPhaseId);
     if (!currentPhase?.checkpoint) return null;
     
     const checkpoint = currentPhase.checkpoint;
+    
+    console.log(`\n🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...`);
+    console.log(`   📍 Phase: ${currentPhase.name} (${currentPhase.id})`);
+    console.log(`   🎯 Checkpoint: ${checkpoint.title}`);
+    console.log(`   📋 Checks to validate: ${checkpoint.checks.length}`);
+    
+    try {
+      // Usa l'analisi semantica AI del StepAdvancementAgent
+      const aiResult = await StepAdvancementAgent.analyzeCheckpointCompletion({
+        checkpoint: {
+          id: checkpoint.id,
+          title: checkpoint.title,
+          checks: checkpoint.checks
+        },
+        recentMessages: params.recentMessages,
+        clientId: params.clientId,
+        consultantId: params.consultantId,
+        phaseName: currentPhase.name,
+        phaseId: currentPhase.id
+      });
+      
+      console.log(`✅ [SALES-MANAGER] AI checkpoint analysis complete`);
+      console.log(`   🟢 Completed: ${aiResult.completedItems.length}`);
+      console.log(`   🔴 Missing: ${aiResult.missingItems.length}`);
+      console.log(`   📊 Confidence: ${(aiResult.confidence * 100).toFixed(0)}%`);
+      
+      return {
+        checkpointId: checkpoint.id,
+        checkpointName: checkpoint.title,
+        isComplete: aiResult.isComplete,
+        missingItems: aiResult.missingItems,
+        completedItems: aiResult.completedItems,
+        canAdvance: aiResult.canAdvance
+      };
+      
+    } catch (error: any) {
+      console.error(`❌ [SALES-MANAGER] AI checkpoint validation failed:`, error.message);
+      console.log(`⚠️ [SALES-MANAGER] Falling back to keyword-based validation`);
+      
+      // FALLBACK: keyword matching (vecchio metodo) se AI fallisce
+      return this.validateCheckpointKeywordFallback(params, checkpoint, currentPhase.name);
+    }
+  }
+  
+  /**
+   * FALLBACK: keyword-based checkpoint validation (usato solo se AI fallisce)
+   */
+  private static validateCheckpointKeywordFallback(
+    params: SalesManagerParams, 
+    checkpoint: ScriptCheckpoint,
+    phaseName: string
+  ): CheckpointStatus {
+    console.log(`⚠️ [SALES-MANAGER] Using FALLBACK keyword validation for ${checkpoint.title}`);
+    
     const completedItems: string[] = [];
     const missingItems: string[] = [];
-    
-    // Simple keyword-based check for checkpoint items
     const allMessages = params.recentMessages.map(m => m.content.toLowerCase()).join(' ');
     
     for (const check of checkpoint.checks) {
-      // Extract keywords from check
       const keywords = check.toLowerCase()
         .replace(/[?¿!¡.,;:]/g, '')
         .split(' ')
         .filter(w => w.length > 3);
       
-      // Check if at least 50% of keywords are mentioned
       const matchedKeywords = keywords.filter(kw => allMessages.includes(kw));
-      const matchRatio = matchedKeywords.length / keywords.length;
+      const matchRatio = keywords.length > 0 ? matchedKeywords.length / keywords.length : 0;
       
       if (matchRatio >= 0.5) {
         completedItems.push(check);
@@ -747,15 +871,13 @@ export class SalesManagerAgent {
       }
     }
     
-    const isComplete = missingItems.length === 0;
-    
     return {
       checkpointId: checkpoint.id,
       checkpointName: checkpoint.title,
-      isComplete,
+      isComplete: missingItems.length === 0,
       missingItems,
       completedItems,
-      canAdvance: isComplete
+      canAdvance: missingItems.length === 0
     };
   }
   

@@ -3559,6 +3559,70 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                           );
                         }
                         
+                        // 🆕 SEND SALES MANAGER ANALYSIS TO CLIENT FOR UI VISUALIZATION
+                        // This enables the frontend to display the Manager's thought process
+                        try {
+                          const managerAnalysisPayload = {
+                            type: 'sales_manager_analysis',
+                            timestamp: new Date().toISOString(),
+                            analysis: {
+                              stepAdvancement: {
+                                shouldAdvance: stepResult.shouldAdvance,
+                                nextPhaseId: stepResult.nextPhaseId,
+                                nextStepId: stepResult.nextStepId,
+                                confidence: stepResult.confidence,
+                                reasoning: stepResult.reasoning
+                              },
+                              checkpointStatus: analysis.checkpointStatus ? {
+                                checkpointId: analysis.checkpointStatus.checkpointId,
+                                checkpointName: analysis.checkpointStatus.checkpointName,
+                                isComplete: analysis.checkpointStatus.isComplete,
+                                completedItems: analysis.checkpointStatus.completedItems,
+                                missingItems: analysis.checkpointStatus.missingItems,
+                                canAdvance: analysis.checkpointStatus.canAdvance
+                              } : null,
+                              buySignals: {
+                                detected: analysis.buySignals.detected,
+                                signals: analysis.buySignals.signals.map(s => ({
+                                  type: s.type,
+                                  phrase: s.phrase,
+                                  confidence: s.confidence
+                                }))
+                              },
+                              objections: {
+                                detected: analysis.objections.detected,
+                                objections: analysis.objections.objections.map(o => ({
+                                  type: o.type,
+                                  phrase: o.phrase
+                                }))
+                              },
+                              toneAnalysis: {
+                                isRobotic: analysis.toneAnalysis.isRobotic,
+                                energyMismatch: analysis.toneAnalysis.energyMismatch,
+                                issues: analysis.toneAnalysis.issues
+                              },
+                              feedbackForAgent: analysis.feedbackForAgent ? {
+                                shouldInject: analysis.feedbackForAgent.shouldInject,
+                                priority: analysis.feedbackForAgent.priority,
+                                type: analysis.feedbackForAgent.type,
+                                message: analysis.feedbackForAgent.message,
+                                toneReminder: analysis.feedbackForAgent.toneReminder
+                              } : null,
+                              currentPhase: {
+                                id: state.currentPhase,
+                                name: currentPhaseName,
+                                stepName: currentStepName
+                              },
+                              analysisTimeMs: analysisTime
+                            }
+                          };
+                          
+                          clientWs.send(JSON.stringify(managerAnalysisPayload));
+                          console.log(`   📡 Sent sales_manager_analysis event to client`);
+                        } catch (sendError: any) {
+                          console.warn(`   ⚠️ Failed to send manager analysis to client: ${sendError.message}`);
+                        }
+                        
                         // Save full analysis reasoning
                         let analysisLog = `📊 StepAdvance: ${stepResult.shouldAdvance} (${(stepResult.confidence * 100).toFixed(0)}%)`;
                         if (analysis.buySignals.detected) {

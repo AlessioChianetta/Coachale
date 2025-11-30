@@ -429,4 +429,54 @@ router.get(
   }
 );
 
+router.get(
+  '/session/:sessionId/manager-analysis',
+  authenticateToken,
+  requireRole('client'),
+  async (req: AuthRequest, res) => {
+    try {
+      const { sessionId } = req.params;
+
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
+      });
+
+      const session = await db.select()
+        .from(aiTrainingSessions)
+        .where(eq(aiTrainingSessions.id, sessionId))
+        .limit(1);
+
+      if (!session[0]) {
+        return res.status(404).json({ message: 'Session not found' });
+      }
+
+      const agent = await db.select()
+        .from(clientSalesAgents)
+        .where(eq(clientSalesAgents.id, session[0].agentId))
+        .limit(1);
+
+      if (!agent[0] || agent[0].clientId !== req.user?.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const simulator = activeSimulators.get(sessionId);
+      if (simulator) {
+        const analysis = simulator.getManagerAnalysis();
+        if (analysis) {
+          return res.json(analysis);
+        }
+      }
+
+      res.json(null);
+
+    } catch (error) {
+      console.error('Error fetching manager analysis:', error);
+      res.status(500).json({ message: 'Failed to fetch manager analysis' });
+    }
+  }
+);
+
 export default router;

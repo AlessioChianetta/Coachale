@@ -15,13 +15,15 @@ import {
   Package,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
   HelpCircle,
   Lightbulb,
   Trash2,
   Blocks,
   Code,
   Users,
-  Bot
+  Bot,
+  ArrowRightLeft
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -152,6 +154,14 @@ export default function ClientScriptManager() {
   const [scriptToActivate, setScriptToActivate] = useState<string | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
   const [isSavingBuilder, setIsSavingBuilder] = useState(false);
+  
+  // State for script replacement confirmation dialog
+  const [showReplaceConfirmDialog, setShowReplaceConfirmDialog] = useState(false);
+  const [pendingActivation, setPendingActivation] = useState<{
+    scriptId: string;
+    agentId: string;
+    currentScriptName: string;
+  } | null>(null);
 
   // Types for agents with script assignments
   interface AgentWithAssignments {
@@ -973,24 +983,37 @@ export default function ClientScriptManager() {
                       ) : (
                         agents.map((agent) => {
                           const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
+                          const assignments = agent.scriptAssignments || { discovery: null, demo: null, objections: null };
                           const currentAssignment = scriptToActivateData 
-                            ? agent.scriptAssignments[scriptToActivateData.scriptType as keyof typeof agent.scriptAssignments]
+                            ? assignments[scriptToActivateData.scriptType as keyof typeof assignments]
                             : null;
                           const isCurrentlyAssigned = currentAssignment?.scriptId === scriptToActivate;
+                          const hasActiveScriptOfSameType = currentAssignment && !isCurrentlyAssigned;
                           
                           return (
                             <button
                               key={agent.id}
                               className={cn(
                                 "w-full text-left p-4 rounded-lg border transition-all hover:bg-muted/50",
-                                isCurrentlyAssigned && "border-primary bg-primary/5"
+                                isCurrentlyAssigned && "border-primary bg-primary/5",
+                                hasActiveScriptOfSameType && "border-amber-500/50"
                               )}
                               onClick={() => {
                                 if (scriptToActivate) {
-                                  activateScriptMutation.mutate({ 
-                                    scriptId: scriptToActivate, 
-                                    agentId: agent.id 
-                                  });
+                                  if (hasActiveScriptOfSameType && currentAssignment) {
+                                    setPendingActivation({
+                                      scriptId: scriptToActivate,
+                                      agentId: agent.id,
+                                      currentScriptName: currentAssignment.scriptName
+                                    });
+                                    setShowReplaceConfirmDialog(true);
+                                    setShowAgentSelectDialog(false);
+                                  } else {
+                                    activateScriptMutation.mutate({ 
+                                      scriptId: scriptToActivate, 
+                                      agentId: agent.id 
+                                    });
+                                  }
                                 }
                               }}
                               disabled={activateScriptMutation.isPending}
@@ -1010,9 +1033,15 @@ export default function ClientScriptManager() {
                                     <CheckCircle className="h-3 w-3 mr-1" /> Attivo
                                   </Badge>
                                 )}
+                                {hasActiveScriptOfSameType && (
+                                  <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">
+                                    <AlertTriangle className="h-3 w-3 mr-1" /> Attivo altro
+                                  </Badge>
+                                )}
                               </div>
-                              {currentAssignment && !isCurrentlyAssigned && (
-                                <p className="text-xs text-muted-foreground mt-2 pl-13">
+                              {hasActiveScriptOfSameType && currentAssignment && (
+                                <p className="text-xs text-amber-600 mt-2 pl-13 flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" />
                                   Attualmente usa: {currentAssignment.scriptName}
                                 </p>
                               )}
@@ -1024,6 +1053,70 @@ export default function ClientScriptManager() {
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setShowAgentSelectDialog(false)}>
                         Annulla
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Dialog di Conferma Sostituzione Script */}
+                <Dialog open={showReplaceConfirmDialog} onOpenChange={(open) => {
+                  setShowReplaceConfirmDialog(open);
+                  if (!open) setPendingActivation(null);
+                }}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <ArrowRightLeft className="h-5 w-5 text-amber-500" />
+                        Sostituire Script Attivo?
+                      </DialogTitle>
+                      <DialogDescription>
+                        Questo agente ha già uno script attivo dello stesso tipo.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <Alert className="border-amber-500 bg-amber-500/10">
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        <AlertTitle className="text-amber-600">Script Attualmente Attivo</AlertTitle>
+                        <AlertDescription className="text-amber-600/80">
+                          <span className="font-medium">"{pendingActivation?.currentScriptName}"</span> verrà sostituito con il nuovo script.
+                        </AlertDescription>
+                      </Alert>
+                      <p className="text-sm text-muted-foreground mt-4">
+                        Vuoi procedere con la sostituzione? L'agente utilizzerà il nuovo script per le prossime conversazioni.
+                      </p>
+                    </div>
+                    <DialogFooter className="gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowReplaceConfirmDialog(false);
+                          setPendingActivation(null);
+                          setShowAgentSelectDialog(true);
+                        }}
+                      >
+                        Annulla
+                      </Button>
+                      <Button 
+                        variant="default"
+                        className="bg-amber-500 hover:bg-amber-600"
+                        onClick={() => {
+                          if (pendingActivation) {
+                            activateScriptMutation.mutate({ 
+                              scriptId: pendingActivation.scriptId, 
+                              agentId: pendingActivation.agentId 
+                            });
+                            setShowReplaceConfirmDialog(false);
+                            setPendingActivation(null);
+                          }
+                        }}
+                        disabled={activateScriptMutation.isPending}
+                      >
+                        {activateScriptMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <ArrowRightLeft className="h-4 w-4 mr-2" />
+                        )}
+                        Sostituisci Script
                       </Button>
                     </DialogFooter>
                   </DialogContent>

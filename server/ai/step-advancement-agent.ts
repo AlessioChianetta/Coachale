@@ -78,6 +78,38 @@ export interface StepAdvancementParams {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🆕 CHECKPOINT SEMANTIC ANALYSIS TYPES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/**
+ * Risultato dell'analisi semantica di un checkpoint
+ */
+export interface CheckpointAnalysisResult {
+  isComplete: boolean;
+  completedItems: string[];
+  missingItems: string[];
+  reasoning: string;
+  confidence: number; // 0-1
+  canAdvance: boolean;
+}
+
+/**
+ * Parametri per l'analisi semantica del checkpoint
+ */
+export interface CheckpointAnalysisParams {
+  checkpoint: {
+    id: string;
+    title: string;
+    checks: string[];
+  };
+  recentMessages: ConversationMessage[];
+  clientId: string;
+  consultantId: string;
+  phaseName: string;
+  phaseId: string;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // STEP ADVANCEMENT AGENT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -464,5 +496,252 @@ Esempio se NON avanzare + feedback correttivo:
     return new Promise((resolve) => {
       setTimeout(() => resolve('timeout'), ms);
     });
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🆕 CHECKPOINT SEMANTIC ANALYSIS
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // Analizza semanticamente il completamento dei checkpoint
+  // usando AI invece di keyword matching
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  /**
+   * 🎯 ANALISI SEMANTICA AI DEL CHECKPOINT
+   * 
+   * Sostituisce il vecchio keyword matching con analisi AI che capisce
+   * il SIGNIFICATO della conversazione, non solo le parole chiave.
+   * 
+   * Esempio:
+   * - Check: "Hai chiesto da dove chiama?"
+   * - Keyword matching: cerca "dove", "chiama", "chiami"
+   * - AI semantica: capisce che "Da quale città mi contatti?" ha lo stesso significato
+   */
+  static async analyzeCheckpointCompletion(
+    params: CheckpointAnalysisParams
+  ): Promise<CheckpointAnalysisResult> {
+    const startTime = Date.now();
+    
+    console.log(`\n🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🔍 [CHECKPOINT-AI] Starting semantic analysis`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   📍 Phase: ${params.phaseName} (${params.phaseId})`);
+    console.log(`   🎯 Checkpoint: ${params.checkpoint.title}`);
+    console.log(`   ✅ Checks to verify: ${params.checkpoint.checks.length}`);
+    console.log(`   💬 Messages to analyze: ${params.recentMessages.length}`);
+    
+    try {
+      // Ottieni il client AI
+      const { client: aiClient, cleanup } = await getAIProvider(params.clientId, params.consultantId);
+      
+      try {
+        // Costruisci il prompt per l'analisi semantica
+        const prompt = this.buildCheckpointPrompt(params);
+        
+        // Log dei check da verificare
+        console.log(`   📋 Checks to verify:`);
+        params.checkpoint.checks.forEach((check, i) => {
+          console.log(`      ${i + 1}. ${check}`);
+        });
+        
+        // Chiama Gemini con timeout
+        const response = await Promise.race([
+          aiClient.generateContent({
+            model: this.MODEL,
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0, // Deterministico per coerenza
+              maxOutputTokens: 800,
+            }
+          }),
+          this.timeout(this.TIMEOUT_MS)
+        ]);
+        
+        if (!response || typeof response === 'string') {
+          console.warn('⚠️ [CHECKPOINT-AI] Timeout or invalid response');
+          return this.createDefaultCheckpointResult(params.checkpoint.checks, 'Timeout');
+        }
+        
+        // Estrai e parse la risposta
+        const responseText = response.response.text();
+        console.log(`   📄 AI Response (first 300 chars): "${responseText.substring(0, 300)}${responseText.length > 300 ? '...' : ''}"`);
+        
+        const result = this.parseCheckpointResponse(responseText, params.checkpoint.checks);
+        
+        const elapsed = Date.now() - startTime;
+        console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🎯 [CHECKPOINT-AI] Analysis completed in ${elapsed}ms`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   ✅ Completed: ${result.completedItems.length}/${params.checkpoint.checks.length}`);
+        console.log(`   ❌ Missing: ${result.missingItems.length}`);
+        console.log(`   🚦 Can advance: ${result.canAdvance}`);
+        console.log(`   📊 Confidence: ${(result.confidence * 100).toFixed(0)}%`);
+        console.log(`   📝 Reasoning: ${result.reasoning}`);
+        if (result.missingItems.length > 0) {
+          console.log(`   ⚠️ Missing items:`);
+          result.missingItems.forEach((item, i) => {
+            console.log(`      ${i + 1}. ${item}`);
+          });
+        }
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        
+        return result;
+        
+      } finally {
+        if (cleanup) await cleanup();
+      }
+      
+    } catch (error: any) {
+      const elapsed = Date.now() - startTime;
+      console.error(`❌ [CHECKPOINT-AI] Error after ${elapsed}ms:`, error.message);
+      return this.createDefaultCheckpointResult(params.checkpoint.checks, `Error: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Costruisce il prompt per l'analisi semantica del checkpoint
+   */
+  private static buildCheckpointPrompt(params: CheckpointAnalysisParams): string {
+    const { checkpoint, recentMessages, phaseName } = params;
+    
+    // Formatta la conversazione (tutti i messaggi rilevanti)
+    const conversationText = recentMessages
+      .map(m => `${m.role === 'user' ? 'PROSPECT' : 'AGENTE'}: ${m.content}`)
+      .join('\n\n');
+    
+    // Formatta i check da verificare
+    const checksFormatted = checkpoint.checks
+      .map((check, i) => `${i + 1}. "${check}"`)
+      .join('\n');
+    
+    return `Sei un analizzatore esperto di conversazioni di vendita.
+
+═══════════════════════════════════════════════════════════════
+🎯 IL TUO COMPITO
+═══════════════════════════════════════════════════════════════
+Analizza la conversazione e determina quali CHECKPOINT sono stati completati.
+
+📍 CONTESTO:
+- Fase: ${phaseName}
+- Checkpoint: ${checkpoint.title}
+
+📋 CHECKPOINT DA VERIFICARE:
+${checksFormatted}
+
+═══════════════════════════════════════════════════════════════
+💬 CONVERSAZIONE DA ANALIZZARE
+═══════════════════════════════════════════════════════════════
+${conversationText}
+
+═══════════════════════════════════════════════════════════════
+📏 REGOLE DI VALUTAZIONE
+═══════════════════════════════════════════════════════════════
+
+🔍 ANALISI SEMANTICA (NON keyword matching!):
+- Valuta il SIGNIFICATO, non le parole esatte
+- "Da quale città mi contatti?" = "Da dove chiami?" ✅
+- "Come va la giornata?" = "Come stai?" ✅  
+- "Parlami del tuo lavoro" = "Di cosa ti occupi?" ✅
+
+✅ CONSIDERA UN CHECK COMPLETATO SE:
+1. L'agente ha fatto la domanda (anche con parole diverse)
+2. Il prospect ha risposto con informazioni rilevanti
+3. Il significato dell'obiettivo è stato raggiunto
+
+❌ CONSIDERA UN CHECK NON COMPLETATO SE:
+1. La domanda non è mai stata fatta
+2. Il prospect non ha risposto
+3. La risposta è troppo vaga per l'obiettivo
+
+⚠️ CRITERI STRETTI:
+- "Ok", "Sì", "Va bene" da soli NON completano check informativi
+- Per check come "Sai il problema principale?" → deve esserci info specifica
+- Per check come "Ha detto OK al processo?" → basta conferma esplicita
+
+═══════════════════════════════════════════════════════════════
+📤 FORMATO RISPOSTA (JSON VALIDO)
+═══════════════════════════════════════════════════════════════
+REGOLE DI OUTPUT:
+- Rispondi SOLO con un oggetto JSON valido
+- NON aggiungere testo, markdown o spiegazioni
+- Il JSON deve essere parsabile con JSON.parse()
+
+Schema JSON:
+{
+  "isComplete": boolean,           // true se TUTTI i check sono completati
+  "completedItems": string[],      // array dei check completati (testo esatto)
+  "missingItems": string[],        // array dei check mancanti (testo esatto)
+  "reasoning": string,             // spiegazione breve della valutazione
+  "confidence": number,            // 0-1, quanto sei sicuro
+  "canAdvance": boolean            // true se si può passare alla fase successiva
+}
+
+ESEMPIO RISPOSTA:
+{"isComplete":false,"completedItems":["Hai salutato e chiesto come stai?","Hai chiesto da dove chiama?"],"missingItems":["Hai spiegato il processo della call?","Il prospect ha detto OK al processo?"],"reasoning":"L'agente ha fatto le prime due domande ma non ha ancora spiegato il processo della call","confidence":0.85,"canAdvance":false}`;
+  }
+  
+  /**
+   * Parse la risposta JSON dall'analisi del checkpoint
+   */
+  private static parseCheckpointResponse(
+    responseText: string, 
+    originalChecks: string[]
+  ): CheckpointAnalysisResult {
+    try {
+      // Pulisci la risposta
+      let cleanText = responseText.trim();
+      if (cleanText.startsWith('```json')) cleanText = cleanText.slice(7);
+      if (cleanText.startsWith('```')) cleanText = cleanText.slice(3);
+      if (cleanText.endsWith('```')) cleanText = cleanText.slice(0, -3);
+      cleanText = cleanText.trim();
+      
+      // Trova il JSON nella risposta (potrebbe avere testo extra)
+      const jsonMatch = cleanText.match(/\{[\s\S]*?"isComplete"[\s\S]*?\}/);
+      if (jsonMatch) {
+        cleanText = jsonMatch[0];
+      }
+      
+      const parsed = JSON.parse(cleanText);
+      
+      // Valida e normalizza
+      const completedItems = Array.isArray(parsed.completedItems) 
+        ? parsed.completedItems.filter((item: any) => typeof item === 'string')
+        : [];
+      
+      const missingItems = Array.isArray(parsed.missingItems)
+        ? parsed.missingItems.filter((item: any) => typeof item === 'string')
+        : originalChecks; // Fallback: tutti mancanti
+      
+      const isComplete = Boolean(parsed.isComplete) && missingItems.length === 0;
+      
+      return {
+        isComplete,
+        completedItems,
+        missingItems,
+        reasoning: String(parsed.reasoning || 'No reasoning provided'),
+        confidence: Math.min(1, Math.max(0, Number(parsed.confidence) || 0.5)),
+        canAdvance: Boolean(parsed.canAdvance) && isComplete
+      };
+      
+    } catch (error: any) {
+      console.warn('⚠️ [CHECKPOINT-AI] Failed to parse response:', responseText.substring(0, 200));
+      return this.createDefaultCheckpointResult(originalChecks, `Parse failed: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Crea un risultato di default per il checkpoint (tutti non completati)
+   */
+  private static createDefaultCheckpointResult(
+    checks: string[], 
+    reasoning: string
+  ): CheckpointAnalysisResult {
+    return {
+      isComplete: false,
+      completedItems: [],
+      missingItems: [...checks],
+      reasoning,
+      confidence: 0,
+      canAdvance: false
+    };
   }
 }

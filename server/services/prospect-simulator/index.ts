@@ -59,6 +59,61 @@ interface StatusUpdate {
   messageCount?: number;
   lastMessage?: string;
   conversationId?: string;
+  // 🆕 Sales Manager analysis data for UI visualization
+  salesManagerAnalysis?: SalesManagerAnalysisData;
+}
+
+// 🆕 Interface for Sales Manager Analysis data
+interface SalesManagerAnalysisData {
+  timestamp: string;
+  stepAdvancement: {
+    shouldAdvance: boolean;
+    nextPhaseId: string | null;
+    nextStepId: string | null;
+    confidence: number;
+    reasoning: string;
+  };
+  checkpointStatus: {
+    checkpointId: string;
+    checkpointName: string;
+    isComplete: boolean;
+    completedItems: string[];
+    missingItems: string[];
+    canAdvance: boolean;
+  } | null;
+  buySignals: {
+    detected: boolean;
+    signals: Array<{
+      type: string;
+      phrase: string;
+      confidence: number;
+    }>;
+  };
+  objections: {
+    detected: boolean;
+    objections: Array<{
+      type: string;
+      phrase: string;
+    }>;
+  };
+  toneAnalysis: {
+    isRobotic: boolean;
+    energyMismatch: boolean;
+    issues: string[];
+  };
+  feedbackForAgent: {
+    shouldInject: boolean;
+    priority: string;
+    type: string;
+    message: string;
+    toneReminder?: string;
+  } | null;
+  currentPhase: {
+    id: string;
+    name: string;
+    stepName: string;
+  };
+  analysisTimeMs: number;
 }
 
 interface TranscriptMessage {
@@ -93,6 +148,8 @@ export class ProspectSimulator {
   private isProcessingResponse = false;
   private lastProcessedMessageHash = '';
   private lastProcessedTime = 0;
+  
+  private latestManagerAnalysis: SalesManagerAnalysisData | null = null;
   
   private static readonly MESSAGE_COMPLETION_TIMEOUT = 3500;
   private static readonly MIN_SILENCE_GAP = 2000;
@@ -300,6 +357,40 @@ export class ProspectSimulator {
 
       case 'error':
         console.error(`❌ [PROSPECT SIMULATOR] Server error:`, message.message || message.error);
+        break;
+
+      // 🆕 SALES MANAGER ANALYSIS - Forward to UI for visualization
+      case 'sales_manager_analysis':
+        console.log(`\n🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🎩 [PROSPECT SIMULATOR] Received Sales Manager Analysis`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        if (message.analysis) {
+          const analysis = message.analysis;
+          console.log(`   📍 Phase: ${analysis.currentPhase?.name || 'N/A'} / ${analysis.currentPhase?.stepName || 'N/A'}`);
+          console.log(`   🎯 Should Advance: ${analysis.stepAdvancement?.shouldAdvance || false}`);
+          console.log(`   📊 Confidence: ${Math.round((analysis.stepAdvancement?.confidence || 0) * 100)}%`);
+          console.log(`   💭 Reasoning: ${(analysis.stepAdvancement?.reasoning || 'N/A').substring(0, 80)}...`);
+          if (analysis.checkpointStatus) {
+            console.log(`   ⛔ Checkpoint: ${analysis.checkpointStatus.isComplete ? 'COMPLETE' : `${analysis.checkpointStatus.missingItems?.length || 0} missing`}`);
+          }
+          if (analysis.feedbackForAgent?.shouldInject) {
+            console.log(`   🔧 Feedback: ${analysis.feedbackForAgent.type} (${analysis.feedbackForAgent.priority})`);
+          }
+          console.log(`   ⏱️ Analysis time: ${analysis.analysisTimeMs}ms`);
+        }
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        
+        // Store the analysis locally for API access
+        this.latestManagerAnalysis = message.analysis as SalesManagerAnalysisData;
+        
+        // Forward the analysis to the status update callback
+        await this.options.onStatusUpdate({
+          status: 'running',
+          currentPhase: this.currentPhase,
+          completionRate: this.completionRate,
+          messageCount: this.messageCount,
+          salesManagerAnalysis: message.analysis as SalesManagerAnalysisData
+        });
         break;
 
       default:
@@ -688,5 +779,9 @@ I TUOI PROBLEMI devono essere coerenti con "${targetDescription}":
 
   getConversationId(): string | null {
     return this.conversationId;
+  }
+
+  getManagerAnalysis(): SalesManagerAnalysisData | null {
+    return this.latestManagerAnalysis;
   }
 }
