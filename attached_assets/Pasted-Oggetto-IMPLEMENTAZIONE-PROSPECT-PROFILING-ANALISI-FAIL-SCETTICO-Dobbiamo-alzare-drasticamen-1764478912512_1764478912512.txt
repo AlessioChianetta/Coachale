@@ -1,0 +1,33 @@
+Oggetto: IMPLEMENTAZIONE "PROSPECT PROFILING" & ANALISI FAIL SCETTICO
+
+Dobbiamo alzare drasticamente il livello di intelligenza emotiva del Sales Manager. Ho analizzato la conversazione persa con il prospect "Scettico": l'AI ha perso lo status di consulente perché ha continuato a seguire lo script in modo rigido invece di adattarsi al tono dell'interlocutore.
+
+Per evitare che accada di nuovo, implementiamo il modulo "Prospect Profiling".
+
+IL NUOVO FLUSSO DEL MANAGER: Oltre a controllare le fasi, il Manager deve ora eseguire un'analisi psicologica in tempo reale su ogni risposta dell'utente, basandosi sugli archetipi che abbiamo definito nel "Campo di Battaglia":
+
+Rilevamento Archetipo: Deve classificare l'utente in una di queste categorie:
+
+Scettico / Difensivo (Il caso che ha fallito)
+
+Entusiasta
+
+Indeciso / Confuso
+
+Tecnico / Analitico
+
+Focus Prezzo
+
+Frettoloso
+
+Adattamento Istruzioni:
+
+Se è Scettico, l'istruzione all'Agente NON deve essere "fai la prossima domanda", ma "usa un Negative Reverse o una Labeling per disinnescare la difensiva. Non vendere, valida il suo dubbio".
+
+Se è Frettoloso, l'istruzione è "Taglia i convenevoli, vai dritto al punto (Bottom Line Up Front)".
+
+Se è Tecnico, l'istruzione è "Usa gergo tecnico preciso, evita frasi di marketing generiche".
+
+ANALISI DEL FAIL (Caso "Lo Scettico"): Nella conversazione allegata, l'Agente ha fallito perché quando il prospect ha mostrato resistenza, l'Agente ha provato a "convincerlo" o a fare l'amicone. Errore grave. Con uno scettico bisogna mantenere la "Frame Control": essere distaccati e professionali. Il Manager avrebbe dovuto dire all'Agente: "Il prospect ti sta testando. Smetti di fare domande da script. Rispondi con: 'Mi sembra che tu abbia già visto molte soluzioni simili che non hanno funzionato, sbaglio?'"
+
+Procediamo a mappare questi comportamenti nel Prompt del Manager prendendo spunto dal documento "Battlefield". DOBBIAMO INIETTARLO COME REGOLA CHIAVE PER L'AI PER TUTTA LA CALL guarda pure Giuseppe Mancini nel DATABASE delle conversazioni tracciate
