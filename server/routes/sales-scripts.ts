@@ -415,7 +415,25 @@ router.post('/:id/activate', requireClient, async (req: AuthRequest, res: Respon
       return res.status(404).json({ error: 'Agente non trovato' });
     }
     
-    // Remove any existing assignment for this agent + scriptType (upsert logic)
+    // Find and deactivate any existing script assignment for this agent + scriptType
+    const [existingAssignment] = await db
+      .select({ scriptId: agentScriptAssignments.scriptId })
+      .from(agentScriptAssignments)
+      .where(and(
+        eq(agentScriptAssignments.agentId, agentId),
+        eq(agentScriptAssignments.scriptType, script.scriptType)
+      ));
+    
+    // If there was a previous script, set it as inactive
+    if (existingAssignment && existingAssignment.scriptId !== id) {
+      await db
+        .update(salesScripts)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(salesScripts.id, existingAssignment.scriptId));
+      console.log(`🗑️ [ScriptDeactivate] Previous script ${existingAssignment.scriptId} deactivated for agent ${agentId}`);
+    }
+    
+    // Remove the old assignment (upsert logic)
     await db
       .delete(agentScriptAssignments)
       .where(and(
