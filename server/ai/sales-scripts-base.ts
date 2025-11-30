@@ -1055,7 +1055,7 @@ per presentare ↗️ è ESATTAMENTE la soluzione che ti serve!"
 - Livello di fatturato:
 - Problemi:
 - Stato ideale:
-- Quanto vorrebbero fare:
+- Quanto vorrebbero fare: 
 - Perché:
 - Cosa li blocca:
 - Costo di non agire:
