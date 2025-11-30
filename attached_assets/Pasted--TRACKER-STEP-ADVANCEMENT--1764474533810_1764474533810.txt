@@ -1,0 +1,67 @@
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [TRACKER] STEP ADVANCEMENT (AI-driven)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 FROM: phase_1 / phase_1_step_2
+   📍 TO:   phase_2 / phase_2_step_3
+   💡 Reasoning: L'agente ha posto una domanda mirata a identificare il pain point principale (quali dolori sono più persistenti e limitanti). L'obiettivo di questo step è di portare alla luce i pain points, e la domanda dell'agente è funzionale a questo scopo. Inoltre, l'agente ha risposto alle obiezioni del prospect, stabilendo autorevolezza e chiarendo il processo. L'ultimo messaggio del prospect non è presente, ma la domanda dell'agente è stata posta, quindi si può procedere.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔓 [hjtjli] Sales Manager lock released
+🎯 [PROSPECT SIMULATOR] Message complete after 3501ms silence (552 chars)
+🤖 [SALES AGENT] "Evvai! Grazie per la condivisione, è super utile per me! E hai assolutamente ragione, non è solo que..."
+⏱️ [PROSPECT SIMULATOR] Waiting 2453ms before responding (speed: normal)
+3:48:05 AM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 573ms …
+3:48:05 AM [express] GET /api/ai-trainer/session/05b90e49-f6e2-4d92-b2fc-f16b102b7004/manager-analys…
+3:48:06 AM [express] GET /api/ai-trainer/session/05b90e49-f6e2-4d92-b2fc-f16b102b7004/transcript 200…
+3:48:08 AM [express] GET /api/ai-trainer/session/05b90e49-f6e2-4d92-b2fc-f16b102b7004/manager-analys…
+3:48:08 AM [express] GET /api/ai-trainer/session/05b90e49-f6e2-4d92-b2fc-f16b102b7004/transcript 200…
+3:48:09 AM [express] GET /api/ai-trainer/sessions/11cd9e7b-f181-4052-9541-e8d0bb91c956 304 in 572ms …
+❌ [VertexAI Adapter] Failed to extract text. Response structure: {
+  "hasResponse": true,
+  "responseType": "object",
+  "hasText": false,
+  "textType": "undefined",
+  "hasCandidates": true,
+  "candidatesLength": 1,
+  "candidateContent": {
+    "role": "model",
+    "parts": [
+      {
+        "text": ""
+      }
+    ]
+  },
+  "candidateParts": [
+    {
+      "text": ""
+    }
+  ],
+  "finishReason": "STOP"
+}
+❌ [PROSPECT SIMULATOR] Error generating response: Error: Failed to extract text from Vertex AI response
+    at Object.text (/home/runner/workspace/server/ai/provider-factory.ts:130:17)
+    at ProspectSimulator.generateAndSendResponse (/home/runner/workspace/server/services/prospect-simulator/index.ts:555:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async ProspectSimulator.handleAgentMessage (/home/runner/workspace/server/services/prospect-simulator/index.ts:490:7)
+    at async Timeout._onTimeout (/home/runner/workspace/server/services/prospect-simulator/index.ts:466:11)
+👋 [hjtjli] Client requested session end
+🔌 [PROSPECT SIMULATOR] WebSocket closed: 1000 - Session ended normally
+❌ [hjtjli] Client disconnected - Code: 1005, Reason: 
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 📊 CONVERSATION SUMMARY                                                      ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ Phases Reached: 2                                                           ║
+║   → phase_1, phase_2                                                         ║
+║ Checkpoints: 0/9                                                            ║
+║ Ladder Activations: 1                                                       ║
+║ Questions Asked: 0                                                          ║
+║ Duration: 0s                                                                ║
+║ Completion: 28.6%                                                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+💾 [hjtjli] Saving final training state before disconnect...
+💾 [TRACKER] Saving final state for conversation b51c8226-21f8-4cbc-a279-44e0f7fc6646...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔌 [hjtjli] GEMINI WEBSOCKET CLOSED
