@@ -88,6 +88,7 @@ export interface ArchetypeState {
   lastSignalType: ArchetypeId | null;
   regexSignals: ArchetypeId[];  // Segnali da regex (Fast Reflexes)
   aiIntuition: ArchetypeId | null;  // Intuizione AI (Slow Brain)
+  lastInjectionTurn: number;  // 🆕 Ultimo turno in cui l'archetipo è stato iniettato (per throttling)
 }
 
 export interface ProspectProfilingResult {
@@ -556,7 +557,8 @@ function updateArchetypeState(
     turnsSinceUpdate: 0,
     lastSignalType: null,
     regexSignals: [],
-    aiIntuition: null
+    aiIntuition: null,
+    lastInjectionTurn: 0  // 🆕 Inizializza a 0 per permettere prima iniezione
   };
   
   if (!currentState) {
@@ -624,7 +626,8 @@ function updateArchetypeState(
       turnsSinceUpdate: 0,
       lastSignalType: detectedArchetype,
       regexSignals: regexSignals.map(s => s.archetype),
-      aiIntuition
+      aiIntuition,
+      lastInjectionTurn: currentState.lastInjectionTurn  // 🆕 Preserva il valore
     };
   }
   
@@ -635,7 +638,8 @@ function updateArchetypeState(
     turnsSinceUpdate,
     lastSignalType: detectedArchetype !== 'neutral' ? detectedArchetype : currentState.lastSignalType,
     regexSignals: regexSignals.map(s => s.archetype),
-    aiIntuition
+    aiIntuition,
+    lastInjectionTurn: currentState.lastInjectionTurn  // 🆕 Preserva il valore
   };
 }
 
@@ -1051,15 +1055,17 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     const analysisTimeMs = Date.now() - startTime;
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 🎭 STICKY ARCHETYPE: Inietta solo ogni 4 turni (non ad ogni messaggio!)
+    // 🎭 STICKY ARCHETYPE: Inietta solo ogni 5 turni (non ad ogni messaggio!)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Regole:
     // 1. AntiPattern critico → inietta SEMPRE (priorità massima)
-    // 2. Archetype → inietta solo ogni 4 turni O se appena cambiato
+    // 2. Archetype → inietta solo ogni 5 turni O se appena cambiato
     // 3. Evita di confondere l'agente con troppi feedback archetipo
     
+    const INJECTION_INTERVAL = 5;  // Inietta ogni 5 turni
     const archetypeJustChanged = updatedArchetypeState.turnsSinceUpdate === 0;
-    const shouldInjectArchetype = (currentTurn % 4 === 0) || archetypeJustChanged;
+    const turnsSinceLastInjection = currentTurn - (updatedArchetypeState.lastInjectionTurn || 0);
+    const shouldInjectArchetype = (turnsSinceLastInjection >= INJECTION_INTERVAL) || archetypeJustChanged;
     
     if (antiPatternDetected && antiPatternDetected.priority === 'critical') {
       feedbackForAgent = {
@@ -1073,11 +1079,14 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       const archetypeTag = formatArchetypeTag(updatedArchetypeState.current);
       const existingMessage = feedbackForAgent?.message || '';
       
-      // 🆕 PROFILING solo ogni 4 turni - non confondere l'agente
+      // 🆕 PROFILING solo ogni 5 turni - non confondere l'agente
       const profilingHeader = `🎭 ARCHETIPO: ${archetypeTag}
 ${archetypeInstruction.instruction}`;
       
-      console.log(`   📢 ARCHETYPE INJECTION at turn ${currentTurn} (${archetypeJustChanged ? 'just changed' : 'periodic refresh'})`);
+      console.log(`   📢 ARCHETYPE INJECTION at turn ${currentTurn} (${archetypeJustChanged ? 'just changed' : `periodic refresh after ${turnsSinceLastInjection} turns`})`);
+      
+      // 🆕 Aggiorna lastInjectionTurn DOPO l'iniezione
+      updatedArchetypeState.lastInjectionTurn = currentTurn;
       
       if (feedbackForAgent) {
         feedbackForAgent.message = `${existingMessage}\n\n${profilingHeader}`;
@@ -1092,7 +1101,8 @@ ${archetypeInstruction.instruction}`;
         };
       }
     } else if (updatedArchetypeState.current !== 'neutral') {
-      console.log(`   🔇 ARCHETYPE SKIPPED at turn ${currentTurn} (next injection at turn ${Math.ceil((currentTurn + 1) / 4) * 4})`);
+      const nextInjectionTurn = (updatedArchetypeState.lastInjectionTurn || 0) + INJECTION_INTERVAL;
+      console.log(`   🔇 ARCHETYPE SKIPPED at turn ${currentTurn} (next injection at turn ${nextInjectionTurn}, in ${nextInjectionTurn - currentTurn} turns)`);
     }
     
     console.log(`\n🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
