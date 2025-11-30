@@ -294,7 +294,7 @@ export function TrainingMapLayout({
               {/* 1.5 Discovery REC - Mappa Cliente */}
               <section className="mb-8 animate-in fade-in slide-in-from-top-4 duration-700" style={{ animationDelay: '100ms' }}>
                 <DiscoveryRecPanel 
-                  conversationId={parseInt(conversationDetail.conversationId, 10)} 
+                  conversationId={conversationDetail.conversationId} 
                 />
               </section>
 

@@ -47,7 +47,7 @@ interface DiscoveryRec {
 }
 
 interface DiscoveryRecPanelProps {
-  conversationId: number;
+  conversationId: string | number;
   className?: string;
 }
 
@@ -55,29 +55,32 @@ export function DiscoveryRecPanel({ conversationId, className = '' }: DiscoveryR
   const [isExpanded, setIsExpanded] = useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  const conversationIdStr = String(conversationId);
+  const isValidId = conversationIdStr && conversationIdStr !== 'NaN' && conversationIdStr !== 'undefined';
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['discovery-rec', conversationId],
+    queryKey: ['discovery-rec', conversationIdStr],
     queryFn: async () => {
-      const response = await fetch(`/api/ai-trainer/conversations/${conversationId}/discovery-rec`, {
+      const response = await fetch(`/api/ai-trainer/conversations/${conversationIdStr}/discovery-rec`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
         throw new Error('Failed to fetch Discovery REC');
       }
       return response.json() as Promise<{
-        conversationId: number;
+        conversationId: string;
         discoveryRec: DiscoveryRec | null;
         hasTranscript: boolean;
         createdAt: string;
       }>;
     },
-    enabled: !!conversationId,
+    enabled: isValidId,
   });
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/ai-trainer/conversations/${conversationId}/discovery-rec/generate`, {
+      const response = await fetch(`/api/ai-trainer/conversations/${conversationIdStr}/discovery-rec/generate`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -88,7 +91,7 @@ export function DiscoveryRecPanel({ conversationId, className = '' }: DiscoveryR
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['discovery-rec', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['discovery-rec', conversationIdStr] });
       toast({
         title: 'REC Generato',
         description: 'Il Discovery REC è stato generato con successo.',

@@ -2988,6 +2988,36 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
             console.log(`🔔 [${connectionId}] modelResponsePending=true (Gemini sta elaborando)`);
           }
           
+          // 🛑 BARGE-IN FIX: Check serverContent.interrupted FIRST (before processing parts)
+          // This is a server-level interruption signal from Gemini VAD
+          if (response.serverContent?.interrupted) {
+            const interruptTimestamp = new Date().toISOString();
+            
+            console.log(`\n🛑 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`🛑 [${connectionId}] BARGE-IN: serverContent.interrupted detected`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.log(`⏰ Timestamp: ${interruptTimestamp}`);
+            console.log(`🎤 AI was speaking: ${isAiSpeaking ? 'YES' : 'NO'}`);
+            console.log(`🎯 Action: Stop audio playback immediately`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+            
+            // Reset AI speaking state
+            if (isAiSpeaking) {
+              isAiSpeaking = false;
+              console.log(`🔇 [${connectionId}] AI stopped speaking (serverContent.interrupted)`);
+            }
+            
+            // Send barge-in signal to client to stop audio playback
+            clientWs.send(JSON.stringify({
+              type: 'barge_in_detected',
+              message: 'User interrupted - stop audio playback immediately',
+              source: 'serverContent.interrupted'
+            }));
+            
+            // Note: We don't return/continue here because the subsequent code
+            // has its own checks (modelTurn?.parts) which won't match if interrupted
+          }
+          
           // Audio output da Gemini
           if (response.serverContent?.modelTurn?.parts) {
             // 🆕 WATCHDOG: Gemini sta rispondendo - cancella il timer!

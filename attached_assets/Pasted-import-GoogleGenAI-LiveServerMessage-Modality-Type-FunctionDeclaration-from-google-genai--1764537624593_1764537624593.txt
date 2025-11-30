@@ -1,0 +1,288 @@
+import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from "@google/genai";
+import { Appointment } from "../types";
+
+// Audio configuration constants
+const INPUT_SAMPLE_RATE = 16000;
+const OUTPUT_SAMPLE_RATE = 24000;
+
+// Helper type for LiveSession as it is not exported directly
+type LiveSession = Awaited<ReturnType<GoogleGenAI["live"]["connect"]>>;
+
+// Tool Definition for Booking
+const bookAppointmentTool: FunctionDeclaration = {
+  name: "bookAppointment",
+  description: "Prenota un appuntamento per il cliente quando richiesto o concordato.",
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      customerName: { type: Type.STRING, description: "Il nome del cliente." },
+      date: { type: Type.STRING, description: "La data dell'appuntamento (formato YYYY-MM-DD)." },
+      time: { type: Type.STRING, description: "L'orario dell'appuntamento (formato HH:MM)." },
+      reason: { type: Type.STRING, description: "Il motivo della chiamata o dell'appuntamento." },
+    },
+    required: ["customerName", "date", "time", "reason"],
+  },
+};
+
+export class GeminiLiveService {
+  private ai: GoogleGenAI;
+  private session: LiveSession | null = null;
+  private inputAudioContext: AudioContext | null = null;
+  private outputAudioContext: AudioContext | null = null;
+  private nextStartTime = 0;
+  private sources = new Set<AudioBufferSourceNode>();
+  private onAppointmentBooked: (appointment: Appointment) => void;
+  private onVolumeChange: (volume: number) => void;
+  private scriptProcessor: ScriptProcessorNode | null = null;
+  private mediaStream: MediaStream | null = null;
+
+  constructor(
+    apiKey: string, 
+    onAppointmentBooked: (appt: Appointment) => void,
+    onVolumeChange: (vol: number) => void
+  ) {
+    this.ai = new GoogleGenAI({ apiKey });
+    this.onAppointmentBooked = onAppointmentBooked;
+    this.onVolumeChange = onVolumeChange;
+  }
+
+  async connect() {
+    // 1. Setup Audio Contexts
+    this.inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: INPUT_SAMPLE_RATE });
+    this.outputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: OUTPUT_SAMPLE_RATE });
+
+    // 2. Start Microphone Stream
+    this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // 3. Connect to Gemini Live
+    const sessionPromise = this.ai.live.connect({
+      model: 'gemini-2.5-flash-native-audio-preview-09-2025',
+      config: {
+        responseModalities: [Modality.AUDIO],
+        systemInstruction: `
+          Sei "Marco", un assistente clienti professionale ed empatico per "Innovazione Digitale SRL".
+          Parla italiano in modo fluido e naturale.
+          Il tuo obiettivo è ascoltare il problema del cliente e guidarlo verso la prenotazione di un appuntamento tecnico.
+          Sii conciso. Non fare monologhi. Interagisci come un umano.
+          Quando hai concordato data e ora, usa lo strumento 'bookAppointment'.
+        `,
+        tools: [{ functionDeclarations: [bookAppointmentTool] }],
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
+        },
+      },
+      callbacks: {
+        onopen: () => {
+          console.log("Session Opened");
+          this.startAudioInputStream(sessionPromise);
+        },
+        onmessage: async (msg: LiveServerMessage) => {
+          await this.handleMessage(msg, sessionPromise);
+        },
+        onclose: () => {
+          console.log("Session Closed");
+          this.cleanup();
+        },
+        onerror: (err) => {
+          console.error("Session Error", err);
+          this.cleanup();
+        }
+      }
+    });
+
+    this.session = await sessionPromise;
+  }
+
+  private startAudioInputStream(sessionPromise: Promise<LiveSession>) {
+    if (!this.inputAudioContext || !this.mediaStream) return;
+
+    const source = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
+    // Buffer size 4096 provides a good balance between latency and performance
+    this.scriptProcessor = this.inputAudioContext.createScriptProcessor(4096, 1, 1);
+
+    this.scriptProcessor.onaudioprocess = (e) => {
+      const inputData = e.inputBuffer.getChannelData(0);
+      
+      // Calculate volume for visualizer
+      let sum = 0;
+      for (let i = 0; i < inputData.length; i++) {
+        sum += inputData[i] * inputData[i];
+      }
+      const rms = Math.sqrt(sum / inputData.length);
+      this.onVolumeChange(rms * 5); // Scale up for visibility
+
+      // Convert to PCM and send
+      const pcmData = this.float32ToInt16(inputData);
+      const base64Data = this.arrayBufferToBase64(pcmData.buffer);
+
+      sessionPromise.then(session => {
+         session.sendRealtimeInput({
+            media: {
+                mimeType: 'audio/pcm;rate=16000',
+                data: base64Data
+            }
+         });
+      });
+    };
+
+    source.connect(this.scriptProcessor);
+    this.scriptProcessor.connect(this.inputAudioContext.destination);
+  }
+
+  private async handleMessage(message: LiveServerMessage, sessionPromise: Promise<LiveSession>) {
+    // 0. Handle Interruption (Barge-in)
+    // If the server detects user input while speaking, it sends an interrupted signal.
+    if (message.serverContent?.interrupted) {
+      console.log("Interruption detected - stopping audio");
+      this.stopAllAudio();
+      return; 
+    }
+
+    // 1. Handle Audio Output
+    const audioData = message.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+    if (audioData) {
+      await this.playAudio(audioData);
+    }
+
+    // 2. Handle Tool Calls
+    const toolCall = message.toolCall;
+    if (toolCall) {
+      for (const fc of toolCall.functionCalls) {
+        if (fc.name === 'bookAppointment') {
+          const args = fc.args as unknown as Appointment;
+          console.log("Tool called:", args);
+          this.onAppointmentBooked(args);
+          
+          // Send response back to model
+          const session = await sessionPromise;
+          session.sendToolResponse({
+            functionResponses: {
+              id: fc.id,
+              name: fc.name,
+              response: { result: "Appointment confirmed successfully." }
+            }
+          });
+        }
+      }
+    }
+  }
+
+  private stopAllAudio() {
+    if (!this.outputAudioContext) return;
+    
+    // Stop all currently playing sources
+    this.sources.forEach(source => {
+      try {
+        source.stop();
+      } catch (e) {
+        // Ignore if already stopped
+      }
+    });
+    this.sources.clear();
+    
+    // Reset scheduler so next phrase starts immediately
+    this.nextStartTime = 0;
+    
+    // Reset visualizer
+    this.onVolumeChange(0);
+  }
+
+  private async playAudio(base64String: string) {
+    if (!this.outputAudioContext) return;
+
+    const arrayBuffer = this.base64ToArrayBuffer(base64String);
+    const audioBuffer = await this.decodeAudioData(arrayBuffer);
+
+    // Track visualizer for output audio loosely based on presence of data
+    this.onVolumeChange(0.5); 
+
+    const source = this.outputAudioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    
+    const gainNode = this.outputAudioContext.createGain();
+    gainNode.gain.value = 1.0; 
+    
+    source.connect(gainNode);
+    gainNode.connect(this.outputAudioContext.destination);
+
+    // Schedule playback
+    const currentTime = this.outputAudioContext.currentTime;
+    if (this.nextStartTime < currentTime) {
+        this.nextStartTime = currentTime;
+    }
+    
+    source.start(this.nextStartTime);
+    this.nextStartTime += audioBuffer.duration;
+    
+    this.sources.add(source);
+    source.onended = () => {
+      this.sources.delete(source);
+      // Only reset visualizer if no other sources are playing
+      if (this.sources.size === 0) {
+        this.onVolumeChange(0); 
+      }
+    };
+  }
+
+  async disconnect() {
+    this.cleanup();
+  }
+
+  private cleanup() {
+    this.mediaStream?.getTracks().forEach(track => track.stop());
+    this.scriptProcessor?.disconnect();
+    this.inputAudioContext?.close();
+    this.outputAudioContext?.close();
+    this.stopAllAudio(); // Use the helper to clear sources
+    this.session = null;
+  }
+
+  // --- Utils ---
+
+  private float32ToInt16(float32Array: Float32Array): Int16Array {
+    const int16Array = new Int16Array(float32Array.length);
+    for (let i = 0; i < float32Array.length; i++) {
+      let s = Math.max(-1, Math.min(1, float32Array[i]));
+      int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return int16Array;
+  }
+
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  private base64ToArrayBuffer(base64: string): Uint8Array {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  private async decodeAudioData(data: Uint8Array): Promise<AudioBuffer> {
+    if (!this.outputAudioContext) throw new Error("Audio Context missing");
+    
+    // Create an Int16Array view of the data
+    const dataInt16 = new Int16Array(data.buffer);
+    
+    // Create the audio buffer
+    const buffer = this.outputAudioContext.createBuffer(1, dataInt16.length, OUTPUT_SAMPLE_RATE);
+    const channelData = buffer.getChannelData(0);
+    
+    // Convert Int16 to Float32 [-1.0, 1.0]
+    for (let i = 0; i < dataInt16.length; i++) {
+        channelData[i] = dataInt16[i] / 32768.0;
+    }
+    
+    return buffer;
+  }
+}

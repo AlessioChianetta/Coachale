@@ -629,11 +629,20 @@ export class SalesScriptTracker {
   
   /**
    * Get completion rate (0.0 to 1.0)
+   * Filters phasesReached to only count phases that exist in the script,
+   * deduplicates them, and caps the result at 1.0 (100%)
    */
   getCompletionRate(): number {
     const totalPhases = this.scriptStructure.metadata.totalPhases;
-    const phasesReached = this.state.phasesReached.length;
-    return phasesReached / totalPhases;
+    if (totalPhases === 0) return 0;
+    
+    const scriptPhaseIds = new Set(this.scriptStructure.phases.map(p => p.id));
+    const uniqueValidPhasesReached = new Set(
+      this.state.phasesReached.filter(phaseId => scriptPhaseIds.has(phaseId))
+    );
+    const completionRate = uniqueValidPhasesReached.size / totalPhases;
+    
+    return Math.min(completionRate, 1.0);
   }
   
   /**

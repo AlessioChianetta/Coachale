@@ -584,6 +584,7 @@ router.get(
 /**
  * GET /conversations/:id/discovery-rec
  * Ottiene il Discovery REC di una conversazione specifica
+ * Supports both numeric IDs and UUID strings
  */
 router.get(
   '/conversations/:id/discovery-rec',
@@ -591,13 +592,13 @@ router.get(
   requireRole('client'),
   async (req: AuthRequest, res) => {
     try {
-      const conversationId = parseInt(req.params.id, 10);
+      const conversationId = req.params.id;
       
-      if (isNaN(conversationId)) {
+      if (!conversationId || conversationId === 'NaN' || conversationId === 'undefined') {
         return res.status(400).json({ message: 'Invalid conversation ID' });
       }
 
-      // Ottieni la conversazione con REC
+      // Ottieni la conversazione con REC (ID is VARCHAR/UUID in database)
       const conversation = await db.select({
         id: clientSalesConversations.id,
         agentId: clientSalesConversations.agentId,
@@ -652,6 +653,7 @@ router.get(
 /**
  * POST /conversations/:id/discovery-rec/generate
  * Genera o rigenera il Discovery REC di una conversazione
+ * Supports both numeric IDs and UUID strings
  */
 router.post(
   '/conversations/:id/discovery-rec/generate',
@@ -659,13 +661,13 @@ router.post(
   requireRole('client'),
   async (req: AuthRequest, res) => {
     try {
-      const conversationId = parseInt(req.params.id, 10);
+      const conversationId = req.params.id;
       
-      if (isNaN(conversationId)) {
+      if (!conversationId || conversationId === 'NaN' || conversationId === 'undefined') {
         return res.status(400).json({ message: 'Invalid conversation ID' });
       }
 
-      // Ottieni la conversazione
+      // Ottieni la conversazione (ID is VARCHAR/UUID in database)
       const conversation = await db.select({
         id: clientSalesConversations.id,
         agentId: clientSalesConversations.agentId,
