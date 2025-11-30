@@ -3371,17 +3371,17 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         
                         const shouldInjectInstruction = analysis.feedbackForAgent?.shouldInject || hasValidReasoning;
                         
+                        // 🆕 Define phase/step info BEFORE if block - used both inside and outside
+                        const totalPhases = scriptForAgent?.phases?.length || 1;
+                        const currentPhaseNum = (phaseIndex >= 0 ? phaseIndex : 0) + 1;
+                        const currentPhaseName = currentPhase?.name || state?.currentPhase || 'Fase corrente';
+                        const currentStepName = currentPhase?.steps?.[stepIndex]?.name || state?.currentStep || 'Step corrente';
+                        const currentObjective = currentPhase?.steps?.[stepIndex]?.objective || currentPhase?.description || 'Seguire lo script e ottenere le info necessarie';
+                        
                         if (shouldInjectInstruction) {
                           const feedback = analysis.feedbackForAgent;
                           
-                          // Trova info sulla fase corrente per feedback strutturato (con fallback robusti)
-                          const totalPhases = scriptForAgent?.phases?.length || 1;
-                          const currentPhaseNum = (phaseIndex >= 0 ? phaseIndex : 0) + 1;
-                          const currentPhaseName = currentPhase?.name || state?.currentPhase || 'Fase corrente';
-                          const currentStepName = currentPhase?.steps?.[stepIndex]?.name || state?.currentStep || 'Step corrente';
-                          const currentObjective = currentPhase?.steps?.[stepIndex]?.objective || currentPhase?.description || 'Seguire lo script e ottenere le info necessarie';
-                          
-                          // Determina cosa fa bene e cosa deve migliorare
+                          // Determina cosa fa bene e cosa deve migliorare (le variabili di fase sono già definite sopra)
                           let doingWell = '';
                           let needsImprovement = '';
                           let statusMessage = '';
