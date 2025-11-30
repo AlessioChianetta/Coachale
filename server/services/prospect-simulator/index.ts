@@ -3,6 +3,7 @@ import type { ProspectPersona } from '@shared/prospect-personas';
 import { getAIProvider, type GeminiClient } from '../../ai/provider-factory';
 
 type ResponseSpeed = 'fast' | 'normal' | 'slow' | 'disabled';
+type TestMode = 'discovery' | 'demo' | 'discovery_demo';
 
 interface SalesAgentConfig {
   businessName: string;
@@ -47,6 +48,7 @@ interface ProspectSimulatorOptions {
     email: string;
   };
   responseSpeed?: ResponseSpeed;
+  testMode?: TestMode;
   onStatusUpdate: (status: StatusUpdate) => Promise<void>;
   onSessionEnd?: () => Promise<void>;
 }
@@ -169,6 +171,7 @@ export class ProspectSimulator {
     console.log(`   ShareToken: ${this.options.agent.shareToken}`);
     console.log(`   ClientId: ${this.options.clientId}`);
     console.log(`   ConsultantId: ${this.options.consultantId}`);
+    console.log(`   Test Mode: ${this.options.testMode || 'discovery'} 🎯`);
     
     this.isRunning = true;
 
@@ -274,6 +277,10 @@ export class ProspectSimulator {
       sessionToken: this.sessionToken!,
       shareToken: this.options.agent.shareToken,
     });
+    
+    if (this.options.testMode) {
+      params.set('testMode', this.options.testMode);
+    }
     
     return `${protocol}://${host}/ws/ai-voice?${params.toString()}`;
   }

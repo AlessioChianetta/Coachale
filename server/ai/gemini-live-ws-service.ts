@@ -433,6 +433,8 @@ async function getUserIdFromRequest(req: any): Promise<{
   shareToken: string | null;
   // Consultation Invite specific fields
   inviteToken: string | null;
+  // Test mode for AI Trainer (discovery | demo | discovery_demo)
+  testMode: 'discovery' | 'demo' | 'discovery_demo' | null;
 } | null> {
   try {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -447,6 +449,10 @@ async function getUserIdFromRequest(req: any): Promise<{
     const voiceName = url.searchParams.get('voice') || 'achernar';
     const resumeHandle = url.searchParams.get('resumeHandle');
     const sessionType = url.searchParams.get('sessionType');
+    const testModeParam = url.searchParams.get('testMode');
+    const testMode = (testModeParam === 'discovery' || testModeParam === 'demo' || testModeParam === 'discovery_demo') 
+      ? testModeParam 
+      : null;
 
     if (!mode) {
       console.error('❌ No mode provided in WebSocket connection');
@@ -520,6 +526,9 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       console.log(`✅ WebSocket authenticated: Sales Agent Session - Conversation ${conversation.id} - Prospect: ${conversation.prospectName}`);
+      if (testMode) {
+        console.log(`🎯 [AI TRAINER] Test mode from WebSocket: ${testMode}`);
+      }
 
       return {
         userId: null, // No user for sales agent mode
@@ -537,6 +546,8 @@ async function getUserIdFromRequest(req: any): Promise<{
         agentId: agent.id,
         shareToken: shareToken,
         inviteToken: null,
+        // Test mode for AI Trainer
+        testMode: testMode,
       };
     }
 
@@ -630,6 +641,7 @@ async function getUserIdFromRequest(req: any): Promise<{
         agentId: agent.id,
         shareToken: null,
         inviteToken: inviteToken,
+        testMode: null,
       };
     }
 
@@ -722,6 +734,7 @@ async function getUserIdFromRequest(req: any): Promise<{
       agentId: null,
       shareToken: null,
       inviteToken: null,
+      testMode: null,
     };
   } catch (error) {
     console.error('❌ JWT validation error:', error);
@@ -759,7 +772,7 @@ export function setupGeminiLiveWSService(server: Server) {
       return;
     }
 
-    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken } = authResult;
+    const { userId, consultantId, mode, consultantType, customPrompt, useFullPrompt, voiceName, resumeHandle, sessionType, conversationId, agentId, shareToken, inviteToken, testMode } = authResult;
 
     // Validazione: consultantId è obbligatorio per Live Mode (except sales_agent and consultation_invite)
     if (!consultantId && mode !== 'sales_agent' && mode !== 'consultation_invite') {
@@ -906,12 +919,17 @@ export function setupGeminiLiveWSService(server: Server) {
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🕐 RESPONSE WATCHDOG - Rileva quando Gemini non risponde
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔧 FIX: Timeout aumentato per evitare race condition con VAD silence_duration_ms
+    // Il VAD aspetta 2000ms di silenzio prima di inviare isFinal=true.
+    // Poi Gemini ha bisogno di tempo per elaborare e rispondere.
+    // Timeout = silence_duration_ms (2000) + buffer (1500) = 3500ms
     let responseWatchdogTimer: NodeJS.Timeout | null = null;
     let userMessagePendingResponse = false;
     let lastUserFinalTranscript = '';
     let lastUserMessageTimestamp = 0;
     let responseWatchdogRetries = 0;
-    const RESPONSE_WATCHDOG_TIMEOUT_MS = 2000; // 2 secondi dopo isFinal
+    let modelResponsePending = false; // 🆕 Flag: Gemini ha iniziato a elaborare (qualsiasi serverContent ricevuto)
+    const RESPONSE_WATCHDOG_TIMEOUT_MS = 3500; // 🔧 FIX: silence_duration_ms (2000) + buffer (1500)
     const MAX_WATCHDOG_RETRIES = 2;
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -961,6 +979,7 @@ export function setupGeminiLiveWSService(server: Server) {
       }
       
       userMessagePendingResponse = true;
+      modelResponsePending = false; // 🆕 Reset: nuovo turno, aspettiamo nuova risposta
       lastUserFinalTranscript = transcript;
       lastUserMessageTimestamp = Date.now();
       
@@ -970,11 +989,20 @@ export function setupGeminiLiveWSService(server: Server) {
       console.log(`🕐 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
       
       responseWatchdogTimer = setTimeout(() => {
+        // 🆕 FIX: Prima di fare retry, controlla se Gemini sta già rispondendo
+        // Questo previene il bug dove il retry interrompe una risposta in corso
+        if (isAiSpeaking || modelResponsePending) {
+          console.log(`✅ [${connectionId}] WATCHDOG SKIPPED - Gemini sta già rispondendo (isAiSpeaking=${isAiSpeaking}, modelResponsePending=${modelResponsePending})`);
+          cancelResponseWatchdog();
+          return;
+        }
+        
         if (userMessagePendingResponse) {
           const elapsedMs = Date.now() - lastUserMessageTimestamp;
           
           console.log(`\n⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           console.log(`⚠️ [${connectionId}] WATCHDOG TIMEOUT - Gemini non ha risposto in ${elapsedMs}ms!`);
+          console.log(`   isAiSpeaking=${isAiSpeaking}, modelResponsePending=${modelResponsePending}`);
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           
           if (responseWatchdogRetries < MAX_WATCHDOG_RETRIES) {
@@ -1046,6 +1074,7 @@ export function setupGeminiLiveWSService(server: Server) {
       }
       userMessagePendingResponse = false;
       responseWatchdogRetries = 0;
+      modelResponsePending = false; // 🆕 Reset anche questo flag
     }
     
     /**
@@ -2934,6 +2963,13 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
             }
           }
 
+          // 🆕 FIX: Flag modelResponsePending appena riceviamo QUALSIASI serverContent
+          // Questo segnala al watchdog che Gemini sta elaborando, anche se non ha ancora inviato audio
+          if (response.serverContent && userMessagePendingResponse) {
+            modelResponsePending = true;
+            console.log(`🔔 [${connectionId}] modelResponsePending=true (Gemini sta elaborando)`);
+          }
+          
           // Audio output da Gemini
           if (response.serverContent?.modelTurn?.parts) {
             // 🆕 WATCHDOG: Gemini sta rispondendo - cancella il timer!

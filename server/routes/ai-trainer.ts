@@ -2,11 +2,13 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { db } from '../db';
-import { clientSalesAgents, salesScripts, aiTrainingSessions, agentScriptAssignments, users, salesConversationTraining } from '@shared/schema';
-import { eq, desc, and } from 'drizzle-orm';
+import { clientSalesAgents, salesScripts, aiTrainingSessions, agentScriptAssignments, users, salesConversationTraining, clientSalesConversations } from '@shared/schema';
+import { eq, desc, and, isNotNull } from 'drizzle-orm';
 import { PROSPECT_PERSONAS, getPersonaById, generateProspectData } from '@shared/prospect-personas';
 import { ProspectSimulator } from '../services/prospect-simulator';
 import { clearScriptCache } from '../ai/sales-agent-prompt-builder';
+
+type TestMode = 'discovery' | 'demo' | 'discovery_demo';
 
 const router = express.Router();
 
@@ -83,7 +85,7 @@ router.post(
   requireRole('client'),
   async (req: AuthRequest, res) => {
     try {
-      const { agentId, scriptId, personaId, responseSpeed } = req.body;
+      const { agentId, scriptId, personaId, responseSpeed, testMode } = req.body;
 
       if (!agentId || !scriptId || !personaId) {
         return res.status(400).json({ message: 'Missing required fields: agentId, scriptId, personaId' });
@@ -91,6 +93,31 @@ router.post(
 
       const validSpeeds = ['fast', 'normal', 'slow', 'disabled'];
       const speed = validSpeeds.includes(responseSpeed) ? responseSpeed : 'normal';
+      
+      const validTestModes: TestMode[] = ['discovery', 'demo', 'discovery_demo'];
+      const resolvedTestMode: TestMode = validTestModes.includes(testMode) ? testMode : 'discovery';
+      
+      console.log(`🎯 [AI TRAINER] Test mode: ${resolvedTestMode}`);
+
+      if (resolvedTestMode === 'demo') {
+        const existingRec = await db.select({
+          id: clientSalesConversations.id,
+          discoveryRec: clientSalesConversations.discoveryRec,
+        })
+          .from(clientSalesConversations)
+          .where(and(
+            eq(clientSalesConversations.agentId, agentId),
+            isNotNull(clientSalesConversations.discoveryRec)
+          ))
+          .limit(1);
+
+        if (!existingRec[0] || !existingRec[0].discoveryRec) {
+          return res.status(400).json({ 
+            message: 'Solo Demo mode requires an existing Discovery REC. Please run a Discovery session first or use Discovery+Demo mode.' 
+          });
+        }
+        console.log(`✅ [AI TRAINER] Discovery REC found for demo mode`);
+      }
 
       const agent = await db.select()
         .from(clientSalesAgents)
@@ -265,6 +292,7 @@ router.post(
           persona,
           prospectData,
           responseSpeed: speed as 'fast' | 'normal' | 'slow' | 'disabled',
+          testMode: resolvedTestMode,
           onSessionEnd: restoreScriptAssignment,
           onStatusUpdate: async (status) => {
             const updateData: any = {
@@ -496,6 +524,55 @@ router.get(
     } catch (error) {
       console.error('Error fetching manager analysis:', error);
       res.status(500).json({ message: 'Failed to fetch manager analysis' });
+    }
+  }
+);
+
+router.get(
+  '/discovery-rec-status/:agentId',
+  authenticateToken,
+  requireRole('client'),
+  async (req: AuthRequest, res) => {
+    try {
+      const { agentId } = req.params;
+
+      const agent = await db.select()
+        .from(clientSalesAgents)
+        .where(eq(clientSalesAgents.id, agentId))
+        .limit(1);
+
+      if (!agent[0]) {
+        return res.status(404).json({ message: 'Sales agent not found' });
+      }
+
+      if (agent[0].clientId !== req.user?.id) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const conversationsWithRec = await db.select({
+        id: clientSalesConversations.id,
+        discoveryRec: clientSalesConversations.discoveryRec,
+        createdAt: clientSalesConversations.createdAt,
+      })
+        .from(clientSalesConversations)
+        .where(and(
+          eq(clientSalesConversations.agentId, agentId),
+          isNotNull(clientSalesConversations.discoveryRec)
+        ))
+        .orderBy(desc(clientSalesConversations.createdAt))
+        .limit(1);
+
+      const hasDiscoveryRec = conversationsWithRec.length > 0 && conversationsWithRec[0].discoveryRec !== null;
+      const lastRecDate = conversationsWithRec[0]?.createdAt?.toISOString() || undefined;
+
+      res.json({
+        hasDiscoveryRec,
+        lastRecDate,
+      });
+
+    } catch (error) {
+      console.error('Error checking discovery REC status:', error);
+      res.status(500).json({ message: 'Failed to check discovery REC status' });
     }
   }
 );

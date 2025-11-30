@@ -146,6 +146,7 @@ interface SalesManagerAnalysisData {
 }
 
 type ResponseSpeed = 'fast' | 'normal' | 'slow' | 'disabled';
+type TestMode = 'discovery' | 'demo' | 'discovery_demo';
 
 const RESPONSE_SPEED_OPTIONS: { value: ResponseSpeed; label: string; description: string; icon: string }[] = [
   { value: 'fast', label: 'Veloce', description: '~1 sec', icon: '⚡' },
@@ -154,14 +155,34 @@ const RESPONSE_SPEED_OPTIONS: { value: ResponseSpeed; label: string; description
   { value: 'disabled', label: 'Disabilitato', description: 'Manuale', icon: '⏸️' },
 ];
 
+const TEST_MODE_OPTIONS: { value: TestMode; label: string; description: string; icon: string; requiresDiscoveryRec: boolean }[] = [
+  { value: 'discovery', label: 'Solo Discovery', description: 'Test fase scoperta', icon: '🔍', requiresDiscoveryRec: false },
+  { value: 'demo', label: 'Solo Demo', description: 'Richiede Discovery REC', icon: '📊', requiresDiscoveryRec: true },
+  { value: 'discovery_demo', label: 'Discovery + Demo', description: 'Flusso completo', icon: '🔄', requiresDiscoveryRec: false },
+];
+
 export function AITrainerTab({ agentId }: AITrainerTabProps) {
   const [selectedPersona, setSelectedPersona] = useState<ProspectPersona | null>(null);
   const [selectedScriptId, setSelectedScriptId] = useState<string>('');
   const [scriptSelectionTab, setScriptSelectionTab] = useState<'active' | 'all'>('active');
   const [observeSessionId, setObserveSessionId] = useState<string | null>(null);
   const [responseSpeed, setResponseSpeed] = useState<ResponseSpeed>('normal');
+  const [testMode, setTestMode] = useState<TestMode>('discovery');
   const [analysisHistory, setAnalysisHistory] = useState<SalesManagerAnalysisData[]>([]);
   const queryClient = useQueryClient();
+  
+  const { data: discoveryRecStatus } = useQuery<{ hasDiscoveryRec: boolean; lastRecDate?: string }>({
+    queryKey: [`/api/ai-trainer/discovery-rec-status/${agentId}`],
+    queryFn: async () => {
+      const response = await fetch(`/api/ai-trainer/discovery-rec-status/${agentId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { hasDiscoveryRec: false };
+      return response.json();
+    },
+  });
+  
+  const hasDiscoveryRec = discoveryRecStatus?.hasDiscoveryRec ?? false;
   
   useEffect(() => {
     if (!observeSessionId) {
@@ -275,14 +296,14 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
   };
 
   const startSessionMutation = useMutation({
-    mutationFn: async ({ scriptId, personaId, responseSpeed }: { scriptId: string; personaId: string; responseSpeed: ResponseSpeed }) => {
+    mutationFn: async ({ scriptId, personaId, responseSpeed, testMode }: { scriptId: string; personaId: string; responseSpeed: ResponseSpeed; testMode: TestMode }) => {
       const response = await fetch('/api/ai-trainer/start-session', {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ agentId, scriptId, personaId, responseSpeed }),
+        body: JSON.stringify({ agentId, scriptId, personaId, responseSpeed, testMode }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -316,10 +337,12 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
 
   const handleStartTraining = () => {
     if (!selectedPersona || !selectedScriptId) return;
+    if (testMode === 'demo' && !hasDiscoveryRec) return;
     startSessionMutation.mutate({
       scriptId: selectedScriptId,
       personaId: selectedPersona.id,
       responseSpeed,
+      testMode,
     });
   };
 
@@ -497,10 +520,50 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
               )}
             </div>
 
+            {/* Test Mode Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                2. Modalità Test
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {TEST_MODE_OPTIONS.map((option) => {
+                  const isDisabled = option.requiresDiscoveryRec && !hasDiscoveryRec;
+                  return (
+                    <button
+                      key={option.value}
+                      onClick={() => !isDisabled && setTestMode(option.value)}
+                      disabled={isDisabled}
+                      className={`p-3 rounded-lg border-2 transition-all ${
+                        testMode === option.value
+                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-950'
+                          : isDisabled
+                            ? 'border-gray-200 dark:border-gray-700 opacity-50 cursor-not-allowed'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                      }`}
+                    >
+                      <div className="text-xl text-center mb-1">{option.icon}</div>
+                      <div className="text-xs text-center font-medium">{option.label}</div>
+                      <div className="text-[10px] text-center text-gray-500">{option.description}</div>
+                      {isDisabled && (
+                        <div className="text-[10px] text-center text-red-500 mt-1">
+                          Nessun REC disponibile
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {testMode === 'discovery_demo' && (
+                <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300">
+                  <strong>Discovery + Demo:</strong> Prima completa la Discovery, poi genera automaticamente il riepilogo e passa alla Demo.
+                </div>
+              )}
+            </div>
+
             {/* Persona Grid */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                2. Scegli l'Avversario (Personalità Prospect)
+                3. Scegli l'Avversario (Personalità Prospect)
               </label>
               <div className="grid grid-cols-5 gap-2">
                 {PROSPECT_PERSONAS.map((persona) => (
@@ -525,7 +588,7 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
             {/* Response Speed */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                3. Velocità Risposta Prospect
+                4. Velocità Risposta Prospect
               </label>
               <div className="grid grid-cols-4 gap-2">
                 {RESPONSE_SPEED_OPTIONS.map((option) => (
@@ -549,7 +612,7 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
             {/* Start Button */}
             <Button
               onClick={handleStartTraining}
-              disabled={!selectedPersona || !selectedScriptId || startSessionMutation.isPending}
+              disabled={!selectedPersona || !selectedScriptId || startSessionMutation.isPending || (testMode === 'demo' && !hasDiscoveryRec)}
               className="w-full bg-purple-600 hover:bg-purple-700 text-white"
               size="lg"
             >
