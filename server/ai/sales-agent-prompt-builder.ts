@@ -1,8 +1,10 @@
 // Sales Agent Prompt Builder - Integra gli script base con i dati del BOSS
-import { getDiscoveryScript, getDemoScript, getObjectionsScript } from './sales-scripts-base';
+// NOTA: Gli script vengono caricati ESCLUSIVAMENTE dal database (salesScripts + agentScriptAssignments)
+// Se non ci sono script associati all'agent, NON si usano fallback hardcoded
 import { db } from '../db';
 import { salesScripts, agentScriptAssignments } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
+import { type DiscoveryRec, formatDiscoveryRecForPrompt } from './discovery-rec-generator';
 
 // Cache for database scripts to avoid repeated queries during same session
 // Key format: "agentId:xxx" for agent-specific or "clientId:xxx" for legacy
@@ -766,8 +768,14 @@ SE prospect chiede "Quando fissiamo?": → "Capisco! Dammi 2 minuti per capire l
  * Combines static prompt + dynamic context into one mega-string
  * This will be split into ~5 chunks of 30KB each
  * 
- * @param dbScripts - Optional pre-fetched database scripts. If not provided, uses hardcoded fallbacks.
+ * OTTIMIZZAZIONE: Carica SOLO lo script della fase corrente (non tutti insieme)
+ * - Discovery: solo script discovery (~8k tokens)
+ * - Demo: solo script demo + Discovery REC (~10k tokens)
+ * - Objections: solo script objections + Discovery REC (~9k tokens)
+ * 
+ * @param dbScripts - Pre-fetched database scripts (NO FALLBACK se non presenti)
  * @param position - Optional exact position in script (from tracker)
+ * @param discoveryRec - Discovery REC generato alla transizione discovery→demo
  */
 export function buildFullSalesAgentContext(
   agentConfig: SalesAgentConfig,
@@ -775,18 +783,20 @@ export function buildFullSalesAgentContext(
   currentPhase: 'discovery' | 'demo' | 'objections' | 'closing',
   conversationHistory?: Array<{role: 'user' | 'assistant'; content: string; timestamp: Date}>,
   dbScripts?: DatabaseScripts,
-  position?: ScriptPosition  // 🆕 Posizione esatta nello script
+  position?: ScriptPosition,
+  discoveryRec?: DiscoveryRec
 ): string {
-  // PART 1: Static prompt (rules, scripts, business data) - with optional DB scripts
-  const staticPrompt = buildStaticSalesAgentPrompt(agentConfig, dbScripts);
+  // PART 1: Static prompt - SOLO lo script della fase corrente
+  const staticPrompt = buildStaticSalesAgentPrompt(agentConfig, dbScripts, currentPhase);
   
-  // PART 2: Dynamic context (prospect data, phase, history, position)
+  // PART 2: Dynamic context (prospect data, phase, history, position, discoveryRec)
   const dynamicContext = buildSalesAgentDynamicContext(
     agentConfig, 
     prospectData, 
     currentPhase, 
     conversationHistory,
-    position  // 🆕 Passa posizione esatta
+    position,
+    discoveryRec
   );
   
   // Combine everything into one string for chunking
@@ -796,32 +806,38 @@ export function buildFullSalesAgentContext(
 /**
  * Build FULL context for Sales Agent with automatic database script fetching
  * This is the recommended async version that automatically loads client's custom scripts
+ * 
+ * IMPORTANTE: Gli script vengono caricati ESCLUSIVAMENTE dal database
+ * Se non ci sono script associati all'agent, NON si usano fallback
+ * 
  * @param position - Optional exact position in script (from tracker)
+ * @param discoveryRec - Discovery REC generato alla transizione discovery→demo
  */
 export async function buildFullSalesAgentContextAsync(
   agentConfig: SalesAgentConfig,
   prospectData: ProspectData,
   currentPhase: 'discovery' | 'demo' | 'objections' | 'closing',
   conversationHistory?: Array<{role: 'user' | 'assistant'; content: string; timestamp: Date}>,
-  position?: ScriptPosition  // 🆕 Posizione esatta nello script
+  position?: ScriptPosition,
+  discoveryRec?: DiscoveryRec
 ): Promise<string> {
   // Fetch client's custom scripts from database (if available)
   let dbScripts: DatabaseScripts | undefined;
   
   if (agentConfig.clientId) {
     const agentId = agentConfig.id;
-    console.log(`🔄 [SalesAgentContext] Fetching custom scripts for ${agentId ? `agent ${agentId}` : `client ${agentConfig.clientId}`}...`);
+    console.log(`🔄 [SalesAgentContext] Fetching scripts for phase "${currentPhase}" - ${agentId ? `agent ${agentId}` : `client ${agentConfig.clientId}`}...`);
     dbScripts = await fetchClientScripts(agentConfig.clientId, agentId);
     
     const scriptsFound = Object.keys(dbScripts).length;
     if (scriptsFound > 0) {
-      console.log(`✅ [SalesAgentContext] Using ${scriptsFound} custom script(s) from ${agentId ? 'agent assignments' : 'database'}`);
+      console.log(`✅ [SalesAgentContext] Found ${scriptsFound} script(s) in DB: ${Object.keys(dbScripts).join(', ').toUpperCase()}`);
     } else {
-      console.log(`ℹ️ [SalesAgentContext] No custom scripts found, using default scripts`);
+      console.log(`⚠️ [SalesAgentContext] No scripts found in DB for this agent - will use meta-instructions only`);
     }
   }
   
-  return buildFullSalesAgentContext(agentConfig, prospectData, currentPhase, conversationHistory, dbScripts, position);
+  return buildFullSalesAgentContext(agentConfig, prospectData, currentPhase, conversationHistory, dbScripts, position, discoveryRec);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -833,7 +849,8 @@ export async function buildFullSalesAgentContextAsync(
 
 export function buildStaticSalesAgentPrompt(
   agentConfig: SalesAgentConfig,
-  dbScripts?: DatabaseScripts
+  dbScripts?: DatabaseScripts,
+  currentPhase?: 'discovery' | 'demo' | 'objections' | 'closing'
 ): string {
   const sections: string[] = [];
 
@@ -866,64 +883,77 @@ export function buildStaticSalesAgentPrompt(
 `);
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // 📚 SCRIPTS - CACHED SECTION (STATIC)
+  // 📚 SCRIPTS - CARICA SOLO LO SCRIPT DELLA FASE CORRENTE
   // ══════════════════════════════════════════════════════════════════════════════
-  // These scripts are now in the cached (static) part to optimize token costs
-  // Placeholders like [NOME_PROSPECT] will be substituted at runtime with actual data
+  // IMPORTANTE: Gli script vengono caricati ESCLUSIVAMENTE dal database
+  // Se non ci sono script associati all'agent, NON si usano fallback
+  // Questo riduce i token da ~27k a ~8-10k per fase
+  
+  const phase = currentPhase || 'discovery';
   
   sections.push(`
 
 ════════════════════════════════════════════════════════════════════════════════
+📚 SCRIPT DI VENDITA - FASE: ${phase.toUpperCase()}
+════════════════════════════════════════════════════════════════════════════════
 `);
 
-  // Add DISCOVERY script to static cache
-  // Uses database script if available, otherwise fallback to hardcoded
-  if (agentConfig.enableDiscovery) {
-    const discoveryScript = dbScripts?.discovery || getDiscoveryScript();
-    const isCustomScript = !!dbScripts?.discovery;
-    sections.push(`
+  // DISCOVERY: Solo durante fase discovery
+  if (phase === 'discovery') {
+    if (agentConfig.enableDiscovery && dbScripts?.discovery) {
+      sections.push(`
 # ═══════════════════════════════════════════════════════════════════════════
-# SCRIPT #1: DISCOVERY CALL (FASE INIZIALE)${isCustomScript ? ' [SCRIPT PERSONALIZZATO]' : ''}
+# SCRIPT ATTIVO: DISCOVERY CALL [DA DATABASE]
 # ═══════════════════════════════════════════════════════════════════════════
 
-${discoveryScript}
+${dbScripts.discovery}
 
 `);
+    } else if (agentConfig.enableDiscovery) {
+      sections.push(`
+# ⚠️ NESSUNO SCRIPT DISCOVERY ASSOCIATO A QUESTO AGENT
+# Usa le meta-istruzioni sopra per guidare la conversazione discovery.
+`);
+    }
   }
-
-  // Add DEMO script to static cache
-  // Uses database script if available, otherwise fallback to hardcoded with dynamic data
-  if (agentConfig.enableDemo) {
-    const demoScript = dbScripts?.demo || getDemoScript(
-      agentConfig.businessName,
-      agentConfig.displayName,
-      agentConfig.caseStudies || [],
-      agentConfig.servicesOffered || [],
-      agentConfig.guarantees
-    );
-    const isCustomScript = !!dbScripts?.demo;
-    sections.push(`
+  
+  // DEMO: Solo durante fase demo
+  if (phase === 'demo') {
+    if (agentConfig.enableDemo && dbScripts?.demo) {
+      sections.push(`
 # ═══════════════════════════════════════════════════════════════════════════
-# SCRIPT #2: DEMO E PRESENTAZIONE${isCustomScript ? ' [SCRIPT PERSONALIZZATO]' : ''}
+# SCRIPT ATTIVO: DEMO E PRESENTAZIONE [DA DATABASE]
 # ═══════════════════════════════════════════════════════════════════════════
 
-${demoScript}
+${dbScripts.demo}
 
 `);
+    } else if (agentConfig.enableDemo) {
+      sections.push(`
+# ⚠️ NESSUNO SCRIPT DEMO ASSOCIATO A QUESTO AGENT
+# Usa le meta-istruzioni sopra e il Discovery REC per guidare la demo.
+`);
+    }
   }
-
-  // Add OBJECTIONS script to static cache
-  // Uses database script if available, otherwise fallback to hardcoded
-  const objectionsScript = dbScripts?.objections || getObjectionsScript();
-  const isCustomObjections = !!dbScripts?.objections;
-  sections.push(`
+  
+  // OBJECTIONS/CLOSING: Solo durante queste fasi
+  if (phase === 'objections' || phase === 'closing') {
+    if (dbScripts?.objections) {
+      sections.push(`
 # ═══════════════════════════════════════════════════════════════════════════
-# SCRIPT #3: GESTIONE OBIEZIONI${isCustomObjections ? ' [SCRIPT PERSONALIZZATO]' : ''}
+# SCRIPT ATTIVO: GESTIONE OBIEZIONI [DA DATABASE]
 # ═══════════════════════════════════════════════════════════════════════════
 
-${objectionsScript}
+${dbScripts.objections}
 
 `);
+    } else {
+      sections.push(`
+# ⚠️ NESSUNO SCRIPT OBIEZIONI ASSOCIATO A QUESTO AGENT
+# Usa le meta-istruzioni sopra per gestire obiezioni e closing.
+`);
+    }
+  }
 
   return sections.join('\n');
 }
@@ -935,9 +965,17 @@ export function buildSalesAgentDynamicContext(
   prospectData: ProspectData,
   currentPhase: 'discovery' | 'demo' | 'objections' | 'closing',
   conversationHistory?: Array<{role: 'user' | 'assistant'; content: string; timestamp: Date}>,
-  position?: ScriptPosition  // 🆕 Posizione esatta nello script
+  position?: ScriptPosition,
+  discoveryRec?: DiscoveryRec
 ): string {
   const sections: string[] = [];
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 📋 DISCOVERY REC - Iniettato quando presente (fasi demo/objections/closing)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  if (discoveryRec && currentPhase !== 'discovery') {
+    sections.push(formatDiscoveryRecForPrompt(discoveryRec));
+  }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // 🆕 NAVIGATION MAP - Se abbiamo la posizione esatta, mostra la mappa
