@@ -531,7 +531,7 @@ async function getUserIdFromRequest(req: any): Promise<{
       }
 
       // 🔊 Use agent's configured voice, fallback to URL param or default
-      const agentVoice = agent.voiceName || voiceName || 'Puck';
+      const agentVoice = agent.voiceName || voiceName || 'Achernar';
       console.log(`🎙️ [Sales Agent] Using voice: ${agentVoice} (agent: ${agent.voiceName}, url: ${voiceName})`);
       
       return {
@@ -630,7 +630,7 @@ async function getUserIdFromRequest(req: any): Promise<{
       console.log(`✅ WebSocket authenticated: Consultation Invite - Conversation ${conversation.id} - Prospect: ${conversation.prospectName} - Invite: ${inviteToken}`);
 
       // 🔊 Use agent's configured voice, fallback to URL param or default
-      const agentVoice = agent.voiceName || voiceName || 'Puck';
+      const agentVoice = agent.voiceName || voiceName || 'Achernar';
       console.log(`🎙️ [Consultation Invite] Using voice: ${agentVoice} (agent: ${agent.voiceName}, url: ${voiceName})`);
       
       return {

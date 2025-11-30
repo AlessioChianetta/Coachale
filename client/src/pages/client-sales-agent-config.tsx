@@ -76,6 +76,7 @@ interface MagicButtonState {
 }
 
 const AVAILABLE_VOICES = [
+  { value: 'achernar', label: 'Achernar', description: '🇮🇹 Femminile Professionale' },
   { value: 'Puck', label: 'Puck', description: 'Default Gemini - Voce neutra' },
   { value: 'Charon', label: 'Charon', description: 'Voce maschile profonda' },
   { value: 'Kore', label: 'Kore', description: 'Voce femminile naturale' },
@@ -110,7 +111,7 @@ export default function ClientSalesAgentConfig() {
     businessName: '',
     businessDescription: '',
     consultantBio: '',
-    voiceName: 'Puck',
+    voiceName: 'Achernar',
     vision: '',
     mission: '',
     values: [],
