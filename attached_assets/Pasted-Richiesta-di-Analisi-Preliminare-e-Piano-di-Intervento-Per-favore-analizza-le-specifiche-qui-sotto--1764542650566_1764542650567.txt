@@ -1,0 +1,60 @@
+Richiesta di Analisi Preliminare e Piano di Intervento
+Per favore, analizza le specifiche qui sotto con estrema attenzione ai dettagli (livello di precisione "pixel-perfect").
+
+Prima di iniziare lo sviluppo, ho bisogno che tu:
+
+Valuti criticamente la richiesta: Identifica subito eventuali casi limite (edge cases) o conflitti logici.
+
+Mi fornisca un piano d'azione dettagliato: Voglio capire esattamente come intendi implementare la logica e come risolverai i bug dell'interfaccia.
+
+Mi dia garanzie tecniche: Convincimi che la soluzione proposta sia robusta e che non creerà regressioni future.
+
+Voglio essere sicuro che siamo perfettamente allineati prima di scrivere una sola riga di codice.
+
+PIANO COMPLETO E TASK LIST
+Contesto e Analisi del Problema
+
+Il problema rilevato: La transizione tra fase Discovery e Demo è interrotta o manuale, mentre deve essere fluida e immediata. Inoltre, l'interfaccia di test presenta bug bloccanti nella selezione multipla degli script (non permette di caricare Script 1 + Script 2).
+
+La tua richiesta: Implementare una logica di transizione automatica su Gemini 2.5 Flash (invece di fissare appuntamento) e correggere la logica di selezione script nell'UI.
+
+Il ragionamento: Abbiamo stabilito che l'agente deve agire come un "orchestratore": finita la Discovery, deve riassumere e passare lo switch alla Demo senza interruzioni. L'interfaccia deve riflettere questa complessità permettendo la selezione di due script distinti.
+
+Soluzione Proposta e Task Operative
+
+Ecco le task da implementare, divise per logica:
+
+Task 1: Logica Backend & Prompting (Gemini 2.5 Flash)
+Problema: L'agente si ferma dopo la Discovery o fissa un appuntamento futuro. Soluzione: Implementare un trigger immediato post-Discovery.
+
+[ ] Configurare il flusso "Immediate Switch": Se il flag è Discovery + Demo, al termine della Discovery disabilita la funzione "Booking Appuntamento".
+
+[ ] Implementare il "Bridge": Istruire l'agente a:
+
+Chiedere un attimo di attesa.
+
+Generare un riassunto (Recap) dei punti chiave emersi.
+
+Attivare lo script Demo pertinente.
+
+[ ] Allineamento Ambienti: Replicare questa logica identica su LIVE e TEST (priorità LIVE).
+
+Task 2: Fix Interfaccia Utente (Selezione Script)
+Problema: L'UI impedisce di selezionare gli script corretti per la modalità ibrida. Soluzione: Riscrivere la logica di validazione dei form di selezione.
+
+[ ] Fix Modalità "Solo Disco": Se selezionato, nascondere o disabilitare forzatamente i campi relativi agli script Demo (prevenzione errore umano).
+
+[ ] Fix Modalità "Disco + Demo": Abilitare la selezione multipla obbligatoria:
+
+Slot 1: Script Discovery.
+
+Slot 2: Script Demo.
+
+Vincolo: Impedire il salvataggio se non sono presenti entrambi gli script.
+
+Task 3: Quality Assurance (QA)
+Problema: Rischio che funzioni in Live ma non in Test (o viceversa). Soluzione: Test incrociato.
+
+[ ] Verifica switch: Testare una chiamata completa assicurandosi che il passaggio da Discovery a Demo avvenga senza "allucinazioni" dell'AI.
+
+[ ] Verifica educazione: Controllare che il tono rimanga formale/educato durante il riassunto e il cambio di contesto.

@@ -164,7 +164,9 @@ const TEST_MODE_OPTIONS: { value: TestMode; label: string; description: string; 
 export function AITrainerTab({ agentId }: AITrainerTabProps) {
   const [selectedPersona, setSelectedPersona] = useState<ProspectPersona | null>(null);
   const [selectedScriptId, setSelectedScriptId] = useState<string>('');
+  const [selectedDemoScriptId, setSelectedDemoScriptId] = useState<string>('');
   const [scriptSelectionTab, setScriptSelectionTab] = useState<'active' | 'all'>('active');
+  const [demoScriptSelectionTab, setDemoScriptSelectionTab] = useState<'active' | 'all'>('active');
   const [observeSessionId, setObserveSessionId] = useState<string | null>(null);
   const [responseSpeed, setResponseSpeed] = useState<ResponseSpeed>('normal');
   const [testMode, setTestMode] = useState<TestMode>('discovery');
@@ -220,9 +222,39 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
     isActive: true,
   })) || [];
 
+  const getFilteredScripts = (scripts: SalesScript[], forDemo: boolean = false): SalesScript[] => {
+    if (testMode === 'discovery') {
+      return scripts.filter(s => s.scriptType === 'discovery');
+    }
+    if (testMode === 'demo') {
+      return scripts.filter(s => s.scriptType === 'demo');
+    }
+    if (testMode === 'discovery_demo') {
+      if (forDemo) {
+        return scripts.filter(s => s.scriptType === 'demo');
+      }
+      return scripts.filter(s => s.scriptType === 'discovery');
+    }
+    return scripts;
+  };
+
+  const filteredActiveScripts = getFilteredScripts(activeScripts);
+  const filteredAllScripts = getFilteredScripts(allScripts);
+  const filteredActiveDemoScripts = getFilteredScripts(activeScripts, true);
+  const filteredAllDemoScripts = getFilteredScripts(allScripts, true);
+
   const selectedScript = selectedScriptId 
     ? (activeScripts.find(s => s.id === selectedScriptId) || allScripts.find(s => s.id === selectedScriptId))
     : null;
+  
+  const selectedDemoScript = selectedDemoScriptId 
+    ? (activeScripts.find(s => s.id === selectedDemoScriptId) || allScripts.find(s => s.id === selectedDemoScriptId))
+    : null;
+
+  useEffect(() => {
+    setSelectedScriptId('');
+    setSelectedDemoScriptId('');
+  }, [testMode]);
 
   const { data: activeSessions = [], isLoading: sessionsLoading, refetch: refetchSessions } = useQuery<TrainingSession[]>({
     queryKey: [`/api/ai-trainer/sessions/${agentId}`],
@@ -296,14 +328,33 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
   };
 
   const startSessionMutation = useMutation({
-    mutationFn: async ({ scriptId, personaId, responseSpeed, testMode }: { scriptId: string; personaId: string; responseSpeed: ResponseSpeed; testMode: TestMode }) => {
+    mutationFn: async ({ 
+      scriptId, 
+      demoScriptId, 
+      personaId, 
+      responseSpeed, 
+      testMode 
+    }: { 
+      scriptId: string; 
+      demoScriptId?: string;
+      personaId: string; 
+      responseSpeed: ResponseSpeed; 
+      testMode: TestMode 
+    }) => {
       const response = await fetch('/api/ai-trainer/start-session', {
         method: 'POST',
         headers: {
           ...getAuthHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ agentId, scriptId, personaId, responseSpeed, testMode }),
+        body: JSON.stringify({ 
+          agentId, 
+          scriptId, 
+          demoScriptId: testMode === 'discovery_demo' ? demoScriptId : undefined,
+          personaId, 
+          responseSpeed, 
+          testMode 
+        }),
       });
       if (!response.ok) {
         const error = await response.json();
@@ -315,6 +366,7 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
       queryClient.invalidateQueries({ queryKey: [`/api/ai-trainer/sessions/${agentId}`] });
       setSelectedPersona(null);
       setSelectedScriptId('');
+      setSelectedDemoScriptId('');
     },
   });
 
@@ -335,12 +387,19 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
   const runningSessions = activeSessions.filter(s => s.status === 'running');
   const completedSessions = activeSessions.filter(s => s.status !== 'running').slice(0, 5);
 
+  const isStartDisabled = (): boolean => {
+    if (!selectedPersona || !selectedScriptId) return true;
+    if (testMode === 'demo' && !hasDiscoveryRec) return true;
+    if (testMode === 'discovery_demo' && !selectedDemoScriptId) return true;
+    return false;
+  };
+
   const handleStartTraining = () => {
-    if (!selectedPersona || !selectedScriptId) return;
-    if (testMode === 'demo' && !hasDiscoveryRec) return;
+    if (isStartDisabled()) return;
     startSessionMutation.mutate({
       scriptId: selectedScriptId,
-      personaId: selectedPersona.id,
+      demoScriptId: selectedDemoScriptId || undefined,
+      personaId: selectedPersona!.id,
       responseSpeed,
       testMode,
     });
@@ -395,7 +454,17 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
             {/* Script Selection with Tabs */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                1. Seleziona lo Script da testare
+                1. Seleziona lo Script {testMode === 'discovery_demo' ? 'Discovery' : 'da testare'}
+                {testMode === 'discovery' && (
+                  <Badge variant="outline" className="ml-2 text-xs bg-blue-50 text-blue-700 border-blue-200">
+                    Solo Discovery
+                  </Badge>
+                )}
+                {testMode === 'demo' && (
+                  <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
+                    Solo Demo
+                  </Badge>
+                )}
               </label>
               
               <Tabs value={scriptSelectionTab} onValueChange={(v) => {
@@ -405,11 +474,11 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="active" className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4" />
-                    Script Attivi ({activeScripts.length})
+                    Script Attivi ({filteredActiveScripts.length})
                   </TabsTrigger>
                   <TabsTrigger value="all" className="flex items-center gap-2">
                     <Library className="h-4 w-4" />
-                    Tutti gli Script ({allScripts.length})
+                    Tutti gli Script ({filteredAllScripts.length})
                   </TabsTrigger>
                 </TabsList>
 
@@ -419,15 +488,19 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                       <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
                       Caricamento...
                     </div>
-                  ) : activeScripts.length === 0 ? (
+                  ) : filteredActiveScripts.length === 0 ? (
                     <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-lg">
                       <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Nessuno script attivato per questo agente</p>
+                      <p className="text-sm">
+                        {testMode === 'discovery' ? 'Nessuno script Discovery attivo' : 
+                         testMode === 'demo' ? 'Nessuno script Demo attivo' : 
+                         'Nessuno script Discovery attivo'}
+                      </p>
                       <p className="text-xs mt-1">Attiva uno script dallo Script Manager</p>
                     </div>
                   ) : (
                     <div className="grid gap-2">
-                      {activeScripts.map((script) => (
+                      {filteredActiveScripts.map((script) => (
                         <button
                           key={script.id}
                           onClick={() => setSelectedScriptId(script.id)}
@@ -458,16 +531,20 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                       <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
                       Caricamento...
                     </div>
-                  ) : allScripts.length === 0 ? (
+                  ) : filteredAllScripts.length === 0 ? (
                     <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-lg">
                       <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Nessuno script disponibile</p>
+                      <p className="text-sm">
+                        {testMode === 'discovery' ? 'Nessuno script Discovery disponibile' : 
+                         testMode === 'demo' ? 'Nessuno script Demo disponibile' : 
+                         'Nessuno script Discovery disponibile'}
+                      </p>
                       <p className="text-xs mt-1">Crea uno script dallo Script Manager</p>
                     </div>
                   ) : (
                     <ScrollArea className="h-[200px]">
                       <div className="grid gap-2 pr-4">
-                        {allScripts.map((script) => {
+                        {filteredAllScripts.map((script) => {
                           const isActive = activeScripts.some(a => a.id === script.id);
                           return (
                             <button
@@ -512,13 +589,155 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                 <div className="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg border border-purple-200 dark:border-purple-800">
                   <div className="flex items-center gap-2 text-sm">
                     <Target className="h-4 w-4 text-purple-600" />
-                    <span className="text-gray-600 dark:text-gray-400">Script selezionato:</span>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      {testMode === 'discovery_demo' ? 'Script Discovery:' : 'Script selezionato:'}
+                    </span>
                     <span className="font-semibold text-purple-700 dark:text-purple-300">{selectedScript.name}</span>
                     <Badge variant="outline" className="text-xs">{selectedScript.scriptType}</Badge>
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Second Script Selector for Discovery+Demo mode */}
+            {testMode === 'discovery_demo' && (
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  1b. Seleziona lo Script Demo
+                  <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
+                    Obbligatorio
+                  </Badge>
+                </label>
+                
+                <Tabs value={demoScriptSelectionTab} onValueChange={(v) => {
+                  setDemoScriptSelectionTab(v as 'active' | 'all');
+                  setSelectedDemoScriptId('');
+                }}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="active" className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4" />
+                      Script Attivi ({filteredActiveDemoScripts.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="all" className="flex items-center gap-2">
+                      <Library className="h-4 w-4" />
+                      Tutti gli Script ({filteredAllDemoScripts.length})
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="active" className="mt-3">
+                    {agentsLoading ? (
+                      <div className="text-center py-4 text-gray-500">
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                        Caricamento...
+                      </div>
+                    ) : filteredActiveDemoScripts.length === 0 ? (
+                      <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Nessuno script Demo attivo</p>
+                        <p className="text-xs mt-1">Attiva uno script Demo dallo Script Manager</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-2">
+                        {filteredActiveDemoScripts.map((script) => (
+                          <button
+                            key={script.id}
+                            onClick={() => setSelectedDemoScriptId(script.id)}
+                            className={`p-3 rounded-lg border-2 text-left transition-all ${
+                              selectedDemoScriptId === script.id
+                                ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-green-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                <span className="font-medium">{script.name}</span>
+                              </div>
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                                {script.scriptType}
+                              </Badge>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="all" className="mt-3">
+                    {scriptsLoading ? (
+                      <div className="text-center py-4 text-gray-500">
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                        Caricamento...
+                      </div>
+                    ) : filteredAllDemoScripts.length === 0 ? (
+                      <div className="text-center py-6 text-gray-500 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Nessuno script Demo disponibile</p>
+                        <p className="text-xs mt-1">Crea uno script Demo dallo Script Manager</p>
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[200px]">
+                        <div className="grid gap-2 pr-4">
+                          {filteredAllDemoScripts.map((script) => {
+                            const isActive = activeScripts.some(a => a.id === script.id);
+                            return (
+                              <button
+                                key={script.id}
+                                onClick={() => setSelectedDemoScriptId(script.id)}
+                                className={`p-3 rounded-lg border-2 text-left transition-all ${
+                                  selectedDemoScriptId === script.id
+                                    ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                                    : 'border-gray-200 dark:border-gray-700 hover:border-green-300'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    {isActive ? (
+                                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                      <FileText className="h-4 w-4 text-gray-400" />
+                                    )}
+                                    <span className="font-medium">{script.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {isActive && (
+                                      <Badge className="bg-green-100 text-green-700 text-xs">
+                                        Attivo
+                                      </Badge>
+                                    )}
+                                    <Badge variant="outline" className="text-xs">
+                                      {script.scriptType}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </TabsContent>
+                </Tabs>
+
+                {selectedDemoScript && (
+                  <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Target className="h-4 w-4 text-green-600" />
+                      <span className="text-gray-600 dark:text-gray-400">Script Demo:</span>
+                      <span className="font-semibold text-green-700 dark:text-green-300">{selectedDemoScript.name}</span>
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700">{selectedDemoScript.scriptType}</Badge>
+                    </div>
+                  </div>
+                )}
+
+                {!selectedDemoScriptId && selectedScriptId && (
+                  <div className="p-2 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-300">
+                    <AlertTriangle className="h-3 w-3 inline mr-1" />
+                    Seleziona anche uno script Demo per la modalità Discovery + Demo
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Test Mode Selection */}
             <div className="space-y-2">
@@ -612,7 +831,7 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
             {/* Start Button */}
             <Button
               onClick={handleStartTraining}
-              disabled={!selectedPersona || !selectedScriptId || startSessionMutation.isPending || (testMode === 'demo' && !hasDiscoveryRec)}
+              disabled={isStartDisabled() || startSessionMutation.isPending}
               className="w-full bg-purple-600 hover:bg-purple-700 text-white"
               size="lg"
             >

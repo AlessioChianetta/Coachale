@@ -1,0 +1,36 @@
+injected.js:214 
+ GET https://6046feab-503d-4341-9430-d075fb420c53-00-3mhwb7mfmwsrf.worf.replit.d…i-trainer/conversations/7404bc1b-89c1-4d00-b4c7-720225e8db7e/discovery-rec 500 (Internal Server Error)
+apply	@	injected.js:214
+queryFn	@	DiscoveryRecPanel.tsx:65 10:44:43 PM [express] GET /api/client/sales-agent/config/11cd9e7b-f181-4052-9541-e8d0bb91c956/trainin…
+Error fetching discovery REC: TypeError: Cannot convert undefined or null to object
+    at Function.entries (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:16)
+    at <anonymous> (/home/runner/workspace/node_modules/src/utils.ts:88:19)
+    at Array.reduce (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:32)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:979:23)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase._prepare (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:978:17)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1009:16)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase.execute (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1008:17)
+    at PgSelectBase.then (/home/runner/workspace/node_modules/src/query-promise.ts:31:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+injected.js:214 
+ GET https://6046feab-503d-4341-9430-d075fb420c53-00-3mhwb7mfmwsrf.worf.replit.d…i-trainer/conversations/7404bc1b-89c1-4d00-b4c7-720225e8db7e/discovery-rec 500 (Internal Server Error)
+apply	@	injected.js:214
+queryFn	@	DiscoveryRecPanel.tsx:65 10:44:43 PM [express] GET /api/client/sales-agent/config/11cd9e7b-f181-4052-9541-e8d0bb91c956/trainin…
+Error fetching discovery REC: TypeError: Cannot convert undefined or null to object
+    at Function.entries (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:16)
+    at <anonymous> (/home/runner/workspace/node_modules/src/utils.ts:88:19)
+    at Array.reduce (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:32)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:979:23)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase._prepare (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:978:17)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1009:16)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase.execute (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1008:17)
+    at PgSelectBase.then (/home/runner/workspace/node_modules/src/query-promise.ts:31:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)

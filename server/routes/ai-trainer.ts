@@ -85,7 +85,7 @@ router.post(
   requireRole('client'),
   async (req: AuthRequest, res) => {
     try {
-      const { agentId, scriptId, personaId, responseSpeed, testMode } = req.body;
+      const { agentId, scriptId, demoScriptId, personaId, responseSpeed, testMode } = req.body;
 
       if (!agentId || !scriptId || !personaId) {
         return res.status(400).json({ message: 'Missing required fields: agentId, scriptId, personaId' });
@@ -98,6 +98,12 @@ router.post(
       const resolvedTestMode: TestMode = validTestModes.includes(testMode) ? testMode : 'discovery';
       
       console.log(`🎯 [AI TRAINER] Test mode: ${resolvedTestMode}`);
+      
+      if (resolvedTestMode === 'discovery_demo' && !demoScriptId) {
+        return res.status(400).json({ 
+          message: 'Discovery + Demo mode requires both a Discovery script and a Demo script.' 
+        });
+      }
 
       if (resolvedTestMode === 'demo') {
         const existingRec = await db.select({
@@ -145,6 +151,29 @@ router.post(
         return res.status(403).json({ message: 'Access denied: script belongs to another client' });
       }
 
+      let demoScript: typeof script[0] | null = null;
+      if (demoScriptId && resolvedTestMode === 'discovery_demo') {
+        const demoScriptResult = await db.select()
+          .from(salesScripts)
+          .where(eq(salesScripts.id, demoScriptId))
+          .limit(1);
+
+        if (!demoScriptResult[0]) {
+          return res.status(404).json({ message: 'Demo script not found' });
+        }
+
+        if (demoScriptResult[0].clientId !== req.user?.id) {
+          return res.status(403).json({ message: 'Access denied: demo script belongs to another client' });
+        }
+
+        if (demoScriptResult[0].scriptType !== 'demo') {
+          return res.status(400).json({ message: 'Selected demo script must be of type "demo"' });
+        }
+
+        demoScript = demoScriptResult[0];
+        console.log(`📋 [AI TRAINER] Demo script loaded: ${demoScript.name}`);
+      }
+
       const persona = getPersonaById(personaId);
       if (!persona) {
         return res.status(400).json({ message: 'Invalid persona ID' });
@@ -184,6 +213,22 @@ router.post(
         assignedBy: req.user?.id,
       });
       
+      if (demoScript && resolvedTestMode === 'discovery_demo') {
+        await db.delete(agentScriptAssignments)
+          .where(and(
+            eq(agentScriptAssignments.agentId, agentId),
+            eq(agentScriptAssignments.scriptType, 'demo')
+          ));
+        
+        await db.insert(agentScriptAssignments).values({
+          agentId,
+          scriptId: demoScript.id,
+          scriptType: 'demo',
+          assignedBy: req.user?.id,
+        });
+        console.log(`📋 [AI TRAINER] Demo script also assigned: ${demoScript.name}`);
+      }
+      
       clearScriptCache(undefined, agentId);
       
       console.log(`📋 [AI TRAINER] Script assigned to agent for training`);
@@ -195,6 +240,8 @@ router.post(
         agentId,
         scriptId,
         scriptName: script[0].name,
+        demoScriptId: demoScript?.id || null,
+        testMode: resolvedTestMode,
         personaId,
         prospectName: prospectData.name,
         prospectEmail: prospectData.email,
@@ -289,6 +336,7 @@ router.post(
           agent: agentData,
           agentConfig,
           script: script[0],
+          demoScript: demoScript || undefined,
           persona,
           prospectData,
           responseSpeed: speed as 'fast' | 'normal' | 'slow' | 'disabled',

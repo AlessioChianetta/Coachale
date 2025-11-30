@@ -25,6 +25,12 @@ interface SalesAgentConfig {
   resultsGenerated?: string | null;
 }
 
+interface ScriptData {
+  id: string;
+  name: string;
+  scriptType: string;
+}
+
 interface ProspectSimulatorOptions {
   sessionId: string;
   agentId: string;
@@ -37,11 +43,8 @@ interface ProspectSimulatorOptions {
     clientId: string;
   };
   agentConfig: SalesAgentConfig;
-  script: {
-    id: string;
-    name: string;
-    scriptType: string;
-  };
+  script: ScriptData;
+  demoScript?: ScriptData;
   persona: ProspectPersona;
   prospectData: {
     name: string;
@@ -162,6 +165,8 @@ export class ProspectSimulator {
   private simulatorState: SimulatorState = 'discovery';
   private discoveryPhaseCount = 7; // Standard discovery has 7 phases
   private hasTriggeredDemoTransition = false;
+  private demoScript: ScriptData | null = null;
+  private currentScript: ScriptData;
   
   private static readonly MESSAGE_COMPLETION_TIMEOUT = 5000;
   private static readonly MIN_SILENCE_GAP = 2000;
@@ -170,6 +175,14 @@ export class ProspectSimulator {
 
   constructor(options: ProspectSimulatorOptions) {
     this.options = options;
+    this.currentScript = options.script;
+    this.demoScript = options.demoScript || null;
+    
+    if (options.testMode === 'discovery_demo' && this.demoScript) {
+      console.log(`📋 [SIMULATOR] Discovery+Demo mode initialized`);
+      console.log(`   Discovery Script: ${this.currentScript.name}`);
+      console.log(`   Demo Script: ${this.demoScript.name}`);
+    }
   }
 
   async start(): Promise<void> {

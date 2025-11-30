@@ -3919,6 +3919,9 @@ export const aiTrainingSessions = pgTable("ai_training_sessions", {
   scriptId: varchar("script_id").references(() => salesScripts.id).notNull(),
   scriptName: text("script_name"),
   
+  demoScriptId: varchar("demo_script_id").references(() => salesScripts.id),
+  testMode: text("test_mode").$type<"discovery" | "demo" | "discovery_demo">().default("discovery"),
+  
   personaId: text("persona_id").notNull(),
   prospectName: text("prospect_name").notNull(),
   prospectEmail: text("prospect_email"),
