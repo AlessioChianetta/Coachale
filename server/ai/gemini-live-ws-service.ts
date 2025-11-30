@@ -1303,6 +1303,19 @@ export function setupGeminiLiveWSService(server: Server) {
       let conversationHistory: Array<{role: 'user' | 'assistant'; content: string; timestamp: Date}> = []; // For sales_agent/consultation_invite modes
       let agentBusinessContext: { businessName: string; whatWeDo: string; servicesOffered: string[]; targetClient: string; nonTargetClient: string } | undefined = undefined; // 🆕 Business context per feedback
       
+      // 🆕 ARCHETYPE STATE PERSISTENCE - Mantiene lo stato dell'archetipo tra le chiamate al SalesManager
+      // Questo risolve il problema di perdita dello stato tra turni di conversazione
+      let persistentArchetypeState: {
+        current: string;
+        confidence: number;
+        consecutiveSignals: number;
+        lastUpdatedAtTurn: number;
+        turnsSinceUpdate: number;
+        lastSignalType: string | null;
+        regexSignals: string[];
+        aiIntuition: string | null;
+      } | undefined = undefined;
+      
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // SALES AGENT / CONSULTATION INVITE MODE - Build prompt from agent config
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -3526,7 +3539,10 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           consultantId: trackerConsultantId,
                           currentPhaseEnergy,
                           businessContext, // 🆕 Per rilevamento fuori scope
-                          totalMessages: conversationMessages.length
+                          totalMessages: conversationMessages.length,
+                          // 🆕 ARCHETYPE PERSISTENCE: Passa lo stato dell'archetipo dalla chiamata precedente
+                          archetypeState: persistentArchetypeState as any,
+                          currentTurn: conversationMessages.length
                         };
                         
                         // 🆕 LOG ALWAYS-VISIBLE: Business context at analysis time
@@ -3548,6 +3564,22 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         const analysisStart = Date.now();
                         const analysis: SalesManagerAnalysis = await SalesManagerAgent.analyze(params);
                         const analysisTime = Date.now() - analysisStart;
+                        
+                        // 🆕 ARCHETYPE PERSISTENCE: Salva lo stato per la prossima chiamata
+                        // IMPORTANTE: Deep clone per evitare mutazioni condivise tra turni
+                        if (analysis.archetypeState) {
+                          persistentArchetypeState = {
+                            current: analysis.archetypeState.current,
+                            confidence: analysis.archetypeState.confidence,
+                            consecutiveSignals: analysis.archetypeState.consecutiveSignals,
+                            lastUpdatedAtTurn: analysis.archetypeState.lastUpdatedAtTurn,
+                            turnsSinceUpdate: analysis.archetypeState.turnsSinceUpdate,
+                            lastSignalType: analysis.archetypeState.lastSignalType,
+                            regexSignals: [...(analysis.archetypeState.regexSignals || [])],
+                            aiIntuition: analysis.archetypeState.aiIntuition
+                          };
+                          console.log(`   🎭 Archetype state SAVED: ${analysis.archetypeState.current} (${(analysis.archetypeState.confidence * 100).toFixed(0)}%)`);
+                        }
                         
                         // Extract step advancement from full analysis
                         const stepResult = analysis.stepAdvancement;

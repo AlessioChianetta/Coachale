@@ -537,12 +537,16 @@ function calculateJaccardSimilarity(str1: string, str2: string): number {
  * - Cambio permesso SE: confidence > 0.8 OPPURE 2+ segnali consecutivi
  * - Altrimenti: mantieni archetipo precedente
  * - Ricalcola solo ogni 3-4 turni O se anomalia forte
+ * 
+ * 🆕 FALLBACK MODE: Quando forceRegexFallback=true (AI non chiamata per feedback critico),
+ * le soglie vengono abbassate per permettere update con solo regex signals
  */
 function updateArchetypeState(
   currentState: ArchetypeState | undefined,
   regexSignals: { archetype: ArchetypeId; patterns: string[]; score: number }[],
   aiIntuition: ArchetypeId | null,
-  currentTurn: number
+  currentTurn: number,
+  forceRegexFallback: boolean = false
 ): ArchetypeState {
   const defaultState: ArchetypeState = {
     current: 'neutral',
@@ -561,7 +565,7 @@ function updateArchetypeState(
   
   const turnsSinceUpdate = currentTurn - currentState.lastUpdatedAtTurn;
   
-  if (turnsSinceUpdate < 3 && regexSignals.length === 0 && !aiIntuition) {
+  if (turnsSinceUpdate < 3 && regexSignals.length === 0 && !aiIntuition && !forceRegexFallback) {
     return {
       ...currentState,
       turnsSinceUpdate
@@ -583,7 +587,14 @@ function updateArchetypeState(
   } else if (regexSignals.length > 0) {
     detectedArchetype = regexSignals[0].archetype;
     confidence = regexSignals[0].score;
-    console.log(`   ⚡ Regex Signal: ${detectedArchetype} (score: ${(confidence * 100).toFixed(0)}%)`);
+    
+    // 🆕 FALLBACK: Se AI saltata, aumenta confidence dei regex signals (1.5x)
+    if (forceRegexFallback) {
+      confidence = Math.min(0.85, confidence * 1.5);
+      console.log(`   ⚡ REGEX FALLBACK (AI skipped): ${detectedArchetype} (boosted score: ${(confidence * 100).toFixed(0)}%)`);
+    } else {
+      console.log(`   ⚡ Regex Signal: ${detectedArchetype} (score: ${(confidence * 100).toFixed(0)}%)`);
+    }
   }
   
   let consecutiveSignals = currentState.consecutiveSignals;
@@ -593,13 +604,17 @@ function updateArchetypeState(
     consecutiveSignals = 1;
   }
   
+  // 🆕 FALLBACK: Soglie ridotte quando AI non disponibile
+  const confidenceThreshold = forceRegexFallback ? 0.6 : 0.8;
+  const consecutiveThreshold = forceRegexFallback ? 1 : 2;
+  
   const shouldChange = 
-    (confidence > 0.8) || 
-    (consecutiveSignals >= 2 && confidence > 0.5);
+    (confidence > confidenceThreshold) || 
+    (consecutiveSignals >= consecutiveThreshold && confidence > 0.5);
   
   if (shouldChange && detectedArchetype !== currentState.current) {
     console.log(`   🔄 ARCHETYPE CHANGE: ${currentState.current} → ${detectedArchetype}`);
-    console.log(`      Reason: confidence=${(confidence * 100).toFixed(0)}%, consecutive=${consecutiveSignals}`);
+    console.log(`      Reason: confidence=${(confidence * 100).toFixed(0)}%, consecutive=${consecutiveSignals}${forceRegexFallback ? ' (FALLBACK MODE)' : ''}`);
     
     return {
       current: detectedArchetype,
@@ -626,6 +641,7 @@ function updateArchetypeState(
 
 /**
  * 📝 Genera l'istruzione completa per l'Agent basata sull'archetipo
+ * 🆕 Include ora i mirroringTips per insegnare COME mirare ogni archetipo
  */
 function generateArchetypeInstruction(
   archetype: ArchetypeId,
@@ -634,17 +650,22 @@ function generateArchetypeInstruction(
   const playbook = getPlaybookById(archetype);
   const filler = getRandomFiller(archetype);
   
+  // 🆕 Costruisci istruzione completa con MIRRORING TIPS
+  const mirroringSection = playbook.mirroringTips 
+    ? `\n\n🪞 MIRRORING: ${playbook.mirroringTips}` 
+    : '';
+  
   if (antiPattern) {
     return {
       filler,
-      instruction: antiPattern.instruction,
+      instruction: `${antiPattern.instruction}${mirroringSection}`,
       ttsParams: playbook.ttsParams
     };
   }
   
   return {
     filler,
-    instruction: playbook.instruction,
+    instruction: `${playbook.instruction}${mirroringSection}`,
     ttsParams: playbook.ttsParams
   };
 }
@@ -982,12 +1003,20 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Ora che abbiamo l'AI intuition, aggiorniamo lo stato dell'archetipo
     
+    // 🆕 FALLBACK: Rileva se AI è stata saltata per feedback critico
+    const aiWasSkipped = feedbackForAgent && feedbackForAgent.priority === 'critical' && !aiIntuition;
+    if (aiWasSkipped && regexSignals.length > 0) {
+      console.log(`   ⚠️ AI SKIPPED (critical feedback) - activating REGEX FALLBACK mode`);
+    }
+    
     // 🧠 STICKY ARCHETYPE: Aggiorna stato con logica di inerzia
+    // Passa forceRegexFallback=true se AI saltata ma ci sono segnali regex
     updatedArchetypeState = updateArchetypeState(
       params.archetypeState,
       regexSignals,
       aiIntuition,
-      currentTurn
+      currentTurn,
+      aiWasSkipped && regexSignals.length > 0  // 🆕 forceRegexFallback
     );
     
     // 📝 GENERA ISTRUZIONE per l'Agent
@@ -1016,8 +1045,10 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     const analysisTimeMs = Date.now() - startTime;
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 🎭 INTEGRA PROFILING NEL FEEDBACK
+    // 🎭 INTEGRA PROFILING NEL FEEDBACK (PRIORITÀ ALTA!)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🆕 FIX: Il profiling va ALL'INIZIO del feedback, non in fondo!
+    // L'archetipo è la PRIMA cosa che l'Agent deve vedere.
     // Priority order: AntiPattern > Archetype > existing feedback
     if (antiPatternDetected && antiPatternDetected.priority === 'critical') {
       feedbackForAgent = {
@@ -1031,19 +1062,23 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       const archetypeTag = formatArchetypeTag(updatedArchetypeState.current);
       const existingMessage = feedbackForAgent?.message || '';
       
-      const profilingAddendum = `\n\n━━━ 🎭 PROSPECT PROFILE ━━━
-${archetypeTag} (${(updatedArchetypeState.confidence * 100).toFixed(0)}% confidence)
+      // 🆕 PROFILING ALL'INIZIO - L'Agent vede PRIMA l'archetipo
+      const profilingHeader = `🎭 ARCHETIPO RILEVATO: ${archetypeTag} (${(updatedArchetypeState.confidence * 100).toFixed(0)}%)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${archetypeInstruction.instruction}
-Filler consigliato: "${archetypeInstruction.filler}"`;
+💬 Filler: "${archetypeInstruction.filler}"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
       
       if (feedbackForAgent) {
-        feedbackForAgent.message = existingMessage + profilingAddendum;
+        // 🆕 Profiling PRIMA, feedback esistente DOPO
+        feedbackForAgent.message = `${profilingHeader}\n\n📋 FEEDBACK AGGIUNTIVO:\n${existingMessage}`;
+        feedbackForAgent.toneReminder = `Adatta il tuo stile a ${archetypeTag}`;
       } else {
         feedbackForAgent = {
           shouldInject: true,
           priority: antiPatternDetected ? 'high' : 'medium',
           type: 'tone',
-          message: profilingAddendum.trim(),
+          message: profilingHeader,
           toneReminder: `Adatta il tuo stile a ${archetypeTag}`
         };
       }

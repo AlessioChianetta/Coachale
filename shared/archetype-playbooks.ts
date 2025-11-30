@@ -377,6 +377,95 @@ Smetti di dire "capisco". Passa a:
 NON insistere. Fai UN ULTIMO tentativo breve:
 "Prima di salutarti, una cosa veloce: [benefit principale]. Ti lascio il mio contatto?"
 Se resiste → chiudi cordialmente senza insistere.`
+  },
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🆕 NUOVI ANTI-PATTERN ROBUSTI
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  {
+    id: 'prospect_frustration',
+    name: 'Frustrazione del Prospect',
+    priority: 'critical',
+    prospectTriggers: [
+      /ma insomma|ancora\?|di nuovo\?|un'altra volta/i,
+      /mi stai stressando|mi stai stancando|mi hai stancato/i,
+      /basta così|non ne posso più|sono stufo|sono stanco/i,
+      /che palle|che noia|ma dai|ma come|ma che/i,
+      /irritato|arrabbiato|frustrato|infastidito/i,
+      /non mi capisci|non capisco cosa vuoi|cosa vuoi da me/i,
+    ],
+    instruction: `🚨 ALERT: IL PROSPECT È FRUSTRATO! Fermati immediatamente.
+1. RICONOSCI la frustrazione: "Sento che ti sto facendo perdere la pazienza, e me ne scuso."
+2. FAI UN PASSO INDIETRO: "Lasciami capire meglio cosa ti serve veramente."
+3. NON difenderti, NON giustificarti, NON continuare con lo script.
+Obiettivo: Ricostruire il rapport prima di procedere.`
+  },
+  {
+    id: 'repeated_objection',
+    name: 'Obiezione Ripetuta',
+    priority: 'critical',
+    prospectTriggers: [
+      /te l'ho già detto che|come ti ho detto prima|ribadisco che/i,
+      /per l'ennesima volta|ti ripeto|te lo ripeto/i,
+      /continuo a dirti|non cambia nulla|sempre la stessa cosa/i,
+      /ho già detto che non|l'ho già detto/i,
+    ],
+    instruction: `🚨 OBIEZIONE RIPETUTA! Il prospect ti ha già detto questa cosa.
+NON rispondere con la stessa risposta di prima!
+Dì: "Hai ragione, mi hai già detto questo. Evidentemente la mia risposta non ti ha convinto. Cosa ti servirebbe per sentirti più tranquillo su questo punto?"
+Obiettivo: Scoprire la VERA obiezione nascosta sotto quella di superficie.`
+  },
+  {
+    id: 'conversation_derailing',
+    name: 'Conversazione Deraglia',
+    priority: 'high',
+    prospectTriggers: [
+      /ma questo cosa c'entra|non c'entra nulla|stiamo andando fuori tema/i,
+      /torniamo al punto|ma di cosa stavamo parlando|persi/i,
+      /non ho capito dove vuoi arrivare|il nesso|la connessione/i,
+      /mi sono perso|dove eravamo|confuso/i,
+    ],
+    instruction: `⚠️ LA CONVERSAZIONE STA DERAGLIANDO! Riporta focus.
+Dì: "Hai ragione, lasciami riportare tutto al punto centrale."
+POI in UNA frase: ricorda l'obiettivo della chiamata.
+"Stavamo parlando di [obiettivo]. Tornando a quello, [domanda diretta]."
+NON divagare ulteriormente!`
+  },
+  {
+    id: 'excessive_pressure',
+    name: 'Pressione Eccessiva',
+    priority: 'critical',
+    prospectTriggers: [
+      /mi stai pressando|non mi pressare|basta pressione/i,
+      /non insistere|smettila di insistere|sei troppo insistente/i,
+      /mi sento sotto pressione|mi sento forzato|mi stai forzando/i,
+      /non voglio essere costretto|non mi piace essere pressato/i,
+      /rallenta|calmati|prendila con calma/i,
+    ],
+    instruction: `🚨 STAI PRESSANDO TROPPO! Fai un passo indietro SUBITO.
+1. SCUSATI: "Hai ragione, non voglio metterti fretta. Mi sono fatto prendere dall'entusiasmo."
+2. DAI CONTROLLO: "Decidi tu i tempi. Non c'è nessuna pressione da parte mia."
+3. ASPETTA: Lascia che sia lui a ripartire. Non riempire il silenzio.
+Obiettivo: Rimuovere la pressione, lasciare che respiri.`
+  },
+  {
+    id: 'trust_broken',
+    name: 'Fiducia Compromessa',
+    priority: 'critical',
+    prospectTriggers: [
+      /non mi fido|non ti credo|mi stai mentendo/i,
+      /questa è una fregatura|mi stai fregando|truffa/i,
+      /stai cercando solo di vendermi|pensi solo ai soldi/i,
+      /sei come tutti gli altri|tutti uguali voi venditori/i,
+      /non sei onesto|non sei sincero|non sei trasparente/i,
+    ],
+    instruction: `🚨 ALLARME: LA FIDUCIA È COMPROMESSA!
+NON difenderti. NON giustificarti. NON contraddire.
+1. VALIDA: "Capisco il tuo scetticismo. Hai tutto il diritto di essere diffidente."
+2. TRASPARENZA: "Non ti chiedo di fidarti. Ti chiedo solo di valutare i fatti."
+3. CONTROLLO: "Se in qualsiasi momento senti che non fa per te, dimmelo. Nessun problema."
+Obiettivo: Ricostruire credibilità senza sembrare disperato.`
   }
 ];
 
