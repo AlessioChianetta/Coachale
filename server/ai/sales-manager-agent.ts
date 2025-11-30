@@ -25,7 +25,8 @@ import {
   ANTI_PATTERNS,
   getPlaybookById,
   getRandomFiller,
-  formatArchetypeTag
+  formatArchetypeTag,
+  getToneOnlyFeedback
 } from "@shared/archetype-playbooks";
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -88,7 +89,8 @@ export interface ArchetypeState {
   lastSignalType: ArchetypeId | null;
   regexSignals: ArchetypeId[];  // Segnali da regex (Fast Reflexes)
   aiIntuition: ArchetypeId | null;  // Intuizione AI (Slow Brain)
-  lastInjectionTurn: number;  // 🆕 Ultimo turno in cui l'archetipo è stato iniettato (per throttling)
+  lastInjectionTurn: number;  // Ultimo turno in cui l'archetipo è stato iniettato (per throttling)
+  lastInjectedArchetype: ArchetypeId | null;  // 🆕 Ultimo archetipo iniettato (per evitare ripetizioni)
 }
 
 export interface ProspectProfilingResult {
@@ -644,8 +646,9 @@ function updateArchetypeState(
 }
 
 /**
- * 📝 Genera l'istruzione completa per l'Agent basata sull'archetipo
- * 🆕 Include ora i mirroringTips per insegnare COME mirare ogni archetipo
+ * 📝 Genera l'istruzione per l'Agent basata sull'archetipo
+ * 🆕 FIX: Ora usa SOLO feedback sul TONO - ZERO istruzioni su cosa fare o dove andare nello script!
+ * Il feedback contiene solo: energia vocale, tono, ritmo, stile comunicativo
  */
 function generateArchetypeInstruction(
   archetype: ArchetypeId,
@@ -654,28 +657,24 @@ function generateArchetypeInstruction(
   const playbook = getPlaybookById(archetype);
   const filler = getRandomFiller(archetype);
   
- 
+  // 🆕 USA SOLO feedback sul TONO - MAI istruzioni script!
+  // Questo previene che l'AI salti fasi o avanzi prematuramente
+  const toneOnlyFeedback = getToneOnlyFeedback(archetype);
   
-  const mirroringSection = playbook.mirroringTips 
-    ? `\n\n🪞 MIRRORING: ${playbook.mirroringTips}` 
-    : '';
-  
-  // 🆕 Aggiungi istruzione per continuare lo script (per archetipi difficili)
-  const scriptSection = playbook.scriptContinuation
-    ? `\n\n📜 SCRIPT: ${playbook.scriptContinuation}`
-    : '';
-  
+  // AntiPattern ha SEMPRE priorità (sono correzioni critiche di comportamento)
+  // Gli antipattern riguardano errori comportamentali, non flow dello script
   if (antiPattern) {
     return {
       filler,
-      instruction: `${antiPattern.instruction}${mirroringSection}${scriptSection}`,
+      instruction: antiPattern.instruction,
       ttsParams: playbook.ttsParams
     };
   }
   
+  // 🆕 Ritorna SOLO feedback sul tono, MAI istruzioni su cosa chiedere
   return {
     filler,
-    instruction: `${playbook.instruction}${mirroringSection}${scriptSection}`,
+    instruction: toneOnlyFeedback,
     ttsParams: playbook.ttsParams
   };
 }
