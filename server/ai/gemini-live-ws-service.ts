@@ -3617,7 +3617,7 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                             feedbackPriority = feedback.priority || 'high';
                             doingWell = 'Hai generato interesse - il prospect mostra segnali di acquisto!';
                             needsImprovement = 'Non perdere il momento - capitalizza subito';
-                            statusMessage = feedback.message.includes('CLOSING') ? 'Puoi avanzare verso il closing!' : 'Rimani e approfondisci l\'interesse';
+                            statusMessage = feedback.message.includes('CLOSING') ? 'PROCEDI SUBITO verso il closing!' : 'Rimani e approfondisci l\'interesse';
                             whatYouNeed = feedback.message;
                             toneReminder = feedback.toneReminder || '';
                           } else if (feedback?.type === 'tone') {
@@ -3650,8 +3650,8 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                             feedbackPriority = feedback?.priority || 'low';
                             doingWell = analysis.toneAnalysis.issues.length === 0 ? 'Tono e ritmo corretti' : 'Stai seguendo lo script';
                             needsImprovement = feedback?.message || 'Continua a seguire lo script';
-                            statusMessage = stepResult.shouldAdvance ? 'Puoi avanzare alla prossima fase' : 'Rimani in questa fase';
-                            whatYouNeed = stepResult.shouldAdvance ? 'Procedi allo step successivo' : 'Ottieni le info mancanti prima di avanzare';
+                            statusMessage = stepResult.shouldAdvance ? 'PASSA ORA alla prossima fase - senza chiedere permesso!' : 'Rimani in questa fase';
+                            whatYouNeed = stepResult.shouldAdvance ? 'Avanza immediatamente allo step successivo - NON chiedere conferma al prospect!' : 'Ottieni le info mancanti prima di avanzare';
                             toneReminder = feedback?.toneReminder || '';
                           }
                           
