@@ -298,9 +298,53 @@ export function TrainingMapLayout({
                 />
               </section>
 
+              {/* 2. Chat Completa - Trascrizione Intera */}
+              {conversationDetail.fullTranscript && conversationDetail.fullTranscript.length > 0 && (
+                <section className="mb-8 animate-in fade-in slide-in-from-top-4 duration-700" style={{ animationDelay: '150ms' }}>
+                  <Card className="border-l-4 border-l-indigo-500/50 shadow-sm">
+                    <CardHeader className="py-3 px-4 bg-indigo-50/30 dark:bg-indigo-950/20">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+                        <MessageSquare className="h-4 w-4 text-indigo-500" />
+                        Chat Completa
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          {conversationDetail.fullTranscript.length} messaggi
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-4">
+                      <div className="space-y-3 text-sm max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                        {conversationDetail.fullTranscript.map((msg, idx) => (
+                          <div key={idx} className={`flex gap-3 ${msg.role === 'assistant' ? 'flex-row-reverse' : ''}`}>
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                              msg.role === 'assistant' 
+                                ? 'bg-indigo-500 text-white' 
+                                : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                            }`}>
+                              {msg.role === 'assistant' ? 'AI' : 'P'}
+                            </div>
+                            <div className="flex flex-col gap-1 max-w-[80%]">
+                              <div className={`p-3 rounded-2xl text-pretty ${
+                                msg.role === 'assistant' 
+                                  ? 'bg-indigo-100/80 dark:bg-indigo-900/40 rounded-tr-sm' 
+                                  : 'bg-muted/60 rounded-tl-sm'
+                              }`}>
+                                {msg.content}
+                              </div>
+                              <span className={`text-[10px] text-muted-foreground/60 ${msg.role === 'assistant' ? 'text-right' : 'text-left'}`}>
+                                {msg.phase && <span className="font-medium">{orderedPhases.find(p => p.id === msg.phase)?.name || msg.phase}</span>}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </section>
+              )}
+
               <Separator className="my-8" />
 
-              {/* 2. Timeline Loop */}
+              {/* 3. Timeline Loop per Fase */}
               <div className="relative border-l-2 border-muted pl-8 space-y-16">
                 {orderedPhases.map((phase, index) => {
                   const isLast = index === orderedPhases.length - 1;
