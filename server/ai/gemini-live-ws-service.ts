@@ -3894,8 +3894,9 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                           // Formato STRUTTURATO per il coaching con NUOVI DELIMITATORI (Trojan Horse Strategy)
                           // L'AI è istruita a riconoscere questi tag come "pensiero interno" e non leggerli ad alta voce
                           const feedbackContent = `<<<SALES_MANAGER_INSTRUCTION>>>
-${businessIdentity}
 
+${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
+${toneReminder ? `🎵 REMINDER TONO: ${toneReminder}` : ''}
 📍 FASE: ${currentPhaseNum} di ${totalPhases} - ${currentPhaseName}
    STEP: ${currentStepName}
 ${energySection}
@@ -3905,8 +3906,8 @@ ${energySection}
 ⚠️ MIGLIORA: ${needsImprovement}
 🚦 STATO: ${statusMessage}
 📋 TI SERVE: ${whatYouNeed}
-${toneReminder ? `🎵 REMINDER TONO: ${toneReminder}` : ''}
-${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
+
+
 <<</SALES_MANAGER_INSTRUCTION>>>`;
                           
                           // 🆕 IMMEDIATE INJECTION (Trojan Horse): Inject feedback NOW, not on next user message
