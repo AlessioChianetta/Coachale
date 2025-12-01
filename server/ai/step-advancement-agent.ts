@@ -824,6 +824,10 @@ Rispondi SOLO con JSON valido, NO testo aggiuntivo:
     phaseNumber: string = '0'
   ): CheckpointAnalysisResult {
     try {
+      // 🔍 Debug: Log raw response
+      console.log(`   📥 Raw AI response length: ${responseText.length} chars`);
+      console.log(`   📥 First 200 chars: ${responseText.substring(0, 200).replace(/\n/g, '\\n')}`);
+      
       // Pulisci la risposta
       let cleanText = responseText.trim();
       if (cleanText.startsWith('```json')) cleanText = cleanText.slice(7);
@@ -832,10 +836,45 @@ Rispondi SOLO con JSON valido, NO testo aggiuntivo:
       cleanText = cleanText.trim();
       
       // Trova il JSON nella risposta (potrebbe avere testo extra)
-      const jsonMatch = cleanText.match(/\{[\s\S]*?"isComplete"[\s\S]*\}/);
+      // 🆕 Migliorato regex per essere più robusto
+      let jsonMatch = cleanText.match(/\{[\s\S]*?"isComplete"[\s\S]*\}/);
       if (jsonMatch) {
         cleanText = jsonMatch[0];
       }
+      
+      // 🆕 FIX: Tenta di riparare JSON troncato o malformato
+      // Rimuovi eventuali caratteri non validi alla fine
+      cleanText = cleanText.replace(/[\x00-\x1F\x7F]/g, ' '); // Rimuovi caratteri di controllo
+      
+      // Se il JSON sembra troncato, prova a chiuderlo
+      const openBraces = (cleanText.match(/\{/g) || []).length;
+      const closeBraces = (cleanText.match(/\}/g) || []).length;
+      const openBrackets = (cleanText.match(/\[/g) || []).length;
+      const closeBrackets = (cleanText.match(/\]/g) || []).length;
+      
+      // Aggiungi parentesi mancanti
+      for (let i = 0; i < openBrackets - closeBrackets; i++) {
+        cleanText += ']';
+      }
+      for (let i = 0; i < openBraces - closeBraces; i++) {
+        cleanText += '}';
+      }
+      
+      // 🆕 Fix stringhe non terminate: trova l'ultima stringa non chiusa e chiudila
+      // Conta le virgolette (escludendo quelle escaped)
+      const quoteMatches = cleanText.match(/(?<!\\)"/g) || [];
+      if (quoteMatches.length % 2 !== 0) {
+        // Numero dispari di virgolette - aggiungi una virgoletta alla fine
+        // Prima rimuovi eventuali caratteri parziali dopo l'ultima virgoletta
+        const lastQuoteIndex = cleanText.lastIndexOf('"');
+        const afterLastQuote = cleanText.substring(lastQuoteIndex + 1);
+        // Se dopo l'ultima virgoletta c'è testo senza virgoletta di chiusura, chiudi la stringa
+        if (!afterLastQuote.includes('"')) {
+          cleanText = cleanText.substring(0, lastQuoteIndex + 1) + '"' + afterLastQuote;
+        }
+      }
+      
+      console.log(`   📥 Cleaned JSON length: ${cleanText.length} chars`);
       
       const parsed = JSON.parse(cleanText);
       
