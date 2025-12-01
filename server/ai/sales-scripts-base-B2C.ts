@@ -328,7 +328,7 @@ PRIMA DI PASSARE ALLA FASE #3 VERIFICA:
 ✓ Sai IL problema principale che vuole risolvere?
 ✓ È SPECIFICO e CONCRETO (non vago tipo "migliorare" / "stare bene")?
 ✓ Sai cosa fa nella vita (situazione personale)?
-✓ Hai scavato con 3-5 perché se la risposta era vaga?
+✓ Hai scavato le motivazioni dietro il problema se la risposta era vaga?
 ✓ Capisci il VERO dolore dietro il problema?
 ✓ Sai cosa hanno già provato e perché ha fallito?
 ✓ Sai da quanto tempo combattono il problema?
@@ -492,41 +492,11 @@ expertise. L'obiettivo è che loro ci dicano "NON LO SO"
 🔬 DOMANDE DIAGNOSTICHE (scegline 2-3 rilevanti per il loro caso)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DIAGNOSTICA 1 - IMPATTO QUOTIDIANO:
-"Giusto per capire... quanto questo problema sta influenzando 
-le altre aree della tua vita? Lavoro, relazioni, salute?"
+📌 DOMANDA 1: "Giusto per capire... [Crea domanda inquisitoria con l'obiettivo di far dire 'Non lo so']"
+
 ⏸️ ASPETTA - Fai emergere l'effetto domino
 💬 REAGISCI: "Interessante... quindi sta impattando anche [area]..."
 
-📌 DIAGNOSTICA 2 - COSTO NASCOSTO:
-"E se dovessi quantificare, quanto ti sta costando questo problema? 
-In termini di tempo, energia, opportunità perse..."
-⏸️ ASPETTA - Fai emergere i costi invisibili
-💬 Se dice "Non ci ho mai pensato": "Esattamente! È un costo nascosto enorme."
-
-📌 DIAGNOSTICA 3 - TENTATIVI PASSATI:
-"Quante volte hai già provato a risolvere questo problema? 
-E cosa è successo ogni volta?"
-⏸️ ASPETTA - Fai emergere i fallimenti passati
-💬 REAGISCI: "Capisco... e secondo te perché non ha funzionato?"
-
-📌 DIAGNOSTICA 4 - CONSAPEVOLEZZA:
-"Sai esattamente cosa ti sta bloccando? O senti che c'è qualcosa 
-che non riesci a identificare?"
-⏸️ ASPETTA - L'obiettivo è che dica "Non lo so"
-💬 Se dice "Non lo so": "Ecco, questo è il punto CRITICO. Lo vediamo più avanti."
-
-📌 DIAGNOSTICA 5 - PROIEZIONE FUTURA:
-"Se non cambi nulla, dove pensi di essere tra 1 anno? 
-Meglio, uguale, o peggio?"
-⏸️ ASPETTA - Fai emergere la paura del non-cambiamento
-💬 REAGISCI: "Interessante... e questo come ti fa sentire?"
-
-📌 DIAGNOSTICA 6 - DIPENDENZE:
-"Quanto dipendi da altri per risolvere questo? 
-O stai cercando di fare tutto da solo?"
-⏸️ ASPETTA - Fai emergere isolamento o dipendenza eccessiva
-💬 REAGISCI: "Capisco la situazione..."
 
 ⚠️ Se ti chiede "mi spieghi meglio?", rispondi:
 "È proprio il motivo per il quale siamo in questa call, lo vediamo più avanti"
@@ -579,7 +549,7 @@ che non è calibrato per te, concordi?"
 
 🛡️ SE RESISTE: Continua ad essere vago
 📌 DOMANDA: "Capisco, non serve essere preciso al decimale. Anche a occhio, 
-più o meno... 3? 5? 7 su 10?"
+più o meno..."
 ⏸️ ASPETTA - Insisti fino ad avere UN numero (anche approssimativo)
 
 ⚠️ NON ANDARE AVANTI senza un numero (anche approssimativo)!
@@ -610,16 +580,6 @@ Mindset: Questa è la GOLD MINE - qui trovi l'oro per chiudere la vendita!
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA attentamente e MEMORIZZA il livello desiderato
 💬 REAGISCI: "Interessante!" / "Bello!"
-
-📌 DOMANDA (SE L'OBIETTIVO È TROPPO BASSO): "E ti fermeresti lì?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA se amplia la visione
-💬 REAGISCI: "Capisco!"
-
-📌 DOMANDA: "Nei prossimi 2-5 anni, che risultati vorresti raggiungere?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la vision a lungo termine
-💬 REAGISCI: "Fantastico!"
 
 📌 DOMANDA: "Togliendo quello che pensi sia possibile, cosa VERAMENTE vorresti ottenere?"
 ⏸️ ASPETTA LA RISPOSTA
@@ -715,8 +675,6 @@ PRIMA DI PASSARE ALLA FASE #6 VERIFICA:
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
 
-📊 TEST FINALE (FAI QUESTO TEST MENTALE):
-"Potresti dire: 'Vuole [numero] per [motivo emotivo specifico]'?"
 
 ESEMPI:
 ✅ "Vuole arrivare a 9/10 per passare più tempo con i figli e non dover più sacrificare tutto"
@@ -750,8 +708,7 @@ Mindset: Stai qualificando se sono pronti per la soluzione
 **STEP 12 - QUALIFICA (I MAGICI 3)**
 🎯 OBIETTIVO: Farli AMMETTERE che servono aiuto esterno (critico!)
 
-📌 DOMANDA: "Ok [NOME_PROSPECT], quindi sei a [livello attuale] e vuoi arrivare a [obiettivo]...
-Dimmi: cosa ti impedisce di riuscirci da solo?"
+📌 DOMANDA: "Ok [NOME_PROSPECT], quindi sei a [livello attuale] e vuoi arrivare a [obiettivo]... Dimmi: cosa ti impedisce di riuscirci da solo?"
 ⏸️ ASPETTA LA RISPOSTA - Questa è CRUCIALE
 🎧 ASCOLTA attentamente
 💬 REAGISCI: "Capisco!"
@@ -818,9 +775,7 @@ Mindset: Stai chiudendo la qualificazione e preparando la demo
 **STEP 13 - COSTO DI NON AGIRE**
 🎯 OBIETTIVO: Far riflettere sul costo di restare fermi
 
-📌 DOMANDA: "Ti faccio una domanda provocatoria...
-Sei a [livello attuale] e vuoi [obiettivo]... 
-perché non restare qui?"
+📌 DOMANDA: "Ti faccio una domanda provocatoria... Sei a [livello attuale] e vuoi [obiettivo]... perché non restare qui?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA - Qui emergono i VERI pain point
 💬 REAGISCI: "Capisco perfettamente..."
@@ -866,8 +821,7 @@ Cerchiamo chi vuole veramente cambiare. Che ne dici?"
 **STEP 15 - BUDGET E DECISION MAKER**
 🎯 OBIETTIVO: Pre-qualificare budget e decision maker per la demo
 
-📌 DOMANDA: "Ipotizzando che possiamo aiutarti davvero, 
-valuteresti un investimento tra [RANGE]?"
+📌 DOMANDA: "Ipotizzando che possiamo aiutarti davvero, valuteresti un investimento tra [2000 e 4000 euro]?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA - Nota resistenze o conferme
 💬 REAGISCI: "Perfetto!" / "Capisco!"
@@ -898,11 +852,7 @@ siete allineati sulla decisione?"
 🎯 OBIETTIVO: Chiudere la discovery e fissare la demo
 
 
-📌 DOMANDA: "Dalle informazioni che mi hai dato, penso di poterti aiutare. 
-Adesso ti propongo una cosa: nella prossima call ti presenterò 
-un percorso personalizzato basato su tutto quello che mi hai raccontato oggi.
-Ti mostrerò esattamente come passare da [livello attuale] a [obiettivo].
-Quando ti torna meglio? [PROPONI 2-3 SLOT]"
+📌 DOMANDA: "Dalle informazioni che mi hai dato, penso di poterti aiutare. Adesso ti propongo una cosa: nella prossima call ti presenterò un percorso personalizzato basato su tutto quello che mi hai raccontato oggi.Ti mostrerò esattamente come passare da [livello attuale] a [obiettivo].Quando ti torna meglio? [domani alle 16:00 o 18:00]"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA la scelta
 💬 REAGISCI: "Perfetto! Ci vediamo [data/ora]!"

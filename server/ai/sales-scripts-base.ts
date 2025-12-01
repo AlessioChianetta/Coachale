@@ -328,7 +328,7 @@ PRIMA DI PASSARE ALLA FASE #3 VERIFICA:
 ✓ Sai IL problema principale che vuole risolvere?
 ✓ È SPECIFICO e CONCRETO (non vago tipo "crescere" / "problemi generici")?
 ✓ Sai di cosa si occupa (business/attività)?
-✓ Hai scavato con 3-5 perché se la risposta era vaga?
+✓ Hai scavato le motivazioni dietro il problema se la risposta era vaga?
 ✓ Capisci il VERO dolore dietro il problema?
 ✓ Sai cosa hanno già provato e perché ha fallito?
 ✓ Sai da quanto tempo combattono il problema?
@@ -491,39 +491,13 @@ expertise. L'obiettivo è che loro ci dicano "NON LO SO"
 🔬 DOMANDE DIAGNOSTICHE (scegline 2-3 rilevanti per il loro caso)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📌 DIAGNOSTICA 1 - METRICHE:
-"Giusto per capire... sai qual è il tuo tasso di conversione attuale? 
-Quanti lead diventano clienti in percentuale?"
+📌 DOMANDA 1: "Giusto per capire... [Crea domanda inquisitoria con l'obiettivo di far dire 'Non lo so']"
+
 ⏸️ ASPETTA - L'obiettivo è che dica "Non lo so" o un numero basso
 💬 Se dice "Non lo so": "Ecco, questo è un dato CRITICO. Lo vediamo più avanti."
 💬 Se dà un numero: "Interessante. E sai qual è lo standard del settore?"
 
-📌 DIAGNOSTICA 2 - COSTI NASCOSTI:
-"E sai quanto ti costa ogni cliente perso? Tra tempo, energie, 
-opportunità mancate..."
-⏸️ ASPETTA - Fai emergere i costi invisibili
-💬 Se dice "Non ci ho mai pensato": "Esattamente! È un costo nascosto enorme."
 
-📌 DIAGNOSTICA 3 - TEMPO:
-"Quante ore a settimana dedichi personalmente a [problema specifico]?"
-⏸️ ASPETTA - Fai emergere il tempo sprecato
-💬 REAGISCI: "Interessante... e queste ore quanto valgono economicamente?"
-
-📌 DIAGNOSTICA 4 - SISTEMA:
-"Hai un sistema strutturato per [attività chiave] o lo fai caso per caso?"
-⏸️ ASPETTA - Fai emergere la mancanza di sistema
-💬 Se dice "caso per caso": "Capisco... e questo quanto ti rallenta secondo te?"
-
-📌 DIAGNOSTICA 5 - SCALABILITÀ:
-"Se domani raddoppiassero i clienti, il tuo sistema reggerebbe?"
-⏸️ ASPETTA - Fai emergere i limiti del business attuale
-💬 REAGISCI: "Interessante punto di vista..."
-
-📌 DIAGNOSTICA 6 - DIPENDENZA:
-"Quanto dipende il business dalla tua presenza diretta? 
-Se ti ammali 2 settimane, cosa succede?"
-⏸️ ASPETTA - Fai emergere la dipendenza personale
-💬 REAGISCI: "Capisco la situazione..."
 
 ⚠️ Se ti chiede "mi spieghi meglio?", rispondi:
 "È proprio il motivo per il quale siamo in questa call, lo vediamo più avanti"
@@ -606,16 +580,6 @@ Mindset: Questa è la GOLD MINE - qui trovi l'oro per chiudere la vendita!
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA attentamente e MEMORIZZA il numero PRECISO
 💬 REAGISCI: "Interessante!" / "Bello!"
-
-📌 DOMANDA (SE IL NUMERO È TROPPO BASSO): "E ti fermeresti lì?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA se amplia la visione
-💬 REAGISCI: "Capisco!"
-
-📌 DOMANDA: "Nei prossimi 2-5 anni, dove vorresti arrivare?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la vision a lungo termine
-💬 REAGISCI: "Fantastico!"
 
 📌 DOMANDA: "Togliendo quello che pensi sia possibile, cosa VERAMENTE vorresti?"
 ⏸️ ASPETTA LA RISPOSTA
@@ -711,8 +675,6 @@ PRIMA DI PASSARE ALLA FASE #6 VERIFICA:
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
 
-📊 TEST FINALE (FAI QUESTO TEST MENTALE):
-"Potresti dire: 'Vuole [numero] per [motivo emotivo specifico]'?"
 
 ESEMPI:
 ✅ "Vuole 50k/mese per passare più tempo con i figli e non dover più lavorare 70h/settimana"
@@ -746,8 +708,7 @@ Mindset: Stai qualificando se sono pronti per la soluzione
 **STEP 12 - QUALIFICA (I MAGICI 3)**
 🎯 OBIETTIVO: Farli AMMETTERE che servono aiuto esterno (critico!)
 
-📌 DOMANDA: "Ok [NOME_PROSPECT], quindi sei a [fatturato attuale] e vuoi arrivare a [obiettivo]...
-Dimmi: cosa ti impedisce di riuscirci da solo?"
+📌 DOMANDA: "Ok [NOME_PROSPECT], quindi sei a [fatturato attuale] e vuoi arrivare a [obiettivo]... Dimmi: cosa ti impedisce di riuscirci da solo?"
 ⏸️ ASPETTA LA RISPOSTA - Questa è CRUCIALE
 🎧 ASCOLTA attentamente
 💬 REAGISCI: "Capisco!"
@@ -814,16 +775,13 @@ Mindset: Stai chiudendo la qualificazione e preparando la demo
 **STEP 13 - COSTO DI NON AGIRE**
 🎯 OBIETTIVO: Far riflettere sul costo di restare fermi
 
-📌 DOMANDA: "Ti faccio una domanda provocatoria...
-Sei a [fatturato attuale] e vuoi [obiettivo]... 
-perché non restare qui?"
+📌 DOMANDA: "Ti faccio una domanda provocatoria... Sei a [fatturato attuale] e vuoi [obiettivo]... perché non restare qui?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA - Qui emergono i VERI pain point
 💬 REAGISCI: "Capisco perfettamente..."
 
 🛡️ SE RESISTE: Dice "Va bene anche così" → Disqualifica
-📌 DOMANDA: "Se va bene così, probabilmente non è per te. 
-Cerchiamo chi vuole veramente cambiare. Che ne dici?"
+📌 DOMANDA: "Se va bene così, probabilmente non è per te. Cerchiamo chi vuole veramente cambiare. Che ne dici?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA se conferma o si corregge
 💬 Se conferma → Chiudi educatamente
@@ -862,8 +820,7 @@ Cerchiamo chi vuole veramente cambiare. Che ne dici?"
 **STEP 15 - BUDGET E DECISION MAKER**
 🎯 OBIETTIVO: Pre-qualificare budget e decision maker per la demo
 
-📌 DOMANDA: "Ipotizzando che possiamo aiutarti davvero, 
-valuteresti un investimento tra [RANGE]?"
+📌 DOMANDA: "Ipotizzando che possiamo aiutarti davvero, valuteresti un investimento tra [2000 e 4000 euro]?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA - Nota resistenze o conferme
 💬 REAGISCI: "Perfetto!" / "Capisco!"
@@ -893,11 +850,7 @@ siete allineati sulla decisione?"
 **STEP 16 - TRANSIZIONE ALLA DEMO**
 🎯 OBIETTIVO: Chiudere la discovery e fissare la demo
 
-📌 DOMANDA: "Dalle informazioni che mi hai dato, penso di poterti aiutare. 
-Adesso ti propongo una cosa: nella prossima call ti presenterò 
-un percorso personalizzato basato su tutto quello che mi hai raccontato oggi.
-Ti mostrerò esattamente come passare da [fatturato attuale] a [obiettivo].
-Quando ti torna meglio? [PROPONI 2-3 SLOT]"
+📌 DOMANDA: "Dalle informazioni che mi hai dato, penso di poterti aiutare. Adesso ti propongo una cosa: nella prossima call ti presenterò un percorso personalizzato basato su tutto quello che mi hai raccontato oggi. Ti mostrerò esattamente come passare da [fatturato attuale] a [obiettivo]. Quando ti torna meglio? [domani alle 16:00 o 18:00]"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA la scelta
 💬 REAGISCI: "Perfetto! Ci vediamo [data/ora]!"

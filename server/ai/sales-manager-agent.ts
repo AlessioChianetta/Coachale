@@ -810,8 +810,9 @@ export class SalesManagerAgent {
     console.log(`   💬 Messages: ${params.recentMessages.length}`);
     
     // 1. Quick local analysis (no AI call needed) + AI checkpoint validation
-    const buySignals = this.detectBuySignals(params.recentMessages);
-    const objections = this.detectObjections(params.recentMessages, params.script.objections);
+    // 🔴 DISABLED: BUY_SIGNAL_DETECTION and OBJECTION_DETECTION (per user request)
+    const buySignals = { detected: false, signals: [] };
+    const objections = { detected: false, objections: [] };
     const toneAnalysis = this.analyzeTone(params.recentMessages, params.currentPhaseEnergy);
     // 🆕 Control analysis - detect if sales is losing control (only in Discovery)
     const controlAnalysis = this.analyzeConversationControl(params.recentMessages, params.currentPhaseId);
