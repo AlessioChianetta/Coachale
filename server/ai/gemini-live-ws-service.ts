@@ -3948,7 +3948,13 @@ ${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
                                 isComplete: analysis.checkpointStatus.isComplete,
                                 completedItems: analysis.checkpointStatus.completedItems,
                                 missingItems: analysis.checkpointStatus.missingItems,
-                                canAdvance: analysis.checkpointStatus.canAdvance
+                                canAdvance: analysis.checkpointStatus.canAdvance,
+                                phaseNumber: analysis.checkpointStatus.phaseNumber,
+                                totalChecks: analysis.checkpointStatus.totalChecks,
+                                validatedCount: analysis.checkpointStatus.validatedCount,
+                                missingCount: analysis.checkpointStatus.missingCount,
+                                itemDetails: analysis.checkpointStatus.itemDetails,
+                                qualityScore: analysis.checkpointStatus.qualityScore
                               } : null,
                               buySignals: {
                                 detected: analysis.buySignals.detected,
