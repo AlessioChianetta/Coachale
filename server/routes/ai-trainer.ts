@@ -713,11 +713,15 @@ router.post(
     try {
       const conversationId = req.params.id;
       
+      console.log(`\n🔍 [REC GENERATION] Starting for conversation: ${conversationId}`);
+      
       if (!conversationId || conversationId === 'NaN' || conversationId === 'undefined') {
+        console.log(`❌ [REC GENERATION] Invalid conversation ID`);
         return res.status(400).json({ message: 'Invalid conversation ID' });
       }
 
       // Ottieni la conversazione (ID is VARCHAR/UUID in database)
+      console.log(`📋 [REC GENERATION] Fetching conversation details...`);
       const conversation = await db.select({
         id: clientSalesConversations.id,
         agentId: clientSalesConversations.agentId,
@@ -729,10 +733,21 @@ router.post(
         .limit(1);
 
       if (!conversation[0]) {
+        console.log(`❌ [REC GENERATION] Conversation not found: ${conversationId}`);
         return res.status(404).json({ message: 'Conversation not found' });
       }
 
+      console.log(`✅ [REC GENERATION] Conversation found - agentId: ${conversation[0].agentId}`);
+      console.log(`📝 [REC GENERATION] Transcript length: ${conversation[0].fullTranscript?.length || 0}`);
+
       // Verifica accesso
+      console.log(`🔐 [REC GENERATION] Checking agent access for agentId: ${conversation[0].agentId}`);
+      
+      if (!conversation[0].agentId) {
+        console.log(`❌ [REC GENERATION] No agentId in conversation`);
+        return res.status(400).json({ message: 'Conversation has no agent assigned' });
+      }
+      
       const agent = await db.select({
         clientId: clientSalesAgents.clientId,
         geminiApiKey: clientSalesAgents.geminiApiKey,
@@ -741,29 +756,58 @@ router.post(
         .where(eq(clientSalesAgents.id, conversation[0].agentId))
         .limit(1);
 
-      if (!agent[0] || agent[0].clientId !== req.user?.id) {
+      console.log(`📊 [REC GENERATION] Agent query result:`, {
+        found: !!agent[0],
+        hasClientId: !!agent[0]?.clientId,
+        hasApiKey: !!agent[0]?.geminiApiKey,
+        requestUserId: req.user?.id
+      });
+
+      if (!agent[0]) {
+        console.log(`❌ [REC GENERATION] Agent not found for id: ${conversation[0].agentId}`);
+        return res.status(404).json({ message: 'Agent not found' });
+      }
+
+      if (agent[0].clientId !== req.user?.id) {
+        console.log(`❌ [REC GENERATION] Access denied - clientId mismatch`);
+        console.log(`   Agent clientId: ${agent[0].clientId}`);
+        console.log(`   Request user id: ${req.user?.id}`);
         return res.status(403).json({ message: 'Access denied' });
       }
 
       // Verifica che ci sia un transcript
-      if (!conversation[0].fullTranscript || conversation[0].fullTranscript.length < 100) {
+      const transcriptLength = conversation[0].fullTranscript?.length || 0;
+      console.log(`📏 [REC GENERATION] Transcript validation - length: ${transcriptLength}`);
+      
+      if (transcriptLength < 100) {
+        console.log(`❌ [REC GENERATION] Transcript too short: ${transcriptLength} chars`);
         return res.status(400).json({ 
           message: 'Transcript troppo breve o mancante. Il REC può essere generato solo da conversazioni con trascrizione completa.',
-          transcriptLength: conversation[0].fullTranscript?.length || 0
+          transcriptLength
         });
       }
 
       // Import dinamico per evitare circular dependencies
+      console.log(`📦 [REC GENERATION] Loading discovery-rec-generator module...`);
       const { generateDiscoveryRec } = await import('../ai/discovery-rec-generator');
       
       // Ottieni API key (prova agent, poi env var)
       const apiKey = agent[0].geminiApiKey || process.env.GEMINI_API_KEY;
       
+      console.log(`🔑 [REC GENERATION] API Key source:`, {
+        fromAgent: !!agent[0].geminiApiKey,
+        fromEnv: !!process.env.GEMINI_API_KEY,
+        hasKey: !!apiKey
+      });
+      
       if (!apiKey) {
+        console.log(`❌ [REC GENERATION] No API key available`);
         return res.status(500).json({ message: 'Gemini API key non configurata' });
       }
 
-      console.log(`🔄 [REC GENERATION] Starting manual REC generation for conversation ${conversationId}`);
+      console.log(`🚀 [REC GENERATION] Starting REC generation...`);
+      console.log(`   Conversation: ${conversationId}`);
+      console.log(`   Transcript length: ${transcriptLength} chars`);
       
       // Genera il REC
       const discoveryRec = await generateDiscoveryRec(
@@ -771,9 +815,24 @@ router.post(
         apiKey
       );
 
+      console.log(`📋 [REC GENERATION] Generation complete - checking result...`);
+      
       if (!discoveryRec) {
+        console.log(`❌ [REC GENERATION] Generator returned null`);
         return res.status(500).json({ message: 'Failed to generate Discovery REC' });
       }
+
+      console.log(`✅ [REC GENERATION] REC generated successfully`);
+      console.log(`📊 [REC GENERATION] Content summary:`, {
+        hasMotivazione: !!discoveryRec.motivazioneCall,
+        hasTipoAttivita: !!discoveryRec.tipoAttivita,
+        problemiCount: discoveryRec.problemi?.length || 0,
+        hasStatoAttuale: !!discoveryRec.statoAttuale,
+        hasStatoIdeale: !!discoveryRec.statoIdeale,
+        hasUrgenza: !!discoveryRec.urgenza,
+        hasDecisionMaker: discoveryRec.decisionMaker !== undefined,
+        hasBudget: !!discoveryRec.budget
+      });
 
       // Verifica che il REC abbia contenuto significativo
       const hasContent = discoveryRec.motivazioneCall || 
@@ -782,6 +841,7 @@ router.post(
                          discoveryRec.statoAttuale;
       
       if (!hasContent) {
+        console.log(`⚠️ [REC GENERATION] REC is empty - no meaningful content`);
         return res.status(400).json({ 
           message: 'Il REC generato è vuoto. Probabilmente il transcript non contiene informazioni di discovery sufficienti.',
           discoveryRec 
@@ -789,11 +849,12 @@ router.post(
       }
 
       // Salva nel database
+      console.log(`💾 [REC GENERATION] Saving REC to database...`);
       await db.update(clientSalesConversations)
         .set({ discoveryRec })
         .where(eq(clientSalesConversations.id, conversationId));
 
-      console.log(`✅ [REC GENERATION] REC generated and saved for conversation ${conversationId}`);
+      console.log(`✅ [REC GENERATION] REC saved successfully for conversation ${conversationId}`);
 
       res.json({
         success: true,
@@ -803,8 +864,22 @@ router.post(
       });
 
     } catch (error) {
-      console.error('Error generating discovery REC:', error);
-      res.status(500).json({ message: 'Failed to generate discovery REC' });
+      console.error(`\n❌ [REC GENERATION] CRITICAL ERROR:`);
+      console.error(`   Type: ${error?.constructor?.name}`);
+      console.error(`   Message: ${error?.message}`);
+      console.error(`   Stack:`, error?.stack);
+      
+      if (error?.message?.includes('orderSelectedFields')) {
+        console.error(`\n🔍 [REC GENERATION] This is a Drizzle ORM query error`);
+        console.error(`   Likely cause: Invalid field selection in database query`);
+        console.error(`   Conversation ID: ${req.params.id}`);
+      }
+      
+      res.status(500).json({ 
+        message: 'Failed to generate discovery REC',
+        error: error?.message,
+        type: error?.constructor?.name
+      });
     }
   }
 );
