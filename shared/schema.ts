@@ -3617,6 +3617,44 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     analyzedFiles?: string[]; // List of files used in analysis (if any)
   }>(),
   
+  // Sales Manager Analysis History (real-time coaching feedback during conversation)
+  managerAnalysisHistory: jsonb("manager_analysis_history").$type<Array<{
+    timestamp: string;
+    stepAdvancement: {
+      shouldAdvance: boolean;
+      nextPhaseId: string | null;
+      nextStepId: string | null;
+      confidence: number;
+      reasoning: string;
+    };
+    checkpointStatus: {
+      checkpointId: string;
+      checkpointName: string;
+      isComplete: boolean;
+      completedItems: string[];
+      missingItems: string[];
+      canAdvance: boolean;
+    } | null;
+    buySignals: {
+      detected: boolean;
+      signals: Array<{ type: string; phrase: string; confidence: number }>;
+    };
+    objections: {
+      detected: boolean;
+      objections: Array<{ type: string; phrase: string }>;
+    };
+    archetypeState: {
+      current: string;
+      confidence: number;
+    } | null;
+    currentPhase: {
+      id: string;
+      name: string;
+      stepName: string;
+    };
+    analysisTimeMs: number;
+  }>>().default(sql`'[]'::jsonb`),
+  
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

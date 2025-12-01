@@ -513,8 +513,19 @@ router.post(
         return res.status(403).json({ message: 'Access denied' });
       }
 
+      // Save manager analysis history to database before stopping
       const simulator = activeSimulators.get(sessionId);
       if (simulator) {
+        const analysisHistory = simulator.getManagerAnalysisHistory();
+        if (analysisHistory.length > 0 && session[0].conversationId) {
+          await db.update(salesConversationTraining)
+            .set({
+              managerAnalysisHistory: analysisHistory as any,
+              updatedAt: new Date(),
+            })
+            .where(eq(salesConversationTraining.conversationId, session[0].conversationId));
+          console.log(`📊 [AI TRAINER] Saved ${analysisHistory.length} manager analyses for session ${sessionId}`);
+        }
         await simulator.stop();
         activeSimulators.delete(sessionId);
       }
@@ -646,8 +657,17 @@ router.get(
         return res.json(analysisHistory);
       }
 
-      // Session ended - analysis history is not persisted yet
-      // TODO: Add DB persistence for manager analysis history
+      // Session ended - get analysis history from database
+      if (session[0].conversationId) {
+        const training = await db.select()
+          .from(salesConversationTraining)
+          .where(eq(salesConversationTraining.conversationId, session[0].conversationId))
+          .limit(1);
+
+        if (training[0]?.managerAnalysisHistory) {
+          return res.json(training[0].managerAnalysisHistory);
+        }
+      }
       res.json([]);
 
     } catch (error) {
