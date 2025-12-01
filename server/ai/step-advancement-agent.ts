@@ -819,7 +819,7 @@ Rispondi SOLO con JSON valido, NO testo aggiuntivo:
       "infoCollected": "informazione specifica raccolta (se validated)",
       "reason": "motivo se missing/vague",
       "evidenceQuote": "citazione breve dalla conversazione",
-      "suggestedNextAction": "OBBLIGATORIO se missing/vague: suggerimento CONCRETO e SPECIFICO su cosa chiedere/fare per completare questo check. Es: 'Chiedi: Da quale città mi stai chiamando?' oppure 'Approfondisci il problema con: Puoi farmi un esempio concreto?'"
+      "suggestedNextAction": "OBBLIGATORIO se missing/vague: descrivi l'OBIETTIVO da raggiungere, NON la domanda letterale da fare. Es: 'Devi capire quale ostacolo specifico blocca il prospect' oppure 'Ottieni un esempio concreto del problema'. NON scrivere MAI 'Chiedi:...' - l'agente sa già come fare domande!"
     }
   ],
   "qualityScore": {

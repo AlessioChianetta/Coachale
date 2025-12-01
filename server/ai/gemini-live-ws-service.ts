@@ -408,38 +408,61 @@ interface CompactFeedbackParams {
   toneAnalysis?: { isRobotic: boolean; consecutiveQuestions: number; energyMismatch: boolean } | null;
   stepResult?: { shouldAdvance: boolean } | null;
   checkpointItemDetails?: CheckpointItemDetail[] | null;
+  currentObjective?: string | null; // 🆕 Obiettivo della fase corrente
 }
 
 function formatCompactFeedback(params: CompactFeedbackParams): string {
-  // 🔧 FIX: Feedback DINAMICO - niente più filler statici!
-  // Il contenuto viene dall'AI (suggestedNextAction) + tono dall'archetipo
+  // 🔧 FIX: Feedback DINAMICO - obiettivo della fase + tono, niente domande letterali!
   
   const parts: string[] = [];
   
-  // 1. TONO dall'archetipo (solo indicazione tono, niente azione statica)
+  // 1. OBIETTIVO della fase corrente (PRIMA DI TUTTO - questo è il più importante!)
+  if (params.currentObjective && params.currentObjective.length > 5) {
+    parts.push(`🎯 OBIETTIVO: ${params.currentObjective}`);
+  }
+  
+  // 2. TONO dall'archetipo (solo indicazione tono, niente azione statica)
   const archetypeNote = getArchetypeNote(params.archetypeState);
   if (archetypeNote) parts.push(archetypeNote);
   
-  // 2. SUGGERIMENTI DINAMICI dai checkpoint mancanti (generati dall'AI)
+  // 3. INFO MANCANTI (solo elenco di cosa ottenere, NON domande letterali)
+  // 🔧 FIX: NIENTE SLICE - mostra TUTTI i check mancanti!
   if (params.checkpointItemDetails && params.checkpointItemDetails.length > 0) {
     const missingChecks = params.checkpointItemDetails
-      .filter(item => item.status !== 'validated' && item.suggestedNextAction);
+      .filter(item => item.status !== 'validated');
     
-    // Usa i suggerimenti dell'AI - sono già contestuali alla conversazione!
-    missingChecks.slice(0, 3).forEach(item => {
+    // Mostra obiettivi da raggiungere (l'AI ora genera obiettivi, non domande)
+    // TUTTI i check, non solo 3!
+    missingChecks.forEach(item => {
+      let actionToShow = '';
+      
       if (item.suggestedNextAction) {
-        parts.push(item.suggestedNextAction);
+        // Rimuovi eventuali "Chiedi:" residui
+        actionToShow = item.suggestedNextAction
+          .replace(/^Chiedi:\s*/i, '')
+          .replace(/^Domanda:\s*/i, '')
+          .replace(/^['"]/, '') // Rimuovi quote iniziali
+          .trim();
+      }
+      
+      // 🔧 FIX: Se dopo la pulizia è vuoto, usa il check originale come fallback
+      if (!actionToShow || actionToShow.length < 5) {
+        actionToShow = item.check; // Fallback al testo del check originale
+      }
+      
+      if (actionToShow && actionToShow.length > 5) {
+        parts.push(actionToShow);
       }
     });
   }
   
-  // 3. TONO analysis (se ci sono problemi specifici)
+  // 4. TONO analysis (se ci sono problemi specifici)
   const toneNote = getToneNote(params.toneAnalysis, params.toneReminder);
   if (toneNote && toneNote !== 'Tono OK' && toneNote !== 'Tono adeguato') {
     parts.push(toneNote);
   }
   
-  // 4. Se il feedback ha contenuto specifico (needsImprovement non generico)
+  // 5. Se il feedback ha contenuto specifico (needsImprovement non generico)
   if (params.needsImprovement && 
       !params.needsImprovement.includes('Continua a seguire') &&
       !params.needsImprovement.includes('script') &&
@@ -4061,7 +4084,8 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                               console.log(`         description: ${cp.description ? cp.description.substring(0, 50) + '...' : 'undefined'}`);
                               console.log(`         verifications: ${cp.verifications ? cp.verifications.length + ' items' : 'undefined'}`);
                               if (cp.verifications && cp.verifications.length > 0) {
-                                cp.verifications.slice(0, 3).forEach((v, vIdx) => {
+                                // 🔧 FIX: Mostra TUTTE le verifiche nel log, non solo 3
+                                cp.verifications.forEach((v, vIdx) => {
                                   console.log(`            ${vIdx + 1}. ${v.substring(0, 60)}...`);
                                 });
                               }
@@ -4357,8 +4381,8 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                           // Questo è CRITICO per garantire che l'agente abbia sempre il contesto
                           const managerReasoning = hasValidReasoning ? stepResult.reasoning : '';
                           
-                          // 🚀 FORMATO COMPATTO: Feedback DINAMICO (niente filler statici!)
-                          // Usa suggestedNextAction dai checkpoint + tono archetipo
+                          // 🚀 FORMATO COMPATTO: Feedback DINAMICO - OBIETTIVO + TONO + COSA MANCA
+                          // Ora include currentObjective per dare la LOGICA della fase
                           const compactFeedback = formatCompactFeedback({
                             feedbackType,
                             feedbackPriority,
@@ -4368,7 +4392,8 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                             archetypeState: analysis.archetypeState || null,
                             toneAnalysis: analysis.toneAnalysis || null,
                             stepResult: stepResult || null,
-                            checkpointItemDetails: analysis.checkpointStatus?.itemDetails || null
+                            checkpointItemDetails: analysis.checkpointStatus?.itemDetails || null,
+                            currentObjective: currentObjective || null // 🆕 Obiettivo della fase
                           });
                           
                           const feedbackContent = `<<<SALES_MANAGER_INSTRUCTION>>>

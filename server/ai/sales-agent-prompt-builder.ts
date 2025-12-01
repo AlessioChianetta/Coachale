@@ -299,7 +299,8 @@ export function generateNextAction(position: ScriptPosition, prospectName: strin
   }
 
   // Genera le domande da fare (sostituendo placeholder)
-  const questionsToAsk = currentStep.questions?.slice(0, 3).map((q, i) => {
+  // 🔧 FIX: TUTTE le domande, non solo 3!
+  const questionsToAsk = currentStep.questions?.map((q, i) => {
     const text = q.text.replace(/\[NOME_PROSPECT\]/gi, prospectName);
     return `║    ${i + 1}. "${text}"`;
   }).join('\n') || '║    (Nessuna domanda specifica)';
