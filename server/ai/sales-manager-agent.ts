@@ -968,9 +968,9 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🚫 GATEKEEPING LOGIC - CHECKPOINT SEMANTICI BLOCCANTI
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // Questa logica blocca FORZATAMENTE l'avanzamento alla fase successiva
-    // se il checkpoint della fase corrente non è stato validato.
-    // Il blocco si applica SOLO alla transizione di FASE (non tra step)
+    // 🆕 VERSIONE 2.0: Blocca QUALSIASI avanzamento (step o fase) se 
+    // il checkpoint della fase corrente non è stato validato.
+    // Prima bloccava SOLO le transizioni di fase, ora blocca tutto.
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     
     const currentPhase = params.script.phases.find(p => p.id === params.currentPhaseId);
@@ -979,16 +979,17 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     const isPhaseTransition = stepAdvancement.shouldAdvance && isLastStepOfPhase && 
                               stepAdvancement.nextPhaseId !== params.currentPhaseId;
     
-    if (isPhaseTransition && checkpointStatus && !checkpointStatus.canAdvance) {
+    // 🆕 BLOCCO ESTESO: Ora si applica a QUALSIASI avanzamento (shouldAdvance), non solo transizioni di fase
+    if (stepAdvancement.shouldAdvance && checkpointStatus && !checkpointStatus.canAdvance) {
       // 🚫 BLOCCO FORZATO: L'AI vuole avanzare ma il checkpoint non è completo
       const phaseNum = params.currentPhaseId.replace('phase_', '').replace(/_/g, '-');
-      const totalChecks = checkpointStatus.completedItems.length + checkpointStatus.missingItems.length;
-      const validatedCount = checkpointStatus.completedItems.length;
-      const missingCount = checkpointStatus.missingItems.length;
+      const totalChecks = checkpointStatus.totalChecks || (checkpointStatus.completedItems.length + checkpointStatus.missingItems.length);
+      const validatedCount = checkpointStatus.validatedCount || checkpointStatus.completedItems.length;
+      const missingCount = checkpointStatus.missingCount || checkpointStatus.missingItems.length;
       
-      // Log nel formato ESATTO richiesto (singola linea)
-      console.log(`[FASE ${phaseNum}] - Checkpoint Totali: ${totalChecks} | Validati: ${validatedCount} | Mancanti: ${missingCount}`);
-      console.log(`  BLOCCO ATTIVO: Transizione a ${stepAdvancement.nextPhaseId} NEGATA`);
+      // Log blocco (il log dettagliato è già stato stampato da logCheckpointDetailed())
+      console.log(`\n🚫 [CHECKPOINT GATE] BLOCCO AVANZAMENTO ATTIVATO`);
+      console.log(`   Motivo: ${validatedCount}/${totalChecks} verifiche completate - ${isPhaseTransition ? 'Transizione FASE' : 'Avanzamento STEP'} NEGATO`);
       
       // 🚫 FORZA IL BLOCCO COMPLETO
       // Reimposta tutto sulla FASE/STEP CORRENTE per impedire qualsiasi avanzamento
@@ -998,21 +999,23 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       stepAdvancement.reasoning = `BLOCCATO DA CHECKPOINT: "${checkpointStatus.checkpointName}" non completato. Mancano ${missingCount} informazioni obbligatorie.`;
       stepAdvancement.confidence = 1; // 100% sicuri del blocco
       
-      // Genera feedback dettagliato per l'agente
-      const missingInfo = checkpointStatus.missingItems.slice(0, 3).map((item, i) => `${i+1}. ${item}`).join('\n');
+      // Genera feedback dettagliato per l'agente con lista ✓/✗
+      const itemStatusList = checkpointStatus.itemDetails?.map((item) => {
+        const icon = item.status === 'validated' ? '✓' : item.status === 'vague' ? '⚠' : '✗';
+        return `${icon} ${item.check}`;
+      }).join('\n') || checkpointStatus.missingItems.slice(0, 5).map((item, i) => `✗ ${item}`).join('\n');
+      
       feedbackForAgent = {
         shouldInject: true,
         priority: 'critical',
         type: 'checkpoint',
-        message: `BLOCCO CHECKPOINT FASE ${phaseNum} - NON PUOI PROCEDERE!
+        message: `🚫 BLOCCO CHECKPOINT FASE #${phaseNum} - NON PUOI PROCEDERE!
 
-Progress: ${validatedCount}/${totalChecks} verifiche completate
-
-INFORMAZIONI MANCANTI:
-${missingInfo}${missingCount > 3 ? `\n... e altre ${missingCount - 3}` : ''}
+STATO VERIFICHE (${validatedCount}/${totalChecks}):
+${itemStatusList}
 
 AZIONE RICHIESTA:
-Rimani nella conversazione attuale e ottieni queste informazioni PRIMA di poter passare alla fase successiva.`,
+Completa le verifiche mancanti (✗) prima di poter procedere.`,
         toneReminder: 'Fai domande specifiche per raccogliere le informazioni mancanti!'
       };
     }
