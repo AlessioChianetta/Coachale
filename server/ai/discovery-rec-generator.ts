@@ -95,8 +95,8 @@
         model: "gemini-2.5-flash-preview-05-20",
         contents: prompt,
         config: {
-          temperature: 0.1,
-          maxOutputTokens: 2048,
+          temperature: 1.0,
+          maxOutputTokens: 20000,
         }
       });
 
@@ -253,7 +253,7 @@
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
         }
       });
 

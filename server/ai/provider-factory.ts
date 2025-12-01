@@ -114,6 +114,13 @@ class VertexAIClientAdapter implements GeminiClient {
             return JSON.stringify(candidate.content.parts[0].functionCall);
           }
           
+          // 7. Check if response was truncated due to MAX_TOKENS
+          if (candidate?.finishReason === 'MAX_TOKENS') {
+            console.warn(`⚠️ [VertexAI Adapter] Response truncated due to MAX_TOKENS. Increase maxOutputTokens.`);
+            // Return empty string instead of throwing - will be handled upstream
+            return '';
+          }
+          
           // All strategies failed - log detailed structure and throw
           console.error(`❌ [VertexAI Adapter] Failed to extract text. Response structure:`, JSON.stringify({
             hasResponse: !!result.response,
