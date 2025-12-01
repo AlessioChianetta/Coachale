@@ -31,15 +31,20 @@ import { getAIProvider } from "./provider-factory";
  * 3. Google AI Studio (fallback)
  */
 
-interface DiscoveryRecResult {
-  success: boolean;
-  rec?: {
-    obiettivi: string;
-    desideri: string;
-    uncino: string;
-    statoIdeale: string;
-  };
-  error?: string;
+export interface DiscoveryRec {
+  motivazioneCall?: string;
+  altroProvato?: string;
+  tipoAttivita?: string;
+  statoAttuale?: string;
+  livelloFatturato?: string;
+  problemi?: string[];
+  statoIdeale?: string;
+  urgenza?: string;
+  decisionMaker?: boolean;
+  budget?: string;
+  obiezioniEmerse?: string[];
+  noteAggiuntive?: string;
+  generatedAt?: string;
 }
 
 const DISCOVERY_REC_PROMPT = `Sei un assistente AI specializzato nell'analisi di conversazioni di vendita in italiano.
