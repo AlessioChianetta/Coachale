@@ -389,6 +389,15 @@ function isProspectQuestion(message: string): boolean {
 //           Tono OK, evita ripetere 'interessante'. Prospect scettico: usa prove concrete."
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+interface CheckpointItemDetail {
+  check: string;
+  status: 'validated' | 'missing' | 'vague';
+  infoCollected?: string;
+  reason?: string;
+  evidenceQuote?: string;
+  suggestedNextAction?: string;
+}
+
 interface CompactFeedbackParams {
   feedbackType: string;
   feedbackPriority: string;
@@ -398,33 +407,52 @@ interface CompactFeedbackParams {
   archetypeState?: { current: string; confidence: number } | null;
   toneAnalysis?: { isRobotic: boolean; consecutiveQuestions: number; energyMismatch: boolean } | null;
   stepResult?: { shouldAdvance: boolean } | null;
+  checkpointItemDetails?: CheckpointItemDetail[] | null;
 }
 
 function formatCompactFeedback(params: CompactFeedbackParams): string {
-  // 🚀 Token counter per italiano: 1 parola ≈ 1 token (conservativo)
-  // Per italiano GPT-style tokenizers, parole comuni = 1 token, parole lunghe = 1-2 token
-  const countTokens = (text: string): number => {
-    const words = text.split(/\s+/).filter(w => w.length > 0);
-    // Aggiungi bonus per parole lunghe (>8 chars) che potrebbero essere 2 token
-    const longWords = words.filter(w => w.length > 8).length;
-    return words.length + Math.floor(longWords * 0.3);
-  };
+  // 🔧 FIX: Feedback DINAMICO - niente più filler statici!
+  // Il contenuto viene dall'AI (suggestedNextAction) + tono dall'archetipo
   
   const parts: string[] = [];
   
-  // 1. PERFORMANCE: Forza + Criticità (~20-30 token)
-  const strength = getStrengthFromParams(params);
-  const weakness = getWeaknessFromParams(params);
-  if (strength) parts.push(strength);
-  if (weakness) parts.push(weakness);
-  
-  // 2. TONO: Adeguatezza + Ridondanze (~15-20 token)
-  const toneNote = getToneNote(params.toneAnalysis, params.toneReminder);
-  if (toneNote) parts.push(toneNote);
-  
-  // 3. ARCHETIPO: Profilo + Azione (~20-25 token)
+  // 1. TONO dall'archetipo (solo indicazione tono, niente azione statica)
   const archetypeNote = getArchetypeNote(params.archetypeState);
   if (archetypeNote) parts.push(archetypeNote);
+  
+  // 2. SUGGERIMENTI DINAMICI dai checkpoint mancanti (generati dall'AI)
+  if (params.checkpointItemDetails && params.checkpointItemDetails.length > 0) {
+    const missingChecks = params.checkpointItemDetails
+      .filter(item => item.status !== 'validated' && item.suggestedNextAction);
+    
+    // Usa i suggerimenti dell'AI - sono già contestuali alla conversazione!
+    missingChecks.slice(0, 3).forEach(item => {
+      if (item.suggestedNextAction) {
+        parts.push(item.suggestedNextAction);
+      }
+    });
+  }
+  
+  // 3. TONO analysis (se ci sono problemi specifici)
+  const toneNote = getToneNote(params.toneAnalysis, params.toneReminder);
+  if (toneNote && toneNote !== 'Tono OK' && toneNote !== 'Tono adeguato') {
+    parts.push(toneNote);
+  }
+  
+  // 4. Se il feedback ha contenuto specifico (needsImprovement non generico)
+  if (params.needsImprovement && 
+      !params.needsImprovement.includes('Continua a seguire') &&
+      !params.needsImprovement.includes('script') &&
+      params.needsImprovement.length > 10) {
+    // Pulisci da riferimenti tecnici
+    const cleanedImprovement = params.needsImprovement
+      .replace(/🎯\s*PROSSIMI\s*PASSI:?\s*/gi, '')
+      .replace(/→\s*/g, '')
+      .trim();
+    if (cleanedImprovement.length > 10 && !parts.includes(cleanedImprovement)) {
+      parts.push(cleanedImprovement);
+    }
+  }
   
   // Unisci tutto in singola riga fluida
   let feedback = parts.join('. ');
@@ -439,64 +467,29 @@ function formatCompactFeedback(params: CompactFeedbackParams): string {
     .replace(/\s+/g, ' ')
     .trim();
   
-  // 🚀 GARANTISCI 90-110 TOKEN con ciclo deterministico
-  let tokenCount = countTokens(feedback);
-  
-  // Filler pool generoso per raggiungere 90 token (ogni frase ~8-12 token)
-  const fillers = [
-    'Mantieni energia e ritmo naturali nella conversazione.',
-    'Continua con questo approccio positivo e costruttivo.',
-    'Ascolta attentamente le esigenze specifiche del prospect.',
-    'Usa domande aperte per approfondire la comprensione.',
-    'Mostra interesse genuino per la sua situazione attuale.',
-    'Costruisci fiducia attraverso esempi concreti e risultati.',
-    'Adatta il ritmo della conversazione alla risposta del prospect.',
-    'Valorizza ogni informazione che il prospect condivide.',
-    'Guida la conversazione verso i benefici del tuo servizio.',
-    'Anticipa le obiezioni con risposte preparate e convincenti.',
-    'Crea urgenza senza pressione eccessiva sul prospect.',
-    'Sottolinea il valore unico della tua proposta commerciale.'
-  ];
-  
-  let fillerIndex = 0;
-  while (tokenCount < 90 && fillerIndex < fillers.length) {
-    feedback += ' ' + fillers[fillerIndex];
-    tokenCount = countTokens(feedback);
-    fillerIndex++;
-  }
-  
-  // Tronca se supera 110 token - preserva frasi complete
-  if (tokenCount > 110) {
-    const sentences = feedback.split(/(?<=[.!?])\s+/);
-    let truncated = '';
-    for (const sentence of sentences) {
-      const testFeedback = truncated ? truncated + ' ' + sentence : sentence;
-      if (countTokens(testFeedback) <= 105) {
-        truncated = testFeedback;
-      } else {
-        break;
-      }
+  // 🔧 FIX: Fallback robusto per garantire sempre un messaggio
+  // Se feedback vuoto, usa contenuto dinamico disponibile
+  if (!feedback || feedback.length < 10) {
+    // Prova a usare doingWell o needsImprovement come fallback
+    if (params.doingWell && params.doingWell.length > 10 && !params.doingWell.includes('script')) {
+      feedback = params.doingWell;
+    } else if (params.needsImprovement && params.needsImprovement.length > 10) {
+      feedback = params.needsImprovement
+        .replace(/🎯\s*PROSSIMI\s*PASSI:?\s*/gi, '')
+        .replace(/→\s*/g, '')
+        .substring(0, 150);
+    } else if (params.stepResult?.shouldAdvance) {
+      feedback = 'Stai procedendo bene, continua con la conversazione.';
+    } else {
+      // Ultimo fallback - messaggio minimo ma non vuoto
+      feedback = 'Ascolta attentamente e rispondi alle domande del prospect.';
     }
-    feedback = truncated || sentences[0];
-    if (!feedback.endsWith('.')) feedback += '.';
   }
   
-  // Fallback garantito 90-110 token (esattamente ~95 token)
-  if (countTokens(feedback) < 90) {
-    feedback = 'Stai procedendo bene con la conversazione, mantieni questo approccio positivo e costruttivo. ' +
-      'Continua ad ascoltare attentamente le esigenze del prospect e adatta il tuo ritmo alle sue risposte. ' +
-      'Usa domande aperte per approfondire la comprensione della sua situazione attuale. ' +
-      'Mostra interesse genuino e costruisci fiducia con esempi concreti dei risultati ottenuti. ' +
-      'Tono e energia adeguati alla situazione, valorizza ogni informazione condivisa.';
-  }
+  // Assicura che termini con punto
+  if (feedback && !feedback.endsWith('.')) feedback += '.';
   
-  const finalTokenCount = countTokens(feedback);
-  console.log(`   📊 [COMPACT FEEDBACK] Token count: ${finalTokenCount} (target: 90-110)`);
-  
-  // Assert finale per debugging
-  if (finalTokenCount < 90 || finalTokenCount > 110) {
-    console.warn(`   ⚠️ [COMPACT FEEDBACK] Token count out of range: ${finalTokenCount}`);
-  }
+  console.log(`   📊 [COMPACT FEEDBACK] Feedback dinamico generato (${feedback.length} chars)`);
   
   return feedback;
 }
@@ -575,17 +568,18 @@ function getArchetypeNote(archetypeState: CompactFeedbackParams['archetypeState'
   if (!archetypeState || archetypeState.current === 'neutral') return '';
   
   const archetype = archetypeState.current.toLowerCase();
-  const actions: Record<string, string> = {
-    'skeptic': 'Prospect scettico: usa prove concrete e casi studio',
-    'busy': 'Prospect frettoloso: vai dritto al punto',
-    'price_focused': 'Focus prezzo: enfatizza valore prima del costo',
-    'enthusiast': 'Prospect entusiasta: guida verso closing',
-    'indecisive': 'Prospect indeciso: offri rassicurazioni',
-    'defensive': 'Prospect difensivo: costruisci fiducia gradualmente',
-    'technical': 'Prospect tecnico: usa dati e specifiche'
+  // 🔧 FIX: Restituisce SOLO il tono, NON l'azione (che deve essere dinamica dall'AI)
+  const tones: Record<string, string> = {
+    'skeptic': 'Tono: 🤔 RASSICURANTE',
+    'busy': 'Tono: ⚡ DIRETTO',
+    'price_focused': 'Tono: 💎 VALORIZZANTE',
+    'enthusiast': 'Tono: 😊 ENTUSIASTA',
+    'indecisive': 'Tono: 🤝 SUPPORTIVO',
+    'defensive': 'Tono: 💚 EMPATICO',
+    'technical': 'Tono: 📊 PRECISO'
   };
   
-  return actions[archetype] || '';
+  return tones[archetype] || '';
 }
 
 /**
@@ -4231,7 +4225,8 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         
                         // Extract step advancement from full analysis
                         const stepResult = analysis.stepAdvancement;
-                        
+                        // 👇 AGGIUNGI QUESTA RIGA QUI:
+                        const checkpointStatus = analysis.checkpointStatus;
                         console.log(`\n📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                         console.log(`📊 [${connectionId}] SALES MANAGER AGENT - RESULT (${analysisTime}ms)`);
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -4362,8 +4357,8 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                           // Questo è CRITICO per garantire che l'agente abbia sempre il contesto
                           const managerReasoning = hasValidReasoning ? stepResult.reasoning : '';
                           
-                          // 🚀 FORMATO COMPATTO: Singola riga fluida 90-110 token
-                          // Rimossi tutti i riferimenti tecnici a step/fasi/checkpoint
+                          // 🚀 FORMATO COMPATTO: Feedback DINAMICO (niente filler statici!)
+                          // Usa suggestedNextAction dai checkpoint + tono archetipo
                           const compactFeedback = formatCompactFeedback({
                             feedbackType,
                             feedbackPriority,
@@ -4372,7 +4367,8 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                             toneReminder,
                             archetypeState: analysis.archetypeState || null,
                             toneAnalysis: analysis.toneAnalysis || null,
-                            stepResult: stepResult || null
+                            stepResult: stepResult || null,
+                            checkpointItemDetails: analysis.checkpointStatus?.itemDetails || null
                           });
                           
                           const feedbackContent = `<<<SALES_MANAGER_INSTRUCTION>>>

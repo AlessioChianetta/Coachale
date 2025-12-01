@@ -652,14 +652,15 @@ Esempio se NON avanzare + feedback correttivo:
         });
         
         // Chiama Gemini con timeout
-        // 🚀 OTTIMIZZAZIONE: Ridotto maxOutputTokens per risposta più veloce
+        // 🔧 FIX: maxOutputTokens aumentato a 1500 per non troncare itemDetails con molti check
+        // Con 9 check (fase 7), ogni itemDetail richiede ~100-150 token
         const response = await Promise.race([
           aiClient.generateContent({
             model: this.MODEL,
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0, // Deterministico per coerenza
-              maxOutputTokens: 500, // 🚀 Ottimizzato da 2000 per risposta più veloce (target <2000ms)
+              maxOutputTokens: 1500, // 🔧 FIX: Aumentato da 500 per restituire TUTTI i check
             }
           }),
           this.timeout(this.TIMEOUT_MS)
