@@ -52,6 +52,27 @@ export interface DetectedObjection {
   fromScript: boolean;
 }
 
+/**
+ * Dettaglio di ogni singola verifica del checkpoint (importato da step-advancement-agent)
+ */
+export interface CheckpointItemDetail {
+  check: string;
+  status: 'validated' | 'missing' | 'vague';
+  infoCollected?: string;
+  reason?: string;
+  evidenceQuote?: string;
+}
+
+/**
+ * Quality Score per valutare la qualità delle informazioni raccolte
+ */
+export interface CheckpointQualityScore {
+  specificity: number;
+  completeness: number;
+  actionability: number;
+  overall: number;
+}
+
 export interface CheckpointStatus {
   checkpointId: string;
   checkpointName: string;
@@ -59,6 +80,13 @@ export interface CheckpointStatus {
   missingItems: string[];
   completedItems: string[];
   canAdvance: boolean;
+  // 🆕 Nuovi campi per checkpoint semantici
+  itemDetails?: CheckpointItemDetail[];
+  qualityScore?: CheckpointQualityScore;
+  phaseNumber?: string;
+  totalChecks?: number;
+  validatedCount?: number;
+  missingCount?: number;
 }
 
 export interface ToneAnalysis {
@@ -931,6 +959,58 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     }
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🚫 GATEKEEPING LOGIC - CHECKPOINT SEMANTICI BLOCCANTI
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Questa logica blocca FORZATAMENTE l'avanzamento alla fase successiva
+    // se il checkpoint della fase corrente non è stato validato.
+    // Il blocco si applica SOLO alla transizione di FASE (non tra step)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    
+    const currentPhase = params.script.phases.find(p => p.id === params.currentPhaseId);
+    const currentStepIndex = currentPhase?.steps.findIndex(s => s.id === params.currentStepId) ?? -1;
+    const isLastStepOfPhase = currentStepIndex >= (currentPhase?.steps.length ?? 0) - 1;
+    const isPhaseTransition = stepAdvancement.shouldAdvance && isLastStepOfPhase && 
+                              stepAdvancement.nextPhaseId !== params.currentPhaseId;
+    
+    if (isPhaseTransition && checkpointStatus && !checkpointStatus.canAdvance) {
+      // 🚫 BLOCCO FORZATO: L'AI vuole avanzare ma il checkpoint non è completo
+      const phaseNum = params.currentPhaseId.replace('phase_', '').replace(/_/g, '-');
+      const totalChecks = checkpointStatus.completedItems.length + checkpointStatus.missingItems.length;
+      const validatedCount = checkpointStatus.completedItems.length;
+      const missingCount = checkpointStatus.missingItems.length;
+      
+      // Log nel formato ESATTO richiesto (singola linea)
+      console.log(`[FASE ${phaseNum}] - Checkpoint Totali: ${totalChecks} | Validati: ${validatedCount} | Mancanti: ${missingCount}`);
+      console.log(`  BLOCCO ATTIVO: Transizione a ${stepAdvancement.nextPhaseId} NEGATA`);
+      
+      // 🚫 FORZA IL BLOCCO COMPLETO
+      // Reimposta tutto sulla FASE/STEP CORRENTE per impedire qualsiasi avanzamento
+      stepAdvancement.shouldAdvance = false;
+      stepAdvancement.nextPhaseId = params.currentPhaseId;     // Rimani nella fase corrente
+      stepAdvancement.nextStepId = params.currentStepId || null; // Rimani nello step corrente
+      stepAdvancement.reasoning = `BLOCCATO DA CHECKPOINT: "${checkpointStatus.checkpointName}" non completato. Mancano ${missingCount} informazioni obbligatorie.`;
+      stepAdvancement.confidence = 1; // 100% sicuri del blocco
+      
+      // Genera feedback dettagliato per l'agente
+      const missingInfo = checkpointStatus.missingItems.slice(0, 3).map((item, i) => `${i+1}. ${item}`).join('\n');
+      feedbackForAgent = {
+        shouldInject: true,
+        priority: 'critical',
+        type: 'checkpoint',
+        message: `BLOCCO CHECKPOINT FASE ${phaseNum} - NON PUOI PROCEDERE!
+
+Progress: ${validatedCount}/${totalChecks} verifiche completate
+
+INFORMAZIONI MANCANTI:
+${missingInfo}${missingCount > 3 ? `\n... e altre ${missingCount - 3}` : ''}
+
+AZIONE RICHIESTA:
+Rimani nella conversazione attuale e ottieni queste informazioni PRIMA di poter passare alla fase successiva.`,
+        toneReminder: 'Fai domande specifiche per raccogliere le informazioni mancanti!'
+      };
+    }
+    
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🎭 PROSPECT PROFILING - SLOW BRAIN (AI Intuition + State Update)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Ora che abbiamo l'AI intuition, aggiorniamo lo stato dell'archetipo
@@ -1391,64 +1471,57 @@ ${archetypeInstruction.instruction}`;
       console.log(`   🟢 Completed: ${aiResult.completedItems.length}`);
       console.log(`   🔴 Missing: ${aiResult.missingItems.length}`);
       console.log(`   📊 Confidence: ${(aiResult.confidence * 100).toFixed(0)}%`);
+      console.log(`   📈 Quality Score: ${aiResult.qualityScore?.overall || 0}/10`);
       
+      // 🆕 Ritorna tutti i nuovi campi per logging dettagliato
       return {
         checkpointId: checkpoint.id,
         checkpointName: checkpoint.title,
         isComplete: aiResult.isComplete,
         missingItems: aiResult.missingItems,
         completedItems: aiResult.completedItems,
-        canAdvance: aiResult.canAdvance
+        canAdvance: aiResult.canAdvance,
+        itemDetails: aiResult.itemDetails,
+        qualityScore: aiResult.qualityScore,
+        phaseNumber: aiResult.phaseNumber,
+        totalChecks: aiResult.totalChecks,
+        validatedCount: aiResult.validatedCount,
+        missingCount: aiResult.missingCount
       };
       
     } catch (error: any) {
       console.error(`❌ [SALES-MANAGER] AI checkpoint validation failed:`, error.message);
-      console.log(`⚠️ [SALES-MANAGER] Falling back to keyword-based validation`);
       
-      // FALLBACK: keyword matching (vecchio metodo) se AI fallisce
-      return this.validateCheckpointKeywordFallback(params, checkpoint, currentPhase.name);
+      // 🚫 NESSUN FALLBACK KEYWORD - Se AI fallisce, blocchiamo per sicurezza
+      console.log(`🚫 [SALES-MANAGER] NO FALLBACK - Blocking advancement due to AI failure`);
+      
+      const phaseNumber = currentPhase.id.replace('phase_', '').replace(/_/g, '-');
+      return {
+        checkpointId: checkpoint.id,
+        checkpointName: checkpoint.title,
+        isComplete: false,
+        missingItems: checkpoint.checks,
+        completedItems: [],
+        canAdvance: false, // BLOCCO per sicurezza
+        itemDetails: checkpoint.checks.map(check => ({
+          check,
+          status: 'missing' as const,
+          reason: `Validazione AI fallita: ${error.message}`
+        })),
+        qualityScore: { specificity: 0, completeness: 0, actionability: 0, overall: 0 },
+        phaseNumber,
+        totalChecks: checkpoint.checks.length,
+        validatedCount: 0,
+        missingCount: checkpoint.checks.length
+      };
     }
   }
   
-  /**
-   * FALLBACK: keyword-based checkpoint validation (usato solo se AI fallisce)
-   */
-  private static validateCheckpointKeywordFallback(
-    params: SalesManagerParams, 
-    checkpoint: ScriptCheckpoint,
-    phaseName: string
-  ): CheckpointStatus {
-    console.log(`⚠️ [SALES-MANAGER] Using FALLBACK keyword validation for ${checkpoint.title}`);
-    
-    const completedItems: string[] = [];
-    const missingItems: string[] = [];
-    const allMessages = params.recentMessages.map(m => m.content.toLowerCase()).join(' ');
-    
-    for (const check of checkpoint.checks) {
-      const keywords = check.toLowerCase()
-        .replace(/[?¿!¡.,;:]/g, '')
-        .split(' ')
-        .filter(w => w.length > 3);
-      
-      const matchedKeywords = keywords.filter(kw => allMessages.includes(kw));
-      const matchRatio = keywords.length > 0 ? matchedKeywords.length / keywords.length : 0;
-      
-      if (matchRatio >= 0.5) {
-        completedItems.push(check);
-      } else {
-        missingItems.push(check);
-      }
-    }
-    
-    return {
-      checkpointId: checkpoint.id,
-      checkpointName: checkpoint.title,
-      isComplete: missingItems.length === 0,
-      missingItems,
-      completedItems,
-      canAdvance: missingItems.length === 0
-    };
-  }
+  // 🚫 KEYWORD FALLBACK RIMOSSO PER DESIGN
+  // Per requisito utente, la validazione deve essere ESCLUSIVAMENTE semantica via AI.
+  // Se l'AI fallisce, il sistema blocca l'avanzamento per sicurezza.
+  // Nessun fallback keyword matching.
+  
   
   /**
    * AI-powered step advancement analysis
