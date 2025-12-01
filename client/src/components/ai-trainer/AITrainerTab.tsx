@@ -142,6 +142,19 @@ interface SalesManagerAnalysisData {
     name: string;
     stepName: string;
   };
+  profilingResult: {
+    archetype: string;
+    confidence: number;
+    filler: string;
+    instruction: string;
+  } | null;
+  archetypeState: {
+    current: string;
+    confidence: number;
+    consecutiveSignals: number;
+    turnsSinceUpdate: number;
+  } | null;
+  checkpointsCompleted: string[];
   analysisTimeMs: number;
 }
 
