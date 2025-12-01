@@ -4406,10 +4406,6 @@ ${compactFeedback}
                             console.log(`     → Next Step: ${stepResult.nextStepId}`);
                             console.log(`     → Confidence: ${(stepResult.confidence * 100).toFixed(0)}%`);
                           }
-                          console.log(`   • Checkpoint Status: ${checkpointStatus?.isComplete ? '✅ COMPLETE' : '⛔ INCOMPLETE'}`);
-                          if (checkpointStatus && !checkpointStatus.isComplete) {
-                            console.log(`     → Missing: ${checkpointStatus.missingItems.slice(0, 3).join(', ')}${checkpointStatus.missingItems.length > 3 ? '...' : ''}`);
-                          }
                           console.log(`   • Feedback Type: ${feedbackType.toUpperCase()}`);
                           console.log(`   • Feedback Priority: ${feedbackPriority.toUpperCase()}`);
                           console.log(`\n📋 FULL MESSAGE TO SALES AGENT (${estimatedTokens} token):`);
