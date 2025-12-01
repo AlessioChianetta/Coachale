@@ -4155,11 +4155,14 @@ ${energySection}
                           console.log(`   🎵 Tone: ${toneReminder || 'N/A'}`);
                           console.log(`   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                          // 🆕 Log del feedbackContent COMPLETO per debug
-                          console.log(`\n📋 FEEDBACK CONTENT COMPLETO:`);
+                          // 🆕 Log del feedbackContent COMPLETO per debug + TOKEN COUNT
+                          // Stima token: 1 token ≈ 4 caratteri (approssimazione standard)
+                          const estimatedTokens = Math.ceil(feedbackContent.length / 4);
+                          console.log(`\n📋 FEEDBACK CONTENT COMPLETO (${estimatedTokens} token):`);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                           console.log(feedbackContent);
                           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                          console.log(`📊 TOKEN ESTIMATE: ${estimatedTokens} tokens per Sales Agent (Gemini Live)`);
                           
                           if (geminiSession) {
                             // Inject feedback immediately to Gemini
