@@ -2,11 +2,34 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { db } from '../db';
-import { clientSalesAgents, salesScripts, aiTrainingSessions, agentScriptAssignments, users, salesConversationTraining, clientSalesConversations } from '@shared/schema';
-import { eq, desc, and, isNotNull } from 'drizzle-orm';
+import { clientSalesAgents, salesScripts, aiTrainingSessions, agentScriptAssignments, users, salesConversationTraining, clientSalesConversations, aiMessages } from '@shared/schema';
+import { eq, desc, and, isNotNull, asc } from 'drizzle-orm';
 import { PROSPECT_PERSONAS, getPersonaById, generateProspectData } from '@shared/prospect-personas';
 import { ProspectSimulator } from '../services/prospect-simulator';
 import { clearScriptCache } from '../ai/sales-agent-prompt-builder';
+
+/**
+ * Ricostruisce il transcript da ai_messages usando aiConversationId
+ * Fallback per conversazioni che non hanno fullTranscript salvato direttamente
+ */
+async function reconstructTranscriptFromMessages(aiConversationId: string): Promise<string> {
+  if (!aiConversationId) return '';
+  
+  const messages = await db.select({
+    role: aiMessages.role,
+    content: aiMessages.content,
+    createdAt: aiMessages.createdAt,
+  })
+    .from(aiMessages)
+    .where(eq(aiMessages.conversationId, aiConversationId))
+    .orderBy(asc(aiMessages.createdAt));
+  
+  if (messages.length === 0) return '';
+  
+  return messages
+    .map(m => `${m.role === 'user' ? 'Prospect' : 'Agent'}: ${m.content}`)
+    .join('\n\n');
+}
 
 type TestMode = 'discovery' | 'demo' | 'discovery_demo';
 
@@ -673,15 +696,11 @@ router.get(
         return res.status(403).json({ message: 'Access denied' });
       }
 
-      // Verifica transcript - potrebbe essere array o string
-      const transcriptData = conv.fullTranscript;
+      // Ricostruisci transcript da ai_messages usando aiConversationId
       let transcriptStr = '';
-      if (transcriptData) {
-        if (Array.isArray(transcriptData)) {
-          transcriptStr = JSON.stringify(transcriptData);
-        } else if (typeof transcriptData === 'string') {
-          transcriptStr = transcriptData;
-        }
+      if (conv.aiConversationId) {
+        transcriptStr = await reconstructTranscriptFromMessages(conv.aiConversationId);
+        console.log(`📝 [REC GET] Reconstructed transcript from ai_messages: ${transcriptStr.length} chars`);
       }
       
       // Ritorna il REC (potrebbe essere null)
@@ -734,7 +753,7 @@ router.post(
 
       const conv = conversation[0];
       console.log(`✅ [REC GENERATION] Conversation found - agentId: ${conv.agentId}`);
-      console.log(`📝 [REC GENERATION] Transcript length: ${conv.fullTranscript?.length || 0}`);
+      console.log(`🔗 [REC GENERATION] aiConversationId: ${conv.aiConversationId || 'none'}`);
 
       // Verifica accesso
       console.log(`🔐 [REC GENERATION] Checking agent access for agentId: ${conv.agentId}`);
@@ -768,15 +787,20 @@ router.post(
         return res.status(403).json({ message: 'Access denied' });
       }
 
-      // Verifica che ci sia un transcript
-      const transcriptLength = conv.fullTranscript?.length || 0;
-      console.log(`📏 [REC GENERATION] Transcript validation - length: ${transcriptLength}`);
+      // Ricostruisci transcript da ai_messages usando aiConversationId
+      let transcriptText = '';
+      if (conv.aiConversationId) {
+        console.log(`📝 [REC GENERATION] Reconstructing transcript from ai_messages...`);
+        transcriptText = await reconstructTranscriptFromMessages(conv.aiConversationId);
+        console.log(`📏 [REC GENERATION] Reconstructed transcript: ${transcriptText.length} chars`);
+      }
       
-      if (transcriptLength < 100) {
-        console.log(`❌ [REC GENERATION] Transcript too short: ${transcriptLength} chars`);
+      if (transcriptText.length < 100) {
+        console.log(`❌ [REC GENERATION] Transcript too short: ${transcriptText.length} chars`);
         return res.status(400).json({ 
           message: 'Transcript troppo breve o mancante. Il REC può essere generato solo da conversazioni con trascrizione completa.',
-          transcriptLength
+          transcriptLength: transcriptText.length,
+          hasAiConversationId: !!conv.aiConversationId
         });
       }
 
@@ -800,11 +824,11 @@ router.post(
 
       console.log(`🚀 [REC GENERATION] Starting REC generation...`);
       console.log(`   Conversation: ${conversationId}`);
-      console.log(`   Transcript length: ${transcriptLength} chars`);
+      console.log(`   Transcript length: ${transcriptText.length} chars`);
       
       // Genera il REC
       const discoveryRec = await generateDiscoveryRec(
-        conv.fullTranscript,
+        transcriptText,
         apiKey
       );
 
