@@ -807,6 +807,13 @@ export class SalesManagerAgent {
     
     // 🆕 CHECKPOINT: Ora usa AI SEMANTIC ANALYSIS invece di keyword matching
     const checkpointStatus = await this.validateCheckpointWithAI(params);
+    
+    // 🆕 LOG DETTAGLIATO CHECKPOINT - SEMPRE dopo la validazione AI
+    const currentPhaseForLog = params.script.phases.find(p => p.id === params.currentPhaseId);
+    if (currentPhaseForLog) {
+      this.logCheckpointDetailed(checkpointStatus, { name: currentPhaseForLog.name, id: currentPhaseForLog.id });
+    }
+    
     // 🆕 Business context per feedback (Gemini decide semanticamente se qualcosa è fuori scope)
     const businessCtx = this.getBusinessContextForFeedback(params.businessContext);
     
@@ -835,7 +842,7 @@ export class SalesManagerAgent {
     console.log(`   🛡️ Objections: ${objections.detected ? objections.objections.length : 0}`);
     console.log(`   🎭 Tone issues: ${toneAnalysis.issues.length}`);
     console.log(`   🎯 Control: ${controlAnalysis.isLosingControl ? `LOSING (${controlAnalysis.consecutiveProspectQuestions} prospect Q)` : 'OK'}`);
-    console.log(`   ⛔ Checkpoint: ${checkpointStatus?.isComplete ? 'COMPLETE' : checkpointStatus?.missingItems.length + ' missing' || 'N/A'}`);
+    console.log(`   ⛔ Checkpoint: ${checkpointStatus ? `${checkpointStatus.validatedCount || 0}/${checkpointStatus.totalChecks || 0} validati${checkpointStatus.canAdvance ? ' ✅' : ' 🚫'}` : 'N/A'}`);
     console.log(`   👤 Business: ${businessCtx?.identity || 'N/A'}`);
     if (regexSignals.length > 0) {
       console.log(`   ⚡ Regex Signals: ${regexSignals.map(s => `${s.archetype}(${(s.score * 100).toFixed(0)}%)`).join(', ')}`);
@@ -1775,6 +1782,57 @@ REGOLE ARCHETIPO (IMPORTANTE):
     return new Promise((resolve) => {
       setTimeout(() => resolve('timeout'), ms);
     });
+  }
+  
+  /**
+   * 🆕 LOG DETTAGLIATO CHECKPOINT
+   * Logga lo stato del checkpoint nel formato richiesto con ✓/✗ per ogni verifica
+   * Viene chiamato SEMPRE dopo la validazione AI, non solo durante blocchi
+   */
+  private static logCheckpointDetailed(
+    checkpointStatus: CheckpointStatus | null,
+    currentPhase: { name: string; id: string } | null
+  ): void {
+    if (!checkpointStatus || !currentPhase) return;
+    
+    const { 
+      totalChecks = 0, 
+      validatedCount = 0, 
+      missingCount = 0, 
+      itemDetails = [], 
+      canAdvance,
+      qualityScore,
+      checkpointName
+    } = checkpointStatus;
+    
+    const phaseNumber = currentPhase.id.replace('phase_', '').replace(/_/g, '-');
+    
+    console.log(`\n⛔ CHECKPOINT FASE #${phaseNumber}`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`${checkpointName || 'PRIMA DI PASSARE ALLA FASE SUCCESSIVA VERIFICA:'}\n`);
+    
+    itemDetails.forEach((item) => {
+      const icon = item.status === 'validated' ? '✓' : item.status === 'vague' ? '⚠' : '✗';
+      const statusColor = item.status === 'validated' ? '' : item.status === 'vague' ? ' [VAGO]' : ' [MANCANTE]';
+      console.log(`${icon} ${item.check}${statusColor}`);
+      
+      if (item.status === 'validated' && item.infoCollected) {
+        console.log(`   → Info raccolta: "${item.infoCollected.substring(0, 80)}${item.infoCollected.length > 80 ? '...' : ''}"`);
+      } else if (item.status === 'vague' && item.reason) {
+        console.log(`   → Motivo: ${item.reason}`);
+      } else if (item.status === 'missing' && item.reason) {
+        console.log(`   → Motivo: ${item.reason}`);
+      }
+      
+      if (item.evidenceQuote) {
+        console.log(`   → Evidenza: "${item.evidenceQuote.substring(0, 60)}${item.evidenceQuote.length > 60 ? '...' : ''}"`);
+      }
+    });
+    
+    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`STATO: ${validatedCount}/${totalChecks} validati | Quality Score: ${qualityScore?.overall || 0}/10`);
+    console.log(`${canAdvance ? '✅ PASSAGGIO CONSENTITO' : '🚫 BLOCCO ATTIVO - Completare le verifiche mancanti'}`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
   }
 }
 
