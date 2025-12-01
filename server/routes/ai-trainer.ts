@@ -9,8 +9,39 @@ import { ProspectSimulator } from '../services/prospect-simulator';
 import { clearScriptCache } from '../ai/sales-agent-prompt-builder';
 
 /**
+ * Ricostruisce il transcript dalla tabella sales_conversation_training
+ * Questa tabella ha il full_transcript completo con tutti i messaggi (user + assistant)
+ */
+async function reconstructTranscriptFromTraining(conversationId: string): Promise<string> {
+  if (!conversationId) return '';
+  
+  const training = await db.select({
+    fullTranscript: salesConversationTraining.fullTranscript,
+  })
+    .from(salesConversationTraining)
+    .where(eq(salesConversationTraining.conversationId, conversationId))
+    .limit(1);
+  
+  if (!training[0]?.fullTranscript) return '';
+  
+  // fullTranscript è un array JSON di messaggi
+  const messages = training[0].fullTranscript as Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    phase?: string;
+    timestamp?: string;
+  }>;
+  
+  if (!Array.isArray(messages) || messages.length === 0) return '';
+  
+  return messages
+    .map(m => `${m.role === 'user' ? 'Prospect' : 'Agent'}: ${m.content}`)
+    .join('\n\n');
+}
+
+/**
  * Ricostruisce il transcript da ai_messages usando aiConversationId
- * Fallback per conversazioni che non hanno fullTranscript salvato direttamente
+ * Fallback per conversazioni che non hanno fullTranscript salvato in training
  */
 async function reconstructTranscriptFromMessages(aiConversationId: string): Promise<string> {
   if (!aiConversationId) return '';
@@ -29,6 +60,33 @@ async function reconstructTranscriptFromMessages(aiConversationId: string): Prom
   return messages
     .map(m => `${m.role === 'user' ? 'Prospect' : 'Agent'}: ${m.content}`)
     .join('\n\n');
+}
+
+/**
+ * Ricostruisce il transcript usando la strategia migliore:
+ * 1. Prima cerca in sales_conversation_training (ha user + assistant)
+ * 2. Se non trova, fallback su ai_messages
+ */
+async function getFullTranscript(conversationId: string, aiConversationId: string | null): Promise<string> {
+  // Prima prova dalla tabella training (contiene tutti i messaggi)
+  let transcript = await reconstructTranscriptFromTraining(conversationId);
+  
+  if (transcript.length > 100) {
+    console.log(`📝 [TRANSCRIPT] Found full transcript from training table: ${transcript.length} chars`);
+    return transcript;
+  }
+  
+  // Fallback: prova da ai_messages
+  if (aiConversationId) {
+    transcript = await reconstructTranscriptFromMessages(aiConversationId);
+    if (transcript.length > 100) {
+      console.log(`📝 [TRANSCRIPT] Found transcript from ai_messages: ${transcript.length} chars`);
+      return transcript;
+    }
+  }
+  
+  console.log(`⚠️ [TRANSCRIPT] No transcript found for conversation ${conversationId}`);
+  return '';
 }
 
 type TestMode = 'discovery' | 'demo' | 'discovery_demo';
@@ -696,12 +754,9 @@ router.get(
         return res.status(403).json({ message: 'Access denied' });
       }
 
-      // Ricostruisci transcript da ai_messages usando aiConversationId
-      let transcriptStr = '';
-      if (conv.aiConversationId) {
-        transcriptStr = await reconstructTranscriptFromMessages(conv.aiConversationId);
-        console.log(`📝 [REC GET] Reconstructed transcript from ai_messages: ${transcriptStr.length} chars`);
-      }
+      // Ricostruisci transcript (prima cerca nel training, poi fallback su ai_messages)
+      let transcriptStr = await getFullTranscript(conv.id, conv.aiConversationId);
+      console.log(`📝 [REC GET] Transcript retrieved: ${transcriptStr.length} chars`);
       
       // Ritorna il REC (potrebbe essere null)
       res.json({
@@ -787,13 +842,10 @@ router.post(
         return res.status(403).json({ message: 'Access denied' });
       }
 
-      // Ricostruisci transcript da ai_messages usando aiConversationId
-      let transcriptText = '';
-      if (conv.aiConversationId) {
-        console.log(`📝 [REC GENERATION] Reconstructing transcript from ai_messages...`);
-        transcriptText = await reconstructTranscriptFromMessages(conv.aiConversationId);
-        console.log(`📏 [REC GENERATION] Reconstructed transcript: ${transcriptText.length} chars`);
-      }
+      // Ricostruisci transcript (prima cerca nel training, poi fallback su ai_messages)
+      console.log(`📝 [REC GENERATION] Reconstructing transcript...`);
+      let transcriptText = await getFullTranscript(conv.id, conv.aiConversationId);
+      console.log(`📏 [REC GENERATION] Transcript retrieved: ${transcriptText.length} chars`);
       
       if (transcriptText.length < 100) {
         console.log(`❌ [REC GENERATION] Transcript too short: ${transcriptText.length} chars`);
