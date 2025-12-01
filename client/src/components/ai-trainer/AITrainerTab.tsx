@@ -109,6 +109,23 @@ interface SalesManagerAnalysisData {
     completedItems: string[];
     missingItems: string[];
     canAdvance: boolean;
+    phaseNumber?: string;
+    totalChecks?: number;
+    validatedCount?: number;
+    missingCount?: number;
+    itemDetails?: Array<{
+      check: string;
+      status: 'validated' | 'missing' | 'vague';
+      infoCollected?: string;
+      reason?: string;
+      evidenceQuote?: string;
+    }>;
+    qualityScore?: {
+      specificity: number;
+      completeness: number;
+      actionability: number;
+      overall: number;
+    };
   } | null;
   buySignals: {
     detected: boolean;
@@ -1286,6 +1303,87 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                               {analysis.stepAdvancement?.shouldAdvance ? '✓ Pronto' : '✗ Non Pronto'}
                             </Badge>
                           </div>
+                          
+                          {/* 🆕 CHECKPOINT STATUS SECTION */}
+                          {analysis.checkpointStatus && (
+                            <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <CheckCircle className="h-4 w-4 text-purple-600" />
+                                  <span className="text-sm font-medium">
+                                    Checkpoint Fase #{analysis.checkpointStatus.phaseNumber || '?'}
+                                  </span>
+                                </div>
+                                <Badge className={analysis.checkpointStatus.canAdvance 
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
+                                  : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                                }>
+                                  {analysis.checkpointStatus.validatedCount || 0}/{analysis.checkpointStatus.totalChecks || 0}
+                                </Badge>
+                              </div>
+                              
+                              {analysis.checkpointStatus.qualityScore && (
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs text-gray-500">Quality Score:</span>
+                                  <Progress value={analysis.checkpointStatus.qualityScore.overall * 10} className="w-16 h-1.5" />
+                                  <span className="text-xs font-medium">{analysis.checkpointStatus.qualityScore.overall}/10</span>
+                                </div>
+                              )}
+                              
+                              <div className="space-y-1 mt-2">
+                                {analysis.checkpointStatus.itemDetails?.map((item, i) => (
+                                  <div key={i} className="flex items-start gap-2 text-xs">
+                                    <span className={
+                                      item.status === 'validated' 
+                                        ? 'text-green-600 dark:text-green-400' 
+                                        : item.status === 'vague'
+                                        ? 'text-amber-500 dark:text-amber-400'
+                                        : 'text-red-500 dark:text-red-400'
+                                    }>
+                                      {item.status === 'validated' ? '✓' : item.status === 'vague' ? '⚠' : '✗'}
+                                    </span>
+                                    <div className="flex-1">
+                                      <span className="text-gray-700 dark:text-gray-300">
+                                        {item.check}
+                                      </span>
+                                      {item.status === 'validated' && item.infoCollected && (
+                                        <p className="text-[10px] text-green-600 dark:text-green-400 mt-0.5">
+                                          → {item.infoCollected.substring(0, 50)}{item.infoCollected.length > 50 ? '...' : ''}
+                                        </p>
+                                      )}
+                                      {item.status !== 'validated' && item.reason && (
+                                        <p className="text-[10px] text-red-500 dark:text-red-400 mt-0.5">
+                                          → {item.reason.substring(0, 50)}{item.reason.length > 50 ? '...' : ''}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )) || (
+                                  <>
+                                    {analysis.checkpointStatus.completedItems?.map((item, i) => (
+                                      <div key={`c-${i}`} className="flex items-start gap-2 text-xs">
+                                        <span className="text-green-600 dark:text-green-400">✓</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{item}</span>
+                                      </div>
+                                    ))}
+                                    {analysis.checkpointStatus.missingItems?.map((item, i) => (
+                                      <div key={`m-${i}`} className="flex items-start gap-2 text-xs">
+                                        <span className="text-red-500 dark:text-red-400">✗</span>
+                                        <span className="text-gray-700 dark:text-gray-300">{item}</span>
+                                      </div>
+                                    ))}
+                                  </>
+                                )}
+                              </div>
+                              
+                              {!analysis.checkpointStatus.canAdvance && (
+                                <div className="mt-2 p-2 bg-red-50 dark:bg-red-950/30 rounded text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                                  <XCircle className="h-3 w-3" />
+                                  BLOCCO ATTIVO - Completare le verifiche mancanti
+                                </div>
+                              )}
+                            </div>
+                          )}
                           
                           {analysis.stepAdvancement?.reasoning && (
                             <Collapsible>
