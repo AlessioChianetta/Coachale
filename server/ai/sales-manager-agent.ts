@@ -1619,6 +1619,81 @@ REGOLE ARCHETIPO (IMPORTANTE):
   }
 
   /**
+   * Analyze step advancement using AI
+   * Calls Gemini to determine if step objective is met
+   */
+  private static async analyzeStepAdvancement(params: SalesManagerParams): Promise<{
+    shouldAdvance: boolean;
+    nextPhaseId: string | null;
+    nextStepId: string | null;
+    confidence: number;
+    reasoning: string;
+    detectedArchetype: ArchetypeId | null;
+    archetypeReasoning: string | null;
+  }> {
+    console.log(`\n🤖 [SALES-MANAGER] Analyzing step advancement with AI...`);
+    
+    try {
+      const { client: aiClient, cleanup } = await getAIProvider(params.clientId, params.consultantId);
+      
+      try {
+        // Build prompt
+        const prompt = this.buildAdvancementPrompt(params);
+        
+        // Call Gemini
+        console.log(`   🚀 Calling Gemini for step advancement analysis...`);
+        const response = await aiClient.generateContent({
+          model: this.MODEL,
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0,
+            maxOutputTokens: 800,
+          }
+        });
+        
+        // Extract text from response
+        let responseText = '';
+        if (response.candidates && response.candidates[0]?.content?.parts) {
+          responseText = response.candidates[0].content.parts
+            .map((part: any) => part.text || '')
+            .join('');
+        }
+        
+        if (!responseText) {
+          console.warn(`⚠️ [SALES-MANAGER] Empty response from Gemini for step advancement`);
+          return {
+            shouldAdvance: false,
+            nextPhaseId: null,
+            nextStepId: null,
+            confidence: 0,
+            reasoning: 'Empty AI response',
+            detectedArchetype: null,
+            archetypeReasoning: null
+          };
+        }
+        
+        // Parse and return response
+        return this.parseAdvancementResponse(responseText, params);
+        
+      } finally {
+        if (cleanup) cleanup();
+      }
+      
+    } catch (error: any) {
+      console.error(`❌ [SALES-MANAGER] Step advancement analysis failed:`, error.message);
+      return {
+        shouldAdvance: false,
+        nextPhaseId: null,
+        nextStepId: null,
+        confidence: 0,
+        reasoning: `AI analysis failed: ${error.message}`,
+        detectedArchetype: null,
+        archetypeReasoning: null
+      };
+    }
+  }
+
+  /**
    * Parse AI response for step advancement
    * 🆕 Ora estrae anche l'archetipo rilevato dall'AI (Slow Brain)
    */
