@@ -1068,25 +1068,17 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       stepAdvancement.shouldAdvance = false;
       stepAdvancement.nextPhaseId = params.currentPhaseId;     // Rimani nella fase corrente
       stepAdvancement.nextStepId = params.currentStepId || null; // Rimani nello step corrente
-      stepAdvancement.reasoning = `BLOCCATO DA CHECKPOINT: "${checkpointStatus.checkpointName}" non completato. Mancano ${missingCount} informazioni obbligatorie.`;
+      stepAdvancement.reasoning = `Mi serve un po' più di tempo prima di procedere. Mancano ancora alcuni dettagli importanti sulla situazione di ${params.recentMessages[params.recentMessages.length - 2]?.content?.substring(0, 20) || 'Matteo'}. Fai altre domande di approfondimento.`;
       stepAdvancement.confidence = 1; // 100% sicuri del blocco
       
-      // Genera feedback dettagliato per l'agente
-      const missingInfo = checkpointStatus.missingItems.slice(0, 3).map((item, i) => `${i+1}. ${item}`).join('\n');
+      // Genera feedback naturale e snello per l'agente
+      const topMissing = checkpointStatus.missingItems.slice(0, 2).map(item => item.replace(/^[0-9]+\.\s*/, '').replace(/"/g, '')).join(' e ');
       feedbackForAgent = {
         shouldInject: true,
         priority: 'critical',
         type: 'checkpoint',
-        message: `BLOCCO CHECKPOINT FASE ${phaseNum} - NON PUOI PROCEDERE!
-
-Progress: ${validatedCount}/${totalChecks} verifiche completate
-
-INFORMAZIONI MANCANTI:
-${missingInfo}${missingCount > 3 ? `\n... e altre ${missingCount - 3}` : ''}
-
-AZIONE RICHIESTA:
-Rimani nella conversazione attuale e ottieni queste informazioni PRIMA di poter passare alla fase successiva.`,
-        toneReminder: 'Fai domande specifiche per raccogliere le informazioni mancanti!'
+        message: `Prima di andare avanti, mi serve capire meglio: ${topMissing}. Fai domande mirate per scoprire questi dettagli - sarà fondamentale per la soluzione che proporrò.`,
+        toneReminder: 'Tono curioso, genuino. Come se stessi scoprendo cose importanti sul prospect!'
       };
     }
     
