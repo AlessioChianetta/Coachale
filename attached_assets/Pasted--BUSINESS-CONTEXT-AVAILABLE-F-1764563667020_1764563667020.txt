@@ -1,0 +1,169 @@
+👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏢 Name: Premium
+   🎯 What we do: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibr...
+   👥 Target client: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le ...
+   🚫 Non-target: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che p...
+   📋 Services: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📨 Calling SalesManagerAgent.analyze()...
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Starting comprehensive analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_1 / phase_1_step_2
+   💬 Messages: 5
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   💰 Buy signals: 1
+   🛡️ Objections: 0
+   🎭 Tone issues: 0
+   🎯 Control: OK
+   ⛔ Checkpoint: undefined missing
+   👤 Business: Premium
+   ⚡ Regex Signals: enthusiast(60%)
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+4:28:27 AM [express] GET /api/ai-trainer/session/09687a48-822a-4271-9dc6-8d723d1c191c/manager-analys…
+4:28:28 AM [express] GET /api/ai-trainer/session/09687a48-822a-4271-9dc6-8d723d1c191c/transcript 200…
+🤖 [SALES-MANAGER] Raw AI response (592 chars): ```json
+{
+  "shouldAdvance": true,
+  "nextPhaseId": "phase_2",
+  "nextStepId": "phase_2_step_3",
+  "reasoning": "L'agente ha spiegato chiaramente il processo e ha impostato le aspettative. Il prospect ha risposto in modo esaustivo, mostrando entusiasmo e curiosità, il che indica che l'obiettivo dell...
+✅ [SALES-MANAGER] Extracted JSON (580 chars)
+✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=true, confidence=0.9
+   🧠 AI Archetype Intuition: enthusiast - "Il prospect esprime grande entusiasmo, energia e curiosità verso il prodotto, mostrando un forte desiderio di miglioramento."
+   🧠 AI Intuition: enthusiast - "Il prospect esprime grande entusiasmo, energia e curiosità verso il prodotto, mostrando un forte desiderio di miglioramento."
+   🧠 AI Intuition WINS: enthusiast (confidence: 94%)
+   🎭 Final Archetype: 😊 ENTUSIASTA (90%)
+   📢 ARCHETYPE INJECTION at turn 5 (different from last injected (none))
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Analysis complete in 963ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → Step advance: true (90%)
+   → Feedback: tone (medium)
+   → Archetype: 😊 ENTUSIASTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🎭 Archetype state SAVED: enthusiast (90%)
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [z4293l] SALES MANAGER AGENT - RESULT (964ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: true
+   📍 nextPhaseId: phase_2
+   📍 nextStepId: phase_2_step_3
+   📈 confidence: 90%
+   💡 reasoning: L'agente ha spiegato chiaramente il processo e ha impostato le aspettative. Il prospect ha risposto in modo esaustivo, mostrando entusiasmo e curiosità, il che indica che l'obiettivo dello step è stato raggiunto e si può procedere alla scoperta del pain point.
+   💰 BUY SIGNALS: interest
+   🔧 FEEDBACK (tone): 🎭 ARCHETIPO: 😊 ENTUSIASTA
+🎭 TONO: Entusiasta
+🎤 Energia: ALTA | Ritmo: VELOCE
+🗣️ Voce: Energico,...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 [z4293l] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📢 Priority: MEDIUM
+   📋 Type: tone
+   📝 Needs Improvement: 🎭 ARCHETIPO: 😊 ENTUSIASTA
+🎭 TONO: Entusiasta
+🎤 Energia: ALTA | Ritmo: VELOCE
+🗣️ Voce: Energico, vivace, entusiasta
+🪞 Stile: Match l'energia posi...
+   💭 Reasoning: L'agente ha spiegato chiaramente il processo e ha impostato le aspettative. Il prospect ha risposto ...
+   🎵 Tone: Adatta il tuo stile a 😊 ENTUSIASTA
+   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 FEEDBACK CONTENT COMPLETO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<<<SALES_MANAGER_INSTRUCTION>>>
+👤 SEI: Premium
+🎯 COSA FAI: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibrazione'. Questi programmi sono strutturati in pacchetti ad alto valore, pensati per gli atleti che cercano un percorso di trasformazione per migliorare le loro prestazioni e il recupero. L'offerta si discosta dalle singole sessioni per proporre un approccio olistico e orientato al risultato.
+👥 CHI AIUTI: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le prestazioni e il benessere.
+🚫 CHI NON AIUTI: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che programmi di trasformazione.
+📋 SERVIZI: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+
+📍 FASE: 1 di 7 - APERTURA ED IMPOSTAZIONE
+   STEP: SPIEGA IL PROCESSO
+🔋 ENERGIA: MEDIO | TONO: ENTUSIASTA | RITMO: MODERATO
+
+🎯 OBIETTIVO: Stabilire autorevolezza, aspettative chiare e creare scarsità
+✅ FAI BENE: Stai seguendo lo script
+⚠️ MIGLIORA: 🎭 ARCHETIPO: 😊 ENTUSIASTA
+🎭 TONO: Entusiasta
+🎤 Energia: ALTA | Ritmo: VELOCE
+🗣️ Voce: Energico, vivace, entusiasta
+🪞 Stile: Match l'energia positiva. Voce alta, ritmo veloce.
+🚦 STATO: Rimani in questa fase - correggi il tono prima
+📋 TI SERVE: Adatta il tuo stile a 😊 ENTUSIASTA
+🎵 REMINDER TONO: Adatta il tuo stile a 😊 ENTUSIASTA
+
+💭 REASONING MANAGER: L'agente ha spiegato chiaramente il processo e ha impostato le aspettative. Il prospect ha risposto in modo esaustivo, mostrando entusiasmo e curiosità, il che indica che l'obiettivo dello step è stato raggiunto e si può procedere alla scoperta del pain point.
+<<</SALES_MANAGER_INSTRUCTION>>>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Feedback SENT to Gemini with turnComplete:false
+   💾 Feedback also saved to DB (for reconnection backup)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📡 Sent sales_manager_analysis event to client
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [PROSPECT SIMULATOR] Received Sales Manager Analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Phase: APERTURA ED IMPOSTAZIONE / SPIEGA IL PROCESSO
+   🎯 Should Advance: true
+   📊 Confidence: 90%
+   💭 Reasoning: L'agente ha spiegato chiaramente il processo e ha impostato le aspettative. Il p...
+   🔧 Feedback: tone (medium)
+   ⏱️ Analysis time: 964ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [z4293l] ADVANCING STEP!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → FROM: phase_1 / phase_1_step_2
+   → TO: phase_2 / phase_2_step_3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 🟢 FASE PHASE_2 - STARTED                                            ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ Nome: PAIN POINT DISCOVERY                                                    ║
+║ Tipo Semantico: discovery                                                    ║
+║ Connection: z4293l                                                          ║
+║ Timestamp: 2025-12-01T04:28:28.836Z                                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [TRACKER] STEP ADVANCEMENT (AI-driven)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 FROM: phase_1 / phase_1_step_2
+   📍 TO:   phase_2 / phase_2_step_3
+   💡 Reasoning: L'agente ha spiegato chiaramente il processo e ha impostato le aspettative. Il prospect ha risposto in modo esaustivo, mostrando entusiasmo e curiosità, il che indica che l'obiettivo dello step è stato raggiunto e si può procedere alla scoperta del pain point.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

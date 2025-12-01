@@ -3618,22 +3618,81 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         });
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                         
+                        // 🔍 DEBUG DETTAGLIATO: Cosa arriva dal parser?
+                        console.log(`\n🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                        console.log(`🔍 [DEBUG] CHECKPOINT DATA FROM PARSER:`);
+                        script.phases.forEach((p, idx) => {
+                          console.log(`   📍 Phase ${p.number} (${p.id}):`);
+                          console.log(`      checkpoints array: ${p.checkpoints ? p.checkpoints.length : 'undefined'}`);
+                          if (p.checkpoints && p.checkpoints.length > 0) {
+                            p.checkpoints.forEach((cp, cpIdx) => {
+                              console.log(`      └─ Checkpoint ${cpIdx + 1}:`);
+                              console.log(`         id: ${cp.id || 'undefined'}`);
+                              console.log(`         description: ${cp.description ? cp.description.substring(0, 50) + '...' : 'undefined'}`);
+                              console.log(`         verifications: ${cp.verifications ? cp.verifications.length + ' items' : 'undefined'}`);
+                              if (cp.verifications && cp.verifications.length > 0) {
+                                cp.verifications.slice(0, 3).forEach((v, vIdx) => {
+                                  console.log(`            ${vIdx + 1}. ${v.substring(0, 60)}...`);
+                                });
+                              }
+                            });
+                          }
+                        });
+                        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                        
                         // Prepare script structure for agent
+                        // 🆕 FIX CRITICO: Includi il CHECKPOINT della fase per permettere la validazione
+                        // NOTA: Lo script dal parser ha p.checkpoints (array) con verifications/description
+                        //       Il SalesManagerAgent si aspetta checkpoint (singolo) con checks/title
                         const scriptForAgent = {
-                          phases: script.phases.map(p => ({
-                            id: p.id,
-                            number: p.number,
-                            name: p.name,
-                            description: p.description,
-                            steps: p.steps.map(s => ({
-                              id: s.id,
-                              number: s.number,
-                              name: s.name,
-                              objective: s.objective,
-                              questions: s.questions || []
-                            }))
-                          }))
+                          phases: script.phases.map(p => {
+                            // Combina tutti i checkpoint della fase in uno solo (o usa il primo)
+                            // Lo script originale può avere più checkpoint, ma il manager ne vuole uno
+                            const firstCheckpoint = p.checkpoints && p.checkpoints.length > 0 ? p.checkpoints[0] : null;
+                            
+                            // Combina tutte le verifications di tutti i checkpoint in un unico array di checks
+                            const allVerifications: string[] = [];
+                            if (p.checkpoints && p.checkpoints.length > 0) {
+                              p.checkpoints.forEach(cp => {
+                                if (cp.verifications && Array.isArray(cp.verifications)) {
+                                  allVerifications.push(...cp.verifications);
+                                }
+                              });
+                            }
+                            
+                            return {
+                              id: p.id,
+                              number: p.number,
+                              name: p.name,
+                              description: p.description,
+                              steps: p.steps.map(s => ({
+                                id: s.id,
+                                number: s.number,
+                                name: s.name,
+                                objective: s.objective,
+                                questions: s.questions || []
+                              })),
+                              // 🆕 CHECKPOINT: Mappato da checkpoints[] a checkpoint singolo
+                              // verifications → checks, description → title
+                              checkpoint: firstCheckpoint ? {
+                                id: firstCheckpoint.id || `checkpoint_${p.id}`,
+                                title: firstCheckpoint.description || `Checkpoint Fase ${p.number}`,
+                                checks: allVerifications.length > 0 ? allVerifications : (firstCheckpoint.verifications || [])
+                              } : undefined
+                            };
+                          })
                         };
+                        
+                        // 🆕 DEBUG: Log checkpoint passati al SalesManagerAgent
+                        const phasesWithCheckpoints = scriptForAgent.phases.filter(p => p.checkpoint);
+                        if (phasesWithCheckpoints.length > 0) {
+                          console.log(`   ⛔ Checkpoints trovati: ${phasesWithCheckpoints.length} fasi con checkpoint`);
+                          phasesWithCheckpoints.forEach(p => {
+                            console.log(`      - Fase ${p.number}: "${p.checkpoint?.title}" (${p.checkpoint?.checks?.length || 0} checks)`);
+                          });
+                        } else {
+                          console.log(`   ⚠️ ATTENZIONE: Nessun checkpoint definito nello script!`);
+                        }
                         
                         // 🆕 Get current phase energy for tone reminder
                         const currentPhase = script.phases.find(p => p.id === state.currentPhase);

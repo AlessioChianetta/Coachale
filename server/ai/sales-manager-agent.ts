@@ -835,8 +835,46 @@ export class SalesManagerAgent {
     console.log(`   🛡️ Objections: ${objections.detected ? objections.objections.length : 0}`);
     console.log(`   🎭 Tone issues: ${toneAnalysis.issues.length}`);
     console.log(`   🎯 Control: ${controlAnalysis.isLosingControl ? `LOSING (${controlAnalysis.consecutiveProspectQuestions} prospect Q)` : 'OK'}`);
-    console.log(`   ⛔ Checkpoint: ${checkpointStatus?.isComplete ? 'COMPLETE' : checkpointStatus?.missingItems.length + ' missing' || 'N/A'}`);
     console.log(`   👤 Business: ${businessCtx?.identity || 'N/A'}`);
+    
+    // 🆕 LOG CHECKPOINT DETTAGLIATO nel formato richiesto
+    if (checkpointStatus) {
+      const phaseNum = params.currentPhaseId.replace('phase_', '').replace(/_/g, '');
+      const totalChecks = checkpointStatus.totalChecks || (checkpointStatus.completedItems.length + checkpointStatus.missingItems.length);
+      const validatedCount = checkpointStatus.validatedCount || checkpointStatus.completedItems.length;
+      const missingCount = checkpointStatus.missingCount || checkpointStatus.missingItems.length;
+      
+      console.log(`\n   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`   ⛔ CHECKPOINT FASE #${phaseNum}: "${checkpointStatus.checkpointName}"`);
+      console.log(`   ⛔ DOMANDE DA FARE: ${validatedCount}/${totalChecks} completate`);
+      console.log(`   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      
+      // Mostra dettaglio di ogni check
+      if (checkpointStatus.itemDetails && checkpointStatus.itemDetails.length > 0) {
+        checkpointStatus.itemDetails.forEach((item, idx) => {
+          const icon = item.status === 'validated' ? '✓' : item.status === 'vague' ? '◐' : '✗';
+          const color = item.status === 'validated' ? '🟢' : item.status === 'vague' ? '🟡' : '🔴';
+          console.log(`   ${color} ${icon} [${idx + 1}] ${item.check}`);
+          if (item.reason && item.status !== 'validated') {
+            console.log(`        └─ Motivo: ${item.reason.substring(0, 60)}${item.reason.length > 60 ? '...' : ''}`);
+          }
+        });
+      } else {
+        // Fallback: mostra completati e mancanti separatamente
+        checkpointStatus.completedItems.forEach((item, idx) => {
+          console.log(`   🟢 ✓ [${idx + 1}] ${item}`);
+        });
+        checkpointStatus.missingItems.forEach((item, idx) => {
+          console.log(`   🔴 ✗ [${checkpointStatus.completedItems.length + idx + 1}] ${item}`);
+        });
+      }
+      
+      console.log(`   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`   ⛔ STATO: ${checkpointStatus.canAdvance ? '✅ PUÒ AVANZARE' : '🚫 BLOCCO ATTIVO - NON PUÒ AVANZARE'}`);
+      console.log(`   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    } else {
+      console.log(`   ⛔ Checkpoint: N/A (nessun checkpoint definito per questa fase)`);
+    }
     if (regexSignals.length > 0) {
       console.log(`   ⚡ Regex Signals: ${regexSignals.map(s => `${s.archetype}(${(s.score * 100).toFixed(0)}%)`).join(', ')}`);
     }
@@ -974,14 +1012,28 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     
     if (isPhaseTransition && checkpointStatus && !checkpointStatus.canAdvance) {
       // 🚫 BLOCCO FORZATO: L'AI vuole avanzare ma il checkpoint non è completo
-      const phaseNum = params.currentPhaseId.replace('phase_', '').replace(/_/g, '-');
+      const phaseNum = params.currentPhaseId.replace('phase_', '').replace(/_/g, '');
       const totalChecks = checkpointStatus.completedItems.length + checkpointStatus.missingItems.length;
       const validatedCount = checkpointStatus.completedItems.length;
       const missingCount = checkpointStatus.missingItems.length;
       
-      // Log nel formato ESATTO richiesto (singola linea)
-      console.log(`[FASE ${phaseNum}] - Checkpoint Totali: ${totalChecks} | Validati: ${validatedCount} | Mancanti: ${missingCount}`);
-      console.log(`  BLOCCO ATTIVO: Transizione a ${stepAdvancement.nextPhaseId} NEGATA`);
+      // Log BLOCCO nel formato visibile
+      console.log(`\n🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫`);
+      console.log(`🚫 BLOCCO TRANSIZIONE FASE #${phaseNum} → ${stepAdvancement.nextPhaseId}`);
+      console.log(`🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`🚫 CHECKPOINT NON COMPLETATO: "${checkpointStatus.checkpointName}"`);
+      console.log(`🚫 Progress: ${validatedCount}/${totalChecks} verifiche completate`);
+      console.log(`🚫 Mancanti: ${missingCount} verifiche obbligatorie`);
+      if (checkpointStatus.missingItems.length > 0) {
+        console.log(`🚫 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        checkpointStatus.missingItems.slice(0, 5).forEach((item, i) => {
+          console.log(`🚫 ✗ ${i + 1}. ${item}`);
+        });
+        if (checkpointStatus.missingItems.length > 5) {
+          console.log(`🚫   ... e altre ${checkpointStatus.missingItems.length - 5} verifiche`);
+        }
+      }
+      console.log(`🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫🚫\n`);
       
       // 🚫 FORZA IL BLOCCO COMPLETO
       // Reimposta tutto sulla FASE/STEP CORRENTE per impedire qualsiasi avanzamento
