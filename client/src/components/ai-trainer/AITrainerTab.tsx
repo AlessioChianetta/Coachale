@@ -1225,133 +1225,244 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
             </TabsContent>
             
             <TabsContent value="manager" className="mt-4">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <History className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm font-medium">Storico Analisi ({analysisHistory.length})</span>
-                </div>
-                {analysisHistory.length > 0 && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={handleExportAnalysis}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Esporta JSON
-                  </Button>
-                )}
-              </div>
-              <ScrollArea className="h-[55vh] pr-4">
-                {managerAnalysisLoading && analysisHistory.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
-                    <p>Caricamento analisi Manager...</p>
-                  </div>
-                ) : managerAnalysisError ? (
-                  <div className="text-center py-12">
-                    <AlertCircle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-                    <p className="text-red-600 dark:text-red-400">Impossibile caricare l'analisi del Manager</p>
-                  </div>
-                ) : analysisHistory.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500">
-                    <Brain className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Nessuna analisi disponibile ancora</p>
-                    <p className="text-sm mt-2">L'analisi apparirà dopo il primo scambio di messaggi</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {analysisHistory.map((analysis, idx) => (
-                      <Card key={idx} className="border-l-4 border-l-purple-500">
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                              <Target className="h-4 w-4 text-purple-600" />
-                              Analisi #{idx + 1}
-                            </CardTitle>
-                            <Badge variant="outline" className="text-xs">
-                              {new Date(analysis.timestamp).toLocaleTimeString('it-IT')}
+              {(() => {
+                const latestAnalysis = analysisHistory[analysisHistory.length - 1];
+                const observedSession = activeSessions.find(s => s.id === observeSessionId);
+                
+                const getArchetypeEmoji = (archetype: string | undefined) => {
+                  const map: Record<string, string> = {
+                    'enthusiast': '🌟', 'skeptic': '🤨', 'busy': '⚡', 
+                    'price_focused': '💰', 'technical': '🔧', 'indecisive': '🤔',
+                    'defensive': '🛡️', 'neutral': '😐'
+                  };
+                  return map[archetype || ''] || '🎭';
+                };
+                
+                const getArchetypeLabel = (archetype: string | undefined) => {
+                  const map: Record<string, string> = {
+                    'enthusiast': 'Entusiasta', 'skeptic': 'Scettico', 'busy': 'Occupato',
+                    'price_focused': 'Prezzo', 'technical': 'Tecnico', 'indecisive': 'Indeciso',
+                    'defensive': 'Difensivo', 'neutral': 'Neutrale'
+                  };
+                  return map[archetype || ''] || 'In rilevamento...';
+                };
+                
+                const getArchetypeColor = (archetype: string | undefined) => {
+                  const map: Record<string, string> = {
+                    'enthusiast': 'bg-green-100 text-green-700 border-green-300',
+                    'skeptic': 'bg-orange-100 text-orange-700 border-orange-300',
+                    'busy': 'bg-yellow-100 text-yellow-700 border-yellow-300',
+                    'price_focused': 'bg-blue-100 text-blue-700 border-blue-300',
+                    'technical': 'bg-purple-100 text-purple-700 border-purple-300',
+                    'indecisive': 'bg-gray-100 text-gray-700 border-gray-300',
+                    'defensive': 'bg-red-100 text-red-700 border-red-300',
+                    'neutral': 'bg-slate-100 text-slate-700 border-slate-300'
+                  };
+                  return map[archetype || ''] || 'bg-gray-100 text-gray-600 border-gray-300';
+                };
+                
+                const getSessionDuration = () => {
+                  if (!observedSession?.startedAt) return '--:--';
+                  const start = new Date(observedSession.startedAt).getTime();
+                  const now = Date.now();
+                  const diff = Math.floor((now - start) / 1000);
+                  const mins = Math.floor(diff / 60);
+                  const secs = diff % 60;
+                  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                };
+                
+                const totalBuySignals = analysisHistory.reduce((acc, a) => acc + (a.buySignals?.signals?.length || 0), 0);
+                const totalObjections = analysisHistory.reduce((acc, a) => acc + (a.objections?.objections?.length || 0), 0);
+                const totalAdvancements = analysisHistory.filter(a => a.stepAdvancement?.shouldAdvance).length;
+                const avgAnalysisTime = analysisHistory.length > 0 
+                  ? Math.round(analysisHistory.reduce((acc, a) => acc + (a.analysisTimeMs || 0), 0) / analysisHistory.length)
+                  : 0;
+                
+                return (
+                  <div className="space-y-4">
+                    {/* HEADER DASHBOARD */}
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 border border-purple-200 dark:border-purple-800">
+                        <div className="text-[10px] text-purple-600 dark:text-purple-400 mb-1">🎭 ARCHETIPO</div>
+                        <div className={`text-sm font-bold px-2 py-1 rounded border ${getArchetypeColor(latestAnalysis?.archetypeState?.current)}`}>
+                          {getArchetypeEmoji(latestAnalysis?.archetypeState?.current)} {getArchetypeLabel(latestAnalysis?.archetypeState?.current)}
+                        </div>
+                        {latestAnalysis?.archetypeState?.confidence && (
+                          <div className="text-[10px] text-purple-500 mt-1">
+                            {Math.round(latestAnalysis.archetypeState.confidence * 100)}% confidence
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="p-3 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 border border-blue-200 dark:border-blue-800">
+                        <div className="text-[10px] text-blue-600 dark:text-blue-400 mb-1">📍 FASE CORRENTE</div>
+                        <div className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                          {latestAnalysis?.currentPhase?.name || 'Avvio...'}
+                        </div>
+                        <div className="text-[10px] text-blue-500 mt-1">
+                          {latestAnalysis?.currentPhase?.stepName || 'In attesa'}
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 rounded-lg bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 border border-green-200 dark:border-green-800">
+                        <div className="text-[10px] text-green-600 dark:text-green-400 mb-1">⏱️ DURATA</div>
+                        <div className="text-xl font-bold text-green-700 dark:text-green-300 font-mono">
+                          {getSessionDuration()}
+                        </div>
+                      </div>
+                      
+                      <div className="p-3 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/50 dark:to-amber-900/30 border border-amber-200 dark:border-amber-800">
+                        <div className="text-[10px] text-amber-600 dark:text-amber-400 mb-1">💬 MESSAGGI</div>
+                        <div className="text-xl font-bold text-amber-700 dark:text-amber-300">
+                          {transcript.length}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* CHECKPOINT STATUS */}
+                    {latestAnalysis?.checkpointStatus && (
+                      <Card className="border-l-4 border-l-orange-500">
+                        <CardContent className="py-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium flex items-center gap-2">
+                              ⛔ {latestAnalysis.checkpointStatus.checkpointName}
+                            </span>
+                            <Badge className={latestAnalysis.checkpointStatus.isComplete 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-orange-100 text-orange-700'}>
+                              {latestAnalysis.checkpointStatus.isComplete 
+                                ? '✓ COMPLETO' 
+                                : `${latestAnalysis.checkpointStatus.missingItems?.length || 0} mancanti`}
                             </Badge>
                           </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">Fase / Step:</span>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{analysis.currentPhase?.name || 'N/A'}</Badge>
-                              <ChevronRight className="h-3 w-3 text-gray-400" />
-                              <Badge variant="secondary">{analysis.currentPhase?.stepName || 'N/A'}</Badge>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">Confidence:</span>
-                            <div className="flex items-center gap-2">
-                              <Progress value={(analysis.stepAdvancement?.confidence || 0) * 100} className="w-24 h-2" />
-                              <span className="text-sm font-medium">{Math.round((analysis.stepAdvancement?.confidence || 0) * 100)}%</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600 dark:text-gray-400">Avanzamento:</span>
-                            <Badge className={analysis.stepAdvancement?.shouldAdvance 
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' 
-                              : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                            }>
-                              {analysis.stepAdvancement?.shouldAdvance ? '✓ Pronto' : '✗ Non Pronto'}
-                            </Badge>
-                          </div>
-                          
-                          {analysis.stepAdvancement?.reasoning && (
-                            <Collapsible>
-                              <CollapsibleTrigger className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700">
-                                <Brain className="h-3 w-3" />
-                                <span>Mostra reasoning</span>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent className="mt-2">
-                                <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                  {analysis.stepAdvancement.reasoning}
-                                </div>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          )}
-                          
-                          {analysis.feedbackForAgent?.shouldInject && (
-                            <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800">
-                              <div className="flex items-center gap-2 mb-1">
-                                <AlertTriangle className="h-3 w-3 text-amber-600" />
-                                <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                                  Feedback ({analysis.feedbackForAgent.priority})
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-600 dark:text-gray-400">
-                                {analysis.feedbackForAgent.message}
-                              </p>
-                            </div>
-                          )}
-                          
-                          {(analysis.buySignals?.detected || analysis.objections?.detected) && (
-                            <div className="flex flex-wrap gap-1">
-                              {analysis.buySignals?.signals?.map((signal, sIdx) => (
-                                <Badge key={sIdx} className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                                  🛒 {signal.type}
-                                </Badge>
-                              ))}
-                              {analysis.objections?.objections?.map((obj, oIdx) => (
-                                <Badge key={oIdx} className="text-[10px] bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
-                                  ⚠️ {obj.type}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                          
-                          <div className="text-[10px] text-gray-400 text-right">
-                            {analysis.analysisTimeMs}ms
+                          <div className="flex flex-wrap gap-2">
+                            {latestAnalysis.checkpointStatus.completedItems?.map((item, i) => (
+                              <span key={`c-${i}`} className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full flex items-center gap-1">
+                                🟢 {item}
+                              </span>
+                            ))}
+                            {latestAnalysis.checkpointStatus.missingItems?.map((item, i) => (
+                              <span key={`m-${i}`} className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full flex items-center gap-1">
+                                🔴 {item}
+                              </span>
+                            ))}
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
+                    )}
+                    
+                    {/* METRICHE LIVE */}
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="text-center p-2 rounded bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
+                        <div className="text-lg font-bold text-green-600">{totalBuySignals}</div>
+                        <div className="text-[10px] text-green-500">💰 Buy Signals</div>
+                      </div>
+                      <div className="text-center p-2 rounded bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                        <div className="text-lg font-bold text-red-600">{totalObjections}</div>
+                        <div className="text-[10px] text-red-500">🛡️ Obiezioni</div>
+                      </div>
+                      <div className="text-center p-2 rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                        <div className="text-lg font-bold text-blue-600">{totalAdvancements}</div>
+                        <div className="text-[10px] text-blue-500">🚀 Avanzamenti</div>
+                      </div>
+                      <div className="text-center p-2 rounded bg-gray-50 dark:bg-gray-950/30 border border-gray-200 dark:border-gray-700">
+                        <div className="text-lg font-bold text-gray-600">{avgAnalysisTime}ms</div>
+                        <div className="text-[10px] text-gray-500">⚡ Tempo Medio</div>
+                      </div>
+                    </div>
+                    
+                    {/* STORICO ANALISI */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <History className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm font-medium">Storico Analisi ({analysisHistory.length})</span>
+                      </div>
+                      {analysisHistory.length > 0 && (
+                        <Button variant="outline" size="sm" onClick={handleExportAnalysis} className="flex items-center gap-2">
+                          <Download className="h-4 w-4" />
+                          Esporta
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <ScrollArea className="h-[35vh] pr-4">
+                      {managerAnalysisLoading && analysisHistory.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <Loader2 className="h-6 w-6 mx-auto animate-spin mb-2" />
+                          <p className="text-sm">Caricamento...</p>
+                        </div>
+                      ) : managerAnalysisError ? (
+                        <div className="text-center py-8">
+                          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-500" />
+                          <p className="text-sm text-red-600">Errore caricamento</p>
+                        </div>
+                      ) : analysisHistory.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">In attesa di analisi...</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {analysisHistory.map((analysis, idx) => (
+                            <Card key={idx} className="border-l-4 border-l-purple-500">
+                              <CardContent className="py-2 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-gray-500">#{idx + 1}</span>
+                                    <Badge variant="outline" className="text-[10px]">
+                                      {analysis.currentPhase?.name || 'N/A'}
+                                    </Badge>
+                                    {analysis.archetypeState?.current && (
+                                      <Badge className={`text-[10px] ${getArchetypeColor(analysis.archetypeState.current)}`}>
+                                        {getArchetypeEmoji(analysis.archetypeState.current)} {getArchetypeLabel(analysis.archetypeState.current)}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Badge className={analysis.stepAdvancement?.shouldAdvance 
+                                      ? 'bg-green-100 text-green-700 text-[10px]' 
+                                      : 'bg-red-100 text-red-700 text-[10px]'}>
+                                      {analysis.stepAdvancement?.shouldAdvance ? '✓' : '✗'}
+                                    </Badge>
+                                    <span className="text-[10px] text-gray-400">
+                                      {new Date(analysis.timestamp).toLocaleTimeString('it-IT')}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                {analysis.stepAdvancement?.reasoning && (
+                                  <Collapsible>
+                                    <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700">
+                                      <Brain className="h-3 w-3" />
+                                      <span>Reasoning</span>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="mt-1">
+                                      <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded text-[10px] text-gray-600 dark:text-gray-400">
+                                        {analysis.stepAdvancement.reasoning}
+                                      </div>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
+                                
+                                {(analysis.buySignals?.detected || analysis.objections?.detected) && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {analysis.buySignals?.signals?.map((signal, sIdx) => (
+                                      <Badge key={sIdx} className="text-[9px] bg-green-100 text-green-700">💰 {signal.type}</Badge>
+                                    ))}
+                                    {analysis.objections?.objections?.map((obj, oIdx) => (
+                                      <Badge key={oIdx} className="text-[9px] bg-red-100 text-red-700">🛡️ {obj.type}</Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
                   </div>
-                )}
-              </ScrollArea>
+                );
+              })()}
             </TabsContent>
           </Tabs>
         </DialogContent>
