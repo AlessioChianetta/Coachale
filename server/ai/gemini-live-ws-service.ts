@@ -3602,8 +3602,8 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         console.log(`   📜 Script has ${script.phases.length} phases`);
                         console.log(`   💬 Conversation has ${conversationMessages.length} messages`);
                         
-                        // Prepare recent messages from conversationMessages
-                        const recentMessages = conversationMessages.slice(-6).map(msg => ({
+                        // 🆕 FIX MEMORIA: Passa TUTTI i messaggi (no slice) - il context di Gemini è ampio
+                        const recentMessages = conversationMessages.map(msg => ({
                           role: msg.role as 'user' | 'assistant',
                           content: msg.transcript,
                           timestamp: msg.timestamp
@@ -3611,11 +3611,14 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         
                         // 🔍 DEBUG: Log esatto dei messaggi passati al SalesManagerAgent
                         console.log(`\n📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                        console.log(`📋 [${connectionId}] MESSAGGI PASSATI AL SALES MANAGER (${recentMessages.length}):`);
-                        recentMessages.forEach((msg, i) => {
+                        console.log(`📋 [${connectionId}] MESSAGGI PASSATI AL SALES MANAGER (${recentMessages.length} - TUTTI):`);
+                        recentMessages.slice(-6).forEach((msg, i) => {
                           const preview = msg.content.length > 80 ? msg.content.substring(0, 80) + '...' : msg.content;
-                          console.log(`   ${i+1}. [${msg.role.toUpperCase()}]: "${preview}"`);
+                          console.log(`   ${recentMessages.length - 6 + i + 1}. [${msg.role.toUpperCase()}]: "${preview}"`);
                         });
+                        if (recentMessages.length > 6) {
+                          console.log(`   ... (+ ${recentMessages.length - 6} messaggi precedenti inclusi)`);
+                        }
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                         
                         // 🔍 DEBUG DETTAGLIATO: Cosa arriva dal parser?
@@ -3719,7 +3722,9 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           totalMessages: conversationMessages.length,
                           // 🆕 ARCHETYPE PERSISTENCE: Passa lo stato dell'archetipo dalla chiamata precedente
                           archetypeState: persistentArchetypeState as any,
-                          currentTurn: conversationMessages.length
+                          currentTurn: conversationMessages.length,
+                          // 🆕 CHECKPOINT PERSISTENCE: Passa i checkpoint già completati (verde = resta verde)
+                          completedCheckpoints: state.checkpointsCompleted
                         };
                         
                         // 🆕 LOG ALWAYS-VISIBLE: Business context at analysis time

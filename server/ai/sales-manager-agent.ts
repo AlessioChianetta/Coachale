@@ -279,6 +279,17 @@ export interface SalesManagerParams {
   // Additional context
   conversationStartTime?: Date;
   totalMessages?: number;
+  // 🆕 CHECKPOINT PERSISTENCE: Checkpoint già completati (verde = resta verde per sempre)
+  completedCheckpoints?: Array<{
+    checkpointId: string;
+    status: string;
+    completedAt: string;
+    verifications?: Array<{
+      requirement: string;
+      status: string;
+      evidence?: any;
+    }>;
+  }>;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1509,12 +1520,49 @@ ${archetypeInstruction.instruction}`;
    * L'AI capisce il SIGNIFICATO, non solo le parole:
    * - "Da quale città mi contatti?" = "Da dove chiami?" ✅
    * - "Come va la giornata?" = "Come stai?" ✅
+   * 
+   * 🆕 CHECKPOINT PERSISTENCE: Se un checkpoint è già stato completato, NON viene rivalutato.
+   * Verde = resta verde per sempre (evita "amnesia" dell'AI)
    */
   private static async validateCheckpointWithAI(params: SalesManagerParams): Promise<CheckpointStatus | null> {
     const currentPhase = params.script.phases.find(p => p.id === params.currentPhaseId);
     if (!currentPhase?.checkpoint) return null;
     
     const checkpoint = currentPhase.checkpoint;
+    
+    // 🆕 CHECKPOINT PERSISTENCE: Controlla se questo checkpoint è già stato completato
+    const alreadyCompleted = params.completedCheckpoints?.find(
+      cp => cp.checkpointId === checkpoint.id && cp.status === 'completed'
+    );
+    
+    if (alreadyCompleted) {
+      console.log(`\n✅ [SALES-MANAGER] CHECKPOINT GIÀ COMPLETATO - Skip rivalutazione`);
+      console.log(`   📍 Phase: ${currentPhase.name} (${currentPhase.id})`);
+      console.log(`   🎯 Checkpoint: ${checkpoint.title}`);
+      console.log(`   ⏰ Completato il: ${alreadyCompleted.completedAt}`);
+      console.log(`   🔒 VERDE = RESTA VERDE (no amnesia)`);
+      
+      // Ritorna lo stato come "già completato" senza rivalutare
+      return {
+        checkpointId: checkpoint.id,
+        checkpointName: checkpoint.title,
+        isComplete: true,
+        missingItems: [],
+        completedItems: checkpoint.checks,
+        canAdvance: true,
+        itemDetails: checkpoint.checks.map(check => ({
+          check,
+          status: 'validated' as const,
+          infoCollected: 'Già validato in precedenza',
+          evidenceQuote: `Completato il ${alreadyCompleted.completedAt}`
+        })),
+        qualityScore: { specificity: 10, completeness: 10, actionability: 10, overall: 10 },
+        phaseNumber: currentPhase.id.replace('phase_', ''),
+        totalChecks: checkpoint.checks.length,
+        validatedCount: checkpoint.checks.length,
+        missingCount: 0
+      };
+    }
     
     console.log(`\n🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...`);
     console.log(`   📍 Phase: ${currentPhase.name} (${currentPhase.id})`);
