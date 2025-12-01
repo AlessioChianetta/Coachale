@@ -4158,11 +4158,31 @@ ${energySection}
                           // 🆕 Log del feedbackContent COMPLETO per debug + TOKEN COUNT
                           // Stima token: 1 token ≈ 4 caratteri (approssimazione standard)
                           const estimatedTokens = Math.ceil(feedbackContent.length / 4);
-                          console.log(`\n📋 FEEDBACK CONTENT COMPLETO (${estimatedTokens} token):`);
-                          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                          console.log(`\n${'═'.repeat(90)}`);
+                          console.log(`📤 SALES MANAGER → SALES AGENT: MESSAGGIO COMPLETO (${estimatedTokens} token)`);
+                          console.log(`${'═'.repeat(90)}`);
+                          console.log(`🎯 DECISION SUMMARY:`);
+                          console.log(`   • Step Advancement: ${stepResult.shouldAdvance ? '✅ YES' : '❌ NO'}`);
+                          if (stepResult.shouldAdvance) {
+                            console.log(`     → Next Phase: ${stepResult.nextPhaseId}`);
+                            console.log(`     → Next Step: ${stepResult.nextStepId}`);
+                            console.log(`     → Confidence: ${(stepResult.confidence * 100).toFixed(0)}%`);
+                          }
+                          console.log(`   • Checkpoint Status: ${checkpointStatus?.isComplete ? '✅ COMPLETE' : '⛔ INCOMPLETE'}`);
+                          if (checkpointStatus && !checkpointStatus.isComplete) {
+                            console.log(`     → Missing: ${checkpointStatus.missingItems.slice(0, 3).join(', ')}${checkpointStatus.missingItems.length > 3 ? '...' : ''}`);
+                          }
+                          console.log(`   • Feedback Type: ${feedbackType.toUpperCase()}`);
+                          console.log(`   • Feedback Priority: ${feedbackPriority.toUpperCase()}`);
+                          console.log(`\n📋 FULL MESSAGE TO SALES AGENT (${estimatedTokens} token):`);
+                          console.log(`${'─'.repeat(90)}`);
                           console.log(feedbackContent);
-                          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                          console.log(`📊 TOKEN ESTIMATE: ${estimatedTokens} tokens per Sales Agent (Gemini Live)`);
+                          console.log(`${'─'.repeat(90)}`);
+                          console.log(`📊 TOKEN METRICS:`);
+                          console.log(`   • Message size: ${feedbackContent.length} characters`);
+                          console.log(`   • Estimated tokens: ${estimatedTokens} (at ~4 chars/token)`);
+                          console.log(`   • Priority: ${feedbackPriority}`);
+                          console.log(`${'═'.repeat(90)}\n`);
                           
                           if (geminiSession) {
                             // Inject feedback immediately to Gemini
