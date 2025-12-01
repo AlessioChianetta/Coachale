@@ -799,23 +799,23 @@ export class SalesManagerAgent {
     console.log(`   💬 Messages: ${params.recentMessages.length}`);
 
     // 1. Quick local analysis (no AI call needed) + AI checkpoint validation
-    const buySignals = this.detectBuySignals(params.recentMessages);
-    const objections = this.detectObjections(params.recentMessages, params.script.objections);
-    const toneAnalysis = this.analyzeTone(params.recentMessages, params.currentPhaseEnergy);
+    const buySignals = SalesManagerAgent.detectBuySignals(params.recentMessages);
+    const objections = SalesManagerAgent.detectObjections(params.recentMessages, params.script.objections);
+    const toneAnalysis = SalesManagerAgent.analyzeTone(params.recentMessages, params.currentPhaseEnergy);
     // 🆕 Control analysis - detect if sales is losing control (only in Discovery)
-    const controlAnalysis = this.analyzeConversationControl(params.recentMessages, params.currentPhaseId);
+    const controlAnalysis = SalesManagerAgent.analyzeConversationControl(params.recentMessages, params.currentPhaseId);
 
     // 🆕 CHECKPOINT: Ora usa AI SEMANTIC ANALYSIS invece di keyword matching
-    const checkpointStatus = await this.validateCheckpointWithAI(params);
+    const checkpointStatus = await SalesManagerAgent.validateCheckpointWithAI(params);
 
     // 🆕 LOG DETTAGLIATO CHECKPOINT - SEMPRE dopo la validazione AI
     const currentPhaseForLog = params.script.phases.find(p => p.id === params.currentPhaseId);
     if (currentPhaseForLog) {
-      this.logCheckpointDetailed(checkpointStatus, { name: currentPhaseForLog.name, id: currentPhaseForLog.id });
+      SalesManagerAgent.logCheckpointDetailed(checkpointStatus, { name: currentPhaseForLog.name, id: currentPhaseForLog.id });
     }
 
     // 🆕 Business context per feedback (Gemini decide semanticamente se qualcosa è fuori scope)
-    const businessCtx = this.getBusinessContextForFeedback(params.businessContext);
+    const businessCtx = SalesManagerAgent.getBusinessContextForFeedback(params.businessContext);
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🎭 PROSPECT PROFILING - FAST REFLEXES (Regex Detection)
@@ -916,7 +916,7 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     // 🆕 L'AI ora rileva anche l'archetipo del prospect (Slow Brain)
     if (!feedbackForAgent || feedbackForAgent.priority !== 'critical') {
       try {
-        const aiAnalysis = await this.analyzeStepAdvancement(params);
+        const aiAnalysis = await SalesManagerAgent.analyzeStepAdvancement(params);
 
         stepAdvancement = {
           shouldAdvance: aiAnalysis.shouldAdvance,
@@ -1555,7 +1555,7 @@ ${archetypeInstruction.instruction}`;
     const currentPhase = script.phases.find(p => p.id === currentPhaseId);
     const currentStep = currentPhase?.steps.find(s => s.id === currentStepId);
 
-    const { nextPhase, nextStep, isLastStepOfPhase, isLastPhase } = this.getNextPosition(
+    const { nextPhase, nextStep, isLastStepOfPhase, isLastPhase } = SalesManagerAgent.getNextPosition(
       script, currentPhaseId, currentStepId, currentPhaseIndex, currentStepIndex
     );
 
