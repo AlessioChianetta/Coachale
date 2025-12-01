@@ -263,38 +263,74 @@ export async function generateDiscoveryRecWithProvider(
     console.log(`✅ [DiscoveryRecGenerator] Response received in ${elapsedMs}ms`);
 
     let jsonText = text.trim();
+    
+    // Remove markdown code blocks if present
     if (jsonText.startsWith('```json')) {
       jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
     } else if (jsonText.startsWith('```')) {
       jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
 
-    // Aggressive JSON cleanup for Gemini responses
-    // Fix common issues: escaped newlines, single quotes, etc.
-    jsonText = jsonText
-      .replace(/\n/g, '\\n')  // Escape unescaped newlines
-      .replace(/\r/g, '\\r')  // Escape unescaped carriage returns
-      .replace(/\t/g, '\\t'); // Escape unescaped tabs
-
     let rec: DiscoveryRec;
-    try {
-      rec = JSON.parse(jsonText) as DiscoveryRec;
-    } catch (parseError: any) {
-      console.error(`❌ [DiscoveryRecGenerator] JSON parse failed at position ${parseError.message.match(/position (\d+)/)?.[1] || '?'}`);
-      console.error(`   First 500 chars of response: ${jsonText.substring(0, 500)}`);
-
-      // Try to extract JSON object if wrapped in text
-      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+    
+    // Helper function to attempt JSON parsing with various cleanups
+    const tryParseJSON = (text: string): DiscoveryRec | null => {
+      // First, try parsing as-is (most common case - valid JSON)
+      try {
+        return JSON.parse(text) as DiscoveryRec;
+      } catch {
+        // Continue to cleanup attempts
+      }
+      
+      // Try extracting just the JSON object if wrapped in text
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try {
-          rec = JSON.parse(jsonMatch[0]) as DiscoveryRec;
-          console.log(`✅ [DiscoveryRecGenerator] Successfully parsed extracted JSON`);
+          return JSON.parse(jsonMatch[0]) as DiscoveryRec;
         } catch {
-          throw new Error(`Failed to parse extracted JSON: ${parseError.message}`);
+          // Continue to more aggressive cleanup
         }
-      } else {
-        throw parseError;
+        
+        // Try cleaning the extracted JSON
+        let cleanedJson = jsonMatch[0]
+          // Remove any BOM or invisible characters
+          .replace(/^\uFEFF/, '')
+          // Fix escaped quotes that might be double-escaped
+          .replace(/\\\\"/g, '\\"')
+          // Remove control characters except valid JSON whitespace
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+        
+        try {
+          return JSON.parse(cleanedJson) as DiscoveryRec;
+        } catch {
+          // Continue
+        }
       }
+      
+      return null;
+    };
+    
+    const parsedRec = tryParseJSON(jsonText);
+    
+    if (parsedRec) {
+      rec = parsedRec;
+      console.log(`✅ [DiscoveryRecGenerator] JSON parsed successfully`);
+    } else {
+      // Log detailed error for debugging
+      console.error(`❌ [DiscoveryRecGenerator] JSON parse failed`);
+      console.error(`   Response length: ${jsonText.length} chars`);
+      console.error(`   First 500 chars: ${jsonText.substring(0, 500)}`);
+      console.error(`   Last 200 chars: ${jsonText.substring(Math.max(0, jsonText.length - 200))}`);
+      
+      // Check for common issues and provide specific error messages
+      if (jsonText.includes('```')) {
+        console.error(`   Hint: Response may still contain markdown code blocks`);
+      }
+      if (!jsonText.startsWith('{')) {
+        console.error(`   Hint: Response doesn't start with '{', might have preamble text`);
+      }
+      
+      throw new Error(`Failed to parse JSON response from AI model`);
     }
 
     rec.generatedAt = new Date().toISOString();
