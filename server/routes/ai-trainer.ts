@@ -722,12 +722,7 @@ router.post(
 
       // Ottieni la conversazione (ID is VARCHAR/UUID in database)
       console.log(`📋 [REC GENERATION] Fetching conversation details...`);
-      const conversation = await db.select({
-        id: clientSalesConversations.id,
-        agentId: clientSalesConversations.agentId,
-        fullTranscript: clientSalesConversations.fullTranscript,
-        mode: clientSalesConversations.mode,
-      })
+      const conversation = await db.select()
         .from(clientSalesConversations)
         .where(eq(clientSalesConversations.id, conversationId))
         .limit(1);
@@ -737,23 +732,21 @@ router.post(
         return res.status(404).json({ message: 'Conversation not found' });
       }
 
-      console.log(`✅ [REC GENERATION] Conversation found - agentId: ${conversation[0].agentId}`);
-      console.log(`📝 [REC GENERATION] Transcript length: ${conversation[0].fullTranscript?.length || 0}`);
+      const conv = conversation[0];
+      console.log(`✅ [REC GENERATION] Conversation found - agentId: ${conv.agentId}`);
+      console.log(`📝 [REC GENERATION] Transcript length: ${conv.fullTranscript?.length || 0}`);
 
       // Verifica accesso
-      console.log(`🔐 [REC GENERATION] Checking agent access for agentId: ${conversation[0].agentId}`);
+      console.log(`🔐 [REC GENERATION] Checking agent access for agentId: ${conv.agentId}`);
       
-      if (!conversation[0].agentId) {
+      if (!conv.agentId) {
         console.log(`❌ [REC GENERATION] No agentId in conversation`);
         return res.status(400).json({ message: 'Conversation has no agent assigned' });
       }
       
-      const agent = await db.select({
-        clientId: clientSalesAgents.clientId,
-        geminiApiKey: clientSalesAgents.geminiApiKey,
-      })
+      const agent = await db.select()
         .from(clientSalesAgents)
-        .where(eq(clientSalesAgents.id, conversation[0].agentId))
+        .where(eq(clientSalesAgents.id, conv.agentId))
         .limit(1);
 
       console.log(`📊 [REC GENERATION] Agent query result:`, {
@@ -776,7 +769,7 @@ router.post(
       }
 
       // Verifica che ci sia un transcript
-      const transcriptLength = conversation[0].fullTranscript?.length || 0;
+      const transcriptLength = conv.fullTranscript?.length || 0;
       console.log(`📏 [REC GENERATION] Transcript validation - length: ${transcriptLength}`);
       
       if (transcriptLength < 100) {
@@ -792,7 +785,7 @@ router.post(
       const { generateDiscoveryRec } = await import('../ai/discovery-rec-generator');
       
       // Ottieni API key (prova agent, poi env var)
-      const apiKey = agent[0].geminiApiKey || process.env.GEMINI_API_KEY;
+      const apiKey = agent[0]?.geminiApiKey || process.env.GEMINI_API_KEY;
       
       console.log(`🔑 [REC GENERATION] API Key source:`, {
         fromAgent: !!agent[0].geminiApiKey,
@@ -811,7 +804,7 @@ router.post(
       
       // Genera il REC
       const discoveryRec = await generateDiscoveryRec(
-        conversation[0].fullTranscript,
+        conv.fullTranscript,
         apiKey
       );
 
