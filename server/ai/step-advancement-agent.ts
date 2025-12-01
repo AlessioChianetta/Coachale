@@ -90,6 +90,7 @@ export interface CheckpointItemDetail {
   infoCollected?: string;           // Informazione specifica raccolta (se validata)
   reason?: string;                  // Motivo se mancante o vago
   evidenceQuote?: string;           // Citazione dalla conversazione
+  suggestedNextAction?: string;     // 🆕 Suggerimento AI su cosa fare per completare il check
 }
 
 /**
@@ -797,7 +798,8 @@ Rispondi SOLO con JSON valido, NO testo aggiuntivo:
       "status": "validated|missing|vague",
       "infoCollected": "informazione specifica raccolta (se validated)",
       "reason": "motivo se missing/vague",
-      "evidenceQuote": "citazione breve dalla conversazione"
+      "evidenceQuote": "citazione breve dalla conversazione",
+      "suggestedNextAction": "OBBLIGATORIO se missing/vague: suggerimento CONCRETO e SPECIFICO su cosa chiedere/fare per completare questo check. Es: 'Chiedi: Da quale città mi stai chiamando?' oppure 'Approfondisci il problema con: Puoi farmi un esempio concreto?'"
     }
   ],
   "qualityScore": {
@@ -894,7 +896,8 @@ Rispondi SOLO con JSON valido, NO testo aggiuntivo:
             status: ['validated', 'missing', 'vague'].includes(item.status) ? item.status : 'missing',
             infoCollected: item.infoCollected ? String(item.infoCollected) : undefined,
             reason: item.reason ? String(item.reason) : undefined,
-            evidenceQuote: item.evidenceQuote ? String(item.evidenceQuote) : undefined
+            evidenceQuote: item.evidenceQuote ? String(item.evidenceQuote) : undefined,
+            suggestedNextAction: item.suggestedNextAction ? String(item.suggestedNextAction) : undefined
           }))
         : originalChecks.map(check => ({
             check,

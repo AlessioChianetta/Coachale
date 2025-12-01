@@ -935,46 +935,28 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       };
     } else if (checkpointStatus && !checkpointStatus.canAdvance && checkpointStatus.missingItems.length > 0) {
       // Medium priority: checkpoint not complete
-      // 🆕 Genera suggerimenti CONCRETI basati sui check mancanti
+      // 🆕 Usa i suggerimenti generati dall'AI (suggestedNextAction)
       const missingChecks = checkpointStatus.itemDetails
         ?.filter(item => item.status !== 'validated')
         .slice(0, 3) || [];
       
-      // Crea suggerimenti actionable basati sui check mancanti
-      const suggestions = missingChecks.map(item => {
-        const check = item.check.toLowerCase();
-        // Genera suggerimento concreto basato sul tipo di check
-        if (check.includes('salutato') || check.includes('come stai')) {
-          return '→ Chiedi al prospect come sta e da dove chiama';
-        } else if (check.includes('problema') || check.includes('difficoltà')) {
-          return '→ Scava più a fondo: "Qual è il problema SPECIFICO che vuoi risolvere?"';
-        } else if (check.includes('budget') || check.includes('investimento')) {
-          return '→ Chiedi: "Hai già un\'idea del budget che vorresti investire?"';
-        } else if (check.includes('decisore') || check.includes('decide')) {
-          return '→ Chiedi: "Sei tu a decidere o devi consultare qualcuno?"';
-        } else if (check.includes('urgenza') || check.includes('quando')) {
-          return '→ Chiedi: "Quanto è urgente per te risolvere questa situazione?"';
-        } else if (check.includes('obiettivo') || check.includes('risultato')) {
-          return '→ Chiedi: "Qual è il risultato specifico che vuoi raggiungere?"';
-        } else if (check.includes('tentato') || check.includes('provato')) {
-          return '→ Chiedi: "Cosa hai già provato finora per risolvere questo problema?"';
-        } else if (check.includes('processo') || check.includes('call')) {
-          return '→ Spiega cosa farete insieme in questa chiamata';
-        } else if (check.includes('ok') || check.includes('sì') || check.includes('va bene')) {
-          return '→ Ottieni conferma dal prospect prima di procedere';
-        } else {
-          // Fallback: usa il check originale come suggerimento
-          return `→ ${item.check.substring(0, 60)}${item.check.length > 60 ? '...' : ''}`;
-        }
-      });
+      // Estrai i suggerimenti AI per i check mancanti
+      const aiSuggestions = missingChecks
+        .map(item => item.suggestedNextAction)
+        .filter(suggestion => suggestion && suggestion.trim().length > 0)
+        .map(suggestion => `→ ${suggestion}`)
+        .slice(0, 3);
       
-      const uniqueSuggestions = [...new Set(suggestions)].slice(0, 3);
+      // Se l'AI non ha fornito suggerimenti, usa i check originali come fallback
+      const suggestions = aiSuggestions.length > 0 
+        ? aiSuggestions 
+        : missingChecks.map(item => `→ ${item.check.substring(0, 80)}${item.check.length > 80 ? '...' : ''}`);
       
       feedbackForAgent = {
         shouldInject: true,
         priority: 'medium',
         type: 'checkpoint',
-        message: `🎯 PROSSIMI PASSI:\n${uniqueSuggestions.join('\n')}`,
+        message: `🎯 PROSSIMI PASSI:\n${suggestions.join('\n')}`,
       };
     }
     
