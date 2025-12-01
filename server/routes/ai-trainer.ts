@@ -806,30 +806,25 @@ router.post(
 
       // Import dinamico per evitare circular dependencies
       console.log(`📦 [REC GENERATION] Loading discovery-rec-generator module...`);
-      const { generateDiscoveryRec } = await import('../ai/discovery-rec-generator');
+      const { generateDiscoveryRecWithProvider } = await import('../ai/discovery-rec-generator');
       
-      // Ottieni API key (prova agent, poi env var)
-      const apiKey = agent[0]?.geminiApiKey || process.env.GEMINI_API_KEY;
+      const clientId = req.user?.id || agent[0].clientId;
+      const consultantId = agent[0].consultantId;
       
-      console.log(`🔑 [REC GENERATION] API Key source:`, {
-        fromAgent: !!agent[0].geminiApiKey,
-        fromEnv: !!process.env.GEMINI_API_KEY,
-        hasKey: !!apiKey
+      console.log(`🔑 [REC GENERATION] Using provider factory:`, {
+        clientId: clientId,
+        consultantId: consultantId,
       });
-      
-      if (!apiKey) {
-        console.log(`❌ [REC GENERATION] No API key available`);
-        return res.status(500).json({ message: 'Gemini API key non configurata' });
-      }
 
       console.log(`🚀 [REC GENERATION] Starting REC generation...`);
       console.log(`   Conversation: ${conversationId}`);
       console.log(`   Transcript length: ${transcriptText.length} chars`);
       
-      // Genera il REC
-      const discoveryRec = await generateDiscoveryRec(
+      // Genera il REC usando provider factory (3-tier: client Vertex AI → admin Vertex AI → Google AI Studio)
+      const discoveryRec = await generateDiscoveryRecWithProvider(
         transcriptText,
-        apiKey
+        clientId,
+        consultantId
       );
 
       console.log(`📋 [REC GENERATION] Generation complete - checking result...`);
