@@ -652,14 +652,14 @@ Esempio se NON avanzare + feedback correttivo:
         });
         
         // Chiama Gemini con timeout
-        // 🆕 Aumentato maxOutputTokens per includere itemDetails con suggestedNextAction
+        // 🚀 OTTIMIZZAZIONE: Ridotto maxOutputTokens per risposta più veloce
         const response = await Promise.race([
           aiClient.generateContent({
             model: this.MODEL,
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0, // Deterministico per coerenza
-              maxOutputTokens: 2000, // 🆕 Aumentato da 800 per risposta completa con suggerimenti AI
+              maxOutputTokens: 500, // 🚀 Ottimizzato da 2000 per risposta più veloce (target <2000ms)
             }
           }),
           this.timeout(this.TIMEOUT_MS)
@@ -703,6 +703,7 @@ Esempio se NON avanzare + feedback correttivo:
   /**
    * Costruisce il prompt per l'analisi semantica del checkpoint
    * 🆕 VERSIONE 2.0: Validazione RIGOROSA sulla QUALITÀ delle informazioni
+   * 🚀 OTTIMIZZAZIONE: Filtra solo messaggi rilevanti per la fase corrente
    */
   private static buildCheckpointPrompt(params: CheckpointAnalysisParams): string {
     const { checkpoint, recentMessages, phaseName, phaseId } = params;
@@ -710,8 +711,25 @@ Esempio se NON avanzare + feedback correttivo:
     // Estrai numero fase
     const phaseNumber = phaseId.replace('phase_', '').replace(/_/g, '-');
     
-    // Formatta la conversazione (tutti i messaggi rilevanti)
-    const conversationText = recentMessages
+    // 🚀 OTTIMIZZAZIONE: Filtra messaggi rilevanti per ridurre contesto
+    // Usa solo gli ultimi 20 messaggi + quelli che contengono keyword dei check
+    const checkKeywords = checkpoint.checks.flatMap(check => 
+      check.toLowerCase().split(/\s+/).filter(w => w.length > 4)
+    );
+    
+    const filteredMessages = recentMessages.filter((msg, idx) => {
+      // Sempre includi gli ultimi 20 messaggi per contesto
+      if (idx >= recentMessages.length - 20) return true;
+      
+      // Includi se contiene keyword dei check
+      const msgLower = msg.content.toLowerCase();
+      return checkKeywords.some(kw => msgLower.includes(kw));
+    });
+    
+    console.log(`   🚀 [CHECKPOINT-AI] Filtered ${recentMessages.length} → ${filteredMessages.length} messages`);
+    
+    // Formatta la conversazione filtrata
+    const conversationText = filteredMessages
       .map(m => `${m.role === 'user' ? 'PROSPECT' : 'AGENTE'}: ${m.content}`)
       .join('\n\n');
     

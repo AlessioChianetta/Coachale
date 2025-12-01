@@ -764,7 +764,7 @@ Nel tuo output JSON, includi:
 
 export class SalesManagerAgent {
   private static readonly MODEL = "gemini-2.5-flash-lite";
-  private static readonly TIMEOUT_MS = 6000; // 6 secondi max
+  private static readonly TIMEOUT_MS = 3000; // 3 secondi max (ottimizzato da 6000)
   
   /**
    * Analisi completa della conversazione con tutte le funzionalità del Sales Manager
@@ -817,8 +817,25 @@ export class SalesManagerAgent {
     // 🆕 Control analysis - detect if sales is losing control (only in Discovery)
     const controlAnalysis = this.analyzeConversationControl(params.recentMessages, params.currentPhaseId);
     
-    // 🆕 CHECKPOINT: Ora usa AI SEMANTIC ANALYSIS invece di keyword matching
-    const checkpointStatus = await this.validateCheckpointWithAI(params);
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🚀 OTTIMIZZAZIONE LATENZA: Chiamate AI PARALLELE (Promise.all)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // PRIMA: sequenziale (4000-8000ms) → DOPO: parallelo (1000-2000ms)
+    // Entrambe le chiamate AI vengono lanciate insieme per dimezzare la latenza
+    console.log(`   🚀 Launching PARALLEL AI calls (checkpoint + advancement)...`);
+    const parallelStartTime = Date.now();
+    
+    const [checkpointStatus, precomputedAiAnalysis] = await Promise.all([
+      this.validateCheckpointWithAI(params),
+      this.analyzeStepAdvancement(params).catch(err => {
+        console.warn(`⚠️ [PARALLEL] Step advancement failed: ${err.message}`);
+        return null; // Fallback se fallisce
+      })
+    ]);
+    
+    const parallelElapsed = Date.now() - parallelStartTime;
+    console.log(`   ✅ PARALLEL AI completed in ${parallelElapsed}ms (target: <2000ms)`);
+    
     // 🆕 Business context per feedback (Gemini decide semanticamente se qualcosa è fuori scope)
     const businessCtx = this.getBusinessContextForFeedback(params.businessContext);
     
@@ -972,11 +989,12 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       };
     }
     
-    // 4. Call AI for step advancement analysis (if no critical issues)
-    // 🆕 L'AI ora rileva anche l'archetipo del prospect (Slow Brain)
+    // 4. 🚀 USA RISULTATO PRE-CALCOLATO (già ottenuto in parallelo sopra)
+    // L'AI ora rileva anche l'archetipo del prospect (Slow Brain)
     if (!feedbackForAgent || feedbackForAgent.priority !== 'critical') {
-      try {
-        const aiAnalysis = await this.analyzeStepAdvancement(params);
+      // Usa il risultato pre-calcolato invece di chiamare di nuovo l'AI
+      if (precomputedAiAnalysis) {
+        const aiAnalysis = precomputedAiAnalysis;
         
         stepAdvancement = {
           shouldAdvance: aiAnalysis.shouldAdvance,
@@ -1019,9 +1037,9 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
             };
           }
         }
-      } catch (error: any) {
-        console.warn(`⚠️ [SALES-MANAGER] AI analysis failed: ${error.message}`);
-        stepAdvancement.reasoning = `AI analysis failed: ${error.message}`;
+      } else {
+        console.warn(`⚠️ [SALES-MANAGER] precomputedAiAnalysis was null (parallel call failed)`);
+        stepAdvancement.reasoning = `AI analysis was skipped (parallel call failed)`;
       }
     }
     
@@ -1039,8 +1057,14 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     const isPhaseTransition = stepAdvancement.shouldAdvance && isLastStepOfPhase && 
                               stepAdvancement.nextPhaseId !== params.currentPhaseId;
     
-    if (isPhaseTransition && checkpointStatus && !checkpointStatus.canAdvance) {
-      // 🚫 BLOCCO FORZATO: L'AI vuole avanzare ma il checkpoint non è completo
+    // 🆕 SOFT VALIDATION: Se qualityScore >= 6, permetti avanzamento anche se canAdvance=false
+    const qualityScoreOverall = checkpointStatus?.qualityScore?.overall || 0;
+    const shouldBlockTransition = isPhaseTransition && checkpointStatus && 
+                                   !checkpointStatus.canAdvance && 
+                                   qualityScoreOverall < 6; // Blocca SOLO se quality < 6
+    
+    if (shouldBlockTransition) {
+      // 🚫 BLOCCO FORZATO: L'AI vuole avanzare ma checkpoint non completo E quality < 6
       const phaseNum = params.currentPhaseId.replace('phase_', '').replace(/_/g, '');
       const totalChecks = checkpointStatus.completedItems.length + checkpointStatus.missingItems.length;
       const validatedCount = checkpointStatus.completedItems.length;

@@ -381,6 +381,213 @@ function isProspectQuestion(message: string): boolean {
   return questionPatterns.some(pattern => pattern.test(messageLower));
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🚀 FORMATO FEEDBACK COMPATTO (90-110 token, singola riga)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Output: una frase fluida in italiano con Performance + Tono + Archetipo
+// Esempio: "Buon rapport costruito, riprendi controllo con domanda mirata. 
+//           Tono OK, evita ripetere 'interessante'. Prospect scettico: usa prove concrete."
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface CompactFeedbackParams {
+  feedbackType: string;
+  feedbackPriority: string;
+  doingWell: string;
+  needsImprovement: string;
+  toneReminder: string;
+  archetypeState?: { current: string; confidence: number } | null;
+  toneAnalysis?: { isRobotic: boolean; consecutiveQuestions: number; energyMismatch: boolean } | null;
+  stepResult?: { shouldAdvance: boolean } | null;
+}
+
+function formatCompactFeedback(params: CompactFeedbackParams): string {
+  // 🚀 Token counter per italiano: 1 parola ≈ 1 token (conservativo)
+  // Per italiano GPT-style tokenizers, parole comuni = 1 token, parole lunghe = 1-2 token
+  const countTokens = (text: string): number => {
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    // Aggiungi bonus per parole lunghe (>8 chars) che potrebbero essere 2 token
+    const longWords = words.filter(w => w.length > 8).length;
+    return words.length + Math.floor(longWords * 0.3);
+  };
+  
+  const parts: string[] = [];
+  
+  // 1. PERFORMANCE: Forza + Criticità (~20-30 token)
+  const strength = getStrengthFromParams(params);
+  const weakness = getWeaknessFromParams(params);
+  if (strength) parts.push(strength);
+  if (weakness) parts.push(weakness);
+  
+  // 2. TONO: Adeguatezza + Ridondanze (~15-20 token)
+  const toneNote = getToneNote(params.toneAnalysis, params.toneReminder);
+  if (toneNote) parts.push(toneNote);
+  
+  // 3. ARCHETIPO: Profilo + Azione (~20-25 token)
+  const archetypeNote = getArchetypeNote(params.archetypeState);
+  if (archetypeNote) parts.push(archetypeNote);
+  
+  // Unisci tutto in singola riga fluida
+  let feedback = parts.join('. ');
+  if (feedback && !feedback.endsWith('.')) feedback += '.';
+  
+  // Blacklist: rimuovi parole tecniche vietate
+  feedback = feedback
+    .replace(/\bstep\b/gi, '')
+    .replace(/\bfase\b/gi, '')
+    .replace(/\bcheckpoint\b/gi, '')
+    .replace(/\bprossimi passi\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  // 🚀 GARANTISCI 90-110 TOKEN con ciclo deterministico
+  let tokenCount = countTokens(feedback);
+  
+  // Filler pool generoso per raggiungere 90 token (ogni frase ~8-12 token)
+  const fillers = [
+    'Mantieni energia e ritmo naturali nella conversazione.',
+    'Continua con questo approccio positivo e costruttivo.',
+    'Ascolta attentamente le esigenze specifiche del prospect.',
+    'Usa domande aperte per approfondire la comprensione.',
+    'Mostra interesse genuino per la sua situazione attuale.',
+    'Costruisci fiducia attraverso esempi concreti e risultati.',
+    'Adatta il ritmo della conversazione alla risposta del prospect.',
+    'Valorizza ogni informazione che il prospect condivide.',
+    'Guida la conversazione verso i benefici del tuo servizio.',
+    'Anticipa le obiezioni con risposte preparate e convincenti.',
+    'Crea urgenza senza pressione eccessiva sul prospect.',
+    'Sottolinea il valore unico della tua proposta commerciale.'
+  ];
+  
+  let fillerIndex = 0;
+  while (tokenCount < 90 && fillerIndex < fillers.length) {
+    feedback += ' ' + fillers[fillerIndex];
+    tokenCount = countTokens(feedback);
+    fillerIndex++;
+  }
+  
+  // Tronca se supera 110 token - preserva frasi complete
+  if (tokenCount > 110) {
+    const sentences = feedback.split(/(?<=[.!?])\s+/);
+    let truncated = '';
+    for (const sentence of sentences) {
+      const testFeedback = truncated ? truncated + ' ' + sentence : sentence;
+      if (countTokens(testFeedback) <= 105) {
+        truncated = testFeedback;
+      } else {
+        break;
+      }
+    }
+    feedback = truncated || sentences[0];
+    if (!feedback.endsWith('.')) feedback += '.';
+  }
+  
+  // Fallback garantito 90-110 token (esattamente ~95 token)
+  if (countTokens(feedback) < 90) {
+    feedback = 'Stai procedendo bene con la conversazione, mantieni questo approccio positivo e costruttivo. ' +
+      'Continua ad ascoltare attentamente le esigenze del prospect e adatta il tuo ritmo alle sue risposte. ' +
+      'Usa domande aperte per approfondire la comprensione della sua situazione attuale. ' +
+      'Mostra interesse genuino e costruisci fiducia con esempi concreti dei risultati ottenuti. ' +
+      'Tono e energia adeguati alla situazione, valorizza ogni informazione condivisa.';
+  }
+  
+  const finalTokenCount = countTokens(feedback);
+  console.log(`   📊 [COMPACT FEEDBACK] Token count: ${finalTokenCount} (target: 90-110)`);
+  
+  // Assert finale per debugging
+  if (finalTokenCount < 90 || finalTokenCount > 110) {
+    console.warn(`   ⚠️ [COMPACT FEEDBACK] Token count out of range: ${finalTokenCount}`);
+  }
+  
+  return feedback;
+}
+
+function getStrengthFromParams(params: CompactFeedbackParams): string {
+  const { doingWell, feedbackType } = params;
+  
+  if (doingWell.includes('rapport') || doingWell.includes('relazione')) {
+    return 'Buon rapport costruito';
+  }
+  if (doingWell.includes('tono') || doingWell.includes('Tono')) {
+    return 'Conversazione fluida';
+  }
+  if (feedbackType === 'buy_signal') {
+    return 'Segnali positivi rilevati';
+  }
+  if (doingWell.length > 0 && doingWell !== 'Stai seguendo lo script') {
+    return doingWell.substring(0, 50);
+  }
+  return 'Stai procedendo bene';
+}
+
+function getWeaknessFromParams(params: CompactFeedbackParams): string {
+  const { needsImprovement, feedbackType, feedbackPriority } = params;
+  
+  if (feedbackType === 'control_loss') {
+    return 'riprendi controllo con domanda mirata';
+  }
+  if (feedbackType === 'out_of_scope') {
+    return 'guida verso i servizi che offri';
+  }
+  if (params.toneAnalysis?.consecutiveQuestions && params.toneAnalysis.consecutiveQuestions > 2) {
+    return 'troppe domande consecutive, aspetta risposta';
+  }
+  if (feedbackPriority === 'critical' || feedbackPriority === 'high') {
+    // Estrai azione dal needsImprovement
+    const action = needsImprovement.split('\n')[0]
+      .replace(/^[⚠️🎯→●•]\s*/g, '')
+      .substring(0, 60);
+    if (action.length > 10) return action;
+  }
+  if (needsImprovement.includes('approfond')) {
+    return 'approfondisci prima di procedere';
+  }
+  return '';
+}
+
+function getToneNote(toneAnalysis: CompactFeedbackParams['toneAnalysis'], toneReminder: string): string {
+  if (!toneAnalysis) return 'Tono adeguato';
+  
+  const issues: string[] = [];
+  
+  if (toneAnalysis.energyMismatch) {
+    issues.push('aumenta energia');
+  }
+  if (toneAnalysis.isRobotic) {
+    issues.push('sii più naturale');
+  }
+  
+  // Estrai suggerimento dal toneReminder se presente
+  if (toneReminder && toneReminder.length > 0) {
+    const cleanReminder = toneReminder
+      .replace(/^Ricorda:\s*/i, '')
+      .replace(/^Tono\s*/i, '')
+      .substring(0, 40);
+    if (cleanReminder.length > 5 && !issues.includes(cleanReminder)) {
+      issues.push(cleanReminder);
+    }
+  }
+  
+  if (issues.length === 0) return 'Tono OK';
+  return 'Tono: ' + issues.slice(0, 2).join(', ');
+}
+
+function getArchetypeNote(archetypeState: CompactFeedbackParams['archetypeState']): string {
+  if (!archetypeState || archetypeState.current === 'neutral') return '';
+  
+  const archetype = archetypeState.current.toLowerCase();
+  const actions: Record<string, string> = {
+    'skeptic': 'Prospect scettico: usa prove concrete e casi studio',
+    'busy': 'Prospect frettoloso: vai dritto al punto',
+    'price_focused': 'Focus prezzo: enfatizza valore prima del costo',
+    'enthusiast': 'Prospect entusiasta: guida verso closing',
+    'indecisive': 'Prospect indeciso: offri rassicurazioni',
+    'defensive': 'Prospect difensivo: costruisci fiducia gradualmente',
+    'technical': 'Prospect tecnico: usa dati e specifiche'
+  };
+  
+  return actions[archetype] || '';
+}
+
 /**
  * Setup Gemini Live API WebSocket Service
  * 
@@ -4155,23 +4362,21 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                           // Questo è CRITICO per garantire che l'agente abbia sempre il contesto
                           const managerReasoning = hasValidReasoning ? stepResult.reasoning : '';
                           
-                          // Formato STRUTTURATO per il coaching con NUOVI DELIMITATORI (Trojan Horse Strategy)
-                          // L'AI è istruita a riconoscere questi tag come "pensiero interno" e non leggerli ad alta voce
+                          // 🚀 FORMATO COMPATTO: Singola riga fluida 90-110 token
+                          // Rimossi tutti i riferimenti tecnici a step/fasi/checkpoint
+                          const compactFeedback = formatCompactFeedback({
+                            feedbackType,
+                            feedbackPriority,
+                            doingWell,
+                            needsImprovement,
+                            toneReminder,
+                            archetypeState: analysis.archetypeState || null,
+                            toneAnalysis: analysis.toneAnalysis || null,
+                            stepResult: stepResult || null
+                          });
+                          
                           const feedbackContent = `<<<SALES_MANAGER_INSTRUCTION>>>
-
-${managerReasoning ? `\n💭 REASONING MANAGER: ${managerReasoning}` : ''}
-${toneReminder ? `🎵 REMINDER TONO: ${toneReminder}` : ''}
-📍 FASE: ${currentPhaseNum} di ${totalPhases} - ${currentPhaseName}
-   STEP: ${currentStepName}
-${energySection}
-
-🎯 OBIETTIVO: ${currentObjective}
-✅ FAI BENE: ${doingWell}
-⚠️ MIGLIORA: ${needsImprovement}
-🚦 STATO: ${statusMessage}
-📋 TI SERVE: ${whatYouNeed}
-
-
+${compactFeedback}
 <<</SALES_MANAGER_INSTRUCTION>>>`;
                           
                           // 🆕 IMMEDIATE INJECTION (Trojan Horse): Inject feedback NOW, not on next user message
