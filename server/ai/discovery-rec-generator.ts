@@ -262,6 +262,7 @@ export async function generateDiscoveryRecWithProvider(
 
     console.log(`✅ [DiscoveryRecGenerator] Response received in ${elapsedMs}ms`);
 
+    // Clean up markdown code blocks if present
     let jsonText = text.trim();
     if (jsonText.startsWith('```json')) {
       jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
@@ -269,32 +270,20 @@ export async function generateDiscoveryRecWithProvider(
       jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
     }
 
-    // Aggressive JSON cleanup for Gemini responses
-    // Fix common issues: escaped newlines, single quotes, etc.
-    jsonText = jsonText
-      .replace(/\n/g, '\\n')  // Escape unescaped newlines
-      .replace(/\r/g, '\\r')  // Escape unescaped carriage returns
-      .replace(/\t/g, '\\t'); // Escape unescaped tabs
+    // Log first 500 chars for debugging
+    console.log(`📝 [DiscoveryRecGenerator] First 500 chars after cleanup: ${jsonText.substring(0, 500)}`);
 
     let rec: DiscoveryRec;
     try {
       rec = JSON.parse(jsonText) as DiscoveryRec;
+      console.log(`✅ [DiscoveryRecGenerator] Successfully parsed JSON`);
     } catch (parseError: any) {
-      console.error(`❌ [DiscoveryRecGenerator] JSON parse failed at position ${parseError.message.match(/position (\d+)/)?.[1] || '?'}`);
-      console.error(`   First 500 chars of response: ${jsonText.substring(0, 500)}`);
-
-      // Try to extract JSON object if wrapped in text
-      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          rec = JSON.parse(jsonMatch[0]) as DiscoveryRec;
-          console.log(`✅ [DiscoveryRecGenerator] Successfully parsed extracted JSON`);
-        } catch {
-          throw new Error(`Failed to parse extracted JSON: ${parseError.message}`);
-        }
-      } else {
-        throw parseError;
-      }
+      console.error(`❌ [DiscoveryRecGenerator] JSON parse failed`);
+      console.error(`   Error: ${parseError.message}`);
+      console.error(`   Response length: ${jsonText.length} chars`);
+      console.error(`   First 200 chars: ${jsonText.substring(0, 200)}`);
+      console.error(`   Last 200 chars: ${jsonText.substring(Math.max(0, jsonText.length - 200))}`);
+      throw new Error(`Failed to parse JSON response from Gemini: ${parseError.message}`);
     }
 
     rec.generatedAt = new Date().toISOString();
