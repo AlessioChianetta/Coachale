@@ -252,8 +252,8 @@
         model: "gemini-2.5-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 4096,
+          temperature: 1.0,
+          maxOutputTokens: 20000,
         }
       });
 
