@@ -249,7 +249,7 @@
       const startTime = Date.now();
 
       const response = await client.generateContent({
-        model: "gemini-2.5-flash-preview-05-20",
+        model: "gemini-2.5-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.1,
@@ -269,7 +269,33 @@
         jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
 
-      const rec = JSON.parse(jsonText) as DiscoveryRec;
+      // Aggressive JSON cleanup for Gemini responses
+      // Fix common issues: escaped newlines, single quotes, etc.
+      jsonText = jsonText
+        .replace(/\n/g, '\\n')  // Escape unescaped newlines
+        .replace(/\r/g, '\\r')  // Escape unescaped carriage returns
+        .replace(/\t/g, '\\t'); // Escape unescaped tabs
+
+      let rec: DiscoveryRec;
+      try {
+        rec = JSON.parse(jsonText) as DiscoveryRec;
+      } catch (parseError: any) {
+        console.error(`❌ [DiscoveryRecGenerator] JSON parse failed at position ${parseError.message.match(/position (\d+)/)?.[1] || '?'}`);
+        console.error(`   First 500 chars of response: ${jsonText.substring(0, 500)}`);
+        
+        // Try to extract JSON object if wrapped in text
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            rec = JSON.parse(jsonMatch[0]) as DiscoveryRec;
+            console.log(`✅ [DiscoveryRecGenerator] Successfully parsed extracted JSON`);
+          } catch {
+            throw new Error(`Failed to parse extracted JSON: ${parseError.message}`);
+          }
+        } else {
+          throw parseError;
+        }
+      }
 
       rec.generatedAt = new Date().toISOString();
 
