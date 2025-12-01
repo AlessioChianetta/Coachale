@@ -3612,9 +3612,11 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         // 🔍 DEBUG: Log esatto dei messaggi passati al SalesManagerAgent
                         console.log(`\n📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                         console.log(`📋 [${connectionId}] MESSAGGI PASSATI AL SALES MANAGER (${recentMessages.length} - TUTTI):`);
-                        recentMessages.slice(-6).forEach((msg, i) => {
+                        const messagesToShow = recentMessages.slice(-6);
+                        const startIndex = Math.max(0, recentMessages.length - 6);
+                        messagesToShow.forEach((msg, i) => {
                           const preview = msg.content.length > 80 ? msg.content.substring(0, 80) + '...' : msg.content;
-                          console.log(`   ${recentMessages.length - 6 + i + 1}. [${msg.role.toUpperCase()}]: "${preview}"`);
+                          console.log(`   ${startIndex + i + 1}. [${msg.role.toUpperCase()}]: "${preview}"`);
                         });
                         if (recentMessages.length > 6) {
                           console.log(`   ... (+ ${recentMessages.length - 6} messaggi precedenti inclusi)`);
