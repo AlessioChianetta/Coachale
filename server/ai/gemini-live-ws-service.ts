@@ -3968,10 +3968,43 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         }
                         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                         
-                        console.log(`   📨 Calling SalesManagerAgent.analyze()...`);
-                        const analysisStart = Date.now();
-                        const analysis: SalesManagerAnalysis = await SalesManagerAgent.analyze(params);
-                        const analysisTime = Date.now() - analysisStart;
+                        // 🆕 CHECK: Disable Sales Manager for testing
+                        const isSalesManagerDisabled = process.env.DISABLE_SALES_MANAGER === 'true';
+                        
+                        let analysis: SalesManagerAnalysis;
+                        let analysisTime: number;
+                        
+                        if (isSalesManagerDisabled) {
+                          console.log(`\n${'🔴'.repeat(45)}`);
+                          console.log(`🔴 SALES MANAGER DISABLED (DISABLE_SALES_MANAGER=true)`);
+                          console.log(`🔴 Skipping all analysis - Sales Agent proceeds WITHOUT coaching`);
+                          console.log(`${'🔴'.repeat(45)}\n`);
+                          
+                          // Create empty analysis (no feedback, no advancement, no coaching)
+                          analysis = {
+                            stepAdvancement: {
+                              shouldAdvance: false,
+                              nextPhaseId: undefined,
+                              nextStepId: undefined,
+                              confidence: 0,
+                              reasoning: 'Sales Manager disabled - no analysis'
+                            },
+                            buySignals: { detected: false, signals: [], confidence: 0 },
+                            objections: { detected: false, objections: [], confidence: 0 },
+                            toneAnalysis: { issues: [], suggestions: [], confidence: 0 },
+                            checkpointValidation: { isComplete: true, missingItems: [] },
+                            toneMonitoring: { issues: [], suggestions: [] },
+                            prospectProfile: { current: 'unknown', confidence: 0, signals: [] },
+                            feedbackForAgent: null,
+                            archetypeState: persistentArchetypeState as any
+                          };
+                          analysisTime = 0;
+                        } else {
+                          console.log(`   📨 Calling SalesManagerAgent.analyze()...`);
+                          const analysisStart = Date.now();
+                          analysis = await SalesManagerAgent.analyze(params);
+                          analysisTime = Date.now() - analysisStart;
+                        }
                         
                         // 🆕 ARCHETYPE PERSISTENCE: Salva lo stato per la prossima chiamata
                         // IMPORTANTE: Deep clone per evitare mutazioni condivise tra turni
