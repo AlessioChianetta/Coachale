@@ -165,37 +165,37 @@ export interface SalesManagerAnalysis {
     confidence: number;
     reasoning: string;
   };
-  
+
   // Buy signals detected
   buySignals: {
     detected: boolean;
     signals: BuySignal[];
   };
-  
+
   // Objections detected
   objections: {
     detected: boolean;
     objections: DetectedObjection[];
   };
-  
+
   // Checkpoint status
   checkpointStatus: CheckpointStatus | null;
-  
+
   // Tone analysis
   toneAnalysis: ToneAnalysis;
-  
+
   // Prioritized feedback for agent
   feedbackForAgent: FeedbackForAgent | null;
-  
+
   // 🆕 Prospect Profiling Result
   profilingResult: ProspectProfilingResult | null;
-  
+
   // 🆕 Updated archetype state (for persistence)
   archetypeState: ArchetypeState | null;
-  
+
   // 🆕 TTS Parameters (separate output for voice engine)
   ttsParams: TTSParams | null;
-  
+
   // Analysis metadata
   analysisTimeMs: number;
   modelUsed: string;
@@ -442,18 +442,18 @@ function detectArchetypeSignalsRegex(messages: ConversationMessage[]): {
   score: number 
 }[] {
   const signals: Map<ArchetypeId, { patterns: string[]; score: number }> = new Map();
-  
+
   const prospectMessages = messages
     .filter(m => m.role === 'user')
     .slice(-4)
     .map(m => m.content);
-  
+
   const allProspectText = prospectMessages.join(' ');
-  
+
   for (const patternDef of ARCHETYPE_PATTERNS) {
     let matchedPatterns: string[] = [];
     let isNegated = false;
-    
+
     if (patternDef.negationPatterns) {
       for (const negPattern of patternDef.negationPatterns) {
         if (negPattern.test(allProspectText)) {
@@ -462,16 +462,16 @@ function detectArchetypeSignalsRegex(messages: ConversationMessage[]): {
         }
       }
     }
-    
+
     if (isNegated) continue;
-    
+
     for (const pattern of patternDef.patterns) {
       const match = allProspectText.match(pattern);
       if (match) {
         matchedPatterns.push(match[0]);
       }
     }
-    
+
     if (matchedPatterns.length > 0) {
       const score = Math.min(1, matchedPatterns.length * patternDef.weight);
       signals.set(patternDef.archetype, {
@@ -480,7 +480,7 @@ function detectArchetypeSignalsRegex(messages: ConversationMessage[]): {
       });
     }
   }
-  
+
   return Array.from(signals.entries())
     .map(([archetype, data]) => ({ archetype, ...data }))
     .sort((a, b) => b.score - a.score);
@@ -495,9 +495,9 @@ function detectAntiPatterns(
 ): { id: string; name: string; priority: 'critical' | 'high' | 'medium'; instruction: string } | null {
   const prospectMessages = messages.filter(m => m.role === 'user');
   const lastProspectMessage = prospectMessages[prospectMessages.length - 1];
-  
+
   if (!lastProspectMessage) return null;
-  
+
   for (const antiPattern of ANTI_PATTERNS) {
     for (const trigger of antiPattern.prospectTriggers) {
       if (trigger.test(lastProspectMessage.content)) {
@@ -512,7 +512,7 @@ function detectAntiPatterns(
       }
     }
   }
-  
+
   const agentMessages = messages.filter(m => m.role === 'assistant').slice(-4);
   if (agentMessages.length >= 2) {
     const questions = agentMessages
@@ -521,7 +521,7 @@ function detectAntiPatterns(
         return match ? match.join(' ') : '';
       })
       .filter(q => q.length > 10);
-    
+
     if (questions.length >= 2) {
       for (let i = 0; i < questions.length - 1; i++) {
         for (let j = i + 1; j < questions.length; j++) {
@@ -543,7 +543,7 @@ VIETATO fare la stessa domanda con parole diverse!`
       }
     }
   }
-  
+
   return null;
 }
 
@@ -553,10 +553,10 @@ VIETATO fare la stessa domanda con parole diverse!`
 function calculateJaccardSimilarity(str1: string, str2: string): number {
   const words1 = new Set(str1.toLowerCase().replace(/[?.,!]/g, '').split(/\s+/).filter(w => w.length > 2));
   const words2 = new Set(str2.toLowerCase().replace(/[?.,!]/g, '').split(/\s+/).filter(w => w.length > 2));
-  
+
   const intersection = new Set([...words1].filter(x => words2.has(x)));
   const union = new Set([...words1, ...words2]);
-  
+
   return union.size > 0 ? intersection.size / union.size : 0;
 }
 
@@ -591,36 +591,36 @@ function updateArchetypeState(
     lastInjectionTurn: 0,
     lastInjectedArchetype: null  // 🆕 Per evitare ripetizioni feedback
   };
-  
+
   if (!currentState) {
     currentState = defaultState;
   }
-  
+
   const turnsSinceUpdate = currentTurn - currentState.lastUpdatedAtTurn;
-  
+
   if (turnsSinceUpdate < 3 && regexSignals.length === 0 && !aiIntuition && !forceRegexFallback) {
     return {
       ...currentState,
       turnsSinceUpdate
     };
   }
-  
+
   let detectedArchetype: ArchetypeId = 'neutral';
   let confidence = 0.5;
-  
+
   if (aiIntuition) {
     detectedArchetype = aiIntuition;
     confidence = 0.85;
-    
+
     if (regexSignals.length > 0 && regexSignals[0].archetype === aiIntuition) {
       confidence = Math.min(0.98, confidence + regexSignals[0].score * 0.15);
     }
-    
+
     console.log(`   🧠 AI Intuition WINS: ${aiIntuition} (confidence: ${(confidence * 100).toFixed(0)}%)`);
   } else if (regexSignals.length > 0) {
     detectedArchetype = regexSignals[0].archetype;
     confidence = regexSignals[0].score;
-    
+
     // 🆕 FALLBACK: Se AI saltata, aumenta confidence dei regex signals (1.5x)
     if (forceRegexFallback) {
       confidence = Math.min(0.85, confidence * 1.5);
@@ -629,26 +629,26 @@ function updateArchetypeState(
       console.log(`   ⚡ Regex Signal: ${detectedArchetype} (score: ${(confidence * 100).toFixed(0)}%)`);
     }
   }
-  
+
   let consecutiveSignals = currentState.consecutiveSignals;
   if (detectedArchetype === currentState.lastSignalType) {
     consecutiveSignals++;
   } else {
     consecutiveSignals = 1;
   }
-  
+
   // 🆕 FALLBACK: Soglie ridotte quando AI non disponibile
   const confidenceThreshold = forceRegexFallback ? 0.6 : 0.8;
   const consecutiveThreshold = forceRegexFallback ? 1 : 2;
-  
+
   const shouldChange = 
     (confidence > confidenceThreshold) || 
     (consecutiveSignals >= consecutiveThreshold && confidence > 0.5);
-  
+
   if (shouldChange && detectedArchetype !== currentState.current) {
     console.log(`   🔄 ARCHETYPE CHANGE: ${currentState.current} → ${detectedArchetype}`);
     console.log(`      Reason: confidence=${(confidence * 100).toFixed(0)}%, consecutive=${consecutiveSignals}${forceRegexFallback ? ' (FALLBACK MODE)' : ''}`);
-    
+
     return {
       current: detectedArchetype,
       confidence,
@@ -662,7 +662,7 @@ function updateArchetypeState(
       lastInjectedArchetype: currentState.lastInjectedArchetype  // 🆕 Preserva per evitare ripetizioni
     };
   }
-  
+
   return {
     ...currentState,
     confidence: Math.max(currentState.confidence, confidence * 0.7),
@@ -687,11 +687,11 @@ function generateArchetypeInstruction(
 ): { filler: string; instruction: string; ttsParams: TTSParams } {
   const playbook = getPlaybookById(archetype);
   const filler = getRandomFiller(archetype);
-  
+
   // 🆕 USA SOLO feedback sul TONO - MAI istruzioni script!
   // Questo previene che l'AI salti fasi o avanzi prematuramente
   const toneOnlyFeedback = getToneOnlyFeedback(archetype);
-  
+
   // AntiPattern ha SEMPRE priorità (sono correzioni critiche di comportamento)
   // Gli antipattern riguardano errori comportamentali, non flow dello script
   if (antiPattern) {
@@ -701,7 +701,7 @@ function generateArchetypeInstruction(
       ttsParams: playbook.ttsParams
     };
   }
-  
+
   // 🆕 Ritorna SOLO feedback sul tono, MAI istruzioni su cosa chiedere
   return {
     filler,
@@ -754,7 +754,7 @@ Nel tuo output JSON, includi:
 export class SalesManagerAgent {
   private static readonly MODEL = "gemini-2.5-flash-lite";
   private static readonly TIMEOUT_MS = 6000; // 6 secondi max
-  
+
   /**
    * Analisi completa della conversazione con tutte le funzionalità del Sales Manager
    */
@@ -797,47 +797,47 @@ export class SalesManagerAgent {
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`   📍 Current: ${params.currentPhaseId} / ${params.currentStepId || 'N/A'}`);
     console.log(`   💬 Messages: ${params.recentMessages.length}`);
-    
+
     // 1. Quick local analysis (no AI call needed) + AI checkpoint validation
     const buySignals = this.detectBuySignals(params.recentMessages);
     const objections = this.detectObjections(params.recentMessages, params.script.objections);
     const toneAnalysis = this.analyzeTone(params.recentMessages, params.currentPhaseEnergy);
     // 🆕 Control analysis - detect if sales is losing control (only in Discovery)
     const controlAnalysis = this.analyzeConversationControl(params.recentMessages, params.currentPhaseId);
-    
+
     // 🆕 CHECKPOINT: Ora usa AI SEMANTIC ANALYSIS invece di keyword matching
     const checkpointStatus = await this.validateCheckpointWithAI(params);
-    
+
     // 🆕 LOG DETTAGLIATO CHECKPOINT - SEMPRE dopo la validazione AI
     const currentPhaseForLog = params.script.phases.find(p => p.id === params.currentPhaseId);
     if (currentPhaseForLog) {
       this.logCheckpointDetailed(checkpointStatus, { name: currentPhaseForLog.name, id: currentPhaseForLog.id });
     }
-    
+
     // 🆕 Business context per feedback (Gemini decide semanticamente se qualcosa è fuori scope)
     const businessCtx = this.getBusinessContextForFeedback(params.businessContext);
-    
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🎭 PROSPECT PROFILING - FAST REFLEXES (Regex Detection)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const currentTurn = params.currentTurn || params.recentMessages.length;
-    
+
     // 🚀 FAST REFLEXES: Regex detection (istantaneo, ~5ms)
     const regexSignals = detectArchetypeSignalsRegex(params.recentMessages);
-    
+
     // 🔍 ANTI-PATTERN CHECK: Priorità massima
     const antiPatternDetected = detectAntiPatterns(params.recentMessages);
-    
+
     // L'AI intuition verrà estratta dalla risposta dell'analyzeStepAdvancement (Slow Brain)
     // Inizializziamo come null, verrà aggiornato dopo la chiamata AI
     let aiIntuition: ArchetypeId | null = null;
     let aiIntuitionReasoning: string | null = null;
-    
+
     // Placeholder per variabili che verranno aggiornate dopo la chiamata AI
     let updatedArchetypeState: ArchetypeState;
     let archetypeInstruction: { filler: string; instruction: string; ttsParams: TTSParams };
     let profilingResult: ProspectProfilingResult;
-    
+
     console.log(`   💰 Buy signals: ${buySignals.detected ? buySignals.signals.length : 0}`);
     console.log(`   🛡️ Objections: ${objections.detected ? objections.objections.length : 0}`);
     console.log(`   🎭 Tone issues: ${toneAnalysis.issues.length}`);
@@ -850,7 +850,7 @@ export class SalesManagerAgent {
     if (antiPatternDetected) {
       console.log(`   🚨 Anti-Pattern: ${antiPatternDetected.name} (${antiPatternDetected.priority})`);
     }
-    
+
     // 2. AI analysis for step advancement (only if needed)
     let stepAdvancement = {
       shouldAdvance: false,
@@ -859,10 +859,10 @@ export class SalesManagerAgent {
       confidence: 0,
       reasoning: 'Pending AI analysis'
     };
-    
+
     // 3. Determine priority feedback
     let feedbackForAgent: FeedbackForAgent | null = null;
-    
+
     // Priority order: Tone > Checkpoint > Advancement
     // 🆕 L'identità business (chi sei, cosa fai, cosa NON fai) viene SEMPRE inclusa nel feedbackContent
     // e Gemini decide semanticamente se una richiesta è fuori scope
@@ -911,13 +911,13 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
         message: `⛔ CHECKPOINT INCOMPLETO: Mancano ${checkpointStatus.missingItems.length} verifiche\n→ ${checkpointStatus.missingItems.slice(0, 2).join('\n→ ')}`,
       };
     }
-    
+
     // 4. Call AI for step advancement analysis (if no critical issues)
     // 🆕 L'AI ora rileva anche l'archetipo del prospect (Slow Brain)
     if (!feedbackForAgent || feedbackForAgent.priority !== 'critical') {
       try {
         const aiAnalysis = await this.analyzeStepAdvancement(params);
-        
+
         stepAdvancement = {
           shouldAdvance: aiAnalysis.shouldAdvance,
           nextPhaseId: aiAnalysis.nextPhaseId,
@@ -925,21 +925,21 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
           confidence: aiAnalysis.confidence,
           reasoning: aiAnalysis.reasoning
         };
-        
+
         // 🧠 SLOW BRAIN: Estrai l'archetipo rilevato dall'AI
         if (aiAnalysis.detectedArchetype) {
           aiIntuition = aiAnalysis.detectedArchetype;
           aiIntuitionReasoning = aiAnalysis.archetypeReasoning;
           console.log(`   🧠 AI Intuition: ${aiIntuition} - "${aiIntuitionReasoning || 'no reasoning'}"`);
         }
-        
+
         // 🆕 FIX: Check if reasoning mentions out-of-scope and generate feedback
         if (!feedbackForAgent) {
           const reasoningLower = stepAdvancement.reasoning.toLowerCase();
           const outOfScopeKeywords = ['fuori scope', 'fuori dall\'offerta', 'non rientra', 'non offriamo', 'non vendiamo', 'non forniamo', 'scooter', 'monopattini', 'fisico', 'prodotto fisico'];
-          
+
           const isOutOfScope = outOfScopeKeywords.some(keyword => reasoningLower.includes(keyword));
-          
+
           if (isOutOfScope) {
             feedbackForAgent = {
               shouldInject: true,
@@ -964,7 +964,7 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
         stepAdvancement.reasoning = `AI analysis failed: ${error.message}`;
       }
     }
-    
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🚫 GATEKEEPING LOGIC - CHECKPOINT SEMANTICI BLOCCANTI
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -972,13 +972,13 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     // il checkpoint della fase corrente non è stato validato.
     // Prima bloccava SOLO le transizioni di fase, ora blocca tutto.
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    
+
     const currentPhase = params.script.phases.find(p => p.id === params.currentPhaseId);
     const currentStepIndex = currentPhase?.steps.findIndex(s => s.id === params.currentStepId) ?? -1;
     const isLastStepOfPhase = currentStepIndex >= (currentPhase?.steps.length ?? 0) - 1;
     const isPhaseTransition = stepAdvancement.shouldAdvance && isLastStepOfPhase && 
                               stepAdvancement.nextPhaseId !== params.currentPhaseId;
-    
+
     // 🆕 BLOCCO ESTESO: Ora si applica a QUALSIASI avanzamento (shouldAdvance), non solo transizioni di fase
     if (stepAdvancement.shouldAdvance && checkpointStatus && !checkpointStatus.canAdvance) {
       // 🚫 BLOCCO FORZATO: L'AI vuole avanzare ma il checkpoint non è completo
@@ -986,11 +986,11 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       const totalChecks = checkpointStatus.totalChecks || (checkpointStatus.completedItems.length + checkpointStatus.missingItems.length);
       const validatedCount = checkpointStatus.validatedCount || checkpointStatus.completedItems.length;
       const missingCount = checkpointStatus.missingCount || checkpointStatus.missingItems.length;
-      
+
       // Log blocco (il log dettagliato è già stato stampato da logCheckpointDetailed())
       console.log(`\n🚫 [CHECKPOINT GATE] BLOCCO AVANZAMENTO ATTIVATO`);
       console.log(`   Motivo: ${validatedCount}/${totalChecks} verifiche completate - ${isPhaseTransition ? 'Transizione FASE' : 'Avanzamento STEP'} NEGATO`);
-      
+
       // 🚫 FORZA IL BLOCCO COMPLETO
       // Reimposta tutto sulla FASE/STEP CORRENTE per impedire qualsiasi avanzamento
       stepAdvancement.shouldAdvance = false;
@@ -998,13 +998,13 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       stepAdvancement.nextStepId = params.currentStepId || null; // Rimani nello step corrente
       stepAdvancement.reasoning = `BLOCCATO DA CHECKPOINT: "${checkpointStatus.checkpointName}" non completato. Mancano ${missingCount} informazioni obbligatorie.`;
       stepAdvancement.confidence = 1; // 100% sicuri del blocco
-      
+
       // Genera feedback dettagliato per l'agente con lista ✓/✗
       const itemStatusList = checkpointStatus.itemDetails?.map((item) => {
         const icon = item.status === 'validated' ? '✓' : item.status === 'vague' ? '⚠' : '✗';
         return `${icon} ${item.check}`;
       }).join('\n') || checkpointStatus.missingItems.slice(0, 5).map((item, i) => `✗ ${item}`).join('\n');
-      
+
       feedbackForAgent = {
         shouldInject: true,
         priority: 'critical',
@@ -1019,18 +1019,18 @@ Completa le verifiche mancanti (✗) prima di poter procedere.`,
         toneReminder: 'Fai domande specifiche per raccogliere le informazioni mancanti!'
       };
     }
-    
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🎭 PROSPECT PROFILING - SLOW BRAIN (AI Intuition + State Update)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Ora che abbiamo l'AI intuition, aggiorniamo lo stato dell'archetipo
-    
+
     // 🆕 FALLBACK: Rileva se AI è stata saltata per feedback critico
     const aiWasSkipped = feedbackForAgent && feedbackForAgent.priority === 'critical' && !aiIntuition;
     if (aiWasSkipped && regexSignals.length > 0) {
       console.log(`   ⚠️ AI SKIPPED (critical feedback) - activating REGEX FALLBACK mode`);
     }
-    
+
     // 🧠 STICKY ARCHETYPE: Aggiorna stato con logica di inerzia
     // Passa forceRegexFallback=true se AI saltata ma ci sono segnali regex
     updatedArchetypeState = updateArchetypeState(
@@ -1040,13 +1040,13 @@ Completa le verifiche mancanti (✗) prima di poter procedere.`,
       currentTurn,
       aiWasSkipped && regexSignals.length > 0  // 🆕 forceRegexFallback
     );
-    
+
     // 📝 GENERA ISTRUZIONE per l'Agent
     archetypeInstruction = generateArchetypeInstruction(
       updatedArchetypeState.current,
       antiPatternDetected ? { id: antiPatternDetected.id, instruction: antiPatternDetected.instruction } : null
     );
-    
+
     // Build profiling result
     profilingResult = {
       archetype: updatedArchetypeState.current,
@@ -1058,14 +1058,14 @@ Completa le verifiche mancanti (✗) prima di poter procedere.`,
       ttsParams: archetypeInstruction.ttsParams,
       antiPatternDetected: antiPatternDetected ? { id: antiPatternDetected.id, instruction: antiPatternDetected.instruction } : null
     };
-    
+
     console.log(`   🎭 Final Archetype: ${formatArchetypeTag(updatedArchetypeState.current)} (${(updatedArchetypeState.confidence * 100).toFixed(0)}%)`);
     if (aiIntuition && aiIntuition !== regexSignals[0]?.archetype) {
       console.log(`      ⚡ Regex suggested: ${regexSignals[0]?.archetype || 'neutral'} → 🧠 AI overrode to: ${aiIntuition}`);
     }
-    
+
     const analysisTimeMs = Date.now() - startTime;
-    
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🎭 TONE-ONLY FEEDBACK: Inietta SOLO quando archetipo CAMBIA
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1074,13 +1074,13 @@ Completa le verifiche mancanti (✗) prima di poter procedere.`,
     // 2. Archetype → inietta SOLO SE è CAMBIATO rispetto all'ultimo iniettato
     // 3. NON iniettare periodicamente se è lo stesso archetipo!
     // 4. Il feedback contiene SOLO indicazioni sul TONO, MAI istruzioni script
-    
+
     const archetypeJustChanged = updatedArchetypeState.turnsSinceUpdate === 0;
     const isDifferentFromLastInjected = updatedArchetypeState.current !== (updatedArchetypeState.lastInjectedArchetype || 'neutral');
-    
+
     // 🆕 FIX: Inietta SOLO SE archetipo è cambiato O è diverso dall'ultimo iniettato
     const shouldInjectArchetype = archetypeJustChanged || isDifferentFromLastInjected;
-    
+
     if (antiPatternDetected && antiPatternDetected.priority === 'critical') {
       feedbackForAgent = {
         shouldInject: true,
@@ -1092,17 +1092,17 @@ Completa le verifiche mancanti (✗) prima di poter procedere.`,
     } else if (shouldInjectArchetype && updatedArchetypeState.current !== 'neutral' && updatedArchetypeState.confidence > 0.6) {
       const archetypeTag = formatArchetypeTag(updatedArchetypeState.current);
       const existingMessage = feedbackForAgent?.message || '';
-      
+
       // 🆕 Feedback SOLO-TONO (nessuna istruzione script!)
       const profilingHeader = `🎭 ARCHETIPO: ${archetypeTag}
 ${archetypeInstruction.instruction}`;
-      
+
       console.log(`   📢 ARCHETYPE INJECTION at turn ${currentTurn} (${archetypeJustChanged ? 'archetype just changed' : `different from last injected (${updatedArchetypeState.lastInjectedArchetype || 'none'})`})`);
-      
+
       // 🆕 Aggiorna tracking dopo iniezione
       updatedArchetypeState.lastInjectionTurn = currentTurn;
       updatedArchetypeState.lastInjectedArchetype = updatedArchetypeState.current;  // 🆕 Traccia quale archetipo è stato iniettato
-      
+
       if (feedbackForAgent) {
         feedbackForAgent.message = `${existingMessage}\n\n${profilingHeader}`;
         feedbackForAgent.toneReminder = `Adatta il tuo stile a ${archetypeTag}`;
@@ -1119,7 +1119,7 @@ ${archetypeInstruction.instruction}`;
       // 🆕 Log: stesso archetipo già iniettato, skip
       console.log(`   🔇 ARCHETYPE SKIPPED at turn ${currentTurn} (stesso archetipo "${updatedArchetypeState.current}" già iniettato)`);
     }
-    
+
     console.log(`\n🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`🎩 [SALES-MANAGER] Analysis complete in ${analysisTimeMs}ms`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -1127,7 +1127,7 @@ ${archetypeInstruction.instruction}`;
     console.log(`   → Feedback: ${feedbackForAgent ? `${feedbackForAgent.type} (${feedbackForAgent.priority})` : 'none'}`);
     console.log(`   → Archetype: ${formatArchetypeTag(updatedArchetypeState.current)}`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-    
+
     return {
       stepAdvancement,
       buySignals,
@@ -1142,16 +1142,16 @@ ${archetypeInstruction.instruction}`;
       modelUsed: this.MODEL
     };
   }
-  
+
   /**
    * Detect buy signals in recent messages (local, fast)
    */
   private static detectBuySignals(messages: ConversationMessage[]): { detected: boolean; signals: BuySignal[] } {
     const signals: BuySignal[] = [];
-    
+
     // Only check user (prospect) messages
     const prospectMessages = messages.filter(m => m.role === 'user');
-    
+
     for (const message of prospectMessages) {
       for (const [type, config] of Object.entries(BUY_SIGNAL_PATTERNS)) {
         for (const pattern of config.patterns) {
@@ -1168,13 +1168,13 @@ ${archetypeInstruction.instruction}`;
         }
       }
     }
-    
+
     return {
       detected: signals.length > 0,
       signals
     };
   }
-  
+
   /**
    * Detect objections in recent messages (local, fast)
    */
@@ -1183,10 +1183,10 @@ ${archetypeInstruction.instruction}`;
     scriptObjections?: ScriptObjection[]
   ): { detected: boolean; objections: DetectedObjection[] } {
     const detectedObjections: DetectedObjection[] = [];
-    
+
     // Only check user (prospect) messages
     const prospectMessages = messages.filter(m => m.role === 'user');
-    
+
     for (const message of prospectMessages) {
       // Check against script objections first (if available)
       if (scriptObjections) {
@@ -1204,11 +1204,11 @@ ${archetypeInstruction.instruction}`;
           }
         }
       }
-      
+
       // Check against generic patterns
       for (const [type, config] of Object.entries(OBJECTION_PATTERNS)) {
         if (type === 'other') continue; // Skip generic fallback
-        
+
         for (const pattern of config.patterns) {
           const match = message.content.match(pattern);
           if (match) {
@@ -1216,7 +1216,7 @@ ${archetypeInstruction.instruction}`;
             const alreadyDetected = detectedObjections.some(
               o => o.phrase === message.content.substring(0, 100)
             );
-            
+
             if (!alreadyDetected) {
               detectedObjections.push({
                 type: type as ObjectionType,
@@ -1230,13 +1230,13 @@ ${archetypeInstruction.instruction}`;
         }
       }
     }
-    
+
     return {
       detected: detectedObjections.length > 0,
       objections: detectedObjections
     };
   }
-  
+
   /**
    * 🆕 Get business context for feedback
    * Restituisce il contesto business completo da includere nel feedback per Gemini
@@ -1246,14 +1246,14 @@ ${archetypeInstruction.instruction}`;
     businessContext?: BusinessContext
   ): { identity: string; whatWeDo: string; whatWeDontDo: string } | null {
     if (!businessContext) return null;
-    
+
     return {
       identity: businessContext.businessName || 'Il consulente',
       whatWeDo: businessContext.whatWeDo || 'Offriamo servizi specializzati',
       whatWeDontDo: businessContext.nonTargetClient || ''
     };
   }
-  
+
   /**
    * 🆕 Analyze conversation control - detect if sales is losing control
    * Only applies during Discovery phase (phase_1 to phase_4)
@@ -1268,7 +1268,7 @@ ${archetypeInstruction.instruction}`;
     // Check if we're in Discovery phase (phase_1 to phase_4)
     const phaseNum = parseInt(currentPhaseId.replace('phase_', ''), 10) || 0;
     const isDiscoveryPhase = phaseNum >= 1 && phaseNum <= 4;
-    
+
     if (!isDiscoveryPhase) {
       return {
         isLosingControl: false,
@@ -1277,30 +1277,30 @@ ${archetypeInstruction.instruction}`;
         isDiscoveryPhase: false
       };
     }
-    
+
     // Analyze last 10 messages
     const recentMessages = messages.slice(-10);
-    
+
     // Count consecutive prospect questions without sales asking a question
     let consecutiveProspectQuestions = 0;
     let salesQuestionsInWindow = 0;
-    
+
     // Go backwards from most recent message
     for (let i = recentMessages.length - 1; i >= 0; i--) {
       const msg = recentMessages[i];
-      
+
       if (msg.role === 'user') {
         // Check if prospect message contains a question
         const hasQuestion = msg.content.includes('?') || 
           /^(cosa|come|quando|perché|perche|quanto|chi|dove|quale)/i.test(msg.content.trim());
-        
+
         if (hasQuestion) {
           consecutiveProspectQuestions++;
         }
       } else if (msg.role === 'assistant') {
         // Check if sales made a question
         const hasQuestion = msg.content.includes('?');
-        
+
         if (hasQuestion) {
           salesQuestionsInWindow++;
           // Sales made a question, reset the counter
@@ -1309,10 +1309,10 @@ ${archetypeInstruction.instruction}`;
         // If sales didn't ask a question, continue counting
       }
     }
-    
+
     // Losing control if 3+ consecutive prospect questions without sales asking any
     const isLosingControl = consecutiveProspectQuestions >= 3 && salesQuestionsInWindow === 0;
-    
+
     if (isLosingControl) {
       console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
       console.log(`🎯 [CONTROL ANALYSIS] Sales is LOSING CONTROL!`);
@@ -1322,7 +1322,7 @@ ${archetypeInstruction.instruction}`;
       console.log(`   📋 Sales questions in window: ${salesQuestionsInWindow}`);
       console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
     }
-    
+
     return {
       isLosingControl,
       consecutiveProspectQuestions,
@@ -1330,7 +1330,7 @@ ${archetypeInstruction.instruction}`;
       isDiscoveryPhase
     };
   }
-  
+
   /**
    * Analyze tone and detect robotic behavior (local, fast)
    */
@@ -1343,16 +1343,16 @@ ${archetypeInstruction.instruction}`;
     let lastMessageTooLong = false;
     let isRobotic = false;
     let energyMismatch = false;
-    
+
     // Get last 4 AI messages
     const aiMessages = messages
       .filter(m => m.role === 'assistant')
       .slice(-4);
-    
+
     if (aiMessages.length === 0) {
       return { isRobotic: false, consecutiveQuestions: 0, lastMessageTooLong: false, energyMismatch: false, issues: [] };
     }
-    
+
     // Check consecutive questions (no waiting for response)
     let questionsInRow = 0;
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -1366,13 +1366,13 @@ ${archetypeInstruction.instruction}`;
         break; // Stop at first user message going backwards
       }
     }
-    
+
     if (questionsInRow >= 3) {
       consecutiveQuestions = questionsInRow;
       issues.push(`${questionsInRow} domande consecutive senza aspettare risposta`);
       isRobotic = true;
     }
-    
+
     // Check last message length (800 caratteri per chiamate vocali, non 500)
     const lastAiMessage = aiMessages[aiMessages.length - 1];
     if (lastAiMessage && lastAiMessage.content.length > 800) {
@@ -1380,18 +1380,18 @@ ${archetypeInstruction.instruction}`;
       issues.push(`Messaggio troppo lungo (${lastAiMessage.content.length} caratteri, max 800)`);
       isRobotic = true;
     }
-    
+
     // Check if AI is not responding to user questions
     // FIXED: Only flag if AI message comes AFTER user question and doesn't acknowledge it
     const lastUserIdx = messages.map((m, i) => m.role === 'user' ? i : -1).filter(i => i >= 0).pop() ?? -1;
     const lastAiIdx = messages.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i >= 0).pop() ?? -1;
-    
+
     if (lastUserIdx >= 0 && lastAiIdx > lastUserIdx) {
       // AI spoke AFTER user - check if user asked question and AI acknowledged
       const lastUserMessage = messages[lastUserIdx];
       const aiAfterUser = messages[lastAiIdx];
       const hasQuestion = lastUserMessage.content.includes('?');
-      
+
       // Expanded list of acknowledgment words in Italian
       const aiContent = aiAfterUser.content.toLowerCase();
       const acknowledgmentWords = [
@@ -1402,18 +1402,18 @@ ${archetypeInstruction.instruction}`;
         'ecco', 'allora', 'dunque', 'quindi', 'perché', 'perchè'
       ];
       const hasAcknowledgment = acknowledgmentWords.some(word => aiContent.includes(word));
-      
+
       if (hasQuestion && !hasAcknowledgment) {
         issues.push('Il prospect ha fatto una domanda ma l\'AI non sembra rispondere');
         isRobotic = true;
       }
     }
-    
+
     // Energy mismatch check (simplified)
     if (expectedEnergy) {
       // Check for emotional cues in last AI message
       const lastMsg = lastAiMessage?.content.toLowerCase() || '';
-      
+
       if (expectedEnergy.level === 'ALTO' && 
           !lastMsg.includes('!') && 
           !lastMsg.includes('fantastico') && 
@@ -1422,7 +1422,7 @@ ${archetypeInstruction.instruction}`;
         energyMismatch = true;
         issues.push(`Energia troppo bassa per questa fase (richiesta: ${expectedEnergy.level})`);
       }
-      
+
       if (expectedEnergy.tone === 'ENTUSIASTA' && 
           lastMsg.length > 0 &&
           (lastMsg.match(/\!/g) || []).length < 1) {
@@ -1430,7 +1430,7 @@ ${archetypeInstruction.instruction}`;
         issues.push(`Tono non abbastanza entusiasta`);
       }
     }
-    
+
     return {
       isRobotic,
       consecutiveQuestions,
@@ -1439,7 +1439,7 @@ ${archetypeInstruction.instruction}`;
       issues
     };
   }
-  
+
   /**
    * 🆕 Validate checkpoint completion using AI SEMANTIC ANALYSIS
    * 
@@ -1453,22 +1453,40 @@ ${archetypeInstruction.instruction}`;
    */
   private static async validateCheckpointWithAI(params: SalesManagerParams): Promise<CheckpointStatus | null> {
     const currentPhase = params.script.phases.find(p => p.id === params.currentPhaseId);
-    if (!currentPhase?.checkpoint) return null;
-    
+
+    if (!currentPhase?.checkpoint) {
+      console.log(`   ⚠️ No checkpoint found for phase ${params.currentPhaseId}`);
+      return null;
+    }
+
     const checkpoint = currentPhase.checkpoint;
-    
+
+    // Prepara parametri per StepAdvancementAgent
+    const analysisParams = {
+      checkpoint: {
+        id: checkpoint.id || `${params.currentPhaseId}_checkpoint`,
+        title: checkpoint.title,
+        checks: checkpoint.checks
+      },
+      recentMessages: params.recentMessages,
+      clientId: params.clientId,
+      consultantId: params.consultantId,
+      phaseName: currentPhase.name,
+      phaseId: currentPhase.id
+    };
+
     console.log(`\n🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...`);
     console.log(`   📍 Phase: ${currentPhase.name} (${currentPhase.id})`);
     console.log(`   🎯 Checkpoint: ${checkpoint.title}`);
     console.log(`   📋 Checks to validate: ${checkpoint.checks.length}`);
-    
+
     try {
       // Usa l'analisi semantica AI del StepAdvancementAgent
       const aiResult = await StepAdvancementAgent.analyzeCheckpointCompletion({
         checkpoint: {
-          id: checkpoint.id,
+          id: checkpoint.id || `${params.currentPhaseId}_checkpoint`,
           title: checkpoint.title,
-          checks: checkpoint.checks
+          checks: checkpoint.checks || []
         },
         recentMessages: params.recentMessages,
         clientId: params.clientId,
@@ -1476,16 +1494,16 @@ ${archetypeInstruction.instruction}`;
         phaseName: currentPhase.name,
         phaseId: currentPhase.id
       });
-      
+
       console.log(`✅ [SALES-MANAGER] AI checkpoint analysis complete`);
       console.log(`   🟢 Completed: ${aiResult.completedItems.length}`);
       console.log(`   🔴 Missing: ${aiResult.missingItems.length}`);
       console.log(`   📊 Confidence: ${(aiResult.confidence * 100).toFixed(0)}%`);
       console.log(`   📈 Quality Score: ${aiResult.qualityScore?.overall || 0}/10`);
-      
+
       // 🆕 Ritorna tutti i nuovi campi per logging dettagliato
       return {
-        checkpointId: checkpoint.id,
+        checkpointId: checkpoint.id || `${params.currentPhaseId}_checkpoint`, // Use generated ID if missing
         checkpointName: checkpoint.title,
         isComplete: aiResult.isComplete,
         missingItems: aiResult.missingItems,
@@ -1498,16 +1516,16 @@ ${archetypeInstruction.instruction}`;
         validatedCount: aiResult.validatedCount,
         missingCount: aiResult.missingCount
       };
-      
+
     } catch (error: any) {
       console.error(`❌ [SALES-MANAGER] AI checkpoint validation failed:`, error.message);
-      
+
       // 🚫 NESSUN FALLBACK KEYWORD - Se AI fallisce, blocchiamo per sicurezza
       console.log(`🚫 [SALES-MANAGER] NO FALLBACK - Blocking advancement due to AI failure`);
-      
+
       const phaseNumber = currentPhase.id.replace('phase_', '').replace(/_/g, '-');
       return {
-        checkpointId: checkpoint.id,
+        checkpointId: checkpoint.id || `${params.currentPhaseId}_checkpoint`, // Use generated ID if missing
         checkpointName: checkpoint.title,
         isComplete: false,
         missingItems: checkpoint.checks,
@@ -1526,74 +1544,29 @@ ${archetypeInstruction.instruction}`;
       };
     }
   }
-  
-  // 🚫 KEYWORD FALLBACK RIMOSSO PER DESIGN
-  // Per requisito utente, la validazione deve essere ESCLUSIVAMENTE semantica via AI.
-  // Se l'AI fallisce, il sistema blocca l'avanzamento per sicurezza.
-  // Nessun fallback keyword matching.
-  
-  
-  /**
-   * AI-powered step advancement analysis
-   */
-  private static async analyzeStepAdvancement(params: SalesManagerParams): Promise<{
-    shouldAdvance: boolean;
-    nextPhaseId: string | null;
-    nextStepId: string | null;
-    confidence: number;
-    reasoning: string;
-  }> {
-    const { client: aiClient, cleanup } = await getAIProvider(params.clientId, params.consultantId);
-    
-    try {
-      const prompt = this.buildAdvancementPrompt(params);
-      
-      const response = await Promise.race([
-        aiClient.generateContent({
-          model: this.MODEL,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0,
-            maxOutputTokens: 800,
-          }
-        }),
-        this.timeout(this.TIMEOUT_MS)
-      ]);
-      
-      if (!response || typeof response === 'string') {
-        return { shouldAdvance: false, nextPhaseId: null, nextStepId: null, confidence: 0, reasoning: 'Timeout' };
-      }
-      
-      const responseText = response.response.text();
-      return this.parseAdvancementResponse(responseText, params);
-      
-    } finally {
-      if (cleanup) await cleanup();
-    }
-  }
-  
+
   /**
    * Build prompt for step advancement analysis
    * 🆕 Include anche l'intuizione psicologica per il Prospect Profiling
    */
   private static buildAdvancementPrompt(params: SalesManagerParams): string {
     const { recentMessages, script, currentPhaseId, currentStepId, currentPhaseIndex, currentStepIndex } = params;
-    
+
     const currentPhase = script.phases.find(p => p.id === currentPhaseId);
     const currentStep = currentPhase?.steps.find(s => s.id === currentStepId);
-    
+
     const { nextPhase, nextStep, isLastStepOfPhase, isLastPhase } = this.getNextPosition(
       script, currentPhaseId, currentStepId, currentPhaseIndex, currentStepIndex
     );
-    
+
     const messagesText = recentMessages
       .slice(-6)
       .map(m => `${m.role === 'user' ? 'PROSPECT' : 'AGENTE'}: ${m.content}`)
       .join('\n');
-    
+
     const nextPhaseIdValue = nextPhase?.id || null;
     const nextStepIdValue = nextStep?.id || null;
-    
+
     return `Sei un analizzatore di conversazioni di vendita con intuizione psicologica.
 
 📍 POSIZIONE ATTUALE:
@@ -1644,7 +1617,7 @@ REGOLE ARCHETIPO (IMPORTANTE):
 📤 RISPONDI SOLO JSON:
 {"shouldAdvance":boolean,"nextPhaseId":"${nextPhaseIdValue}"|null,"nextStepId":"${nextStepIdValue}"|null,"reasoning":"string","confidence":number,"detected_archetype":"skeptic|busy|price_focused|technical|enthusiast|indecisive|defensive|neutral","archetype_reasoning":"breve spiegazione"}`;
   }
-  
+
   /**
    * Parse AI response for step advancement
    * 🆕 Ora estrae anche l'archetipo rilevato dall'AI (Slow Brain)
@@ -1660,13 +1633,13 @@ REGOLE ARCHETIPO (IMPORTANTE):
   } {
     console.log(`🤖 [SALES-MANAGER] Raw AI response (${responseText.length} chars):`, 
       responseText.substring(0, 300) + (responseText.length > 300 ? '...' : ''));
-    
+
     try {
       let jsonText: string | null = null;
-      
+
       const startIdx = responseText.indexOf('{');
       const endIdx = responseText.lastIndexOf('}');
-      
+
       if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
         jsonText = responseText.substring(startIdx, endIdx + 1);
         console.log(`✅ [SALES-MANAGER] Extracted JSON (${jsonText.length} chars)`);
@@ -1677,20 +1650,20 @@ REGOLE ARCHETIPO (IMPORTANTE):
         if (cleanText.endsWith('```')) cleanText = cleanText.slice(0, -3);
         jsonText = cleanText.trim();
       }
-      
+
       const parsed = JSON.parse(jsonText);
-      
+
       const validArchetypes: ArchetypeId[] = ['skeptic', 'busy', 'price_focused', 'technical', 'enthusiast', 'indecisive', 'defensive', 'analytical', 'decision_maker', 'neutral'];
       let detectedArchetype: ArchetypeId | null = null;
-      
+
       const rawArchetype = parsed.detected_archetype?.toLowerCase?.() || parsed.detectedArchetype?.toLowerCase?.();
       if (rawArchetype && validArchetypes.includes(rawArchetype)) {
         detectedArchetype = rawArchetype as ArchetypeId;
       }
-      
+
       // Estrai l'archetype_reasoning dalla risposta AI
       const archetypeReasoningRaw = parsed.archetype_reasoning || parsed.archetypeReasoning || null;
-      
+
       const result = {
         shouldAdvance: Boolean(parsed.shouldAdvance),
         nextPhaseId: parsed.shouldAdvance ? (parsed.nextPhaseId || null) : null,
@@ -1700,23 +1673,23 @@ REGOLE ARCHETIPO (IMPORTANTE):
         detectedArchetype,
         archetypeReasoning: archetypeReasoningRaw ? String(archetypeReasoningRaw) : null
       };
-      
+
       console.log(`✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=${result.shouldAdvance}, confidence=${result.confidence}`);
       if (detectedArchetype) {
         console.log(`   🧠 AI Archetype Intuition: ${detectedArchetype} - "${result.archetypeReasoning || 'no reason'}"`);
       }
       return result;
-      
+
     } catch (error: any) {
       console.error(`❌ [SALES-MANAGER] Parse error:`, error.message);
       console.error(`❌ [SALES-MANAGER] Full response was:`, responseText);
-      
+
       const advanceMatch = responseText.match(/shouldAdvance["\s:]+(\w+)/i);
       const hasAdvance = advanceMatch && advanceMatch[1].toLowerCase() === 'true';
-      
+
       const archetypeMatch = responseText.match(/detected_archetype["\s:]+["']?(\w+)["']?/i);
       const extractedArchetype = archetypeMatch ? archetypeMatch[1].toLowerCase() as ArchetypeId : null;
-      
+
       if (advanceMatch) {
         console.log(`⚠️ [SALES-MANAGER] Fallback extraction: shouldAdvance=${hasAdvance}`);
         return {
@@ -1729,7 +1702,7 @@ REGOLE ARCHETIPO (IMPORTANTE):
           archetypeReasoning: null
         };
       }
-      
+
       return {
         shouldAdvance: false,
         nextPhaseId: null,
@@ -1741,7 +1714,7 @@ REGOLE ARCHETIPO (IMPORTANTE):
       };
     }
   }
-  
+
   /**
    * Get next position in script
    */
@@ -1761,10 +1734,10 @@ REGOLE ARCHETIPO (IMPORTANTE):
     if (!currentPhase) {
       return { nextPhase: null, nextStep: null, isLastStepOfPhase: false, isLastPhase: false };
     }
-    
+
     const isLastStepOfPhase = currentStepIndex >= currentPhase.steps.length - 1;
     const isLastPhase = currentPhaseIndex >= script.phases.length - 1;
-    
+
     if (isLastStepOfPhase) {
       if (isLastPhase) {
         return { nextPhase: null, nextStep: null, isLastStepOfPhase: true, isLastPhase: true };
@@ -1777,7 +1750,7 @@ REGOLE ARCHETIPO (IMPORTANTE):
       return { nextPhase: currentPhase, nextStep, isLastStepOfPhase: false, isLastPhase: false };
     }
   }
-  
+
   /**
    * Timeout promise
    */
@@ -1786,7 +1759,7 @@ REGOLE ARCHETIPO (IMPORTANTE):
       setTimeout(() => resolve('timeout'), ms);
     });
   }
-  
+
   /**
    * 🆕 LOG DETTAGLIATO CHECKPOINT
    * Logga lo stato del checkpoint nel formato richiesto con ✓/✗ per ogni verifica
@@ -1797,7 +1770,7 @@ REGOLE ARCHETIPO (IMPORTANTE):
     currentPhase: { name: string; id: string } | null
   ): void {
     if (!checkpointStatus || !currentPhase) return;
-    
+
     const { 
       totalChecks = 0, 
       validatedCount = 0, 
@@ -1807,18 +1780,18 @@ REGOLE ARCHETIPO (IMPORTANTE):
       qualityScore,
       checkpointName
     } = checkpointStatus;
-    
+
     const phaseNumber = currentPhase.id.replace('phase_', '').replace(/_/g, '-');
-    
+
     console.log(`\n⛔ CHECKPOINT FASE #${phaseNumber}`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`${checkpointName || 'PRIMA DI PASSARE ALLA FASE SUCCESSIVA VERIFICA:'}\n`);
-    
+
     itemDetails.forEach((item) => {
       const icon = item.status === 'validated' ? '✓' : item.status === 'vague' ? '⚠' : '✗';
       const statusColor = item.status === 'validated' ? '' : item.status === 'vague' ? ' [VAGO]' : ' [MANCANTE]';
       console.log(`${icon} ${item.check}${statusColor}`);
-      
+
       if (item.status === 'validated' && item.infoCollected) {
         console.log(`   → Info raccolta: "${item.infoCollected.substring(0, 80)}${item.infoCollected.length > 80 ? '...' : ''}"`);
       } else if (item.status === 'vague' && item.reason) {
@@ -1826,12 +1799,12 @@ REGOLE ARCHETIPO (IMPORTANTE):
       } else if (item.status === 'missing' && item.reason) {
         console.log(`   → Motivo: ${item.reason}`);
       }
-      
+
       if (item.evidenceQuote) {
         console.log(`   → Evidenza: "${item.evidenceQuote.substring(0, 60)}${item.evidenceQuote.length > 60 ? '...' : ''}"`);
       }
     });
-    
+
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`STATO: ${validatedCount}/${totalChecks} validati | Quality Score: ${qualityScore?.overall || 0}/10`);
     console.log(`${canAdvance ? '✅ PASSAGGIO CONSENTITO' : '🚫 BLOCCO ATTIVO - Completare le verifiche mancanti'}`);
