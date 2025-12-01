@@ -652,13 +652,14 @@ Esempio se NON avanzare + feedback correttivo:
         });
         
         // Chiama Gemini con timeout
+        // 🆕 Aumentato maxOutputTokens per includere itemDetails con suggestedNextAction
         const response = await Promise.race([
           aiClient.generateContent({
             model: this.MODEL,
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0, // Deterministico per coerenza
-              maxOutputTokens: 800,
+              maxOutputTokens: 2000, // 🆕 Aumentato da 800 per risposta completa con suggerimenti AI
             }
           }),
           this.timeout(this.TIMEOUT_MS)
