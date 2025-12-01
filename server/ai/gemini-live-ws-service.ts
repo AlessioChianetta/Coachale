@@ -943,6 +943,90 @@ export function setupGeminiLiveWSService(server: Server) {
     const MIN_TIME_AFTER_AI_RESPONSE_MS = 2000; // 🆕 Non avviare watchdog se AI ha risposto negli ultimi 2 sec
     
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔬 DIAGNOSTIC TRACKING - Per capire PERCHÉ Gemini non risponde
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    let audioChunksSentSinceLastResponse = 0;  // Contatore audio chunks inviati
+    let lastServerContentTimestamp = 0;         // Quando è arrivato l'ultimo serverContent
+    let lastServerContentType: 'audio' | 'text' | 'metadata' | 'none' = 'none';  // Tipo ultimo serverContent
+    let isFinalReceivedForCurrentTurn = false;  // Se isFinal è stato ricevuto per il turno corrente
+    let lastActivityTimestamp = Date.now();     // Timestamp ultima attività (per super-watchdog)
+    let userSpeakingStartTime: number | null = null;  // Quando l'utente ha iniziato a parlare
+    const ISFINAL_BACKUP_TIMEOUT_MS = 10000;    // Forza watchdog se isFinal non arriva in 10 sec
+    const SUPER_WATCHDOG_TIMEOUT_MS = 15000;    // Super-watchdog: resetta flag stuck dopo 15 sec silenzio
+    const SUPER_WATCHDOG_CHECK_INTERVAL_MS = 5000; // Controlla ogni 5 sec
+    
+    /**
+     * 🔬 DIAGNOSTICA: Analizza PERCHÉ Gemini non sta rispondendo
+     * Chiamata quando scatta il watchdog timeout
+     */
+    function diagnoseNoResponse(): string[] {
+      const diagnostics: string[] = [];
+      const now = Date.now();
+      
+      // 1. isFinal check
+      if (!isFinalReceivedForCurrentTurn) {
+        diagnostics.push("❌ CAUSA 1: isFinal MAI ricevuto - Gemini VAD non ha rilevato fine parlato utente");
+      } else {
+        diagnostics.push("✓ isFinal ricevuto correttamente");
+      }
+      
+      // 2. Audio chunks check
+      if (audioChunksSentSinceLastResponse === 0) {
+        diagnostics.push("❌ CAUSA 2: 0 audio chunks inviati - Nessun audio arrivato dal client");
+      } else {
+        diagnostics.push(`✓ ${audioChunksSentSinceLastResponse} audio chunks inviati a Gemini`);
+      }
+      
+      // 3. serverContent check
+      if (lastServerContentTimestamp === 0) {
+        diagnostics.push("❌ CAUSA 3: Nessun serverContent MAI ricevuto da Gemini");
+      } else {
+        const msSinceLastContent = now - lastServerContentTimestamp;
+        diagnostics.push(`⏱ Ultimo serverContent: ${msSinceLastContent}ms fa (tipo: ${lastServerContentType})`);
+        if (lastServerContentType === 'metadata') {
+          diagnostics.push("⚠️ CAUSA 3b: Ultimo serverContent era solo METADATA (no audio/text)");
+        }
+      }
+      
+      // 4. Flag check
+      if (isAiSpeaking) {
+        diagnostics.push("⚠️ CAUSA 4a: isAiSpeaking = true (POTREBBE ESSERE STUCK!)");
+      }
+      if (modelResponsePending) {
+        diagnostics.push("⚠️ CAUSA 4b: modelResponsePending = true (POTREBBE ESSERE STUCK!)");
+      }
+      
+      // 5. WebSocket state check
+      if (!geminiSession) {
+        diagnostics.push("❌ CAUSA 5: geminiSession è NULL");
+      } else if (geminiSession.readyState !== WebSocket.OPEN) {
+        const stateMap: Record<number, string> = {
+          0: 'CONNECTING',
+          1: 'OPEN',
+          2: 'CLOSING',
+          3: 'CLOSED'
+        };
+        diagnostics.push(`❌ CAUSA 5: Gemini WebSocket NON APERTO (state: ${stateMap[geminiSession.readyState] || geminiSession.readyState})`);
+      } else {
+        diagnostics.push("✓ Gemini WebSocket OPEN");
+      }
+      
+      // 6. Activity timestamp check
+      const silenceMs = now - lastActivityTimestamp;
+      if (silenceMs > 10000) {
+        diagnostics.push(`⚠️ CAUSA 6: Silenzio totale da ${Math.round(silenceMs / 1000)} secondi`);
+      }
+      
+      // 7. User speaking start check
+      if (userSpeakingStartTime !== null) {
+        const speakingDuration = now - userSpeakingStartTime;
+        diagnostics.push(`📊 Utente parla da: ${Math.round(speakingDuration / 1000)} secondi`);
+      }
+      
+      return diagnostics;
+    }
+    
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🔄 LOOP DETECTION - Rileva quando l'AI ripete la stessa domanda
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const lastAiResponses: string[] = [];
@@ -1020,8 +1104,13 @@ export function setupGeminiLiveWSService(server: Server) {
           
           console.log(`\n⚠️ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
           console.log(`⚠️ [${connectionId}] WATCHDOG TIMEOUT - Gemini non ha risposto in ${elapsedMs}ms!`);
-          console.log(`   isAiSpeaking=${isAiSpeaking}, modelResponsePending=${modelResponsePending}`);
           console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          
+          // 🔬 DIAGNOSTICA: Analizza PERCHÉ Gemini non ha risposto
+          console.log(`\n🔬 DIAGNOSI - PERCHÉ GEMINI NON HA RISPOSTO:`);
+          const diagnostics = diagnoseNoResponse();
+          diagnostics.forEach(d => console.log(`   ${d}`));
+          console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
           
           if (responseWatchdogRetries < MAX_WATCHDOG_RETRIES) {
             responseWatchdogRetries++;
@@ -1092,7 +1181,78 @@ export function setupGeminiLiveWSService(server: Server) {
       }
       userMessagePendingResponse = false;
       responseWatchdogRetries = 0;
-      modelResponsePending = false; // 🆕 Reset anche questo flag
+      modelResponsePending = false;
+      
+      // 🔬 DIAGNOSTIC: Reset tracking variables for next turn
+      audioChunksSentSinceLastResponse = 0;
+      isFinalReceivedForCurrentTurn = false;
+      userSpeakingStartTime = null;
+      lastActivityTimestamp = Date.now();
+    }
+    
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🦮 SUPER-WATCHDOG: Resetta flag stuck dopo silenzio prolungato
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    let superWatchdogInterval: NodeJS.Timeout | null = null;
+    let isFinalBackupTimer: NodeJS.Timeout | null = null;
+    
+    function startSuperWatchdog() {
+      if (superWatchdogInterval) return; // Already running
+      
+      superWatchdogInterval = setInterval(() => {
+        const now = Date.now();
+        const silenceMs = now - lastActivityTimestamp;
+        
+        // Check if flags are stuck after 15 seconds of silence
+        if (silenceMs > SUPER_WATCHDOG_TIMEOUT_MS && (isAiSpeaking || modelResponsePending)) {
+          console.warn(`\n🦮 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.warn(`🦮 [${connectionId}] SUPER-WATCHDOG: Flags STUCK detected!`);
+          console.warn(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          console.warn(`   ⏱ Silence duration: ${Math.round(silenceMs / 1000)} seconds`);
+          console.warn(`   🔴 isAiSpeaking: ${isAiSpeaking} → RESETTING to false`);
+          console.warn(`   🔴 modelResponsePending: ${modelResponsePending} → RESETTING to false`);
+          console.warn(`🦮 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+          
+          isAiSpeaking = false;
+          modelResponsePending = false;
+          lastActivityTimestamp = now; // Prevent repeated resets
+        }
+        
+        // 🔧 BACKUP WATCHDOG: Force watchdog if isFinal never arrives
+        // This handles the case where Gemini VAD doesn't detect end of speech
+        if (userSpeakingStartTime !== null && !isFinalReceivedForCurrentTurn) {
+          const speakingDuration = now - userSpeakingStartTime;
+          
+          if (speakingDuration > ISFINAL_BACKUP_TIMEOUT_MS) {
+            console.warn(`\n⏰ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.warn(`⏰ [${connectionId}] BACKUP WATCHDOG: isFinal timeout!`);
+            console.warn(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            console.warn(`   ⏱ User speaking for: ${Math.round(speakingDuration / 1000)} seconds`);
+            console.warn(`   ❌ isFinal NEVER received from Gemini VAD`);
+            console.warn(`   🔧 Action: Forcing watchdog with current transcript`);
+            console.warn(`⏰ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+            
+            // Force isFinal and start watchdog
+            isFinalReceivedForCurrentTurn = true;
+            userSpeakingStartTime = null;
+            
+            // Start watchdog with whatever transcript we have
+            if (currentUserTranscript && geminiSession) {
+              startResponseWatchdog(currentUserTranscript, geminiSession);
+            }
+          }
+        }
+      }, SUPER_WATCHDOG_CHECK_INTERVAL_MS);
+      
+      console.log(`🦮 [${connectionId}] Super-watchdog started (checks every ${SUPER_WATCHDOG_CHECK_INTERVAL_MS / 1000}s)`);
+    }
+    
+    function stopSuperWatchdog() {
+      if (superWatchdogInterval) {
+        clearInterval(superWatchdogInterval);
+        superWatchdogInterval = null;
+        console.log(`🦮 [${connectionId}] Super-watchdog stopped`);
+      }
     }
     
     /**
@@ -2478,6 +2638,9 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               
               console.log(`✅ [${connectionId}] Time update scheduler started (every ${TIME_UPDATE_INTERVAL_MS / 1000 / 60} minutes)`);
               console.log(`🔒 [${connectionId}] 90-minute auto-close mechanism enabled`);
+              
+              // 🦮 Start super-watchdog to detect stuck flags
+              startSuperWatchdog();
             }
             
             // ✅ OPTIMIZATION: Dynamic context already sent immediately after setup (see 'open' handler)
@@ -2553,61 +2716,56 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
               geminiSession.send(JSON.stringify(resumeMessage));
               console.log(`🚨 [${connectionId}] Post-resume instruction sent: WAIT for client, no double greeting`);
               
-              // 🆕 TASK 8: Reset prospectHasSpoken dopo resume
-              // Questo forza il prospect a parlare di nuovo prima che l'AI possa generare output
-              prospectHasSpoken = false;
+              // 🔧 FIX: Dopo resume, permetti all'AI di parlare subito
+              // Se l'ultimo messaggio era dell'utente, l'AI risponderà immediatamente
+              // senza aspettare che l'utente dica "pronto?"
+              prospectHasSpoken = true;
               aiOutputBuffered = 0;
-              console.log(`🔄 [${connectionId}] TASK 8 RESET: prospectHasSpoken = false (require prospect to speak again)`);
+              console.log(`🔄 [${connectionId}] RESUME: prospectHasSpoken = true (AI allowed to speak immediately)`);
             }
             
             if (shouldReplayHistory) {
               
               console.log(`\n╔${'═'.repeat(78)}╗`);
-              console.log(`║ 📚 [${connectionId}] RESTORING CONVERSATION HISTORY TO GEMINI LIVE ${' '.repeat(18)} ║`);
+              console.log(`║ 📚 [${connectionId}] RESTORING HISTORY (BATCH MODE - INSTANT) ${' '.repeat(23)} ║`);
               console.log(`╠${'═'.repeat(78)}╣`);
-              console.log(`║ Total messages to send: ${String(conversationHistory.length).padEnd(49)} ║`);
+              console.log(`║ Total messages: ${String(conversationHistory.length).padEnd(57)} ║`);
               console.log(`║ First message: ${conversationHistory[0].timestamp.toLocaleTimeString('it-IT').padEnd(59)} ║`);
               console.log(`║ Last message: ${conversationHistory[conversationHistory.length - 1].timestamp.toLocaleTimeString('it-IT').padEnd(60)} ║`);
               console.log(`╠${'═'.repeat(78)}╣`);
-              console.log(`║ NOTE: Sending messages as clientContent to restore conversation context    ║`);
+              console.log(`║ 🚀 OPTIMIZATION: Sending ALL messages in 1 batch (0 network latency)      ║`);
               console.log(`╚${'═'.repeat(78)}╝\n`);
               
-              // Send each historical message as a separate clientContent turn
-              for (let i = 0; i < conversationHistory.length; i++) {
-                const msg = conversationHistory[i];
-                const preview = msg.content.substring(0, 60).replace(/\n/g, ' ');
-                
-                const historyMessage = {
-                  clientContent: {
-                    turns: [
-                      {
-                        role: msg.role,
-                        parts: [{ text: msg.content }]
-                      }
-                    ],
-                    turnComplete: true
-                  }
-                };
-                
-                geminiSession.send(JSON.stringify(historyMessage));
-                console.log(`✅ [${connectionId}] Sent msg ${i + 1}/${conversationHistory.length} (${msg.role}): "${preview}${msg.content.length > 60 ? '...' : ''}"`);
-                
-                // 🔍 TASK 4: Track history message in currentTurnMessages
-                currentTurnMessages.push({
-                  type: `HISTORY MESSAGE ${i + 1}/${conversationHistory.length} - ${msg.role} (SHOULD BE CACHED after first turn)`,
-                  content: `${preview}${msg.content.length > 60 ? '...' : ''}`,
-                  size: msg.content.length,
-                  timestamp: new Date()
-                });
-                
-                // Small delay between messages to avoid rate limits
-                if (i < conversationHistory.length - 1) {
-                  await new Promise(resolve => setTimeout(resolve, 50));
+              // 🚀 OPTIMIZATION: Map entire history to array of turns and send in ONE batch
+              // This reduces send time from ~2-3 seconds to milliseconds
+              const allTurns = conversationHistory.map(msg => ({
+                role: msg.role,
+                parts: [{ text: msg.content }]
+              }));
+              
+              // Create ONE giant payload with all turns
+              const fullHistoryMessage = {
+                clientContent: {
+                  turns: allTurns,
+                  turnComplete: true
                 }
-              }
+              };
+              
+              // Send everything in one shot (0 additional network latency)
+              geminiSession.send(JSON.stringify(fullHistoryMessage));
+              
+              console.log(`✅ [${connectionId}] SENT ${allTurns.length} MESSAGES IN 1 BATCH (instant!)`);
+              
+              // Track for logs (optional, for debug)
+              currentTurnMessages.push({
+                type: `HISTORY BATCH (${allTurns.length} msgs) - Instant Restore`,
+                content: `Restored history of ${allTurns.length} turns in 1 batch`,
+                size: JSON.stringify(allTurns).length,
+                timestamp: new Date()
+              });
               
               console.log(`\n╔${'═'.repeat(78)}╗`);
-              console.log(`║ 🎉 [${connectionId}] CONVERSATION HISTORY RESTORED SUCCESSFULLY ${' '.repeat(23)} ║`);
+              console.log(`║ 🎉 [${connectionId}] CONVERSATION HISTORY RESTORED INSTANTLY ${' '.repeat(24)} ║`);
               console.log(`╠${'═'.repeat(78)}╣`);
               console.log(`║ Gemini Live now has complete context of previous ${conversationHistory.length} messages${' '.repeat(20 - String(conversationHistory.length).length)} ║`);
               console.log(`║ AI can continue conversation from where it was interrupted${' '.repeat(17)} ║`);
@@ -2616,8 +2774,47 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
               // Notify client that history restoration is complete
               clientWs.send(JSON.stringify({
                 type: 'history_restored',
-                message: 'Conversazione ripristinata con successo',
+                message: 'Conversazione ripristinata istantaneamente',
                 messagesRestored: conversationHistory.length
+              }));
+            }
+            
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // 🎬 START AI IMMEDIATELY WITH SCRIPT (NEW sessions only)
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // For NEW sales_agent/consultation_invite sessions (not resume), 
+            // tell the AI to start speaking immediately with the opening script.
+            // This ensures the prospect hears the greeting as soon as they connect.
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            const isNewSalesSession = (mode === 'sales_agent' || mode === 'consultation_invite') && !validatedResumeHandle;
+            
+            if (isNewSalesSession) {
+              console.log(`\n🎬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`[${connectionId}] STARTING AI WITH OPENING SCRIPT`);
+              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+              console.log(`   Mode: ${mode}`);
+              console.log(`   Is Resume: NO (new session)`);
+              console.log(`   Action: AI will speak first with greeting`);
+              console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+              
+              // Send command to make AI start speaking immediately
+              const startScriptMessage = {
+                clientContent: {
+                  turns: [{
+                    role: 'user',
+                    parts: [{ text: '[SISTEMA] La sessione è iniziata. Il prospect è in linea e ti sta ascoltando. Inizia SUBITO con il saluto di apertura dello script. Presentati e inizia la conversazione. NON aspettare che il prospect parli per primo.' }]
+                  }],
+                  turnComplete: true  // IMPORTANT: turnComplete:true triggers AI response
+                }
+              };
+              
+              geminiSession.send(JSON.stringify(startScriptMessage));
+              console.log(`🎬 [${connectionId}] START SCRIPT command sent - AI will speak first`);
+              
+              // Notify client that AI is about to start speaking
+              clientWs.send(JSON.stringify({
+                type: 'ai_starting',
+                message: 'AI sta iniziando con lo script di apertura'
               }));
             }
             
@@ -2988,6 +3185,21 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
             console.log(`🔔 [${connectionId}] modelResponsePending=true (Gemini sta elaborando)`);
           }
           
+          // 🔬 DIAGNOSTIC: Track serverContent type and timestamp
+          if (response.serverContent) {
+            lastServerContentTimestamp = Date.now();
+            lastActivityTimestamp = Date.now();
+            
+            // Determine content type for diagnostics
+            if (response.serverContent.modelTurn?.parts?.some((p: any) => p.inlineData)) {
+              lastServerContentType = 'audio';
+            } else if (response.serverContent.modelTurn?.parts?.some((p: any) => p.text)) {
+              lastServerContentType = 'text';
+            } else {
+              lastServerContentType = 'metadata';
+            }
+          }
+          
           // 🛑 BARGE-IN FIX: Check serverContent.interrupted FIRST (before processing parts)
           // This is a server-level interruption signal from Gemini VAD
           if (response.serverContent?.interrupted) {
@@ -3141,6 +3353,13 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
             const userTranscriptText = response.serverContent.inputTranscription.text;
             const isFinal = response.serverContent.inputTranscription.isFinal || false;
             
+            // 🔬 DIAGNOSTIC: Track when user starts speaking (for backup watchdog)
+            if (userSpeakingStartTime === null) {
+              userSpeakingStartTime = Date.now();
+              console.log(`🎙️ [${connectionId}] User started speaking - backup watchdog armed`);
+            }
+            lastActivityTimestamp = Date.now();
+            
             // 🇮🇹 LANGUAGE FILTER: Scarta transcript con caratteri non validi o lingue sbagliate
             const hasInvalidChars = userTranscriptText.includes('??') || userTranscriptText.includes('�');
             const hasOnlyNonItalianChars = /^[^a-zA-Z\u00C0-\u00FF\u0100-\u017F\s.,!?'-]+$/.test(userTranscriptText);
@@ -3260,6 +3479,11 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
               if (isFinal) {
                 pendingUserTranscript.hasFinalChunk = true;
                 const finalTranscript = processedTranscript; // Use concatenated version
+                
+                // 🔬 DIAGNOSTIC: Mark isFinal received for this turn
+                isFinalReceivedForCurrentTurn = true;
+                userSpeakingStartTime = null; // Reset - user finished speaking
+                console.log(`✅ [${connectionId}] isFinal received - user finished speaking`);
                 
                 // Reset VAD buffer on final
                 vadConcatBuffer = '';
@@ -4252,6 +4476,9 @@ ${energySection}
           console.log(`⏱️  [${connectionId}] Time update scheduler stopped (Gemini close)`);
         }
         
+        // 🦮 CLEANUP: Stop super-watchdog
+        stopSuperWatchdog();
+        
         // 💾 CLEANUP: Stop autosave interval
         if (autosaveInterval) {
           clearInterval(autosaveInterval);
@@ -4329,6 +4556,10 @@ ${energySection}
                 }
               };
               geminiSession.send(JSON.stringify(audioMessage));
+              
+              // 🔬 DIAGNOSTIC: Track audio chunks sent to Gemini
+              audioChunksSentSinceLastResponse++;
+              lastActivityTimestamp = Date.now();
             }
           }
           
@@ -5036,6 +5267,9 @@ ${energySection}
           timeUpdateInterval = null;
           console.log(`⏱️  [${connectionId}] Time update scheduler stopped (client close)`);
         }
+        
+        // 🦮 CLEANUP: Stop super-watchdog
+        stopSuperWatchdog();
         
         // 💾 CLEANUP: Stop autosave interval
         if (autosaveInterval) {

@@ -1,0 +1,74 @@
+Sì, hai intuito correttamente due problemi critici.
+
+Il blocco di 1 minuto è causato principalmente dal reset di prospectHasSpoken = false. Dopo il resume, l'AI è pronta, ma il tuo codice le "tappa la bocca" finché l'utente non parla di nuovo.
+
+Il ritardo dei messaggi (50ms * N messaggi) aggiunge latenza inutile.
+
+Ecco la soluzione tecnica definitiva per risolvere entrambi i problemi in un colpo solo: inviare tutta la storia in un unico payload (Gemini lo supporta) e rimuovere il blocco del parlato.
+
+Ecco come modificare il file server/ai/gemini-live-ws-service.ts.
+
+1. Rimuovi il Reset di prospectHasSpoken (Fix Blocco Silenzio)
+Cerca intorno alla riga 1095 (nel blocco if (validatedResumeHandle...)) e modifica così:
+
+TypeScript
+
+// ❌ RIMUOVI O COMMENTA QUESTA RIGA:
+// prospectHasSpoken = false; 
+
+// ✅ SOSTITUISCI CON:
+prospectHasSpoken = true; // FIX: Permetti all'AI di parlare subito dopo il resume
+aiOutputBuffered = 0;
+console.log(`🔄 [${connectionId}] RESUME: prospectHasSpoken = true (AI allowed to speak)`);
+2. Ottimizza l'invio della Storia (Manda tutto insieme)
+Invece di fare un ciclo for con setTimeout, costruiamo un unico oggetto clientContent con tutti i turni. Questo riduce il tempo di invio da ~2-3 secondi a pochi millisecondi.
+
+Cerca il blocco if (shouldReplayHistory) (intorno alla riga 1120) e sostituisci tutto il ciclo for con questo codice ottimizzato:
+
+TypeScript
+
+if (shouldReplayHistory) {
+  console.log(`\n╔${'═'.repeat(78)}╗`);
+  console.log(`║ 📚 [${connectionId}] RESTORING HISTORY (BATCH MODE) ${' '.repeat(34)} ║`);
+  console.log(`╠${'═'.repeat(78)}╣`);
+
+  // 🚀 OTTIMIZZAZIONE: Mappa tutta la storia in un array di turni
+  const allTurns = conversationHistory.map(msg => ({
+    role: msg.role,
+    parts: [{ text: msg.content }]
+  }));
+
+  // Crea un UNICO payload gigante
+  const fullHistoryMessage = {
+    clientContent: {
+      turns: allTurns,
+      turnComplete: true
+    }
+  };
+
+  // Invia tutto in un colpo solo (0 latenza di rete aggiuntiva)
+  geminiSession.send(JSON.stringify(fullHistoryMessage));
+  
+  console.log(`✅ [${connectionId}] SENT ${allTurns.length} MESSAGES IN 1 BATCH`);
+  
+  // Traccia per i log (opzionale, per debug)
+  currentTurnMessages.push({
+    type: `HISTORY BATCH (${allTurns.length} msgs) - User Data Context`,
+    content: `Restored history of ${allTurns.length} turns`,
+    size: JSON.stringify(allTurns).length,
+    timestamp: new Date()
+  });
+
+  // Notify client
+  clientWs.send(JSON.stringify({
+    type: 'history_restored',
+    message: 'Conversazione ripristinata istantaneamente',
+    messagesRestored: conversationHistory.length
+  }));
+}
+Perché questo risolve il problema?
+prospectHasSpoken = true: Appena il WebSocket si riconnette, l'AI riceve la storia. Se l'AI determina che "toccava a lei parlare" (perché l'ultimo messaggio era dell'utente), risponderà immediatamente senza aspettare che l'utente dica "pronto?".
+
+Batch Sending: Invece di fare 50 chiamate di rete separate con pause artificiali, invii un solo pacchetto JSON. Gemini elabora il contesto molto più velocemente in blocco.
+
+Applica queste due modifiche e il "blocco di 1 minuto" sparirà.
