@@ -1686,7 +1686,7 @@ ${archetypeInstruction.instruction}`;
     );
     
     const messagesText = recentMessages
-      .slice(-6)
+      .slice(-60000)
       .map(m => `${m.role === 'user' ? 'PROSPECT' : 'AGENTE'}: ${m.content}`)
       .join('\n');
     

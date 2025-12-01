@@ -81,7 +81,7 @@ PRIMA DI PASSARE ALLA FASE #2 VERIFICA:
 ✓ Hai salutato e chiesto "come stai"?
 ✓ Hai chiesto "da dove mi chiami"?
 ✓ Hai spiegato il processo della call?
-✓ Il prospect ha detto "OK" / "Sì" / "Va bene" al processo?
+✓ Il prospect ha detto che vuole proseguire dopo il processo?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
 
