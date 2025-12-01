@@ -109,6 +109,14 @@ interface SalesManagerAnalysisData {
     completedItems: string[];
     missingItems: string[];
     canAdvance: boolean;
+    itemDetails?: Array<{
+      check: string;
+      status: 'validated' | 'missing' | 'vague';
+      infoCollected?: string;
+      reason?: string;
+      evidenceQuote?: string;
+      suggestedNextAction?: string;
+    }>;
   } | null;
   buySignals: {
     detected: boolean;
@@ -1335,17 +1343,50 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                 : `${latestAnalysis.checkpointStatus.missingItems?.length || 0} mancanti`}
                             </Badge>
                           </div>
-                          <div className="flex flex-wrap gap-2">
-                            {latestAnalysis.checkpointStatus.completedItems?.map((item, i) => (
-                              <span key={`c-${i}`} className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full flex items-center gap-1">
-                                🟢 {item}
-                              </span>
-                            ))}
-                            {latestAnalysis.checkpointStatus.missingItems?.map((item, i) => (
-                              <span key={`m-${i}`} className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full flex items-center gap-1">
-                                🔴 {item}
-                              </span>
-                            ))}
+                          <div className="space-y-2">
+                            {latestAnalysis.checkpointStatus.itemDetails?.map((item, i) => (
+                              <div key={i} className={`p-2 rounded-lg border ${
+                                item.status === 'validated' 
+                                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                                  : item.status === 'vague'
+                                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                              }`}>
+                                <div className="flex items-start gap-2">
+                                  <span className="text-sm">
+                                    {item.status === 'validated' ? '🟢' : item.status === 'vague' ? '🟡' : '🔴'}
+                                  </span>
+                                  <div className="flex-1">
+                                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                      {item.check}
+                                    </div>
+                                    {item.status !== 'validated' && item.suggestedNextAction && (
+                                      <div className="mt-1 text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
+                                        🎯 {item.suggestedNextAction}
+                                      </div>
+                                    )}
+                                    {item.status === 'validated' && item.infoCollected && (
+                                      <div className="mt-1 text-[10px] text-green-600 dark:text-green-400">
+                                        ✓ {item.infoCollected}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )) || (
+                              <div className="flex flex-wrap gap-2">
+                                {latestAnalysis.checkpointStatus.completedItems?.map((item, i) => (
+                                  <span key={`c-${i}`} className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full flex items-center gap-1">
+                                    🟢 {item}
+                                  </span>
+                                ))}
+                                {latestAnalysis.checkpointStatus.missingItems?.map((item, i) => (
+                                  <span key={`m-${i}`} className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full flex items-center gap-1">
+                                    🔴 {item}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
