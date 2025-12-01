@@ -269,18 +269,14 @@
         jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
 
-      // Aggressive JSON cleanup for Gemini responses
-      // Fix common issues: escaped newlines, single quotes, etc.
-      jsonText = jsonText
-        .replace(/\n/g, '\\n')  // Escape unescaped newlines
-        .replace(/\r/g, '\\r')  // Escape unescaped carriage returns
-        .replace(/\t/g, '\\t'); // Escape unescaped tabs
-
       let rec: DiscoveryRec;
       try {
+        // Try direct parse first (most common case)
         rec = JSON.parse(jsonText) as DiscoveryRec;
+        console.log(`✅ [DiscoveryRecGenerator] Successfully parsed JSON directly`);
       } catch (parseError: any) {
-        console.error(`❌ [DiscoveryRecGenerator] JSON parse failed at position ${parseError.message.match(/position (\d+)/)?.[1] || '?'}`);
+        console.error(`❌ [DiscoveryRecGenerator] Initial JSON parse failed`);
+        console.error(`   Error: ${parseError.message}`);
         console.error(`   First 500 chars of response: ${jsonText.substring(0, 500)}`);
         
         // Try to extract JSON object if wrapped in text
@@ -289,11 +285,12 @@
           try {
             rec = JSON.parse(jsonMatch[0]) as DiscoveryRec;
             console.log(`✅ [DiscoveryRecGenerator] Successfully parsed extracted JSON`);
-          } catch {
-            throw new Error(`Failed to parse extracted JSON: ${parseError.message}`);
+          } catch (extractError: any) {
+            console.error(`❌ [DiscoveryRecGenerator] Extracted JSON also failed: ${extractError.message}`);
+            throw new Error(`Failed to parse JSON response: ${parseError.message}`);
           }
         } else {
-          throw parseError;
+          throw new Error(`Failed to parse JSON response: ${parseError.message}`);
         }
       }
 
