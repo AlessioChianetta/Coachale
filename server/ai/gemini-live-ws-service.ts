@@ -4049,6 +4049,19 @@ ${energySection}
                                 name: currentPhaseName,
                                 stepName: currentStepName
                               },
+                              profilingResult: analysis.profilingResult ? {
+                                archetype: analysis.profilingResult.archetype,
+                                confidence: analysis.profilingResult.confidence,
+                                filler: analysis.profilingResult.filler,
+                                instruction: analysis.profilingResult.instruction
+                              } : null,
+                              archetypeState: analysis.archetypeState ? {
+                                current: analysis.archetypeState.current,
+                                confidence: analysis.archetypeState.confidence,
+                                consecutiveSignals: analysis.archetypeState.consecutiveSignals,
+                                turnsSinceUpdate: analysis.archetypeState.turnsSinceUpdate
+                              } : null,
+                              checkpointsCompleted: state.checkpointsCompleted || [],
                               analysisTimeMs: analysisTime
                             }
                           };
