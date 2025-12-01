@@ -143,8 +143,8 @@ export interface CheckpointAnalysisParams {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 export class StepAdvancementAgent {
-  private static readonly MODEL = "gemini-2.5-flash";
-  private static readonly TIMEOUT_MS = 5000; // 5 secondi max
+  private static readonly MODEL = "gemini-2.5-flash-lite";
+  private static readonly TIMEOUT_MS = 10000; // 5 secondi max
   
   /**
    * Analizza la conversazione e decide se avanzare allo step/fase successiva
@@ -260,7 +260,7 @@ export class StepAdvancementAgent {
     
     // Formatta i messaggi recenti (ultimi 6)
     const messagesText = recentMessages
-      .slice(-6)
+      .slice(-60000)
       .map(m => `${m.role === 'user' ? 'PROSPECT' : 'AGENTE'}: ${m.content}`)
       .join('\n');
     
