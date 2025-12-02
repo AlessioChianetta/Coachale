@@ -172,6 +172,14 @@ export class ProspectSimulator {
   private static readonly MIN_SILENCE_GAP = 2000;
   private static readonly MIN_FRAGMENTS_FOR_COMPLETE = 1;
   private static readonly DEDUP_WINDOW_MS = 5000;
+  
+  // 🆕 SESSION RESUME: Properties for automatic reconnection on 10-minute timeout
+  private static readonly MAX_RECONNECT_ATTEMPTS = 3;
+  private static readonly RECONNECT_DELAY_MS = 2000;
+  private resumeHandle: string | null = null;
+  private sessionExpiring: boolean = false;
+  private reconnectAttempts: number = 0;
+  private isReconnecting: boolean = false;
 
   constructor(options: ProspectSimulatorOptions) {
     this.options = options;
@@ -279,8 +287,31 @@ export class ProspectSimulator {
       }
     });
 
-    this.ws.on('close', (code, reason) => {
+    this.ws.on('close', async (code, reason) => {
       console.log(`🔌 [PROSPECT SIMULATOR] WebSocket closed: ${code} - ${reason}`);
+      
+      // 🆕 SESSION RESUME: Attempt automatic reconnect if we have a handle and session is still running
+      if (this.isRunning && this.resumeHandle && !this.isReconnecting) {
+        console.log(`\n🔄 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🔄 [PROSPECT SIMULATOR] SESSION CLOSED - ATTEMPTING AUTOMATIC RECONNECT`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   📍 Close code: ${code}`);
+        console.log(`   📝 Reason: ${reason || 'No reason provided'}`);
+        console.log(`   🔑 Has resumeHandle: YES (${this.resumeHandle.substring(0, 20)}...)`);
+        console.log(`   📊 Current turn: ${this.currentTurn}/${this.maxTurns}`);
+        console.log(`   💬 Messages so far: ${this.messageCount}`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        
+        const reconnected = await this.attemptReconnect();
+        if (reconnected) {
+          console.log(`✅ [PROSPECT SIMULATOR] Reconnect successful, continuing training...`);
+          return; // Don't mark as stopped, continue training
+        } else {
+          console.error(`❌ [PROSPECT SIMULATOR] All reconnect attempts failed, stopping session`);
+        }
+      }
+      
+      // If we couldn't reconnect or shouldn't try, mark as stopped
       this.isRunning = false;
     });
 
@@ -301,6 +332,13 @@ export class ProspectSimulator {
     
     if (this.options.testMode) {
       params.set('testMode', this.options.testMode);
+    }
+    
+    // 🆕 SESSION RESUME: Include resumeHandle if available for session continuation
+    if (this.resumeHandle) {
+      params.set('resumeHandle', this.resumeHandle);
+      console.log(`🔄 [PROSPECT SIMULATOR] Including resumeHandle in WebSocket URL`);
+      console.log(`   → Handle preview: ${this.resumeHandle.substring(0, 20)}...`);
     }
     
     return `${protocol}://${host}/ws/ai-voice?${params.toString()}`;
@@ -395,6 +433,46 @@ export class ProspectSimulator {
 
       case 'error':
         console.error(`❌ [PROSPECT SIMULATOR] Server error:`, message.message || message.error);
+        break;
+
+      // 🆕 SESSION RESUME: Handle session_resumption_update from server
+      // The server sends a new handle after each Gemini response for seamless reconnection
+      case 'session_resumption_update':
+        if (message.handle) {
+          this.resumeHandle = message.handle;
+          console.log(`🔄 [PROSPECT SIMULATOR] Session handle received and saved`);
+          console.log(`   → Handle preview: ${message.handle.substring(0, 20)}...`);
+          console.log(`   → Resumable: ${message.resumable !== false}`);
+        }
+        break;
+
+      // 🆕 SESSION RESUME: Handle session_expiring warning (60s before timeout)
+      case 'session_expiring':
+        console.log(`\n⏰ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`⏰ [PROSPECT SIMULATOR] SESSION EXPIRING WARNING`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   ⏱️  Time remaining: ~${message.timeLeft || 60} seconds`);
+        console.log(`   🔄 Resume handle ready: ${message.hasHandle || !!this.resumeHandle ? 'YES' : 'NO'}`);
+        console.log(`   📍 Current turn: ${this.currentTurn}/${this.maxTurns}`);
+        console.log(`   💬 Messages so far: ${this.messageCount}`);
+        console.log(`   💾 Preparing for automatic reconnect after timeout...`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        this.sessionExpiring = true;
+        break;
+
+      // 🆕 SESSION RESUME: Confirm session resumed successfully after reconnect
+      case 'session:resumed':
+        console.log(`\n✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`✅ [PROSPECT SIMULATOR] SESSION RESUMED SUCCESSFULLY`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   📍 Resuming from turn: ${this.currentTurn}`);
+        console.log(`   📊 Message count: ${this.messageCount}`);
+        console.log(`   🔄 Reconnect attempts reset to 0`);
+        console.log(`   🎯 Training continues seamlessly...`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        this.sessionExpiring = false;
+        this.reconnectAttempts = 0;
+        this.isReconnecting = false;
         break;
 
       // 🆕 SALES MANAGER ANALYSIS - Forward to UI for visualization
@@ -503,6 +581,113 @@ export class ProspectSimulator {
     });
     
     console.log(`✅ [PROSPECT SIMULATOR] Demo transition triggered - server will generate REC and switch script`);
+  }
+
+  /**
+   * 🆕 SESSION RESUME: Attempt automatic reconnection with saved resumeHandle
+   * Called when WebSocket closes unexpectedly while training is still running
+   * Implements retry logic with delays to handle the 10-minute Gemini timeout gracefully
+   */
+  private async attemptReconnect(): Promise<boolean> {
+    if (this.reconnectAttempts >= ProspectSimulator.MAX_RECONNECT_ATTEMPTS) {
+      console.error(`❌ [PROSPECT SIMULATOR] Max reconnect attempts (${ProspectSimulator.MAX_RECONNECT_ATTEMPTS}) reached`);
+      return false;
+    }
+    
+    if (!this.resumeHandle) {
+      console.error(`❌ [PROSPECT SIMULATOR] Cannot reconnect - no resumeHandle available`);
+      return false;
+    }
+    
+    this.isReconnecting = true;
+    this.reconnectAttempts++;
+    
+    console.log(`\n🔄 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🔄 [PROSPECT SIMULATOR] RECONNECT ATTEMPT ${this.reconnectAttempts}/${ProspectSimulator.MAX_RECONNECT_ATTEMPTS}`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   🔑 Resume handle: ${this.resumeHandle.substring(0, 20)}...`);
+    console.log(`   📍 Current turn: ${this.currentTurn}`);
+    console.log(`   📊 Messages so far: ${this.messageCount}`);
+    console.log(`   ⏳ Waiting ${ProspectSimulator.RECONNECT_DELAY_MS}ms before attempt...`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    
+    // Wait before attempting reconnect
+    await new Promise(resolve => setTimeout(resolve, ProspectSimulator.RECONNECT_DELAY_MS));
+    
+    try {
+      // Close any existing WebSocket connection cleanly
+      if (this.ws) {
+        try {
+          this.ws.removeAllListeners();
+          if (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING) {
+            this.ws.close();
+          }
+        } catch (e) {
+          // Ignore close errors
+        }
+        this.ws = null;
+      }
+      
+      // Reconnect with the resumeHandle included in URL
+      await this.connectToWebSocket();
+      
+      // Wait for confirmation that session resumed (max 10 seconds)
+      const resumeConfirmed = await new Promise<boolean>((resolve) => {
+        const timeout = setTimeout(() => {
+          console.warn(`⚠️ [PROSPECT SIMULATOR] Resume confirmation timeout after 10s`);
+          resolve(false);
+        }, 10000);
+        
+        // Check periodically if we received session:resumed (sessionExpiring reset to false)
+        const checkInterval = setInterval(() => {
+          if (!this.sessionExpiring && this.ws?.readyState === WebSocket.OPEN && !this.isReconnecting) {
+            clearTimeout(timeout);
+            clearInterval(checkInterval);
+            resolve(true);
+          }
+        }, 200);
+        
+        // Also listen for early success via WebSocket open
+        if (this.ws) {
+          const originalOnOpen = this.ws.onopen;
+          this.ws.onopen = (event) => {
+            console.log(`✅ [PROSPECT SIMULATOR] WebSocket reopened during reconnect`);
+            // Give it a moment for session:resumed to arrive
+            setTimeout(() => {
+              if (this.ws?.readyState === WebSocket.OPEN) {
+                clearTimeout(timeout);
+                clearInterval(checkInterval);
+                resolve(true);
+              }
+            }, 1000);
+            if (originalOnOpen) {
+              (originalOnOpen as any).call(this.ws, event);
+            }
+          };
+        }
+      });
+      
+      if (resumeConfirmed) {
+        console.log(`\n✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`✅ [PROSPECT SIMULATOR] RECONNECT SUCCESSFUL!`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   📍 Continuing from turn: ${this.currentTurn}`);
+        console.log(`   📊 Message count: ${this.messageCount}`);
+        console.log(`   🎯 Training continues with full context preserved!`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        this.reconnectAttempts = 0; // Reset counter on success
+        this.isReconnecting = false;
+        this.sessionExpiring = false;
+        return true;
+      }
+      
+      console.warn(`⚠️ [PROSPECT SIMULATOR] Resume not confirmed, will retry...`);
+      return this.attemptReconnect(); // Retry recursively
+      
+    } catch (error) {
+      console.error(`❌ [PROSPECT SIMULATOR] Reconnect attempt ${this.reconnectAttempts} failed:`, error);
+      return this.attemptReconnect(); // Retry recursively
+    }
   }
 
   private handleAgentFragment(text: string, source: string): void {
