@@ -1464,7 +1464,7 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                   </Badge>
                                   {analysis.archetypeState?.current && (
                                     <Badge className={`text-[9px] h-5 px-1.5 ${getArchetypeColor(analysis.archetypeState.current)}`}>
-                                      {getArchetypeEmoji(analysis.archetypeState.current)}
+                                      {getArchetypeEmoji(analysis.archetypeState.current)} {getArchetypeLabel(analysis.archetypeState.current)}
                                     </Badge>
                                   )}
                                   <Badge className={`text-[9px] h-5 px-1.5 ${analysis.stepAdvancement?.shouldAdvance 
@@ -1472,6 +1472,12 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                     : 'bg-red-100 text-red-700'}`}>
                                     {analysis.stepAdvancement?.shouldAdvance ? '✓' : '✗'}
                                   </Badge>
+                                  {/* Tone issues indicator */}
+                                  {analysis.toneAnalysis && (analysis.toneAnalysis.isRobotic || analysis.toneAnalysis.energyMismatch || (analysis.toneAnalysis.issues?.length || 0) > 0) && (
+                                    <Badge className="text-[9px] h-5 px-1.5 bg-amber-100 text-amber-700">
+                                      🎭 Tono
+                                    </Badge>
+                                  )}
                                   {(analysis.buySignals?.signals?.length || 0) > 0 && (
                                     <Badge className="text-[9px] h-5 px-1.5 bg-green-100 text-green-700">
                                       💰 {analysis.buySignals?.signals?.length}
@@ -1489,9 +1495,9 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                               </div>
                               
                               {/* Collapsible buttons in a row */}
-                              <div className="flex gap-2 mt-1.5">
+                              <div className="flex gap-2 mt-1.5 flex-wrap">
                                 {analysis.stepAdvancement?.reasoning && (
-                                  <Collapsible className="flex-1">
+                                  <Collapsible>
                                     <CollapsibleTrigger className="flex items-center gap-1 text-[9px] text-blue-600 hover:text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30">
                                       <Brain className="h-2.5 w-2.5" />
                                       <span>Reasoning</span>
@@ -1505,7 +1511,7 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                 )}
                                 
                                 {analysis.feedbackForAgent?.message && (
-                                  <Collapsible className="flex-1">
+                                  <Collapsible>
                                     <CollapsibleTrigger className="flex items-center gap-1 text-[9px] text-purple-600 hover:text-purple-700 px-1.5 py-0.5 rounded hover:bg-purple-50 dark:hover:bg-purple-950/30">
                                       <MessageSquare className="h-2.5 w-2.5" />
                                       <span>Istruzione</span>
@@ -1522,6 +1528,43 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                     <CollapsibleContent className="mt-1">
                                       <div className="p-1.5 bg-purple-50 dark:bg-purple-950/30 rounded text-[9px] text-gray-600 dark:text-gray-400 border-l-2 border-purple-400">
                                         {analysis.feedbackForAgent.message}
+                                      </div>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
+                                
+                                {/* Tone Analysis Collapsible */}
+                                {analysis.toneAnalysis && (analysis.toneAnalysis.isRobotic || analysis.toneAnalysis.energyMismatch || (analysis.toneAnalysis.issues?.length || 0) > 0) && (
+                                  <Collapsible>
+                                    <CollapsibleTrigger className="flex items-center gap-1 text-[9px] text-amber-600 hover:text-amber-700 px-1.5 py-0.5 rounded hover:bg-amber-50 dark:hover:bg-amber-950/30">
+                                      <Volume2 className="h-2.5 w-2.5" />
+                                      <span>Tono</span>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="mt-1">
+                                      <div className="p-1.5 bg-amber-50 dark:bg-amber-950/30 rounded text-[9px] text-gray-600 dark:text-gray-400 border-l-2 border-amber-400 space-y-1">
+                                        {analysis.toneAnalysis.isRobotic && (
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-red-500">🤖</span>
+                                            <span>Tono robotico rilevato</span>
+                                          </div>
+                                        )}
+                                        {analysis.toneAnalysis.energyMismatch && (
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-orange-500">⚡</span>
+                                            <span>Mismatch di energia</span>
+                                          </div>
+                                        )}
+                                        {analysis.toneAnalysis.issues?.map((issue, i) => (
+                                          <div key={i} className="flex items-center gap-1">
+                                            <span className="text-amber-500">⚠️</span>
+                                            <span>{issue}</span>
+                                          </div>
+                                        ))}
+                                        {analysis.feedbackForAgent?.toneReminder && (
+                                          <div className="mt-1 pt-1 border-t border-amber-200 dark:border-amber-700">
+                                            <span className="text-amber-700 dark:text-amber-300">💡 {analysis.feedbackForAgent.toneReminder}</span>
+                                          </div>
+                                        )}
                                       </div>
                                     </CollapsibleContent>
                                   </Collapsible>
