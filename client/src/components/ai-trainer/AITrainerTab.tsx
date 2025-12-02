@@ -145,6 +145,7 @@ interface SalesManagerAnalysisData {
     message: string;
     toneReminder?: string;
   } | null;
+  injectedInstruction: string | null;
   currentPhase: {
     id: string;
     name: string;
@@ -1287,57 +1288,52 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                   : 0;
                 
                 return (
-                  <div className="space-y-2">
-                    {/* HEADER DASHBOARD - Compatto */}
-                    <div className="flex items-center gap-2 flex-wrap p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border">
-                      <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700">
-                        <span className="text-[9px] text-purple-500">🎭</span>
-                        <span className={`text-xs font-semibold ${getArchetypeColor(latestAnalysis?.archetypeState?.current).replace('border', 'text').replace('bg-', 'text-')}`}>
+                  <div className="space-y-3">
+                    {/* HEADER DASHBOARD */}
+                    <div className="flex items-center gap-3 flex-wrap p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700">
+                        <span className={`text-sm font-semibold ${getArchetypeColor(latestAnalysis?.archetypeState?.current)}`}>
                           {getArchetypeEmoji(latestAnalysis?.archetypeState?.current)} {getArchetypeLabel(latestAnalysis?.archetypeState?.current)}
                         </span>
                         {latestAnalysis?.archetypeState?.confidence && (
-                          <span className="text-[8px] text-purple-400">
-                            ({Math.round(latestAnalysis.archetypeState.confidence * 100)}%)
+                          <span className="text-xs text-purple-500">
+                            {Math.round(latestAnalysis.archetypeState.confidence * 100)}%
                           </span>
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700">
-                        <span className="text-[9px] text-blue-500">📍</span>
-                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
-                          {latestAnalysis?.currentPhase?.name || 'Avvio...'}
-                        </span>
-                        <span className="text-[8px] text-blue-400">
-                          ({latestAnalysis?.currentPhase?.stepName || 'In attesa'})
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700">
+                        <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                          📍 {latestAnalysis?.currentPhase?.name || 'Avvio...'}
                         </span>
                       </div>
                       
-                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-green-100 dark:bg-green-900/40 border border-green-200 dark:border-green-700">
-                        <span className="text-[9px] text-green-500">⏱️</span>
-                        <span className="text-sm font-bold text-green-700 dark:text-green-300 font-mono">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-100 dark:bg-green-900/40 border border-green-200 dark:border-green-700">
+                        <span className="text-sm">⏱️</span>
+                        <span className="text-base font-bold text-green-700 dark:text-green-300 font-mono">
                           {getSessionDuration()}
                         </span>
                       </div>
                       
-                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700">
-                        <span className="text-[9px] text-amber-500">💬</span>
-                        <span className="text-sm font-bold text-amber-700 dark:text-amber-300">
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700">
+                        <span className="text-sm">💬</span>
+                        <span className="text-base font-bold text-amber-700 dark:text-amber-300">
                           {transcript.length}
                         </span>
                       </div>
                       
                       {/* Metriche inline */}
-                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800">
-                        <span className="text-xs font-bold text-green-600">{totalBuySignals}</span>
-                        <span className="text-[8px] text-green-500">💰</span>
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800">
+                        <span className="text-sm font-bold text-green-600">{totalBuySignals}</span>
+                        <span className="text-sm">💰</span>
                       </div>
-                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800">
-                        <span className="text-xs font-bold text-red-600">{totalObjections}</span>
-                        <span className="text-[8px] text-red-500">🛡️</span>
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800">
+                        <span className="text-sm font-bold text-red-600">{totalObjections}</span>
+                        <span className="text-sm">🛡️</span>
                       </div>
-                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-                        <span className="text-xs font-bold text-blue-600">{totalAdvancements}</span>
-                        <span className="text-[8px] text-blue-500">🚀</span>
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+                        <span className="text-sm font-bold text-blue-600">{totalAdvancements}</span>
+                        <span className="text-sm">🚀</span>
                       </div>
                     </div>
                     
@@ -1364,52 +1360,52 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                       
                       return (
                         <Collapsible defaultOpen={false}>
-                          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors">
-                            <div className="flex items-center gap-2">
-                              <ChevronRight className="h-4 w-4 text-orange-600 transition-transform duration-200 [[data-state=open]>&]:rotate-90" />
-                              <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <ChevronRight className="h-5 w-5 text-orange-600 transition-transform duration-200 [[data-state=open]>&]:rotate-90" />
+                              <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
                                 ⛔ Checkpoint ({allCheckpoints.length})
                               </span>
-                              <Badge className="text-[9px] bg-green-100 text-green-700">{completedCount} ✓</Badge>
+                              <Badge className="text-xs bg-green-100 text-green-700">{completedCount} ✓</Badge>
                               {totalMissing > 0 && (
-                                <Badge className="text-[9px] bg-red-100 text-red-700">{totalMissing} mancanti</Badge>
+                                <Badge className="text-xs bg-red-100 text-red-700">{totalMissing} mancanti</Badge>
                               )}
                             </div>
                           </CollapsibleTrigger>
                           <CollapsibleContent className="mt-2 space-y-2">
                             {allCheckpoints.map((checkpoint, idx) => (
-                              <div key={idx} className="p-2 rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-900">
-                                <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
+                              <div key={idx} className="p-3 rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-900">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                     {checkpoint.checkpointName}
                                   </span>
-                                  <Badge className={`text-[8px] ${checkpoint.isComplete 
+                                  <Badge className={`text-xs ${checkpoint.isComplete 
                                     ? 'bg-green-100 text-green-700' 
                                     : 'bg-orange-100 text-orange-700'}`}>
-                                    {checkpoint.isComplete ? '✓' : `${checkpoint.missingItems?.length || 0} mancanti`}
+                                    {checkpoint.isComplete ? '✓ Completo' : `${checkpoint.missingItems?.length || 0} mancanti`}
                                   </Badge>
                                 </div>
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap gap-1.5">
                                   {checkpoint.itemDetails?.map((item, i) => (
-                                    <span key={i} className={`text-[9px] px-1.5 py-0.5 rounded ${
+                                    <span key={i} className={`text-xs px-2 py-1 rounded ${
                                       item.status === 'validated' 
                                         ? 'bg-green-100 text-green-700' 
                                         : item.status === 'vague'
                                           ? 'bg-amber-100 text-amber-700'
                                           : 'bg-red-100 text-red-700'
                                     }`}>
-                                      {item.status === 'validated' ? '🟢' : item.status === 'vague' ? '🟡' : '🔴'} {item.check.substring(0, 30)}{item.check.length > 30 ? '...' : ''}
+                                      {item.status === 'validated' ? '🟢' : item.status === 'vague' ? '🟡' : '🔴'} {item.check.substring(0, 40)}{item.check.length > 40 ? '...' : ''}
                                     </span>
                                   )) || (
                                     <>
                                       {checkpoint.completedItems?.map((item, i) => (
-                                        <span key={`c-${i}`} className="text-[9px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
-                                          🟢 {item.substring(0, 25)}{item.length > 25 ? '...' : ''}
+                                        <span key={`c-${i}`} className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+                                          🟢 {item.substring(0, 35)}{item.length > 35 ? '...' : ''}
                                         </span>
                                       ))}
                                       {checkpoint.missingItems?.map((item, i) => (
-                                        <span key={`m-${i}`} className="text-[9px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded">
-                                          🔴 {item.substring(0, 25)}{item.length > 25 ? '...' : ''}
+                                        <span key={`m-${i}`} className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">
+                                          🔴 {item.substring(0, 35)}{item.length > 35 ? '...' : ''}
                                         </span>
                                       ))}
                                     </>
@@ -1423,100 +1419,100 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                     })()}
                     
                     {/* STORICO ANALISI */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-2">
                       <div className="flex items-center gap-2">
-                        <History className="h-3 w-3 text-purple-600" />
-                        <span className="text-xs font-medium">Storico Analisi ({analysisHistory.length})</span>
+                        <History className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm font-medium">Storico Analisi ({analysisHistory.length})</span>
                       </div>
                       {analysisHistory.length > 0 && (
-                        <Button variant="outline" size="sm" onClick={handleExportAnalysis} className="h-6 text-[10px] px-2">
-                          <Download className="h-3 w-3 mr-1" />
+                        <Button variant="outline" size="sm" onClick={handleExportAnalysis} className="h-8 text-xs px-3">
+                          <Download className="h-4 w-4 mr-1" />
                           Esporta
                         </Button>
                       )}
                     </div>
                     
-                    <ScrollArea className="h-[50vh] pr-2">
+                    <ScrollArea className="h-[45vh] pr-2">
                       {managerAnalysisLoading && analysisHistory.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
-                          <Loader2 className="h-6 w-6 mx-auto animate-spin mb-2" />
-                          <p className="text-sm">Caricamento...</p>
+                          <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
+                          <p className="text-base">Caricamento...</p>
                         </div>
                       ) : managerAnalysisError ? (
                         <div className="text-center py-8">
-                          <AlertCircle className="h-8 w-8 mx-auto mb-2 text-red-500" />
-                          <p className="text-sm text-red-600">Errore caricamento</p>
+                          <AlertCircle className="h-10 w-10 mx-auto mb-2 text-red-500" />
+                          <p className="text-base text-red-600">Errore caricamento</p>
                         </div>
                       ) : analysisHistory.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
-                          <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          <p className="text-sm">In attesa di analisi...</p>
+                          <Brain className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                          <p className="text-base">In attesa di analisi...</p>
                         </div>
                       ) : (
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           {analysisHistory.map((analysis, idx) => (
-                            <div key={idx} className="p-2 rounded-lg border border-l-4 border-l-purple-500 bg-white dark:bg-gray-900">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
-                                  <span className="text-[10px] font-medium text-gray-400">#{idx + 1}</span>
-                                  <Badge variant="outline" className="text-[9px] h-5 px-1.5">
+                            <div key={idx} className="p-3 rounded-lg border border-l-4 border-l-purple-500 bg-white dark:bg-gray-900">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+                                  <span className="text-sm font-bold text-gray-500">#{idx + 1}</span>
+                                  <Badge variant="outline" className="text-xs px-2 py-0.5">
                                     {analysis.currentPhase?.name || 'N/A'}
                                   </Badge>
                                   {analysis.archetypeState?.current && (
-                                    <Badge className={`text-[9px] h-5 px-1.5 ${getArchetypeColor(analysis.archetypeState.current)}`}>
+                                    <Badge className={`text-xs px-2 py-0.5 ${getArchetypeColor(analysis.archetypeState.current)}`}>
                                       {getArchetypeEmoji(analysis.archetypeState.current)} {getArchetypeLabel(analysis.archetypeState.current)}
                                     </Badge>
                                   )}
-                                  <Badge className={`text-[9px] h-5 px-1.5 ${analysis.stepAdvancement?.shouldAdvance 
+                                  <Badge className={`text-xs px-2 py-0.5 ${analysis.stepAdvancement?.shouldAdvance 
                                     ? 'bg-green-100 text-green-700' 
                                     : 'bg-red-100 text-red-700'}`}>
-                                    {analysis.stepAdvancement?.shouldAdvance ? '✓' : '✗'}
+                                    {analysis.stepAdvancement?.shouldAdvance ? '✓ Avanza' : '✗ Resta'}
                                   </Badge>
                                   {/* Tone issues indicator */}
                                   {analysis.toneAnalysis && (analysis.toneAnalysis.isRobotic || analysis.toneAnalysis.energyMismatch || (analysis.toneAnalysis.issues?.length || 0) > 0) && (
-                                    <Badge className="text-[9px] h-5 px-1.5 bg-amber-100 text-amber-700">
+                                    <Badge className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700">
                                       🎭 Tono
                                     </Badge>
                                   )}
                                   {(analysis.buySignals?.signals?.length || 0) > 0 && (
-                                    <Badge className="text-[9px] h-5 px-1.5 bg-green-100 text-green-700">
+                                    <Badge className="text-xs px-2 py-0.5 bg-green-100 text-green-700">
                                       💰 {analysis.buySignals?.signals?.length}
                                     </Badge>
                                   )}
                                   {(analysis.objections?.objections?.length || 0) > 0 && (
-                                    <Badge className="text-[9px] h-5 px-1.5 bg-red-100 text-red-700">
+                                    <Badge className="text-xs px-2 py-0.5 bg-red-100 text-red-700">
                                       🛡️ {analysis.objections?.objections?.length}
                                     </Badge>
                                   )}
                                 </div>
-                                <span className="text-[9px] text-gray-400 whitespace-nowrap">
+                                <span className="text-xs text-gray-500 whitespace-nowrap font-mono">
                                   {new Date(analysis.timestamp).toLocaleTimeString('it-IT')}
                                 </span>
                               </div>
                               
                               {/* Collapsible buttons in a row */}
-                              <div className="flex gap-2 mt-1.5 flex-wrap">
+                              <div className="flex gap-3 mt-2 flex-wrap">
                                 {analysis.stepAdvancement?.reasoning && (
                                   <Collapsible>
-                                    <CollapsibleTrigger className="flex items-center gap-1 text-[9px] text-blue-600 hover:text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30">
-                                      <Brain className="h-2.5 w-2.5" />
+                                    <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-200">
+                                      <Brain className="h-3.5 w-3.5" />
                                       <span>Reasoning</span>
                                     </CollapsibleTrigger>
-                                    <CollapsibleContent className="mt-1">
-                                      <div className="p-1.5 bg-blue-50 dark:bg-blue-950/30 rounded text-[9px] text-gray-600 dark:text-gray-400">
+                                    <CollapsibleContent className="mt-2">
+                                      <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded text-sm text-gray-700 dark:text-gray-300">
                                         {analysis.stepAdvancement.reasoning}
                                       </div>
                                     </CollapsibleContent>
                                   </Collapsible>
                                 )}
                                 
-                                {analysis.feedbackForAgent?.message && (
+                                {(analysis.injectedInstruction || analysis.feedbackForAgent?.message) && (
                                   <Collapsible>
-                                    <CollapsibleTrigger className="flex items-center gap-1 text-[9px] text-purple-600 hover:text-purple-700 px-1.5 py-0.5 rounded hover:bg-purple-50 dark:hover:bg-purple-950/30">
-                                      <MessageSquare className="h-2.5 w-2.5" />
-                                      <span>Istruzione</span>
-                                      {analysis.feedbackForAgent.priority && (
-                                        <Badge className={`text-[7px] h-4 px-1 ${
+                                    <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 px-2 py-1 rounded hover:bg-purple-50 dark:hover:bg-purple-950/30 border border-purple-200">
+                                      <MessageSquare className="h-3.5 w-3.5" />
+                                      <span>Istruzione al Venditore</span>
+                                      {analysis.feedbackForAgent?.priority && (
+                                        <Badge className={`text-xs px-1.5 ${
                                           analysis.feedbackForAgent.priority === 'critical' ? 'bg-red-100 text-red-700' :
                                           analysis.feedbackForAgent.priority === 'high' ? 'bg-orange-100 text-orange-700' :
                                           'bg-gray-100 text-gray-700'
@@ -1525,9 +1521,9 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                         </Badge>
                                       )}
                                     </CollapsibleTrigger>
-                                    <CollapsibleContent className="mt-1">
-                                      <div className="p-1.5 bg-purple-50 dark:bg-purple-950/30 rounded text-[9px] text-gray-600 dark:text-gray-400 border-l-2 border-purple-400">
-                                        {analysis.feedbackForAgent.message}
+                                    <CollapsibleContent className="mt-2">
+                                      <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded text-sm text-gray-700 dark:text-gray-300 border-l-4 border-purple-500 whitespace-pre-wrap font-mono">
+                                        {analysis.injectedInstruction || analysis.feedbackForAgent?.message}
                                       </div>
                                     </CollapsibleContent>
                                   </Collapsible>
@@ -1536,32 +1532,32 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                 {/* Tone Analysis Collapsible */}
                                 {analysis.toneAnalysis && (analysis.toneAnalysis.isRobotic || analysis.toneAnalysis.energyMismatch || (analysis.toneAnalysis.issues?.length || 0) > 0) && (
                                   <Collapsible>
-                                    <CollapsibleTrigger className="flex items-center gap-1 text-[9px] text-amber-600 hover:text-amber-700 px-1.5 py-0.5 rounded hover:bg-amber-50 dark:hover:bg-amber-950/30">
-                                      <Volume2 className="h-2.5 w-2.5" />
+                                    <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 px-2 py-1 rounded hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-200">
+                                      <Volume2 className="h-3.5 w-3.5" />
                                       <span>Tono</span>
                                     </CollapsibleTrigger>
-                                    <CollapsibleContent className="mt-1">
-                                      <div className="p-1.5 bg-amber-50 dark:bg-amber-950/30 rounded text-[9px] text-gray-600 dark:text-gray-400 border-l-2 border-amber-400 space-y-1">
+                                    <CollapsibleContent className="mt-2">
+                                      <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded text-sm text-gray-700 dark:text-gray-300 border-l-3 border-amber-400 space-y-2">
                                         {analysis.toneAnalysis.isRobotic && (
-                                          <div className="flex items-center gap-1">
-                                            <span className="text-red-500">🤖</span>
+                                          <div className="flex items-center gap-2">
+                                            <span>🤖</span>
                                             <span>Tono robotico rilevato</span>
                                           </div>
                                         )}
                                         {analysis.toneAnalysis.energyMismatch && (
-                                          <div className="flex items-center gap-1">
-                                            <span className="text-orange-500">⚡</span>
+                                          <div className="flex items-center gap-2">
+                                            <span>⚡</span>
                                             <span>Mismatch di energia</span>
                                           </div>
                                         )}
                                         {analysis.toneAnalysis.issues?.map((issue, i) => (
-                                          <div key={i} className="flex items-center gap-1">
-                                            <span className="text-amber-500">⚠️</span>
+                                          <div key={i} className="flex items-center gap-2">
+                                            <span>⚠️</span>
                                             <span>{issue}</span>
                                           </div>
                                         ))}
                                         {analysis.feedbackForAgent?.toneReminder && (
-                                          <div className="mt-1 pt-1 border-t border-amber-200 dark:border-amber-700">
+                                          <div className="mt-2 pt-2 border-t border-amber-200 dark:border-amber-700">
                                             <span className="text-amber-700 dark:text-amber-300">💡 {analysis.feedbackForAgent.toneReminder}</span>
                                           </div>
                                         )}

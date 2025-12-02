@@ -4369,6 +4369,9 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                         
                         const shouldInjectInstruction = analysis.feedbackForAgent?.shouldInject || hasValidReasoning;
                         
+                        // 🆕 Track injected instruction for UI (declared here so it's available for analysis payload)
+                        let injectedInstructionForUI: string | null = null;
+                        
                         // 🆕 Define phase/step info BEFORE if block - used both inside and outside
                         const totalPhases = scriptForAgent?.phases?.length || 1;
                         const currentPhaseNum = (phaseIndex >= 0 ? phaseIndex : 0) + 1;
@@ -4487,6 +4490,9 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                             aiIntuition: aiIntuitionText, // 🆕 AI Intuition dal checkpoint
                             aiSuggestion: aiSuggestionText // 🆕 Suggerimento AI dal checkpoint
                           });
+                          
+                          // 🆕 Save compact feedback for UI visualization
+                          injectedInstructionForUI = compactFeedback;
                           
                           const feedbackContent = `<<<SALES_MANAGER_INSTRUCTION>>>
 ${compactFeedback}
@@ -4642,6 +4648,7 @@ ${compactFeedback}
                                 message: analysis.feedbackForAgent.message,
                                 toneReminder: analysis.feedbackForAgent.toneReminder
                               } : null,
+                              injectedInstruction: injectedInstructionForUI, // 🆕 The ACTUAL message sent to the sales agent
                               currentPhase: {
                                 id: state.currentPhase,
                                 name: currentPhaseName,
