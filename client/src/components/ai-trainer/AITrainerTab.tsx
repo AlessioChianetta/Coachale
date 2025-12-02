@@ -1287,55 +1287,67 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                   : 0;
                 
                 return (
-                  <div className="space-y-4">
-                    {/* HEADER DASHBOARD */}
-                    <div className="grid grid-cols-4 gap-3">
-                      <div className="p-3 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/50 dark:to-purple-900/30 border border-purple-200 dark:border-purple-800">
-                        <div className="text-[10px] text-purple-600 dark:text-purple-400 mb-1">🎭 ARCHETIPO</div>
-                        <div className={`text-sm font-bold px-2 py-1 rounded border ${getArchetypeColor(latestAnalysis?.archetypeState?.current)}`}>
+                  <div className="space-y-2">
+                    {/* HEADER DASHBOARD - Compatto */}
+                    <div className="flex items-center gap-2 flex-wrap p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border">
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-700">
+                        <span className="text-[9px] text-purple-500">🎭</span>
+                        <span className={`text-xs font-semibold ${getArchetypeColor(latestAnalysis?.archetypeState?.current).replace('border', 'text').replace('bg-', 'text-')}`}>
                           {getArchetypeEmoji(latestAnalysis?.archetypeState?.current)} {getArchetypeLabel(latestAnalysis?.archetypeState?.current)}
-                        </div>
+                        </span>
                         {latestAnalysis?.archetypeState?.confidence && (
-                          <div className="text-[10px] text-purple-500 mt-1">
-                            {Math.round(latestAnalysis.archetypeState.confidence * 100)}% confidence
-                          </div>
+                          <span className="text-[8px] text-purple-400">
+                            ({Math.round(latestAnalysis.archetypeState.confidence * 100)}%)
+                          </span>
                         )}
                       </div>
                       
-                      <div className="p-3 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/30 border border-blue-200 dark:border-blue-800">
-                        <div className="text-[10px] text-blue-600 dark:text-blue-400 mb-1">📍 FASE CORRENTE</div>
-                        <div className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-700">
+                        <span className="text-[9px] text-blue-500">📍</span>
+                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
                           {latestAnalysis?.currentPhase?.name || 'Avvio...'}
-                        </div>
-                        <div className="text-[10px] text-blue-500 mt-1">
-                          {latestAnalysis?.currentPhase?.stepName || 'In attesa'}
-                        </div>
+                        </span>
+                        <span className="text-[8px] text-blue-400">
+                          ({latestAnalysis?.currentPhase?.stepName || 'In attesa'})
+                        </span>
                       </div>
                       
-                      <div className="p-3 rounded-lg bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/50 dark:to-green-900/30 border border-green-200 dark:border-green-800">
-                        <div className="text-[10px] text-green-600 dark:text-green-400 mb-1">⏱️ DURATA</div>
-                        <div className="text-xl font-bold text-green-700 dark:text-green-300 font-mono">
+                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-green-100 dark:bg-green-900/40 border border-green-200 dark:border-green-700">
+                        <span className="text-[9px] text-green-500">⏱️</span>
+                        <span className="text-sm font-bold text-green-700 dark:text-green-300 font-mono">
                           {getSessionDuration()}
-                        </div>
+                        </span>
                       </div>
                       
-                      <div className="p-3 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950/50 dark:to-amber-900/30 border border-amber-200 dark:border-amber-800">
-                        <div className="text-[10px] text-amber-600 dark:text-amber-400 mb-1">💬 MESSAGGI</div>
-                        <div className="text-xl font-bold text-amber-700 dark:text-amber-300">
+                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-700">
+                        <span className="text-[9px] text-amber-500">💬</span>
+                        <span className="text-sm font-bold text-amber-700 dark:text-amber-300">
                           {transcript.length}
-                        </div>
+                        </span>
+                      </div>
+                      
+                      {/* Metriche inline */}
+                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800">
+                        <span className="text-xs font-bold text-green-600">{totalBuySignals}</span>
+                        <span className="text-[8px] text-green-500">💰</span>
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800">
+                        <span className="text-xs font-bold text-red-600">{totalObjections}</span>
+                        <span className="text-[8px] text-red-500">🛡️</span>
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-1 rounded bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+                        <span className="text-xs font-bold text-blue-600">{totalAdvancements}</span>
+                        <span className="text-[8px] text-blue-500">🚀</span>
                       </div>
                     </div>
                     
-                    {/* CHECKPOINT STATUS - STORICO COMPLETO */}
+                    {/* CHECKPOINT STATUS - Collapsibile */}
                     {(() => {
-                      // Raccogli tutti i checkpoint unici dall'history
                       const checkpointsByName = new Map<string, SalesManagerAnalysisData['checkpointStatus']>();
                       
                       analysisHistory.forEach(analysis => {
                         if (analysis.checkpointStatus?.checkpointName) {
                           const name = analysis.checkpointStatus.checkpointName;
-                          // Mantieni solo il più recente per ogni checkpoint
                           if (!checkpointsByName.has(name) || 
                               checkpointsByName.get(name)!.isComplete === false) {
                             checkpointsByName.set(name, analysis.checkpointStatus);
@@ -1347,113 +1359,84 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                       
                       if (allCheckpoints.length === 0) return null;
                       
+                      const completedCount = allCheckpoints.filter(c => c.isComplete).length;
+                      const totalMissing = allCheckpoints.reduce((acc, c) => acc + (c.missingItems?.length || 0), 0);
+                      
                       return (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">⛔ Checkpoint Rilevati ({allCheckpoints.length})</span>
-                          </div>
-                          {allCheckpoints.map((checkpoint, idx) => (
-                            <Card key={idx} className="border-l-4 border-l-orange-500">
-                              <CardContent className="py-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm font-medium flex items-center gap-2">
-                                    ⛔ {checkpoint.checkpointName}
+                        <Collapsible defaultOpen={false}>
+                          <CollapsibleTrigger className="flex items-center justify-between w-full p-2 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors">
+                            <div className="flex items-center gap-2">
+                              <ChevronRight className="h-4 w-4 text-orange-600 transition-transform duration-200 [[data-state=open]>&]:rotate-90" />
+                              <span className="text-xs font-medium text-orange-700 dark:text-orange-300">
+                                ⛔ Checkpoint ({allCheckpoints.length})
+                              </span>
+                              <Badge className="text-[9px] bg-green-100 text-green-700">{completedCount} ✓</Badge>
+                              {totalMissing > 0 && (
+                                <Badge className="text-[9px] bg-red-100 text-red-700">{totalMissing} mancanti</Badge>
+                              )}
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-2 space-y-2">
+                            {allCheckpoints.map((checkpoint, idx) => (
+                              <div key={idx} className="p-2 rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-900">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
+                                    {checkpoint.checkpointName}
                                   </span>
-                                  <Badge className={checkpoint.isComplete 
+                                  <Badge className={`text-[8px] ${checkpoint.isComplete 
                                     ? 'bg-green-100 text-green-700' 
-                                    : 'bg-orange-100 text-orange-700'}>
-                                    {checkpoint.isComplete 
-                                      ? '✓ COMPLETO' 
-                                      : `${checkpoint.missingItems?.length || 0} mancanti`}
+                                    : 'bg-orange-100 text-orange-700'}`}>
+                                    {checkpoint.isComplete ? '✓' : `${checkpoint.missingItems?.length || 0} mancanti`}
                                   </Badge>
                                 </div>
-                                <div className="space-y-2">
+                                <div className="flex flex-wrap gap-1">
                                   {checkpoint.itemDetails?.map((item, i) => (
-                                    <div key={i} className={`p-2 rounded-lg border ${
+                                    <span key={i} className={`text-[9px] px-1.5 py-0.5 rounded ${
                                       item.status === 'validated' 
-                                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+                                        ? 'bg-green-100 text-green-700' 
                                         : item.status === 'vague'
-                                          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-                                          : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                                          ? 'bg-amber-100 text-amber-700'
+                                          : 'bg-red-100 text-red-700'
                                     }`}>
-                                      <div className="flex items-start gap-2">
-                                        <span className="text-sm">
-                                          {item.status === 'validated' ? '🟢' : item.status === 'vague' ? '🟡' : '🔴'}
-                                        </span>
-                                        <div className="flex-1">
-                                          <div className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                                            {item.check}
-                                          </div>
-                                          {item.status !== 'validated' && item.suggestedNextAction && (
-                                            <div className="mt-1 text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded">
-                                              🎯 {item.suggestedNextAction}
-                                            </div>
-                                          )}
-                                          {item.status === 'validated' && item.infoCollected && (
-                                            <div className="mt-1 text-[10px] text-green-600 dark:text-green-400">
-                                              ✓ {item.infoCollected}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
+                                      {item.status === 'validated' ? '🟢' : item.status === 'vague' ? '🟡' : '🔴'} {item.check.substring(0, 30)}{item.check.length > 30 ? '...' : ''}
+                                    </span>
                                   )) || (
-                                    <div className="flex flex-wrap gap-2">
+                                    <>
                                       {checkpoint.completedItems?.map((item, i) => (
-                                        <span key={`c-${i}`} className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full flex items-center gap-1">
-                                          🟢 {item}
+                                        <span key={`c-${i}`} className="text-[9px] px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+                                          🟢 {item.substring(0, 25)}{item.length > 25 ? '...' : ''}
                                         </span>
                                       ))}
                                       {checkpoint.missingItems?.map((item, i) => (
-                                        <span key={`m-${i}`} className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-full flex items-center gap-1">
-                                          🔴 {item}
+                                        <span key={`m-${i}`} className="text-[9px] px-1.5 py-0.5 bg-red-100 text-red-700 rounded">
+                                          🔴 {item.substring(0, 25)}{item.length > 25 ? '...' : ''}
                                         </span>
                                       ))}
-                                    </div>
+                                    </>
                                   )}
                                 </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
+                              </div>
+                            ))}
+                          </CollapsibleContent>
+                        </Collapsible>
                       );
                     })()}
                     
-                    {/* METRICHE LIVE */}
-                    <div className="grid grid-cols-4 gap-2">
-                      <div className="text-center p-2 rounded bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
-                        <div className="text-lg font-bold text-green-600">{totalBuySignals}</div>
-                        <div className="text-[10px] text-green-500">💰 Buy Signals</div>
-                      </div>
-                      <div className="text-center p-2 rounded bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-                        <div className="text-lg font-bold text-red-600">{totalObjections}</div>
-                        <div className="text-[10px] text-red-500">🛡️ Obiezioni</div>
-                      </div>
-                      <div className="text-center p-2 rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                        <div className="text-lg font-bold text-blue-600">{totalAdvancements}</div>
-                        <div className="text-[10px] text-blue-500">🚀 Avanzamenti</div>
-                      </div>
-                      <div className="text-center p-2 rounded bg-gray-50 dark:bg-gray-950/30 border border-gray-200 dark:border-gray-700">
-                        <div className="text-lg font-bold text-gray-600">{avgAnalysisTime}ms</div>
-                        <div className="text-[10px] text-gray-500">⚡ Tempo Medio</div>
-                      </div>
-                    </div>
-                    
                     {/* STORICO ANALISI */}
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between py-1">
                       <div className="flex items-center gap-2">
-                        <History className="h-4 w-4 text-purple-600" />
-                        <span className="text-sm font-medium">Storico Analisi ({analysisHistory.length})</span>
+                        <History className="h-3 w-3 text-purple-600" />
+                        <span className="text-xs font-medium">Storico Analisi ({analysisHistory.length})</span>
                       </div>
                       {analysisHistory.length > 0 && (
-                        <Button variant="outline" size="sm" onClick={handleExportAnalysis} className="flex items-center gap-2">
-                          <Download className="h-4 w-4" />
+                        <Button variant="outline" size="sm" onClick={handleExportAnalysis} className="h-6 text-[10px] px-2">
+                          <Download className="h-3 w-3 mr-1" />
                           Esporta
                         </Button>
                       )}
                     </div>
                     
-                    <ScrollArea className="h-[35vh] pr-4">
+                    <ScrollArea className="h-[50vh] pr-2">
                       {managerAnalysisLoading && analysisHistory.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
                           <Loader2 className="h-6 w-6 mx-auto animate-spin mb-2" />
@@ -1470,42 +1453,51 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                           <p className="text-sm">In attesa di analisi...</p>
                         </div>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-1.5">
                           {analysisHistory.map((analysis, idx) => (
-                            <Card key={idx} className="border-l-4 border-l-purple-500">
-                              <CardContent className="py-2 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-medium text-gray-500">#{idx + 1}</span>
-                                    <Badge variant="outline" className="text-[10px]">
-                                      {analysis.currentPhase?.name || 'N/A'}
+                            <div key={idx} className="p-2 rounded-lg border border-l-4 border-l-purple-500 bg-white dark:bg-gray-900">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
+                                  <span className="text-[10px] font-medium text-gray-400">#{idx + 1}</span>
+                                  <Badge variant="outline" className="text-[9px] h-5 px-1.5">
+                                    {analysis.currentPhase?.name || 'N/A'}
+                                  </Badge>
+                                  {analysis.archetypeState?.current && (
+                                    <Badge className={`text-[9px] h-5 px-1.5 ${getArchetypeColor(analysis.archetypeState.current)}`}>
+                                      {getArchetypeEmoji(analysis.archetypeState.current)}
                                     </Badge>
-                                    {analysis.archetypeState?.current && (
-                                      <Badge className={`text-[10px] ${getArchetypeColor(analysis.archetypeState.current)}`}>
-                                        {getArchetypeEmoji(analysis.archetypeState.current)} {getArchetypeLabel(analysis.archetypeState.current)}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Badge className={analysis.stepAdvancement?.shouldAdvance 
-                                      ? 'bg-green-100 text-green-700 text-[10px]' 
-                                      : 'bg-red-100 text-red-700 text-[10px]'}>
-                                      {analysis.stepAdvancement?.shouldAdvance ? '✓' : '✗'}
+                                  )}
+                                  <Badge className={`text-[9px] h-5 px-1.5 ${analysis.stepAdvancement?.shouldAdvance 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : 'bg-red-100 text-red-700'}`}>
+                                    {analysis.stepAdvancement?.shouldAdvance ? '✓' : '✗'}
+                                  </Badge>
+                                  {(analysis.buySignals?.signals?.length || 0) > 0 && (
+                                    <Badge className="text-[9px] h-5 px-1.5 bg-green-100 text-green-700">
+                                      💰 {analysis.buySignals?.signals?.length}
                                     </Badge>
-                                    <span className="text-[10px] text-gray-400">
-                                      {new Date(analysis.timestamp).toLocaleTimeString('it-IT')}
-                                    </span>
-                                  </div>
+                                  )}
+                                  {(analysis.objections?.objections?.length || 0) > 0 && (
+                                    <Badge className="text-[9px] h-5 px-1.5 bg-red-100 text-red-700">
+                                      🛡️ {analysis.objections?.objections?.length}
+                                    </Badge>
+                                  )}
                                 </div>
-                                
+                                <span className="text-[9px] text-gray-400 whitespace-nowrap">
+                                  {new Date(analysis.timestamp).toLocaleTimeString('it-IT')}
+                                </span>
+                              </div>
+                              
+                              {/* Collapsible buttons in a row */}
+                              <div className="flex gap-2 mt-1.5">
                                 {analysis.stepAdvancement?.reasoning && (
-                                  <Collapsible>
-                                    <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-blue-600 hover:text-blue-700">
-                                      <Brain className="h-3 w-3" />
+                                  <Collapsible className="flex-1">
+                                    <CollapsibleTrigger className="flex items-center gap-1 text-[9px] text-blue-600 hover:text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30">
+                                      <Brain className="h-2.5 w-2.5" />
                                       <span>Reasoning</span>
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="mt-1">
-                                      <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded text-[10px] text-gray-600 dark:text-gray-400">
+                                      <div className="p-1.5 bg-blue-50 dark:bg-blue-950/30 rounded text-[9px] text-gray-600 dark:text-gray-400">
                                         {analysis.stepAdvancement.reasoning}
                                       </div>
                                     </CollapsibleContent>
@@ -1513,12 +1505,12 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                 )}
                                 
                                 {analysis.feedbackForAgent?.message && (
-                                  <Collapsible>
-                                    <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-700">
-                                      <MessageSquare className="h-3 w-3" />
-                                      <span>Sales Manager Instruction</span>
+                                  <Collapsible className="flex-1">
+                                    <CollapsibleTrigger className="flex items-center gap-1 text-[9px] text-purple-600 hover:text-purple-700 px-1.5 py-0.5 rounded hover:bg-purple-50 dark:hover:bg-purple-950/30">
+                                      <MessageSquare className="h-2.5 w-2.5" />
+                                      <span>Istruzione</span>
                                       {analysis.feedbackForAgent.priority && (
-                                        <Badge className={`text-[8px] ml-1 ${
+                                        <Badge className={`text-[7px] h-4 px-1 ${
                                           analysis.feedbackForAgent.priority === 'critical' ? 'bg-red-100 text-red-700' :
                                           analysis.feedbackForAgent.priority === 'high' ? 'bg-orange-100 text-orange-700' :
                                           'bg-gray-100 text-gray-700'
@@ -1528,25 +1520,14 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                       )}
                                     </CollapsibleTrigger>
                                     <CollapsibleContent className="mt-1">
-                                      <div className="p-2 bg-purple-50 dark:bg-purple-950/30 rounded text-[10px] text-gray-600 dark:text-gray-400 border-l-2 border-purple-400">
+                                      <div className="p-1.5 bg-purple-50 dark:bg-purple-950/30 rounded text-[9px] text-gray-600 dark:text-gray-400 border-l-2 border-purple-400">
                                         {analysis.feedbackForAgent.message}
                                       </div>
                                     </CollapsibleContent>
                                   </Collapsible>
                                 )}
-                                
-                                {(analysis.buySignals?.detected || analysis.objections?.detected) && (
-                                  <div className="flex flex-wrap gap-1">
-                                    {analysis.buySignals?.signals?.map((signal, sIdx) => (
-                                      <Badge key={sIdx} className="text-[9px] bg-green-100 text-green-700">💰 {signal.type}</Badge>
-                                    ))}
-                                    {analysis.objections?.objections?.map((obj, oIdx) => (
-                                      <Badge key={oIdx} className="text-[9px] bg-red-100 text-red-700">🛡️ {obj.type}</Badge>
-                                    ))}
-                                  </div>
-                                )}
-                              </CardContent>
-                            </Card>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}
