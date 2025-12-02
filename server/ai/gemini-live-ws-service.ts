@@ -23,6 +23,8 @@ import type { SalesManagerParams, SalesManagerAnalysis, BusinessContext } from '
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+
+
 /**
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * 📊 IN-MEMORY CACHE per Sessioni Attive
