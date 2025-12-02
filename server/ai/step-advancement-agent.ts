@@ -652,15 +652,16 @@ Esempio se NON avanzare + feedback correttivo:
         });
         
         // Chiama Gemini con timeout
-        // 🔧 FIX: maxOutputTokens aumentato a 1500 per non troncare itemDetails con molti check
-        // Con 9 check (fase 7), ogni itemDetail richiede ~100-150 token
+        // 🔧 FIX: maxOutputTokens aumentato a 4000 per evitare troncamento JSON
+        // Con 9+ check per fase, ogni itemDetail richiede ~100-150 token
+        // 4000 token garantisce spazio abbondante per qualsiasi numero di check
         const response = await Promise.race([
           aiClient.generateContent({
             model: this.MODEL,
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0, // Deterministico per coerenza
-              maxOutputTokens: 1500, // 🔧 FIX: Aumentato da 500 per restituire TUTTI i check
+              maxOutputTokens: 4000, // 🔧 FIX: Token abbondanti per evitare troncamento
             }
           }),
           this.timeout(this.TIMEOUT_MS)

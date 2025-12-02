@@ -1752,6 +1752,17 @@ export function setupGeminiLiveWSService(server: Server) {
         aiIntuition: string | null;
       } | undefined = undefined;
       
+      // 🔒 STICKY VALIDATION: Mantiene gli item checkpoint già validati tra le chiamate
+      // Una volta verde, resta verde - evita che l'AI "dimentichi" validazioni precedenti
+      // Struttura: { "checkpoint_phase_1": [{ check: "...", status: "validated", ... }], ... }
+      let persistentValidatedItems: Record<string, Array<{
+        check: string;
+        status: 'validated' | 'missing' | 'vague';
+        infoCollected?: string;
+        evidenceQuote?: string;
+        reason?: string;
+      }>> = {};
+      
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       // SALES AGENT / CONSULTATION INVITE MODE - Build prompt from agent config
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -4163,7 +4174,9 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           archetypeState: persistentArchetypeState as any,
                           currentTurn: conversationMessages.length,
                           // 🆕 CHECKPOINT PERSISTENCE: Passa i checkpoint già completati (verde = resta verde)
-                          completedCheckpoints: state.checkpointsCompleted
+                          completedCheckpoints: state.checkpointsCompleted,
+                          // 🔒 STICKY VALIDATION: Passa gli item singoli già validati (verde = resta verde)
+                          validatedCheckpointItems: persistentValidatedItems
                         };
                         
                         // 🆕 LOG ALWAYS-VISIBLE: Business context at analysis time
@@ -4233,6 +4246,42 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                             aiIntuition: analysis.archetypeState.aiIntuition
                           };
                           console.log(`   🎭 Archetype state SAVED: ${analysis.archetypeState.current} (${(analysis.archetypeState.confidence * 100).toFixed(0)}%)`);
+                        }
+                        
+                        // 🔒 STICKY VALIDATION: Salva i nuovi item validati per la prossima chiamata
+                        // Una volta verde, resta verde - evita che l'AI "dimentichi" validazioni
+                        if (analysis.checkpointStatus?.itemDetails && analysis.checkpointStatus?.checkpointId) {
+                          const checkpointId = analysis.checkpointStatus.checkpointId;
+                          const newValidatedItems = analysis.checkpointStatus.itemDetails.filter(
+                            item => item.status === 'validated'
+                          );
+                          
+                          // Merge: mantieni i vecchi validati, aggiungi i nuovi (senza duplicati)
+                          const existingItems = persistentValidatedItems[checkpointId] || [];
+                          const mergedItems = [...existingItems];
+                          
+                          newValidatedItems.forEach(newItem => {
+                            // Aggiungi solo se non esiste già (evita duplicati)
+                            if (!mergedItems.some(m => m.check === newItem.check)) {
+                              mergedItems.push({
+                                check: newItem.check,
+                                status: newItem.status,
+                                infoCollected: newItem.infoCollected,
+                                evidenceQuote: newItem.evidenceQuote,
+                                reason: newItem.reason
+                              });
+                            }
+                          });
+                          
+                          persistentValidatedItems[checkpointId] = mergedItems;
+                          
+                          const newCount = newValidatedItems.length - existingItems.length;
+                          if (newCount > 0 || existingItems.length > 0) {
+                            console.log(`   🔒 STICKY VALIDATION SAVED: ${mergedItems.length} validated items for ${checkpointId}`);
+                            if (newCount > 0) {
+                              console.log(`      → ${newCount} NEW items added this turn`);
+                            }
+                          }
                         }
                         
                         // Extract step advancement from full analysis

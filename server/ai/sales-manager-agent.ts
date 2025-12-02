@@ -291,6 +291,9 @@ export interface SalesManagerParams {
       evidence?: any;
     }>;
   }>;
+  // 🆕 STICKY VALIDATION: Item singoli già validati (verde = resta verde)
+  // Struttura: { "checkpoint_phase_1": [{ check: "...", status: "validated", ... }], ... }
+  validatedCheckpointItems?: Record<string, CheckpointItemDetail[]>;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1589,18 +1592,59 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       };
     }
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔒 STICKY VALIDATION: Recupera item già validati per questo checkpoint
+    // Una volta verde, resta verde - non viene più ri-analizzato dall'AI
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const alreadyValidatedItems = params.validatedCheckpointItems?.[checkpoint.id] || [];
+    
+    // Filtra: passa all'AI SOLO i check NON ancora validati (verde)
+    const checksToAnalyze = checkpoint.checks.filter(check => 
+      !alreadyValidatedItems.some(v => v.check === check && v.status === 'validated')
+    );
+
     console.log(`\n🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...`);
     console.log(`   📍 Phase: ${currentPhase.name} (${currentPhase.id})`);
     console.log(`   🎯 Checkpoint: ${checkpoint.title}`);
-    console.log(`   📋 Checks to validate: ${checkpoint.checks.length}`);
+    console.log(`   📋 Total checks: ${checkpoint.checks.length}`);
+    console.log(`   🔒 Already validated (sticky): ${alreadyValidatedItems.length}`);
+    console.log(`   🔍 Remaining to analyze: ${checksToAnalyze.length}`);
+    
+    // Log dettagliato degli item sticky
+    if (alreadyValidatedItems.length > 0) {
+      console.log(`   🔒 STICKY ITEMS (skipped):`);
+      alreadyValidatedItems.forEach((item, idx) => {
+        console.log(`      ${idx + 1}. ✅ "${item.check.substring(0, 50)}${item.check.length > 50 ? '...' : ''}"`);
+      });
+    }
+
+    // Se TUTTI i check sono già validati, ritorna direttamente senza chiamare AI
+    if (checksToAnalyze.length === 0) {
+      console.log(`   ✅ ALL CHECKS ALREADY VALIDATED - Skipping AI call`);
+      return {
+        checkpointId: checkpoint.id,
+        checkpointName: checkpoint.title,
+        isComplete: true,
+        missingItems: [],
+        completedItems: checkpoint.checks,
+        canAdvance: true,
+        itemDetails: alreadyValidatedItems,
+        qualityScore: { specificity: 10, completeness: 10, actionability: 10, overall: 10 },
+        phaseNumber: currentPhase.id.replace('phase_', ''),
+        totalChecks: checkpoint.checks.length,
+        validatedCount: checkpoint.checks.length,
+        missingCount: 0
+      };
+    }
 
     try {
       // Usa l'analisi semantica AI del StepAdvancementAgent
+      // 🔒 NOTA: Passa SOLO i check non ancora validati per ridurre token e aumentare precisione
       const aiResult = await StepAdvancementAgent.analyzeCheckpointCompletion({
         checkpoint: {
           id: checkpoint.id,
           title: checkpoint.title,
-          checks: checkpoint.checks
+          checks: checksToAnalyze  // 🔒 Solo check non ancora validati!
         },
         recentMessages: params.recentMessages,
         clientId: params.clientId,
@@ -1609,9 +1653,24 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
         phaseId: currentPhase.id
       });
 
-      console.log(`✅ [SALES-MANAGER] AI checkpoint analysis complete`);
-      console.log(`   🟢 Completed: ${aiResult.completedItems.length}`);
-      console.log(`   🔴 Missing: ${aiResult.missingItems.length}`);
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 🔒 MERGE: Combina item già validati (sticky) + nuovi risultati AI
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const mergedItemDetails: CheckpointItemDetail[] = [
+        ...alreadyValidatedItems,  // Prima gli item già verdi (sticky)
+        ...aiResult.itemDetails    // Poi i nuovi risultati dall'AI
+      ];
+      
+      // Ricalcola contatori dopo il merge
+      const totalValidated = mergedItemDetails.filter(i => i.status === 'validated').length;
+      const totalMissing = mergedItemDetails.filter(i => i.status === 'missing' || i.status === 'vague').length;
+      const isComplete = totalValidated === checkpoint.checks.length;
+
+      console.log(`✅ [SALES-MANAGER] AI checkpoint analysis complete (with sticky merge)`);
+      console.log(`   🔒 Sticky (preserved): ${alreadyValidatedItems.length}`);
+      console.log(`   🆕 New from AI: ${aiResult.itemDetails.length}`);
+      console.log(`   🟢 Total validated: ${totalValidated}/${checkpoint.checks.length}`);
+      console.log(`   🔴 Missing/Vague: ${totalMissing}`);
       console.log(`   📊 Confidence: ${(aiResult.confidence * 100).toFixed(0)}%`);
       console.log(`   📈 Quality Score: ${aiResult.qualityScore?.overall || 0}/10`);
 
@@ -1619,16 +1678,16 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       return {
         checkpointId: checkpoint.id,
         checkpointName: checkpoint.title,
-        isComplete: aiResult.isComplete,
-        missingItems: aiResult.missingItems,
-        completedItems: aiResult.completedItems,
-        canAdvance: aiResult.canAdvance,
-        itemDetails: aiResult.itemDetails,
+        isComplete: isComplete,
+        missingItems: mergedItemDetails.filter(i => i.status !== 'validated').map(i => i.check),
+        completedItems: mergedItemDetails.filter(i => i.status === 'validated').map(i => i.check),
+        canAdvance: isComplete,
+        itemDetails: mergedItemDetails,  // 🔒 Merged: sticky + new AI results
         qualityScore: aiResult.qualityScore,
-        phaseNumber: aiResult.phaseNumber,
-        totalChecks: aiResult.totalChecks,
-        validatedCount: aiResult.validatedCount,
-        missingCount: aiResult.missingCount
+        phaseNumber: aiResult.phaseNumber || currentPhase.id.replace('phase_', ''),
+        totalChecks: checkpoint.checks.length,
+        validatedCount: totalValidated,
+        missingCount: totalMissing
       };
 
     } catch (error: any) {
