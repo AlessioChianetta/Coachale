@@ -1,0 +1,77 @@
+💬 CONVERSAZIONE DA ANALIZZARE
+═══════════════════════════════════════════════════════════════
+${conversationText}
+
+═══════════════════════════════════════════════════════════════
+🎯 CRITERI DI VALIDAZIONE RIGOROSI
+═══════════════════════════════════════════════════════════════
+
+✅ VALIDATED (Informazione Acquisita) - TUTTI questi criteri devono essere soddisfatti:
+1. L'agente ha posto la domanda (semanticamente equivalente)
+2. Il prospect ha risposto
+3. La risposta contiene INFORMAZIONE SPECIFICA e CONCRETA
+4. L'informazione è UTILIZZABILE per la vendita
+
+Esempi di risposte VALIDE:
+- "Il mio problema è che non riesco a chiudere più di 3 clienti al mese" ✅ SPECIFICO
+- "Sono un consulente marketing per ristoranti da 5 anni" ✅ SPECIFICO
+- "Ho un budget di circa 2000-3000 euro" ✅ SPECIFICO
+- "Decido io, mia moglie non c'entra" ✅ SPECIFICO
+
+❌ MISSING (Non Chiesto) - La domanda NON è mai stata fatta dall'agente
+
+⚠️ VAGUE (Risposta Vaga/Insufficiente) - La domanda è stata fatta MA:
+- Risposta generica: "tante cose", "vari problemi", "vorrei crescere"
+- Risposta evasiva: "poi ne parliamo", "dipende", "vedremo"
+- Solo conferma senza contenuto: "sì", "ok", "va bene" (per domande informative)
+- Informazione incompleta: manca un dettaglio cruciale
+
+Esempi di risposte NON VALIDE:
+- "Ho diversi problemi" → VAGUE (quale problema specifico?)
+- "Vorrei fatturare di più" → VAGUE (quanto esattamente?)
+- "Sì, ho capito" → VAGUE per domande informative (non dice COSA ha capito)
+- "Ne devo parlare con qualcuno" → VAGUE (chi? quando?)
+
+═══════════════════════════════════════════════════════════════
+📊 QUALITY SCORE (0-10 per ogni metrica)
+═══════════════════════════════════════════════════════════════
+- specificity: Quanto sono SPECIFICHE le informazioni (numeri, nomi, dettagli concreti)?
+- completeness: Quante verifiche sono state completate su totale?
+- actionability: Le info raccolte sono UTILIZZABILI per proseguire la vendita?
+- overall: Media pesata (specificity*0.4 + completeness*0.3 + actionability*0.3)
+
+═══════════════════════════════════════════════════════════════
+📤 FORMATO RISPOSTA JSON
+═══════════════════════════════════════════════════════════════
+Rispondi SOLO con JSON valido, NO testo aggiuntivo:
+
+{
+  "isComplete": boolean,
+  "completedItems": ["check validato 1", "check validato 2"],
+  "missingItems": ["check mancante/vago 1"],
+  "reasoning": "spiegazione sintetica",
+  "confidence": 0.0-1.0,
+  "canAdvance": boolean,
+  "itemDetails": [
+    {
+      "check": "testo originale del check",
+      "status": "validated|missing|vague",
+      "infoCollected": "informazione specifica raccolta (se validated)",
+      "reason": "motivo se missing/vague",
+      "evidenceQuote": "citazione breve dalla conversazione",
+      "suggestedNextAction": "OBBLIGATORIO se missing/vague: descrivi l'OBIETTIVO da raggiungere, NON la domanda letterale da fare. Es: 'Devi capire quale ostacolo specifico blocca il prospect' oppure 'Ottieni un esempio concreto del problema'. NON scrivere MAI 'Chiedi:...' - l'agente sa già come fare domande!"
+    }
+  ],
+  "qualityScore": {
+    "specificity": 0-10,
+    "completeness": 0-10,
+    "actionability": 0-10,
+    "overall": 0-10
+  }
+}
+
+⚠️ REGOLE FINALI:
+- canAdvance = true SOLO SE isComplete = true E qualityScore.overall >= 6
+- Se anche UN SOLO check ha status "vague", canAdvance = false
+- Sii RIGOROSO: meglio bloccare e far raccogliere info migliori che far avanzare con dati scarsi`;
+  }
