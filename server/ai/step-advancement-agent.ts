@@ -773,11 +773,21 @@ ${conversationText}
 3. La risposta contiene INFORMAZIONE SPECIFICA e CONCRETA
 4. L'informazione è UTILIZZABILE per la vendita
 
+🎯 ECCEZIONE IMPORTANTE per check di CONFERMA/PROSEGUIMENTO:
+Per verifiche tipo "Il prospect ha detto che vuole proseguire" o "Ok finale":
+- Una risposta ENTUSIASTA con approvazione implicita È VALIDA!
+- "Ottimo!", "Perfetto!", "Fantastico!" + qualsiasi indicazione positiva = ✅ VALIDATED
+- "Sono prontissimo", "Sono pronto", "Procediamo" = ✅ VALIDATED
+- NON serve una conferma letterale "Sì, voglio proseguire"
+- Basta che il tono sia CHIARAMENTE POSITIVO e di APPROVAZIONE
+
 Esempi di risposte VALIDE:
 - "Il mio problema è che non riesco a chiudere più di 3 clienti al mese" ✅ SPECIFICO
 - "Sono un consulente marketing per ristoranti da 5 anni" ✅ SPECIFICO
 - "Ho un budget di circa 2000-3000 euro" ✅ SPECIFICO
 - "Decido io, mia moglie non c'entra" ✅ SPECIFICO
+- "Ottimo, approccio super chiaro, sono prontissimo!" ✅ CONFERMA IMPLICITA VALIDA
+- "Perfetto, mi sembra tutto ok, andiamo!" ✅ CONFERMA IMPLICITA VALIDA
 
 ❌ MISSING (Non Chiesto) - La domanda NON è mai stata fatta dall'agente
 
