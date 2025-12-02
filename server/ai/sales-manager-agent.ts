@@ -971,27 +971,21 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       };
     } else if (checkpointStatus && !checkpointStatus.canAdvance && checkpointStatus.missingItems.length > 0) {
       // Medium priority: checkpoint not complete
-      // 🆕 Usa i suggerimenti generati dall'AI (suggestedNextAction)
-      // 🔧 FIX: NIENTE SLICE - mostra TUTTI i check mancanti!
-      const missingChecks = checkpointStatus.itemDetails
-        ?.filter(item => item.status !== 'validated') || [];
+      // 🔧 LASER FOCUS: Prendi SOLO il primo suggerimento AI (riduzione token ~60%)
+      // L'agente esegue UN comando alla volta = risultato più naturale e meno confusione
+      const firstMissingCheck = checkpointStatus.itemDetails
+        ?.find(item => item.status !== 'validated');
 
-      // Estrai i suggerimenti AI per i check mancanti - TUTTI, non solo 3!
-      const aiSuggestions = missingChecks
-        .map(item => item.suggestedNextAction)
-        .filter(suggestion => suggestion && suggestion.trim().length > 0)
-        .map(suggestion => `→ ${suggestion}`);
-
-      // Se l'AI non ha fornito suggerimenti, usa i check originali come fallback
-      const suggestions = aiSuggestions.length > 0 
-        ? aiSuggestions 
-        : missingChecks.map(item => `→ ${item.check.substring(0, 80)}${item.check.length > 80 ? '...' : ''}`);
+      // Prendi il primo suggerimento AI, o fallback al check originale
+      const singleSuggestion = firstMissingCheck?.suggestedNextAction?.trim() ||
+        firstMissingCheck?.check?.substring(0, 100) ||
+        'Completa le verifiche del checkpoint';
 
       feedbackForAgent = {
         shouldInject: true,
         priority: 'medium',
         type: 'checkpoint',
-        message: `🎯 PROSSIMI PASSI:\n${suggestions.join('\n')}`,
+        message: singleSuggestion,
       };
     }
 

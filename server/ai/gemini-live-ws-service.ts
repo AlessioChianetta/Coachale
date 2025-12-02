@@ -416,16 +416,12 @@ interface CompactFeedbackParams {
 }
 
 function formatCompactFeedback(params: CompactFeedbackParams): string {
-  // 🔧 FORMATO UNIFICATO: Obiettivo + Azione + Archetipo + Tono
+  // 🔧 LASER FOCUS: Solo AZIONE + ARCHETIPO + TONO (niente OBIETTIVO = -60% token)
+  // L'agente esegue UN comando alla volta = risultato più naturale
   
   const lines: string[] = [];
   
-  // 1. 🎯 OBIETTIVO della fase corrente (contesto)
-  if (params.currentObjective && params.currentObjective.length > 5) {
-    lines.push(`🎯 OBIETTIVO: ${params.currentObjective}`);
-  }
-  
-  // 2. 💬 AZIONE SPECIFICA (naturalFeedbackMessage - cosa fare ORA)
+  // 1. 💬 AZIONE SPECIFICA - La cosa da fare ORA (singola, chiara)
   if (params.needsImprovement && params.needsImprovement.length > 10) {
     const cleanAction = params.needsImprovement
       .replace(/🎯\s*PROSSIMI\s*PASSI:?\s*/gi, '')
@@ -436,13 +432,13 @@ function formatCompactFeedback(params: CompactFeedbackParams): string {
     }
   }
   
-  // 3. 🧠 ARCHETIPO (AI Intuition o stato corrente)
+  // 2. 🧠 ARCHETIPO (AI Intuition o stato corrente)
   const archetype = params.aiIntuition || params.archetypeState?.current;
-  if (archetype && archetype.length > 0) {
+  if (archetype && archetype.length > 0 && archetype !== 'neutral') {
     lines.push(`🧠 ARCHETIPO: ${archetype}`);
   }
   
-  // 4. 🎵 TONO (come parlare)
+  // 3. 🎵 TONO (come parlare)
   if (params.toneReminder && params.toneReminder.length > 5) {
     const cleanTone = params.toneReminder
       .replace(/Tono:\s*/gi, '')
@@ -461,7 +457,7 @@ function formatCompactFeedback(params: CompactFeedbackParams): string {
     feedback = 'Continua la conversazione in modo naturale.';
   }
   
-  console.log(`   📊 [COMPACT FEEDBACK] Generato (${feedback.length} chars, ${lines.length} sezioni)`);
+  console.log(`   📊 [LASER FOCUS] Feedback compatto (${feedback.length} chars, ${lines.length} sezioni)`);
   
   return feedback;
 }
