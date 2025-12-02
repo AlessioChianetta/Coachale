@@ -404,11 +404,13 @@ interface CompactFeedbackParams {
   doingWell: string;
   needsImprovement: string;
   toneReminder: string;
-  archetypeState?: { current: string; confidence: number } | null;
+  archetypeState?: { current: string; confidence: number; aiIntuition?: string } | null;
   toneAnalysis?: { isRobotic: boolean; consecutiveQuestions: number; energyMismatch: boolean } | null;
   stepResult?: { shouldAdvance: boolean } | null;
   checkpointItemDetails?: CheckpointItemDetail[] | null;
   currentObjective?: string | null; // 🆕 Obiettivo della fase corrente
+  aiIntuition?: string | null; // 🆕 AI Intuition dal checkpoint
+  aiSuggestion?: string | null; // 🆕 Suggerimento AI dal checkpoint
 }
 
 function formatCompactFeedback(params: CompactFeedbackParams): string {
@@ -429,6 +431,14 @@ function formatCompactFeedback(params: CompactFeedbackParams): string {
   // 1. OBIETTIVO della fase corrente (PRIMA DI TUTTO - questo è il più importante!)
   if (params.currentObjective && params.currentObjective.length > 5) {
     addUnique(`🎯 OBIETTIVO: ${params.currentObjective}`);
+  }
+  
+  // 🆕 1.5. AI INTUITION E SUGGERIMENTO AI (dal checkpoint)
+  if (params.aiIntuition && params.aiIntuition.length > 0) {
+    addUnique(`🧠 AI INTUITION: ${params.aiIntuition}`);
+  }
+  if (params.aiSuggestion && params.aiSuggestion.length > 0) {
+    addUnique(`💡 AI SUGGESTION: ${params.aiSuggestion}`);
   }
   
   // 2. TONO dall'archetipo (usa toneReminder se presente, altrimenti archetypeState)
@@ -4453,6 +4463,14 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                           
                           // 🚀 FORMATO COMPATTO: Feedback DINAMICO - OBIETTIVO + TONO + COSA MANCA
                           // Ora include currentObjective per dare la LOGICA della fase
+                          // 🆕 Estrai AI Intuition e Suggerimento dal checkpoint
+                          const aiIntuitionText = analysis.archetypeState?.aiIntuition || null;
+                          const aiSuggestionText = analysis.checkpointStatus?.itemDetails
+                            ?.filter(item => item.status !== 'validated' && item.suggestedNextAction)
+                            ?.map(item => item.suggestedNextAction)
+                            ?.slice(0, 1)
+                            ?.join(' ') || null;
+
                           const compactFeedback = formatCompactFeedback({
                             feedbackType,
                             feedbackPriority,
@@ -4463,7 +4481,9 @@ ${servicesList ? `📋 SERVIZI: ${servicesList}` : ''}`
                             toneAnalysis: analysis.toneAnalysis || null,
                             stepResult: stepResult || null,
                             checkpointItemDetails: analysis.checkpointStatus?.itemDetails || null,
-                            currentObjective: currentObjective || null // 🆕 Obiettivo della fase
+                            currentObjective: currentObjective || null, // 🆕 Obiettivo della fase
+                            aiIntuition: aiIntuitionText, // 🆕 AI Intuition dal checkpoint
+                            aiSuggestion: aiSuggestionText // 🆕 Suggerimento AI dal checkpoint
                           });
                           
                           const feedbackContent = `<<<SALES_MANAGER_INSTRUCTION>>>

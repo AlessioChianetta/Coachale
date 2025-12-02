@@ -1,0 +1,55 @@
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [CHECKPOINT-AI] Analysis completed in 6508ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[FASE 2] - Checkpoint Totali: 4 | Validati: 0 | Mancanti: 4
+  CHECK 1: [VAGO] "Hai scavato le motivazioni profonde dietro l'ostacolo se la ..."
+    Motivo: Il prospect ha descritto la frustrazione e l'ansia, ma non sono state ...
+  CHECK 2: [VAGO] "Sai quali strategie o approcci ha già provato e perché non h..."
+    Motivo: Il prospect ha menzionato stretching, foam roller e massaggi, ma la sp...
+  CHECK 3: [VAGO] "Sai da quanto tempo l'atleta sta affrontando questo ostacolo"
+    Motivo: Il prospect ha indicato 'almeno un paio d'anni' e 'negli ultimi mesi è...
+  CHECK 4: [VAGO] "Sai quanto l'atleta ha già investito (tempo, energie, denaro..."
+    Motivo: Il prospect ha menzionato 'un bel po' di denaro' e 'tantissime energie...
+  Quality Score: 1.1/10 | Progress: 0%
+  Stato: BLOCCO ATTIVO - Non puoi passare alla fase successiva
+✅ [SALES-MANAGER] AI checkpoint analysis complete (with sticky merge)
+   🔒 Sticky (preserved): 5
+   🆕 New from AI: 4
+   🟢 Total validated: 5/7
+   🔴 Missing/Vague: 4
+   📊 Confidence: 90%
+   📈 Quality Score: 1.1/10
+   ✅ PARALLEL AI completed in 6508ms (target: <2000ms)
+   💰 Buy signals: 0
+   🛡️ Objections: 0
+   🎭 Tone issues: 0
+   🎯 Control: OK
+   👤 Business: Premium
+
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ CHECKPOINT FASE #2: "⛔ CHECKPOINT FASE #2"
+   ⛔ DOMANDE DA FARE: 5/7 completate
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🟢 ✓ [1] 1. "Sai IL principale ostacolo che l'atleta vuole superare"
+   🟢 ✓ [2] 2. "È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" / "sentirsi meglio")"
+   🟢 ✓ [3] Sai IL principale ostacolo che l'atleta vuole superare
+   🟢 ✓ [4] È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" / "sentirsi meglio")
+   🟢 ✓ [5] Capisci il VERO impatto (emotivo, fisico, sulla performance) dietro l'ostacolo
+   🟡 ◐ [6] Hai scavato le motivazioni profonde dietro l'ostacolo se la risposta era vaga
+        └─ Motivo: Il prospect ha descritto la frustrazione e l'ansia, ma non s...
+        └─ Suggerimento AI: Approfondisci le ragioni specifiche per cui la frustrazione ...
+   🟡 ◐ [7] Sai quali strategie o approcci ha già provato e perché non hanno funzionato per raggiungere i suoi traguardi
+        └─ Motivo: Il prospect ha menzionato stretching, foam roller e massaggi...
+        └─ Suggerimento AI: Indaga in modo più approfondito sulle strategie provate. Chi...
+   🟡 ◐ [8] Sai da quanto tempo l'atleta sta affrontando questo ostacolo
+        └─ Motivo: Il prospect ha indicato 'almeno un paio d'anni' e 'negli ult...
+        └─ Suggerimento AI: Chiedi un intervallo di tempo più preciso o un evento scaten...
+   🟡 ◐ [9] Sai quanto l'atleta ha già investito (tempo, energie, denaro) per cercare di risolverlo
+        └─ Motivo: Il prospect ha menzionato 'un bel po' di denaro' e 'tantissi...
+        └─ Suggerimento AI: Chiedi al prospect di fare una stima, anche approssimativa, ...
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ STATO: 🚫 BLOCCO ATTIVO - NON PUÒ AVANZARE
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⚡ Regex Signals: technical(70%)
+   🧠 AI Intuition: enthusiast - "Mostra entusiasmo per la soluzione, è proattivo nel condividere informazioni e desidera sbloccare il suo potenziale."
