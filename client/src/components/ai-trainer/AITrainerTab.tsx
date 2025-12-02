@@ -1512,6 +1512,29 @@ export function AITrainerTab({ agentId }: AITrainerTabProps) {
                                   </Collapsible>
                                 )}
                                 
+                                {analysis.feedbackForAgent?.message && (
+                                  <Collapsible>
+                                    <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-purple-600 hover:text-purple-700">
+                                      <MessageSquare className="h-3 w-3" />
+                                      <span>Sales Manager Instruction</span>
+                                      {analysis.feedbackForAgent.priority && (
+                                        <Badge className={`text-[8px] ml-1 ${
+                                          analysis.feedbackForAgent.priority === 'critical' ? 'bg-red-100 text-red-700' :
+                                          analysis.feedbackForAgent.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                                          'bg-gray-100 text-gray-700'
+                                        }`}>
+                                          {analysis.feedbackForAgent.priority}
+                                        </Badge>
+                                      )}
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="mt-1">
+                                      <div className="p-2 bg-purple-50 dark:bg-purple-950/30 rounded text-[10px] text-gray-600 dark:text-gray-400 border-l-2 border-purple-400">
+                                        {analysis.feedbackForAgent.message}
+                                      </div>
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
+                                
                                 {(analysis.buySignals?.detected || analysis.objections?.detected) && (
                                   <div className="flex flex-wrap gap-1">
                                     {analysis.buySignals?.signals?.map((signal, sIdx) => (
