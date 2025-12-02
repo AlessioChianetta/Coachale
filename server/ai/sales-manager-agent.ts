@@ -1189,35 +1189,25 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       };
     } else if (shouldInjectArchetype && updatedArchetypeState.current !== 'neutral' && updatedArchetypeState.confidence > 0.6) {
       const archetypeTag = formatArchetypeTag(updatedArchetypeState.current);
-      const existingMessage = feedbackForAgent?.message || '';
-
-      // 🆕 Feedback SOLO-TONO (nessuna istruzione script!)
-      const profilingHeader = `🎭 ARCHETIPO: ${archetypeTag}
-${archetypeInstruction.instruction}`;
 
       console.log(`   📢 ARCHETYPE INJECTION at turn ${currentTurn} (${archetypeJustChanged ? 'archetype just changed' : `different from last injected (${updatedArchetypeState.lastInjectedArchetype || 'none'})`})`);
 
       // 🆕 Aggiorna tracking dopo iniezione
       updatedArchetypeState.lastInjectionTurn = currentTurn;
-      updatedArchetypeState.lastInjectedArchetype = updatedArchetypeState.current;  // 🆕 Traccia quale archetipo è stato iniettato
+      updatedArchetypeState.lastInjectedArchetype = updatedArchetypeState.current;
 
+      // 🆕 FIX: Costruisci feedback UNIFICATO senza duplicati
       if (feedbackForAgent) {
-        // Se c'è già un feedback, aggiungi l'archetipo (evitando duplicati di tono se già presente)
-        const existingToneReminder = feedbackForAgent.toneReminder || '';
-        const newToneReminder = `Adatta il tuo stile a ${archetypeTag}`;
-        
-        feedbackForAgent.message = `${existingMessage}\n\n${profilingHeader}`;
-        feedbackForAgent.toneReminder = existingToneReminder ? 
-          `${existingToneReminder}\n${newToneReminder}` : newToneReminder;
-
+        // Se c'è già un feedback (checkpoint/advancement), SOSTITUISCI il toneReminder invece di concatenare
+        feedbackForAgent.toneReminder = archetypeInstruction.instruction;
       } else {
-        // Nessun feedback preesistente, crea uno nuovo con l'archetipo
+        // Nessun feedback preesistente, crea uno nuovo con SOLO il tono dell'archetipo
         feedbackForAgent = {
           shouldInject: true,
           priority: 'medium',
           type: 'tone',
-          message: profilingHeader,
-          toneReminder: `Adatta il tuo stile a ${archetypeTag}`
+          message: archetypeInstruction.instruction, // SOLO l'istruzione del tono, niente header duplicato
+          toneReminder: undefined // Non serve, è già nel message
         };
       }
     } else if (updatedArchetypeState.current !== 'neutral') {

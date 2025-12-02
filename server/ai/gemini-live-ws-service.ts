@@ -412,107 +412,95 @@ interface CompactFeedbackParams {
 }
 
 function formatCompactFeedback(params: CompactFeedbackParams): string {
-  // 🔧 FIX: Feedback DINAMICO - obiettivo della fase + tono, niente domande letterali!
+  // 🔧 FIX: Feedback UNIFICATO - evita duplicazioni e ripetizioni!
   
   const parts: string[] = [];
+  const seenContent = new Set<string>(); // Track già visti per evitare duplicati
+  
+  // Helper per aggiungere solo se non duplicato
+  const addUnique = (content: string) => {
+    const normalized = content.toLowerCase().trim();
+    if (normalized.length > 5 && !seenContent.has(normalized)) {
+      seenContent.add(normalized);
+      parts.push(content);
+    }
+  };
   
   // 1. OBIETTIVO della fase corrente (PRIMA DI TUTTO - questo è il più importante!)
   if (params.currentObjective && params.currentObjective.length > 5) {
-    parts.push(`🎯 OBIETTIVO: ${params.currentObjective}`);
+    addUnique(`🎯 OBIETTIVO: ${params.currentObjective}`);
   }
   
-  // 2. TONO dall'archetipo (solo indicazione tono, niente azione statica)
-  const archetypeNote = getArchetypeNote(params.archetypeState);
-  if (archetypeNote) parts.push(archetypeNote);
+  // 2. TONO dall'archetipo (usa toneReminder se presente, altrimenti archetypeState)
+  // Questo previene duplicazioni tra toneReminder e archetypeNote
+  if (params.toneReminder && params.toneReminder.length > 5) {
+    // Se toneReminder è già presente, usalo direttamente (viene dal SalesManager)
+    const cleanTone = params.toneReminder
+      .replace(/Tono:\s*/gi, '')
+      .replace(/Adatta il tuo stile a/gi, '')
+      .trim();
+    if (cleanTone.length > 5) {
+      addUnique(cleanTone);
+    }
+  } else {
+    // Altrimenti usa l'archetypeState come fallback
+    const archetypeNote = getArchetypeNote(params.archetypeState);
+    if (archetypeNote) {
+      addUnique(archetypeNote);
+    }
+  }
   
-  // 3. INFO MANCANTI (solo elenco di cosa ottenere, NON domande letterali)
-  // 🔧 FIX: NIENTE SLICE - mostra TUTTI i check mancanti!
-  if (params.checkpointItemDetails && params.checkpointItemDetails.length > 0) {
+  // 3. INFO MANCANTI (solo se non ci sono altri feedback più importanti)
+  if (params.checkpointItemDetails && params.checkpointItemDetails.length > 0 && parts.length === 0) {
     const missingChecks = params.checkpointItemDetails
-      .filter(item => item.status !== 'validated');
+      .filter(item => item.status !== 'validated')
+      .slice(0, 2); // MAX 2 check per volta per evitare sovraccarico
     
-    // Mostra obiettivi da raggiungere (l'AI ora genera obiettivi, non domande)
-    // TUTTI i check, non solo 3!
     missingChecks.forEach(item => {
       let actionToShow = '';
       
       if (item.suggestedNextAction) {
-        // Rimuovi eventuali "Chiedi:" residui
         actionToShow = item.suggestedNextAction
           .replace(/^Chiedi:\s*/i, '')
           .replace(/^Domanda:\s*/i, '')
-          .replace(/^['"]/, '') // Rimuovi quote iniziali
+          .replace(/^['"]/, '')
           .trim();
       }
       
-      // 🔧 FIX: Se dopo la pulizia è vuoto, usa il check originale come fallback
       if (!actionToShow || actionToShow.length < 5) {
-        actionToShow = item.check; // Fallback al testo del check originale
+        actionToShow = item.check;
       }
       
       if (actionToShow && actionToShow.length > 5) {
-        parts.push(actionToShow);
+        addUnique(actionToShow);
       }
     });
   }
   
-  // 4. TONO analysis (se ci sono problemi specifici)
-  const toneNote = getToneNote(params.toneAnalysis, params.toneReminder);
-  if (toneNote && toneNote !== 'Tono OK' && toneNote !== 'Tono adeguato') {
-    parts.push(toneNote);
-  }
-  
-  // 5. Se il feedback ha contenuto specifico (needsImprovement non generico)
-  if (params.needsImprovement && 
-      !params.needsImprovement.includes('Continua a seguire') &&
-      !params.needsImprovement.includes('script') &&
-      params.needsImprovement.length > 10) {
-    // Pulisci da riferimenti tecnici
-    const cleanedImprovement = params.needsImprovement
+  // 4. FALLBACK: Se ancora vuoto, usa needsImprovement ripulito
+  if (parts.length === 0 && params.needsImprovement && params.needsImprovement.length > 10) {
+    const cleaned = params.needsImprovement
       .replace(/🎯\s*PROSSIMI\s*PASSI:?\s*/gi, '')
       .replace(/→\s*/g, '')
+      .replace(/\bstep\b/gi, '')
+      .replace(/\bfase\b/gi, '')
+      .replace(/\bcheckpoint\b/gi, '')
       .trim();
-    if (cleanedImprovement.length > 10 && !parts.includes(cleanedImprovement)) {
-      parts.push(cleanedImprovement);
+    if (cleaned.length > 10) {
+      addUnique(cleaned);
     }
   }
   
-  // Unisci tutto in singola riga fluida
-  let feedback = parts.join('. ');
+  // Unisci tutto in singola riga (massimo 2 frasi per evitare overload)
+  let feedback = parts.slice(0, 2).join('. ');
   if (feedback && !feedback.endsWith('.')) feedback += '.';
   
-  // Blacklist: rimuovi parole tecniche vietate
-  feedback = feedback
-    .replace(/\bstep\b/gi, '')
-    .replace(/\bfase\b/gi, '')
-    .replace(/\bcheckpoint\b/gi, '')
-    .replace(/\bprossimi passi\b/gi, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  
-  // 🔧 FIX: Fallback robusto per garantire sempre un messaggio
-  // Se feedback vuoto, usa contenuto dinamico disponibile
+  // ULTIMATE FALLBACK
   if (!feedback || feedback.length < 10) {
-    // Prova a usare doingWell o needsImprovement come fallback
-    if (params.doingWell && params.doingWell.length > 10 && !params.doingWell.includes('script')) {
-      feedback = params.doingWell;
-    } else if (params.needsImprovement && params.needsImprovement.length > 10) {
-      feedback = params.needsImprovement
-        .replace(/🎯\s*PROSSIMI\s*PASSI:?\s*/gi, '')
-        .replace(/→\s*/g, '')
-        .substring(0, 150);
-    } else if (params.stepResult?.shouldAdvance) {
-      feedback = 'Stai procedendo bene, continua con la conversazione.';
-    } else {
-      // Ultimo fallback - messaggio minimo ma non vuoto
-      feedback = 'Ascolta attentamente e rispondi alle domande del prospect.';
-    }
+    feedback = 'Continua la conversazione in modo naturale.';
   }
   
-  // Assicura che termini con punto
-  if (feedback && !feedback.endsWith('.')) feedback += '.';
-  
-  console.log(`   📊 [COMPACT FEEDBACK] Feedback dinamico generato (${feedback.length} chars)`);
+  console.log(`   📊 [COMPACT FEEDBACK] Generato (${feedback.length} chars, ${parts.length} parts)`);
   
   return feedback;
 }
