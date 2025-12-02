@@ -1,0 +1,55 @@
+Extend a session
+Note: Session extension is only available when using the Gen AI SDK, not Vertex AI Studio.
+The default maximum length of a conversation session is 10 minutes. A goAway notification (BidiGenerateContentServerMessage.goAway) is sent to the client 60 seconds before the session ends.
+
+You can extend the session length in 10-minute increments using the Gen AI SDK. There's no limit to the number of times you can extend a session. For an example, see Enable and disable session resumption.
+
+Context window
+The Live API context window is used to store real-time streamed data (25 tokens per second (TPS) for audio and 258 TPS for video) and other content, including text inputs and model outputs.
+
+If the context window exceeds the maximum length (set using the Max content size slider in Vertex AI Studio, or trigger_tokens in the API), the oldest turns are truncated using context window compression to prevent abrupt session termination. Context window compression triggers once the context window hits its maximum length (set either in Vertex AI Studio using the Target context size slider, or using target_tokens in the API) and deletes the oldest parts of the conversation until the total token count is back down to this target size.
+
+For example, if your maximum context length is set to 32000 tokens and your target size is set to 16000 tokens:
+
+Turn 1: The conversation starts. In this example, the request uses 12,000 tokens.
+Total context size: 12,000 tokens
+Turn 2: You make another request. This request uses another 12,000 tokens.
+Total context size: 24,000 tokens
+Turn 3: You make another request. This request uses 14,000 tokens.
+Total context size: 38,000 tokens
+Since the total context size is now higher than the 32,000 token maximum, context window compression now triggers. The system goes back to the beginning of the conversation and starts deleting old turns until the total token size is less than the 16,000 token target:
+
+It deletes Turn 1 (12,000 tokens). The total is now 26,000 tokens, which is still higher than the 16,000 token target.
+It deletes Turn 2 (12,000 tokens). The total is now 14,000 tokens.
+The final result is that only Turn 3 remains in active memory, and the conversation continues from that point.
+
+The minimum and maximum lengths for the context length and target size are:
+
+Setting (API flag)	Minimum value	Maximum value
+Maximum context length (trigger_tokens)	5,000	128,000
+Target context size (target_tokens)	0	128,000
+To set the context window:
+
+Console
+Python
+Open Vertex AI Studio > Stream realtime.
+Click to open the Advanced menu.
+In the Session Context section, use the Max context size slider to set the context size to a value between 5,000 and 128,000.
+(Optional) In the same section, use the Target context size slider to set the target size to a value between 0 and 128,000.
+Concurrent sessions
+You can have up to 1,000 concurrent sessions per project on a pay-as-you-go (PayGo) plan. This limit does not apply to customers using Provisioned Throughput.
+
+Update system instructions during a session
+The Live API lets you update the system instructions during an active session. Use this to adapt the model's responses, such as changing the response language or modifying the tone.
+
+To update the system instructions mid-session, you can send text content with the system role. The updated system instruction will remain in effect for the remaining session.
+
+Python
+
+
+session.send_client_content(
+      turns=types.Content(
+          role="system", parts=[types.Part(text="new system instruction")]
+      ),
+      turn_complete=False
+  )
