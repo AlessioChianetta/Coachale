@@ -1585,6 +1585,17 @@ export function setupGeminiLiveWSService(server: Server) {
           // Wire logger to tracker
           (salesTracker as any).logger = salesLogger;
           
+          // 🔒 STICKY VALIDATION: Carica gli item validati dal database
+          // Se esistono item già validati da sessioni precedenti, li carichiamo in memoria
+          const loadedValidatedItems = salesTracker.getValidatedCheckpointItems();
+          if (Object.keys(loadedValidatedItems).length > 0) {
+            persistentValidatedItems = loadedValidatedItems;
+            console.log(`🔒 [${connectionId}] STICKY VALIDATION: Loaded ${Object.keys(loadedValidatedItems).length} checkpoints with validated items from DB`);
+            Object.entries(loadedValidatedItems).forEach(([cpId, items]) => {
+              console.log(`   → ${cpId}: ${items.length} validated items`);
+            });
+          }
+          
           console.log(`✅ [${connectionId}] Sales script tracking enabled (mode: ${mode})`);
           console.log(`   → Tracker initialized for conversation ${conversationId}`);
           console.log(`   → Agent ID: ${resolvedAgentId}`);
@@ -4275,12 +4286,34 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                           
                           persistentValidatedItems[checkpointId] = mergedItems;
                           
-                          const newCount = newValidatedItems.length - existingItems.length;
+                          const newCount = mergedItems.length - existingItems.length;
                           if (newCount > 0 || existingItems.length > 0) {
                             console.log(`   🔒 STICKY VALIDATION SAVED: ${mergedItems.length} validated items for ${checkpointId}`);
                             if (newCount > 0) {
                               console.log(`      → ${newCount} NEW items added this turn`);
                             }
+                          }
+                          
+                          // 🔒 PERSIST TO DATABASE: Aggiorna il tracker con TUTTI i mergedItems e salva subito
+                          // Così gli item validati sopravvivono ai riavvii della sessione
+                          if (salesTracker) {
+                            // IMPORTANTE: Passa TUTTI i mergedItems (vecchi + nuovi), non solo newValidatedItems
+                            // Questo garantisce che i vecchi item verdi non vengano persi
+                            salesTracker.setValidatedCheckpointItems({
+                              ...salesTracker.getValidatedCheckpointItems(),
+                              [checkpointId]: mergedItems.map(item => ({
+                                check: item.check,
+                                status: item.status as 'validated' | 'missing' | 'vague',
+                                infoCollected: item.infoCollected,
+                                evidenceQuote: item.evidenceQuote,
+                                reason: item.reason,
+                                validatedAt: new Date().toISOString()
+                              }))
+                            });
+                            // 🔒 SALVATAGGIO IMMEDIATO: Non aspettare autosave, salva subito per evitare perdita dati
+                            salesTracker.forceSave().catch(err => {
+                              console.error(`❌ [STICKY] Failed to save validated items to DB:`, err.message);
+                            });
                           }
                         }
                         

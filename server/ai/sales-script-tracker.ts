@@ -30,6 +30,16 @@ interface UsedScriptInfo {
   version: string;
 }
 
+// 🔒 STICKY VALIDATION: Struttura per item checkpoint validati singolarmente
+interface ValidatedCheckpointItem {
+  check: string;
+  status: 'validated' | 'missing' | 'vague';
+  infoCollected?: string;
+  evidenceQuote?: string;
+  reason?: string;
+  validatedAt?: string;
+}
+
 interface TrackingState {
   currentPhase: string;
   currentStep?: string;
@@ -60,6 +70,9 @@ interface TrackingState {
       };
     }>;
   }>;
+  // 🔒 STICKY VALIDATION: Item singoli già validati (verde = resta verde)
+  // Struttura: { "checkpoint_phase_1": [{ check: "...", status: "validated", ... }], ... }
+  validatedCheckpointItems: Record<string, ValidatedCheckpointItem[]>;
   semanticTypes: string[];
   ladderActivations: Array<{
     timestamp: string;
@@ -157,6 +170,7 @@ export class SalesScriptTracker {
       phasesReached: [initialPhase],
       phaseActivations: [],
       checkpointsCompleted: [],
+      validatedCheckpointItems: {},  // 🔒 STICKY VALIDATION
       semanticTypes: [],
       ladderActivations: [],
       contextualResponses: [],
@@ -618,6 +632,58 @@ export class SalesScriptTracker {
    */
   getState(): TrackingState {
     return { ...this.state };
+  }
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 🔒 STICKY VALIDATION: Getter/Setter per item validati
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  /**
+   * Get validated checkpoint items for sticky validation
+   * Returns all items already validated (verde = resta verde)
+   */
+  getValidatedCheckpointItems(): Record<string, ValidatedCheckpointItem[]> {
+    return { ...this.state.validatedCheckpointItems };
+  }
+  
+  /**
+   * Set validated checkpoint items (called from gemini-live-ws-service after analysis)
+   * Merges new validated items with existing ones
+   */
+  setValidatedCheckpointItems(items: Record<string, ValidatedCheckpointItem[]>): void {
+    this.state.validatedCheckpointItems = items;
+    console.log(`🔒 [TRACKER] Validated items updated: ${Object.keys(items).length} checkpoints`);
+  }
+  
+  /**
+   * Update validated items for a specific checkpoint (merge logic)
+   */
+  updateValidatedItemsForCheckpoint(checkpointId: string, newItems: ValidatedCheckpointItem[]): void {
+    const existing = this.state.validatedCheckpointItems[checkpointId] || [];
+    const merged = [...existing];
+    
+    newItems.forEach(newItem => {
+      // Aggiungi solo se non esiste già e se è validato
+      if (newItem.status === 'validated' && !merged.some(m => m.check === newItem.check)) {
+        merged.push({
+          ...newItem,
+          validatedAt: newItem.validatedAt || new Date().toISOString()
+        });
+      }
+    });
+    
+    this.state.validatedCheckpointItems[checkpointId] = merged;
+    
+    if (merged.length > existing.length) {
+      console.log(`🔒 [TRACKER] Checkpoint ${checkpointId}: ${merged.length - existing.length} new validated items (total: ${merged.length})`);
+    }
+  }
+  
+  /**
+   * Force save to database (public method for external callers)
+   */
+  async forceSave(): Promise<void> {
+    await this.saveToDatabase();
   }
   
   /**
@@ -1246,6 +1312,7 @@ export class SalesScriptTracker {
         phasesReached: this.state.phasesReached,
         phaseActivations: this.state.phaseActivations,
         checkpointsCompleted: this.state.checkpointsCompleted,
+        validatedCheckpointItems: this.state.validatedCheckpointItems,  // 🔒 STICKY VALIDATION
         semanticTypes: this.state.semanticTypes,
         aiReasoning: this.state.aiReasoning,
         fullTranscript: this.state.fullTranscript,
@@ -1309,6 +1376,7 @@ export class SalesScriptTracker {
         phasesReached: (existingData.phasesReached as string[]) || [],
         phaseActivations: (existingData.phaseActivations as any[]) || [],
         checkpointsCompleted: (existingData.checkpointsCompleted as any[]) || [],
+        validatedCheckpointItems: (existingData.validatedCheckpointItems as Record<string, ValidatedCheckpointItem[]>) || {},  // 🔒 STICKY VALIDATION
         semanticTypes: (existingData.semanticTypes as string[]) || [],
         ladderActivations: (existingData.ladderActivations as any[]) || [],
         contextualResponses: (existingData.contextualResponses as any[]) || [],
@@ -1321,6 +1389,7 @@ export class SalesScriptTracker {
       console.log(`   - Current Phase: ${this.state.currentPhase}`);
       console.log(`   - Phases Reached: ${this.state.phasesReached.length}`);
       console.log(`   - Checkpoints: ${this.state.checkpointsCompleted.length}`);
+      console.log(`   - Validated Items: ${Object.keys(this.state.validatedCheckpointItems).length} checkpoints with sticky items`);  // 🔒 STICKY
       console.log(`   - Ladder Activations: ${this.state.ladderActivations.length}`);
       console.log(`   - Transcript Messages: ${this.state.fullTranscript.length}`);
       

@@ -3655,6 +3655,17 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     analysisTimeMs: number;
   }>>().default(sql`'[]'::jsonb`),
   
+  // 🔒 STICKY VALIDATION: Item singoli già validati (verde = resta verde)
+  // Struttura: { "checkpoint_phase_1": [{ check: "...", status: "validated", ... }], ... }
+  validatedCheckpointItems: jsonb("validated_checkpoint_items").$type<Record<string, Array<{
+    check: string;
+    status: 'validated' | 'missing' | 'vague';
+    infoCollected?: string;
+    evidenceQuote?: string;
+    reason?: string;
+    validatedAt?: string;
+  }>>>().default(sql`'{}'::jsonb`),
+  
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
