@@ -416,103 +416,52 @@ interface CompactFeedbackParams {
 }
 
 function formatCompactFeedback(params: CompactFeedbackParams): string {
-  // 🔧 FIX: Feedback UNIFICATO - evita duplicazioni e ripetizioni!
+  // 🔧 FORMATO UNIFICATO: Obiettivo + Azione + Archetipo + Tono
   
-  const parts: string[] = [];
-  const seenContent = new Set<string>(); // Track già visti per evitare duplicati
+  const lines: string[] = [];
   
-  // Helper per aggiungere solo se non duplicato
-  const addUnique = (content: string) => {
-    const normalized = content.toLowerCase().trim();
-    if (normalized.length > 5 && !seenContent.has(normalized)) {
-      seenContent.add(normalized);
-      parts.push(content);
-    }
-  };
-  
-  // 1. OBIETTIVO della fase corrente (PRIMA DI TUTTO - questo è il più importante!)
+  // 1. 🎯 OBIETTIVO della fase corrente (contesto)
   if (params.currentObjective && params.currentObjective.length > 5) {
-    addUnique(`🎯 OBIETTIVO: ${params.currentObjective}`);
+    lines.push(`🎯 OBIETTIVO: ${params.currentObjective}`);
   }
   
-  // 🆕 1.5. AI INTUITION E SUGGERIMENTO AI (dal checkpoint)
-  if (params.aiIntuition && params.aiIntuition.length > 0) {
-    addUnique(`🧠 AI INTUITION: ${params.aiIntuition}`);
-  }
-  if (params.aiSuggestion && params.aiSuggestion.length > 0) {
-    addUnique(`💡 AI SUGGESTION: ${params.aiSuggestion}`);
+  // 2. 💬 AZIONE SPECIFICA (naturalFeedbackMessage - cosa fare ORA)
+  if (params.needsImprovement && params.needsImprovement.length > 10) {
+    const cleanAction = params.needsImprovement
+      .replace(/🎯\s*PROSSIMI\s*PASSI:?\s*/gi, '')
+      .replace(/→\s*/g, '')
+      .trim();
+    if (cleanAction.length > 10 && cleanAction !== 'Continua a seguire lo script') {
+      lines.push(`💬 AZIONE: ${cleanAction}`);
+    }
   }
   
-  // 2. TONO dall'archetipo (usa toneReminder se presente, altrimenti archetypeState)
-  // Questo previene duplicazioni tra toneReminder e archetypeNote
+  // 3. 🧠 ARCHETIPO (AI Intuition o stato corrente)
+  const archetype = params.aiIntuition || params.archetypeState?.current;
+  if (archetype && archetype.length > 0) {
+    lines.push(`🧠 ARCHETIPO: ${archetype}`);
+  }
+  
+  // 4. 🎵 TONO (come parlare)
   if (params.toneReminder && params.toneReminder.length > 5) {
-    // Se toneReminder è già presente, usalo direttamente (viene dal SalesManager)
     const cleanTone = params.toneReminder
       .replace(/Tono:\s*/gi, '')
       .replace(/Adatta il tuo stile a/gi, '')
       .trim();
     if (cleanTone.length > 5) {
-      addUnique(cleanTone);
-    }
-  } else {
-    // Altrimenti usa l'archetypeState come fallback
-    const archetypeNote = getArchetypeNote(params.archetypeState);
-    if (archetypeNote) {
-      addUnique(archetypeNote);
+      lines.push(`🎵 TONO: ${cleanTone}`);
     }
   }
   
-  // 3. INFO MANCANTI (solo se non ci sono altri feedback più importanti)
-  if (params.checkpointItemDetails && params.checkpointItemDetails.length > 0 && parts.length === 0) {
-    const missingChecks = params.checkpointItemDetails
-      .filter(item => item.status !== 'validated')
-      .slice(0, 2); // MAX 2 check per volta per evitare sovraccarico
-    
-    missingChecks.forEach(item => {
-      let actionToShow = '';
-      
-      if (item.suggestedNextAction) {
-        actionToShow = item.suggestedNextAction
-          .replace(/^Chiedi:\s*/i, '')
-          .replace(/^Domanda:\s*/i, '')
-          .replace(/^['"]/, '')
-          .trim();
-      }
-      
-      if (!actionToShow || actionToShow.length < 5) {
-        actionToShow = item.check;
-      }
-      
-      if (actionToShow && actionToShow.length > 5) {
-        addUnique(actionToShow);
-      }
-    });
-  }
+  // Unisci tutto su righe separate
+  let feedback = lines.join('\n');
   
-  // 4. FALLBACK: Se ancora vuoto, usa needsImprovement ripulito
-  if (parts.length === 0 && params.needsImprovement && params.needsImprovement.length > 10) {
-    const cleaned = params.needsImprovement
-      .replace(/🎯\s*PROSSIMI\s*PASSI:?\s*/gi, '')
-      .replace(/→\s*/g, '')
-      .replace(/\bstep\b/gi, '')
-      .replace(/\bfase\b/gi, '')
-      .replace(/\bcheckpoint\b/gi, '')
-      .trim();
-    if (cleaned.length > 10) {
-      addUnique(cleaned);
-    }
-  }
-  
-  // Unisci tutto in singola riga (massimo 2 frasi per evitare overload)
-  let feedback = parts.slice(0, 2).join('. ');
-  if (feedback && !feedback.endsWith('.')) feedback += '.';
-  
-  // ULTIMATE FALLBACK
+  // FALLBACK se vuoto
   if (!feedback || feedback.length < 10) {
     feedback = 'Continua la conversazione in modo naturale.';
   }
   
-  console.log(`   📊 [COMPACT FEEDBACK] Generato (${feedback.length} chars, ${parts.length} parts)`);
+  console.log(`   📊 [COMPACT FEEDBACK] Generato (${feedback.length} chars, ${lines.length} sezioni)`);
   
   return feedback;
 }
