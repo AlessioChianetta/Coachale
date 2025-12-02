@@ -81,7 +81,6 @@ PRIMA DI PASSARE ALLA FASE #2 VERIFICA:
 ✓ Hai salutato e chiesto "come stai"?
 ✓ Hai chiesto "da dove mi chiami"?
 ✓ Hai spiegato il processo della call?
-✓ Il prospect ha detto che vuole proseguire dopo il processo?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
 
@@ -328,7 +327,6 @@ PRIMA DI PASSARE ALLA FASE #3 VERIFICA:
 ✓ Sai IL problema principale che vuole risolvere?
 ✓ È SPECIFICO e CONCRETO (non vago tipo "migliorare" / "stare bene")?
 ✓ Sai cosa fa nella vita (situazione personale)?
-✓ Hai scavato le motivazioni dietro il problema se la risposta era vaga?
 ✓ Capisci il VERO dolore dietro il problema?
 ✓ Sai cosa hanno già provato e perché ha fallito?
 ✓ Sai da quanto tempo combattono il problema?
@@ -397,26 +395,22 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 🎧 ASCOLTA il contesto lavorativo/di studio (occupazione, settore, ruolo)
 💬 REAGISCI: "Interessante! Quindi [riassumi contesto]..."
 
-📌 DOMANDA: "Da quanto tempo stai affrontando questa situazione? 
-Mesi, anni?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA la durata del problema (è recente o cronico?)
-💬 REAGISCI: "Capisco, quindi sono [X tempo] che..."
-
-📌 DOMANDA: "Se dovessi dare un voto da 1 a 10 al tuo livello 
-di stress attuale legato a questo, quanto sarebbe?"
-⏸️ ASPETTA LA RISPOSTA
-🎧 ASCOLTA il NUMERO specifico (1-10)
-💬 REAGISCI: "[numero]... capisco, è [commento appropriato al livello]"
-
-📌 DOMANDA: "In questa cosa, sei da solo o hai supporto? 
-Famiglia, partner, amici che ti aiutano?"
+📌 DOMANDA: "Nel risolvere [problema] attualmente, sei da solo o hai supporto? Famiglia, partner, amici che ti aiutano?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il livello di supporto (solo, parziale, supportato)
 💬 REAGISCI: "Perfetto, quindi [riassumi situazione supporto]..."
 
-📌 DOMANDA: "Quanto tempo reale riesci a dedicare a questo 
-ogni settimana? Ore, giorni?"
+📌 DOMANDA: "Da quanto tempo stai affrontando questa situazione? Mesi, anni?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA la durata del problema (è recente o cronico?)
+💬 REAGISCI: "Capisco, quindi sono [X tempo] che..."
+
+📌 DOMANDA: "Se dovessi dare un voto da 1 a 10 al tuo livello di stress attuale legato a questo, quanto sarebbe?"
+⏸️ ASPETTA LA RISPOSTA
+🎧 ASCOLTA il NUMERO specifico (1-10)
+💬 REAGISCI: "[numero]... capisco, è [commento appropriato al livello]"
+
+📌 DOMANDA: "Come organizzi le tue giornate solitamente?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA la disponibilità temporale concreta
 💬 REAGISCI: "Capisco! [commento sulla disponibilità]"
@@ -425,15 +419,6 @@ ogni settimana? Ore, giorni?"
 ⚠️ HAI FATTO TUTTE E 5? Se NO → FAI LE MANCANTI prima di continuare!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 DOMANDE OPZIONALI (fai se hai tempo e flusso lo permette)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 OPZIONALE: "Come organizzi le tue giornate solitamente?"
-📌 OPZIONALE: "Dove cerchi informazioni su questo? Social, libri, amici?"
-📌 OPZIONALE: "Qual è l'ostacolo più grande che trovi ogni giorno?"
-📌 OPZIONALE: "Qual è l'aspetto della tua vita che ne risente di più?"
-📌 OPZIONALE: "Hai già provato altre soluzioni in passato?"
 
 🍪 SE DIVAGA: Biscottino + "Ok tornando a noi..."
 
@@ -451,7 +436,7 @@ PRIMA DI PASSARE ALLA FASE #4 VERIFICA:
 ✓ DURATA: Sai da QUANTO TEMPO affronta questa situazione?
 ✓ STRESS: Hai un NUMERO 1-10 del livello di stress?
 ✓ SUPPORTO: Sai se è SOLO o ha supporto (famiglia/partner)?
-✓ TEMPO: Sai QUANTO TEMPO può dedicare a settimana?
+
 
 SE ANCHE SOLO UN CAMPO È VUOTO → FERMATI E CHIEDI!
 
@@ -669,9 +654,8 @@ PRIMA DI PASSARE ALLA FASE #6 VERIFICA:
 ✓ Hai un NUMERO SPECIFICO del loro obiettivo?
 ✓ Sai PERCHÉ vogliono quel numero?
 ✓ Hai collegato il numero alle EMOZIONI PROFONDE?
-✓ Hai fatto 3-5 perché sulle emozioni?
+✓ Hai fatto 1-2 perché sulle emozioni?
 ✓ Sai LA cosa PIÙ IMPORTANTE che cambierà per loro?
-✓ Hai MEMORIZZATO le loro parole esatte sulle emozioni?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
 

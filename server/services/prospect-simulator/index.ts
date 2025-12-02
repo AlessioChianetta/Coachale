@@ -143,7 +143,7 @@ export class ProspectSimulator {
   private completionRate = 0;
   private ladderActivations = 0;
   private conversationHistory: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
-  private maxTurns = 60;
+  private maxTurns = 200;
   private currentTurn = 0;
   private sessionToken: string | null = null;
   private conversationId: string | null = null;

@@ -81,7 +81,6 @@ PRIMA DI PASSARE ALLA FASE #2 VERIFICA:
 ✓ Hai salutato e chiesto "come stai"?
 ✓ Hai chiesto "da dove mi chiami"?
 ✓ Hai spiegato il processo della call?
-✓ Il prospect ha detto che vuole proseguire dopo il processo?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
 
@@ -328,7 +327,6 @@ PRIMA DI PASSARE ALLA FASE #3 VERIFICA:
 ✓ Sai IL problema principale che vuole risolvere?
 ✓ È SPECIFICO e CONCRETO (non vago tipo "crescere" / "problemi generici")?
 ✓ Sai di cosa si occupa (business/attività)?
-✓ Hai scavato le motivazioni dietro il problema se la risposta era vaga?
 ✓ Capisci il VERO dolore dietro il problema?
 ✓ Sai cosa hanno già provato e perché ha fallito?
 ✓ Sai da quanto tempo combattono il problema?
@@ -397,8 +395,7 @@ Mindset: Stai raccogliendo informazioni chiave per calibrare la proposta
 🎧 ASCOLTA il target (tipologia di cliente, settore, caratteristiche)
 💬 REAGISCI: "Interessante! Quindi lavori principalmente con [target]..."
 
-📌 DOMANDA: "Com'è il tuo modello di business? Lavori con abbonamenti 
-ricorrenti, pacchetti una tantum, o come funziona?"
+📌 DOMANDA: "Com'è il tuo modello di business? Lavori con abbonamenti ricorrenti, pacchetti una tantum, o come funziona?"
 ⏸️ ASPETTA LA RISPOSTA
 🎧 ASCOLTA il modello (ricorrente, one-shot, pacchetti, hourly, ecc.)
 💬 REAGISCI: "Capisco! Quindi [modello]..."
@@ -423,15 +420,6 @@ O quanti clienti servi all'anno?"
 ⚠️ HAI FATTO TUTTE E 5? Se NO → FAI LE MANCANTI prima di continuare!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 DOMANDE OPZIONALI (fai se hai tempo e flusso lo permette)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 OPZIONALE: "B2B o B2C? O entrambi?"
-📌 OPZIONALE: "Hai collaboratori? Un team commerciale?"
-📌 OPZIONALE: "Chi si occupa del marketing nella tua attività?"
-📌 OPZIONALE: "Come generi clienti in target adesso? Quali canali usi?"
-📌 OPZIONALE: "Sai il tuo CAC, costo acquisizione cliente?"
 📌 OPZIONALE: "Qual è il prodotto/servizio principale che ti genera più vendite?"
 
 🍪 SE DIVAGA: Biscottino + "Ok tornando a noi..."
@@ -669,9 +657,8 @@ PRIMA DI PASSARE ALLA FASE #6 VERIFICA:
 ✓ Hai un NUMERO SPECIFICO del loro obiettivo?
 ✓ Sai PERCHÉ vogliono quel numero?
 ✓ Hai collegato il numero alle EMOZIONI PROFONDE?
-✓ Hai fatto 3-5 perché sulle emozioni?
+✓ Hai fatto 1-2 perché sulle emozioni?
 ✓ Sai LA cosa PIÙ IMPORTANTE che cambierà per loro?
-✓ Hai MEMORIZZATO le loro parole esatte sulle emozioni?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!
 

@@ -740,13 +740,13 @@ Esempio se NON avanzare + feedback correttivo:
       .map((check, i) => `${i + 1}. "${check}"`)
       .join('\n');
     
-    return `Sei un QUALITY ASSURANCE MANAGER rigoroso per chiamate di vendita.
+    return `Sei un COACH di vendita che valuta i checkpoint in modo EQUILIBRATO e RAGIONEVOLE.
 Il tuo compito è verificare se le INFORMAZIONI RICHIESTE dal checkpoint sono state 
-EFFETTIVAMENTE ACQUISITE durante la conversazione con QUALITÀ SUFFICIENTE.
+acquisite durante la conversazione in modo SUFFICIENTE per procedere.
 
-⚠️ REGOLA CRITICA: NON BASTA CHE L'AGENTE ABBIA FATTO LA DOMANDA!
-Devi verificare che il PROSPECT abbia fornito l'INFORMAZIONE RICHIESTA in modo 
-SPECIFICO, CONCRETO e UTILIZZABILE per la vendita.
+⚠️ APPROCCIO EQUILIBRATO: Valuta se l'agente ha ottenuto informazioni UTILI.
+NON serve perfezione - serve che il prospect abbia dato indicazioni sufficienti
+per capire la sua situazione e procedere con la vendita.
 
 ═══════════════════════════════════════════════════════════════
 📍 CONTESTO FASE
@@ -764,14 +764,14 @@ ${checksFormatted}
 ${conversationText}
 
 ═══════════════════════════════════════════════════════════════
-🎯 CRITERI DI VALIDAZIONE RIGOROSI
+🎯 CRITERI DI VALIDAZIONE EQUILIBRATI
 ═══════════════════════════════════════════════════════════════
 
-✅ VALIDATED (Informazione Acquisita) - TUTTI questi criteri devono essere soddisfatti:
-1. L'agente ha posto la domanda (semanticamente equivalente)
-2. Il prospect ha risposto
-3. La risposta contiene INFORMAZIONE SPECIFICA e CONCRETA
-4. L'informazione è UTILIZZABILE per la vendita
+✅ VALIDATED (Informazione Acquisita) - Criteri:
+1. L'agente ha posto la domanda (anche in forma diversa)
+2. Il prospect ha risposto con CONTENUTO pertinente (non solo "sì/no/ok")
+3. La risposta fornisce un'INFORMAZIONE UTILIZZABILE
+4. C'è una citazione dalla conversazione che lo dimostra (evidenceQuote obbligatorio)
 
 🎯 ECCEZIONE IMPORTANTE per check di CONFERMA/PROSEGUIMENTO:
 Per verifiche tipo "Il prospect ha detto che vuole proseguire" o "Ok finale":
@@ -791,17 +791,25 @@ Esempi di risposte VALIDE:
 
 ❌ MISSING (Non Chiesto) - La domanda NON è mai stata fatta dall'agente
 
-⚠️ VAGUE (Risposta Vaga/Insufficiente) - La domanda è stata fatta MA:
-- Risposta generica: "tante cose", "vari problemi", "vorrei crescere"
-- Risposta evasiva: "poi ne parliamo", "dipende", "vedremo"
-- Solo conferma senza contenuto: "sì", "ok", "va bene" (per domande informative)
-- Informazione incompleta: manca un dettaglio cruciale
+⚠️ VAGUE (Risposta Vaga) - USA CON PARSIMONIA! Solo se:
+- Risposta totalmente evasiva: "poi ne parliamo", "vedremo", "boh"
+- Cambio argomento completo senza rispondere
+- Silenzio o "non so" secco
 
-Esempi di risposte NON VALIDE:
-- "Ho diversi problemi" → VAGUE (quale problema specifico?)
-- "Vorrei fatturare di più" → VAGUE (quanto esattamente?)
-- "Sì, ho capito" → VAGUE per domande informative (non dice COSA ha capito)
-- "Ne devo parlare con qualcuno" → VAGUE (chi? quando?)
+🟢 ESEMPI DI RISPOSTE VALIDE:
+- "Ho diversi problemi con i clienti" → VALIDATED (indica area problematica)
+- "Vorrei fatturare il doppio" → VALIDATED (obiettivo quantificabile)
+- "Il mio problema principale è il tempo" → VALIDATED (problema specifico)
+- "Ne devo parlare con mia moglie" → VALIDATED (info sul decision maker)
+
+⚠️ ESEMPI DI RISPOSTE VAGUE (richiedono approfondimento):
+- "Boh" / "Non so" → VAGUE
+- "Dipende" (senza spiegazione) → VAGUE
+- "Vedremo" / "Poi ne parliamo" → VAGUE (evasivo)
+- Solo "Sì" / "Ok" / "Va bene" per domande informative → VAGUE
+- "Vorrei migliorare" (senza dire cosa/come) → VAGUE
+
+💡 CRITERIO: La risposta deve contenere INFORMAZIONE CONCRETA, non solo conferma o vaghezza.
 
 ═══════════════════════════════════════════════════════════════
 📊 QUALITY SCORE (0-10 per ogni metrica)
@@ -842,9 +850,11 @@ Rispondi SOLO con JSON valido, NO testo aggiuntivo:
 }
 
 ⚠️ REGOLE FINALI:
-- canAdvance = true SOLO SE isComplete = true E qualityScore.overall >= 6
-- Se anche UN SOLO check ha status "vague", canAdvance = false
-- Sii RIGOROSO: meglio bloccare e far raccogliere info migliori che far avanzare con dati scarsi`;
+- canAdvance = true SE isComplete = true E qualityScore.overall >= 4
+- I check "vague" BLOCCANO l'avanzamento - serve risposta con CONTENUTO
+- MISSING = domanda mai fatta, VAGUE = risposta senza contenuto → entrambi bloccano
+- Ogni check VALIDATED deve avere evidenceQuote con citazione reale dalla conversazione
+- NON validare senza evidenza concreta.`;
   }
   
   /**
@@ -920,16 +930,32 @@ Rispondi SOLO con JSON valido, NO testo aggiuntivo:
         ? parsed.missingItems.filter((item: any) => typeof item === 'string')
         : originalChecks;
       
-      // 🆕 Parse itemDetails
+      // 🆕 Parse itemDetails con validazione evidenceQuote
       const itemDetails: CheckpointItemDetail[] = Array.isArray(parsed.itemDetails)
-        ? parsed.itemDetails.map((item: any) => ({
-            check: String(item.check || ''),
-            status: ['validated', 'missing', 'vague'].includes(item.status) ? item.status : 'missing',
-            infoCollected: item.infoCollected ? String(item.infoCollected) : undefined,
-            reason: item.reason ? String(item.reason) : undefined,
-            evidenceQuote: item.evidenceQuote ? String(item.evidenceQuote) : undefined,
-            suggestedNextAction: item.suggestedNextAction ? String(item.suggestedNextAction) : undefined
-          }))
+        ? parsed.itemDetails.map((item: any) => {
+            let status = ['validated', 'missing', 'vague'].includes(item.status) ? item.status : 'missing';
+            const evidenceQuote = item.evidenceQuote ? String(item.evidenceQuote).trim() : undefined;
+            const infoCollected = item.infoCollected ? String(item.infoCollected).trim() : undefined;
+            
+            // 🆕 VALIDAZIONE PROGRAMMATICA: se "validated" ma senza evidence/info → degrada a "vague"
+            if (status === 'validated') {
+              const hasEvidence = evidenceQuote && evidenceQuote.length > 5;
+              const hasInfo = infoCollected && infoCollected.length > 5;
+              if (!hasEvidence && !hasInfo) {
+                console.log(`   ⚠️ [CHECKPOINT] Degrading "${item.check?.substring(0, 30)}..." from validated to vague (no evidence)`);
+                status = 'vague';
+              }
+            }
+            
+            return {
+              check: String(item.check || ''),
+              status: status as 'validated' | 'missing' | 'vague',
+              infoCollected,
+              reason: item.reason ? String(item.reason) : undefined,
+              evidenceQuote,
+              suggestedNextAction: item.suggestedNextAction ? String(item.suggestedNextAction) : undefined
+            };
+          })
         : originalChecks.map(check => ({
             check,
             status: 'missing' as const,
@@ -950,9 +976,11 @@ Rispondi SOLO con JSON valido, NO testo aggiuntivo:
       const missingCount = itemDetails.filter(i => i.status !== 'validated').length;
       const hasVague = itemDetails.some(i => i.status === 'vague');
       
-      // 🆕 Logica rigorosa: canAdvance solo se qualità sufficiente e nessun vague
+      // 🆕 Logica EQUILIBRATA: tutti i check devono essere validated, ma con criteri più ragionevoli
+      // vague BLOCCA ancora (il prospect deve dare risposta sostanziale)
+      // Soglia qualityScore abbassata da 6 a 4 per essere meno punitivi
       const isComplete = validatedCount === originalChecks.length && !hasVague;
-      const canAdvance = isComplete && qualityScore.overall >= 6;
+      const canAdvance = isComplete && qualityScore.overall >= 4;
       
       return {
         isComplete,

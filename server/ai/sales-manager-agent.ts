@@ -1057,14 +1057,14 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     const isPhaseTransition = stepAdvancement.shouldAdvance && isLastStepOfPhase && 
                               stepAdvancement.nextPhaseId !== params.currentPhaseId;
 
-    // 🆕 SOFT VALIDATION: Se qualityScore >= 6, permetti avanzamento anche se canAdvance=false
-    const qualityScoreOverall = checkpointStatus?.qualityScore?.overall || 0;
+    // 🆕 GATEKEEPING: Blocca transizione se canAdvance=false (checkpoint non completo)
+    // La soglia qualityScore è già gestita in step-advancement-agent (>= 4)
+    // Qui blocchiamo SEMPRE se canAdvance=false - tutti i check devono essere validated
     const shouldBlockTransition = isPhaseTransition && checkpointStatus && 
-                                   !checkpointStatus.canAdvance && 
-                                   qualityScoreOverall < 6; // Blocca SOLO se quality < 6
+                                   !checkpointStatus.canAdvance;
 
     if (shouldBlockTransition) {
-      // 🚫 BLOCCO FORZATO: L'AI vuole avanzare ma checkpoint non completo E quality < 6
+      // 🚫 BLOCCO FORZATO: L'AI vuole avanzare ma checkpoint non completo (canAdvance=false)
       const phaseNum = params.currentPhaseId.replace('phase_', '').replace(/_/g, '-');
       const totalChecks = checkpointStatus.completedItems.length + checkpointStatus.missingItems.length;
       const validatedCount = checkpointStatus.completedItems.length;
@@ -1101,15 +1101,15 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       
       const firstMissingItemSuggestion = checkpointStatus.itemDetails?.find(item => item.status !== 'validated')?.suggestedNextAction;
       const naturalFeedbackMessage = firstMissingItemSuggestion 
-          ? `Prima di andare avanti, mi serve capire meglio: ${firstMissingItemSuggestion}.`
-          : `Prima di andare avanti, mi serve capire meglio: ${topMissing}. Fai domande mirate per scoprire questi dettagli - sarà fondamentale per la soluzione che proporrò.`;
+          ? `Potresti approfondire un po': ${firstMissingItemSuggestion}`
+          : `Potresti approfondire su: ${topMissing}`;
 
       feedbackForAgent = {
         shouldInject: true,
-        priority: 'critical',
+        priority: 'medium',  // 🆕 Era 'critical' - ora è solo un suggerimento, non un blocco
         type: 'checkpoint',
         message: naturalFeedbackMessage,
-        toneReminder: 'Tono curioso, genuino. Come se stessi scoprendo cose importanti sul prospect!'
+        toneReminder: 'Tono naturale e curioso'
       };
     }
 
