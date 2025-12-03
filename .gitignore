@@ -14,4 +14,4 @@ vite.config.ts.*
 # uploads/
 
 # Database files
-data/
+# data/
