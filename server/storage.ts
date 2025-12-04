@@ -447,14 +447,14 @@ export interface IStorage {
 
   // Categories
   createLibraryCategory(categoryData: InsertLibraryCategory): Promise<LibraryCategory>;
-  getLibraryCategories(): Promise<LibraryCategory[]>;
+  getLibraryCategories(consultantId?: string): Promise<LibraryCategory[]>;
   getLibraryCategory(categoryId: string): Promise<LibraryCategory | null>;
   updateLibraryCategory(categoryId: string, updates: Partial<InsertLibraryCategory>): Promise<LibraryCategory | null>;
   deleteLibraryCategory(categoryId: string): Promise<boolean>;
 
   // Subcategories
   createLibrarySubcategory(subcategoryData: InsertLibrarySubcategory): Promise<LibrarySubcategory>;
-  getLibrarySubcategories(): Promise<LibrarySubcategory[]>;
+  getLibrarySubcategories(consultantId?: string): Promise<LibrarySubcategory[]>;
   getLibrarySubcategoriesByCategory(categoryId: string): Promise<LibrarySubcategory[]>;
   getLibrarySubcategory(subcategoryId: string): Promise<LibrarySubcategory | null>;
   updateLibrarySubcategory(subcategoryId: string, updates: Partial<InsertLibrarySubcategory>): Promise<LibrarySubcategory | null>;
@@ -462,7 +462,7 @@ export interface IStorage {
 
   // Documents
   createLibraryDocument(documentData: InsertLibraryDocument): Promise<LibraryDocument>;
-  getLibraryDocuments(): Promise<LibraryDocument[]>;
+  getLibraryDocuments(consultantId?: string): Promise<LibraryDocument[]>;
   getLibraryDocumentsByCategory(categoryId: string): Promise<LibraryDocument[]>;
   getLibraryDocumentsBySubcategory(subcategoryId: string): Promise<LibraryDocument[]>;
   getLibraryDocument(documentId: string): Promise<LibraryDocument | null>;
@@ -2596,8 +2596,16 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getLibraryCategories(): Promise<LibraryCategory[]> {
+  async getLibraryCategories(consultantId?: string): Promise<LibraryCategory[]> {
     try {
+      if (consultantId) {
+        return await db.select().from(schema.libraryCategories)
+          .where(and(
+            eq(schema.libraryCategories.isActive, true),
+            eq(schema.libraryCategories.createdBy, consultantId)
+          ))
+          .orderBy(schema.libraryCategories.sortOrder, schema.libraryCategories.name);
+      }
       return await db.select().from(schema.libraryCategories)
         .where(eq(schema.libraryCategories.isActive, true))
         .orderBy(schema.libraryCategories.sortOrder, schema.libraryCategories.name);
@@ -2740,7 +2748,17 @@ export class DatabaseStorage implements IStorage {
     return subcategory;
   }
 
-  async getLibrarySubcategories(): Promise<LibrarySubcategory[]> {
+  async getLibrarySubcategories(consultantId?: string): Promise<LibrarySubcategory[]> {
+    if (consultantId) {
+      return await db
+        .select()
+        .from(schema.librarySubcategories)
+        .where(and(
+          eq(schema.librarySubcategories.isActive, true),
+          eq(schema.librarySubcategories.createdBy, consultantId)
+        ))
+        .orderBy(asc(schema.librarySubcategories.sortOrder), asc(schema.librarySubcategories.name));
+    }
     return await db
       .select()
       .from(schema.librarySubcategories)
@@ -2835,8 +2853,16 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getLibraryDocuments(): Promise<LibraryDocument[]> {
+  async getLibraryDocuments(consultantId?: string): Promise<LibraryDocument[]> {
     try {
+      if (consultantId) {
+        return await db.select().from(schema.libraryDocuments)
+          .where(and(
+            eq(schema.libraryDocuments.isPublished, true),
+            eq(schema.libraryDocuments.createdBy, consultantId)
+          ))
+          .orderBy(schema.libraryDocuments.createdAt);
+      }
       return await db.select().from(schema.libraryDocuments)
         .where(eq(schema.libraryDocuments.isPublished, true))
         .orderBy(schema.libraryDocuments.createdAt);

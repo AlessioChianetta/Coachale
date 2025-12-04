@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Plus, BookOpen, FileText, GraduationCap, AlertCircle } from "lucide-react";
+import { X, Sparkles, Plus, BookOpen, FileText, GraduationCap, AlertCircle, Settings, Maximize2, ArrowRight, History, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ModeSelector } from "./ModeSelector";
 import { ConsultantTypePicker } from "./ConsultantTypePicker";
 import { MessageList } from "./MessageList";
@@ -91,10 +92,95 @@ export function ChatPanel({
     countdownSeconds: 0
   });
   const [safetyTimeoutActive, setSafetyTimeoutActive] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<"chat" | "history">("chat");
+  const [conversations, setConversations] = useState<Array<{
+    id: string;
+    title: string | null;
+    mode: string;
+    lastMessageAt: string | null;
+    createdAt: string;
+  }>>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
   const queryClient = useQueryClient();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const safetyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+  
+  const userName = useMemo(() => {
+    const user = getAuthUser();
+    return user?.firstName || "Utente";
+  }, []);
+
+  // Load conversations for history tab
+  const loadConversations = async () => {
+    setIsLoadingConversations(true);
+    try {
+      const endpoint = isConsultantMode ? "/api/consultant/ai/conversations" : "/api/ai/conversations";
+      const response = await fetch(endpoint, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setConversations(data || []);
+      }
+    } catch (error: any) {
+      console.error("Error loading conversations:", error?.message || error);
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  };
+
+  // Load conversation messages when selecting from history
+  const loadConversationMessages = async (conversationId: string) => {
+    try {
+      const endpoint = isConsultantMode 
+        ? `/api/consultant/ai/conversations/${conversationId}` 
+        : `/api/ai/conversations/${conversationId}`;
+      console.log("Loading conversation:", conversationId, "endpoint:", endpoint);
+      const response = await fetch(endpoint, {
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Conversation data:", data);
+        if (data.messages && data.messages.length > 0) {
+          const mappedMessages = data.messages.map((msg: any) => ({
+            id: msg.id,
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+            status: "completed" as const,
+            timestamp: new Date(msg.createdAt),
+          }));
+          console.log("Mapped messages:", mappedMessages);
+          setMessages(mappedMessages);
+          setCurrentConversationId(conversationId);
+          setActiveTab("chat");
+        } else {
+          console.log("No messages found, switching to chat anyway");
+          setCurrentConversationId(conversationId);
+          setActiveTab("chat");
+        }
+      } else {
+        console.error("Response not OK:", response.status);
+      }
+    } catch (error: any) {
+      console.error("Error loading conversation messages:", error?.message || String(error));
+      toast({
+        title: "Errore",
+        description: "Impossibile caricare la conversazione",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Load conversations when opening history tab
+  useEffect(() => {
+    if (isOpen && activeTab === "history") {
+      loadConversations();
+    }
+  }, [isOpen, activeTab, isConsultantMode]);
 
   // Funzione per attendere se necessario
   const waitForRateLimit = async (estimatedTokens: number) => {
@@ -508,330 +594,270 @@ export function ChatPanel({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          initial={{ opacity: 0, x: 400, scale: 0.95 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
-          exit={{ opacity: 0, x: 400, scale: 0.95 }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 md:bottom-6 md:right-24 z-40 w-[calc(100vw-16px)] sm:w-[400px] md:w-[450px] h-[calc(100vh-80px)] sm:h-[600px] md:h-[720px] max-h-[calc(100vh-80px)]"
+          initial={{ opacity: 0, x: 400 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 400 }}
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="fixed inset-y-0 right-0 w-full sm:w-[380px] max-w-full z-50 flex flex-col bg-white dark:bg-gray-900 shadow-2xl border-l border-gray-200 dark:border-gray-800"
         >
-          <Card className="w-full h-full flex flex-col shadow-2xl border-2 border-blue-100 dark:border-blue-900/30 bg-white dark:bg-gray-800 rounded-3xl overflow-hidden backdrop-blur-sm">
-            {/* Header moderno con gradiente */}
-            <CardHeader className="bg-gradient-to-r from-blue-50 via-cyan-50 to-blue-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800 border-b-2 border-blue-100 dark:border-blue-900/30 p-3 sm:p-4 flex-shrink-0">
-              <div className="flex items-center justify-between mb-2 sm:mb-3">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg flex-shrink-0">
-                    <Sparkles className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate">AI Assistant</h2>
-                    <p className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 truncate">Il tuo assistente personale</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleNewConversation}
-                    className="text-gray-600 dark:text-gray-400 hover:bg-white/60 dark:hover:bg-gray-700 h-11 w-11 rounded-xl transition-all hover:scale-105"
-                    title="Nuova conversazione"
+          {/* Header with Tabs - Hostinger Style */}
+          <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            <div className="flex items-center justify-between px-4 py-3">
+              <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "chat" | "history")} className="flex-1">
+                <TabsList className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                  <TabsTrigger 
+                    value="chat" 
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400 data-[state=active]:shadow-sm px-4 py-1.5 text-sm font-medium rounded-md transition-all"
                   >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onClose}
-                    className="text-gray-600 dark:text-gray-400 hover:bg-white/60 dark:hover:bg-gray-700 h-11 w-11 rounded-xl transition-all hover:scale-105"
+                    <MessageSquare className="h-4 w-4 mr-1.5" />
+                    Chat
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="history" 
+                    className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400 data-[state=active]:shadow-sm px-4 py-1.5 text-sm font-medium rounded-md transition-all"
                   >
-                    <X className="h-5 w-5" />
-                  </Button>
-                </div>
+                    <History className="h-4 w-4 mr-1.5" />
+                    Cronologia
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="flex items-center gap-1 ml-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleNewConversation}
+                  className="h-8 w-8 text-gray-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-colors"
+                  title="Nuova conversazione"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-gray-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-colors"
+                  title="Impostazioni"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="h-8 w-8 text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
+            </div>
+          </div>
 
-              {!isConsultantMode && (
-                <div className="space-y-2.5">
-                  <ModeSelector mode={mode} setMode={setMode} />
-                  {mode === "consulente" && (
-                    <ConsultantTypePicker
-                      consultantType={consultantType}
-                      setConsultantType={setConsultantType}
-                    />
-                  )}
-                </div>
-              )}
-            </CardHeader>
-
-            <CardContent className="flex-1 flex flex-col p-0 overflow-hidden bg-gradient-to-b from-gray-50/30 to-white dark:from-gray-900 dark:to-gray-900">
-              {messages.length === 0 ? (
-                <ScrollArea ref={scrollAreaRef} className="flex-1">
-                  <div className="flex flex-col items-center justify-center p-3 sm:p-4 md:p-6 text-center min-h-full">
-                    {/*
-                      MESSAGGIO CONTESTUALE DINAMICO
-                      PERCHÉ: Invece di mostrare sempre "Come posso aiutarti oggi?",
-                              mostriamo 3 varianti basate su dove si trova l'utente
-                      RISOLVE: L'utente vede immediatamente che l'AI ha riconosciuto il contesto
-                    */}
-
-                    {/* CASO 1: LEZIONE (Libreria O Università) */}
-                    {(pageContext?.pageType === "library_document" || pageContext?.pageType === "university_lesson") ? (
-                      <>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/40 dark:to-blue-800/40 flex items-center justify-center">
-                            <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          {/* Content Area */}
+          <div className="flex-1 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-950">
+            {activeTab === "chat" ? (
+              <>
+                {messages.length === 0 ? (
+                  <ScrollArea ref={scrollAreaRef} className="flex-1">
+                    <div className="p-6">
+                      {/* Personalized Greeting - Hostinger Style */}
+                      <div className="mb-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-200 dark:shadow-violet-900/30">
+                            <Sparkles className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                              Ciao {userName} 👋
+                            </h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Come posso aiutarti oggi?
+                            </p>
                           </div>
                         </div>
-                        <Badge variant="outline" className="mb-3 text-xs bg-blue-50 dark:bg-blue-900/30 border-blue-200">
-                          {pageContext.pageType === "library_document" ? "📚 Libreria" : "🎓 Università"}
-                        </Badge>
-                        <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2">
-                          Stai studiando:
-                        </h3>
-                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 sm:p-3 mb-3 w-full max-w-xs border border-blue-100 dark:border-blue-800">
-                          <p className="font-semibold text-blue-900 dark:text-blue-100 text-xs sm:text-sm mb-1 line-clamp-2">
-                            "{pageContext.resourceTitle || "Questa lezione"}"
+                      </div>
+
+                      {/* Context Banner (if page context exists) */}
+                      {(pageContext?.pageType === "library_document" || pageContext?.pageType === "university_lesson") && (
+                        <div className="mb-6 p-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-100 dark:border-violet-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <BookOpen className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                            <span className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide">
+                              {pageContext.pageType === "library_document" ? "Libreria" : "Università"}
+                            </span>
+                          </div>
+                          <p className="font-medium text-gray-900 dark:text-white text-sm">
+                            {pageContext.resourceTitle || "Questa lezione"}
                           </p>
                           {pageContext.additionalContext?.categoryName && (
-                            <p className="text-xs text-blue-700 dark:text-blue-300 flex items-center justify-center gap-1">
-                              📂 {pageContext.additionalContext.categoryName}
-                              {pageContext.additionalContext.level && ` • ${pageContext.additionalContext.level}`}
+                            <p className="text-xs text-violet-600 dark:text-violet-300 mt-1">
+                              {pageContext.additionalContext.categoryName}
                             </p>
                           )}
                         </div>
-                        <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mb-2 font-medium">
-                          Come posso aiutarti?
-                        </p>
-                        <div className="text-[11px] sm:text-xs text-left mb-4 space-y-1.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5 sm:p-3 w-full max-w-xs">
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Spiegare i concetti chiave</span>
+                      )}
+
+                      {pageContext?.pageType === "exercise" && (
+                        <div className="mb-6 p-4 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-100 dark:border-violet-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <FileText className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                            <span className="text-xs font-medium text-violet-600 dark:text-violet-400 uppercase tracking-wide">
+                              Esercizio
+                            </span>
                           </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Fare un riassunto</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Rispondere a domande specifiche</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Suggerirti esercizi correlati</span>
-                          </div>
-                        </div>
-                      </>
-                    ) : pageContext?.pageType === "exercise" ? (
-                      <>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/40 dark:to-purple-800/40 flex items-center justify-center">
-                            <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="mb-3 text-xs bg-purple-50 dark:bg-purple-900/30 border-purple-200">
-                          📝 Esercizio
-                        </Badge>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                          Stai lavorando su:
-                        </h3>
-                        <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 mb-3 max-w-xs border border-purple-100 dark:border-purple-800">
-                          <p className="font-semibold text-purple-900 dark:text-purple-100 text-sm mb-1">
-                            "{pageContext.resourceTitle || "Questo esercizio"}"
+                          <p className="font-medium text-gray-900 dark:text-white text-sm">
+                            {pageContext.resourceTitle || "Questo esercizio"}
                           </p>
-                          {pageContext.additionalContext?.status && (
-                            <Badge className="mt-2 text-xs" variant={
-                              pageContext.additionalContext.status === 'completed' ? 'default' : 'secondary'
-                            }>
-                              {pageContext.additionalContext.status}
-                            </Badge>
+                        </div>
+                      )}
+
+                      {/* Mode Selector for Client Mode (compact) */}
+                      {!isConsultantMode && (
+                        <div className="mb-6 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800">
+                          <ModeSelector mode={mode} setMode={setMode} />
+                          {mode === "consulente" && (
+                            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                              <ConsultantTypePicker
+                                consultantType={consultantType}
+                                setConsultantType={setConsultantType}
+                              />
+                            </div>
                           )}
                         </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 font-medium">
-                          Ti posso assistere con:
-                        </p>
-                        <div className="text-xs text-left mb-4 space-y-1.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 max-w-xs">
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Guidarti passo-passo</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Chiarire le domande</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Rivedere le tue risposte</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Suggerire risorse utili</span>
-                          </div>
-                        </div>
-                      </>
-                    ) : pageContext?.pageType === "exercises_list" ? (
-                      <>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-900/40 dark:to-indigo-800/40 flex items-center justify-center">
-                            <FileText className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="mb-3 text-xs bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200">
-                          📋 Lista Esercizi
-                        </Badge>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                          Panoramica Esercizi
-                        </h3>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 font-medium">
-                          Come posso aiutarti?
-                        </p>
-                        <div className="text-xs text-left mb-4 space-y-1.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 max-w-xs">
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Consigli su quale esercizio iniziare</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Strategie di studio</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Gestione delle scadenze</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Analisi dei tuoi progressi</span>
-                          </div>
-                        </div>
-                      </>
-                    ) : pageContext?.pageType === "course" ? (
-                      <>
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-100 to-cyan-200 dark:from-cyan-900/40 dark:to-cyan-800/40 flex items-center justify-center">
-                            <GraduationCap className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
-                          </div>
-                        </div>
-                        <Badge variant="outline" className="mb-3 text-xs bg-cyan-50 dark:bg-cyan-900/30 border-cyan-200">
-                          🎓 Università
-                        </Badge>
-                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                          Panoramica Università
-                        </h3>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 font-medium">
-                          Come posso aiutarti?
-                        </p>
-                        <div className="text-xs text-left mb-4 space-y-1.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 max-w-xs">
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Pianificare il percorso di studio</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Spiegare la struttura del corso</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Preparazione agli esami</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-green-600 dark:text-green-400 mt-0.5">✓</span>
-                            <span className="text-gray-700 dark:text-gray-300">Monitorare progressi e certificati</span>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center mb-3">
-                          <Sparkles className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
-                          Come posso aiutarti oggi?
-                        </h3>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 max-w-xs px-2">
-                          {mode === "assistenza"
-                            ? "Supporto per navigare nella piattaforma e rispondere alle tue domande."
-                            : `Consulente ${
-                                consultantType === "finanziario"
-                                  ? "finanziario"
-                                  : consultantType === "business"
-                                  ? "di business"
-                                  : "di vendita"
-                              } personalizzato.`}
-                        </p>
-
-                        {/* Leggenda migliorata */}
-                        <div className="mb-3 max-w-xs w-full bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/20 rounded-xl p-4 text-left border border-blue-100 dark:border-blue-800">
-                          <div className="text-xs font-bold text-blue-900 dark:text-blue-200 mb-2.5 flex items-center gap-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                            Cosa posso fare:
-                          </div>
-                          <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs font-medium text-blue-800 dark:text-blue-200">
-                            <div className="flex items-center gap-1.5">📚 Lezioni</div>
-                            <div className="flex items-center gap-1.5">✅ Esercizi</div>
-                            <div className="flex items-center gap-1.5">🎯 Progressi</div>
-                            <div className="flex items-center gap-1.5">📅 Task</div>
-                          </div>
-                          <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
-                            <div className="text-[11px] text-blue-700 dark:text-blue-300 font-medium italic leading-relaxed">
-                              💡 "Cosa devo fare oggi?"<br/>
-                              💡 "Spiegami [argomento]"
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-
-                    <div className="w-full max-w-xs">
-                      {isConsultantMode && pageContext ? (
-                        <ConsultantQuickActions
-                          pageContext={pageContext as ConsultantPageContext}
-                          onAction={handleQuickAction}
-                          disabled={isTyping || rateLimitInfo.isWaiting}
-                        />
-                      ) : (
-                        <QuickActions
-                          mode={mode}
-                          consultantType={consultantType}
-                          onAction={handleQuickAction}
-                          disabled={isTyping || rateLimitInfo.isWaiting}
-                          pageContext={pageContext as PageContext}
-                        />
                       )}
-                    </div>
-                  </div>
-                </ScrollArea>
-              ) : (
-                <ScrollArea ref={scrollAreaRef} className="flex-1">
-                  <div className="p-3 sm:p-4 md:p-5">
-                    <MessageList
-                      messages={messages}
-                      isTyping={isTyping}
-                      onActionClick={onClose}
-                    />
-                  </div>
-                </ScrollArea>
-              )}
 
-              <div className="border-t-2 border-blue-100 dark:border-blue-900/30 p-3 sm:p-4 bg-gradient-to-b from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-900/50 flex-shrink-0">
-                {rateLimitInfo.isWaiting && (
-                  <Alert className="mb-3 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
-                    <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                    <AlertDescription className="text-xs text-orange-800 dark:text-orange-200">
-                      Stiamo attendendo il reset del limite di token. Riprova tra poco.
-                    </AlertDescription>
-                  </Alert>
+                      {/* Quick Actions - Hostinger Style */}
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+                          Azioni rapide
+                        </p>
+                        {isConsultantMode && pageContext ? (
+                          <ConsultantQuickActions
+                            pageContext={pageContext as ConsultantPageContext}
+                            onAction={handleQuickAction}
+                            disabled={isTyping || rateLimitInfo.isWaiting}
+                          />
+                        ) : (
+                          <QuickActions
+                            mode={mode}
+                            consultantType={consultantType}
+                            onAction={handleQuickAction}
+                            disabled={isTyping || rateLimitInfo.isWaiting}
+                            pageContext={pageContext as PageContext}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <ScrollArea ref={scrollAreaRef} className="flex-1">
+                    <div className="p-4">
+                      <MessageList
+                        messages={messages}
+                        isTyping={isTyping}
+                        onActionClick={onClose}
+                      />
+                    </div>
+                  </ScrollArea>
                 )}
-                {retryInfo.isRetrying && (
-                  <Alert className="mb-3 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                    <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <AlertDescription className="text-xs text-blue-800 dark:text-blue-200">
-                      {retryInfo.countdownSeconds > 0 
-                        ? `⏳ Riprovo tra ${retryInfo.countdownSeconds}s... (tentativo ${retryInfo.retryAttempt}/${retryInfo.retryMaxAttempts - 1})`
-                        : "⏳ Riconnessione..."}
-                    </AlertDescription>
-                  </Alert>
-                )}
-                <InputArea onSend={handleSendMessage} disabled={isTyping || rateLimitInfo.isWaiting} />
-              </div>
-            </CardContent>
-          </Card>
+              </>
+            ) : (
+              /* History Tab Content */
+              <ScrollArea className="flex-1">
+                <div className="p-4">
+                  {isLoadingConversations ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="flex gap-1.5">
+                        <div className="w-2 h-2 bg-violet-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-2 h-2 bg-violet-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-2 h-2 bg-violet-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                    </div>
+                  ) : conversations.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                        <History className="h-8 w-8 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                        Nessuna conversazione
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
+                        Le tue conversazioni precedenti appariranno qui.
+                      </p>
+                      <Button
+                        onClick={() => setActiveTab("chat")}
+                        className="mt-4 bg-violet-600 hover:bg-violet-700 text-white"
+                      >
+                        Inizia una nuova chat
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {conversations.map((conv) => (
+                        <button
+                          key={conv.id}
+                          onClick={() => loadConversationMessages(conv.id)}
+                          className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-700 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all group"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/40 dark:to-purple-900/40 flex items-center justify-center">
+                              <MessageSquare className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm text-gray-900 dark:text-white truncate group-hover:text-violet-700 dark:group-hover:text-violet-300">
+                                {conv.title || "Conversazione"}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                {conv.lastMessageAt 
+                                  ? new Date(conv.lastMessageAt).toLocaleDateString('it-IT', { 
+                                      day: 'numeric', 
+                                      month: 'short',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })
+                                  : new Date(conv.createdAt).toLocaleDateString('it-IT', { 
+                                      day: 'numeric', 
+                                      month: 'short'
+                                    })
+                                }
+                              </p>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+
+          {/* Input Area - Sticky at Bottom */}
+          {activeTab === "chat" && (
+            <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+              {rateLimitInfo.isWaiting && (
+                <Alert className="mb-3 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
+                  <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                  <AlertDescription className="text-xs text-orange-800 dark:text-orange-200">
+                    Stiamo attendendo il reset del limite di token. Riprova tra poco.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {retryInfo.isRetrying && (
+                <Alert className="mb-3 bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800">
+                  <AlertCircle className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                  <AlertDescription className="text-xs text-violet-800 dark:text-violet-200">
+                    {retryInfo.countdownSeconds > 0 
+                      ? `⏳ Riprovo tra ${retryInfo.countdownSeconds}s... (tentativo ${retryInfo.retryAttempt}/${retryInfo.retryMaxAttempts - 1})`
+                      : "⏳ Riconnessione..."}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <InputArea onSend={handleSendMessage} disabled={isTyping || rateLimitInfo.isWaiting} />
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-3 text-center">
+                L'AI potrebbe generare informazioni inaccurate
+              </p>
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

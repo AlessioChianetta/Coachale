@@ -323,6 +323,10 @@ async function pollMessagesForConsultant(
 /**
  * Poll all active consultants for new messages
  */
+/**
+ * Poll all active consultants for new messages
+ * REFACTORED: Uses sequential processing to prevent DB connection saturation
+ */
 async function pollAllConsultants(): Promise<void> {
   try {
     console.log(`🔄 [WHATSAPP POLLING] Starting poll cycle...`);
@@ -335,29 +339,48 @@ async function pollAllConsultants(): Promise<void> {
         .from(consultantWhatsappConfig)
         .where(eq(consultantWhatsappConfig.isActive, true));
     } catch (dbError: any) {
-      // Handle database connection errors gracefully (common with Neon serverless)
-      if (dbError.code === '08006' || dbError.message?.includes('connection failure')) {
-        console.log(`⏸️ [WHATSAPP POLLING] Database connection unavailable (sleeping?) - will retry next cycle`);
+      // Handle database connection errors gracefully (common with Neon/Supabase serverless)
+      // Code 08006 is "connection failure", 57P01 is "admin shutdown", etc.
+      if (dbError.code === '08006' || dbError.message?.includes('connection') || dbError.code === 'ECONNREFUSED') {
+        console.log(`⏸️ [WHATSAPP POLLING] Database connection unavailable - skipping this cycle`);
         return;
       }
-      throw dbError; // Re-throw if it's a different error
+      console.error(`❌ [WHATSAPP POLLING] Critical DB error fetching configs:`, dbError);
+      return; 
     }
 
-    if (configs.length === 0) {
-      console.log(`⚠️ [WHATSAPP POLLING] No active WhatsApp configs found`);
-      return;
+    if (!configs || configs.length === 0) {
+      // console.log(`⚠️ [WHATSAPP POLLING] No active WhatsApp configs found`);
+      return; // Silent return to avoid log spam if no users
     }
 
-    console.log(`📊 [WHATSAPP POLLING] Polling ${configs.length} consultant(s)...`);
+    console.log(`📊 [WHATSAPP POLLING] Polling ${configs.length} consultant(s) sequentially...`);
 
-    // Poll each consultant in parallel
-    await Promise.all(configs.map(pollMessagesForConsultant));
+    // FIX: Use sequential loop instead of Promise.all to prevent "Too many connections" errors
+    // and to ensure one failing agent doesn't crash the entire scheduler.
+    for (const config of configs) {
+      try {
+        // Poll specific consultant
+        await pollMessagesForConsultant(config);
+
+        // OPTIONAL: Add a small delay (e.g., 500ms) between agents to let the DB "breathe"
+        // This is crucial if you are on a Free Tier database
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+      } catch (agentError) {
+        // Catch error for THIS specific agent so the loop continues for others
+        console.error(`❌ [WHATSAPP POLLING] Failed to poll agent ${config.agentName} (${config.id}):`, agentError);
+        // We do not re-throw here, ensuring other agents still get polled
+      }
+    }
 
     console.log(`✅ [WHATSAPP POLLING] Poll cycle complete`);
   } catch (error) {
-    console.error(`❌ [WHATSAPP POLLING] Error in poll cycle:`, error);
+    // This catches unforeseen errors in the main loop logic itself
+    console.error(`❌ [WHATSAPP POLLING] Fatal error in poll cycle:`, error);
   }
 }
+
 
 /**
  * Start the WhatsApp polling service
@@ -375,7 +398,7 @@ export function startWhatsAppPolling(): void {
   }
 
   // Get polling interval from env or default to 90 seconds (optimized for Supabase free tier)
-  const intervalSeconds = parseInt(process.env.WHATSAPP_POLL_INTERVAL_SECONDS || "90", 10);
+  const intervalSeconds = parseInt(process.env.WHATSAPP_POLL_INTERVAL_SECONDS || "30", 10);
   const cronSchedule = `*/${intervalSeconds} * * * * *`; // Every N seconds
 
   const registrationId = `whatsapp-polling-${Date.now()}`;

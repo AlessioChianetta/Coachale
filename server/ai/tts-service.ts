@@ -65,28 +65,32 @@ export async function generateSpeech({
 }: TTSConfig): Promise<Buffer> {
   
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🎙️ [TTS SERVICE] Generating speech with Achernar voice');
+  console.log('🎙️ [TTS SERVICE] Generating speech with Gemini 2.5 Flash TTS');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`📝 Text length: ${text.length} characters`);
-  console.log(`🗣️ Voice: Achernar (Female, Italian)`);
+  console.log(`🗣️ Voice: Achernar (Female, Italian) - Flash Model`);
   console.log(`⚙️ Project: ${projectId}, Location: ${location}`);
 
   try {
     // Extract VertexAI instance (handle both direct VertexAI and wrapped GeminiClient)
     const vertexAI = vertexClient.__vertexAI || vertexClient;
     
-    // Get Gemini 2.5 Pro TTS model
+    // Get Gemini 2.5 Flash TTS model
     const model = vertexAI.preview.getGenerativeModel({
-      model: 'gemini-2.5-pro-tts'
+      model: 'gemini-2.5-flash-tts'
     });
     
     console.log('🤖 Requesting audio generation...');
+    
+    // Use standard SSML prosody tags for natural, warm delivery (Gemini TTS respects these)
+    // pitch: slightly higher for warmth, rate: medium for clarity
+    const styledText = `<speak><prosody pitch="+1st" rate="medium"><emphasis level="moderate">${text}</emphasis></prosody></speak>`;
     
     // Generate audio with Achernar voice configuration
     const result = await model.generateContent({
       contents: [{
         role: 'user',
-        parts: [{ text }]
+        parts: [{ text: styledText }]
       }],
       generationConfig: {
         responseModalities: ['AUDIO'],

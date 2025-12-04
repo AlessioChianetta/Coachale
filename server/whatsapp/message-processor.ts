@@ -38,10 +38,105 @@ import {
 } from "./instruction-blocks";
 import { generateSpeech } from "../ai/tts-service";
 import { shouldRespondWithAudio } from "./audio-response-utils";
-import { getAudioDurationInSeconds } from "get-audio-duration";
 import * as fs from "fs";
+import * as fsPromises from "fs/promises";
 import * as path from "path";
-import { execSync } from "child_process";
+import { exec, spawn } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
+
+/**
+ * Convert WAV to OGG/Opus asynchronously with timeout
+ * Optimized for voice audio with proper Opus settings
+ */
+async function convertWavToOggAsync(
+  wavFilePath: string, 
+  oggFilePath: string, 
+  timeoutMs: number = 120000
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    
+    // Optimized FFmpeg command for voice/Opus conversion
+    // -threads 0: Use all available CPU cores
+    // -application voip: Optimize for voice
+    // -frame_duration 20: Standard frame size for voice
+    // -vbr on: Variable bitrate for better quality
+    // -compression_level 10: Best compression
+    const ffmpeg = spawn('ffmpeg', [
+      '-i', wavFilePath,
+      '-c:a', 'libopus',
+      '-b:a', '48k',           // Lower bitrate for voice (was 64k)
+      '-application', 'voip',  // Voice optimization
+      '-frame_duration', '20', // 20ms frames for voice
+      '-vbr', 'on',            // Variable bitrate
+      '-compression_level', '10',
+      '-threads', '0',         // Use all CPU cores
+      '-y',                    // Overwrite output
+      oggFilePath
+    ], {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+
+    let stderr = '';
+    
+    ffmpeg.stderr?.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    const timeout = setTimeout(() => {
+      ffmpeg.kill('SIGKILL');
+      reject(new Error(`FFmpeg conversion timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    ffmpeg.on('close', (code) => {
+      clearTimeout(timeout);
+      const duration = Date.now() - startTime;
+      
+      if (code === 0) {
+        console.log(`✅ FFmpeg conversion completed in ${duration}ms`);
+        resolve();
+      } else {
+        reject(new Error(`FFmpeg exited with code ${code}: ${stderr.slice(-500)}`));
+      }
+    });
+
+    ffmpeg.on('error', (err) => {
+      clearTimeout(timeout);
+      reject(new Error(`FFmpeg spawn error: ${err.message}`));
+    });
+  });
+}
+
+/**
+ * Calculate audio duration from WAV buffer (instant, no FFprobe)
+ * WAV format: 44 bytes header, then PCM data
+ * Duration = dataSize / (sampleRate * channels * bytesPerSample)
+ */
+function calculateWavDuration(wavBuffer: Buffer): number {
+  // WAV header structure:
+  // Bytes 24-27: Sample rate (little-endian uint32)
+  // Bytes 22-23: Number of channels (little-endian uint16)
+  // Bytes 34-35: Bits per sample (little-endian uint16)
+  // Bytes 40-43: Data size (little-endian uint32)
+  
+  try {
+    const sampleRate = wavBuffer.readUInt32LE(24);
+    const channels = wavBuffer.readUInt16LE(22);
+    const bitsPerSample = wavBuffer.readUInt16LE(34);
+    const dataSize = wavBuffer.readUInt32LE(40);
+    
+    const bytesPerSample = bitsPerSample / 8;
+    const duration = dataSize / (sampleRate * channels * bytesPerSample);
+    
+    return Math.round(duration);
+  } catch (error) {
+    console.warn('⚠️ Could not parse WAV header, estimating duration');
+    // Fallback: estimate based on buffer size (assuming 24kHz, mono, 16-bit)
+    return Math.round((wavBuffer.length - 44) / (24000 * 1 * 2));
+  }
+}
 
 const DEBOUNCE_DELAY = 4000;
 const MAX_RETRIES = 3;
@@ -344,6 +439,14 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       .orderBy(asc(whatsappPendingMessages.receivedAt));
 
     console.log(`📋 [PENDING] Found ${pending.length} pending messages for conversation ${conversation.id} (phone: ${phoneNumber})`);
+
+    // ⏱️ TIMING: Calculate polling latency (time from webhook to processing)
+    if (pending.length > 0 && pending[0].receivedAt) {
+      const webhookReceivedAt = new Date(pending[0].receivedAt).getTime();
+      const pollingLatencyMs = Date.now() - webhookReceivedAt;
+      const pollingLatencyS = (pollingLatencyMs / 1000).toFixed(1);
+      console.log(`⏱️ [TIMING] Polling latency: ${pollingLatencyS}s (from webhook to processing)`);
+    }
     
     // Step 2.1: Deduplicate pending messages by twilioSid
     // This prevents processing duplicate messages (e.g., from Twilio webhook retries)
@@ -612,12 +715,21 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       // Process media if present
       if (p.mediaUrl && p.mediaContentType) {
         console.log(`📸 Processing media for message ${savedMsg.id}`);
+        // Pass Vertex AI credentials for audio transcription if available
+        const vertexCreds = aiProvider.type === 'vertex' ? {
+          projectId: aiProvider.projectId,
+          location: aiProvider.location,
+          credentials: aiProvider.credentials
+        } : undefined;
+        
         await handleIncomingMedia(
           savedMsg.id,
           p.mediaUrl,
           p.mediaContentType,
           conversation.consultantId,
-          apiKey
+          apiKey,
+          conversation.agentConfigId || undefined,
+          vertexCreds
         );
       }
     }
@@ -1594,7 +1706,15 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     console.log(`✅ [STEP 8] Gemini response received: "${aiResponse.substring(0, 100)}..."`);
 
     console.log(`💾 [STEP 9] Saving AI response to database`);
-    // Step 9: Save AI response
+    
+    // Calculate timing metrics for this message
+    const geminiTime = Math.round(endTime - startTime);
+    const contextTime = timings.contextBuildEnd > 0 
+      ? Math.round(timings.contextBuildEnd - timings.contextBuildStart) 
+      : 0;
+    const currentTotalTime = Math.round(performance.now() - timings.requestStart);
+    
+    // Step 9: Save AI response with timing metadata
     const [savedMessage] = await db
       .insert(whatsappMessages)
       .values({
@@ -1604,9 +1724,14 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         sender: "ai",
         isBatched: uniquePending.length > 1,
         batchId: uniquePending.length > 1 ? batchId : null,
+        metadata: {
+          processingMs: currentTotalTime,
+          geminiMs: geminiTime,
+          contextMs: contextTime,
+        }
       })
       .returning();
-    console.log(`✅ [STEP 9] AI response saved with ID: ${savedMessage.id}`);
+    console.log(`✅ [STEP 9] AI response saved with ID: ${savedMessage.id} (timing: ${geminiTime}ms Gemini, ${currentTotalTime}ms total)`);
 
     // Track objection if detected (for leads only AND if objection handling is enabled)
     if (consultantConfig?.objectionHandlingEnabled !== false && 
@@ -1691,58 +1816,59 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
 
         // Generate TTS audio with Gemini 2.5 Pro TTS (Achernar voice)
         console.log('🤖 Calling generateSpeech with Vertex AI...');
+        const ttsStartTime = performance.now();
         const audioBuffer = await generateSpeech({
           text: aiResponse,
           vertexClient: vertexClient,
           projectId: vertexProjectId,
           location: vertexLocation
         });
+        const ttsEndTime = performance.now();
+        const ttsGenerationMs = Math.round(ttsEndTime - ttsStartTime);
 
-        // Ensure uploads/audio directory exists
+        // Calculate audio duration IMMEDIATELY from WAV buffer (instant, no FFprobe!)
+        const audioDuration = calculateWavDuration(audioBuffer);
+        console.log(`⏱️ Audio duration: ${audioDuration} seconds (calculated from WAV header)`);
+        console.log(`⏱️ TTS generation time: ${ttsGenerationMs}ms`);
+
+        // Ensure uploads/audio directory exists (async)
         const audioDir = path.join(process.cwd(), 'uploads', 'audio');
-        if (!fs.existsSync(audioDir)) {
-          fs.mkdirSync(audioDir, { recursive: true });
-          console.log(`✅ Created audio directory: ${audioDir}`);
-        }
+        await fsPromises.mkdir(audioDir, { recursive: true });
 
-        // Save WAV file first (from TTS service)
+        // Save WAV file first (from TTS service) - ASYNC
         const wavFileName = `twilio-response-${nanoid()}.wav`;
         const wavFilePath = path.join(audioDir, wavFileName);
-        fs.writeFileSync(wavFilePath, audioBuffer);
+        await fsPromises.writeFile(wavFilePath, audioBuffer);
         console.log(`✅ WAV file saved: ${wavFilePath}`);
 
-        // Convert WAV to OGG/Opus for WhatsApp compatibility
+        // Convert WAV to OGG/Opus for WhatsApp compatibility (ASYNC with timeout)
         // WhatsApp only supports: OGG/Opus, AMR, AAC/M4A, MP3 (not WAV)
         const oggFileName = wavFileName.replace('.wav', '.ogg');
         const oggFilePath = path.join(audioDir, oggFileName);
         
-        console.log('🔧 Converting WAV to OGG/Opus for WhatsApp...');
+        console.log('🔧 Converting WAV to OGG/Opus for WhatsApp (async)...');
         try {
-          execSync(`ffmpeg -i "${wavFilePath}" -c:a libopus -b:a 64k -y "${oggFilePath}"`, {
-            stdio: 'pipe' // Suppress ffmpeg output
-          });
+          await convertWavToOggAsync(wavFilePath, oggFilePath, 120000); // 2 min timeout for production
           console.log(`✅ OGG file created: ${oggFilePath}`);
           
           // Use OGG file for WhatsApp
           audioMediaUrl = `/uploads/audio/${oggFileName}`;
           
-          // Clean up WAV file (keep only OGG for WhatsApp)
-          fs.unlinkSync(wavFilePath);
-          console.log(`🗑️  WAV file deleted (keeping OGG for WhatsApp)`);
+          // Clean up WAV file (keep only OGG for WhatsApp) - ASYNC
+          await fsPromises.unlink(wavFilePath);
+          console.log(`🗑️ WAV file deleted (keeping OGG for WhatsApp)`);
         } catch (conversionError: any) {
           console.error(`❌ FFmpeg conversion failed: ${conversionError.message}`);
-          console.log(`⚠️  Falling back to WAV file (may not work on WhatsApp)`);
+          console.log(`⚠️ Falling back to WAV file (may not work on WhatsApp)`);
           audioMediaUrl = `/uploads/audio/${wavFileName}`;
         }
 
         console.log(`✅ Audio ready: ${audioMediaUrl}`);
 
-        // Calculate audio duration (use OGG if conversion succeeded, else WAV)
-        const finalAudioPath = fs.existsSync(oggFilePath) ? oggFilePath : wavFilePath;
-        const audioDuration = Math.round(await getAudioDurationInSeconds(finalAudioPath));
-        console.log(`⏱️  Audio duration: ${audioDuration} seconds`);
+        // Calculate total time including TTS
+        const totalWithTtsMs = Math.round(performance.now() - timings.requestStart);
 
-        // Update saved message with audio metadata
+        // Update saved message with audio metadata AND complete timing
         await db
           .update(whatsappMessages)
           .set({
@@ -1752,12 +1878,17 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
               audioGenerated: true,
               audioDuration,
               ttsEngine: 'gemini-2.5-pro-tts',
-              voice: 'Achernar'
+              voice: 'Achernar',
+              // Complete timing breakdown
+              processingMs: totalWithTtsMs,
+              geminiMs: geminiTime,
+              contextMs: contextTime,
+              ttsMs: ttsGenerationMs,
             }
           })
           .where(eq(whatsappMessages.id, savedMessage.id));
 
-        console.log('✅ Message updated with audio metadata');
+        console.log(`✅ Message updated with audio metadata (TTS: ${ttsGenerationMs}ms, Total: ${totalWithTtsMs}ms)`);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
       } catch (ttsError: any) {

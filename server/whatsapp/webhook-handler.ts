@@ -326,7 +326,8 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
           webhookBody.MediaUrl0,
           webhookBody.MediaContentType0,
           config.consultantId,
-          apiKey.apiKey
+          apiKey.apiKey,
+          config.id
         );
         
         // Update key usage stats

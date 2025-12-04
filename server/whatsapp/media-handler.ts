@@ -3,12 +3,22 @@ import fs from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 import { GoogleGenAI } from "@google/genai";
+import { VertexAI } from "@google-cloud/vertexai";
 import { PDFParse } from "pdf-parse";
 import { db } from "../db";
 import { whatsappMessages, whatsappMediaFiles, consultantWhatsappConfig } from "../../shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 const STORAGE_PATH = path.join(process.cwd(), "storage", "whatsapp", "media");
+
+/**
+ * Vertex AI credentials for media processing
+ */
+export interface VertexAICredentials {
+  projectId: string;
+  location: string;
+  credentials: any;
+}
 
 interface MediaDownloadResult {
   localPath: string;
@@ -33,6 +43,7 @@ export async function downloadMedia(
   twilioAuthToken: string,
   messageId: string
 ): Promise<MediaDownloadResult> {
+  const downloadStart = Date.now();
   try {
     console.log(`📥 Downloading media from: ${mediaUrl}`);
 
@@ -53,8 +64,10 @@ export async function downloadMedia(
     await fs.writeFile(localPath, response.data);
 
     const fileSize = response.data.length;
+    const downloadTime = ((Date.now() - downloadStart) / 1000).toFixed(1);
 
     console.log(`✅ Media saved: ${fileName} (${(fileSize / 1024).toFixed(2)} KB)`);
+    console.log(`⏱️ [TIMING] Download: ${downloadTime}s`);
 
     return {
       localPath,
@@ -63,18 +76,21 @@ export async function downloadMedia(
       mimeType: contentType,
     };
   } catch (error) {
-    console.error("❌ Error downloading media:", error);
+    const downloadTime = ((Date.now() - downloadStart) / 1000).toFixed(1);
+    console.error(`❌ Error downloading media (after ${downloadTime}s):`, error);
     throw error;
   }
 }
 
 /**
  * Process media file with AI analysis based on type
+ * Supports Vertex AI for audio transcription when credentials are provided
  */
 export async function processMedia(
   localPath: string,
   mimeType: string,
-  apiKey: string
+  apiKey: string,
+  vertexCredentials?: VertexAICredentials
 ): Promise<MediaProcessingResult> {
   const result: MediaProcessingResult = {};
 
@@ -89,7 +105,7 @@ export async function processMedia(
       result.aiAnalysis = await analyzeDocumentText(result.extractedText, apiKey);
     } else if (mimeType.startsWith("audio/")) {
       console.log("🎤 Processing audio file...");
-      const audioResult = await transcribeAudio(localPath, apiKey, mimeType);
+      const audioResult = await transcribeAudio(localPath, apiKey, mimeType, vertexCredentials);
       result.audioTranscript = audioResult.transcript;
       result.audioDuration = audioResult.duration;
     } else {
@@ -247,71 +263,139 @@ Rispondi in italiano, sii conciso e strutturato.`,
 }
 
 /**
- * Transcribe audio file using Gemini Audio API
- * Note: Gemini 2.0 Flash supports audio input
- * WhatsApp sends voice notes as audio/ogg with Opus codec
+ * Transcribe audio file using Vertex AI or Google AI Studio with retry logic
+ * Prefers Vertex AI when credentials are available
+ * Includes automatic retry for 503/429 errors with exponential backoff
  */
 async function transcribeAudio(
   audioPath: string,
   apiKey: string,
-  mimeType: string
+  mimeType: string,
+  vertexCredentials?: VertexAICredentials
 ): Promise<{ transcript: string; duration?: number }> {
-  try {
-    const audioBuffer = await fs.readFile(audioPath);
-    const base64Audio = audioBuffer.toString("base64");
+  const transcriptionStart = Date.now();
+  const MAX_RETRIES = 3;
+  const BASE_DELAY_MS = 1000;
 
-    // Map common audio MIME types to Gemini-supported formats
-    // Gemini supports: audio/mpeg, audio/mp3, audio/wav, audio/ogg
-    let finalMimeType = mimeType;
-    
-    // Normalize MIME types for Gemini compatibility
-    if (mimeType.includes("opus") || mimeType === "audio/ogg; codecs=opus") {
-      finalMimeType = "audio/ogg";
-    } else if (mimeType === "audio/webm") {
-      // WebM audio can contain Opus codec
-      finalMimeType = "audio/ogg";
-    } else if (!["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg"].includes(mimeType)) {
-      console.warn(`⚠️ Unsupported audio format: ${mimeType}, trying as audio/ogg`);
-      finalMimeType = "audio/ogg";
-    }
+  const fileReadStart = Date.now();
+  const audioBuffer = await fs.readFile(audioPath);
+  const base64Audio = audioBuffer.toString("base64");
+  const fileReadTime = ((Date.now() - fileReadStart) / 1000).toFixed(1);
+  console.log(`⏱️ [TIMING] Audio file read + base64: ${fileReadTime}s (${(audioBuffer.length / 1024).toFixed(1)} KB)`);
 
-    console.log(`🎵 Transcribing audio with MIME type: ${finalMimeType}`);
+  // Map common audio MIME types to Gemini-supported formats
+  let finalMimeType = mimeType;
+  
+  // Normalize MIME types for Gemini compatibility
+  if (mimeType.includes("opus") || mimeType === "audio/ogg; codecs=opus") {
+    finalMimeType = "audio/ogg";
+  } else if (mimeType === "audio/webm") {
+    finalMimeType = "audio/ogg";
+  } else if (!["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg"].includes(mimeType)) {
+    console.warn(`⚠️ Unsupported audio format: ${mimeType}, trying as audio/ogg`);
+    finalMimeType = "audio/ogg";
+  }
 
-    const ai = new GoogleGenAI({ apiKey });
+  const useVertexAI = !!vertexCredentials;
+  console.log(`🎵 Transcribing audio with ${useVertexAI ? 'Vertex AI' : 'Google AI Studio'} (MIME: ${finalMimeType})`);
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const apiCallStart = Date.now();
+    try {
+      let transcript: string;
+
+      if (useVertexAI && vertexCredentials) {
+        // Use Vertex AI
+        const vertexAI = new VertexAI({
+          project: vertexCredentials.projectId,
+          location: vertexCredentials.location,
+          googleAuthOptions: {
+            credentials: vertexCredentials.credentials,
+          },
+        });
+
+        const model = vertexAI.preview.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+
+        const result = await model.generateContent({
+          contents: [
             {
-              text: "Trascrivi questo messaggio audio in italiano. Fornisci solo la trascrizione, senza commenti aggiuntivi.",
-            },
-            {
-              inlineData: {
-                mimeType: finalMimeType,
-                data: base64Audio,
-              },
+              role: "user",
+              parts: [
+                {
+                  text: "Trascrivi questo messaggio audio in italiano. Fornisci solo la trascrizione, senza commenti aggiuntivi.",
+                },
+                {
+                  inlineData: {
+                    mimeType: finalMimeType,
+                    data: base64Audio,
+                  },
+                },
+              ],
             },
           ],
-        },
-      ],
-    });
+        });
 
-    const transcript = response.text || "Impossibile trascrivere l'audio.";
-    console.log(`✅ Audio transcribed (${transcript.length} chars)`);
+        // Extract text from Vertex AI response
+        const candidate = result.response?.candidates?.[0];
+        transcript = candidate?.content?.parts?.[0]?.text || "Impossibile trascrivere l'audio.";
+      } else {
+        // Fallback to Google AI Studio
+        const ai = new GoogleGenAI({ apiKey });
 
-    return {
-      transcript,
-      duration: undefined,
-    };
-  } catch (error) {
-    console.error("❌ Error transcribing audio:", error);
-    return {
-      transcript: "Errore durante la trascrizione dell'audio.",
-    };
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: "Trascrivi questo messaggio audio in italiano. Fornisci solo la trascrizione, senza commenti aggiuntivi.",
+                },
+                {
+                  inlineData: {
+                    mimeType: finalMimeType,
+                    data: base64Audio,
+                  },
+                },
+              ],
+            },
+          ],
+        });
+
+        transcript = response.text || "Impossibile trascrivere l'audio.";
+      }
+
+      const apiCallTime = ((Date.now() - apiCallStart) / 1000).toFixed(1);
+      const totalTranscriptionTime = ((Date.now() - transcriptionStart) / 1000).toFixed(1);
+      console.log(`⏱️ [TIMING] Transcription API: ${apiCallTime}s`);
+      console.log(`⏱️ [TIMING] Total transcription: ${totalTranscriptionTime}s`);
+      console.log(`✅ Audio transcribed via ${useVertexAI ? 'Vertex AI' : 'Google AI Studio'} (${transcript.length} chars)`);
+
+      return {
+        transcript,
+        duration: undefined,
+      };
+    } catch (error: any) {
+      const status = error?.status || error?.response?.status || error?.code;
+      const isRetryable = status === 503 || status === 429 || status === 500 || status === 'UNAVAILABLE';
+      
+      if (isRetryable && attempt < MAX_RETRIES) {
+        const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.warn(`⚠️ Transcription attempt ${attempt}/${MAX_RETRIES} failed (status: ${status}), retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      console.error(`❌ Error transcribing audio (attempt ${attempt}/${MAX_RETRIES}):`, error);
+      return {
+        transcript: "Errore durante la trascrizione dell'audio.",
+      };
+    }
   }
+
+  return {
+    transcript: "Errore durante la trascrizione dell'audio.",
+  };
 }
 
 /**
@@ -338,16 +422,20 @@ function getExtensionFromMimeType(mimeType: string): string {
 /**
  * Main entry point: Download and process media from Twilio message
  * Handles both remote Twilio URLs and local file paths (e.g., from simulators)
+ * Supports Vertex AI for audio transcription when credentials are provided
  */
 export async function handleIncomingMedia(
   messageId: string,
   mediaUrl: string,
   mediaContentType: string,
   consultantId: string,
-  apiKey: string
+  apiKey: string,
+  configId?: string,
+  vertexCredentials?: VertexAICredentials
 ): Promise<void> {
+  const mediaProcessingStart = Date.now();
   try {
-    console.log(`📱 Processing media for message ${messageId}`);
+    console.log(`📱 Processing media for message ${messageId} (type: ${mediaContentType})`);
 
     // Check if mediaUrl is a local file path (from simulator) or remote URL (from Twilio)
     const isLocalFile = !mediaUrl.startsWith('http://') && !mediaUrl.startsWith('https://');
@@ -374,16 +462,41 @@ export async function handleIncomingMedia(
       // Media is remote (from Twilio) - download it
       console.log(`🌐 [REMOTE URL] Downloading from Twilio: ${mediaUrl}`);
       
-      const [config] = await db
-        .select()
-        .from(consultantWhatsappConfig)
-        .where(eq(consultantWhatsappConfig.consultantId, consultantId))
-        .limit(1);
+      // Use specific agent config if provided, otherwise find by consultantId with valid credentials
+      let config;
+      if (configId) {
+        [config] = await db
+          .select()
+          .from(consultantWhatsappConfig)
+          .where(eq(consultantWhatsappConfig.id, configId))
+          .limit(1);
+      } else {
+        // Fallback: find agent with valid Twilio credentials for this consultant
+        [config] = await db
+          .select()
+          .from(consultantWhatsappConfig)
+          .where(
+            and(
+              eq(consultantWhatsappConfig.consultantId, consultantId),
+              sql`${consultantWhatsappConfig.twilioAccountSid} IS NOT NULL`,
+              sql`${consultantWhatsappConfig.twilioAuthToken} IS NOT NULL`,
+              sql`${consultantWhatsappConfig.integrationMode} = 'whatsapp_ai'`
+            )
+          )
+          .limit(1);
+      }
 
       if (!config) {
-        console.error("❌ No Twilio config found for consultant");
+        console.error("❌ No Twilio config found for consultant/agent");
         return;
       }
+      
+      if (!config.twilioAccountSid || !config.twilioAuthToken) {
+        console.error(`❌ Agent ${config.agentName} has no valid Twilio credentials`);
+        return;
+      }
+
+      console.log(`🔑 Using credentials from agent: ${config.agentName}`);
 
       downloadResult = await downloadMedia(
         mediaUrl,
@@ -396,7 +509,8 @@ export async function handleIncomingMedia(
     const processingResult = await processMedia(
       downloadResult.localPath,
       downloadResult.mimeType,
-      apiKey
+      apiKey,
+      vertexCredentials
     );
 
     // Save to whatsapp_media_files table
@@ -430,8 +544,11 @@ export async function handleIncomingMedia(
       })
       .where(eq(whatsappMessages.id, messageId));
 
+    const totalMediaTime = ((Date.now() - mediaProcessingStart) / 1000).toFixed(1);
+    console.log(`⏱️ [TIMING] Total media processing: ${totalMediaTime}s`);
     console.log(`✅ Media processing complete for message ${messageId}`);
   } catch (error) {
-    console.error("❌ Error in handleIncomingMedia:", error);
+    const totalMediaTime = ((Date.now() - mediaProcessingStart) / 1000).toFixed(1);
+    console.error(`❌ Error in handleIncomingMedia (after ${totalMediaTime}s):`, error);
   }
 }

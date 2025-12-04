@@ -1,4 +1,4 @@
-import { Bot, User, ExternalLink } from "lucide-react";
+import { Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 
@@ -579,14 +579,11 @@ export function Message({ message, onActionClick }: MessageProps) {
 
   if (message.role === "user") {
     return (
-      <div className="flex gap-3 justify-end items-start">
-        <div className="flex-1 text-right">
-          <div className="inline-block max-w-[85%] rounded-2xl bg-gradient-to-br from-blue-600 via-blue-600 to-blue-700 text-white px-5 py-3.5 shadow-lg">
+      <div className="flex justify-end">
+        <div className="max-w-[85%]">
+          <div className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-2xl px-4 py-3">
             <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{message.content || ''}</p>
           </div>
-        </div>
-        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 flex items-center justify-center shadow-lg ring-2 ring-blue-200 dark:ring-blue-800">
-          <User className="h-5 w-5 text-white" />
         </div>
       </div>
     );
@@ -844,38 +841,39 @@ export function Message({ message, onActionClick }: MessageProps) {
   };
 
   return (
-    <div className="flex gap-3 justify-start items-start">
-      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg ring-2 ring-purple-200 dark:ring-purple-800">
-        <Bot className="h-5 w-5 text-white" />
+    <div className="flex flex-col">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-sm">
+          <Bot className="h-4 w-4 text-white" />
+        </div>
+        <span className="font-semibold text-gray-900 dark:text-white text-sm">AI Assistant</span>
       </div>
 
       <div className="flex-1 min-w-0 max-w-full overflow-hidden flex flex-col">
-        <div className="inline-block max-w-full rounded-xl bg-white dark:bg-gray-800 px-6 py-6 shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden break-words">
-          {isProcessing && (
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2.5 h-2.5 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2.5 h-2.5 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
-              </div>
-              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">Sto organizzando la risposta...</span>
+        {isProcessing && (
+          <div className="flex items-center gap-3 py-2">
+            <div className="flex gap-1.5">
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
             </div>
-          )}
-          {!isPlaceholder && (
-            <div 
-              className="documentation-content prose prose-sm max-w-none break-words overflow-wrap-anywhere word-break-break-word overflow-hidden"
-              style={{ 
-                wordBreak: 'break-word',
-                overflowWrap: 'anywhere',
-                maxWidth: '100%'
-              }}
-              onCopy={handleCopy}
-              dangerouslySetInnerHTML={{ 
-                __html: formatContent(message.content || '')
-              }} 
-            />
-          )}
-        </div>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Sto organizzando la risposta...</span>
+          </div>
+        )}
+        {!isPlaceholder && (
+          <div 
+            className="documentation-content prose prose-sm max-w-none break-words overflow-wrap-anywhere word-break-break-word overflow-hidden text-gray-700 dark:text-gray-300"
+            style={{ 
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+              maxWidth: '100%'
+            }}
+            onCopy={handleCopy}
+            dangerouslySetInnerHTML={{ 
+              __html: formatContent(message.content || '')
+            }} 
+          />
+        )}
 
         {message.suggestedActions && message.suggestedActions.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2.5 max-w-3xl">

@@ -173,7 +173,7 @@ export function WhatsAppMessageBubble({ message }: WhatsAppMessageBubbleProps) {
           {/* Audio player - shown inside bubble with small label */}
           {hasAudio && (
             <div className="mb-2">
-              <div className="flex items-center gap-2 mb-1.5">
+              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                 <span className="text-xs opacity-60">
                   {isAIAudio ? '🎙️ Audio' : '🎤 Audio'}
                 </span>
@@ -182,7 +182,33 @@ export function WhatsAppMessageBubble({ message }: WhatsAppMessageBubbleProps) {
                     {message.metadata.audioDuration}s
                   </span>
                 )}
+                {/* Performance timing indicators */}
+                {message.metadata?.processingMs && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400 font-mono">
+                    ⏱️ {(message.metadata.processingMs / 1000).toFixed(1)}s
+                  </span>
+                )}
               </div>
+              {/* Detailed timing breakdown - expandable */}
+              {message.metadata?.geminiMs && (
+                <div className="flex flex-wrap gap-1 mb-1.5 text-[9px] text-gray-400 dark:text-gray-500">
+                  {message.metadata.geminiMs && (
+                    <span className="px-1 py-0.5 rounded bg-purple-100/50 dark:bg-purple-900/30">
+                      AI: {(message.metadata.geminiMs / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                  {message.metadata.ttsMs && (
+                    <span className="px-1 py-0.5 rounded bg-blue-100/50 dark:bg-blue-900/30">
+                      TTS: {(message.metadata.ttsMs / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                  {message.metadata.contextMs > 0 && (
+                    <span className="px-1 py-0.5 rounded bg-green-100/50 dark:bg-green-900/30">
+                      Ctx: {(message.metadata.contextMs / 1000).toFixed(1)}s
+                    </span>
+                  )}
+                </div>
+              )}
               <audio
                 controls
                 className="w-full max-w-xs h-9 rounded-lg"

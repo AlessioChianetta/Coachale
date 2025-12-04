@@ -50,7 +50,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getAuthUser, logout } from "@/lib/auth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface SidebarItem {
   name: string;
@@ -216,12 +216,41 @@ const clientItems: SidebarItemWithChildren[] = [
 export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleSwitch, currentRole }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const isMobile = useIsMobile();
+  const { theme, setTheme } = useTheme();
   const [isLoadingFinancial, setIsLoadingFinancial] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
     const saved = localStorage.getItem('sidebar-expanded-items');
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
+  const navRef = useRef<HTMLElement>(null);
+  const scrollPositionRef = useRef<number>(0);
+
+  // Preserve scroll position when expanding/collapsing categories
+  const handleCategoryToggle = useCallback((categoryName: string) => {
+    // Save current scroll position
+    if (navRef.current) {
+      scrollPositionRef.current = navRef.current.scrollTop;
+    }
+    
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryName)) {
+        newSet.delete(categoryName);
+      } else {
+        newSet.add(categoryName);
+      }
+      return newSet;
+    });
+
+    // Restore scroll position after render
+    requestAnimationFrame(() => {
+      if (navRef.current) {
+        navRef.current.scrollTop = scrollPositionRef.current;
+      }
+    });
+  }, []);
+
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => {
     // Always initialize with defaults first
     const defaults = new Set<string>();
@@ -351,31 +380,6 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
     }, 1000);
   };
 
-  const ThemeToggleInline = ({ isCollapsed }: { isCollapsed: boolean }) => {
-    const { theme, setTheme } = useTheme();
-    
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className={cn(
-          "w-full font-semibold text-gray-700 dark:text-gray-300",
-          "hover:bg-yellow-50 dark:hover:bg-yellow-950/20 hover:text-yellow-600 dark:hover:text-yellow-400 mb-2",
-          isCollapsed ? "justify-center px-2" : "justify-start gap-2"
-        )}
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        title={isCollapsed ? (theme === 'dark' ? 'Light mode' : 'Dark mode') : undefined}
-      >
-        {theme === 'dark' ? (
-          <Sun size={16} className="text-yellow-400" />
-        ) : (
-          <Moon size={16} className="text-gray-600" />
-        )}
-        {!isCollapsed && (theme === 'dark' ? 'Light Mode' : 'Dark Mode')}
-      </Button>
-    );
-  };
-
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo e nome app con pulsante collapse - Design Moderno */}
@@ -410,7 +414,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
       </div>}
 
       {/* Navigation Items - Design Migliorato con Categorie */}
-      {!isCollapsed && <nav className="space-y-2 flex-1 overflow-y-auto px-2">
+      {!isCollapsed && <nav ref={navRef} className="space-y-2 flex-1 overflow-y-auto px-2">
         {/* Render categorized sidebar for consultant */}
         {categories && !isCollapsed ? categories.map((category, idx) => {
           const isCategoryExpanded = expandedCategories.has(category.name);
@@ -425,17 +429,7 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
               <div className="space-y-1">
                 {/* Category Header */}
                 <button
-                  onClick={() => {
-                    setExpandedCategories(prev => {
-                      const newSet = new Set(prev);
-                      if (newSet.has(category.name)) {
-                        newSet.delete(category.name);
-                      } else {
-                        newSet.add(category.name);
-                      }
-                      return newSet;
-                    });
-                  }}
+                  onClick={() => handleCategoryToggle(category.name)}
                   className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
                   <div className="flex items-center gap-2">
@@ -700,57 +694,73 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
 
       {/* User info e logout - agganciato in basso */}
       {!isCollapsed && (
-      <div className="px-2 py-4 border-t border-gray-200 dark:border-gray-700 mt-auto">
-        <div className={cn(
-          "flex items-center gap-2 mb-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors",
-          isCollapsed && "justify-center px-2"
-        )}>
-          <Avatar className="w-10 h-10 border-2 border-gray-200 dark:border-gray-600">
+      <div className="px-2 py-3 border-t border-gray-200 dark:border-gray-700 mt-auto">
+        <div className="flex items-center gap-2 px-2 py-2 rounded-lg">
+          <Avatar className="w-9 h-9 border-2 border-gray-200 dark:border-gray-600 flex-shrink-0">
             <AvatarImage src={user?.avatar || undefined} alt={user?.firstName} />
-            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold text-sm">
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold text-xs">
               {user?.firstName?.[0]}{user?.lastName?.[0]}
             </AvatarFallback>
           </Avatar>
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                {user?.firstName} {user?.lastName}
-              </p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">
-                {user?.role === 'consultant' ? 'Consulente' : 'Cliente'}
-              </p>
-            </div>
-          )}
-          {role === "consultant" && (
-            <Link href="/consultant/profile-settings">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
-                title="Impostazioni Profilo"
-              >
-                <UserCircle size={16} />
-              </Button>
-            </Link>
-          )}
-          {role === "client" && (
-            <Link href="/client/settings">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600"
-                title="Impostazioni"
-                data-tour="client-user-settings"
-              >
-                <Settings size={16} />
-              </Button>
-            </Link>
-          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">
+              {user?.role === 'consultant' ? 'Consulente' : 'Cliente'}
+            </p>
+          </div>
+          {/* Action buttons - inline */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {role === "consultant" && (
+              <Link href="/consultant/profile-settings">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title="Impostazioni"
+                >
+                  <UserCircle size={16} />
+                </Button>
+              </Link>
+            )}
+            {role === "client" && (
+              <Link href="/client/settings">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title="Impostazioni"
+                  data-tour="client-user-settings"
+                >
+                  <Settings size={16} />
+                </Button>
+              </Link>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-gray-500 hover:text-yellow-600 dark:text-gray-400 dark:hover:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20"
+              onClick={handleLogout}
+              title="Logout"
+            >
+              <LogOut size={16} />
+            </Button>
+          </div>
         </div>
 
         {/* Role switcher se disponibile */}
-        {!isCollapsed && showRoleSwitch && onRoleSwitch && (
-          <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex mb-3 mx-1">
+        {showRoleSwitch && onRoleSwitch && (
+          <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg flex mt-2 mx-1">
             <Button
               variant={currentRole === "consultant" ? "default" : "ghost"}
               size="sm"
@@ -779,25 +789,6 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
             </Button>
           </div>
         )}
-
-        {/* Theme Toggle Button */}
-        <ThemeToggleInline isCollapsed={isCollapsed} />
-
-        {/* Logout button */}
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className={cn(
-            "w-full font-semibold text-gray-700 dark:text-gray-300",
-            "hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 dark:hover:text-red-400",
-            isCollapsed ? "justify-center px-2" : "justify-start gap-2"
-          )} 
-          onClick={handleLogout}
-          title={isCollapsed ? "Logout" : undefined}
-        >
-          <LogOut size={16} />
-          {!isCollapsed && "Logout"}
-        </Button>
       </div>
       )}
     </div>

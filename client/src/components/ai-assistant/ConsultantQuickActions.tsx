@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { ConsultantPageContext } from "@/hooks/use-consultant-page-context";
 import { getConsultantQuickActions } from "@/lib/consultant-quick-actions";
 import * as Icons from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 interface ConsultantQuickActionsProps {
   pageContext: ConsultantPageContext;
@@ -43,7 +44,6 @@ export function ConsultantQuickActions({ pageContext, onAction, disabled = false
   return (
     <div className="w-full space-y-2">
       {quickActions.map((action, index) => {
-        // Get icon component dynamically from lucide-react
         const IconComponent = action.icon && (Icons as any)[action.icon] 
           ? (Icons as any)[action.icon] 
           : Icons.HelpCircle;
@@ -54,14 +54,17 @@ export function ConsultantQuickActions({ pageContext, onAction, disabled = false
             variant="outline"
             onClick={() => onAction(action.message)}
             disabled={disabled}
-            className="w-full justify-start text-left h-auto py-2.5 px-3 border border-gray-200 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group rounded-lg"
+            className="w-full justify-between text-left h-auto py-3 px-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-violet-400 dark:hover:border-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group rounded-xl shadow-sm hover:shadow-md"
           >
-            <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center mr-3 flex-shrink-0 group-hover:scale-110 transition-transform duration-200`}>
-              <IconComponent className="h-4 w-4 text-white" />
+            <div className="flex items-center gap-3">
+              <div className={`h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-sm`}>
+                <IconComponent className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-200 leading-tight">
+                {action.label}
+              </span>
             </div>
-            <span className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-tight">
-              {action.label}
-            </span>
+            <ArrowRight className="h-4 w-4 text-gray-400 group-hover:text-violet-600 dark:group-hover:text-violet-400 group-hover:translate-x-1 transition-all duration-200 flex-shrink-0" />
           </Button>
         );
       })}

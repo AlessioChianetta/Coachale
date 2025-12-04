@@ -3564,7 +3564,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/library/categories", authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const categories = await storage.getLibraryCategories();
+      // Filter by consultant ID for consultants, show all for admins
+      const consultantId = req.user?.role === "consultant" ? req.user.id : undefined;
+      const categories = await storage.getLibraryCategories(consultantId);
       res.json(categories);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -3633,12 +3635,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/library/subcategories", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { categoryId } = req.query;
+      // Filter by consultant ID for consultants
+      const consultantId = req.user?.role === "consultant" ? req.user.id : undefined;
 
       let subcategories;
       if (categoryId) {
         subcategories = await storage.getLibrarySubcategoriesByCategory(categoryId as string);
       } else {
-        subcategories = await storage.getLibrarySubcategories();
+        subcategories = await storage.getLibrarySubcategories(consultantId);
       }
 
       res.json(subcategories);
@@ -3812,6 +3816,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/library/documents", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { categoryId, level, tags, search, subcategoryId } = req.query;
+      // Filter by consultant ID for consultants
+      const consultantId = req.user?.role === "consultant" ? req.user.id : undefined;
 
       let documents;
       if (subcategoryId) {
@@ -3819,7 +3825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (categoryId) {
         documents = await storage.getLibraryDocumentsByCategory(categoryId as string);
       } else {
-        documents = await storage.getLibraryDocuments();
+        documents = await storage.getLibraryDocuments(consultantId);
       }
 
       console.log('Retrieved documents from storage:', {
@@ -7892,6 +7898,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customBusinessHeader
       } = req.body;
 
+      console.log("📝 [WHATSAPP CONFIG] POST request received:", {
+        hasId: !!id,
+        id: id || "N/A",
+        agentName: agentName || "MISSING",
+        hasTwilioAccountSid: !!twilioAccountSid,
+        hasTwilioAuthToken: !!twilioAuthToken,
+        twilioWhatsappNumber: twilioWhatsappNumber || "MISSING",
+        agentType: agentType || "default"
+      });
+
       let existingConfig = null;
       
       // Check if updating existing config by ID
@@ -7908,14 +7924,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .limit(1);
           
         if (!existingConfig) {
+          console.log("❌ [WHATSAPP CONFIG] Config not found for id:", id);
           return res.status(404).json({ message: "Configuration not found" });
         }
+        console.log("✅ [WHATSAPP CONFIG] Found existing config for update:", existingConfig.id);
       }
 
+      // Get integration mode from request body
+      const integrationMode = req.body.integrationMode || "whatsapp_ai";
+      
       // Validate required fields only for new configs
       if (!existingConfig) {
-        if (!agentName || !twilioAccountSid || !twilioAuthToken || !twilioWhatsappNumber) {
-          return res.status(400).json({ message: "Missing required fields: agentName, twilioAccountSid, twilioAuthToken, twilioWhatsappNumber" });
+        // agentName is always required
+        if (!agentName) {
+          console.log("❌ [WHATSAPP CONFIG] Missing required field: agentName");
+          return res.status(400).json({ message: "Missing required field: agentName" });
+        }
+        
+        // Twilio credentials only required for WhatsApp integration mode
+        if (integrationMode === "whatsapp_ai") {
+          if (!twilioAccountSid || !twilioAuthToken || !twilioWhatsappNumber) {
+            const missingFields = [];
+            if (!twilioAccountSid) missingFields.push("twilioAccountSid");
+            if (!twilioAuthToken) missingFields.push("twilioAuthToken");
+            if (!twilioWhatsappNumber) missingFields.push("twilioWhatsappNumber");
+            console.log("❌ [WHATSAPP CONFIG] Missing Twilio credentials for whatsapp_ai mode:", missingFields);
+            return res.status(400).json({ message: `Missing required Twilio fields: ${missingFields.join(", ")}` });
+          }
+        } else {
+          console.log("✅ [WHATSAPP CONFIG] ai_only mode - Twilio credentials not required");
         }
       }
 
@@ -7923,6 +7960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (twilioWhatsappNumber) {
         const phoneRegex = /^\+\d{10,15}$/;
         if (!phoneRegex.test(twilioWhatsappNumber)) {
+          console.log("❌ [WHATSAPP CONFIG] Invalid WhatsApp number format:", twilioWhatsappNumber);
           return res.status(400).json({ message: "Invalid WhatsApp number format. Must start with + and contain 10-15 digits" });
         }
       }
@@ -7933,6 +7971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update existing config - preserve credentials if "KEEP_EXISTING"
         const updateData: any = {
           agentName: agentName || existingConfig.agentName,
+          integrationMode: integrationMode,
           twilioAccountSid: twilioAccountSid || existingConfig.twilioAccountSid,
           twilioWhatsappNumber: twilioWhatsappNumber || existingConfig.twilioWhatsappNumber,
           autoResponseEnabled: autoResponseEnabled ?? true,
@@ -8005,9 +8044,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .values({
             consultantId,
             agentName,
-            twilioAccountSid,
-            twilioAuthToken,
-            twilioWhatsappNumber,
+            integrationMode: integrationMode as "whatsapp_ai" | "ai_only",
+            twilioAccountSid: twilioAccountSid || null,
+            twilioAuthToken: twilioAuthToken || null,
+            twilioWhatsappNumber: twilioWhatsappNumber || null,
             autoResponseEnabled: autoResponseEnabled ?? true,
             agentType: agentType || "reactive_lead",
             workingHoursEnabled: workingHoursEnabled ?? false,

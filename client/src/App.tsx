@@ -6,15 +6,17 @@ import { ThemeProvider } from "next-themes";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
 import { PageLoader } from "@/components/page-loader";
 import AuthGuard from "@/components/auth-guard";
 import RoleBasedRedirect from "@/components/role-based-redirect";
 import { TourProvider } from "@/contexts/TourContext";
 import { useActivityTracker } from "@/hooks/use-activity-tracker";
 import { getAuthUser } from "@/lib/auth";
-import Login from "@/pages/login";
-import Register from "@/pages/register";
+
+// Lazy load heavy components
+const AIAssistant = lazy(() => import("@/components/ai-assistant/AIAssistant").then(m => ({ default: m.AIAssistant })));
+const Login = lazy(() => import("@/pages/login"));
+const Register = lazy(() => import("@/pages/register"));
 
 const Home = lazy(() => import("@/pages/home"));
 const ConsultantLanding = lazy(() => import("@/pages/consultant-landing"));
@@ -533,7 +535,11 @@ function Router() {
         </Switch>
       </Suspense>
 
-      {isClient && <AIAssistant />}
+      {isClient && (
+        <Suspense fallback={null}>
+          <AIAssistant />
+        </Suspense>
+      )}
     </>
   );
 }

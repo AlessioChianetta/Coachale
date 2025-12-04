@@ -23,6 +23,14 @@ interface PhoneCallLayoutProps {
   sessionType?: 'weekly_consultation';
 }
 
+// Aggiungi stile CSS per animazione barre
+const pulseKeyframes = `
+  @keyframes pulse {
+    0%, 100% { height: 4px; }
+    50% { height: 16px; }
+  }
+`;
+
 export function PhoneCallLayout({
   conversationDuration,
   isMuted,
@@ -62,7 +70,9 @@ export function PhoneCallLayout({
   const isLoading = connectionStatus === 'connecting' || liveState === 'loading';
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-b from-gray-900 via-gray-800 to-black flex flex-col">
+    <>
+      <style>{pulseKeyframes}</style>
+      <div className="fixed inset-0 bg-gradient-to-b from-gray-900 via-gray-800 to-black flex flex-col">
       {/* Header - Stato Chiamata */}
       <div className="pt-8 pb-6 px-6 text-center">
         {/* Badge Test Mode */}
@@ -144,78 +154,23 @@ export function PhoneCallLayout({
       <div className="flex-1 flex items-center justify-center px-6">
         <div className="relative">
           
-          {/* Glow di sfondo quando qualcuno parla */}
-          <AnimatePresence>
-            {isSomeoneActivelyTalking && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ 
-                  opacity: [0.3, 0.6, 0.3],
-                  scale: [1.3, 1.5, 1.3],
-                }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                className="absolute inset-0 rounded-full blur-2xl"
-                style={{
-                  background: isUserSpeaking 
-                    ? 'radial-gradient(circle, rgba(16, 185, 129, 0.6) 0%, rgba(16, 185, 129, 0) 70%)' 
-                    : 'radial-gradient(circle, rgba(99, 102, 241, 0.6) 0%, rgba(139, 92, 246, 0) 70%)',
-                  transform: 'scale(2)',
-                }}
-              />
-            )}
-          </AnimatePresence>
+          {/* Glow di sfondo semplificato - solo transizione opacity */}
+          {isSomeoneActivelyTalking && (
+            <div
+              className="absolute inset-0 rounded-full transition-opacity duration-300"
+              style={{
+                background: isUserSpeaking 
+                  ? 'radial-gradient(circle, rgba(16, 185, 129, 0.4) 0%, rgba(16, 185, 129, 0) 70%)' 
+                  : 'radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, rgba(139, 92, 246, 0) 70%)',
+                transform: 'scale(1.5)',
+                opacity: 0.8,
+              }}
+            />
+          )}
 
-          {/* Onde concentriche animate */}
-          <AnimatePresence>
-            {isSomeoneActivelyTalking && (
-              <>
-                {[1, 2, 3, 4, 5].map((ring) => (
-                  <motion.div
-                    key={`wave-${ring}-${isUserSpeaking ? 'user' : 'ai'}`}
-                    initial={{ scale: 1, opacity: 0 }}
-                    animate={{
-                      scale: [1, 1.8 + ring * 0.3],
-                      opacity: [0.8, 0],
-                    }}
-                    exit={{ scale: 1, opacity: 0 }}
-                    transition={{
-                      duration: 1.8,
-                      repeat: Infinity,
-                      delay: ring * 0.2,
-                      ease: 'easeOut',
-                    }}
-                    className="absolute inset-0 rounded-full"
-                    style={{
-                      border: isUserSpeaking 
-                        ? `2px solid rgba(16, 185, 129, ${0.8 - ring * 0.1})` 
-                        : `2px solid rgba(139, 92, 246, ${0.8 - ring * 0.1})`,
-                      boxShadow: isUserSpeaking
-                        ? `0 0 ${15 + ring * 8}px rgba(16, 185, 129, 0.4)`
-                        : `0 0 ${15 + ring * 8}px rgba(139, 92, 246, 0.4)`,
-                    }}
-                  />
-                ))}
-              </>
-            )}
-          </AnimatePresence>
-
-          {/* Avatar principale */}
-          <motion.div
-            animate={{
-              scale: isSomeoneActivelyTalking ? [1, 1.08, 1] : [1, 1.02, 1],
-              boxShadow: isSomeoneActivelyTalking 
-                ? isUserSpeaking
-                  ? ['0 0 30px rgba(16, 185, 129, 0.5)', '0 0 60px rgba(16, 185, 129, 0.8)', '0 0 30px rgba(16, 185, 129, 0.5)']
-                  : ['0 0 30px rgba(139, 92, 246, 0.5)', '0 0 60px rgba(139, 92, 246, 0.8)', '0 0 30px rgba(139, 92, 246, 0.5)']
-                : '0 0 20px rgba(0, 0, 0, 0.3)',
-            }}
-            transition={{ 
-              duration: isSomeoneActivelyTalking ? 0.8 : 3, 
-              repeat: Infinity,
-              ease: 'easeInOut'
-            }}
-            className={`relative w-40 h-40 rounded-full flex items-center justify-center transition-all duration-500 ${
+          {/* Avatar principale - solo transizioni CSS */}
+          <div
+            className={`relative w-40 h-40 rounded-full flex items-center justify-center transition-all duration-300 ${
               isLoading 
                 ? 'bg-gradient-to-br from-gray-600 to-gray-700' 
                 : isUserSpeaking 
@@ -224,87 +179,55 @@ export function PhoneCallLayout({
                 ? 'bg-gradient-to-br from-indigo-400 via-purple-500 to-violet-600'
                 : 'bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600'
             }`}
+            style={{
+              transform: isSomeoneActivelyTalking ? 'scale(1.05)' : 'scale(1)',
+              boxShadow: isSomeoneActivelyTalking 
+                ? isUserSpeaking
+                  ? '0 0 40px rgba(16, 185, 129, 0.6)'
+                  : '0 0 40px rgba(139, 92, 246, 0.6)'
+                : '0 0 20px rgba(0, 0, 0, 0.3)',
+            }}
           >
             {/* Effetto lucido interno */}
             <div className="absolute inset-2 rounded-full bg-gradient-to-b from-white/20 to-transparent" />
             
             {isLoading ? (
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-              >
+              <div className="animate-spin">
                 <Loader2 className="w-16 h-16 text-white drop-shadow-lg" />
-              </motion.div>
+              </div>
             ) : (
-              <motion.div
-                animate={isSomeoneActivelyTalking ? { 
-                  scale: [1, 1.1, 1],
-                } : {}}
-                transition={{ duration: 0.5, repeat: Infinity }}
-              >
-                <User className="w-20 h-20 text-white drop-shadow-lg" />
-              </motion.div>
+              <User className="w-20 h-20 text-white drop-shadow-lg" />
             )}
-          </motion.div>
+          </div>
 
-          {/* Overlay di caricamento */}
-          <AnimatePresence>
-            {isLoading && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center"
-              >
-                <motion.div
-                  animate={{
-                    scale: [1, 1.4, 1],
-                    opacity: [0.4, 0.1, 0.4],
-                  }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="absolute inset-0 rounded-full bg-gradient-to-r from-yellow-400/20 to-orange-400/20 border-2 border-yellow-400/50"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+          
 
-          {/* Indicatore stato parlante sotto l'avatar */}
-          <AnimatePresence>
-            {isSomeoneActivelyTalking && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="absolute -bottom-8 left-1/2 transform -translate-x-1/2"
-              >
-                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
-                  isUserSpeaking 
-                    ? 'bg-emerald-500/20 border border-emerald-400/50' 
-                    : 'bg-purple-500/20 border border-purple-400/50'
-                }`}>
-                  {/* Barre audio animate */}
-                  {[1, 2, 3, 4, 5].map((bar) => (
-                    <motion.div
-                      key={bar}
-                      animate={{
-                        height: ['4px', `${8 + Math.random() * 12}px`, '4px'],
-                      }}
-                      transition={{
-                        duration: 0.4,
-                        repeat: Infinity,
-                        delay: bar * 0.08,
-                        ease: 'easeInOut',
-                      }}
-                      className={`w-1 rounded-full ${
-                        isUserSpeaking ? 'bg-emerald-400' : 'bg-purple-400'
-                      }`}
-                      style={{ minHeight: '4px' }}
-                    />
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Indicatore stato parlante semplificato */}
+          {isSomeoneActivelyTalking && (
+            <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 transition-opacity duration-200">
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${
+                isUserSpeaking 
+                  ? 'bg-emerald-500/20 border border-emerald-400/50' 
+                  : 'bg-purple-500/20 border border-purple-400/50'
+              }`}>
+                {/* Barre audio con CSS animation invece di framer-motion */}
+                {[1, 2, 3, 4, 5].map((bar) => (
+                  <div
+                    key={bar}
+                    className={`w-1 rounded-full ${
+                      isUserSpeaking ? 'bg-emerald-400' : 'bg-purple-400'
+                    }`}
+                    style={{ 
+                      minHeight: '4px',
+                      height: '12px',
+                      animation: `pulse 0.6s ease-in-out infinite`,
+                      animationDelay: `${bar * 0.1}s`
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -595,5 +518,6 @@ export function PhoneCallLayout({
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }

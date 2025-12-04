@@ -5,6 +5,8 @@ import { TrainingMapLayout } from "@/components/training/TrainingMapLayout";
 import { PageLoader } from "@/components/page-loader";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 
 export default function TrainingMapPage() {
   const { agentId, conversationId } = useParams<{ agentId: string; conversationId: string }>();
@@ -26,24 +28,33 @@ export default function TrainingMapPage() {
     queryKey: ['/api/client/sales-agents/:agentId/script', agentId, conversationDetail?.usedScriptId],
     queryFn: async () => {
       if (conversationDetail?.usedScriptId) {
-        const response = await fetch(`/api/sales-scripts/${conversationDetail.usedScriptId}`);
-        if (response.ok) {
-          const script = await response.json();
-          return script.structure || script;
+        try {
+          const response = await fetch(`/api/sales-scripts/${conversationDetail.usedScriptId}`);
+          if (response.ok) {
+            const script = await response.json();
+            return script.structure || script;
+          }
+        } catch (e) {
+          console.warn('[TRAINING MAP] Could not fetch script by ID, using snapshot');
         }
       }
-      const response = await fetch(`/api/client/sales-agents/${agentId}/script`);
-      if (!response.ok) throw new Error('Failed to fetch script structure');
-      return response.json();
+      try {
+        const response = await fetch(`/api/client/sales-agents/${agentId}/script`);
+        if (!response.ok) return null;
+        return response.json();
+      } catch (e) {
+        console.warn('[TRAINING MAP] Could not fetch global script');
+        return null;
+      }
     },
     enabled: !!agentId && !!conversationDetail,
   });
 
-  if (isLoading || isLoadingScript) {
+  if (isLoading) {
     return <PageLoader />;
   }
 
-  if (!conversationDetail || !scriptStructure) {
+  if (!conversationDetail) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -54,9 +65,32 @@ export default function TrainingMapPage() {
     );
   }
 
+  // Prefer scriptSnapshot from conversation, fallback to fetched script
+  const effectiveScript = conversationDetail?.scriptSnapshot || scriptStructure;
+
+  if (!effectiveScript) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-amber-500" />
+          <h1 className="text-xl font-bold mb-2">Script non disponibile</h1>
+          <p className="text-muted-foreground">Non è stato possibile caricare lo script di vendita per questa conversazione.</p>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => setLocation(`/client/sales-agents/${agentId}/analytics`)}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Torna indietro
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const scriptChanged = conversationDetail?.usedScriptId && 
-    scriptStructure?.id && 
-    scriptStructure.id !== conversationDetail.usedScriptId;
+    effectiveScript?.id && 
+    effectiveScript.id !== conversationDetail.usedScriptId;
 
   return (
     <div className="flex flex-col h-screen">
@@ -73,7 +107,7 @@ export default function TrainingMapPage() {
       <div className="flex-1 overflow-hidden">
         <TrainingMapLayout
           conversationDetail={conversationDetail}
-          scriptStructure={scriptStructure}
+          scriptStructure={effectiveScript}
           onBack={() => setLocation(`/client/sales-agents/${agentId}/analytics`)}
         />
       </div>

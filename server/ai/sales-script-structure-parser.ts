@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { fileURLToPath } from 'url';
 
 interface Question {
   id: string;
@@ -535,52 +534,6 @@ function getSemanticType(phaseName: string): string {
   }
   
   return 'other';
-}
-
-// Main execution
-async function main() {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  const scriptPath = path.join(__dirname, 'sales-scripts-base.ts');
-  const outputPath = path.join(__dirname, 'sales-script-structure.json');
-  
-  console.log('🔍 Parsing sales script structure...');
-  console.log(`   Source: ${scriptPath}`);
-  
-  try {
-    const structure = parseScriptStructure(scriptPath);
-    
-    // Save to JSON file
-    fs.writeFileSync(
-      outputPath,
-      JSON.stringify(structure, null, 2),
-      'utf-8'
-    );
-    
-    console.log('\n✅ Script structure extracted successfully!');
-    console.log(`   Output: ${outputPath}`);
-    console.log('\n📊 Statistics:');
-    console.log(`   Total Phases: ${structure.metadata.totalPhases}`);
-    console.log(`   Total Steps: ${structure.metadata.totalSteps}`);
-    console.log(`   Total Checkpoints: ${structure.metadata.totalCheckpoints}`);
-    console.log(`   Total Lines: ${structure.totalLines}`);
-    
-    console.log('\n📋 Phase Summary:');
-    structure.phases.forEach(phase => {
-      console.log(`   ${phase.id}: ${phase.name}`);
-      console.log(`      Steps: ${phase.steps.length}, Checkpoints: ${phase.checkpoints.length}`);
-      console.log(`      Semantic Type: ${phase.semanticType}`);
-    });
-    
-  } catch (error: any) {
-    console.error('❌ Error parsing script:', error.message);
-    process.exit(1);
-  }
-}
-
-// Run if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  main();
 }
 
 export default parseScriptStructure;

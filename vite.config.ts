@@ -29,6 +29,26 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    target: 'esnext',
+    minify: 'esbuild',
+    cssMinify: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'router': ['wouter'],
+          'query': ['@tanstack/react-query'],
+          'ui-core': ['@radix-ui/react-slot', '@radix-ui/react-label', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+          'framer': ['framer-motion'],
+          'icons': ['lucide-react'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'wouter', '@tanstack/react-query'],
+    exclude: ['@shared/schema'],
   },
   server: {
     fs: {

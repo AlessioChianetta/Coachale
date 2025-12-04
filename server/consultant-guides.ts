@@ -30,6 +30,8 @@ export interface ConsultantGuides {
   clientManagementGuide: Guide;
   calendarGuide: Guide;
   apiConfigurationGuide: Guide;
+  libraryGuide: Guide;
+  profileGuide: Guide;
 }
 
 export const consultantGuides: ConsultantGuides = {
@@ -104,23 +106,110 @@ export const consultantGuides: ConsultantGuides = {
         ]
       },
       {
-        title: "AGENTI INTELLIGENTI (WhatsApp AI)",
+        title: "CREARE UN NUOVO AGENTE WHATSAPP",
         icon: "🤖",
-        description: "Configura bot AI che rispondono automaticamente su WhatsApp",
+        description: "Come creare e configurare un agente AI WhatsApp da zero",
         steps: [
           {
-            title: "Vai su Agenti Intelligenti",
-            content: "COMUNICAZIONE & MARKETING → WhatsApp - Agenti AI (URL: /consultant/ai-agents)",
-            actionText: "Configura Agenti",
-            actionHref: "/consultant/ai-agents"
+            title: "Vai su Agenti WhatsApp",
+            content: "COMUNICAZIONE & MARKETING → WhatsApp (URL: /consultant/whatsapp)",
+            actionText: "Vai agli Agenti",
+            actionHref: "/consultant/whatsapp"
           },
           {
-            title: "Agenti disponibili",
-            content: "Marco setter: Qualifica lead e prenota appuntamenti | Receptionist Principale: Gestisce prima risposta automatica"
+            title: "Clicca 'Nuovo Agente'",
+            content: "In alto trovi il bottone 'Nuovo Agente' o '+'. Clicca per avviare il wizard guidato in 4 step."
           },
           {
-            title: "Configura agente",
-            content: "1. Imposta nome agente\n2. Collega numero WhatsApp Business (da Twilio)\n3. Definisci orari di lavoro (es: Lun-Ven 9-18)\n4. Imposta uncino e obiettivi predefiniti\n5. Assegna template messaggi (apertura, follow-up)\n6. Abilita/disabilita 'Dry Run' (test)\n7. Attiva invio automatico"
+            title: "Step 1: Configurazione Base",
+            content: "Nome agente: Come vuoi chiamare l'agente (es: 'Receptionist Marco')\n\nModalità integrazione (IMPORTANTE):\n🟢 WhatsApp + AI: Collegato a Twilio, riceve/invia messaggi reali\n🟣 Solo AI: Nessun Twilio, usato per chat interne/test"
+          },
+          {
+            title: "Tipo di agente",
+            content: "Scegli il comportamento dell'agente:\n\n📱 REATTIVO (Receptionist): Risponde ai messaggi in arrivo, qualifica lead, prenota appuntamenti\n🚀 PROATTIVO (Setter): Contatta lead proattivamente, fa follow-up automatici\n📚 EDUCATIVO (Advisor): Fornisce informazioni e contenuti formativi, NON prenota appuntamenti"
+          },
+          {
+            title: "Credenziali Twilio (se WhatsApp + AI)",
+            content: "Se scegli modalità 'WhatsApp + AI':\n- Account SID: Inizia con 'AC...'\n- Auth Token: Stringa lunga segreta\n- Numero WhatsApp: Formato +39...\n\nSe scegli 'Solo AI', questi campi non servono."
+          }
+        ]
+      },
+      {
+        title: "STEP WIZARD AGENTE (2-3-4)",
+        icon: "⚙️",
+        description: "Configurazione avanzata negli step successivi del wizard",
+        steps: [
+          {
+            title: "Step 2: Disponibilità",
+            content: "Orari di lavoro: Imposta quando l'agente è attivo (es: Lun-Ven 9-18)\nMessaggio fuori orario: Cosa risponde dopo l'orario di lavoro\n\nFunzionalità:\n✅ Prenotazione appuntamenti (se calendario collegato)\n✅ Gestione obiezioni (risponde a dubbi)\n✅ Disqualificazione (esclude lead non in target)\n✅ Upselling (propone servizi aggiuntivi)\n✅ Risposte vocali (TTS con Gemini)"
+          },
+          {
+            title: "Step 3: Brand Voice",
+            content: "Informazioni azienda:\n- Nome business e descrizione\n- Bio consulente\n- Mission, Vision, Valori\n- USP (Unique Selling Proposition)\n- Chi aiuti e chi NON aiuti\n- Cosa fai e come lo fai\n\nCredibilità:\n- Anni esperienza\n- Clienti aiutati\n- Risultati generati\n- Case studies"
+          },
+          {
+            title: "Step 4: Istruzioni AI",
+            content: "Template predefiniti:\n🎯 Receptionist: Accoglie, qualifica, prenota\n🚀 Marco Setter: Proattivo, follow-up aggressivo\n📚 Educativo: Informativo, nessuna prenotazione\n\nPersonalità AI:\n- Amico fidato: Empatico e supportivo\n- Consulente esperto: Professionale e autorevole\n- Coach motivazionale: Energico e positivo"
+          },
+          {
+            title: "Dry Run Mode",
+            content: "Toggle 'Dry Run':\n✅ ON = Modalità test, messaggi simulati ma NON inviati\n❌ OFF = Modalità produzione, messaggi reali inviati\n\nConsiglio: Testa sempre con Dry Run ON prima di attivare l'invio reale."
+          }
+        ]
+      },
+      {
+        title: "TIPI DI AGENTE SPIEGATI",
+        icon: "📋",
+        description: "Quando usare quale tipo di agente",
+        steps: [
+          {
+            title: "📱 Agente REATTIVO (Receptionist)",
+            content: "USO: Per rispondere a chi ti contatta spontaneamente\n\nCOMPORTAMENTO:\n- Aspetta messaggi in arrivo\n- Risponde automaticamente\n- Qualifica il lead con domande\n- Prenota appuntamenti nel calendario\n\nIDEALE PER: Landing page, QR code, campagne dove il lead inizia la conversazione"
+          },
+          {
+            title: "🚀 Agente PROATTIVO (Marco Setter)",
+            content: "USO: Per contattare lead che hai importato\n\nCOMPORTAMENTO:\n- Invia primo messaggio programmato\n- Fa follow-up automatici\n- Usa template personalizzati\n- Persiste fino a risposta o disqualificazione\n\nIDEALE PER: Lead da form, Facebook Ads, liste importate"
+          },
+          {
+            title: "📚 Agente EDUCATIVO (Advisor)",
+            content: "USO: Per fornire informazioni senza vendere\n\nCOMPORTAMENTO:\n- Risponde a domande informative\n- Fornisce contenuti formativi\n- NON prenota appuntamenti\n- NON fa vendita aggressiva\n\nIDEALE PER: Supporto clienti esistenti, FAQ automatiche, contenuti educativi"
+          },
+          {
+            title: "Modalità Integrazione: WhatsApp+AI vs Solo AI",
+            content: "🟢 WHATSAPP + AI (Richiede Twilio):\n- Riceve messaggi WhatsApp reali\n- Invia risposte automatiche\n- Serve numero WhatsApp Business\n- Per comunicazione con clienti reali\n\n🟣 SOLO AI (Senza Twilio):\n- Chat interna solo nell'app\n- Per test e simulazioni\n- Per usare AI senza WhatsApp\n- Nessuna credenziale richiesta"
+          }
+        ]
+      },
+      {
+        title: "CHAT CON GLI AGENTI (TEST E CONVERSAZIONI)",
+        icon: "💬",
+        description: "Come chattare direttamente con i tuoi agenti AI e vedere le conversazioni",
+        steps: [
+          {
+            title: "Vai su Chat Agenti",
+            content: "COMUNICAZIONE & MARKETING → WhatsApp - Chat Agenti (URL: /consultant/whatsapp/agents/chat)",
+            actionText: "Vai alla Chat",
+            actionHref: "/consultant/whatsapp/agents/chat"
+          },
+          {
+            title: "Seleziona un agente",
+            content: "Nella colonna sinistra vedi la lista dei tuoi agenti. Clicca su uno per selezionarlo."
+          },
+          {
+            title: "Visualizza conversazioni",
+            content: "Per ogni agente vedi due tab:\n📱 Interne: Conversazioni di test fatte da te\n🌐 Pubbliche: Conversazioni reali con clienti/visitatori"
+          },
+          {
+            title: "Inizia nuova chat",
+            content: "Clicca 'Nuova Chat' per iniziare una conversazione di test con l'agente. Utile per verificare che risponda correttamente prima di attivarlo."
+          },
+          {
+            title: "Invia messaggi",
+            content: "Scrivi il messaggio e clicca Invia. L'agente risponde in tempo reale usando le istruzioni configurate.\n\n📎 Puoi allegare immagini\n🎤 Puoi inviare messaggi vocali"
+          },
+          {
+            title: "Condividi agente",
+            content: "Clicca icona 'Condividi' per creare un link pubblico. I visitatori potranno chattare con l'agente senza login. Utile per landing page e demo."
           }
         ]
       },
@@ -552,6 +641,39 @@ export const consultantGuides: ConsultantGuides = {
         ]
       },
       {
+        title: "CONSULENZE AI SETTIMANALI",
+        icon: "🤖",
+        description: "Sessioni vocali AI programmate per i clienti",
+        steps: [
+          {
+            title: "Vai su Consulenze AI",
+            content: "GESTIONE CLIENTI → Consulenze AI (URL: /consultant/ai-consultations)",
+            actionText: "Vai alle Consulenze AI",
+            actionHref: "/consultant/ai-consultations"
+          },
+          {
+            title: "Crea nuova consulenza",
+            content: "Clicca 'Nuova Consulenza AI'. Seleziona:\n- Cliente: Chi parteciperà alla sessione\n- Data/ora: Quando sarà disponibile\n- Durata massima: Da 30 minuti a 3 ore"
+          },
+          {
+            title: "Modalità test",
+            content: "Toggle 'Modalità Test':\n✅ ON = Sessione di prova, per verificare funzionamento\n❌ OFF = Sessione reale con il cliente"
+          },
+          {
+            title: "Stati della consulenza",
+            content: "📅 Programmata: In attesa, il cliente può accedere all'orario\n🟢 In Corso: Sessione attiva, cliente sta parlando con AI\n✅ Completata: Sessione terminata\n❌ Cancellata: Annullata"
+          },
+          {
+            title: "Come funziona per il cliente",
+            content: "Il cliente accede alla sua area e trova la consulenza AI disponibile. Può parlare vocalmente con l'AI che risponde in tempo reale usando le informazioni del suo profilo, stato, obiettivi e progressi."
+          },
+          {
+            title: "Gestisci consulenze",
+            content: "Puoi modificare data/ora o eliminare consulenze programmate. Le consulenze completate restano come storico."
+          }
+        ]
+      },
+      {
         title: "METRICHE PERFORMANCE",
         icon: "📈",
         description: "Misura risultati e progressi dei clienti",
@@ -949,6 +1071,231 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Verifica fallback funziona",
             content: "Se Vertex AI fallisce, il badge diventa giallo automaticamente e il sistema usa Google AI Studio come fallback trasparente."
+          }
+        ]
+      }
+    ]
+  },
+
+  libraryGuide: {
+    title: "Libreria Corsi & Documenti",
+    path: "/consultant/library",
+    emoji: "📚",
+    description: "Sistema per creare corsi, moduli e documenti formativi da assegnare ai clienti",
+    sections: [
+      {
+        title: "CREARE UN NUOVO CORSO (CATEGORIA)",
+        icon: "📖",
+        description: "Come creare un corso formativo nella libreria",
+        steps: [
+          {
+            title: "Vai sulla Libreria",
+            content: "FORMAZIONE → Libreria Corsi (URL: /consultant/library)",
+            actionText: "Vai alla Libreria",
+            actionHref: "/consultant/library"
+          },
+          {
+            title: "Clicca 'Nuovo Corso'",
+            content: "In alto a destra trovi il bottone 'Nuovo Corso' (o 'Nuova Categoria'). Clicca per aprire il form."
+          },
+          {
+            title: "Compila i dati del corso",
+            content: "Nome: Titolo del corso (es: 'Leadership & Gestione Team')\nDescrizione: Breve descrizione del contenuto\nIcona: Scegli un'icona rappresentativa\nColore: Scegli un colore per identificare il corso"
+          },
+          {
+            title: "Salva il corso",
+            content: "Clicca 'Salva'. Il corso apparirà nella lista. Ora puoi aggiungere sottocategorie e documenti."
+          }
+        ]
+      },
+      {
+        title: "CREARE SOTTOCATEGORIE (MODULI)",
+        icon: "📁",
+        description: "Come organizzare i contenuti in moduli dentro un corso",
+        steps: [
+          {
+            title: "Seleziona un corso",
+            content: "Dalla lista corsi, clicca sul corso dove vuoi aggiungere una sottocategoria."
+          },
+          {
+            title: "Clicca 'Nuova Sottocategoria'",
+            content: "All'interno del corso, trovi il bottone 'Nuova Sottocategoria' o 'Nuovo Modulo'."
+          },
+          {
+            title: "Compila i dati",
+            content: "Nome: Nome del modulo (es: 'Modulo 1 - Fondamenti')\nDescrizione: Cosa insegna questo modulo\nIcona e Colore: Personalizza l'aspetto\nOrdine: Imposta la posizione nella lista"
+          },
+          {
+            title: "Struttura consigliata",
+            content: "Organizza i moduli in ordine logico:\n1. Modulo introduttivo\n2. Moduli intermedi\n3. Modulo avanzato/conclusivo"
+          }
+        ]
+      },
+      {
+        title: "CREARE DOCUMENTI (LEZIONI)",
+        icon: "📝",
+        description: "Come creare contenuti formativi dentro un modulo",
+        steps: [
+          {
+            title: "Seleziona la sottocategoria",
+            content: "Entra nella sottocategoria dove vuoi aggiungere il documento."
+          },
+          {
+            title: "Clicca 'Nuovo Documento'",
+            content: "Trovi il bottone 'Nuovo Documento' o 'Nuova Lezione'."
+          },
+          {
+            title: "Scegli tipo contenuto",
+            content: "Scegli tra 3 tipi:\n📄 Testo: Articoli, guide scritte\n🎥 Video: Link YouTube/Vimeo\n📄+🎥 Entrambi: Testo + Video insieme"
+          },
+          {
+            title: "Compila i campi",
+            content: "Titolo: Nome della lezione\nSottotitolo: Descrizione breve\nContenuto: Testo formattato (supporta grassetto, liste, titoli)\nURL Video: Link al video (se tipo Video o Entrambi)\nLivello: Base, Intermedio o Avanzato\nDurata stimata: Tempo per completare\nTag: Parole chiave per ricerca"
+          },
+          {
+            title: "Pubblica o salva bozza",
+            content: "Toggle 'Pubblicato':\n✅ ON = Visibile ai clienti assegnati\n❌ OFF = Bozza, non visibile"
+          }
+        ]
+      },
+      {
+        title: "ASSEGNARE CORSI AI CLIENTI",
+        icon: "👥",
+        description: "Come dare accesso ai corsi ai tuoi clienti",
+        steps: [
+          {
+            title: "Vai sul corso da assegnare",
+            content: "Nella lista corsi, trova quello che vuoi assegnare."
+          },
+          {
+            title: "Clicca icona 'Assegna'",
+            content: "Accanto al corso trovi l'icona utenti (👥). Clicca per aprire il pannello assegnazioni."
+          },
+          {
+            title: "Seleziona i clienti",
+            content: "Vedi lista clienti attivi. Spunta quelli che devono avere accesso al corso."
+          },
+          {
+            title: "Conferma assegnazione",
+            content: "Clicca 'Salva Assegnazioni'. I clienti selezionati vedranno il corso nella loro area formazione."
+          },
+          {
+            title: "Verifica accessi",
+            content: "Il numero di clienti assegnati appare come badge sul corso (es: '5 clienti')."
+          }
+        ]
+      },
+      {
+        title: "LIVELLI DOCUMENTO",
+        icon: "📊",
+        description: "Come funziona il sistema di livelli",
+        steps: [
+          {
+            title: "Livelli disponibili",
+            content: "🟢 Base: Contenuti introduttivi, accessibili a tutti\n🟡 Intermedio: Approfondimenti, richiede conoscenze base\n🔴 Avanzato: Contenuti esperti, per clienti avanzati"
+          },
+          {
+            title: "Filtrare per livello",
+            content: "Nella libreria puoi filtrare documenti per livello usando il filtro 'Livello' in alto."
+          },
+          {
+            title: "Uso consigliato",
+            content: "Usa i livelli per guidare il percorso del cliente:\n1. Parti con contenuti Base\n2. Prosegui con Intermedi dopo esercizi completati\n3. Sblocca Avanzati per clienti che dimostrano padronanza"
+          }
+        ]
+      },
+      {
+        title: "RICERCA E FILTRI",
+        icon: "🔍",
+        description: "Come trovare documenti nella libreria",
+        steps: [
+          {
+            title: "Barra di ricerca",
+            content: "In alto trovi la barra di ricerca. Cerca per titolo, descrizione o tag dei documenti."
+          },
+          {
+            title: "Filtro per corso",
+            content: "Seleziona un corso specifico per vedere solo i suoi contenuti."
+          },
+          {
+            title: "Filtro per sottocategoria",
+            content: "Dopo aver selezionato un corso, filtra ulteriormente per sottocategoria/modulo."
+          },
+          {
+            title: "Filtro per livello",
+            content: "Filtra per livello (Base/Intermedio/Avanzato) per trovare contenuti specifici."
+          }
+        ]
+      }
+    ]
+  },
+
+  profileGuide: {
+    title: "Profilo Consulente",
+    path: "/consultant/profile-settings",
+    emoji: "👤",
+    description: "Gestisci le tue informazioni personali e abilita il riconoscimento WhatsApp",
+    sections: [
+      {
+        title: "MODIFICARE IL PROFILO",
+        icon: "✏️",
+        description: "Come aggiornare le tue informazioni personali",
+        steps: [
+          {
+            title: "Vai su Impostazioni Profilo",
+            content: "CONFIGURAZIONE → Profilo Consulente (URL: /consultant/profile-settings)",
+            actionText: "Vai al Profilo",
+            actionHref: "/consultant/profile-settings"
+          },
+          {
+            title: "Modifica i campi",
+            content: "Puoi modificare:\n👤 Nome: Il tuo nome\n👤 Cognome: Il tuo cognome\n📧 Email: La tua email di contatto\n📱 Telefono: Il tuo numero WhatsApp (opzionale ma consigliato)"
+          },
+          {
+            title: "Salva le modifiche",
+            content: "Clicca 'Salva' in basso. Le modifiche sono immediate."
+          }
+        ]
+      },
+      {
+        title: "INTEGRAZIONE WHATSAPP CONSULENTE",
+        icon: "💬",
+        description: "Come essere riconosciuto come consulente su WhatsApp",
+        steps: [
+          {
+            title: "Perché inserire il telefono",
+            content: "Se inserisci il tuo numero di telefono, quando scrivi da WhatsApp al sistema verrai riconosciuto come consulente."
+          },
+          {
+            title: "Cosa significa essere riconosciuto",
+            content: "Quando scrivi da WhatsApp:\n✅ L'AI sa che sei il consulente\n✅ Hai accesso a tutti i dati dei clienti\n✅ Puoi chiedere info su appuntamenti, esercizi, progressi\n✅ È come usare l'app web, ma da WhatsApp"
+          },
+          {
+            title: "Formato numero corretto",
+            content: "Inserisci il numero in formato italiano:\n+393501234567 (con prefisso +39)\noppure 3501234567 (senza prefisso)\nIl sistema normalizza automaticamente."
+          },
+          {
+            title: "Test riconoscimento",
+            content: "Dopo aver salvato, scrivi da WhatsApp al tuo agente AI. Dovresti ricevere una risposta che ti riconosce come consulente con accesso ai dati."
+          }
+        ]
+      },
+      {
+        title: "PRIVACY E SICUREZZA",
+        icon: "🔐",
+        description: "Come vengono gestiti i tuoi dati",
+        steps: [
+          {
+            title: "Dati protetti",
+            content: "Le tue informazioni personali sono criptate e accessibili solo a te."
+          },
+          {
+            title: "Email verificata",
+            content: "L'email del tuo account è quella usata per il login. Non può essere cambiata da questa pagina per sicurezza."
+          },
+          {
+            title: "Numero telefono opzionale",
+            content: "Il numero di telefono è opzionale. Se non lo inserisci, il sistema funziona normalmente ma non potrai essere riconosciuto via WhatsApp."
           }
         ]
       }

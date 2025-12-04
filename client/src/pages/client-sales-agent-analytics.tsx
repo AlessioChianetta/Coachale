@@ -106,6 +106,12 @@ interface TrainingSummary {
   [key: string]: any;
 }
 
+interface ScriptStructureType {
+  version: string;
+  phases: any[];
+  metadata: any;
+}
+
 interface TrainingConversationDetail {
   conversationId: string;
   agentId: string;
@@ -147,6 +153,8 @@ interface TrainingConversationDetail {
   completionRate: number;
   totalDuration: number;
   createdAt: string;
+  scriptSnapshot?: ScriptStructureType;
+  scriptVersion?: string;
 }
 
 export default function ClientSalesAgentAnalytics() {
@@ -257,41 +265,27 @@ export default function ClientSalesAgentAnalytics() {
     queryKey: [`/api/client/sales-agent/config/script-structure`],
     queryFn: async () => {
       try {
-        console.log('[SCRIPT LOAD] Fetching script structure...');
+        console.log('[SCRIPT LOAD] Fetching global script structure (fallback only)...');
         const response = await fetch(`/api/client/sales-agent/config/script-structure`, {
           headers: getAuthHeaders(),
         });
         if (!response.ok) {
           const errorText = await response.text();
-          console.error('[SCRIPT LOAD] Failed:', response.status, errorText);
-          throw new Error(`Failed to fetch script structure: ${response.status}`);
+          console.warn('[SCRIPT LOAD] Global script not available:', response.status, errorText);
+          return null;
         }
         const data = await response.json();
-        console.log('[SCRIPT LOAD] Success! Data received:', { hasData: !!data, version: data?.version, phases: data?.phases?.length });
+        console.log('[SCRIPT LOAD] Global script loaded:', { version: data?.version, phases: data?.phases?.length });
         return data;
       } catch (error) {
-        console.error('[SCRIPT LOAD] Exception:', error);
-        throw error;
+        console.warn('[SCRIPT LOAD] Exception loading global script (will use conversation snapshot):', error);
+        return null;
       }
     },
     enabled: true,
-    staleTime: 5000,
-    retry: 3,
+    staleTime: 30000,
+    retry: 1,
   });
-
-  // Force script load on mount if not already loaded
-  const { refetch: refetchScript } = useQuery({
-    queryKey: [`/api/client/sales-agent/config/script-structure-init`],
-    queryFn: () => Promise.resolve(null),
-    enabled: !scriptStructure && !scriptLoading,
-  });
-
-  useEffect(() => {
-    if (!scriptStructure && !scriptLoading) {
-      console.log('[SCRIPT LOAD] Force refetching on mount');
-      queryClient.invalidateQueries({ queryKey: [`/api/client/sales-agent/config/script-structure`] });
-    }
-  }, [scriptStructure, scriptLoading, queryClient]);
   
   // Manual refresh function
   const handleRefresh = async () => {
@@ -337,11 +331,14 @@ export default function ClientSalesAgentAnalytics() {
 
   // Show training map full-screen when enabled
   if (showTrainingMap && selectedConversationId) {
-    console.log('[TRAINING MAP] Rendering training map view. conversationDetail:', !!conversationDetail, 'scriptStructure:', !!scriptStructure);
+    // Determine effective script: prefer scriptSnapshot from conversation, fallback to global scriptStructure
+    const effectiveScriptForMap = conversationDetail?.scriptSnapshot || scriptStructure;
     
-    // Loading state while data is being fetched
-    if (!conversationDetail || !scriptStructure) {
-      console.log('[TRAINING MAP] Loading... waiting for data');
+    console.log('[TRAINING MAP] Rendering training map view. conversationDetail:', !!conversationDetail, 'scriptStructure:', !!scriptStructure, 'hasScriptSnapshot:', !!conversationDetail?.scriptSnapshot, 'effectiveScript:', !!effectiveScriptForMap);
+    
+    // Loading state while conversation detail is being fetched
+    if (!conversationDetail) {
+      console.log('[TRAINING MAP] Loading... waiting for conversation data');
       return (
         <div className="min-h-screen bg-background flex items-center justify-center">
           <div className="text-center">
@@ -354,12 +351,39 @@ export default function ClientSalesAgentAnalytics() {
         </div>
       );
     }
+    
+    // Check if we have an effective script (from snapshot or global)
+    if (!effectiveScriptForMap) {
+      console.log('[TRAINING MAP] No script available (neither snapshot nor global)');
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="text-center">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-amber-500" />
+            <p className="text-lg font-semibold">Script non disponibile</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Non è stato possibile caricare lo script di vendita per questa conversazione.
+            </p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => {
+                setShowTrainingMap(false);
+                setSelectedConversationId(null);
+              }}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Torna indietro
+            </Button>
+          </div>
+        </div>
+      );
+    }
 
-    console.log('[TRAINING MAP] Data loaded, rendering TrainingMapLayout');
+    console.log('[TRAINING MAP] Data loaded, rendering TrainingMapLayout with', conversationDetail.scriptSnapshot ? 'conversation snapshot' : 'global script');
     return (
       <TrainingMapLayout
         conversationDetail={conversationDetail}
-        scriptStructure={scriptStructure}
+        scriptStructure={effectiveScriptForMap}
         onBack={() => {
           console.log('[TRAINING MAP] Closing training map');
           setShowTrainingMap(false);
