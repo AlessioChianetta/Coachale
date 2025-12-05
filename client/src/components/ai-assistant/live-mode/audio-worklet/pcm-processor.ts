@@ -13,13 +13,14 @@ class PCMProcessor extends AudioWorkletProcessor {
   /** 
    * Noise Gate Threshold
    * Values below this are considered background noise (silence)
-   * 0.02 = good balance between sensitivity and noise rejection
+   * 0.006 = lower threshold to capture soft speech and avoid cutting initial syllables
+   * Previous: 0.02 was too aggressive and filtered out weak speech
    */
-  private readonly NOISE_THRESHOLD = 0.02;
+  private readonly NOISE_THRESHOLD = 0.006;
 
   constructor() {
     super();
-    console.log('🎙️ PCMProcessor initialized with Noise Gate (threshold: 0.02)');
+    console.log('🎙️ PCMProcessor initialized with Noise Gate (threshold: 0.006)');
   }
 
   process(

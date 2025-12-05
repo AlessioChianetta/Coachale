@@ -2561,14 +2561,16 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             // 🎙️ BARGE-IN: Automatic Voice Activity Detection (VAD) for natural interruptions
             // Documentation: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-live#automaticactivitydetection
             // When user speaks while AI is talking, Gemini sends `interrupted: true` in serverContent
-            // ⚙️ OPTIMIZED: HIGH sensitivity for instant interruptions (like real phone calls)
-            // Supported values: LOW = only clear speech (slower interruption), HIGH = instant detection (natural conversation)
+            // ⚙️ OPTIMIZED: Balanced sensitivity for natural speech without excessive fragmentation
+            // 🔧 FIX: Changed END_SENSITIVITY from HIGH to LOW to reduce fragmentation
+            //         Increased prefix_padding from 300 to 600ms to capture speech onset better
+            // NOTE: Valid values are only HIGH or LOW (MEDIUM does not exist!)
             realtime_input_config: {
               automatic_activity_detection: {
                 disabled: false,  // Enable automatic VAD
                 start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',  // HIGH = instant barge-in when user starts speaking
-                end_of_speech_sensitivity: 'END_SENSITIVITY_HIGH',      // HIGH = force frequent chunks for word-by-word transcription
-                prefix_padding_ms: 300,        // Capture speech onset (300ms recommended)
+                end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',       // LOW = less fragmentation, waits longer before ending speech detection
+                prefix_padding_ms: 600,        // Increased: capture speech onset (600ms to avoid losing initial syllables)
                 silence_duration_ms: 2000       // Balanced silence detection for natural word boundaries
               }
             },
@@ -3637,11 +3639,37 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                   // Check for sentence-ending punctuation - these should ALWAYS get a space
                   const bufferEndsSentence = /[.!?;:]$/.test(vadConcatBuffer.trim());
                   
+                  // 🔧 FIX: List of common Italian short words that are COMPLETE words (not fragments)
+                  // These should ALWAYS be followed by a space, not joined with next word
+                  // Example: "Che" + "cosa" should be "Che cosa", not "Checosa"
+                  const italianCompleteWords = new Set([
+                    // Pronouns and articles
+                    'che', 'chi', 'cosa', 'come', 'dove', 'quando', 'perché', 'perche',
+                    'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una',
+                    // Conjunctions and prepositions  
+                    'e', 'o', 'ma', 'se', 'di', 'da', 'in', 'su', 'per', 'con', 'tra', 'fra',
+                    'a', 'al', 'ai', 'del', 'dei', 'nel', 'nei', 'sul', 'sui',
+                    // Common short verbs/words
+                    'è', 'ho', 'ha', 'so', 'sa', 'va', 'fa', 'può', 'puo', 'vuoi', 'vuole',
+                    'io', 'tu', 'lui', 'lei', 'noi', 'voi', 'loro', 'mi', 'ti', 'ci', 'vi', 'si',
+                    'non', 'già', 'gia', 'ora', 'poi', 'qui', 'là', 'la', 'lì', 'li',
+                    // Common interjections
+                    'ah', 'oh', 'eh', 'ok', 'sì', 'si', 'no', 'beh', 'boh', 'mah',
+                    // Demonstratives
+                    'questo', 'questa', 'quello', 'quella', 'questi', 'queste', 'quelli', 'quelle'
+                  ]);
+                  
+                  // Check if buffer is a complete Italian word (should be followed by space)
+                  const bufferWord = vadConcatBuffer.toLowerCase().trim();
+                  const isBufferCompleteWord = italianCompleteWords.has(bufferWord);
+                  
                   // Join WITHOUT space only if:
                   // - Buffer does NOT end with sentence punctuation
                   // - Buffer ends with a letter (partial word)
                   // - Chunk starts with lowercase letter (continuation of word)
+                  // - Buffer is NOT a complete Italian word (new check!)
                   const isPartialWord = !bufferEndsSentence && 
+                                        !isBufferCompleteWord &&  // 🔧 FIX: Don't join if buffer is complete word
                                         /[a-z]$/i.test(lastCharOfBuffer) && 
                                         /^[a-z]/.test(firstCharOfChunk); // lowercase only = continuation
                   
@@ -3653,7 +3681,11 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                     // New sentence or separate word - add space
                     const needsSpace = !vadConcatBuffer.endsWith(' ') && !userTranscriptText.startsWith(' ');
                     processedTranscript = vadConcatBuffer + (needsSpace ? ' ' : '') + userTranscriptText;
-                    console.log(`📝 [VAD CONCAT] New phrase: "${vadConcatBuffer}" + "${userTranscriptText}" = "${processedTranscript}"`);
+                    if (isBufferCompleteWord) {
+                      console.log(`📝 [VAD CONCAT] Italian word + new phrase: "${vadConcatBuffer}" + "${userTranscriptText}" = "${processedTranscript}"`);
+                    } else {
+                      console.log(`📝 [VAD CONCAT] New phrase: "${vadConcatBuffer}" + "${userTranscriptText}" = "${processedTranscript}"`);
+                    }
                   }
                 }
               }

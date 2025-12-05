@@ -13,7 +13,7 @@ import {
 import { LiveTranscript } from '../LiveTranscript';
 import { useToast } from '@/hooks/use-toast';
 import { getToken, getAuthUser } from '@/lib/auth';
-import { float32ToBase64PCM16 } from './audio-worklet/audio-converter';
+import { float32ToBase64PCM16, StreamingResampler } from './audio-worklet/audio-converter';
 import { PhoneCallLayout } from './PhoneCallLayout';
 
 const AudioSphere3D = lazy(() => import('./AudioSphere3D'));
@@ -76,6 +76,7 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const resamplerRef = useRef<StreamingResampler | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micAnimationFrameRef = useRef<number | null>(null);
@@ -1509,10 +1510,12 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
       console.log('🎤 Richiesta permessi microfono...');
       
       // Get microphone stream
+      // 🔧 FIX: Disable browser noiseSuppression to prevent cutting weak speech
+      // The PCM Processor has its own noise gate that's better calibrated
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
-          noiseSuppression: true,
+          noiseSuppression: false,  // Disabled: browser noise suppression can cut speech
           autoGainControl: true,
         } 
       });
@@ -1521,8 +1524,27 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
       console.log('✅ Microfono rilevato e permessi concessi');
 
       // Create AudioContext at 16kHz sample rate
+      // NOTE: Browser may ignore this and use device's native rate (e.g., 48kHz)
       const audioContext = new AudioContext({ sampleRate: 16000 });
       audioContextRef.current = audioContext;
+      
+      // 🔧 CRITICAL: Verify actual sample rate - browser may have ignored our request
+      const actualSampleRate = audioContext.sampleRate;
+      const requestedSampleRate = 16000;
+      const needsResampling = actualSampleRate !== requestedSampleRate;
+      
+      console.log(`🎚️ AudioContext Sample Rate Check:`);
+      console.log(`   → Requested: ${requestedSampleRate} Hz`);
+      console.log(`   → Actual: ${actualSampleRate} Hz`);
+      console.log(`   → Needs Resampling: ${needsResampling ? 'YES (' + actualSampleRate + ' → ' + requestedSampleRate + ')' : 'NO'}`);
+      
+      // Create streaming resampler if needed (maintains state between chunks)
+      if (needsResampling) {
+        resamplerRef.current = new StreamingResampler(actualSampleRate, requestedSampleRate);
+        console.log(`🎚️ StreamingResampler created for ${actualSampleRate} → ${requestedSampleRate} Hz`);
+      } else {
+        resamplerRef.current = null;
+      }
       
       // 🎤 MOBILE FIX: Try to resume AudioContext if suspended (non-blocking)
       // Su mobile può essere suspended, ma verrà resumato automaticamente al bisogno
@@ -1648,7 +1670,14 @@ registerProcessor('pcm-processor', PCMProcessor);
       workletNode.port.onmessage = (event) => {
         // 🔒 Block microphone sends when session is closing
         if (event.data.type === 'audio' && !isMutedRef.current && !isSessionClosingRef.current) {
-          const audioData = event.data.data as Float32Array;
+          let audioData = event.data.data as Float32Array;
+
+          // 🔧 CRITICAL FIX: Resample if browser gave us a different sample rate
+          // Uses StreamingResampler to maintain fractional offset between chunks
+          // Prevents drift and distortion on non-integer ratios (e.g., 44.1kHz → 16kHz)
+          if (resamplerRef.current) {
+            audioData = resamplerRef.current.process(audioData);
+          }
 
           // Convert Float32 → PCM16 → base64
           const base64PCM = float32ToBase64PCM16(audioData);
