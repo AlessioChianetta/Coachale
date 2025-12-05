@@ -4878,6 +4878,46 @@ ${compactFeedback}
           
             if (msg.type === 'audio' && msg.data) {
 
+                // 🔍 AUDIO DIAGNOSTIC: Log first 3 chunks to verify format
+                const audioSeq = msg.sequence || 0;
+                if (audioSeq <= 3) {
+                  try {
+                    const base64Data = msg.data as string;
+                    const binaryData = Buffer.from(base64Data, 'base64');
+                    const numBytes = binaryData.length;
+                    const numSamples = numBytes / 2; // PCM16 = 2 bytes per sample
+                    
+                    // Calculate implied duration at 16kHz
+                    const durationMs16kHz = (numSamples / 16000) * 1000;
+                    // Calculate implied duration at 48kHz (if browser sent wrong rate)
+                    const durationMs48kHz = (numSamples / 48000) * 1000;
+                    
+                    // Calculate RMS to check if there's actual audio
+                    let sumSquares = 0;
+                    for (let i = 0; i < binaryData.length - 1; i += 2) {
+                      const sample = binaryData.readInt16LE(i);
+                      sumSquares += sample * sample;
+                    }
+                    const rms = Math.sqrt(sumSquares / numSamples);
+                    const rmsNormalized = rms / 32768; // Normalize to 0-1
+                    
+                    console.log(`\n🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                    console.log(`🔬 [${connectionId}] AUDIO DIAGNOSTIC - Chunk #${audioSeq}`);
+                    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                    console.log(`   📦 Base64 length: ${base64Data.length} chars`);
+                    console.log(`   📦 Binary size: ${numBytes} bytes`);
+                    console.log(`   🎵 Samples: ${numSamples}`);
+                    console.log(`   ⏱️  Duration @16kHz: ${durationMs16kHz.toFixed(1)}ms`);
+                    console.log(`   ⏱️  Duration @48kHz: ${durationMs48kHz.toFixed(1)}ms (if wrong rate)`);
+                    console.log(`   📊 RMS level: ${rmsNormalized.toFixed(6)} (${rms.toFixed(0)}/32768)`);
+                    console.log(`   🎯 Expected: ~40ms chunks @16kHz = 640 samples = 1280 bytes`);
+                    console.log(`   ⚠️  If samples >> 640, audio is NOT resampled to 16kHz!`);
+                    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                  } catch (diagError) {
+                    console.error(`❌ [${connectionId}] Audio diagnostic error:`, diagError);
+                  }
+                }
+
                 // 🔥 [NUOVO] INIEZIONE PRE-FLIGHT 🔥
                 if (pendingFeedbackForAI && geminiSession && isSessionActive && geminiSession.readyState === WebSocket.OPEN) {
                    console.log(`🚀 [${connectionId}] INJECTING FEEDBACK (Pre-Flight Strategy)`);
