@@ -1096,10 +1096,10 @@ export function setupGeminiLiveWSService(server: Server) {
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🕐 RESPONSE WATCHDOG - Rileva quando Gemini non risponde
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 🔧 FIX: Timeout aumentato per evitare race condition con VAD silence_duration_ms
-    // Il VAD aspetta 2000ms di silenzio prima di inviare isFinal=true.
-    // Poi Gemini ha bisogno di tempo per elaborare e rispondere.
-    // Timeout = silence_duration_ms (2000) + buffer (1500) = 3500ms
+    // 🔧 UPDATED: Timeout ridotto per VAD più veloce
+    // Il VAD aspetta 700ms di silenzio prima di inviare isFinal=true.
+    // Con Proactive Audio, Gemini può prendere più tempo per decidere se rispondere.
+    // Timeout = silence_duration_ms (700) + thinking_budget (256 tokens) + buffer (2000) = 3500ms
     let responseWatchdogTimer: NodeJS.Timeout | null = null;
     let userMessagePendingResponse = false;
     let lastUserFinalTranscript = '';
@@ -1107,7 +1107,7 @@ export function setupGeminiLiveWSService(server: Server) {
     let responseWatchdogRetries = 0;
     let modelResponsePending = false; // 🆕 Flag: Gemini ha iniziato a elaborare (qualsiasi serverContent ricevuto)
     let lastAiTurnCompleteTimestamp = 0; // 🆕 FIX: Traccia quando l'AI ha completato l'ultimo turno
-    const RESPONSE_WATCHDOG_TIMEOUT_MS = 5500; // 🔧 FIX: Aumentato per dare più tempo a Gemini (silence 2000 + elaborazione 3500)
+    const RESPONSE_WATCHDOG_TIMEOUT_MS = 3500; // 🔧 REDUCED: silence (700) + thinking + processing buffer
     const MAX_WATCHDOG_RETRIES = 2;
     const MIN_TIME_AFTER_AI_RESPONSE_MS = 2000; // 🆕 Non avviare watchdog se AI ha risposto negli ultimi 2 sec
     
@@ -2546,6 +2546,11 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               top_k: 40,
               max_output_tokens: 8192  // Permetti risposte più lunghe per monologhi/spiegazioni dettagliate
             },
+            // 🧠 THINKING: Enable reasoning for better responses (TOP-LEVEL inside setup)
+            // thinking_budget = 0 disables, 256 = moderate reasoning depth
+            thinking_config: {
+              thinking_budget: 256
+            },
             input_audio_transcription: {},
             output_audio_transcription: {},
             // Conditionally include system_instruction ONLY on new sessions
@@ -2562,18 +2567,30 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             // Documentation: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/multimodal-live#automaticactivitydetection
             // When user speaks while AI is talking, Gemini sends `interrupted: true` in serverContent
             // ⚙️ OPTIMIZED: Balanced sensitivity for natural speech without excessive fragmentation
-            // 🔧 FIX: Changed END_SENSITIVITY from HIGH to LOW to reduce fragmentation
-            //         Increased prefix_padding from 300 to 600ms to capture speech onset better
             // NOTE: Valid values are only HIGH or LOW (MEDIUM does not exist!)
             realtime_input_config: {
               automatic_activity_detection: {
                 disabled: false,  // Enable automatic VAD
                 start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',  // HIGH = instant barge-in when user starts speaking
                 end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',       // LOW = less fragmentation, waits longer before ending speech detection
-                prefix_padding_ms: 1000,       // INCREASED to 1 second to capture speech onset better
-                silence_duration_ms: 2000      // Increased silence duration for more complete phrases
+                prefix_padding_ms: 500,        // 500ms buffer before speech (balanced: not too long = latency, not too short = cuts onset)
+                silence_duration_ms: 700       // 700ms silence = end of utterance (faster than 1000ms but still complete phrases)
               }
             },
+            // 🔊 PROACTIVE AUDIO: Gemini decides when to respond - ignores background noise & chatter
+            // Documentation: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash-live-api
+            // Key benefits:
+            // - Responds ONLY when directly addressed (reduces false triggers)
+            // - Ignores background conversations and ambient noise
+            // - Handles interruptions gracefully (ehm, uhm, backchannels)
+            // - Minimizes latency by responding after user finishes speaking
+            proactivity: {
+              proactive_audio: true
+            },
+            // 💚 AFFECTIVE DIALOG: Understand user's tone and emotional expressions
+            // Gemini adapts responses based on detected emotions in voice
+            // WARNING: May produce unexpected results in some cases
+            enable_affective_dialog: true,
             // Enable session resumption for unlimited session duration
             // CRITICAL: Always pass { handle: value } - null for new sessions, token for resuming
             session_resumption: { handle: validatedResumeHandle || null },

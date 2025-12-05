@@ -1,8 +1,11 @@
 /**
  * AudioWorklet Processor for capturing raw PCM audio
- * Captures mono audio at 16kHz and sends it to the main thread
+ * Captures mono audio at native sample rate and sends to main thread for resampling
  * 
- * NOISE GATE: Filters out background noise to prevent false AI interruptions
+ * BUFFER SIZE: 1920 samples = 40ms at 48kHz native rate
+ * After resampling 48kHz → 16kHz (3:1), becomes 640 samples = 40ms at 16kHz
+ * 
+ * NOISE GATE: 0.02 RMS - Filters background noise, Gemini Proactive Audio handles the rest
  */
 
 class PCMProcessor extends AudioWorkletProcessor {
@@ -13,15 +16,15 @@ class PCMProcessor extends AudioWorkletProcessor {
   private audioBuffer: Float32Array[] = [];
   
   /** 
-   * Noise Gate DISABLED - Let Gemini VAD handle voice detection
-   * Setting to 0 means all audio passes through
-   * This prevents cutting off the beginning of soft speech
+   * Noise Gate RE-ENABLED at 0.02 RMS
+   * Filters background noise (fans, AC, ambient sounds)
+   * Gemini Proactive Audio handles speech vs chatter detection
    */
-  private readonly NOISE_THRESHOLD = 0; // DISABLED - was 0.006
+  private readonly NOISE_THRESHOLD = 0.02;
 
   constructor() {
     super();
-    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples, noise gate: DISABLED)');
+    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples = 40ms @48kHz, noise gate: 0.02 RMS)');
   }
 
   process(

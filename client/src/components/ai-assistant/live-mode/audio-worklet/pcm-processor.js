@@ -7,7 +7,7 @@
  * BUFFER SIZE: 1920 samples = 40ms at 48kHz native rate
  * After resampling 48kHz → 16kHz (3:1), becomes 640 samples = 40ms at 16kHz
  * 
- * NOISE GATE: DISABLED - Let Gemini VAD handle voice detection
+ * NOISE GATE: 0.02 RMS - Filters background noise, Gemini Proactive Audio handles the rest
  */
 
 class PCMProcessor extends AudioWorkletProcessor {
@@ -28,13 +28,13 @@ class PCMProcessor extends AudioWorkletProcessor {
     this.audioBuffer = [];
     
     /** 
-     * @type {number} - Noise Gate DISABLED
-     * Setting to 0 means all audio passes through
-     * Let Gemini's VAD handle voice detection to avoid cutting speech onset
+     * @type {number} - Noise Gate RE-ENABLED
+     * 0.02 RMS threshold filters background noise (fans, AC, ambient)
+     * Gemini Proactive Audio handles speech vs chatter detection
      */
-    this.NOISE_THRESHOLD = 0;
+    this.NOISE_THRESHOLD = 0.02;
     
-    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples = 40ms @48kHz, noise gate: DISABLED)');
+    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples = 40ms @48kHz, noise gate: 0.02 RMS)');
   }
 
   /**
@@ -68,8 +68,21 @@ class PCMProcessor extends AudioWorkletProcessor {
   }
 
   /**
-   * Send buffered audio data to main thread
-   * No noise gate filtering - all audio passes through for Gemini VAD
+   * Calculate RMS (Root Mean Square) volume of audio data
+   * @param {Float32Array} data
+   * @returns {number}
+   * @private
+   */
+  calculateRMS(data) {
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+      sum += data[i] * data[i];
+    }
+    return Math.sqrt(sum / data.length);
+  }
+
+  /**
+   * Send buffered audio data to main thread with Noise Gate filtering
    * @private
    */
   sendAudioData() {
@@ -86,10 +99,24 @@ class PCMProcessor extends AudioWorkletProcessor {
       offset += chunk.length;
     }
 
+    // 🎚️ NOISE GATE: Calculate RMS and filter low-level noise
+    const rms = this.calculateRMS(concatenated);
+    
+    let dataToSend;
+    if (rms < this.NOISE_THRESHOLD) {
+      // Background noise - send digital silence
+      dataToSend = new Float32Array(totalLength).fill(0);
+    } else {
+      // Real audio - pass through
+      dataToSend = concatenated;
+    }
+
     this.port.postMessage({
       type: 'audio',
-      data: concatenated,
+      data: dataToSend,
       timestamp: globalThis.currentTime || Date.now(),
+      rms: rms,
+      isFiltered: rms < this.NOISE_THRESHOLD
     });
 
     this.audioBuffer = [];
