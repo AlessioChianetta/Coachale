@@ -1593,14 +1593,18 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
         
         const workletCode = `
 // @ts-check
+// PCM Audio Processor - captures audio for streaming to Gemini Live API
+// Buffer threshold: 1920 samples = 40ms at 48kHz native sample rate
 
 class PCMProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.bufferSize = 0;
-    this.bufferThreshold = 640;
+    // INCREASED: 1920 samples = 40ms at 48kHz (native rate)
+    // This ensures proper chunk size BEFORE resampling to 16kHz
+    this.bufferThreshold = 1920;
     this.audioBuffer = [];
-    console.log('🎙️ PCMProcessor initialized (inline fallback)');
+    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples = 40ms @48kHz)');
   }
 
   process(inputs, outputs, parameters) {
@@ -1610,9 +1614,11 @@ class PCMProcessor extends AudioWorkletProcessor {
     const inputChannel = input[0];
     if (!inputChannel || inputChannel.length === 0) return true;
 
+    // Store audio chunk
     this.audioBuffer.push(new Float32Array(inputChannel));
     this.bufferSize += inputChannel.length;
 
+    // Send when buffer is full
     if (this.bufferSize >= this.bufferThreshold) {
       this.sendAudioData();
     }
@@ -1632,6 +1638,7 @@ class PCMProcessor extends AudioWorkletProcessor {
       offset += chunk.length;
     }
 
+    // Send to main thread for resampling and transmission
     this.port.postMessage({
       type: 'audio',
       data: concatenated,

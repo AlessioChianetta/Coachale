@@ -7,20 +7,21 @@
 
 class PCMProcessor extends AudioWorkletProcessor {
   private bufferSize = 0;
-  private bufferThreshold = 640; // ~40ms at 16kHz - balanced for barge-in + performance
+  // INCREASED: 1920 samples = 40ms at 48kHz (native rate)
+  // After resampling to 16kHz, this becomes 640 samples = 40ms
+  private bufferThreshold = 1920;
   private audioBuffer: Float32Array[] = [];
   
   /** 
-   * Noise Gate Threshold
-   * Values below this are considered background noise (silence)
-   * 0.006 = lower threshold to capture soft speech and avoid cutting initial syllables
-   * Previous: 0.02 was too aggressive and filtered out weak speech
+   * Noise Gate DISABLED - Let Gemini VAD handle voice detection
+   * Setting to 0 means all audio passes through
+   * This prevents cutting off the beginning of soft speech
    */
-  private readonly NOISE_THRESHOLD = 0.006;
+  private readonly NOISE_THRESHOLD = 0; // DISABLED - was 0.006
 
   constructor() {
     super();
-    console.log('🎙️ PCMProcessor initialized with Noise Gate (threshold: 0.006)');
+    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples, noise gate: DISABLED)');
   }
 
   process(

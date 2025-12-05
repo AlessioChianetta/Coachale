@@ -2570,8 +2570,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 disabled: false,  // Enable automatic VAD
                 start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',  // HIGH = instant barge-in when user starts speaking
                 end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',       // LOW = less fragmentation, waits longer before ending speech detection
-                prefix_padding_ms: 600,        // Increased: capture speech onset (600ms to avoid losing initial syllables)
-                silence_duration_ms: 2000       // Balanced silence detection for natural word boundaries
+                prefix_padding_ms: 1000,       // INCREASED to 1 second to capture speech onset better
+                silence_duration_ms: 2500      // Increased silence duration for more complete phrases
               }
             },
             // Enable session resumption for unlimited session duration
@@ -4870,6 +4870,7 @@ ${compactFeedback}
       // Track last audio log time for throttling
       let lastAudioLogTime = 0;
       const AUDIO_LOG_INTERVAL_MS = 30000; // 30 secondi
+      let audioChunkDiagCount = 0; // Counter for audio diagnostic logging
 
       // 4. Browser → Gemini relay
       clientWs.on('message', async (data) => {
@@ -4879,8 +4880,10 @@ ${compactFeedback}
             if (msg.type === 'audio' && msg.data) {
 
                 // 🔍 AUDIO DIAGNOSTIC: Log first 3 chunks to verify format
-                const audioSeq = msg.sequence || 0;
-                if (audioSeq <= 3) {
+                // Use internal counter instead of sequence (works with resumed sessions)
+                if (!audioChunkDiagCount) audioChunkDiagCount = 0;
+                audioChunkDiagCount++;
+                if (audioChunkDiagCount <= 3) {
                   try {
                     const base64Data = msg.data as string;
                     const binaryData = Buffer.from(base64Data, 'base64');
