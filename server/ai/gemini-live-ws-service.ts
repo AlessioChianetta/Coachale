@@ -2571,7 +2571,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 start_of_speech_sensitivity: 'START_SENSITIVITY_HIGH',  // HIGH = instant barge-in when user starts speaking
                 end_of_speech_sensitivity: 'END_SENSITIVITY_LOW',       // LOW = less fragmentation, waits longer before ending speech detection
                 prefix_padding_ms: 1000,       // INCREASED to 1 second to capture speech onset better
-                silence_duration_ms: 2500      // Increased silence duration for more complete phrases
+                silence_duration_ms: 2000      // Increased silence duration for more complete phrases
               }
             },
             // Enable session resumption for unlimited session duration
@@ -4905,7 +4905,7 @@ ${compactFeedback}
                     const rmsNormalized = rms / 32768; // Normalize to 0-1
                     
                     console.log(`\n🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-                    console.log(`🔬 [${connectionId}] AUDIO DIAGNOSTIC - Chunk #${audioSeq}`);
+                    console.log(`🔬 [${connectionId}] AUDIO DIAGNOSTIC - Chunk #${audioChunkDiagCount}`);
                     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
                     console.log(`   📦 Base64 length: ${base64Data.length} chars`);
                     console.log(`   📦 Binary size: ${numBytes} bytes`);

@@ -1,0 +1,83 @@
+🎯 System Instruction: 809 tokens
+📦 Full Prompt Context (formatted & chunked): 212,574 tokens
+
+📋 BREAKDOWN PER SEZIONE (dati originali RAW):
+   └─ 💰 Finance Data: 11,508 tokens (4.5%)
+   └─ 📚 Exercises: 94,931 tokens (36.7%)
+   └─ 📖 Library Docs: 1,573 tokens (0.6%)
+   └─ 🎓 University: 110,793 tokens (42.9%)
+   └─ 💬 Consultations: 37,165 tokens (14.4%)
+   └─ 🎯 Goals & Tasks: 12 tokens (0.0%)
+   └─ ⚡ Momentum & Calendar: 2,336 tokens (0.9%)
+   └─ 🎁 Totale sezioni: 258,318 tokens
+
+💡 Nota: 258,318 tokens RAW → 212,574 tokens formattati (riduzione 17.7%)
+
+🎁 TOTAL TOKENS INVIATI (setup): 213,383 tokens
+══════════════════════════════════════════════════════════════════════
+
+🔗 [fspuol] Connecting to Vertex AI at us-central1...
+✅ [fspuol] Gemini Live session created successfully
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ [fspuol] Audio diagnostic error: ReferenceError: audioSeq is not defined
+    at WebSocket.<anonymous> (/home/runner/workspace/server/ai/gemini-live-ws-service.ts:4908:83)
+    at WebSocket.emit (node:events:524:28)
+    at Receiver.receiverOnMessage (/home/runner/workspace/node_modules/ws/lib/websocket.js:1220:20)
+    at Receiver.emit (node:events:524:28)
+    at Receiver.dataMessage (/home/runner/workspace/node_modules/ws/lib/receiver.js:596:14)
+    at Receiver.getData (/home/runner/workspace/node_modules/ws/lib/receiver.js:496:10)
+    at Receiver.startLoop (/home/runner/workspace/node_modules/ws/lib/receiver.js:167:16)
+    at Receiver._write (/home/runner/workspace/node_modules/ws/lib/receiver.js:94:10)
+    at writeOrBuffer (node:internal/streams/writable:572:12)
+    at _write (node:internal/streams/writable:501:10)
+    at Writable.write (node:internal/streams/writable:510:10)
+    at Socket.socketOnData (/home/runner/workspace/node_modules/ws/lib/websocket.js:1355:35)
+    at Socket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
+🎤 [fspuol] Receiving audio chunks (last logged: seq 24596)
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ [fspuol] Audio diagnostic error: ReferenceError: audioSeq is not defined
+    at WebSocket.<anonymous> (/home/runner/workspace/server/ai/gemini-live-ws-service.ts:4908:83)
+    at WebSocket.emit (node:events:524:28)
+    at Receiver.receiverOnMessage (/home/runner/workspace/node_modules/ws/lib/websocket.js:1220:20)
+    at Receiver.emit (node:events:524:28)
+    at Receiver.dataMessage (/home/runner/workspace/node_modules/ws/lib/receiver.js:596:14)
+    at Receiver.getData (/home/runner/workspace/node_modules/ws/lib/receiver.js:496:10)
+    at Receiver.startLoop (/home/runner/workspace/node_modules/ws/lib/receiver.js:167:16)
+    at Receiver._write (/home/runner/workspace/node_modules/ws/lib/receiver.js:94:10)
+    at writeOrBuffer (node:internal/streams/writable:572:12)
+    at _write (node:internal/streams/writable:501:10)
+    at Writable.write (node:internal/streams/writable:510:10)
+    at Socket.socketOnData (/home/runner/workspace/node_modules/ws/lib/websocket.js:1355:35)
+    at Socket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ [fspuol] Audio diagnostic error: ReferenceError: audioSeq is not defined
+    at WebSocket.<anonymous> (/home/runner/workspace/server/ai/gemini-live-ws-service.ts:4908:83)
+    at WebSocket.emit (node:events:524:28)
+    at Receiver.receiverOnMessage (/home/runner/workspace/node_modules/ws/lib/websocket.js:1220:20)
+    at Receiver.emit (node:events:524:28)
+    at Receiver.dataMessage (/home/runner/workspace/node_modules/ws/lib/receiver.js:596:14)
+    at Receiver.getData (/home/runner/workspace/node_modules/ws/lib/receiver.js:496:10)
+    at Receiver.startLoop (/home/runner/workspace/node_modules/ws/lib/receiver.js:167:16)
+    at Receiver._write (/home/runner/workspace/node_modules/ws/lib/receiver.js:94:10)
+    at writeOrBuffer (node:internal/streams/writable:572:12)
+    at _write (node:internal/streams/writable:501:10)
+    at Writable.write (node:internal/streams/writable:510:10)
+    at Socket.socketOnData (/home/runner/workspace/node_modules/ws/lib/websocket.js:1355:35)
+    at Socket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
+✅ [fspuol] Gemini Live WebSocket opened
+🎙️ [fspuol] Using voice: achernar
