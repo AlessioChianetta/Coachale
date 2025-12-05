@@ -1664,20 +1664,46 @@ registerProcessor('pcm-processor', PCMProcessor);
       workletNodeRef.current = workletNode;
 
       // Handle audio data from worklet
+      // Log first few chunks for debugging
+      let audioDebugCount = 0;
+      const MAX_DEBUG_LOGS = 5;
+      
       workletNode.port.onmessage = (event) => {
         // 🔒 Block microphone sends when session is closing
         if (event.data.type === 'audio' && !isMutedRef.current && !isSessionClosingRef.current) {
-          let audioData = event.data.data as Float32Array;
+          const originalData = event.data.data as Float32Array;
+          let audioData = originalData;
+
+          // 🔍 DEBUG: Log first few audio chunks to trace the flow
+          if (audioDebugCount < MAX_DEBUG_LOGS) {
+            const ctx = audioContextRef.current;
+            console.log(`🔊 [AUDIO DEBUG ${audioDebugCount + 1}/${MAX_DEBUG_LOGS}]:`);
+            console.log(`   → AudioContext sampleRate: ${ctx?.sampleRate || 'N/A'} Hz`);
+            console.log(`   → Input chunk size: ${originalData.length} samples`);
+            console.log(`   → Resampler active: ${resamplerRef.current ? 'YES' : 'NO'}`);
+            console.log(`   → Input RMS: ${Math.sqrt(originalData.reduce((a, b) => a + b * b, 0) / originalData.length).toFixed(6)}`);
+          }
 
           // 🔧 CRITICAL FIX: Resample if browser gave us a different sample rate
           // Uses StreamingResampler to maintain fractional offset between chunks
           // Prevents drift and distortion on non-integer ratios (e.g., 44.1kHz → 16kHz)
           if (resamplerRef.current) {
-            audioData = resamplerRef.current.process(audioData);
+            audioData = resamplerRef.current.process(originalData);
+            
+            if (audioDebugCount < MAX_DEBUG_LOGS) {
+              console.log(`   → After resampling: ${audioData.length} samples`);
+              console.log(`   → Resample ratio: ${(originalData.length / audioData.length).toFixed(2)}x`);
+              console.log(`   → Output RMS: ${Math.sqrt(audioData.reduce((a, b) => a + b * b, 0) / audioData.length).toFixed(6)}`);
+            }
           }
 
           // Convert Float32 → PCM16 → base64
           const base64PCM = float32ToBase64PCM16(audioData);
+          
+          if (audioDebugCount < MAX_DEBUG_LOGS) {
+            console.log(`   → Base64 length: ${base64PCM.length} chars`);
+            audioDebugCount++;
+          }
 
           // Send via WebSocket with sequence number
           if (wsRef.current?.readyState === WebSocket.OPEN) {
