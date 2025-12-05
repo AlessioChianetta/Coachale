@@ -1523,28 +1523,25 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
       
       console.log('✅ Microfono rilevato e permessi concessi');
 
-      // Create AudioContext at 16kHz sample rate
-      // NOTE: Browser may ignore this and use device's native rate (e.g., 48kHz)
-      const audioContext = new AudioContext({ sampleRate: 16000 });
+      // 🔧 CRITICAL FIX: Do NOT specify sampleRate - let browser use native rate
+      // The microphone ALWAYS captures at native rate (usually 48kHz)
+      // Specifying 16kHz does NOT resample input - it only affects output playback!
+      // We must capture at native rate and resample ourselves to 16kHz for Gemini
+      const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
       
-      // 🔧 CRITICAL: Verify actual sample rate - browser may have ignored our request
+      // Get the actual sample rate (will be device native, e.g., 48000 Hz)
       const actualSampleRate = audioContext.sampleRate;
-      const requestedSampleRate = 16000;
-      const needsResampling = actualSampleRate !== requestedSampleRate;
+      const targetSampleRate = 16000; // Gemini requires 16kHz
       
-      console.log(`🎚️ AudioContext Sample Rate Check:`);
-      console.log(`   → Requested: ${requestedSampleRate} Hz`);
-      console.log(`   → Actual: ${actualSampleRate} Hz`);
-      console.log(`   → Needs Resampling: ${needsResampling ? 'YES (' + actualSampleRate + ' → ' + requestedSampleRate + ')' : 'NO'}`);
+      console.log(`🎚️ AudioContext Sample Rate (NATIVE):`);
+      console.log(`   → Browser Native: ${actualSampleRate} Hz`);
+      console.log(`   → Gemini Target: ${targetSampleRate} Hz`);
+      console.log(`   → Resampling: ${actualSampleRate} → ${targetSampleRate} (ratio: ${(actualSampleRate / targetSampleRate).toFixed(2)}x)`);
       
-      // Create streaming resampler if needed (maintains state between chunks)
-      if (needsResampling) {
-        resamplerRef.current = new StreamingResampler(actualSampleRate, requestedSampleRate);
-        console.log(`🎚️ StreamingResampler created for ${actualSampleRate} → ${requestedSampleRate} Hz`);
-      } else {
-        resamplerRef.current = null;
-      }
+      // ALWAYS create resampler since native rate is almost never 16kHz
+      resamplerRef.current = new StreamingResampler(actualSampleRate, targetSampleRate);
+      console.log(`🎚️ StreamingResampler ACTIVE: ${actualSampleRate} Hz → ${targetSampleRate} Hz`);
       
       // 🎤 MOBILE FIX: Try to resume AudioContext if suspended (non-blocking)
       // Su mobile può essere suspended, ma verrà resumato automaticamente al bisogno
