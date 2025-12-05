@@ -2,9 +2,12 @@
 
 /**
  * AudioWorklet Processor for capturing raw PCM audio
- * Captures mono audio at 16kHz and sends it to the main thread
+ * Captures mono audio at native sample rate and sends to main thread for resampling
  * 
- * NOISE GATE: Filters out background noise to prevent false AI interruptions
+ * BUFFER SIZE: 1920 samples = 40ms at 48kHz native rate
+ * After resampling 48kHz → 16kHz (3:1), becomes 640 samples = 40ms at 16kHz
+ * 
+ * NOISE GATE: DISABLED - Let Gemini VAD handle voice detection
  */
 
 class PCMProcessor extends AudioWorkletProcessor {
@@ -14,20 +17,24 @@ class PCMProcessor extends AudioWorkletProcessor {
     /** @type {number} */
     this.bufferSize = 0;
     
-    /** @type {number} - ~40ms at 16kHz - balanced for barge-in + performance */
-    this.bufferThreshold = 640;
+    /** 
+     * @type {number} 
+     * INCREASED: 1920 samples = 40ms at 48kHz (native rate)
+     * After resampling 3:1 → 640 samples = 40ms at 16kHz (what Gemini expects)
+     */
+    this.bufferThreshold = 1920;
     
     /** @type {Float32Array[]} */
     this.audioBuffer = [];
     
     /** 
-     * @type {number} - Noise Gate Threshold
-     * Values below this are considered background noise (silence)
-     * 0.02 = good balance between sensitivity and noise rejection
+     * @type {number} - Noise Gate DISABLED
+     * Setting to 0 means all audio passes through
+     * Let Gemini's VAD handle voice detection to avoid cutting speech onset
      */
-    this.NOISE_THRESHOLD = 0.02;
+    this.NOISE_THRESHOLD = 0;
     
-    console.log('🎙️ PCMProcessor initialized with Noise Gate (threshold: 0.02)');
+    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples = 40ms @48kHz, noise gate: DISABLED)');
   }
 
   /**
@@ -40,23 +47,19 @@ class PCMProcessor extends AudioWorkletProcessor {
   process(inputs, outputs, parameters) {
     const input = inputs[0];
     
-    // Check if we have valid input
     if (!input || input.length === 0) {
       return true;
     }
 
-    // Get the first channel (mono)
     const inputChannel = input[0];
     
     if (!inputChannel || inputChannel.length === 0) {
       return true;
     }
 
-    // Store the audio data
     this.audioBuffer.push(new Float32Array(inputChannel));
     this.bufferSize += inputChannel.length;
 
-    // Send buffer when we reach threshold (~100ms)
     if (this.bufferSize >= this.bufferThreshold) {
       this.sendAudioData();
     }
@@ -65,21 +68,8 @@ class PCMProcessor extends AudioWorkletProcessor {
   }
 
   /**
-   * Calculate RMS (Root Mean Square) volume of audio data
-   * @param {Float32Array} data 
-   * @returns {number} RMS value (0.0 to 1.0+)
-   * @private
-   */
-  calculateRMS(data) {
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) {
-      sum += data[i] * data[i];
-    }
-    return Math.sqrt(sum / data.length);
-  }
-
-  /**
-   * Send buffered audio data to main thread with Noise Gate filtering
+   * Send buffered audio data to main thread
+   * No noise gate filtering - all audio passes through for Gemini VAD
    * @private
    */
   sendAudioData() {
@@ -87,7 +77,6 @@ class PCMProcessor extends AudioWorkletProcessor {
       return;
     }
 
-    // Concatenate all buffered chunks
     const totalLength = this.bufferSize;
     const concatenated = new Float32Array(totalLength);
     
@@ -97,32 +86,12 @@ class PCMProcessor extends AudioWorkletProcessor {
       offset += chunk.length;
     }
 
-    // 🎚️ NOISE GATE LOGIC
-    // Calculate volume (RMS) to determine if this is real speech or just noise
-    const rms = this.calculateRMS(concatenated);
-    
-    // If volume is below threshold, send silence instead
-    let dataToSend;
-    if (rms < this.NOISE_THRESHOLD) {
-      // Background noise detected - send zeros (digital silence)
-      dataToSend = new Float32Array(totalLength).fill(0);
-      // console.log('🔇 Noise Gate: Filtering background noise (RMS:', rms.toFixed(4), ')');
-    } else {
-      // Real speech detected - send actual audio
-      dataToSend = concatenated;
-      // console.log('🎤 Noise Gate: Passing speech (RMS:', rms.toFixed(4), ')');
-    }
-
-    // Send to main thread
     this.port.postMessage({
       type: 'audio',
-      data: dataToSend,
+      data: concatenated,
       timestamp: globalThis.currentTime || Date.now(),
-      rms: rms, // Include RMS for debugging/visualization
-      isFiltered: rms < this.NOISE_THRESHOLD
     });
 
-    // Reset buffer
     this.audioBuffer = [];
     this.bufferSize = 0;
   }
