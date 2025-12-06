@@ -2546,8 +2546,11 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               top_k: 40,
               max_output_tokens: 8192  // Permetti risposte più lunghe per monologhi/spiegazioni dettagliate
             },
-            // 🧠 NOTE: thinking_config is NOT supported by gemini-live-2.5-flash-preview-native-audio models
-            // It was causing "Unknown name 'thinking_config'" errors - removed for compatibility
+            // 🧠 THINKING: Enable Gemini thinking with budget of 256 tokens
+            // Documentation: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash-live-api
+            thinking_config: {
+              thinking_budget: 256
+            },
             input_audio_transcription: {},
             output_audio_transcription: {},
             // Conditionally include system_instruction ONLY on new sessions
