@@ -206,9 +206,7 @@ const clientItems: SidebarItemWithChildren[] = [
     color: "text-purple-600",
     children: [
       { name: "I Miei Venditori", href: "/client/human-sellers", icon: Users, color: "text-purple-600" },
-      { name: "Nuovo Venditore", href: "/client/human-sellers/new", icon: UserPlus, color: "text-green-600" },
       { name: "Video Meetings", href: "/client/human-sellers/meetings", icon: Video, color: "text-blue-600" },
-      { name: "Video Analytics", href: "/client/human-sellers/analytics", icon: BarChart3, color: "text-indigo-600" },
     ]
   },
   { 
