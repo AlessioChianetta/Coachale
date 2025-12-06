@@ -34,37 +34,12 @@ interface HumanSeller {
   id: string;
   sellerName: string;
   displayName: string;
+  description: string | null;
   isActive: boolean;
-  meetingsCount: number;
+  clientId: string;
   createdAt: string;
+  updatedAt: string;
 }
-
-const mockHumanSellers: HumanSeller[] = [
-  {
-    id: '1',
-    sellerName: 'Marco Bianchi',
-    displayName: 'Marco B.',
-    isActive: true,
-    meetingsCount: 24,
-    createdAt: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: '2',
-    sellerName: 'Laura Verdi',
-    displayName: 'Laura V.',
-    isActive: true,
-    meetingsCount: 18,
-    createdAt: '2024-02-20T14:30:00Z',
-  },
-  {
-    id: '3',
-    sellerName: 'Giuseppe Rossi',
-    displayName: 'Giuseppe R.',
-    isActive: false,
-    meetingsCount: 5,
-    createdAt: '2024-03-10T09:15:00Z',
-  },
-];
 
 export default function ClientHumanSellersList() {
   const [, setLocation] = useLocation();
@@ -74,11 +49,16 @@ export default function ClientHumanSellersList() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedSeller, setSelectedSeller] = useState<HumanSeller | null>(null);
 
-  const { data: sellers = [], isLoading } = useQuery<HumanSeller[]>({
+  const { data: sellers = [], isLoading, refetch } = useQuery<HumanSeller[]>({
     queryKey: ['/api/client/human-sellers'],
     queryFn: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      return mockHumanSellers;
+      const res = await fetch('/api/client/human-sellers', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!res.ok) throw new Error('Errore nel caricamento');
+      return res.json();
     },
   });
 
@@ -87,22 +67,54 @@ export default function ClientHumanSellersList() {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedSeller) {
-      toast({
-        title: '✅ Venditore eliminato',
-        description: `Il venditore "${selectedSeller.sellerName}" è stato eliminato con successo`,
-      });
+      try {
+        const res = await fetch(`/api/client/human-sellers/${selectedSeller.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+        if (!res.ok) throw new Error('Errore eliminazione');
+        toast({
+          title: '✅ Venditore eliminato',
+          description: `Il venditore "${selectedSeller.sellerName}" è stato eliminato con successo`,
+        });
+        refetch();
+      } catch (error) {
+        toast({
+          title: '❌ Errore',
+          description: 'Impossibile eliminare il venditore',
+          variant: 'destructive',
+        });
+      }
       setDeleteDialogOpen(false);
       setSelectedSeller(null);
     }
   };
 
-  const handleToggleActive = (seller: HumanSeller) => {
-    toast({
-      title: '✅ Stato aggiornato',
-      description: `Lo stato del venditore è stato ${seller.isActive ? 'disattivato' : 'attivato'}`,
-    });
+  const handleToggleActive = async (seller: HumanSeller) => {
+    try {
+      const res = await fetch(`/api/client/human-sellers/${seller.id}/toggle`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!res.ok) throw new Error('Errore toggle');
+      toast({
+        title: '✅ Stato aggiornato',
+        description: `Lo stato del venditore è stato ${seller.isActive ? 'disattivato' : 'attivato'}`,
+      });
+      refetch();
+    } catch (error) {
+      toast({
+        title: '❌ Errore',
+        description: 'Impossibile aggiornare lo stato',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (

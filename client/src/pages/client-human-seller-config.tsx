@@ -40,33 +40,6 @@ interface HumanSeller {
   createdAt: string;
 }
 
-const mockHumanSellers: Record<string, HumanSeller> = {
-  '1': {
-    id: '1',
-    sellerName: 'Marco Bianchi',
-    displayName: 'Marco B.',
-    description: 'Esperto in vendite B2B con oltre 10 anni di esperienza nel settore.',
-    isActive: true,
-    createdAt: '2024-01-15T10:00:00Z',
-  },
-  '2': {
-    id: '2',
-    sellerName: 'Laura Verdi',
-    displayName: 'Laura V.',
-    description: 'Specializzata in consulenze strategiche e negoziazioni complesse.',
-    isActive: true,
-    createdAt: '2024-02-20T14:30:00Z',
-  },
-  '3': {
-    id: '3',
-    sellerName: 'Giuseppe Rossi',
-    displayName: 'Giuseppe R.',
-    description: null,
-    isActive: false,
-    createdAt: '2024-03-10T09:15:00Z',
-  },
-};
-
 export default function ClientHumanSellerConfig() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
@@ -91,35 +64,74 @@ export default function ClientHumanSellerConfig() {
   useEffect(() => {
     if (!isNew && id) {
       setIsLoading(true);
-      setTimeout(() => {
-        const seller = mockHumanSellers[id];
-        if (seller) {
+      fetch(`/api/client/human-sellers/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Venditore non trovato');
+          return res.json();
+        })
+        .then((seller: HumanSeller) => {
           form.reset({
             sellerName: seller.sellerName,
             displayName: seller.displayName,
             description: seller.description || '',
             isActive: seller.isActive,
           });
-        }
-        setIsLoading(false);
-      }, 500);
+        })
+        .catch(err => {
+          toast({
+            title: '❌ Errore',
+            description: err.message,
+            variant: 'destructive',
+          });
+          setLocation('/client/human-sellers');
+        })
+        .finally(() => setIsLoading(false));
     }
   }, [id, isNew, form]);
 
   const onSubmit = async (data: HumanSellerFormData) => {
     setIsSaving(true);
     
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    
-    toast({
-      title: isNew ? '✅ Venditore creato!' : '✅ Venditore aggiornato!',
-      description: isNew
-        ? `Il venditore "${data.sellerName}" è stato creato con successo`
-        : `Le modifiche a "${data.sellerName}" sono state salvate`,
-    });
-    
-    setIsSaving(false);
-    setLocation('/client/human-sellers');
+    try {
+      const url = isNew 
+        ? '/api/client/human-sellers'
+        : `/api/client/human-sellers/${id}`;
+      
+      const res = await fetch(url, {
+        method: isNew ? 'POST' : 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Errore nel salvataggio');
+      }
+      
+      toast({
+        title: isNew ? '✅ Venditore creato!' : '✅ Venditore aggiornato!',
+        description: isNew
+          ? `Il venditore "${data.sellerName}" è stato creato con successo`
+          : `Le modifiche a "${data.sellerName}" sono state salvate`,
+      });
+      
+      setLocation('/client/human-sellers');
+    } catch (error: any) {
+      toast({
+        title: '❌ Errore',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {

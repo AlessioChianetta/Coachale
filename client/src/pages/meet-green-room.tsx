@@ -55,14 +55,35 @@ export default function MeetGreenRoom() {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
+  const [meetingInfo, setMeetingInfo] = useState<{
+    prospectName: string;
+    scheduledAt: string | null;
+    status: string;
+    seller: { displayName: string; description: string | null } | null;
+  } | null>(null);
+
   useEffect(() => {
     const validateToken = async () => {
       setIsValidatingToken(true);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setIsTokenValid(true);
-      setIsValidatingToken(false);
+      try {
+        const res = await fetch(`/api/meet/${token}`);
+        if (!res.ok) {
+          setIsTokenValid(false);
+          return;
+        }
+        const data = await res.json();
+        setMeetingInfo(data);
+        setIsTokenValid(true);
+      } catch (error) {
+        console.error('[MeetGreenRoom] Token validation error:', error);
+        setIsTokenValid(false);
+      } finally {
+        setIsValidatingToken(false);
+      }
     };
-    validateToken();
+    if (token) {
+      validateToken();
+    }
   }, [token]);
 
   const enumerateDevices = useCallback(async () => {
