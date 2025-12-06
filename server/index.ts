@@ -13,6 +13,7 @@ import { startTrainingAggregator } from "./jobs/training-summary-aggregator";
 import { verifyEncryptionConfig } from "./encryption";
 import { setupWebSocketTest } from "./test-websocket";
 import { setupGeminiLiveWSService } from "./ai/gemini-live-ws-service";
+import { setupVideoCopilotWebSocket } from "./websocket/video-ai-copilot";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -93,6 +94,9 @@ app.use((req, res, next) => {
 
   // Setup Gemini Live API WebSocket server
   setupGeminiLiveWSService(server);
+
+  // Setup Video AI Copilot WebSocket server for video calls
+  setupVideoCopilotWebSocket(server);
 
   // Enhanced database error handling middleware
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {

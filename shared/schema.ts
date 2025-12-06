@@ -3999,3 +3999,96 @@ export const aiTrainingSessions = pgTable("ai_training_sessions", {
 
 export type AITrainingSession = typeof aiTrainingSessions.$inferSelect;
 export type InsertAITrainingSession = typeof aiTrainingSessions.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Human Sellers - Venditori umani con AI Copilot per video call
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const humanSellers = pgTable("human_sellers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  sellerName: text("seller_name").notNull(),
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type HumanSeller = typeof humanSellers.$inferSelect;
+export type InsertHumanSeller = typeof humanSellers.$inferInsert;
+
+export const insertHumanSellerSchema = createInsertSchema(humanSellers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Video Meetings - Meeting video programmati
+export const videoMeetings = pgTable("video_meetings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sellerId: varchar("seller_id").references(() => humanSellers.id, { onDelete: "cascade" }).notNull(),
+  meetingToken: varchar("meeting_token").unique().notNull(),
+  playbookId: varchar("playbook_id"),
+  prospectName: text("prospect_name").notNull(),
+  prospectEmail: text("prospect_email"),
+  scheduledAt: timestamp("scheduled_at"),
+  startedAt: timestamp("started_at"),
+  endedAt: timestamp("ended_at"),
+  status: text("status").default("scheduled").$type<"scheduled" | "in_progress" | "completed" | "cancelled">(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type VideoMeeting = typeof videoMeetings.$inferSelect;
+export type InsertVideoMeeting = typeof videoMeetings.$inferInsert;
+
+export const insertVideoMeetingSchema = createInsertSchema(videoMeetings).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Video Meeting Participants - Partecipanti ai meeting
+export const videoMeetingParticipants = pgTable("video_meeting_participants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  meetingId: varchar("meeting_id").references(() => videoMeetings.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  role: text("role").notNull().$type<"host" | "guest" | "prospect">(),
+  joinedAt: timestamp("joined_at"),
+  leftAt: timestamp("left_at"),
+});
+
+export type VideoMeetingParticipant = typeof videoMeetingParticipants.$inferSelect;
+export type InsertVideoMeetingParticipant = typeof videoMeetingParticipants.$inferInsert;
+
+// Video Meeting Transcripts - Trascrizioni con speaker
+export const videoMeetingTranscripts = pgTable("video_meeting_transcripts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  meetingId: varchar("meeting_id").references(() => videoMeetings.id, { onDelete: "cascade" }).notNull(),
+  speakerId: varchar("speaker_id"),
+  speakerName: text("speaker_name"),
+  text: text("text").notNull(),
+  timestampMs: integer("timestamp_ms"),
+  sentiment: text("sentiment").$type<"positive" | "neutral" | "negative">(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type VideoMeetingTranscript = typeof videoMeetingTranscripts.$inferSelect;
+export type InsertVideoMeetingTranscript = typeof videoMeetingTranscripts.$inferInsert;
+
+// Video Meeting Analytics - Metriche per meeting
+export const videoMeetingAnalytics = pgTable("video_meeting_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  meetingId: varchar("meeting_id").references(() => videoMeetings.id, { onDelete: "cascade" }).notNull(),
+  durationSeconds: integer("duration_seconds"),
+  talkRatio: real("talk_ratio"),
+  scriptAdherence: real("script_adherence"),
+  avgSentimentScore: real("avg_sentiment_score"),
+  objectionsCount: integer("objections_count"),
+  objectionsHandled: integer("objections_handled"),
+  aiSummary: text("ai_summary"),
+  actionItems: jsonb("action_items").$type<Array<{ text: string; completed: boolean }>>(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type VideoMeetingAnalytic = typeof videoMeetingAnalytics.$inferSelect;
+export type InsertVideoMeetingAnalytic = typeof videoMeetingAnalytics.$inferInsert;

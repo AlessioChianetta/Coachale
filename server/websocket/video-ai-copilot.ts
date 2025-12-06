@@ -1,0 +1,699 @@
+import { WebSocketServer, WebSocket } from 'ws';
+import { Server } from 'http';
+import jwt from 'jsonwebtoken';
+import { db } from '../db';
+import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts } from '@shared/schema';
+import { eq, and } from 'drizzle-orm';
+import { getAIProvider } from '../ai/provider-factory';
+import { convertWebMToPCM, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+interface Participant {
+  id: string;
+  name: string;
+  role: 'host' | 'guest' | 'prospect';
+  isSpeaking?: boolean;
+}
+
+interface Playbook {
+  id: string;
+  name: string;
+  phases: Array<{
+    name: string;
+    objectives: string[];
+    keyPoints: string[];
+    questions: string[];
+  }>;
+  objections: Array<{
+    trigger: string;
+    response: string;
+    category: string;
+  }>;
+}
+
+interface SessionState {
+  meetingId: string;
+  clientId: string;
+  consultantId: string | null;
+  sellerId: string | null;
+  participants: Map<string, Participant>;
+  playbook: Playbook | null;
+  currentPhaseIndex: number;
+  transcriptBuffer: Array<{
+    speakerId: string;
+    speakerName: string;
+    text: string;
+    timestamp: number;
+    sentiment: 'positive' | 'neutral' | 'negative';
+  }>;
+  lastAnalysisTime: number;
+  totalTranscriptText: string;
+}
+
+interface IncomingMessage {
+  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'end_session';
+  data?: string;
+  speakerId?: string;
+  speakerName?: string;
+  playbook?: Playbook;
+  playbookId?: string;
+  participants?: Participant[];
+}
+
+interface OutgoingMessage {
+  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended';
+  data: any;
+  timestamp: number;
+}
+
+const activeSessions = new Map<string, SessionState>();
+const ANALYSIS_THROTTLE_MS = 3000;
+
+async function authenticateConnection(req: any): Promise<{
+  meetingId: string;
+  clientId: string;
+  consultantId: string | null;
+  sellerId: string | null;
+} | null> {
+  try {
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    const token = url.searchParams.get('token');
+    const meetingToken = url.searchParams.get('meetingToken');
+
+    if (!token || !meetingToken) {
+      console.error('❌ [VideoCopilot] Missing token or meetingToken');
+      return null;
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    if (!decoded.userId) {
+      console.error('❌ [VideoCopilot] Invalid JWT - no userId');
+      return null;
+    }
+
+    const [meeting] = await db
+      .select()
+      .from(videoMeetings)
+      .where(eq(videoMeetings.meetingToken, meetingToken))
+      .limit(1);
+
+    if (!meeting) {
+      console.error(`❌ [VideoCopilot] Meeting not found: ${meetingToken}`);
+      return null;
+    }
+
+    let consultantId: string | null = null;
+    if (meeting.sellerId) {
+      const [seller] = await db
+        .select()
+        .from(humanSellers)
+        .where(eq(humanSellers.id, meeting.sellerId))
+        .limit(1);
+      
+      if (seller?.clientId) {
+        consultantId = seller.clientId;
+      }
+    }
+
+    return {
+      meetingId: meeting.id,
+      clientId: decoded.userId,
+      consultantId,
+      sellerId: meeting.sellerId,
+    };
+  } catch (error: any) {
+    console.error('❌ [VideoCopilot] Auth error:', error.message);
+    return null;
+  }
+}
+
+function sendMessage(ws: WebSocket, message: OutgoingMessage) {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(message));
+  }
+}
+
+async function transcribeAudio(
+  session: SessionState,
+  audioBase64: string,
+  speakerId: string,
+  speakerName: string
+): Promise<string | null> {
+  try {
+    const audioBuffer = base64ToBuffer(audioBase64);
+    let pcmBuffer: Buffer;
+    
+    try {
+      pcmBuffer = await convertWebMToPCM(audioBuffer);
+    } catch (conversionError) {
+      pcmBuffer = audioBuffer;
+    }
+
+    const aiProvider = await getAIProvider(
+      session.clientId,
+      session.consultantId || undefined
+    );
+
+    const prompt = `Transcribe the following audio to Italian text. Return ONLY the transcribed text, nothing else. If you cannot understand the audio or it's silent, return an empty string.
+
+Context: This is from a sales video call. The speaker is ${speakerName}.`;
+
+    const audioForAI = bufferToBase64(pcmBuffer);
+
+    const response = await aiProvider.client.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { text: prompt },
+            { text: `[Audio data: ${audioForAI.substring(0, 100)}... (${audioForAI.length} chars)]` }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 500,
+      }
+    });
+
+    const transcript = response.response.text().trim();
+    
+    if (transcript && transcript.length > 0) {
+      await db.insert(videoMeetingTranscripts).values({
+        meetingId: session.meetingId,
+        speakerId,
+        speakerName,
+        text: transcript,
+        timestampMs: Date.now(),
+        sentiment: 'neutral',
+      });
+    }
+
+    if (aiProvider.cleanup) {
+      await aiProvider.cleanup();
+    }
+
+    return transcript || null;
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Transcription error:`, error.message);
+    return null;
+  }
+}
+
+async function analyzeSentiment(
+  session: SessionState,
+  text: string,
+  speakerId: string
+): Promise<'positive' | 'neutral' | 'negative'> {
+  try {
+    const aiProvider = await getAIProvider(
+      session.clientId,
+      session.consultantId || undefined
+    );
+
+    const response = await aiProvider.client.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: `Analyze the sentiment of this sales conversation text and respond with ONLY one word: "positive", "neutral", or "negative".
+
+Text: "${text}"
+
+Consider:
+- Positive: enthusiasm, agreement, interest, excitement
+- Negative: skepticism, objections, frustration, disinterest
+- Neutral: factual statements, questions, acknowledgments
+
+Response (one word only):`
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 10,
+      }
+    });
+
+    const result = response.response.text().toLowerCase().trim();
+    
+    if (aiProvider.cleanup) {
+      await aiProvider.cleanup();
+    }
+
+    if (result.includes('positive')) return 'positive';
+    if (result.includes('negative')) return 'negative';
+    return 'neutral';
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Sentiment analysis error:`, error.message);
+    return 'neutral';
+  }
+}
+
+async function generateSuggestion(
+  session: SessionState,
+  recentTranscript: string
+): Promise<string | null> {
+  if (!session.playbook) return null;
+
+  try {
+    const currentPhase = session.playbook.phases[session.currentPhaseIndex];
+    
+    const aiProvider = await getAIProvider(
+      session.clientId,
+      session.consultantId || undefined
+    );
+
+    const prompt = `You are an AI sales copilot helping a salesperson during a live video call.
+
+CURRENT PLAYBOOK PHASE: ${currentPhase?.name || 'General'}
+PHASE OBJECTIVES: ${currentPhase?.objectives?.join(', ') || 'Build rapport'}
+KEY POINTS TO COVER: ${currentPhase?.keyPoints?.join(', ') || 'N/A'}
+SUGGESTED QUESTIONS: ${currentPhase?.questions?.join(', ') || 'N/A'}
+
+RECENT CONVERSATION:
+${recentTranscript}
+
+Based on the conversation, provide ONE brief, actionable suggestion for the salesperson.
+Keep it under 50 words. Be specific and practical.
+Format: Just the suggestion text, no prefixes.`;
+
+    const response = await aiProvider.client.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 100,
+      }
+    });
+
+    if (aiProvider.cleanup) {
+      await aiProvider.cleanup();
+    }
+
+    return response.response.text().trim();
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Suggestion generation error:`, error.message);
+    return null;
+  }
+}
+
+async function detectObjectionAndGenerateBattleCard(
+  session: SessionState,
+  text: string
+): Promise<{ detected: boolean; objection?: string; response?: string; category?: string } | null> {
+  if (!session.playbook?.objections?.length) return null;
+
+  try {
+    const objectionsList = session.playbook.objections
+      .map((o, i) => `${i + 1}. Trigger: "${o.trigger}" | Category: ${o.category}`)
+      .join('\n');
+
+    const aiProvider = await getAIProvider(
+      session.clientId,
+      session.consultantId || undefined
+    );
+
+    const prompt = `Analyze if the following prospect statement contains an objection from our list.
+
+PROSPECT STATEMENT: "${text}"
+
+KNOWN OBJECTIONS:
+${objectionsList}
+
+If an objection is detected, respond with JSON:
+{"detected": true, "objectionIndex": <number>}
+
+If no objection detected, respond with:
+{"detected": false}
+
+Response (JSON only):`;
+
+    const response = await aiProvider.client.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 50,
+      }
+    });
+
+    const result = response.response.text().trim();
+    
+    if (aiProvider.cleanup) {
+      await aiProvider.cleanup();
+    }
+
+    try {
+      const parsed = JSON.parse(result.replace(/```json\n?|\n?```/g, ''));
+      if (parsed.detected && typeof parsed.objectionIndex === 'number') {
+        const objection = session.playbook.objections[parsed.objectionIndex - 1];
+        if (objection) {
+          return {
+            detected: true,
+            objection: objection.trigger,
+            response: objection.response,
+            category: objection.category,
+          };
+        }
+      }
+      return { detected: false };
+    } catch {
+      return { detected: false };
+    }
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Battle card detection error:`, error.message);
+    return null;
+  }
+}
+
+function calculateScriptProgress(session: SessionState): {
+  currentPhase: number;
+  totalPhases: number;
+  phaseName: string;
+  completionPercentage: number;
+} {
+  if (!session.playbook) {
+    return {
+      currentPhase: 0,
+      totalPhases: 0,
+      phaseName: 'No playbook loaded',
+      completionPercentage: 0,
+    };
+  }
+
+  const totalPhases = session.playbook.phases.length;
+  const currentPhase = session.currentPhaseIndex + 1;
+  const phaseName = session.playbook.phases[session.currentPhaseIndex]?.name || 'Unknown';
+  const completionPercentage = Math.round((currentPhase / totalPhases) * 100);
+
+  return {
+    currentPhase,
+    totalPhases,
+    phaseName,
+    completionPercentage,
+  };
+}
+
+async function handleAudioChunk(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage
+) {
+  if (!message.data || !message.speakerId) {
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Missing audio data or speakerId' },
+      timestamp: Date.now(),
+    });
+    return;
+  }
+
+  const speakerName = message.speakerName || 
+    session.participants.get(message.speakerId)?.name || 
+    'Unknown Speaker';
+
+  const transcript = await transcribeAudio(
+    session,
+    message.data,
+    message.speakerId,
+    speakerName
+  );
+
+  if (transcript) {
+    session.totalTranscriptText += ` ${transcript}`;
+    
+    sendMessage(ws, {
+      type: 'transcript',
+      data: {
+        speakerId: message.speakerId,
+        speakerName,
+        text: transcript,
+      },
+      timestamp: Date.now(),
+    });
+
+    const sentiment = await analyzeSentiment(session, transcript, message.speakerId);
+    
+    session.transcriptBuffer.push({
+      speakerId: message.speakerId,
+      speakerName,
+      text: transcript,
+      timestamp: Date.now(),
+      sentiment,
+    });
+
+    sendMessage(ws, {
+      type: 'sentiment',
+      data: {
+        speakerId: message.speakerId,
+        speakerName,
+        sentiment,
+      },
+      timestamp: Date.now(),
+    });
+
+    const participant = session.participants.get(message.speakerId);
+    if (participant?.role === 'prospect') {
+      const battleCard = await detectObjectionAndGenerateBattleCard(session, transcript);
+      if (battleCard?.detected) {
+        sendMessage(ws, {
+          type: 'battle_card',
+          data: battleCard,
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    const now = Date.now();
+    if (now - session.lastAnalysisTime > ANALYSIS_THROTTLE_MS) {
+      session.lastAnalysisTime = now;
+      
+      const recentTranscripts = session.transcriptBuffer
+        .slice(-10)
+        .map(t => `${t.speakerName}: ${t.text}`)
+        .join('\n');
+      
+      const suggestion = await generateSuggestion(session, recentTranscripts);
+      if (suggestion) {
+        sendMessage(ws, {
+          type: 'suggestion',
+          data: { text: suggestion },
+          timestamp: Date.now(),
+        });
+      }
+
+      sendMessage(ws, {
+        type: 'script_progress',
+        data: calculateScriptProgress(session),
+        timestamp: Date.now(),
+      });
+    }
+  }
+}
+
+async function handleSetPlaybook(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage
+) {
+  if (message.playbook) {
+    session.playbook = message.playbook;
+    session.currentPhaseIndex = 0;
+    
+    sendMessage(ws, {
+      type: 'script_progress',
+      data: calculateScriptProgress(session),
+      timestamp: Date.now(),
+    });
+    
+    console.log(`📘 [VideoCopilot] Playbook set: ${message.playbook.name}`);
+  } else if (message.playbookId) {
+    try {
+      const [script] = await db
+        .select()
+        .from(salesScripts)
+        .where(eq(salesScripts.id, message.playbookId))
+        .limit(1);
+
+      if (script) {
+        const content = script.content as any;
+        session.playbook = {
+          id: script.id,
+          name: script.name,
+          phases: content?.phases || [],
+          objections: content?.objections || [],
+        };
+        session.currentPhaseIndex = 0;
+        
+        sendMessage(ws, {
+          type: 'script_progress',
+          data: calculateScriptProgress(session),
+          timestamp: Date.now(),
+        });
+        
+        console.log(`📘 [VideoCopilot] Playbook loaded from DB: ${script.name}`);
+      } else {
+        sendMessage(ws, {
+          type: 'error',
+          data: { message: 'Playbook not found' },
+          timestamp: Date.now(),
+        });
+      }
+    } catch (error: any) {
+      console.error(`❌ [VideoCopilot] Error loading playbook:`, error.message);
+      sendMessage(ws, {
+        type: 'error',
+        data: { message: 'Failed to load playbook' },
+        timestamp: Date.now(),
+      });
+    }
+  }
+}
+
+function handleParticipantUpdate(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage
+) {
+  if (message.participants) {
+    session.participants.clear();
+    for (const p of message.participants) {
+      session.participants.set(p.id, p);
+    }
+    console.log(`👥 [VideoCopilot] Participants updated: ${message.participants.length} participants`);
+  }
+}
+
+async function handleEndSession(
+  ws: WebSocket,
+  session: SessionState
+) {
+  console.log(`🔚 [VideoCopilot] Session ending for meeting ${session.meetingId}`);
+  
+  await db
+    .update(videoMeetings)
+    .set({
+      endedAt: new Date(),
+      status: 'completed',
+    })
+    .where(eq(videoMeetings.id, session.meetingId));
+
+  activeSessions.delete(session.meetingId);
+  
+  sendMessage(ws, {
+    type: 'session_ended',
+    data: {
+      meetingId: session.meetingId,
+      transcriptCount: session.transcriptBuffer.length,
+    },
+    timestamp: Date.now(),
+  });
+}
+
+export function setupVideoCopilotWebSocket(server: Server) {
+  console.log('🎥 Setting up Video AI Copilot WebSocket server...');
+  
+  const wss = new WebSocketServer({
+    server,
+    path: '/ws/video-copilot',
+  });
+
+  wss.on('error', (error) => {
+    console.error('❌ [VideoCopilot] WebSocket server error:', error);
+  });
+
+  wss.on('connection', async (ws, req) => {
+    const connectionId = Math.random().toString(36).substring(7);
+    console.log(`🎥 [${connectionId}] Client connected to Video AI Copilot`);
+
+    const authResult = await authenticateConnection(req);
+    if (!authResult) {
+      console.error(`❌ [${connectionId}] Authentication failed`);
+      ws.close(4401, 'Unauthorized');
+      return;
+    }
+
+    const { meetingId, clientId, consultantId, sellerId } = authResult;
+
+    let session = activeSessions.get(meetingId);
+    if (!session) {
+      session = {
+        meetingId,
+        clientId,
+        consultantId,
+        sellerId,
+        participants: new Map(),
+        playbook: null,
+        currentPhaseIndex: 0,
+        transcriptBuffer: [],
+        lastAnalysisTime: 0,
+        totalTranscriptText: '',
+      };
+      activeSessions.set(meetingId, session);
+    }
+
+    await db
+      .update(videoMeetings)
+      .set({
+        startedAt: new Date(),
+        status: 'in_progress',
+      })
+      .where(eq(videoMeetings.id, meetingId));
+
+    sendMessage(ws, {
+      type: 'connected',
+      data: {
+        meetingId,
+        message: 'Video AI Copilot connected successfully',
+      },
+      timestamp: Date.now(),
+    });
+
+    ws.on('message', async (rawData) => {
+      try {
+        const message: IncomingMessage = JSON.parse(rawData.toString());
+
+        switch (message.type) {
+          case 'audio_chunk':
+            await handleAudioChunk(ws, session!, message);
+            break;
+          case 'set_playbook':
+            await handleSetPlaybook(ws, session!, message);
+            break;
+          case 'participant_update':
+            handleParticipantUpdate(ws, session!, message);
+            break;
+          case 'end_session':
+            await handleEndSession(ws, session!);
+            ws.close(1000, 'Session ended');
+            break;
+          default:
+            console.warn(`⚠️ [VideoCopilot] Unknown message type: ${(message as any).type}`);
+        }
+      } catch (error: any) {
+        console.error(`❌ [VideoCopilot] Message handling error:`, error.message);
+        sendMessage(ws, {
+          type: 'error',
+          data: { message: 'Failed to process message' },
+          timestamp: Date.now(),
+        });
+      }
+    });
+
+    ws.on('close', (code, reason) => {
+      console.log(`🔌 [${connectionId}] Client disconnected: ${code} - ${reason}`);
+    });
+
+    ws.on('error', (error) => {
+      console.error(`❌ [${connectionId}] WebSocket error:`, error);
+    });
+  });
+
+  console.log('✅ Video AI Copilot WebSocket server ready on /ws/video-copilot');
+}

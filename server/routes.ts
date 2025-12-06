@@ -87,6 +87,7 @@ import trainingAssistantRouter from "./routes/training-assistant";
 import salesScriptsRouter from "./routes/sales-scripts";
 import scriptBuilderRouter from "./routes/script-builder";
 import aiTrainerRouter from "./routes/ai-trainer";
+import humanSellersRouter, { publicMeetRouter } from "./routes/human-sellers";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
 import { handleWebhook } from "./whatsapp/webhook-handler";
 import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
@@ -6627,6 +6628,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Script Builder routes (visual script construction)
   app.use("/api/script-builder", authenticateToken, scriptBuilderRouter);
+
+  // Human Sellers & Video Meetings routes
+  app.use("/api/client/human-sellers", humanSellersRouter);
+  
+  // Public Meeting Access routes (unauthenticated for green room)
+  app.use("/api/meet", publicMeetRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
