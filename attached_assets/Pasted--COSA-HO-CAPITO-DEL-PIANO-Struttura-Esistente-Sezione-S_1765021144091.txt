@@ -1,0 +1,81 @@
+🎯 COSA HO CAPITO DEL PIANO
+Struttura Esistente
+Sezione "Sales Agents AI" in /client/sales-agents già presente nella sidebar
+Tabella clientSalesAgents per agenti AI (text/voice con Gemini)
+Tabella clientSalesConversations con fasi (discovery → demo → objections → closing)
+Tabella consultationInvites per link di invito stile Google Meet
+Analytics esistenti: training summary, phase flow, objection handling, ladder analytics
+Cosa Vuoi Creare
+Una piattaforma video-vendita ibrida dove:
+
+Tipo	Agenti AI (Esistenti)	Venditori Umani (NUOVO)
+Interfaccia	Chat vocale/testuale Gemini	Video Call WebRTC + AI Copilot
+Partecipanti	1 prospect ↔ AI	Fino a 10 partecipanti + Manager Shadow
+AI	È il venditore	Assiste il venditore (HUD invisibile)
+Features	Script phases, discovery, demo	Real-time STT, Battle Cards, Sentiment Overlay
+Integrazione Richiesta
+Suddividere la sezione "I Miei Agenti" in:
+📱 Agenti AI (funzionalità esistente)
+🎥 Venditori Umani (nuova funzionalità video)
+Riutilizzare analytics esistenti (KPI, conversion rate, objection tracking)
+Aggiungere analytics video specifiche (Talk/Listen ratio, Script adherence, Sentiment timeline)
+📋 PIANO COMPLETO ELABORATO
+FASE 1: FRONTEND (Prima)
+1.1 Ristrutturazione Navigazione "I Miei Agenti"
+
+Modificare sidebar per mostrare 2 sottocategorie:
+"Agenti AI" → pagine esistenti
+"Venditori Umani" → nuove pagine video
+Creare landing page /client/sales-agents con tabs AI/Umano
+1.2 Modulo PRE-CALL (Booking & Accesso)
+
+Pagina /client/human-sellers - Lista venditori umani
+Pagina /client/human-sellers/new - Creazione nuovo venditore
+Componente disponibilità oraria (calendario)
+Generazione link univoci video meeting
+Selezione Playbook/Script per meeting specifico
+Green Room (test audio/video) per guest senza login
+1.3 Modulo DURING-CALL (Video Room)
+
+Componente VideoRoom.tsx stile Google Meet (griglia responsive)
+Floating HUD Draggable (visibile SOLO al venditore):
+Real-time Script Checklist con spunta automatica
+Battle Cards dinamiche con "Presenta Ora"
+Suggerimenti AI in tempo reale (< 2 sec latency)
+Sentiment Overlay sopra ogni partecipante (bordo colorato)
+Shadow Mode per Manager (invisibile, può inviare messaggi priority)
+Controlli video/audio/screen share
+1.4 Modulo POST-CALL (Analytics)
+
+Riutilizzare componenti analytics esistenti (LadderAnalyticsTab, PhaseFlowTab, ecc.)
+Nuova tab "Video Analytics" con:
+Video Replay con trascrizione sincronizzata
+Timeline interattiva sentiment (click → jump to moment)
+KPI specifici video: Talk/Listen ratio, velocità eloquio, script adherence %
+FASE 2: BACKEND (Dopo)
+2.1 Nuove Tabelle Database (SQL Diretto)
+
+human_sellers - Venditori umani (analogo a clientSalesAgents)
+video_meetings - Meeting video programmati con Playbook
+video_meeting_participants - Partecipanti (host, guest, shadow)
+video_meeting_transcripts - Trascrizioni con speaker diarization
+video_meeting_analytics - Metriche specifiche video call
+playbooks - Script/Playbook per meeting
+battle_cards - Cards per obiezioni
+2.2 API Endpoints
+
+CRUD venditori umani
+Generazione token LiveKit/WebRTC
+WebSocket per AI suggestions real-time
+Endpoint trascrizione audio → STT (Deepgram/OpenAI)
+Webhook CRM export (HubSpot/Salesforce)
+2.3 AI Pipeline
+
+Audio Stream → STT Service → LLM Context Analysis → Update UI
+Speaker Diarization per distinguere chi parla
+Sentiment Analysis in tempo reale
+Script matching automatico
+2.4 Privacy & Compliance
+
+Banner consenso AI all'ingresso
+PII Redaction automatico (carte credito, dati sensibili)
