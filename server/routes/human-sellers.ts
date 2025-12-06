@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { db } from '../db';
-import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts } from '@shared/schema';
+import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics } from '@shared/schema';
 import { eq, and, desc, asc } from 'drizzle-orm';
 import { AuthRequest, authenticateToken, requireRole } from '../middleware/auth';
 import { nanoid } from 'nanoid';
@@ -60,6 +60,45 @@ router.get('/scripts', authenticateToken, requireClient, async (req: AuthRequest
   } catch (error: any) {
     console.error('[Scripts] GET client scripts error:', error);
     res.status(500).json({ error: 'Errore nel recupero degli scripts' });
+  }
+});
+
+router.get('/analytics/:meetingId', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { meetingId } = req.params;
+    
+    const [meeting] = await db
+      .select({
+        meeting: videoMeetings,
+        seller: humanSellers,
+      })
+      .from(videoMeetings)
+      .innerJoin(humanSellers, eq(videoMeetings.sellerId, humanSellers.id))
+      .where(and(
+        eq(videoMeetings.id, meetingId),
+        eq(humanSellers.clientId, clientId)
+      ));
+    
+    if (!meeting) {
+      return res.status(404).json({ error: 'Meeting non trovato' });
+    }
+    
+    const [analytics] = await db
+      .select()
+      .from(videoMeetingAnalytics)
+      .where(eq(videoMeetingAnalytics.meetingId, meetingId));
+    
+    res.json({
+      meetingId,
+      prospectName: meeting.meeting.prospectName,
+      scheduledAt: meeting.meeting.scheduledAt,
+      status: meeting.meeting.status,
+      analytics: analytics || null,
+    });
+  } catch (error: any) {
+    console.error('[Analytics] GET meeting analytics error:', error);
+    res.status(500).json({ error: 'Errore nel recupero delle analytics' });
   }
 });
 
