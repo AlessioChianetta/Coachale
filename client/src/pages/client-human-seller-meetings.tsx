@@ -149,7 +149,7 @@ export default function ClientHumanSellerMeetings() {
 
   const getMeetingUrl = (meetingToken: string) => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/meeting/${meetingToken}`;
+    return `${baseUrl}/meet/${meetingToken}`;
   };
 
   const copyToClipboard = (text: string, meetingId: string) => {
