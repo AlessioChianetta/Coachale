@@ -2585,10 +2585,9 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
             proactivity: {
               proactive_audio: true
             },
-            // 💚 AFFECTIVE DIALOG: Understand user's tone and emotional expressions
-            // Gemini adapts responses based on detected emotions in voice
-            // WARNING: May produce unexpected results in some cases
-            enable_affective_dialog: true,
+            // 💚 NOTE: enable_affective_dialog is NOT supported by gemini-live-2.5-flash-preview-native-audio models
+            // Error: "Unknown name 'enable_affective_dialog' at 'setup': Cannot find field"
+            // Affective dialog may be built-in for native audio models without explicit config
             // Enable session resumption for unlimited session duration
             // CRITICAL: Always pass { handle: value } - null for new sessions, token for resuming
             session_resumption: { handle: validatedResumeHandle || null },

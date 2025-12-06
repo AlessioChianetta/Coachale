@@ -1,0 +1,56 @@
+Importante: Affective Dialog può produrre risultati imprevisti.
+Quando Dialogo affettivo è attivato, il modello tenta di comprendere e rispondere in base al tono di voce e alle espressioni emotive dell'utente.
+
+Per attivare la funzionalità di dialogo affettivo, imposta enable_affective_dialog su true nel messaggio di configurazione:
+
+Python
+
+
+config = LiveConnectConfig(
+    response_modalities=["AUDIO"],
+    enable_affective_dialog=True,
+)
+  
+Configurare l'audio proattivo
+L'audio proattivo ti consente di controllare quando il modello risponde. Ad esempio, puoi chiedere a Gemini di rispondere solo quando richiesto o quando vengono trattati argomenti specifici. Per vedere una dimostrazione video di Proactive Audio, guarda Anteprima audio nativa dell'API Gemini Live.
+
+Per attivare l'audio proattivo, configura il campo proactivity nel messaggio di configurazione e imposta proactive_audio su true:
+
+Python
+
+
+config = LiveConnectConfig(
+    response_modalities=["AUDIO"],
+    proactivity=ProactivityConfig(proactive_audio=True),
+)
+  
+Esempio di conversazione
+
+Di seguito è riportato un esempio di conversazione con Gemini sulla cucina:
+
+
+
+Prompt: "You are an AI assistant in Italian cooking; only chime in when the topic is about Italian cooking."
+
+Speaker A: "I really love cooking!" (No response from Gemini.)
+
+Speaker B: "Oh yes, me too! My favorite is French cuisine." (No response from
+Gemini.)
+
+Speaker A: "I really like Italian food; do you know how to make a pizza?"
+
+(Italian cooking topic will trigger response from Gemini.)
+Live API: "I'd be happy to help! Here's a recipe for a pizza."
+Casi d'uso comuni
+Quando utilizzi l'audio proattivo, Gemini si comporta nel seguente modo:
+
+Risponde con una latenza minima: Gemini risponde dopo che l'utente ha finito di parlare, riducendo le interruzioni e aiutando Gemini a non perdere il contesto in caso di interruzione.
+Evita interruzioni: Proactive Audio aiuta Gemini a evitare interruzioni dovute a rumori di sottofondo o chiacchiere esterne e impedisce a Gemini di rispondere se vengono introdotte chiacchiere esterne durante una conversazione.
+Gestisce le interruzioni: se l'utente deve interrompere la risposta di Gemini, Proactive Audio consente a Gemini di gestire in modo appropriato il canale secondario (ovvero le interruzioni appropriate), anziché se l'utente utilizza parole di riempimento come ehm o uhm.
+Ascolto congiunto dell'audio: Gemini può ascoltare congiuntamente un file audio che non è la voce dell'oratore e rispondere successivamente alle domande sul file audio nel corso della conversazione.
+Fatturazione
+Mentre Gemini ascolta una conversazione, verranno addebitati i token audio di input.
+
+Per i token audio di output, l'addebito viene effettuato solo quando Gemini risponde. Se Gemini non risponde o rimane in silenzio, non verranno addebitati token audio di output.
+
+Per saperne di più, consulta la pagina Prezzi di Vertex AI.
