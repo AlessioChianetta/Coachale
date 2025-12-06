@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,7 +17,17 @@ import {
   Link2,
   Menu,
   Loader2,
+  List,
+  CalendarDays,
 } from 'lucide-react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import type { EventInput, EventClickArg } from '@fullcalendar/core';
+import '@fullcalendar/core/index.css';
+import '@fullcalendar/daygrid/index.css';
+import '@fullcalendar/timegrid/index.css';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -81,6 +91,7 @@ export default function ClientHumanSellerMeetings() {
   const [selectedMeeting, setSelectedMeeting] = useState<VideoMeeting | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   const [formData, setFormData] = useState({
     prospectName: '',
@@ -297,6 +308,57 @@ export default function ClientHumanSellerMeetings() {
     };
   };
 
+  const getStatusColor = (status: VideoMeeting['status']) => {
+    switch (status) {
+      case 'scheduled':
+        return '#3b82f6';
+      case 'active':
+      case 'in_progress':
+        return '#22c55e';
+      case 'completed':
+        return '#6b7280';
+      case 'cancelled':
+        return '#ef4444';
+      default:
+        return '#8b5cf6';
+    }
+  };
+
+  const calendarEvents: EventInput[] = useMemo(() => {
+    return meetings.map((meeting) => {
+      const startDate = new Date(meeting.scheduledAt);
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+      return {
+        id: meeting.id,
+        title: meeting.prospectName,
+        start: startDate,
+        end: endDate,
+        backgroundColor: getStatusColor(meeting.status),
+        borderColor: getStatusColor(meeting.status),
+        extendedProps: {
+          meeting,
+        },
+      };
+    });
+  }, [meetings]);
+
+  const handleEventClick = (clickInfo: EventClickArg) => {
+    const meeting = clickInfo.event.extendedProps.meeting as VideoMeeting;
+    if (meeting.status === 'completed') {
+      toast({
+        title: '📊 Analytics',
+        description: 'Funzionalità analytics in arrivo...',
+      });
+    } else if (meeting.status === 'cancelled') {
+      toast({
+        title: 'Meeting cancellato',
+        description: 'Questo meeting è stato cancellato',
+      });
+    } else {
+      window.open(getMeetingUrl(meeting.meetingToken), '_blank');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
       <div className="flex h-screen">
@@ -332,14 +394,36 @@ export default function ClientHumanSellerMeetings() {
                     Gestisci i tuoi incontri video con i prospect
                   </p>
                 </div>
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
-                  onClick={openCreateDialog}
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Nuovo Meeting
-                </Button>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                    <Button
+                      size="sm"
+                      variant={viewMode === 'list' ? 'default' : 'ghost'}
+                      onClick={() => setViewMode('list')}
+                      className={`gap-1.5 ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
+                    >
+                      <List className="h-4 w-4" />
+                      Lista
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                      onClick={() => setViewMode('calendar')}
+                      className={`gap-1.5 ${viewMode === 'calendar' ? 'bg-white dark:bg-gray-700 shadow-sm' : ''}`}
+                    >
+                      <CalendarDays className="h-4 w-4" />
+                      Calendario
+                    </Button>
+                  </div>
+                  <Button
+                    size="lg"
+                    className="bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
+                    onClick={openCreateDialog}
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Nuovo Meeting
+                  </Button>
+                </div>
               </div>
             </motion.div>
 
@@ -372,6 +456,72 @@ export default function ClientHumanSellerMeetings() {
                       <Plus className="h-5 w-5 mr-2" />
                       Crea Primo Meeting
                     </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ) : viewMode === 'calendar' ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="mb-4 flex flex-wrap gap-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-blue-500" />
+                        <span className="text-gray-600 dark:text-gray-400">Programmato</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-green-500" />
+                        <span className="text-gray-600 dark:text-gray-400">In Corso</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-gray-500" />
+                        <span className="text-gray-600 dark:text-gray-400">Completato</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500" />
+                        <span className="text-gray-600 dark:text-gray-400">Cancellato</span>
+                      </div>
+                    </div>
+                    <div className="fc-custom-styles">
+                      <FullCalendar
+                        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                        initialView="timeGridWeek"
+                        headerToolbar={{
+                          left: 'prev,next today',
+                          center: 'title',
+                          right: 'dayGridMonth,timeGridWeek,timeGridDay',
+                        }}
+                        locale="it"
+                        events={calendarEvents}
+                        eventClick={handleEventClick}
+                        height="auto"
+                        slotMinTime="07:00:00"
+                        slotMaxTime="21:00:00"
+                        allDaySlot={false}
+                        nowIndicator={true}
+                        eventDisplay="block"
+                        eventTimeFormat={{
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          meridiem: false,
+                          hour12: false,
+                        }}
+                        slotLabelFormat={{
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          meridiem: false,
+                          hour12: false,
+                        }}
+                        buttonText={{
+                          today: 'Oggi',
+                          month: 'Mese',
+                          week: 'Settimana',
+                          day: 'Giorno',
+                        }}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
