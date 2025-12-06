@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Video,
   Plus,
@@ -15,6 +16,7 @@ import {
   Check,
   Link2,
   Menu,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,11 +57,11 @@ interface VideoMeeting {
   sellerId: string;
   meetingToken: string;
   prospectName: string;
-  prospectEmail?: string;
-  scriptId?: string;
-  scriptName?: string;
+  prospectEmail?: string | null;
+  playbookId?: string | null;
+  scriptName?: string | null;
   scheduledAt: string;
-  status: 'scheduled' | 'active' | 'completed';
+  status: 'scheduled' | 'active' | 'completed' | 'in_progress' | 'cancelled';
   createdAt: string;
 }
 
@@ -68,70 +70,12 @@ interface Script {
   name: string;
 }
 
-const mockScripts: Script[] = [
-  { id: '1', name: 'Discovery Call B2B' },
-  { id: '2', name: 'Demo Prodotto SaaS' },
-  { id: '3', name: 'Consulenza Iniziale' },
-  { id: '4', name: 'Follow-up Proposta' },
-  { id: '5', name: 'Chiusura Vendita' },
-];
-
-const mockMeetings: VideoMeeting[] = [
-  {
-    id: '1',
-    sellerId: 'seller-1',
-    meetingToken: 'meet-abc123',
-    prospectName: 'Marco Rossi',
-    prospectEmail: 'marco.rossi@example.com',
-    scriptId: '1',
-    scriptName: 'Discovery Call B2B',
-    scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-    status: 'scheduled',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    sellerId: 'seller-1',
-    meetingToken: 'meet-def456',
-    prospectName: 'Laura Bianchi',
-    prospectEmail: 'laura.bianchi@company.it',
-    scriptId: '2',
-    scriptName: 'Demo Prodotto SaaS',
-    scheduledAt: new Date().toISOString(),
-    status: 'active',
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '3',
-    sellerId: 'seller-1',
-    meetingToken: 'meet-ghi789',
-    prospectName: 'Giuseppe Verdi',
-    scriptId: '3',
-    scriptName: 'Consulenza Iniziale',
-    scheduledAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'completed',
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: '4',
-    sellerId: 'seller-1',
-    meetingToken: 'meet-jkl012',
-    prospectName: 'Anna Ferrari',
-    prospectEmail: 'anna.ferrari@startup.io',
-    scriptId: '5',
-    scriptName: 'Chiusura Vendita',
-    scheduledAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'completed',
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 export default function ClientHumanSellerMeetings() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [meetings, setMeetings] = useState<VideoMeeting[]>(mockMeetings);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<VideoMeeting | null>(null);
@@ -145,6 +89,103 @@ export default function ClientHumanSellerMeetings() {
     startTime: '',
     endTime: '',
     scriptId: '',
+  });
+
+  const { data: meetings = [], isLoading: meetingsLoading } = useQuery<VideoMeeting[]>({
+    queryKey: ['/api/client/human-sellers/meetings'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/client/human-sellers/meetings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch meetings');
+      return res.json();
+    }
+  });
+
+  const { data: scripts = [] } = useQuery<Script[]>({
+    queryKey: ['/api/client/human-sellers/scripts'],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/client/human-sellers/scripts', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to fetch scripts');
+      return res.json();
+    }
+  });
+
+  const createMeetingMutation = useMutation({
+    mutationFn: async (data: { prospectName: string; prospectEmail?: string; scheduledAt: string; scriptId?: string }) => {
+      const token = localStorage.getItem('token');
+      const sellersRes = await fetch('/api/client/human-sellers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const sellers = await sellersRes.json();
+      if (!sellers || sellers.length === 0) {
+        throw new Error('Nessun venditore configurato. Crea prima un venditore.');
+      }
+      const sellerId = sellers[0].id;
+      
+      const res = await fetch(`/api/client/human-sellers/${sellerId}/meetings`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prospectName: data.prospectName,
+          prospectEmail: data.prospectEmail,
+          scheduledAt: data.scheduledAt,
+          playbookId: data.scriptId || null
+        })
+      });
+      if (!res.ok) throw new Error('Failed to create meeting');
+      return res.json();
+    },
+    onSuccess: (newMeeting) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/client/human-sellers/meetings'] });
+      setGeneratedLink(getMeetingUrl(newMeeting.meetingToken));
+      toast({
+        title: '✅ Meeting creato!',
+        description: 'Il meeting è stato creato con successo',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: '❌ Errore',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  });
+
+  const deleteMeetingMutation = useMutation({
+    mutationFn: async (meetingId: string) => {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/client/human-sellers/meetings/${meetingId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to delete meeting');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/client/human-sellers/meetings'] });
+      toast({
+        title: '✅ Meeting eliminato',
+        description: 'Il meeting è stato eliminato con successo',
+      });
+      setDeleteDialogOpen(false);
+      setSelectedMeeting(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: '❌ Errore',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
   });
 
   const getMeetingUrl = (meetingToken: string) => {
@@ -169,13 +210,7 @@ export default function ClientHumanSellerMeetings() {
 
   const confirmDelete = () => {
     if (selectedMeeting) {
-      setMeetings(meetings.filter(m => m.id !== selectedMeeting.id));
-      toast({
-        title: '✅ Meeting eliminato',
-        description: 'Il meeting è stato eliminato con successo',
-      });
-      setDeleteDialogOpen(false);
-      setSelectedMeeting(null);
+      deleteMeetingMutation.mutate(selectedMeeting.id);
     }
   };
 
@@ -188,27 +223,12 @@ export default function ClientHumanSellerMeetings() {
       });
       return;
     }
-
-    const selectedScript = mockScripts.find(s => s.id === formData.scriptId);
-    const newMeeting: VideoMeeting = {
-      id: `meeting-${Date.now()}`,
-      sellerId: 'seller-current',
-      meetingToken: `meet-${Math.random().toString(36).substring(2, 10)}`,
+    
+    createMeetingMutation.mutate({
       prospectName: formData.prospectName,
       prospectEmail: formData.prospectEmail || undefined,
-      scriptId: formData.scriptId || undefined,
-      scriptName: selectedScript?.name,
       scheduledAt: new Date(`${formData.scheduledDate}T${formData.startTime}`).toISOString(),
-      status: 'scheduled',
-      createdAt: new Date().toISOString(),
-    };
-
-    setMeetings([newMeeting, ...meetings]);
-    setGeneratedLink(getMeetingUrl(newMeeting.meetingToken));
-    
-    toast({
-      title: '✅ Meeting creato!',
-      description: 'Il meeting è stato creato con successo',
+      scriptId: formData.scriptId || undefined
     });
   };
 
@@ -239,6 +259,7 @@ export default function ClientHumanSellerMeetings() {
           </Badge>
         );
       case 'active':
+      case 'in_progress':
         return (
           <Badge className="bg-green-500 hover:bg-green-600 animate-pulse">
             <Play className="h-3 w-3 mr-1" />
@@ -252,10 +273,23 @@ export default function ClientHumanSellerMeetings() {
             Completato
           </Badge>
         );
+      case 'cancelled':
+        return (
+          <Badge variant="secondary" className="bg-red-500 text-white">
+            Cancellato
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary">
+            {status}
+          </Badge>
+        );
     }
   };
 
-  const formatDateTime = (isoString: string) => {
+  const formatDateTime = (isoString: string | null) => {
+    if (!isoString) return { date: 'N/A', time: '' };
     const date = new Date(isoString);
     return {
       date: date.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
@@ -309,7 +343,12 @@ export default function ClientHumanSellerMeetings() {
               </div>
             </motion.div>
 
-            {meetings.length === 0 ? (
+            {meetingsLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                <span className="ml-3 text-gray-600 dark:text-gray-400">Caricamento meetings...</span>
+              </div>
+            ) : meetings.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -351,7 +390,7 @@ export default function ClientHumanSellerMeetings() {
                         <CardContent className="p-6 flex flex-col h-full">
                           <div className="flex items-start justify-between mb-4">
                             <div className={`w-14 h-14 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform ${
-                              meeting.status === 'active' 
+                              meeting.status === 'active' || meeting.status === 'in_progress'
                                 ? 'bg-gradient-to-br from-green-500 to-emerald-500' 
                                 : meeting.status === 'completed'
                                 ? 'bg-gradient-to-br from-gray-400 to-gray-500'
@@ -378,10 +417,12 @@ export default function ClientHumanSellerMeetings() {
                               <Calendar className="h-4 w-4" />
                               {date}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-4 w-4" />
-                              {time}
-                            </span>
+                            {time && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {time}
+                              </span>
+                            )}
                           </div>
 
                           {meeting.scriptName && (
@@ -422,7 +463,7 @@ export default function ClientHumanSellerMeetings() {
                           <div className="grid grid-cols-3 gap-2">
                             <Button
                               size="sm"
-                              variant={meeting.status === 'active' ? 'default' : 'outline'}
+                              variant={meeting.status === 'active' || meeting.status === 'in_progress' ? 'default' : 'outline'}
                               onClick={() => {
                                 if (meeting.status === 'completed') {
                                   toast({
@@ -433,11 +474,11 @@ export default function ClientHumanSellerMeetings() {
                                   window.open(getMeetingUrl(meeting.meetingToken), '_blank');
                                 }
                               }}
-                              className={`text-xs ${meeting.status === 'active' ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                              disabled={meeting.status === 'completed'}
+                              className={`text-xs ${meeting.status === 'active' || meeting.status === 'in_progress' ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                              disabled={meeting.status === 'completed' || meeting.status === 'cancelled'}
                             >
                               <Play className="h-3 w-3 mr-1" />
-                              {meeting.status === 'active' ? 'Entra' : 'Avvia'}
+                              {meeting.status === 'active' || meeting.status === 'in_progress' ? 'Entra' : 'Avvia'}
                             </Button>
                             <Button
                               size="sm"
@@ -595,7 +636,7 @@ export default function ClientHumanSellerMeetings() {
                       <SelectValue placeholder="Seleziona uno script..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockScripts.map((script) => (
+                      {scripts.map((script) => (
                         <SelectItem key={script.id} value={script.id}>
                           {script.name}
                         </SelectItem>
@@ -611,9 +652,14 @@ export default function ClientHumanSellerMeetings() {
                 </Button>
                 <Button
                   onClick={handleCreateMeeting}
+                  disabled={createMeetingMutation.isPending}
                   className="bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
                 >
-                  <Plus className="h-4 w-4 mr-1" />
+                  {createMeetingMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-1" />
+                  )}
                   Crea Meeting
                 </Button>
               </DialogFooter>
@@ -636,8 +682,9 @@ export default function ClientHumanSellerMeetings() {
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-red-600 hover:bg-red-700"
+              disabled={deleteMeetingMutation.isPending}
             >
-              Elimina
+              {deleteMeetingMutation.isPending ? 'Eliminazione...' : 'Elimina'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,13 +1,67 @@
 import { Router, Response } from 'express';
 import { db } from '../db';
-import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts } from '@shared/schema';
+import { eq, and, desc, asc } from 'drizzle-orm';
 import { AuthRequest, authenticateToken, requireRole } from '../middleware/auth';
 import { nanoid } from 'nanoid';
 
 const router = Router();
 
 const requireClient = requireRole('client');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGGREGATED ENDPOINTS (for client dashboard)
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get('/meetings', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    
+    const meetings = await db
+      .select({
+        id: videoMeetings.id,
+        sellerId: videoMeetings.sellerId,
+        meetingToken: videoMeetings.meetingToken,
+        prospectName: videoMeetings.prospectName,
+        prospectEmail: videoMeetings.prospectEmail,
+        playbookId: videoMeetings.playbookId,
+        scheduledAt: videoMeetings.scheduledAt,
+        status: videoMeetings.status,
+        createdAt: videoMeetings.createdAt,
+        scriptName: salesScripts.name,
+      })
+      .from(videoMeetings)
+      .innerJoin(humanSellers, eq(videoMeetings.sellerId, humanSellers.id))
+      .leftJoin(salesScripts, eq(videoMeetings.playbookId, salesScripts.id))
+      .where(eq(humanSellers.clientId, clientId))
+      .orderBy(desc(videoMeetings.scheduledAt));
+    
+    res.json(meetings);
+  } catch (error: any) {
+    console.error('[VideoMeetings] GET all client meetings error:', error);
+    res.status(500).json({ error: 'Errore nel recupero dei meetings' });
+  }
+});
+
+router.get('/scripts', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    
+    const scripts = await db
+      .select({
+        id: salesScripts.id,
+        name: salesScripts.name,
+      })
+      .from(salesScripts)
+      .where(eq(salesScripts.clientId, clientId))
+      .orderBy(asc(salesScripts.name));
+    
+    res.json(scripts);
+  } catch (error: any) {
+    console.error('[Scripts] GET client scripts error:', error);
+    res.status(500).json({ error: 'Errore nel recupero degli scripts' });
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HUMAN SELLERS CRUD
