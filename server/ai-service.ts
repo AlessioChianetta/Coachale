@@ -1094,26 +1094,22 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
         return false;
       });
 
-      // Determine scraping limit based on specificity
-      // 1 esercizio specifico = NO LIMIT (tutto il contenuto)
-      // 2-3 esercizi = 10k per esercizio
-      // Generico = 3k per esercizio
-      let contentLimit = 3000; // Default per query generiche
+      // SEMPRE contenuto COMPLETO - nessun limite
+      // L'AI deve avere accesso a tutto il contenuto dei Google Docs degli esercizi
+      let contentLimit = Infinity; // NO LIMIT - sempre contenuto completo
 
       const exercisesToScrape = matchedExercises.length > 0
-        ? matchedExercises.slice(0, 3)
+        ? matchedExercises.slice(0, 5) // Aumentato da 3 a 5
         : userContext.exercises.all
             .filter(e => e.status === 'pending' || e.status === 'in_progress' || e.status === 'returned')
-            .slice(0, 2);
+            .slice(0, 5); // Aumentato da 2 a 5
 
       if (matchedExercises.length === 1) {
-        contentLimit = Infinity; // NO LIMIT per esercizio singolo specifico
-        console.log('✅ Single specific exercise detected - NO LIMIT (full content)');
+        console.log('✅ Single specific exercise detected - FULL CONTENT');
       } else if (matchedExercises.length >= 2) {
-        contentLimit = 10000; // 10k per esercizi multipli specifici
-        console.log(`📊 ${matchedExercises.length} specific exercises detected - 10k char limit each`);
+        console.log(`📊 ${matchedExercises.length} specific exercises detected - FULL CONTENT each`);
       } else {
-        console.log('📋 Generic exercise query - 3k char limit');
+        console.log('📋 Generic exercise query - FULL CONTENT (no limits)');
       }
 
       if (exercisesToScrape.length > 0) {
