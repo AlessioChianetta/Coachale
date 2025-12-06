@@ -478,23 +478,13 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   });
 
   try {
-    // Smart exercise scraping: detect if user is asking about specific exercise(s)
+    // SEMPRE carica contenuto esercizi - l'AI deve avere accesso COMPLETO ai Google Docs
     let enhancedMessage = message;
     const messageLower = message.toLowerCase();
 
-    // Keywords that indicate user wants to analyze/review an exercise
-    const exerciseAnalysisKeywords = [
-        'analizza', 'analizzare', 'rivedi', 'rivedere', 'controlla', 'controllare',
-        'esercizio', 'come ho fatto', 'come l\'ho fatto', 'punteggio', 'feedback',
-        'revisiona', 'revisionare', 'valuta', 'valutare', 'spiega', 'spiegare'
-    ];
-
-    const isAskingAboutExercise = exerciseAnalysisKeywords.some(keyword =>
-      messageLower.includes(keyword)
-    );
-
-    if (isAskingAboutExercise && userContext.exercises.all.length > 0) {
-      console.log('User is asking about exercise(s), attempting smart scraping with cache...');
+    // SEMPRE carica esercizi se ce ne sono (rimossa condizione parole chiave)
+    if (userContext.exercises.all.length > 0) {
+      console.log('📚 ALWAYS loading exercise content - AI must have FULL Google Docs access...');
 
       // Try to find which exercise(s) the user is referring to
       const matchedExercises = userContext.exercises.all.filter(exercise => {
@@ -1064,19 +1054,9 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     // Update conversational context
     updateConversationalContext(conversation.id, mentionedExerciseIds, modificationHintDetected);
 
-    // Keywords that indicate user wants to analyze/review an exercise
-    const exerciseAnalysisKeywords = [
-        'analizza', 'analizzare', 'rivedi', 'rivedere', 'controlla', 'controllare',
-        'esercizio', 'come ho fatto', 'come l\'ho fatto', 'punteggio', 'feedback',
-        'revisiona', 'revisionare', 'valuta', 'valutare', 'spiega', 'spiegare'
-    ];
-
-    const isAskingAboutExercise = exerciseAnalysisKeywords.some(keyword =>
-      messageLower.includes(keyword)
-    );
-
-    if (isAskingAboutExercise && userContext.exercises.all.length > 0) {
-      console.log('User is asking about exercise(s), attempting smart scraping with cache...');
+    // SEMPRE carica esercizi se ce ne sono (rimossa condizione parole chiave)
+    if (userContext.exercises.all.length > 0) {
+      console.log('📚 ALWAYS loading exercise content - AI must have FULL Google Docs access...');
 
       // Try to find which exercise(s) the user is referring to
       const matchedExercises = userContext.exercises.all.filter(exercise => {
