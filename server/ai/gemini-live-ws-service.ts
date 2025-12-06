@@ -2575,26 +2575,22 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 silence_duration_ms: 700       // 700ms silence = end of utterance (faster than 1000ms but still complete phrases)
               }
             },
-            // 🔊 PROACTIVE AUDIO: Gemini decides when to respond - ignores background noise & chatter
-            // Documentation: https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash-live-api
-            // Key benefits:
-            // - Responds ONLY when directly addressed (reduces false triggers)
-            // - Ignores background conversations and ambient noise
-            // - Handles interruptions gracefully (ehm, uhm, backchannels)
-            // - Minimizes latency by responding after user finishes speaking
-            proactivity: {
-              proactive_audio: true
-            },
+            // 🔊 PROACTIVE AUDIO: DISABLED - may not be supported by gemini-live-2.5-flash-preview-native-audio
+            // Error: "Invalid frame header" - testing if this parameter causes the issue
+            // proactivity: {
+            //   proactive_audio: true
+            // },
             // 💚 NOTE: enable_affective_dialog is NOT supported by gemini-live-2.5-flash-preview-native-audio models
             // Error: "Unknown name 'enable_affective_dialog' at 'setup': Cannot find field"
             // Affective dialog may be built-in for native audio models without explicit config
             // Enable session resumption for unlimited session duration
             // CRITICAL: Always pass { handle: value } - null for new sessions, token for resuming
-            session_resumption: { handle: validatedResumeHandle || null },
-            // Enable context window compression for unlimited conversation length
-            context_window_compression: {
-              sliding_window: {}
-            }
+            session_resumption: { handle: validatedResumeHandle || null }
+            // 📦 CONTEXT WINDOW COMPRESSION: DISABLED - may not be supported by gemini-live-2.5-flash-preview-native-audio
+            // Error: "Invalid frame header" - testing if this parameter causes the issue
+            // context_window_compression: {
+            //   sliding_window: {}
+            // }
           }
         };
         
