@@ -4837,6 +4837,23 @@ ${compactFeedback}
         
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         
+        // 🚨 RESOURCE_EXHAUSTED: Propagate to client to stop reconnect loop
+        if (reasonText.includes('RESOURCE_EXHAUSTED')) {
+          console.log(`🚨 [${connectionId}] RESOURCE_EXHAUSTED detected - notifying client to stop reconnecting`);
+          try {
+            clientWs.send(JSON.stringify({
+              type: 'error',
+              errorType: 'RESOURCE_EXHAUSTED',
+              message: 'Troppe sessioni attive. Aspetta qualche minuto e riprova.',
+              details: reasonText
+            }));
+            // Close with specific code that client can detect
+            clientWs.close(4429, 'RESOURCE_EXHAUSTED');
+          } catch (e) {
+            // Client may already be closed
+          }
+        }
+        
         // ⏱️  CLEANUP: Stop time update interval
         if (timeUpdateInterval) {
           clearInterval(timeUpdateInterval);

@@ -806,13 +806,32 @@ export function LiveModeScreen({ mode, consultantType, customPrompt, useFullProm
         // Gemini error codes handling (1xxx standard + 44xx app specific)
         const is44xxCode = event.code >= 4400 && event.code < 4500;
 
+        // 🚨 RESOURCE_EXHAUSTED: Don't reconnect - too many concurrent sessions
+        const isResourceExhausted = event.code === 4429 || event.reason?.includes('RESOURCE_EXHAUSTED');
+        if (isResourceExhausted) {
+          console.log(`\n${'='.repeat(70)}`);
+          console.log(`🚨 [RESOURCE_EXHAUSTED] Troppe sessioni attive su Gemini`);
+          console.log(`${'='.repeat(70)}`);
+          console.log(`   → Non riconnetto automaticamente`);
+          console.log(`   → Aspetta qualche minuto e riprova manualmente`);
+          setConnectionStatus('error');
+          stopConversationTimer();
+          toast({
+            variant: 'destructive',
+            title: 'Troppe sessioni attive',
+            description: 'Aspetta qualche minuto e riprova. Le sessioni precedenti devono scadere.',
+            duration: 10000,
+          });
+          return; // Don't reconnect
+        }
+
         const isRecoverableClose = 
           event.code === 1001 ||  // Going Away (normal timeout)
           event.code === 1006 ||  // Abnormal Closure (network)
           event.code === 1011 ||  // Internal Error
           event.code === 1012 ||  // Service Restart
           event.code === 1013 ||  // Try Again Later
-          is44xxCode;             // All 44xx application errors (transient)
+          (is44xxCode && event.code !== 4429);  // All 44xx except RESOURCE_EXHAUSTED
 
         const shouldReconnect = isRecoverableClose && 
                                 isSessionActiveRef.current && 
