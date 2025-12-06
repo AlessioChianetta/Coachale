@@ -2546,11 +2546,8 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               top_k: 40,
               max_output_tokens: 8192  // Permetti risposte più lunghe per monologhi/spiegazioni dettagliate
             },
-            // 🧠 THINKING: Enable reasoning for better responses (TOP-LEVEL inside setup)
-            // thinking_budget = 0 disables, 256 = moderate reasoning depth
-            thinking_config: {
-              thinking_budget: 256
-            },
+            // 🧠 NOTE: thinking_config is NOT supported by gemini-live-2.5-flash-preview-native-audio models
+            // It was causing "Unknown name 'thinking_config'" errors - removed for compatibility
             input_audio_transcription: {},
             output_audio_transcription: {},
             // Conditionally include system_instruction ONLY on new sessions
