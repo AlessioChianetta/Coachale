@@ -1,0 +1,37 @@
+Panoramica dell'API Live
+
+bookmark_border
+L'API Live consente interazioni vocali e video in tempo reale a bassa latenza con Gemini. Elabora flussi continui di audio, video o testo per fornire risposte immediate e simili a quelle umane. In questo modo, gli utenti possono usufruire di un'esperienza di conversazione naturale.
+
+
+
+Funzionalità principali
+L'API Live offre un insieme completo di funzionalità per la creazione di agenti vocali robusti:
+
+Audio nativo: Fornisce una voce naturale e realistica e un miglioramento delle prestazioni multilingue.
+Supporto multilingue: comunica in 24 lingue supportate.
+Rilevamento dell'attività vocale (VAD): gestisce automaticamente le interruzioni e l'alternanza dei turni.
+Dialogo affettivo: Adatta lo stile e il tono della risposta in base all'espressione dell'input dell'utente.
+Audio proattivo: ti consente di controllare quando e in quali contesti il modello risponde.
+Pensiero: Utilizza token di ragionamento nascosti per "pensare" prima di parlare per query complesse.
+Utilizzo dello strumento: Integra strumenti come la chiamata di funzioni e la Ricerca Google per interazioni dinamiche.
+Trascrizioni audio: Fornisce trascrizioni di testo sia dell'input utente sia dell'output del modello.
+Traduzione speech-to-speech: ottimizzata per la traduzione a bassa latenza tra le lingue.
+Specifiche tecniche
+La seguente tabella descrive le specifiche tecniche dell'API Live:
+
+Categoria	Dettagli
+Modalità di input	Audio (PCM 16 kHz), video (1 FPS), testo
+Modalità di output	Audio (PCM 24 kHz), testo
+Protocollo	Connessione WebSocket con stato (WSS)
+Latenza	Streaming in tempo reale per un feedback immediato
+Modelli supportati
+I seguenti modelli supportano l'API Live. Seleziona il modello appropriato in base ai tuoi requisiti di interazione.
+
+ID modello	Disponibilità	Caso d'uso	Funzionalità principali
+gemini-live-2.5-flash-preview-native-audio-09-2025	Anteprima pubblica	Efficienza dei costi negli agenti vocali in tempo reale.	Audio nativo
+Trascrizioni audio
+Rilevamento dell'attività vocale
+Dialogo affettivo
+Audio proattivo
+Utilizzo degli strumenti
