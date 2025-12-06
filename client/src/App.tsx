@@ -81,12 +81,18 @@ const PublicAgentShare = lazy(() => import("@/pages/public-agent-share"));
 const RealtimeTest = lazy(() => import("@/pages/realtime-test"));
 const ClientSalesAgentsList = lazy(() => import("@/pages/client-sales-agents-list"));
 const ClientSalesAgentConfig = lazy(() => import("@/pages/client-sales-agent-config"));
+const ClientHumanSellersList = lazy(() => import("@/pages/client-human-sellers-list"));
+const ClientHumanSellerConfig = lazy(() => import("@/pages/client-human-seller-config"));
+const ClientHumanSellerMeetings = lazy(() => import("@/pages/client-human-seller-meetings"));
+const ClientHumanSellerAnalytics = lazy(() => import("@/pages/client-human-seller-analytics"));
 const ClientSalesAgentAnalytics = lazy(() => import("@/pages/client-sales-agent-analytics"));
 const ClientScriptManager = lazy(() => import("@/pages/client-script-manager"));
 const ScriptBuilder = lazy(() => import("@/pages/script-builder"));
 const PublicSalesAgentLanding = lazy(() => import("@/pages/public-sales-agent-landing"));
 const ConsultationInviteLobby = lazy(() => import("@/pages/consultation-invite-lobby"));
 const ConsultationLobby = lazy(() => import("@/pages/consultation-lobby"));
+const MeetGreenRoom = lazy(() => import("@/pages/meet-green-room"));
+const MeetVideoRoom = lazy(() => import("@/pages/meet-video-room"));
 const ClientVertexAIAnalytics = lazy(() => import("./pages/client-vertex-ai-analytics"));
 const TrainingMapPage = lazy(() => import("@/pages/training-map"));
 
@@ -119,6 +125,12 @@ function Router() {
 
         {/* Public Consultation Invite Lobby - no auth required */}
         <Route path="/invite/:token" component={ConsultationInviteLobby} />
+
+        {/* Public Meet Green Room - no auth required */}
+        <Route path="/meet/:token" component={MeetGreenRoom} />
+        
+        {/* Public Video Room - no auth required */}
+        <Route path="/meet/:token/room" component={MeetVideoRoom} />
 
         {/* Realtime test - WebSocket vs SSE */}
         <Route path="/realtime-test" component={RealtimeTest} />
@@ -463,6 +475,30 @@ function Router() {
         </AuthGuard>
       </Route>
 
+      <Route path="/client/human-sellers">
+        <AuthGuard requiredRole="client">
+          <ClientHumanSellersList />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/client/human-sellers/meetings">
+        <AuthGuard requiredRole="client">
+          <ClientHumanSellerMeetings />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/client/human-sellers/analytics">
+        <AuthGuard requiredRole="client">
+          <ClientHumanSellerAnalytics />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/client/human-sellers/:id">
+        <AuthGuard requiredRole="client">
+          <ClientHumanSellerConfig />
+        </AuthGuard>
+      </Route>
+
       <Route path="/client/sales-agents/:agentId/analytics">
         <AuthGuard requiredRole="client">
           <ClientSalesAgentAnalytics />
@@ -547,7 +583,7 @@ function Router() {
 function App() {
   const [location] = useLocation();
   const user = getAuthUser();
-  const isPublicRoute = location.startsWith('/share/') || location.startsWith('/s/') || location.startsWith('/live-consultation') || location === '/login' || location === '/register' || location === '/' || location === '/consulenti';
+  const isPublicRoute = location.startsWith('/share/') || location.startsWith('/s/') || location.startsWith('/meet/') || location.startsWith('/live-consultation') || location === '/login' || location === '/register' || location === '/' || location === '/consulenti';
 
   // Only track activity for authenticated users on non-public routes
   const { logPageView } = useActivityTracker({ disabled: !user || isPublicRoute });

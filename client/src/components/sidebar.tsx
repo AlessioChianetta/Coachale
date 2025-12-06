@@ -187,16 +187,28 @@ const clientItems: SidebarItemWithChildren[] = [
     ]
   },
   { 
-    name: "Sales Agents AI", 
+    name: "Agenti AI", 
     href: "/client/sales-agents", 
     icon: Bot, 
     color: "text-blue-600",
     children: [
-      { name: "I Miei Agenti", href: "/client/sales-agents", icon: Bot, color: "text-blue-600" },
-      { name: "Nuovo Agente", href: "/client/sales-agents/new", icon: UserPlus, color: "text-green-600" },
+      { name: "I Miei Agenti AI", href: "/client/sales-agents", icon: Bot, color: "text-blue-600" },
+      { name: "Nuovo Agente AI", href: "/client/sales-agents/new", icon: UserPlus, color: "text-green-600" },
       { name: "Script Manager", href: "/client/scripts", icon: FileText, color: "text-amber-600" },
       { name: "Live Consultation", href: "/live-consultation", icon: Video, color: "text-purple-600" },
-      { name: "Vertex AI Analytics", href: "/client/analytics/vertex-ai", icon: BarChart3, color: "text-indigo-600" },
+      { name: "AI Analytics", href: "/client/analytics/vertex-ai", icon: BarChart3, color: "text-indigo-600" },
+    ]
+  },
+  { 
+    name: "Venditori Umani", 
+    href: "/client/human-sellers", 
+    icon: Video, 
+    color: "text-purple-600",
+    children: [
+      { name: "I Miei Venditori", href: "/client/human-sellers", icon: Users, color: "text-purple-600" },
+      { name: "Nuovo Venditore", href: "/client/human-sellers/new", icon: UserPlus, color: "text-green-600" },
+      { name: "Video Meetings", href: "/client/human-sellers/meetings", icon: Video, color: "text-blue-600" },
+      { name: "Video Analytics", href: "/client/human-sellers/analytics", icon: BarChart3, color: "text-indigo-600" },
     ]
   },
   { 
