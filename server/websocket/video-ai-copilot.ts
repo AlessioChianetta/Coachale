@@ -75,6 +75,7 @@ async function authenticateConnection(req: any): Promise<{
   clientId: string;
   consultantId: string | null;
   sellerId: string | null;
+  playbookId: string | null;
 } | null> {
   try {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -121,6 +122,7 @@ async function authenticateConnection(req: any): Promise<{
       clientId: decoded.userId,
       consultantId,
       sellerId: meeting.sellerId,
+      playbookId: meeting.playbookId || null,
     };
   } catch (error: any) {
     console.error('❌ [VideoCopilot] Auth error:', error.message);
@@ -570,6 +572,52 @@ function handleParticipantUpdate(
   }
 }
 
+async function autoLoadPlaybook(
+  session: SessionState,
+  playbookId: string
+): Promise<Playbook | null> {
+  try {
+    const [script] = await db
+      .select()
+      .from(salesScripts)
+      .where(eq(salesScripts.id, playbookId))
+      .limit(1);
+
+    if (!script) {
+      console.warn(`⚠️ [VideoCopilot] Script not found for playbookId: ${playbookId}`);
+      return null;
+    }
+
+    const content = script.content as any;
+    
+    const playbook: Playbook = {
+      id: script.id,
+      name: script.name,
+      phases: content?.phases?.map((phase: any) => ({
+        name: phase.name || phase.title || 'Unnamed Phase',
+        objectives: phase.objectives || phase.goals || [],
+        keyPoints: phase.keyPoints || phase.key_points || phase.points || [],
+        questions: phase.questions || phase.suggestedQuestions || [],
+      })) || [],
+      objections: content?.objections?.map((obj: any) => ({
+        trigger: obj.trigger || obj.objection || obj.text || '',
+        response: obj.response || obj.answer || obj.rebuttal || '',
+        category: obj.category || obj.type || 'general',
+      })) || content?.battlecards?.map((bc: any) => ({
+        trigger: bc.trigger || bc.objection || bc.text || '',
+        response: bc.response || bc.answer || bc.rebuttal || '',
+        category: bc.category || bc.type || 'general',
+      })) || [],
+    };
+
+    console.log(`📘 [VideoCopilot] Auto-loaded playbook: ${script.name} (${playbook.phases.length} phases, ${playbook.objections.length} objections)`);
+    return playbook;
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Error auto-loading playbook:`, error.message);
+    return null;
+  }
+}
+
 async function handleEndSession(
   ws: WebSocket,
   session: SessionState
@@ -619,7 +667,7 @@ export function setupVideoCopilotWebSocket(server: Server) {
       return;
     }
 
-    const { meetingId, clientId, consultantId, sellerId } = authResult;
+    const { meetingId, clientId, consultantId, sellerId, playbookId } = authResult;
 
     let session = activeSessions.get(meetingId);
     if (!session) {
@@ -638,6 +686,14 @@ export function setupVideoCopilotWebSocket(server: Server) {
       activeSessions.set(meetingId, session);
     }
 
+    if (playbookId && !session.playbook) {
+      const loadedPlaybook = await autoLoadPlaybook(session, playbookId);
+      if (loadedPlaybook) {
+        session.playbook = loadedPlaybook;
+        session.currentPhaseIndex = 0;
+      }
+    }
+
     await db
       .update(videoMeetings)
       .set({
@@ -651,9 +707,18 @@ export function setupVideoCopilotWebSocket(server: Server) {
       data: {
         meetingId,
         message: 'Video AI Copilot connected successfully',
+        playbookLoaded: session.playbook ? session.playbook.name : null,
       },
       timestamp: Date.now(),
     });
+
+    if (session.playbook) {
+      sendMessage(ws, {
+        type: 'script_progress',
+        data: calculateScriptProgress(session),
+        timestamp: Date.now(),
+      });
+    }
 
     ws.on('message', async (rawData) => {
       try {
