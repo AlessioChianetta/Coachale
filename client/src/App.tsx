@@ -487,7 +487,7 @@ function Router() {
         </AuthGuard>
       </Route>
 
-      <Route path="/client/human-sellers/analytics">
+      <Route path="/client/human-sellers/:id/analytics">
         <AuthGuard requiredRole="client">
           <ClientHumanSellerAnalytics />
         </AuthGuard>
