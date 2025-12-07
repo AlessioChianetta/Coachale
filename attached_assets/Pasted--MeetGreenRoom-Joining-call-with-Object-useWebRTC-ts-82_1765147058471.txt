@@ -1,0 +1,139 @@
+[MeetGreenRoom] Joining call with: Object
+useWebRTC.ts:82 🌐 [WebRTC] Loading ICE servers for meeting Zxg6WQX9gIYsYC6b...
+useWebRTC.ts:802 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=false
+useWebRTC.ts:93 ✅ [WebRTC] Loaded 7 ICE servers (TURN: YES)
+useWebRTC.ts:802 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=true
+2ParticipantVideo.tsx:90 📭 [ParticipantVideo] No stream available for Alessio Chianetta
+useVideoCopilot.ts:323 🎥 WebSocket connected to Video Copilot
+useVideoCopilot.ts:126 ✅ Video Copilot connected: Object
+useWebRTC.ts:802 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=false, joined=false, ice=true
+useWebRTC.ts:297 📹 [WebRTC] Starting local stream (video: true, audio: true)
+useWebRTC.ts:317 📹 [WebRTC] Camera native resolution: 640x480 @ 29.970029830932617fps
+useWebRTC.ts:318 📹 [WebRTC] Camera device: DroidCam Source 3
+useWebRTC.ts:329 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:330 🎤 [WebRTC-AUDIO-DEBUG] STREAM LOCALE CREATO
+useWebRTC.ts:331 🎤 [WebRTC-AUDIO-DEBUG] Tracce audio: 1
+useWebRTC.ts:332 🎤 [WebRTC-AUDIO-DEBUG] Tracce video: 1
+useWebRTC.ts:334 🎤 [WebRTC-AUDIO-DEBUG] Audio track 0:
+useWebRTC.ts:335    - ID: db9a49b4-f48b-4d8a-adab-24bd6224e302
+useWebRTC.ts:336    - Label: Microphone (GameDAC Chat) (1038:1282)
+useWebRTC.ts:337    - Enabled: true
+useWebRTC.ts:338    - Muted: false
+useWebRTC.ts:339    - ReadyState: live
+useWebRTC.ts:341 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:366 ✅ [WebRTC] Local stream started with 2 tracks
+useWebRTC.ts:802 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=true, joined=false, ice=true
+useAudioLevelMonitor.ts:121 [AudioLevelMonitor] Started monitoring audio level
+useVideoCopilot.ts:216 ✅ Join confirmed, my participant ID: 8163011b-d2dd-4ad1-b5da-8a75a86abfa9
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Alessio Chianetta
+ParticipantVideo.tsx:48    - Stream ID: 31116018-408f-47d9-a79c-b9b084119bed
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:807 👥 [WebRTC] Checking 0 other participants for connections (my ID: 8163011b-d2dd-4ad1-b5da-8a75a86abfa9)
+useVideoCopilot.ts:262 📡 Participant socket ready: Alessio Chianetta (8163011b-d2dd-4ad1-b5da-8a75a86abfa9)
+useWebRTC.ts:626 📡 [WebRTC] Received own socket_ready, ignoring
+useWebRTC.ts:807 👥 [WebRTC] Checking 0 other participants for connections (my ID: 8163011b-d2dd-4ad1-b5da-8a75a86abfa9)
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Alessio Chianetta
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Alessio Chianetta
+ParticipantVideo.tsx:48    - Stream ID: 31116018-408f-47d9-a79c-b9b084119bed
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:807 👥 [WebRTC] Checking 1 other participants for connections (my ID: 8163011b-d2dd-4ad1-b5da-8a75a86abfa9)
+useWebRTC.ts:811 🔗 [WebRTC] No existing connection to e5a8bc8d-7ae4-4b82-92e3-f173d75df572, attempting to initiate...
+useWebRTC.ts:541 🔍 [WebRTC] Connection decision: myId=8163011b... vs remoteId=e5a8bc8d... → THEY INITIATE (lower ID)
+useWebRTC.ts:544 ⏭️ [WebRTC] Skipping connection initiation (waiting for e5a8bc8d... to initiate)
+useVideoCopilot.ts:262 📡 Participant socket ready: Dz HyperLoop (e5a8bc8d-7ae4-4b82-92e3-f173d75df572)
+useWebRTC.ts:666 📡 [WebRTC] Participant socket ready: e5a8bc8d..., initiating connection (attempt 1)...
+useWebRTC.ts:541 🔍 [WebRTC] Connection decision: myId=8163011b... vs remoteId=e5a8bc8d... → THEY INITIATE (lower ID)
+useWebRTC.ts:544 ⏭️ [WebRTC] Skipping connection initiation (waiting for e5a8bc8d... to initiate)
+useWebRTC.ts:705 ⏰ [WebRTC] Setting up both-try fallback for e5a8bc8d... in 8000ms
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Alessio Chianetta
+ParticipantVideo.tsx:90 📭 [ParticipantVideo] No stream available for Dz HyperLoop
+useWebRTC.ts:408 📥 [WebRTC] Received offer from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:137 🔗 [WebRTC] Creating peer connection for e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:138 🔗 [WebRTC] Using ICE config with 7 servers
+useWebRTC.ts:286 ➕ [WebRTC] Adding local track audio to connection with e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:286 ➕ [WebRTC] Adding local track video to connection with e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:156 📹 [WebRTC] Received remote track from e5a8bc8d-7ae4-4b82-92e3-f173d75df572 (audio)
+useWebRTC.ts:194 🎤 [WebRTC-AUDIO-DEBUG] Received AUDIO track from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:195    - Track ID: b202354e-5d4e-42d6-a4f0-8cd147172436
+useWebRTC.ts:196    - Track enabled: true
+useWebRTC.ts:197    - Track readyState: live
+useWebRTC.ts:156 📹 [WebRTC] Received remote track from e5a8bc8d-7ae4-4b82-92e3-f173d75df572 (video)
+useWebRTC.ts:207 📹 [WebRTC-VIDEO-DEBUG] Received VIDEO track from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:208    - Track ID: a4ceeb04-a5dc-4254-863e-fa63ba7a3fdf
+useWebRTC.ts:209    - Track enabled: true
+useWebRTC.ts:210    - Track readyState: live
+useWebRTC.ts:171 ➕ [WebRTC] Added audio track to NEW stream for e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Dz HyperLoop
+ParticipantVideo.tsx:48    - Stream ID: c3a587db-7d30-4a5f-b97d-f44f45e111f2
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:502 🧊 [WebRTC] Received ICE candidate from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:458 📤 [WebRTC] Sending answer to e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:215 🔌 [WebRTC-AUDIO-DEBUG] ICE state per e5a8bc8d-7ae4-4b82-92e3-f173d75df572: checking
+4useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+6useWebRTC.ts:502 🧊 [WebRTC] Received ICE candidate from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:692 🔄 [WebRTC] Connection not established with e5a8bc8d..., retrying (1/5)...
+useWebRTC.ts:666 📡 [WebRTC] Participant socket ready: e5a8bc8d..., initiating connection (attempt 2)...
+useWebRTC.ts:541 🔍 [WebRTC] Connection decision: myId=8163011b... vs remoteId=e5a8bc8d... → THEY INITIATE (lower ID)
+useWebRTC.ts:544 ⏭️ [WebRTC] Skipping connection initiation (waiting for e5a8bc8d... to initiate)
+4useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+13useWebRTC.ts:502 🧊 [WebRTC] Received ICE candidate from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:692 🔄 [WebRTC] Connection not established with e5a8bc8d..., retrying (2/5)...
+useWebRTC.ts:666 📡 [WebRTC] Participant socket ready: e5a8bc8d..., initiating connection (attempt 3)...
+useWebRTC.ts:541 🔍 [WebRTC] Connection decision: myId=8163011b... vs remoteId=e5a8bc8d... → THEY INITIATE (lower ID)
+useWebRTC.ts:544 ⏭️ [WebRTC] Skipping connection initiation (waiting for e5a8bc8d... to initiate)
+useWebRTC.ts:692 🔄 [WebRTC] Connection not established with e5a8bc8d..., retrying (3/5)...
+useWebRTC.ts:666 📡 [WebRTC] Participant socket ready: e5a8bc8d..., initiating connection (attempt 4)...
+useWebRTC.ts:541 🔍 [WebRTC] Connection decision: myId=8163011b... vs remoteId=e5a8bc8d... → THEY INITIATE (lower ID)
+useWebRTC.ts:544 ⏭️ [WebRTC] Skipping connection initiation (waiting for e5a8bc8d... to initiate)
+ParticipantVideo.tsx:83 🔇 [ParticipantVideo] Video track muted for Dz HyperLoop
+useWebRTC.ts:692 🔄 [WebRTC] Connection not established with e5a8bc8d..., retrying (4/5)...
+useWebRTC.ts:666 📡 [WebRTC] Participant socket ready: e5a8bc8d..., initiating connection (attempt 5)...
+useWebRTC.ts:541 🔍 [WebRTC] Connection decision: myId=8163011b... vs remoteId=e5a8bc8d... → THEY INITIATE (lower ID)
+useWebRTC.ts:544 ⏭️ [WebRTC] Skipping connection initiation (waiting for e5a8bc8d... to initiate)
+useWebRTC.ts:720 ⚡ [WebRTC] BOTH-TRY FALLBACK: Connection not established with e5a8bc8d... after 8000ms, both participants will now try to connect
+(anonymous) @ useWebRTC.ts:720Understand this warning
+useWebRTC.ts:541 🔍 [WebRTC] Connection decision: myId=8163011b... vs remoteId=e5a8bc8d... → BOTH-TRY FALLBACK
+useWebRTC.ts:555 🚀 [WebRTC] Initiating connection to e5a8bc8d-7ae4-4b82-92e3-f173d75df572 (attempt 1/3)
+useWebRTC.ts:137 🔗 [WebRTC] Creating peer connection for e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:138 🔗 [WebRTC] Using ICE config with 7 servers
+useWebRTC.ts:286 ➕ [WebRTC] Adding local track audio to connection with e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:286 ➕ [WebRTC] Adding local track video to connection with e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+ParticipantVideo.tsx:79 🔴 [ParticipantVideo] Video track ended for Dz HyperLoop
+useWebRTC.ts:281 🔄 [WebRTC] Negotiation needed for e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Dz HyperLoop
+useWebRTC.ts:573 📤 [WebRTC] Sending offer to e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+18useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:472 📥 [WebRTC] Received answer from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:478 ✅ [WebRTC] Cleared offer retry timeout for e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+3useWebRTC.ts:502 🧊 [WebRTC] Received ICE candidate from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:156 📹 [WebRTC] Received remote track from e5a8bc8d-7ae4-4b82-92e3-f173d75df572 (audio)
+useWebRTC.ts:171 ➕ [WebRTC] Added audio track to NEW stream for e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:194 🎤 [WebRTC-AUDIO-DEBUG] Received AUDIO track from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:195    - Track ID: dfdcb4f5-b0b4-42eb-a43e-95fb6ebc88f1
+useWebRTC.ts:196    - Track enabled: true
+useWebRTC.ts:197    - Track readyState: live
+useWebRTC.ts:156 📹 [WebRTC] Received remote track from e5a8bc8d-7ae4-4b82-92e3-f173d75df572 (video)
+useWebRTC.ts:207 📹 [WebRTC-VIDEO-DEBUG] Received VIDEO track from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:208    - Track ID: 7729775a-7a21-4f53-82e4-9223aebdd053
+useWebRTC.ts:209    - Track enabled: true
+useWebRTC.ts:210    - Track readyState: live
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Dz HyperLoop
+ParticipantVideo.tsx:48    - Stream ID: 614587c0-62ea-4019-af3c-a6a00ff9ae6f
+ParticipantVideo.tsx:49    - Video tracks: 2
+ParticipantVideo.tsx:50    - Audio tracks: 2
+useWebRTC.ts:215 🔌 [WebRTC-AUDIO-DEBUG] ICE state per e5a8bc8d-7ae4-4b82-92e3-f173d75df572: checking
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Dz HyperLoop
+7useWebRTC.ts:502 🧊 [WebRTC] Received ICE candidate from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+ParticipantVideo.tsx:83 🔇 [ParticipantVideo] Video track muted for Dz HyperLoop
+useWebRTC.ts:692 🔄 [WebRTC] Connection not established with e5a8bc8d..., retrying (5/5)...
+useWebRTC.ts:666 📡 [WebRTC] Participant socket ready: e5a8bc8d..., initiating connection (attempt 6)...
+useWebRTC.ts:541 🔍 [WebRTC] Connection decision: myId=8163011b... vs remoteId=e5a8bc8d... → BOTH-TRY FALLBACK
+useWebRTC.ts:555 🚀 [WebRTC] Initiating connection to e5a8bc8d-7ae4-4b82-92e3-f173d75df572 (attempt 1/3)
+useWebRTC.ts:573 📤 [WebRTC] Sending offer to e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:472 📥 [WebRTC] Received answer from e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:478 ✅ [WebRTC] Cleared offer retry timeout for e5a8bc8d-7ae4-4b82-92e3-f173d75df572
+useWebRTC.ts:215 🔌 [WebRTC-AUDIO-DEBUG] ICE state per e5a8bc8d-7ae4-4b82-92e3-f173d75df572: disconnected
