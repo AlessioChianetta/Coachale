@@ -51,22 +51,29 @@ interface SessionState {
 }
 
 interface IncomingMessage {
-  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'end_session';
+  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session';
   data?: string;
   speakerId?: string;
   speakerName?: string;
   playbook?: Playbook;
   playbookId?: string;
   participants?: Participant[];
+  participant?: {
+    id?: string;
+    name: string;
+    role: 'host' | 'guest' | 'prospect';
+  };
+  participantId?: string;
 }
 
 interface OutgoingMessage {
-  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended';
+  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed';
   data: any;
   timestamp: number;
 }
 
 const activeSessions = new Map<string, SessionState>();
+const meetingClients = new Map<string, Set<WebSocket>>();
 const ANALYSIS_THROTTLE_MS = 3000;
 
 async function authenticateConnection(req: any): Promise<{
@@ -590,6 +597,153 @@ function handleParticipantUpdate(
   }
 }
 
+async function handleParticipantJoin(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage,
+  broadcast: (msg: OutgoingMessage) => void
+) {
+  if (!message.participant) {
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Missing participant data' },
+      timestamp: Date.now(),
+    });
+    return;
+  }
+
+  const { name, role } = message.participant;
+  
+  try {
+    const [inserted] = await db.insert(videoMeetingParticipants).values({
+      meetingId: session.meetingId,
+      name,
+      role,
+      joinedAt: new Date(),
+    }).returning();
+
+    const participant: Participant = {
+      id: inserted.id,
+      name: inserted.name,
+      role: inserted.role as 'host' | 'guest' | 'prospect',
+    };
+    
+    session.participants.set(inserted.id, participant);
+    
+    console.log(`✅ [VideoCopilot] Participant joined: ${name} (${role}) - ID: ${inserted.id}`);
+
+    // Send confirmation directly to the requesting client with their ID
+    sendMessage(ws, {
+      type: 'join_confirmed',
+      data: {
+        id: inserted.id,
+        name: inserted.name,
+        role: inserted.role,
+        joinedAt: inserted.joinedAt?.toISOString(),
+      },
+      timestamp: Date.now(),
+    });
+
+    // Broadcast to all clients (including the requester)
+    const outMessage: OutgoingMessage = {
+      type: 'participant_joined',
+      data: {
+        id: inserted.id,
+        name: inserted.name,
+        role: inserted.role,
+        joinedAt: inserted.joinedAt?.toISOString(),
+      },
+      timestamp: Date.now(),
+    };
+    
+    broadcast(outMessage);
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Error adding participant:`, error.message);
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Failed to add participant' },
+      timestamp: Date.now(),
+    });
+  }
+}
+
+async function handleParticipantLeave(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage,
+  broadcast: (msg: OutgoingMessage) => void
+) {
+  if (!message.participantId) {
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Missing participantId' },
+      timestamp: Date.now(),
+    });
+    return;
+  }
+
+  const participantId = message.participantId;
+  
+  try {
+    await db.update(videoMeetingParticipants)
+      .set({ leftAt: new Date() })
+      .where(eq(videoMeetingParticipants.id, participantId));
+
+    const participant = session.participants.get(participantId);
+    session.participants.delete(participantId);
+    
+    console.log(`👋 [VideoCopilot] Participant left: ${participant?.name || participantId}`);
+
+    const outMessage: OutgoingMessage = {
+      type: 'participant_left',
+      data: {
+        id: participantId,
+        name: participant?.name,
+        leftAt: new Date().toISOString(),
+      },
+      timestamp: Date.now(),
+    };
+    
+    broadcast(outMessage);
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Error removing participant:`, error.message);
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Failed to remove participant' },
+      timestamp: Date.now(),
+    });
+  }
+}
+
+async function loadExistingParticipants(session: SessionState): Promise<Participant[]> {
+  try {
+    const participants = await db
+      .select()
+      .from(videoMeetingParticipants)
+      .where(and(
+        eq(videoMeetingParticipants.meetingId, session.meetingId),
+        eq(videoMeetingParticipants.leftAt, null as any)
+      ));
+
+    for (const p of participants) {
+      session.participants.set(p.id, {
+        id: p.id,
+        name: p.name,
+        role: p.role as 'host' | 'guest' | 'prospect',
+      });
+    }
+
+    return participants.map(p => ({
+      id: p.id,
+      name: p.name,
+      role: p.role as 'host' | 'guest' | 'prospect',
+    }));
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Error loading participants:`, error.message);
+    return [];
+  }
+}
+
 async function autoLoadPlaybook(
   session: SessionState,
   playbookId: string
@@ -709,6 +863,25 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
       }
     }
 
+    // Register this client for the meeting (for broadcast)
+    if (!meetingClients.has(meetingId)) {
+      meetingClients.set(meetingId, new Set());
+    }
+    meetingClients.get(meetingId)!.add(ws);
+
+    // Broadcast function for this meeting
+    const broadcast = (msg: OutgoingMessage) => {
+      const clients = meetingClients.get(meetingId);
+      if (clients) {
+        for (const client of clients) {
+          sendMessage(client, msg);
+        }
+      }
+    };
+
+    // Load existing participants from database
+    const existingParticipants = await loadExistingParticipants(session);
+
     await db
       .update(videoMeetings)
       .set({
@@ -726,6 +899,15 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
       },
       timestamp: Date.now(),
     });
+
+    // Send existing participants list
+    if (existingParticipants.length > 0) {
+      sendMessage(ws, {
+        type: 'participants_list',
+        data: { participants: existingParticipants },
+        timestamp: Date.now(),
+      });
+    }
 
     if (session.playbook) {
       sendMessage(ws, {
@@ -749,6 +931,12 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
           case 'participant_update':
             handleParticipantUpdate(ws, session!, message);
             break;
+          case 'participant_join':
+            await handleParticipantJoin(ws, session!, message, broadcast);
+            break;
+          case 'participant_leave':
+            await handleParticipantLeave(ws, session!, message, broadcast);
+            break;
           case 'end_session':
             await handleEndSession(ws, session!);
             ws.close(1000, 'Session ended');
@@ -768,6 +956,14 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
 
     ws.on('close', (code, reason) => {
       console.log(`🔌 [${connectionId}] Client disconnected: ${code} - ${reason}`);
+      // Remove client from meeting clients map
+      const clients = meetingClients.get(meetingId);
+      if (clients) {
+        clients.delete(ws);
+        if (clients.size === 0) {
+          meetingClients.delete(meetingId);
+        }
+      }
     });
 
     ws.on('error', (error) => {

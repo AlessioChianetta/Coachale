@@ -41,6 +41,14 @@ interface SentimentUpdate {
   sentiment: SentimentType;
 }
 
+interface CopilotParticipant {
+  id: string;
+  name: string;
+  role: 'host' | 'guest' | 'prospect';
+  joinedAt?: string;
+  leftAt?: string;
+}
+
 interface CopilotState {
   isConnected: boolean;
   isConnecting: boolean;
@@ -51,6 +59,8 @@ interface CopilotState {
   scriptProgress: ScriptProgress | null;
   transcripts: TranscriptEntry[];
   participantSentiments: Map<string, SentimentType>;
+  participants: CopilotParticipant[];
+  myParticipantId: string | null;
 }
 
 interface UseVideoCopilotResult extends CopilotState {
@@ -58,6 +68,8 @@ interface UseVideoCopilotResult extends CopilotState {
   disconnect: () => void;
   sendAudioChunk: (audioBase64: string, speakerId: string, speakerName: string) => void;
   updateParticipants: (participants: Participant[]) => void;
+  joinParticipant: (name: string, role: 'host' | 'guest' | 'prospect') => void;
+  leaveParticipant: (participantId: string) => void;
   toggleScriptItem: (id: string) => void;
   dismissBattleCard: () => void;
   endSession: () => void;
@@ -83,6 +95,8 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     scriptProgress: null,
     transcripts: [],
     participantSentiments: new Map(),
+    participants: [],
+    myParticipantId: null,
   });
 
   const handleMessage = useCallback((event: MessageEvent) => {
@@ -164,6 +178,44 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           setState(prev => ({
             ...prev,
             isConnected: false,
+          }));
+          break;
+
+        case 'participants_list':
+          setState(prev => ({
+            ...prev,
+            participants: message.data.participants || [],
+          }));
+          break;
+
+        case 'join_confirmed':
+          console.log('✅ Join confirmed, my participant ID:', message.data.id);
+          setState(prev => ({
+            ...prev,
+            myParticipantId: message.data.id,
+          }));
+          break;
+
+        case 'participant_joined':
+          setState(prev => ({
+            ...prev,
+            participants: [...prev.participants, {
+              id: message.data.id,
+              name: message.data.name,
+              role: message.data.role,
+              joinedAt: message.data.joinedAt,
+            }],
+          }));
+          break;
+
+        case 'participant_left':
+          setState(prev => ({
+            ...prev,
+            participants: prev.participants.map(p =>
+              p.id === message.data.id
+                ? { ...p, leftAt: message.data.leftAt }
+                : p
+            ),
           }));
           break;
 
@@ -273,6 +325,20 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     });
   }, [sendMessage]);
 
+  const joinParticipant = useCallback((name: string, role: 'host' | 'guest' | 'prospect') => {
+    sendMessage({
+      type: 'participant_join',
+      participant: { name, role },
+    });
+  }, [sendMessage]);
+
+  const leaveParticipant = useCallback((participantId: string) => {
+    sendMessage({
+      type: 'participant_leave',
+      participantId,
+    });
+  }, [sendMessage]);
+
   const toggleScriptItem = useCallback((id: string) => {
     setState(prev => ({
       ...prev,
@@ -307,6 +373,8 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     disconnect,
     sendAudioChunk,
     updateParticipants,
+    joinParticipant,
+    leaveParticipant,
     toggleScriptItem,
     dismissBattleCard,
     endSession,

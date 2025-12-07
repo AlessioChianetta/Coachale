@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ParticipantVideo, { SentimentType } from './ParticipantVideo';
 import VideoControls from './VideoControls';
@@ -52,17 +52,56 @@ export default function VideoRoom({
     currentSuggestion,
     battleCard,
     participantSentiments,
+    participants: copilotParticipants,
+    myParticipantId,
     toggleScriptItem,
     dismissBattleCard,
     updateParticipants,
+    joinParticipant,
+    leaveParticipant,
     endSession,
   } = useVideoCopilot(meeting?.meetingToken ?? null);
+
+  // Track if we've joined this session (to avoid duplicate joins)
+  const [hasJoined, setHasJoined] = useState(false);
+  const myParticipantIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (meeting && meeting.status === 'scheduled') {
       updateMeetingStatus('in_progress');
     }
   }, [meeting, updateMeetingStatus]);
+
+  // Reset join state when WebSocket disconnects (for reconnection)
+  useEffect(() => {
+    if (!isConnected && hasJoined) {
+      setHasJoined(false);
+      myParticipantIdRef.current = null;
+    }
+  }, [isConnected, hasJoined]);
+
+  // Join participant when WebSocket connects
+  useEffect(() => {
+    if (isConnected && !hasJoined) {
+      const role = isHost ? 'host' : 'prospect';
+      joinParticipant(participantName, role);
+      setHasJoined(true);
+    }
+  }, [isConnected, hasJoined, isHost, participantName, joinParticipant]);
+
+  // Keep ref in sync with hook's myParticipantId (for cleanup on unmount)
+  useEffect(() => {
+    myParticipantIdRef.current = myParticipantId;
+  }, [myParticipantId]);
+
+  // Leave participant on unmount (use ref for cleanup to avoid stale closure)
+  useEffect(() => {
+    return () => {
+      if (myParticipantIdRef.current) {
+        leaveParticipant(myParticipantIdRef.current);
+      }
+    };
+  }, [leaveParticipant]);
 
   useEffect(() => {
     if (isConnected && meetingParticipants.length > 0) {
@@ -75,7 +114,12 @@ export default function VideoRoom({
   }, [isConnected, meetingParticipants, updateParticipants]);
 
   const displayParticipants: DisplayParticipant[] = useMemo(() => {
-    if (meetingParticipants.length === 0) {
+    // Prefer copilot participants (from WebSocket) when connected, otherwise use meeting participants (from API)
+    const activeParticipants = isConnected && copilotParticipants.length > 0
+      ? copilotParticipants.filter(p => !p.leftAt)
+      : meetingParticipants;
+
+    if (activeParticipants.length === 0) {
       return [{
         id: 'host',
         name: participantName,
@@ -86,7 +130,7 @@ export default function VideoRoom({
       }];
     }
 
-    return meetingParticipants.map(p => ({
+    return activeParticipants.map(p => ({
       id: p.id,
       name: p.name,
       sentiment: participantSentiments.get(p.id) || 'neutral' as SentimentType,
@@ -94,7 +138,7 @@ export default function VideoRoom({
       isMuted: p.id === 'host' ? isMuted : false,
       isVideoOff: p.id === 'host' ? isVideoOff : false,
     }));
-  }, [meetingParticipants, participantSentiments, participantName, isMuted, isVideoOff]);
+  }, [meetingParticipants, copilotParticipants, isConnected, participantSentiments, participantName, isMuted, isVideoOff]);
 
   const displayScriptItems = useMemo(() => {
     if (scriptItems.length > 0) {

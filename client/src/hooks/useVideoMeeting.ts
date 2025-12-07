@@ -126,7 +126,7 @@ async function fetchMeetingData(meetingIdOrToken: string): Promise<{
   const details = await meetingDetailsResponse.json();
   
   let script: Script | null = null;
-  const scriptId = details.meeting.playbookId || details.seller?.defaultScriptId;
+  const scriptId = details.meeting?.playbookId || details.seller?.defaultScriptId;
   
   if (scriptId) {
     try {
@@ -145,30 +145,23 @@ async function fetchMeetingData(meetingIdOrToken: string): Promise<{
     }
   }
 
-  const participants: Participant[] = [];
-  
-  if (details.seller) {
-    participants.push({
-      id: 'host',
-      name: details.seller.name,
-      role: 'host',
-      joinedAt: new Date().toISOString(),
-    });
-  }
-  
-  if (details.meeting.prospectName) {
-    participants.push({
-      id: 'prospect-1',
-      name: details.meeting.prospectName,
-      role: 'prospect',
-    });
-  }
+  // Use participants from database if available
+  const dbParticipants: Participant[] = (details.participants || []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    role: p.role as 'host' | 'guest' | 'prospect',
+    joinedAt: p.joinedAt,
+    leftAt: p.leftAt,
+  }));
+
+  // Filter out participants who have left
+  const activeParticipants = dbParticipants.filter(p => !p.leftAt);
 
   return {
     meeting: details.meeting,
     seller: details.seller,
     script,
-    participants,
+    participants: activeParticipants,
   };
 }
 
