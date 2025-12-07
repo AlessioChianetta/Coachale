@@ -10,6 +10,7 @@ interface MeetingInfo {
   prospectName: string;
   scriptName?: string;
   isHost: boolean;
+  participantId?: string;
 }
 
 export default function MeetVideoRoom() {
@@ -25,27 +26,37 @@ export default function MeetVideoRoom() {
       setIsLoading(true);
       
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
         const guestName = sessionStorage.getItem(`meet_guest_${token}`);
+        const participantDataStr = sessionStorage.getItem(`meet_participant_${token}`);
         
-        if (!guestName) {
+        if (!guestName || !participantDataStr) {
           setLocation(`/meet/${token}`);
           return;
         }
 
-        const mockMeetingInfo: MeetingInfo = {
-          id: 'meeting-' + token,
+        const participantData = JSON.parse(participantDataStr);
+
+        const res = await fetch(`/api/meet/${token}`);
+        if (!res.ok) {
+          throw new Error('Meeting non trovato');
+        }
+
+        const meetingData = await res.json();
+
+        const realMeetingInfo: MeetingInfo = {
+          id: participantData.meetingId,
           token: token || '',
-          sellerName: 'Marco Rossi',
+          sellerName: meetingData.seller?.displayName || 'Host',
           prospectName: guestName,
-          scriptName: 'Discovery Call B2B',
-          isHost: guestName.toLowerCase().includes('host') || guestName.toLowerCase().includes('seller'),
+          scriptName: undefined,
+          isHost: participantData.role === 'host',
+          participantId: participantData.participantId,
         };
 
-        setMeetingInfo(mockMeetingInfo);
-      } catch (err) {
-        setError('Impossibile caricare le informazioni del meeting');
+        setMeetingInfo(realMeetingInfo);
+      } catch (err: any) {
+        console.error('[MeetVideoRoom] Load error:', err);
+        setError(err.message || 'Impossibile caricare le informazioni del meeting');
       } finally {
         setIsLoading(false);
       }

@@ -56,11 +56,28 @@ export default function MeetGreenRoom() {
   const animationFrameRef = useRef<number | null>(null);
 
   const [meetingInfo, setMeetingInfo] = useState<{
+    id: string;
     prospectName: string;
     scheduledAt: string | null;
     status: string;
+    sellerId: string | null;
+    sellerClientId: string | null;
     seller: { displayName: string; description: string | null } | null;
   } | null>(null);
+  const [isHost, setIsHost] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const authToken = localStorage.getItem('token');
+    if (authToken) {
+      try {
+        const payload = JSON.parse(atob(authToken.split('.')[1]));
+        setCurrentUserId(payload.id ?? payload.userId ?? payload.sub ?? null);
+      } catch (e) {
+        console.error('[MeetGreenRoom] Error parsing JWT:', e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const validateToken = async () => {
@@ -74,6 +91,11 @@ export default function MeetGreenRoom() {
         const data = await res.json();
         setMeetingInfo(data);
         setIsTokenValid(true);
+        
+        if (currentUserId && data.sellerClientId && currentUserId === data.sellerClientId) {
+          setIsHost(true);
+          setGuestName(data.seller?.displayName || 'Host');
+        }
       } catch (error) {
         console.error('[MeetGreenRoom] Token validation error:', error);
         setIsTokenValid(false);
@@ -84,7 +106,7 @@ export default function MeetGreenRoom() {
     if (token) {
       validateToken();
     }
-  }, [token]);
+  }, [token, currentUserId]);
 
   const enumerateDevices = useCallback(async () => {
     try {
@@ -238,7 +260,7 @@ export default function MeetGreenRoom() {
     }
   }, [selectedAudioDevice]);
 
-  const handleJoinCall = () => {
+  const handleJoinCall = async () => {
     if (!guestName.trim()) {
       toast({
         variant: 'destructive',
@@ -257,10 +279,53 @@ export default function MeetGreenRoom() {
       audioDevice: selectedAudioDevice,
     });
 
-    toast({
-      title: 'Entrando nella call...',
-      description: `Benvenuto ${guestName.trim()}!`,
-    });
+    try {
+      const res = await fetch(`/api/meet/${token}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: guestName.trim(),
+          role: isHost ? 'host' : 'guest',
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Errore nel join al meeting');
+      }
+
+      const joinData = await res.json();
+      
+      sessionStorage.setItem(`meet_guest_${token}`, guestName.trim());
+      sessionStorage.setItem(`meet_participant_${token}`, JSON.stringify({
+        participantId: joinData.participantId,
+        meetingId: joinData.meetingId,
+        name: guestName.trim(),
+        role: isHost ? 'host' : 'guest',
+      }));
+
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+      }
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+      }
+
+      toast({
+        title: 'Entrando nella call...',
+        description: `Benvenuto ${guestName.trim()}!`,
+      });
+
+      navigate(`/meet/${token}/room`);
+    } catch (error: any) {
+      console.error('[MeetGreenRoom] Join error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Errore',
+        description: error.message || 'Impossibile entrare nella call',
+      });
+      setIsJoining(false);
+    }
   };
 
   if (isValidatingToken) {
@@ -389,16 +454,36 @@ export default function MeetGreenRoom() {
         <div className="min-h-full flex flex-col justify-center p-6 lg:p-10 xl:p-12 max-w-lg mx-auto py-8 lg:py-0">
           
           <div className="mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/20 lg:bg-purple-100 border border-purple-500/30 lg:border-purple-200 mb-4">
-              <Sparkles className="w-4 h-4 text-purple-400 lg:text-purple-600" />
-              <span className="text-xs font-bold text-purple-300 lg:text-purple-700 uppercase tracking-wider">Preparazione Call</span>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/20 lg:bg-purple-100 border border-purple-500/30 lg:border-purple-200">
+                <Sparkles className="w-4 h-4 text-purple-400 lg:text-purple-600" />
+                <span className="text-xs font-bold text-purple-300 lg:text-purple-700 uppercase tracking-wider">Preparazione Call</span>
+              </div>
+              {isHost ? (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 lg:bg-green-100 border border-green-500/30 lg:border-green-200">
+                  <ShieldCheck className="w-4 h-4 text-green-400 lg:text-green-600" />
+                  <span className="text-xs font-bold text-green-300 lg:text-green-700 uppercase tracking-wider">Host</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/20 lg:bg-blue-100 border border-blue-500/30 lg:border-blue-200">
+                  <User className="w-4 h-4 text-blue-400 lg:text-blue-600" />
+                  <span className="text-xs font-bold text-blue-300 lg:text-blue-700 uppercase tracking-wider">Guest</span>
+                </div>
+              )}
             </div>
             <h1 className="text-3xl lg:text-4xl font-bold text-white lg:text-slate-900 mb-2">
-              Pronto ad entrare?
+              {isHost ? 'Pronto ad avviare?' : 'Pronto ad entrare?'}
             </h1>
             <p className="text-white/60 lg:text-slate-500">
-              Configura audio e video prima di entrare nella call
+              {isHost 
+                ? 'Configura audio e video e avvia il meeting' 
+                : 'Configura audio e video prima di entrare nella call'}
             </p>
+            {meetingInfo?.seller && !isHost && (
+              <p className="text-white/40 lg:text-slate-400 text-sm mt-2">
+                Meeting con: <span className="font-medium text-white/60 lg:text-slate-600">{meetingInfo.seller.displayName}</span>
+              </p>
+            )}
           </div>
 
           <div className="h-px bg-gradient-to-r from-transparent via-white/20 lg:via-slate-200 to-transparent mb-8" />
@@ -468,16 +553,20 @@ export default function MeetGreenRoom() {
             onClick={handleJoinCall}
             disabled={!guestName.trim() || isJoining}
             size="lg"
-            className="w-full h-14 text-lg font-bold rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:from-slate-400 disabled:to-slate-400 disabled:opacity-50 shadow-xl shadow-purple-900/30"
+            className={`w-full h-14 text-lg font-bold rounded-xl shadow-xl ${
+              isHost 
+                ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-green-900/30'
+                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 shadow-purple-900/30'
+            } disabled:from-slate-400 disabled:to-slate-400 disabled:opacity-50`}
           >
             {isJoining ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Entrando...
+                {isHost ? 'Avviando...' : 'Entrando...'}
               </>
             ) : (
               <>
-                Entra nella Call
+                {isHost ? 'Avvia Meeting' : 'Entra nella Call'}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </>
             )}

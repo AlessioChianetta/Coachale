@@ -544,6 +544,8 @@ publicMeetRouter.get('/:token', async (req, res) => {
       prospectName: meeting.meeting.prospectName,
       scheduledAt: meeting.meeting.scheduledAt,
       status: meeting.meeting.status,
+      sellerId: meeting.meeting.sellerId,
+      sellerClientId: meeting.seller?.clientId || null,
       seller: meeting.seller ? {
         displayName: meeting.seller.displayName,
         description: meeting.seller.description,
