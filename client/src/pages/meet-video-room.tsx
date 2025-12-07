@@ -103,7 +103,7 @@ export default function MeetVideoRoom() {
 
   return (
     <VideoRoom
-      meetingId={meetingInfo.id}
+      meetingId={meetingInfo.token}
       isHost={meetingInfo.isHost}
       participantName={meetingInfo.prospectName}
       onEndCall={handleEndCall}
