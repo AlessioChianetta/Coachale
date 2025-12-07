@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ParticipantVideo, { SentimentType } from './ParticipantVideo';
 import VideoControls from './VideoControls';
 import AICopilotHUD from './AICopilotHUD';
-import LocalCameraPreview from './LocalCameraPreview';
 import { useVideoMeeting } from '@/hooks/useVideoMeeting';
 import { useVideoCopilot } from '@/hooks/useVideoCopilot';
 import { Loader2 } from 'lucide-react';
@@ -22,6 +21,7 @@ interface DisplayParticipant {
   isHost: boolean;
   isMuted: boolean;
   isVideoOff: boolean;
+  isLocalUser: boolean;
 }
 
 export default function VideoRoom({
@@ -128,6 +128,7 @@ export default function VideoRoom({
         isHost: true,
         isMuted: isMuted,
         isVideoOff: isVideoOff,
+        isLocalUser: true,
       }];
     }
 
@@ -136,10 +137,11 @@ export default function VideoRoom({
       name: p.name,
       sentiment: participantSentiments.get(p.id) || 'neutral' as SentimentType,
       isHost: p.role === 'host',
-      isMuted: p.id === 'host' ? isMuted : false,
-      isVideoOff: p.id === 'host' ? isVideoOff : false,
+      isMuted: p.id === myParticipantId ? isMuted : false,
+      isVideoOff: p.id === myParticipantId ? isVideoOff : false,
+      isLocalUser: p.id === myParticipantId,
     }));
-  }, [meetingParticipants, copilotParticipants, isConnected, participantSentiments, participantName, isMuted, isVideoOff]);
+  }, [meetingParticipants, copilotParticipants, isConnected, participantSentiments, participantName, isMuted, isVideoOff, myParticipantId]);
 
   const displayScriptItems = useMemo(() => {
     if (scriptItems.length > 0) {
@@ -254,6 +256,7 @@ export default function VideoRoom({
                 isHost={participant.isHost}
                 isMuted={participant.isMuted}
                 isVideoOff={participant.isVideoOff}
+                isLocalUser={participant.isLocalUser}
               />
             ))}
           </AnimatePresence>
@@ -273,11 +276,6 @@ export default function VideoRoom({
         onEndCall={handleEndCall}
       />
 
-      <LocalCameraPreview
-        isVideoOff={isVideoOff}
-        isMuted={isMuted}
-        participantName={participantName}
-      />
 
       <AnimatePresence>
         {isHost && showHUD && (

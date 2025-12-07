@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, MicOff, VideoOff } from 'lucide-react';
 
@@ -9,6 +10,7 @@ interface ParticipantVideoProps {
   isHost?: boolean;
   isMuted?: boolean;
   isVideoOff?: boolean;
+  isLocalUser?: boolean;
 }
 
 const sentimentColors: Record<SentimentType, string> = {
@@ -29,7 +31,80 @@ export default function ParticipantVideo({
   isHost = false,
   isMuted = false,
   isVideoOff = false,
+  isLocalUser = false,
 }: ParticipantVideoProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [hasStream, setHasStream] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isLocalUser) return;
+
+    let cancelled = false;
+
+    const stopStream = () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+        setHasStream(false);
+      }
+    };
+
+    const startCamera = async () => {
+      if (isVideoOff) {
+        stopStream();
+        return;
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError('Camera non supportata');
+        return;
+      }
+
+      try {
+        setCameraError(null);
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+
+        if (cancelled || isVideoOff) {
+          newStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        stopStream();
+        streamRef.current = newStream;
+        setHasStream(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = newStream;
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Camera access error:', err);
+          setCameraError('Camera non disponibile');
+        }
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      cancelled = true;
+      stopStream();
+    };
+  }, [isLocalUser, isVideoOff]);
+
+  useEffect(() => {
+    if (videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+    }
+  }, [hasStream]);
+
+  const showVideo = isLocalUser && hasStream && !isVideoOff && !cameraError;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -40,7 +115,16 @@ export default function ParticipantVideo({
       <div className={`absolute inset-0 bg-gradient-to-t ${sentimentBgGlow[sentiment]}`} />
       
       <div className="absolute inset-0 flex items-center justify-center">
-        {isVideoOff ? (
+        {showVideo ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ transform: 'scaleX(-1)' }}
+          />
+        ) : isVideoOff ? (
           <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center">
             <User className="w-10 h-10 text-gray-400" />
           </div>
@@ -60,6 +144,11 @@ export default function ParticipantVideo({
             {isHost && (
               <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">
                 Host
+              </span>
+            )}
+            {isLocalUser && (
+              <span className="px-2 py-0.5 bg-purple-500 text-white text-xs rounded-full">
+                Tu
               </span>
             )}
           </div>
