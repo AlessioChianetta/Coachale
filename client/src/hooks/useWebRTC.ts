@@ -53,6 +53,9 @@ export function useWebRTC({
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const makingOfferRef = useRef<Map<string, boolean>>(new Map());
+  const connectionRetryRef = useRef<Map<string, number>>(new Map());
+  const retryTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const reconnectCallbackRef = useRef<((participantId: string) => void) | null>(null);
 
   const createPeerConnection = useCallback((remoteParticipantId: string): RTCPeerConnection => {
     console.log(`🔗 [WebRTC] Creating peer connection for ${remoteParticipantId}`);
@@ -87,8 +90,38 @@ export function useWebRTC({
     pc.oniceconnectionstatechange = () => {
       console.log(`🔌 [WebRTC] ICE connection state for ${remoteParticipantId}: ${pc.iceConnectionState}`);
       
-      if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-        console.warn(`⚠️ [WebRTC] Connection ${pc.iceConnectionState} with ${remoteParticipantId}`);
+      if (pc.iceConnectionState === 'connected') {
+        connectionRetryRef.current.set(remoteParticipantId, 0);
+        const timeout = retryTimeoutRef.current.get(remoteParticipantId);
+        if (timeout) {
+          clearTimeout(timeout);
+          retryTimeoutRef.current.delete(remoteParticipantId);
+        }
+      } else if (pc.iceConnectionState === 'failed') {
+        console.warn(`⚠️ [WebRTC] Connection failed with ${remoteParticipantId}, will retry`);
+        const retries = connectionRetryRef.current.get(remoteParticipantId) || 0;
+        if (retries < 3) {
+          connectionRetryRef.current.set(remoteParticipantId, retries + 1);
+          pc.close();
+          peerConnectionsRef.current.delete(remoteParticipantId);
+          const delay = Math.min(1000 * Math.pow(2, retries), 5000);
+          console.log(`🔄 [WebRTC] Retrying connection to ${remoteParticipantId} in ${delay}ms (attempt ${retries + 1})`);
+          
+          const existingTimeout = retryTimeoutRef.current.get(remoteParticipantId);
+          if (existingTimeout) {
+            clearTimeout(existingTimeout);
+          }
+          
+          const timeoutId = setTimeout(() => {
+            retryTimeoutRef.current.delete(remoteParticipantId);
+            if (reconnectCallbackRef.current) {
+              reconnectCallbackRef.current(remoteParticipantId);
+            }
+          }, delay);
+          retryTimeoutRef.current.set(remoteParticipantId, timeoutId);
+        } else {
+          console.error(`❌ [WebRTC] Max retries reached for ${remoteParticipantId}`);
+        }
       }
     };
 
@@ -328,6 +361,16 @@ export function useWebRTC({
   }, [myParticipantId, isLocalStreamReady, createPeerConnection, sendWebRTCMessage]);
 
   useEffect(() => {
+    reconnectCallbackRef.current = (participantId: string) => {
+      console.log(`🔄 [WebRTC] Reconnecting to ${participantId}`);
+      initiateConnection(participantId);
+    };
+    return () => {
+      reconnectCallbackRef.current = null;
+    };
+  }, [initiateConnection]);
+
+  useEffect(() => {
     if (!isConnected || !myParticipantId || !isLocalStreamReady) {
       return;
     }
@@ -343,6 +386,9 @@ export function useWebRTC({
 
   useEffect(() => {
     return () => {
+      retryTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
+      retryTimeoutRef.current.clear();
+      
       peerConnectionsRef.current.forEach((pc, id) => {
         console.log(`🔌 [WebRTC] Closing connection to ${id}`);
         pc.close();

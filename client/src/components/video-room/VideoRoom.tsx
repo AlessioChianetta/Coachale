@@ -226,13 +226,24 @@ export default function VideoRoom({
     onEndCall();
   };
 
-  const gridClass = useMemo(() => {
+  const gridStyles = useMemo(() => {
     const count = displayParticipants.length;
-    if (count <= 1) return 'grid-cols-1';
-    if (count === 2) return 'grid-cols-1 md:grid-cols-2';
-    if (count <= 4) return 'grid-cols-2';
-    if (count <= 6) return 'grid-cols-2 md:grid-cols-3';
-    return 'grid-cols-3';
+    if (count === 1) {
+      return 'grid-cols-1 max-w-3xl';
+    }
+    if (count === 2) {
+      return 'grid-cols-1 sm:grid-cols-2 max-w-5xl';
+    }
+    if (count <= 4) {
+      return 'grid-cols-1 sm:grid-cols-2 max-w-5xl';
+    }
+    if (count <= 6) {
+      return 'grid-cols-2 lg:grid-cols-3 max-w-6xl';
+    }
+    if (count <= 9) {
+      return 'grid-cols-2 md:grid-cols-3 max-w-6xl';
+    }
+    return 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4 max-w-7xl';
   }, [displayParticipants.length]);
 
   if (meetingLoading) {
@@ -263,42 +274,45 @@ export default function VideoRoom({
   }
 
   return (
-    <div className="relative w-full h-screen bg-gray-950 overflow-hidden">
-      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/80 to-transparent z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-white font-medium">In diretta</span>
-            <span className="text-gray-400 text-sm">
+    <div className="relative w-full h-screen bg-gray-950 overflow-hidden flex flex-col">
+      <header className="flex-shrink-0 px-3 py-2 sm:px-4 sm:py-3 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800/50 z-10">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-white font-medium text-sm sm:text-base hidden sm:inline">In diretta</span>
+            </div>
+            <span className="text-gray-400 text-xs sm:text-sm truncate max-w-[120px] sm:max-w-[200px]">
               {meeting?.prospectName || `ID: ${meetingId}`}
             </span>
             {isConnected && (
-              <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">
-                AI Copilot attivo
+              <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full hidden sm:flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                AI Copilot
               </span>
             )}
             {isConnecting && (
               <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full flex items-center gap-1">
                 <Loader2 className="w-3 h-3 animate-spin" />
-                Connessione...
+                <span className="hidden sm:inline">Connessione...</span>
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-gray-800 rounded-full text-gray-300 text-sm">
-              {displayParticipants.length} partecipanti
+            <span className="px-2 py-1 sm:px-3 bg-gray-800/80 rounded-full text-gray-300 text-xs sm:text-sm">
+              {displayParticipants.length} {displayParticipants.length === 1 ? 'utente' : 'utenti'}
             </span>
             {seller?.name && (
-              <span className="px-3 py-1 bg-purple-800/50 rounded-full text-purple-300 text-sm">
+              <span className="px-2 py-1 sm:px-3 bg-purple-800/50 rounded-full text-purple-300 text-xs sm:text-sm hidden md:block truncate max-w-[150px]">
                 {seller.name}
               </span>
             )}
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="absolute inset-0 pt-16 pb-24 px-4 md:px-8">
-        <div className={`grid ${gridClass} gap-4 h-full max-w-6xl mx-auto place-content-center`}>
+      <main className="flex-1 overflow-hidden px-2 py-3 sm:px-4 sm:py-4 md:px-6 lg:px-8">
+        <div className={`grid ${gridStyles} gap-2 sm:gap-3 md:gap-4 h-full mx-auto place-content-center auto-rows-fr`}>
           <AnimatePresence mode="popLayout">
             {displayParticipants.map((participant) => (
               <ParticipantVideo
@@ -314,7 +328,7 @@ export default function VideoRoom({
             ))}
           </AnimatePresence>
         </div>
-      </div>
+      </main>
 
       <VideoControls
         isMuted={isMuted}

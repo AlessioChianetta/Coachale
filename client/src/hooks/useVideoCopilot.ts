@@ -190,10 +190,16 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           break;
 
         case 'participants_list':
-          setState(prev => ({
-            ...prev,
-            participants: message.data.participants || [],
-          }));
+          setState(prev => {
+            const incoming = message.data.participants || [];
+            const seen = new Set<string>();
+            const deduped = incoming.filter((p: CopilotParticipant) => {
+              if (seen.has(p.id)) return false;
+              seen.add(p.id);
+              return true;
+            });
+            return { ...prev, participants: deduped };
+          });
           break;
 
         case 'join_confirmed':
@@ -205,15 +211,29 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           break;
 
         case 'participant_joined':
-          setState(prev => ({
-            ...prev,
-            participants: [...prev.participants, {
-              id: message.data.id,
-              name: message.data.name,
-              role: message.data.role,
-              joinedAt: message.data.joinedAt,
-            }],
-          }));
+          setState(prev => {
+            const existingIndex = prev.participants.findIndex(p => p.id === message.data.id);
+            if (existingIndex >= 0) {
+              const updated = [...prev.participants];
+              updated[existingIndex] = {
+                ...updated[existingIndex],
+                name: message.data.name,
+                role: message.data.role,
+                joinedAt: message.data.joinedAt,
+                leftAt: undefined,
+              };
+              return { ...prev, participants: updated };
+            }
+            return {
+              ...prev,
+              participants: [...prev.participants, {
+                id: message.data.id,
+                name: message.data.name,
+                role: message.data.role,
+                joinedAt: message.data.joinedAt,
+              }],
+            };
+          });
           break;
 
         case 'participant_left':
