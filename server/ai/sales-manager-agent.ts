@@ -1004,6 +1004,35 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
           reasoning: aiAnalysis.reasoning
         };
 
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 🧠 AI REASONING LOG
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log(`\n🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🧠 [SALES-MANAGER] AI REASONING`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   📊 MODEL: ${this.MODEL}`);
+        console.log(`   ⏱️ LATENCY: ${parallelElapsed}ms`);
+        
+        console.log(`\n   🧠 FULL REASONING:`);
+        if (aiAnalysis.reasoning) {
+          console.log(`      ${aiAnalysis.reasoning}`);
+        } else {
+          console.log(`      (No reasoning provided)`);
+        }
+        
+        console.log(`\n   📤 AI DECISIONS:`);
+        console.log(`      └─ Should Advance: ${aiAnalysis.shouldAdvance ? '✅ YES' : '❌ NO'}`);
+        console.log(`      └─ Next Phase: ${aiAnalysis.nextPhaseId || 'same'}`);
+        console.log(`      └─ Next Step: ${aiAnalysis.nextStepId || 'same'}`);
+        console.log(`      └─ Confidence: ${Math.round((aiAnalysis.confidence || 0) * 100)}%`);
+        
+        if (aiAnalysis.detectedArchetype) {
+          console.log(`\n   🎭 ARCHETYPE INTUITION:`);
+          console.log(`      └─ Detected: ${aiAnalysis.detectedArchetype}`);
+          console.log(`      └─ Reasoning: "${aiAnalysis.archetypeReasoning || 'N/A'}"`);
+        }
+        console.log(`🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
         // 🧠 SLOW BRAIN: Estrai l'archetipo rilevato dall'AI
         if (aiAnalysis.detectedArchetype) {
           aiIntuition = aiAnalysis.detectedArchetype;

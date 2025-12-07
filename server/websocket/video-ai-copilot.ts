@@ -630,6 +630,40 @@ async function runSalesManagerAnalysis(
     const currentPhase = session.scriptStructure.phases?.[session.currentPhaseIndex];
     const currentStep = currentPhase?.steps?.[session.currentStepIndex];
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 📥 SALES MANAGER INPUT LOG
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const recentMessages = session.conversationMessages.slice(-20);
+    const phasesCount = session.scriptStructure?.phases?.length || 0;
+    const stepsCount = currentPhase?.steps?.length || 0;
+    const scriptJson = JSON.stringify(session.scriptStructure || {});
+    const transcriptText = recentMessages.map(m => `${m.role}: ${m.content}`).join('\n');
+    
+    console.log(`\n📥 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`📥 [SALES-MANAGER] INPUT ANALYSIS`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   📜 SCRIPT INPUT: ${scriptJson.length} chars (~${Math.round(scriptJson.length / 4)} tokens)`);
+    console.log(`      └─ Phases: ${phasesCount}`);
+    console.log(`      └─ Current Phase: ${currentPhase?.name || 'N/A'} (${session.currentPhaseIndex + 1}/${phasesCount})`);
+    console.log(`      └─ Current Step: ${currentStep?.name || 'N/A'} (${session.currentStepIndex + 1}/${stepsCount})`);
+    console.log(`      └─ Phase ID: ${currentPhase?.id || 'N/A'}`);
+    console.log(`      └─ Step ID: ${currentStep?.id || 'N/A'}`);
+    console.log(`   💬 FRESH TEXT (Recent Transcript): ${transcriptText.length} chars (~${Math.round(transcriptText.length / 4)} tokens)`);
+    console.log(`      └─ Messages: ${recentMessages.length}`);
+    if (recentMessages.length > 0) {
+      console.log(`      └─ Last 3 messages:`);
+      recentMessages.slice(-3).forEach((m, i) => {
+        const preview = m.content.length > 60 ? m.content.substring(0, 60) + '...' : m.content;
+        console.log(`         ${i + 1}. [${m.role.toUpperCase()}] "${preview}"`);
+      });
+    }
+    console.log(`   🔗 CONNECTION:`);
+    console.log(`      └─ Meeting ID: ${session.meetingId}`);
+    console.log(`      └─ Consultant ID: ${session.consultantId}`);
+    console.log(`      └─ Participants: ${session.participants.size}`);
+    console.log(`      └─ Archetype State: ${session.archetypeState?.current || 'neutral'} (${Math.round((session.archetypeState?.confidence || 0) * 100)}%)`);
+    console.log(`📥 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
     const analysis = await SalesManagerAgent.analyze({
       recentMessages: session.conversationMessages.slice(-20),
       script: session.scriptStructure,
@@ -643,7 +677,74 @@ async function runSalesManagerAnalysis(
       currentTurn: session.conversationMessages.length,
     });
 
-    console.log(`🎩 [VideoCopilot] Sales Manager analysis completed in ${analysis.analysisTimeMs}ms`);
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 📤 SALES MANAGER OUTPUT LOG
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    console.log(`\n📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`📤 [SALES-MANAGER] OUTPUT`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   ⏱️ TOTAL TIME: ${analysis.analysisTimeMs}ms`);
+    console.log(`   📊 MODEL: ${analysis.modelUsed || 'gemini-2.0-flash'}`);
+    
+    console.log(`\n   📊 STEP ADVANCEMENT:`);
+    console.log(`      └─ Should Advance: ${analysis.stepAdvancement.shouldAdvance ? '✅ YES' : '❌ NO'}`);
+    console.log(`      └─ Next Phase: ${analysis.stepAdvancement.nextPhaseId || 'same'}`);
+    console.log(`      └─ Next Step: ${analysis.stepAdvancement.nextStepId || 'same'}`);
+    console.log(`      └─ Confidence: ${Math.round((analysis.stepAdvancement.confidence || 0) * 100)}%`);
+    if (analysis.stepAdvancement.reasoning) {
+      console.log(`      └─ Reasoning: "${analysis.stepAdvancement.reasoning}"`);
+    }
+
+    if (analysis.feedbackForAgent?.shouldInject) {
+      console.log(`\n   💬 COACHING FEEDBACK:`);
+      console.log(`      └─ Priority: ${analysis.feedbackForAgent.priority?.toUpperCase()}`);
+      console.log(`      └─ Type: ${analysis.feedbackForAgent.type}`);
+      console.log(`      └─ Message: "${analysis.feedbackForAgent.message || 'N/A'}"`);
+      if (analysis.feedbackForAgent.toneReminder) {
+        console.log(`      └─ Tone Reminder: "${analysis.feedbackForAgent.toneReminder}"`);
+      }
+    }
+
+    if (analysis.buySignals?.detected && analysis.buySignals.signals?.length > 0) {
+      console.log(`\n   💰 BUY SIGNALS: ${analysis.buySignals.signals.length} detected`);
+      analysis.buySignals.signals.forEach((s: any, i: number) => {
+        console.log(`      ${i + 1}. [${s.type}] "${s.phrase}" (${Math.round((s.confidence || 0) * 100)}%)`);
+        if (s.suggestedAction) {
+          console.log(`         └─ Action: ${s.suggestedAction}`);
+        }
+      });
+    }
+
+    if (analysis.objections?.detected && analysis.objections.objections?.length > 0) {
+      console.log(`\n   🛡️ OBJECTIONS: ${analysis.objections.objections.length} detected`);
+      analysis.objections.objections.forEach((o: any, i: number) => {
+        console.log(`      ${i + 1}. [${o.type}] "${o.phrase}"`);
+        if (o.suggestedResponse) {
+          console.log(`         └─ Response: ${o.suggestedResponse}`);
+        }
+      });
+    }
+
+    if (analysis.checkpointStatus) {
+      console.log(`\n   ✅ CHECKPOINT STATUS:`);
+      console.log(`      └─ Name: ${analysis.checkpointStatus.checkpointName || 'N/A'}`);
+      console.log(`      └─ Can Advance: ${analysis.checkpointStatus.canAdvance ? '✅ YES' : '❌ NO'}`);
+      if (analysis.checkpointStatus.itemDetails?.length > 0) {
+        console.log(`      └─ Items:`);
+        analysis.checkpointStatus.itemDetails.forEach((item: any, i: number) => {
+          const statusIcon = item.status === 'validated' ? '✅' : item.status === 'vague' ? '🟡' : '❌';
+          console.log(`         ${i + 1}. ${statusIcon} ${item.check}`);
+        });
+      }
+    }
+
+    console.log(`\n   🎭 ARCHETYPE STATE:`);
+    console.log(`      └─ Current: ${analysis.archetypeState?.current || 'neutral'}`);
+    console.log(`      └─ Confidence: ${Math.round((analysis.archetypeState?.confidence || 0) * 100)}%`);
+    if (analysis.archetypeState?.reasoning) {
+      console.log(`      └─ Reasoning: "${analysis.archetypeState.reasoning}"`);
+    }
+    console.log(`📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
     if (analysis.archetypeState) {
       session.archetypeState = analysis.archetypeState;

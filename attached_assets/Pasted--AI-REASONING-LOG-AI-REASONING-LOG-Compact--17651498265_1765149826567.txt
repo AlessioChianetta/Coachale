@@ -1,0 +1,36 @@
+  // 🧠 AI REASONING LOG
+        // 🧠 AI REASONING LOG (Compact)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log(`\n🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`🧠 [SALES-MANAGER] AI REASONING`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   📊 MODEL: ${this.MODEL}`);
+        console.log(`   ⏱️ LATENCY: ${parallelElapsed}ms`);
+        console.log(`\n   🧠 REASONING:`);
+        if (aiAnalysis.reasoning) {
+          const reasoningLines = aiAnalysis.reasoning.match(/.{1,80}/g) || [aiAnalysis.reasoning];
+          reasoningLines.slice(0, 5).forEach((line: string) => {
+            console.log(`      ${line}`);
+          });
+          if (reasoningLines.length > 5) {
+            console.log(`      ... (${reasoningLines.length - 5} more lines)`);
+          }
+        } else {
+          console.log(`      N/A`);
+        }
+        console.log(`\n   📤 AI DECISIONS:`);
+        console.log(`      └─ Should Advance: ${aiAnalysis.shouldAdvance ? '✅ YES' : '❌ NO'}`);
+        console.log(`      └─ Next Phase: ${aiAnalysis.nextPhaseId || 'same'}`);
+        console.log(`      └─ Next Step: ${aiAnalysis.nextStepId || 'same'}`);
+        console.log(`      └─ Confidence: ${Math.round((aiAnalysis.confidence || 0) * 100)}%`);
+        if (aiAnalysis.detectedArchetype) {
+          console.log(`\n   🎭 ARCHETYPE INTUITION:`);
+          console.log(`      └─ Detected: ${aiAnalysis.detectedArchetype}`);
+          const archetypeReasoningPreview = aiAnalysis.archetypeReasoning 
+            ? (aiAnalysis.archetypeReasoning.length > 100 
+              ? aiAnalysis.archetypeReasoning.substring(0, 100) + '...' 
+              : aiAnalysis.archetypeReasoning)
+            : 'N/A';
+          console.log(`      └─ Reasoning: "${archetypeReasoningPreview}"`);
+        }
+        console.log(`🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);

@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Brain, 
@@ -8,17 +9,30 @@ import {
   XCircle, 
   Clock,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   X,
   Lightbulb,
   MessageSquare,
   User,
-  Volume2
+  Volume2,
+  FileText,
+  Mic
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SalesCoachingState, ArchetypeId } from './hooks/useSalesCoaching';
 
+interface TranscriptEntry {
+  speakerId: string;
+  speakerName: string;
+  text: string;
+  timestamp: number;
+}
+
 interface CoachingPanelProps {
   coaching: SalesCoachingState;
+  transcript: TranscriptEntry[];
+  myParticipantId: string | null;
   onDismissFeedback: () => void;
   onDismissBuySignal: (index: number) => void;
   onDismissObjection: (index: number) => void;
@@ -46,11 +60,16 @@ const PRIORITY_STYLES = {
 
 export default function CoachingPanel({
   coaching,
+  transcript,
+  myParticipantId,
   onDismissFeedback,
   onDismissBuySignal,
   onDismissObjection,
   onClose,
 }: CoachingPanelProps) {
+  const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(false);
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
+
   const { 
     scriptProgress, 
     buySignals, 
@@ -60,6 +79,12 @@ export default function CoachingPanel({
     currentFeedback,
     toneWarnings,
   } = coaching;
+
+  useEffect(() => {
+    if (isTranscriptExpanded && transcriptEndRef.current) {
+      transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [transcript, isTranscriptExpanded]);
 
   return (
     <motion.div
@@ -132,6 +157,84 @@ export default function CoachingPanel({
             )}
           </div>
         )}
+
+        {/* Sezione Trascrizione Collapsible */}
+        <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
+          <button
+            onClick={() => setIsTranscriptExpanded(!isTranscriptExpanded)}
+            className="w-full p-3 flex items-center justify-between hover:bg-gray-700/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs text-gray-400">Trascrizione</span>
+              <span className="text-xs text-gray-500">({transcript.length} msg)</span>
+            </div>
+            {isTranscriptExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+          
+          <AnimatePresence>
+            {isTranscriptExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="border-t border-gray-700/50"
+              >
+                <div className="max-h-48 overflow-y-auto p-2 space-y-2">
+                  {transcript.length === 0 ? (
+                    <p className="text-xs text-gray-500 text-center py-4">
+                      In attesa della trascrizione...
+                    </p>
+                  ) : (
+                    transcript.map((msg, idx) => {
+                      const role = (msg as any).role || '';
+                      const isHost = msg.speakerId === myParticipantId || 
+                        msg.speakerId === 'assistant' || 
+                        role === 'assistant';
+                      const displayName = msg.speakerName || (isHost ? 'Host' : 'Prospect');
+                      const displayText = msg.text || (msg as any).content || '';
+                      
+                      if (!displayText) return null;
+                      
+                      return (
+                        <div key={idx} className="flex gap-2">
+                          <div className={cn(
+                            "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center",
+                            isHost 
+                              ? "bg-purple-500/20" 
+                              : "bg-blue-500/20"
+                          )}>
+                            {isHost ? (
+                              <Mic className="w-3 h-3 text-purple-400" />
+                            ) : (
+                              <User className="w-3 h-3 text-blue-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={cn(
+                              "text-xs font-medium",
+                              isHost ? "text-purple-300" : "text-blue-300"
+                            )}>
+                              {displayName}
+                            </p>
+                            <p className="text-xs text-gray-300 break-words">
+                              {displayText}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={transcriptEndRef} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
         <AnimatePresence>
           {currentFeedback && (

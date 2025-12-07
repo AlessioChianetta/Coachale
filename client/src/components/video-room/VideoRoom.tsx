@@ -62,6 +62,7 @@ export default function VideoRoom({
     participants: copilotParticipants,
     myParticipantId,
     isJoinConfirmed,
+    transcripts,
     toggleScriptItem,
     dismissBattleCard,
     updateParticipants,
@@ -439,6 +440,8 @@ export default function VideoRoom({
               feedbackHistory,
               toneWarnings,
             }}
+            transcript={transcripts}
+            myParticipantId={myParticipantId}
             onDismissFeedback={dismissFeedback}
             onDismissBuySignal={dismissBuySignal}
             onDismissObjection={dismissObjection}
