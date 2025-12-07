@@ -19,6 +19,14 @@ interface UseWebRTCProps {
   onWebRTCMessage?: (message: any) => void;
 }
 
+export interface AudioDiagnostics {
+  localAudioTrackExists: boolean;
+  localAudioEnabled: boolean;
+  remoteAudioTracks: number;
+  iceConnectionStates: Map<string, string>;
+  lastAudioEvent: string;
+}
+
 interface UseWebRTCResult {
   localStream: MediaStream | null;
   remoteStreams: Map<string, MediaStream>;
@@ -28,6 +36,7 @@ interface UseWebRTCResult {
   handleWebRTCMessage: (message: any) => void;
   toggleVideo: (enabled: boolean) => void;
   toggleAudio: (enabled: boolean) => void;
+  audioDiagnostics: AudioDiagnostics;
 }
 
 const ICE_SERVERS: RTCConfiguration = {
@@ -50,6 +59,13 @@ export function useWebRTC({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [isLocalStreamReady, setIsLocalStreamReady] = useState(false);
+  const [audioDiagnostics, setAudioDiagnostics] = useState<AudioDiagnostics>({
+    localAudioTrackExists: false,
+    localAudioEnabled: false,
+    remoteAudioTracks: 0,
+    iceConnectionStates: new Map(),
+    lastAudioEvent: 'Nessun evento',
+  });
 
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
@@ -81,9 +97,51 @@ export function useWebRTC({
     };
 
    pc.ontrack = (event) => {
-      console.log(`📹 [WebRTC] Received remote track from ${remoteParticipantId} (${event.track.kind})`);
-      
       const track = event.track;
+      const isAudio = track.kind === 'audio';
+      
+      console.log(`🎧 [WebRTC-AUDIO-DEBUG] ========================================`);
+      console.log(`🎧 [WebRTC-AUDIO-DEBUG] RICEVUTO TRACK REMOTO da ${remoteParticipantId}`);
+      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Tipo: ${track.kind}`);
+      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Track ID: ${track.id}`);
+      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Track enabled: ${track.enabled}`);
+      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Track muted: ${track.muted}`);
+      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Track readyState: ${track.readyState}`);
+      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Streams nell'evento: ${event.streams.length}`);
+      console.log(`🎧 [WebRTC-AUDIO-DEBUG] ========================================`);
+      
+      if (isAudio) {
+        setAudioDiagnostics(prev => ({
+          ...prev,
+          remoteAudioTracks: prev.remoteAudioTracks + 1,
+          lastAudioEvent: `Audio remoto ricevuto da ${remoteParticipantId} - enabled: ${track.enabled}, muted: ${track.muted}`,
+        }));
+        
+        // Monitor per cambiamenti di stato della traccia audio
+        track.onmute = () => {
+          console.log(`🔇 [WebRTC-AUDIO-DEBUG] TRACK AUDIO MUTATO da ${remoteParticipantId}`);
+          setAudioDiagnostics(prev => ({
+            ...prev,
+            lastAudioEvent: `Audio MUTATO da ${remoteParticipantId}`,
+          }));
+        };
+        
+        track.onunmute = () => {
+          console.log(`🔊 [WebRTC-AUDIO-DEBUG] TRACK AUDIO SMUTATO da ${remoteParticipantId}`);
+          setAudioDiagnostics(prev => ({
+            ...prev,
+            lastAudioEvent: `Audio ATTIVO da ${remoteParticipantId}`,
+          }));
+        };
+        
+        track.onended = () => {
+          console.log(`⏹️ [WebRTC-AUDIO-DEBUG] TRACK AUDIO TERMINATO da ${remoteParticipantId}`);
+          setAudioDiagnostics(prev => ({
+            ...prev,
+            lastAudioEvent: `Audio TERMINATO da ${remoteParticipantId}`,
+          }));
+        };
+      }
       
       setRemoteStreams(prev => {
         const newMap = new Map(prev);
@@ -94,7 +152,16 @@ export function useWebRTC({
         // 2. Se abbiamo creato un nuovo MediaStream manuale, aggiungiamo la traccia
         if (!stream.getTrackById(track.id)) {
           stream.addTrack(track);
+          console.log(`➕ [WebRTC-AUDIO-DEBUG] Aggiunta traccia ${track.kind} allo stream per ${remoteParticipantId}`);
         }
+
+        // Log dettagliato dello stream
+        const audioTracks = stream.getAudioTracks();
+        const videoTracks = stream.getVideoTracks();
+        console.log(`📊 [WebRTC-AUDIO-DEBUG] Stream per ${remoteParticipantId}: ${audioTracks.length} audio, ${videoTracks.length} video`);
+        audioTracks.forEach((t, i) => {
+          console.log(`   🔈 Audio track ${i}: enabled=${t.enabled}, muted=${t.muted}, state=${t.readyState}`);
+        });
 
         // 3. Aggiorna la mappa. 
         // IMPORTANTE: Creiamo un clone del MediaStream se necessario per forzare il re-render di React
@@ -105,7 +172,18 @@ export function useWebRTC({
     };
 
     pc.oniceconnectionstatechange = () => {
-      console.log(`🔌 [WebRTC] ICE connection state for ${remoteParticipantId}: ${pc.iceConnectionState}`);
+      console.log(`🔌 [WebRTC-AUDIO-DEBUG] ICE state per ${remoteParticipantId}: ${pc.iceConnectionState}`);
+      
+      // Aggiorna diagnostiche con stato ICE
+      setAudioDiagnostics(prev => {
+        const newStates = new Map(prev.iceConnectionStates);
+        newStates.set(remoteParticipantId, pc.iceConnectionState);
+        return {
+          ...prev,
+          iceConnectionStates: newStates,
+          lastAudioEvent: `ICE ${pc.iceConnectionState} con ${remoteParticipantId}`,
+        };
+      });
       
       if (pc.iceConnectionState === 'connected') {
         connectionRetryRef.current.set(remoteParticipantId, 0);
@@ -182,13 +260,43 @@ export function useWebRTC({
       setLocalStream(stream);
       setIsLocalStreamReady(true);
 
+      // Log dettagliato delle tracce locali
+      const audioTracks = stream.getAudioTracks();
+      const videoTracks = stream.getVideoTracks();
+      
+      console.log(`🎤 [WebRTC-AUDIO-DEBUG] ========================================`);
+      console.log(`🎤 [WebRTC-AUDIO-DEBUG] STREAM LOCALE CREATO`);
+      console.log(`🎤 [WebRTC-AUDIO-DEBUG] Tracce audio: ${audioTracks.length}`);
+      console.log(`🎤 [WebRTC-AUDIO-DEBUG] Tracce video: ${videoTracks.length}`);
+      audioTracks.forEach((track, i) => {
+        console.log(`🎤 [WebRTC-AUDIO-DEBUG] Audio track ${i}:`);
+        console.log(`   - ID: ${track.id}`);
+        console.log(`   - Label: ${track.label}`);
+        console.log(`   - Enabled: ${track.enabled}`);
+        console.log(`   - Muted: ${track.muted}`);
+        console.log(`   - ReadyState: ${track.readyState}`);
+      });
+      console.log(`🎤 [WebRTC-AUDIO-DEBUG] ========================================`);
+      
+      // Aggiorna diagnostiche
+      setAudioDiagnostics(prev => ({
+        ...prev,
+        localAudioTrackExists: audioTracks.length > 0,
+        localAudioEnabled: audioTracks.length > 0 && audioTracks[0].enabled,
+        lastAudioEvent: audioTracks.length > 0 
+          ? `Mic locale attivo: ${audioTracks[0].label}` 
+          : 'NESSUN AUDIO LOCALE!',
+      }));
+
       peerConnectionsRef.current.forEach((pc, participantId) => {
         stream.getTracks().forEach(track => {
           const sender = pc.getSenders().find(s => s.track?.kind === track.kind);
           if (sender) {
             sender.replaceTrack(track);
+            console.log(`🔄 [WebRTC-AUDIO-DEBUG] Rimpiazzata traccia ${track.kind} per ${participantId}`);
           } else {
             pc.addTrack(track, stream);
+            console.log(`➕ [WebRTC-AUDIO-DEBUG] Aggiunta traccia ${track.kind} per ${participantId}`);
           }
         });
       });
@@ -221,7 +329,16 @@ export function useWebRTC({
     if (localStreamRef.current) {
       localStreamRef.current.getAudioTracks().forEach(track => {
         track.enabled = enabled;
+        console.log(`🎤 [WebRTC-AUDIO-DEBUG] Toggle audio: ${enabled ? 'ATTIVO' : 'MUTO'} - track.enabled=${track.enabled}`);
       });
+      
+      setAudioDiagnostics(prev => ({
+        ...prev,
+        localAudioEnabled: enabled,
+        lastAudioEvent: enabled ? 'Mic ATTIVATO' : 'Mic MUTATO',
+      }));
+    } else {
+      console.warn(`⚠️ [WebRTC-AUDIO-DEBUG] Toggle audio chiamato ma nessuno stream locale!`);
     }
   }, []);
 
@@ -529,5 +646,6 @@ export function useWebRTC({
     handleWebRTCMessage,
     toggleVideo,
     toggleAudio,
+    audioDiagnostics,
   };
 }

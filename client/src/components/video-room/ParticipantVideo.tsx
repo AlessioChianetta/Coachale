@@ -50,12 +50,28 @@ export default function ParticipantVideo({
       // Evita di resettare se è già lo stesso oggetto
       if (videoEl.srcObject === stream) return;
 
-      console.log(`📹 [ParticipantVideo] Setting stream for ${participantName} (${sourceName})`);
+      // Log dettagliati per debug audio
+      const audioTracks = stream.getAudioTracks();
+      const videoTracks = stream.getVideoTracks();
+      
+      console.log(`🎬 [ParticipantVideo-DEBUG] ========================================`);
+      console.log(`🎬 [ParticipantVideo-DEBUG] ASSEGNANDO STREAM a ${participantName} (${sourceName})`);
+      console.log(`🎬 [ParticipantVideo-DEBUG] Audio tracks: ${audioTracks.length}`);
+      console.log(`🎬 [ParticipantVideo-DEBUG] Video tracks: ${videoTracks.length}`);
+      audioTracks.forEach((track, i) => {
+        console.log(`   🔈 Audio ${i}: enabled=${track.enabled}, muted=${track.muted}, state=${track.readyState}`);
+      });
+      console.log(`🎬 [ParticipantVideo-DEBUG] Video element muted: ${videoEl.muted}`);
+      console.log(`🎬 [ParticipantVideo-DEBUG] isLocalUser: ${isLocalUser}`);
+      console.log(`🎬 [ParticipantVideo-DEBUG] ========================================`);
+      
       videoEl.srcObject = stream;
       
       // Promessa di play per gestire le policy dei browser (specie Safari/Chrome)
-      videoEl.play().catch(e => {
-        console.warn(`⚠️ [ParticipantVideo] Autoplay blocked for ${participantName}:`, e);
+      videoEl.play().then(() => {
+        console.log(`▶️ [ParticipantVideo-DEBUG] Play SUCCESS per ${participantName}`);
+      }).catch(e => {
+        console.warn(`⚠️ [ParticipantVideo-DEBUG] Autoplay blocked per ${participantName}:`, e);
       });
       setHasStream(true);
     };
@@ -67,7 +83,7 @@ export default function ParticipantVideo({
     } else {
       // Solo se non siamo l'utente locale logghiamo l'errore
       if (!isLocalUser) {
-        // console.log(`⏳ [ParticipantVideo] Waiting for stream for ${participantName}...`);
+        console.log(`⏳ [ParticipantVideo-DEBUG] In attesa stream per ${participantName}...`);
         setHasStream(false);
       }
     }

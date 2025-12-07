@@ -83,6 +83,7 @@ export default function VideoRoom({
     handleWebRTCMessage,
     toggleVideo: toggleWebRTCVideo,
     toggleAudio: toggleWebRTCAudio,
+    audioDiagnostics,
   } = useWebRTC({
     myParticipantId,
     participants: activeParticipantsForWebRTC,
@@ -90,6 +91,8 @@ export default function VideoRoom({
     isJoinConfirmed,
     sendWebRTCMessage,
   });
+  
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   // Track if we've joined this session (to avoid duplicate joins)
   const [hasJoined, setHasJoined] = useState(false);
@@ -363,6 +366,78 @@ export default function VideoRoom({
           <div className="bg-red-900/90 text-red-200 px-4 py-2 rounded-lg text-sm">
             Copilot: {copilotError}
           </div>
+        </div>
+      )}
+
+      {/* Pulsante Debug Audio */}
+      <button
+        onClick={() => setShowDebugPanel(!showDebugPanel)}
+        className="fixed bottom-4 left-4 z-50 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white text-xs rounded-lg border border-gray-600"
+      >
+        🔊 Debug Audio
+      </button>
+
+      {/* Pannello Debug Audio */}
+      {showDebugPanel && (
+        <div className="fixed bottom-16 left-4 z-50 w-80 bg-gray-900/95 border border-gray-700 rounded-lg p-4 text-xs font-mono">
+          <h3 className="text-white font-bold mb-3 text-sm">🔊 Audio Diagnostics</h3>
+          
+          <div className="space-y-2">
+            <div className={`p-2 rounded ${audioDiagnostics.localAudioTrackExists ? 'bg-green-900/50' : 'bg-red-900/50'}`}>
+              <span className="text-gray-300">Mic locale: </span>
+              <span className={audioDiagnostics.localAudioTrackExists ? 'text-green-400' : 'text-red-400'}>
+                {audioDiagnostics.localAudioTrackExists ? '✅ RILEVATO' : '❌ NON TROVATO'}
+              </span>
+            </div>
+            
+            <div className={`p-2 rounded ${audioDiagnostics.localAudioEnabled ? 'bg-green-900/50' : 'bg-yellow-900/50'}`}>
+              <span className="text-gray-300">Mic attivo: </span>
+              <span className={audioDiagnostics.localAudioEnabled ? 'text-green-400' : 'text-yellow-400'}>
+                {audioDiagnostics.localAudioEnabled ? '✅ ATTIVO' : '🔇 MUTO'}
+              </span>
+            </div>
+            
+            <div className={`p-2 rounded ${audioDiagnostics.remoteAudioTracks > 0 ? 'bg-green-900/50' : 'bg-red-900/50'}`}>
+              <span className="text-gray-300">Audio remoti ricevuti: </span>
+              <span className={audioDiagnostics.remoteAudioTracks > 0 ? 'text-green-400' : 'text-red-400'}>
+                {audioDiagnostics.remoteAudioTracks}
+              </span>
+            </div>
+            
+            <div className="p-2 rounded bg-gray-800">
+              <span className="text-gray-300">Ultimo evento: </span>
+              <span className="text-blue-400 block mt-1">{audioDiagnostics.lastAudioEvent}</span>
+            </div>
+            
+            <div className="p-2 rounded bg-gray-800">
+              <span className="text-gray-300">Connessioni ICE:</span>
+              {audioDiagnostics.iceConnectionStates.size > 0 ? (
+                <div className="mt-1 space-y-1">
+                  {Array.from(audioDiagnostics.iceConnectionStates.entries()).map(([id, state]) => (
+                    <div key={id} className="flex justify-between">
+                      <span className="text-gray-500 truncate max-w-[100px]">{id.slice(0, 8)}...</span>
+                      <span className={
+                        state === 'connected' ? 'text-green-400' :
+                        state === 'checking' ? 'text-yellow-400' :
+                        state === 'failed' ? 'text-red-400' : 'text-gray-400'
+                      }>
+                        {state}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-gray-500 block mt-1">Nessuna connessione</span>
+              )}
+            </div>
+            
+            <div className="p-2 rounded bg-gray-800">
+              <span className="text-gray-300">Remote streams: </span>
+              <span className="text-purple-400">{remoteStreams.size}</span>
+            </div>
+          </div>
+          
+          <p className="text-gray-500 mt-3 text-[10px]">Apri console (F12) per log dettagliati</p>
         </div>
       )}
     </div>
