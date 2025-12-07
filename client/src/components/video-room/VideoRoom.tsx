@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ParticipantVideo, { SentimentType } from './ParticipantVideo';
 import VideoControls from './VideoControls';
 import AICopilotHUD from './AICopilotHUD';
+import LocalCameraPreview from './LocalCameraPreview';
 import { useVideoMeeting } from '@/hooks/useVideoMeeting';
 import { useVideoCopilot } from '@/hooks/useVideoCopilot';
 import { Loader2 } from 'lucide-react';
@@ -270,6 +271,12 @@ export default function VideoRoom({
         onToggleScreenShare={() => setIsScreenSharing(!isScreenSharing)}
         onToggleHUD={() => setShowHUD(!showHUD)}
         onEndCall={handleEndCall}
+      />
+
+      <LocalCameraPreview
+        isVideoOff={isVideoOff}
+        isMuted={isMuted}
+        participantName={participantName}
       />
 
       <AnimatePresence>
