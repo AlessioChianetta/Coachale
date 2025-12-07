@@ -61,7 +61,6 @@ export default function VideoRoom({
     updateParticipants,
     joinParticipant,
     leaveParticipant,
-    endSession,
     sendWebRTCMessage,
     setWebRTCMessageHandler,
   } = useVideoCopilot(meeting?.meetingToken ?? null);
@@ -161,10 +160,10 @@ export default function VideoRoom({
 
     if (activeParticipants.length === 0) {
       return [{
-        id: 'host',
+        id: myParticipantId || 'local-user',
         name: participantName,
         sentiment: 'neutral' as SentimentType,
-        isHost: true,
+        isHost: isHost,
         isMuted: isMuted,
         isVideoOff: isVideoOff,
         isLocalUser: true,
@@ -180,7 +179,7 @@ export default function VideoRoom({
       isVideoOff: p.id === myParticipantId ? isVideoOff : false,
       isLocalUser: p.id === myParticipantId,
     }));
-  }, [meetingParticipants, copilotParticipants, isConnected, participantSentiments, participantName, isMuted, isVideoOff, myParticipantId]);
+  }, [meetingParticipants, copilotParticipants, isConnected, participantSentiments, participantName, isMuted, isVideoOff, myParticipantId, isHost]);
 
   const displayScriptItems = useMemo(() => {
     if (scriptItems.length > 0) {
@@ -219,10 +218,9 @@ export default function VideoRoom({
 
   const handleEndCall = async () => {
     stopLocalStream();
-    if (meeting) {
-      await updateMeetingStatus('completed');
+    if (myParticipantId) {
+      leaveParticipant(myParticipantId);
     }
-    endSession();
     onEndCall();
   };
 
@@ -323,6 +321,7 @@ export default function VideoRoom({
                 isMuted={participant.isMuted}
                 isVideoOff={participant.isVideoOff}
                 isLocalUser={participant.isLocalUser}
+                localStream={participant.isLocalUser ? localStream : null}
                 remoteStream={!participant.isLocalUser ? remoteStreams.get(participant.id) : null}
               />
             ))}

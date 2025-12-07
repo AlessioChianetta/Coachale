@@ -11,6 +11,7 @@ interface ParticipantVideoProps {
   isMuted?: boolean;
   isVideoOff?: boolean;
   isLocalUser?: boolean;
+  localStream?: MediaStream | null;
   remoteStream?: MediaStream | null;
 }
 
@@ -33,10 +34,10 @@ export default function ParticipantVideo({
   isMuted = false,
   isVideoOff = false,
   isLocalUser = false,
+  localStream = null,
   remoteStream = null,
 }: ParticipantVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const [hasStream, setHasStream] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
@@ -47,74 +48,18 @@ export default function ParticipantVideo({
       return;
     }
     
-    if (!isLocalUser) {
-      setHasStream(false);
+    if (isLocalUser && localStream && videoRef.current) {
+      videoRef.current.srcObject = localStream;
+      setHasStream(true);
       return;
     }
-
-    let cancelled = false;
-
-    const stopStream = () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-        setHasStream(false);
-      }
-    };
-
-    const startCamera = async () => {
-      if (isVideoOff) {
-        stopStream();
-        return;
-      }
-
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setCameraError('Camera non supportata');
-        return;
-      }
-
-      try {
-        setCameraError(null);
-        const newStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        });
-
-        if (cancelled || isVideoOff) {
-          newStream.getTracks().forEach(track => track.stop());
-          return;
-        }
-
-        stopStream();
-        streamRef.current = newStream;
-        setHasStream(true);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = newStream;
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Camera access error:', err);
-          setCameraError('Camera non disponibile');
-        }
-      }
-    };
-
-    startCamera();
-
-    return () => {
-      cancelled = true;
-      stopStream();
-    };
-  }, [isLocalUser, isVideoOff, remoteStream]);
-
-  useEffect(() => {
-    if (videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current;
+    
+    if (!isLocalUser) {
+      setHasStream(false);
     }
-  }, [hasStream]);
+  }, [isLocalUser, isVideoOff, remoteStream, localStream]);
 
-  const showVideo = (isLocalUser || remoteStream) && hasStream && !isVideoOff && !cameraError;
+  const showVideo = (localStream || remoteStream) && hasStream && !isVideoOff && !cameraError;
 
   return (
     <motion.div
