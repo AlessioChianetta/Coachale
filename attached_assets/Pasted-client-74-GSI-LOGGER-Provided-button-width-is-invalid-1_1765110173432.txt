@@ -1,0 +1,106 @@
+client:74 [GSI_LOGGER]: Provided button width is invalid: 100%
+(anonymous) @ client:74
+gt @ client:285
+St @ client:318
+Bs @ client:316
+Cs @ client:276
+script.onload @ meet-green-room.tsx:148
+script
+(anonymous) @ meet-green-room.tsx:138
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=eb60a26a:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=eb60a26a:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=eb60a26a:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=eb60a26a:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=eb60a26a:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=eb60a26a:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=eb60a26a:19447
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=eb60a26a:18868
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=eb60a26a:9119
+commitRootImpl @ chunk-RPCDYKBN.js?v=eb60a26a:19432
+commitRoot @ chunk-RPCDYKBN.js?v=eb60a26a:19277
+finishConcurrentRender @ chunk-RPCDYKBN.js?v=eb60a26a:18805
+performConcurrentWorkOnRoot @ chunk-RPCDYKBN.js?v=eb60a26a:18718
+workLoop @ chunk-RPCDYKBN.js?v=eb60a26a:197
+flushWork @ chunk-RPCDYKBN.js?v=eb60a26a:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=eb60a26a:384Understand this warning
+client:335 Cross-Origin-Opener-Policy policy would block the window.postMessage call.
+Ft @ client:335
+(anonymous) @ client:302
+zf @ client:115
+b @ client:112Understand this error
+client:335 Cross-Origin-Opener-Policy policy would block the window.postMessage call.
+Ft @ client:335
+(anonymous) @ client:302
+zf @ client:115
+b @ client:112Understand this error
+meet-green-room.tsx:356 [MeetGreenRoom] Joining call with: {token: 'eMkVVomL35BZ4IWQ', guestName: 'Alessio Chianetta', videoDevice: 'cc08d952acf85f5e58f70261accdd35020cbf6ca266530af9e222f79fcf433af', audioDevice: '38bb068be6458672a4c1f60909edd0dc75d79ad23e52712c18450ccfe7fa70ac'}
+chunk-RPCDYKBN.js?v=eb60a26a:521 Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+
+Check the render method of `PopChild`.
+    at ParticipantVideo (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/components/video-room/ParticipantVideo.tsx:32:3)
+    at PopChildMeasure (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7683:23)
+    at PopChild (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7704:21)
+    at PresenceChild (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7742:24)
+    at AnimatePresence (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7800:26)
+    at div
+    at main
+    at div
+    at VideoRoom (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/components/video-room/VideoRoom.tsx:28:3)
+    at MeetVideoRoom (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/pages/meet-video-room.tsx:24:21)
+    at Route (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb60a26a:323:16)
+    at Switch (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb60a26a:379:17)
+    at Suspense
+    at Router (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/App.tsx?v=BdtIOpj473y1Sp9aPUnB2:196:35)
+    at Provider (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb60a26a:38:15)
+    at TooltipProvider (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=eb60a26a:64:5)
+    at TourProvider (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at QueryClientProvider (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=eb60a26a:2805:3)
+    at V (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=eb60a26a:44:25)
+    at J (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=eb60a26a:42:18)
+    at App (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/App.tsx?v=BdtIOpj473y1Sp9aPUnB2:1238:22)
+printWarning @ chunk-RPCDYKBN.js?v=eb60a26a:521
+error @ chunk-RPCDYKBN.js?v=eb60a26a:505
+validateFunctionComponentInDev @ chunk-RPCDYKBN.js?v=eb60a26a:15013
+mountIndeterminateComponent @ chunk-RPCDYKBN.js?v=eb60a26a:14988
+beginWork @ chunk-RPCDYKBN.js?v=eb60a26a:15914
+beginWork$1 @ chunk-RPCDYKBN.js?v=eb60a26a:19753
+performUnitOfWork @ chunk-RPCDYKBN.js?v=eb60a26a:19198
+workLoopSync @ chunk-RPCDYKBN.js?v=eb60a26a:19137
+renderRootSync @ chunk-RPCDYKBN.js?v=eb60a26a:19116
+performSyncWorkOnRoot @ chunk-RPCDYKBN.js?v=eb60a26a:18874
+flushSyncCallbacks @ chunk-RPCDYKBN.js?v=eb60a26a:9119
+(anonymous) @ chunk-RPCDYKBN.js?v=eb60a26a:18627
+setTimeout
+scheduleFn @ @tanstack_react-query.js?v=eb60a26a:555
+flush @ @tanstack_react-query.js?v=eb60a26a:569
+batch @ @tanstack_react-query.js?v=eb60a26a:587
+dispatch_fn @ @tanstack_react-query.js?v=eb60a26a:996
+setData @ @tanstack_react-query.js?v=eb60a26a:696
+onSuccess @ @tanstack_react-query.js?v=eb60a26a:897
+resolve @ @tanstack_react-query.js?v=eb60a26a:456
+Promise.then
+run @ @tanstack_react-query.js?v=eb60a26a:498
+start @ @tanstack_react-query.js?v=eb60a26a:536
+fetch @ @tanstack_react-query.js?v=eb60a26a:926
+executeFetch_fn @ @tanstack_react-query.js?v=eb60a26a:2211
+onSubscribe @ @tanstack_react-query.js?v=eb60a26a:1898
+subscribe @ @tanstack_react-query.js?v=eb60a26a:24
+(anonymous) @ @tanstack_react-query.js?v=eb60a26a:3022
+subscribeToStore @ chunk-RPCDYKBN.js?v=eb60a26a:11984
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=eb60a26a:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=eb60a26a:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=eb60a26a:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=eb60a26a:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=eb60a26a:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=eb60a26a:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=eb60a26a:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=eb60a26a:19328
+workLoop @ chunk-RPCDYKBN.js?v=eb60a26a:197
+flushWork @ chunk-RPCDYKBN.js?v=eb60a26a:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=eb60a26a:384Understand this error
+useVideoCopilot.ts:283 🎥 WebSocket connected to Video Copilot
+useVideoCopilot.ts:116 ✅ Video Copilot connected: {meetingId: '57d14525-79ea-4b2f-b31f-5ca2b83aa714', message: 'Video AI Copilot connected successfully', playbookLoaded: 'Script più leggero'}
+useWebRTC.ts:156 📹 [WebRTC] Starting local stream (video: true, audio: true)
+useWebRTC.ts:190 ✅ [WebRTC] Local stream started with 2 tracks
+useVideoCopilot.ts:206 ✅ Join confirmed, my participant ID: 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+useWebRTC.ts:344 ⏭️ [WebRTC] Skipping connection initiation (not the initiator)

@@ -74,17 +74,28 @@ export function useWebRTC({
       }
     };
 
-    pc.ontrack = (event) => {
-      console.log(`📹 [WebRTC] Received remote track from ${remoteParticipantId}`, event.track.kind);
+   pc.ontrack = (event) => {
+      console.log(`📹 [WebRTC] Received remote track from ${remoteParticipantId} (${event.track.kind})`);
       
-      const [remoteStream] = event.streams;
-      if (remoteStream) {
-        setRemoteStreams(prev => {
-          const newMap = new Map(prev);
-          newMap.set(remoteParticipantId, remoteStream);
-          return newMap;
-        });
-      }
+      const track = event.track;
+      
+      setRemoteStreams(prev => {
+        const newMap = new Map(prev);
+        
+        // 1. Recupera lo stream esistente O usa quello dell'evento O ne crea uno nuovo
+        let stream = newMap.get(remoteParticipantId) || event.streams[0] || new MediaStream();
+        
+        // 2. Se abbiamo creato un nuovo MediaStream manuale, aggiungiamo la traccia
+        if (!stream.getTrackById(track.id)) {
+          stream.addTrack(track);
+        }
+
+        // 3. Aggiorna la mappa. 
+        // IMPORTANTE: Creiamo un clone del MediaStream se necessario per forzare il re-render di React
+        // (A volte React non "vede" che lo stream interno è cambiato se l'oggetto riferimento è lo stesso)
+        newMap.set(remoteParticipantId, stream);
+        return newMap;
+      });
     };
 
     pc.oniceconnectionstatechange = () => {

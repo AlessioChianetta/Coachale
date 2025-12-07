@@ -1,0 +1,204 @@
+ [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+12:23:42 PM [express] POST /api/meet/verify-google 200 in 12ms :: {"email":"chianettalessio09@gmail.c…
+[PublicMeet] Participant Alessio Chianetta joined meeting 57d14525-79ea-4b2f-b31f-5ca2b83aa714
+12:23:45 PM [express] POST /api/meet/eMkVVomL35BZ4IWQ/join 201 in 971ms :: {"participantId":"ba73d0d3…
+12:23:47 PM [express] GET /api/meet/eMkVVomL35BZ4IWQ 304 in 321ms :: {"id":"57d14525-79ea-4b2f-b31f-5…
+[PublicMeeting] Fetching meeting for token: eMkVVomL35BZ4IWQ
+[PublicMeeting] Meeting found: 57d14525-79ea-4b2f-b31f-5ca2b83aa714 - d
+12:23:48 PM [express] GET /api/public/meeting/eMkVVomL35BZ4IWQ 200 in 630ms :: {"meeting":{"id":"57d1…
+🎥 [a4v5lg] Client connected to Video AI Copilot
+✅ [VideoCopilot] Connection authenticated - Meeting: 57d14525-79ea-4b2f-b31f-5ca2b83aa714, Guest: true
+👥 [VideoCopilot] Participants updated: 3 participants
+✅ [VideoCopilot] New participant joined: Alessio Chianetta (prospect) - ID: c29e174f-474c-484c-b192-858dbe4079b8
+🔗 [VideoCopilot] Registered socket for participant c29e174f-474c-484c-b192-858dbe4079b8 in meeting 57d14525-79ea-4b2f-b31f-5ca2b83aa714
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected
+📤 [VideoCopilot] Forwarded WebRTC offer from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+📤 [VideoCopilot] Forwarded WebRTC answer from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+📤 [VideoCopilot] Forwarded ICE candidate from c29e174f-474c-484c-b192-858dbe4079b8 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c29e174f-474c-484c-b192-858dbe4079b8
+🔓 [VideoCopilot] Unregistered socket for participant c29e174f-474c-484c-b192-858dbe4079b8 in meeting 57d14525-79ea-4b2f-b31f-5ca2b83aa714
+👋 [VideoCopilot] Participant left: Alessio Chianetta
+🔌 [a4v5lg] Client disconnected: 1000 - User disconnected
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+12:24:04 PM [express] GET /api/meet/eMkVVomL35BZ4IWQ 200 in 313ms :: {"id":"57d14525-79ea-4b2f-b31f-5…
+12:24:12 PM [express] POST /api/meet/verify-google 200 in 12ms :: {"email":"chianettaalessiotwilio@gm…
+[PublicMeet] Participant alessio chianetta joined meeting 57d14525-79ea-4b2f-b31f-5ca2b83aa714
+12:24:13 PM [express] POST /api/meet/eMkVVomL35BZ4IWQ/join 201 in 214ms :: {"participantId":"a68e162a…
+12:24:15 PM [express] GET /api/meet/eMkVVomL35BZ4IWQ 304 in 302ms :: {"id":"57d14525-79ea-4b2f-b31f-5…
+[PublicMeeting] Fetching meeting for token: eMkVVomL35BZ4IWQ
+[PublicMeeting] Meeting found: 57d14525-79ea-4b2f-b31f-5ca2b83aa714 - d
+12:24:16 PM [express] GET /api/public/meeting/eMkVVomL35BZ4IWQ 200 in 611ms :: {"meeting":{"id":"57d1…
+🎥 [rl9n4x] Client connected to Video AI Copilot
+✅ [VideoCopilot] Connection authenticated - Meeting: 57d14525-79ea-4b2f-b31f-5ca2b83aa714, Guest: true
+👥 [VideoCopilot] Participants updated: 4 participants
+✅ [VideoCopilot] New participant joined: alessio chianetta (prospect) - ID: c5700802-63f6-4496-92e3-de16fb9c76d1
+🔗 [VideoCopilot] Registered socket for participant c5700802-63f6-4496-92e3-de16fb9c76d1 in meeting 57d14525-79ea-4b2f-b31f-5ca2b83aa714
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected
+📤 [VideoCopilot] Forwarded WebRTC offer from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+⚠️ [VideoCopilot] Target participant 75f42bda-0cdf-4827-bab8-d8052c9cabf2 not connected for ICE
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+📤 [VideoCopilot] Forwarded ICE candidate from c5700802-63f6-4496-92e3-de16fb9c76d1 to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant ba73d0d3-91b1-474b-89ab-12e033c88eb1 not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+📤 [VideoCopilot] Forwarded WebRTC answer from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+⚠️ [VideoCopilot] Target participant a68e162a-688c-4e64-8bd8-be81373e760d not connected for ICE
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+📤 [VideoCopilot] Forwarded ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb to c5700802-63f6-4496-92e3-de16fb9c76d1
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 

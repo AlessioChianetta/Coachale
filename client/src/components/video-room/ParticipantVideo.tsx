@@ -42,35 +42,36 @@ export default function ParticipantVideo({
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (remoteStream && videoRef.current) {
-      console.log(`🎥 [ParticipantVideo] Setting REMOTE stream for ${participantName}`);
-      const audioTracks = remoteStream.getAudioTracks();
-      const videoTracks = remoteStream.getVideoTracks();
-      console.log(`🔊 [ParticipantVideo] Remote stream ${participantName}: ${audioTracks.length} audio tracks, ${videoTracks.length} video tracks`);
-      audioTracks.forEach((track, i) => {
-        console.log(`   Audio track ${i}: enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
-      });
-      videoRef.current.srcObject = remoteStream;
-      setHasStream(true);
-      return;
-    }
-    
-    if (isLocalUser && localStream && videoRef.current) {
-      console.log(`🎥 [ParticipantVideo] Setting LOCAL stream for ${participantName}`);
-      const audioTracks = localStream.getAudioTracks();
-      const videoTracks = localStream.getVideoTracks();
-      console.log(`🔊 [ParticipantVideo] Local stream: ${audioTracks.length} audio tracks, ${videoTracks.length} video tracks`);
-      videoRef.current.srcObject = localStream;
-      setHasStream(true);
-      return;
-    }
-    
-    if (!isLocalUser) {
-      console.log(`⚠️ [ParticipantVideo] No stream available for ${participantName}`);
-      setHasStream(false);
-    }
-  }, [isLocalUser, isVideoOff, remoteStream, localStream, participantName]);
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
 
+    // Funzione helper per assegnare e avviare
+    const setAndPlay = (stream: MediaStream, sourceName: string) => {
+      // Evita di resettare se è già lo stesso oggetto
+      if (videoEl.srcObject === stream) return;
+
+      console.log(`📹 [ParticipantVideo] Setting stream for ${participantName} (${sourceName})`);
+      videoEl.srcObject = stream;
+      
+      // Promessa di play per gestire le policy dei browser (specie Safari/Chrome)
+      videoEl.play().catch(e => {
+        console.warn(`⚠️ [ParticipantVideo] Autoplay blocked for ${participantName}:`, e);
+      });
+      setHasStream(true);
+    };
+
+    if (remoteStream) {
+      setAndPlay(remoteStream, 'REMOTE');
+    } else if (isLocalUser && localStream) {
+      setAndPlay(localStream, 'LOCAL');
+    } else {
+      // Solo se non siamo l'utente locale logghiamo l'errore
+      if (!isLocalUser) {
+        // console.log(`⏳ [ParticipantVideo] Waiting for stream for ${participantName}...`);
+        setHasStream(false);
+      }
+    }
+  }, [remoteStream, localStream, isLocalUser, participantName]); // Rimosso isVideoOff dalle dipendenze dirette per evitare reload del video
   const showVideo = (localStream || remoteStream) && hasStream && !isVideoOff && !cameraError;
 
   return (

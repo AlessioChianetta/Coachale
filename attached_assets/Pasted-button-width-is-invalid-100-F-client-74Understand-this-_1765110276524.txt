@@ -1,0 +1,80 @@
+button width is invalid: 100%
+_.F @ client:74Understand this warning
+client:336 Cross-Origin-Opener-Policy policy would block the window.postMessage call.
+Ft @ client:336Understand this error
+client:336 Cross-Origin-Opener-Policy policy would block the window.postMessage call.
+Ft @ client:336Understand this error
+meet-green-room.tsx:356 [MeetGreenRoom] Joining call with: Object
+chunk-RPCDYKBN.js?v=eb60a26a:521 Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+
+Check the render method of `PopChild`.
+    at ParticipantVideo (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/components/video-room/ParticipantVideo.tsx:32:3)
+    at PopChildMeasure (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7683:23)
+    at PopChild (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7704:21)
+    at PresenceChild (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7742:24)
+    at AnimatePresence (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7800:26)
+    at div
+    at main
+    at div
+    at VideoRoom (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/components/video-room/VideoRoom.tsx:28:3)
+    at MeetVideoRoom (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/pages/meet-video-room.tsx:24:21)
+    at Route (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb60a26a:323:16)
+    at Switch (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb60a26a:379:17)
+    at Suspense
+    at Router (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/App.tsx?v=adKqHFFD7EsS9G9b0lfcK:196:35)
+    at Provider (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb60a26a:38:15)
+    at TooltipProvider (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=eb60a26a:64:5)
+    at TourProvider (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at QueryClientProvider (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=eb60a26a:2805:3)
+    at V (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=eb60a26a:44:25)
+    at J (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=eb60a26a:42:18)
+    at App (https://a2ace4f5-68d6-423e-84f3-933ac7fa7370-00-hyhxbfesskzh.janeway.replit.dev/src/App.tsx?v=adKqHFFD7EsS9G9b0lfcK:1238:22)
+printWarning @ chunk-RPCDYKBN.js?v=eb60a26a:521Understand this error
+useVideoCopilot.ts:283 🎥 WebSocket connected to Video Copilot
+useVideoCopilot.ts:116 ✅ Video Copilot connected: Object
+useWebRTC.ts:156 📹 [WebRTC] Starting local stream (video: true, audio: true)
+useVideoCopilot.ts:206 ✅ Join confirmed, my participant ID: c5700802-63f6-4496-92e3-de16fb9c76d1
+useWebRTC.ts:190 ✅ [WebRTC] Local stream started with 2 tracks
+useWebRTC.ts:348 🚀 [WebRTC] Initiating connection to 75f42bda-0cdf-4827-bab8-d8052c9cabf2
+useWebRTC.ts:61 🔗 [WebRTC] Creating peer connection for 75f42bda-0cdf-4827-bab8-d8052c9cabf2
+useWebRTC.ts:145 ➕ [WebRTC] Adding local track audio to connection with 75f42bda-0cdf-4827-bab8-d8052c9cabf2
+useWebRTC.ts:145 ➕ [WebRTC] Adding local track video to connection with 75f42bda-0cdf-4827-bab8-d8052c9cabf2
+useWebRTC.ts:348 🚀 [WebRTC] Initiating connection to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+useWebRTC.ts:61 🔗 [WebRTC] Creating peer connection for 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+useWebRTC.ts:145 ➕ [WebRTC] Adding local track audio to connection with 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+useWebRTC.ts:145 ➕ [WebRTC] Adding local track video to connection with 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+useWebRTC.ts:348 🚀 [WebRTC] Initiating connection to ba73d0d3-91b1-474b-89ab-12e033c88eb1
+useWebRTC.ts:61 🔗 [WebRTC] Creating peer connection for ba73d0d3-91b1-474b-89ab-12e033c88eb1
+useWebRTC.ts:145 ➕ [WebRTC] Adding local track audio to connection with ba73d0d3-91b1-474b-89ab-12e033c88eb1
+useWebRTC.ts:145 ➕ [WebRTC] Adding local track video to connection with ba73d0d3-91b1-474b-89ab-12e033c88eb1
+useWebRTC.ts:348 🚀 [WebRTC] Initiating connection to a68e162a-688c-4e64-8bd8-be81373e760d
+useWebRTC.ts:61 🔗 [WebRTC] Creating peer connection for a68e162a-688c-4e64-8bd8-be81373e760d
+useWebRTC.ts:145 ➕ [WebRTC] Adding local track audio to connection with a68e162a-688c-4e64-8bd8-be81373e760d
+useWebRTC.ts:145 ➕ [WebRTC] Adding local track video to connection with a68e162a-688c-4e64-8bd8-be81373e760d
+useWebRTC.ts:140 🔄 [WebRTC] Negotiation needed for 75f42bda-0cdf-4827-bab8-d8052c9cabf2
+useWebRTC.ts:140 🔄 [WebRTC] Negotiation needed for 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+useWebRTC.ts:140 🔄 [WebRTC] Negotiation needed for ba73d0d3-91b1-474b-89ab-12e033c88eb1
+useWebRTC.ts:140 🔄 [WebRTC] Negotiation needed for a68e162a-688c-4e64-8bd8-be81373e760d
+useWebRTC.ts:360 📤 [WebRTC] Sending offer to 75f42bda-0cdf-4827-bab8-d8052c9cabf2
+useWebRTC.ts:360 📤 [WebRTC] Sending offer to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+useWebRTC.ts:360 📤 [WebRTC] Sending offer to ba73d0d3-91b1-474b-89ab-12e033c88eb1
+useWebRTC.ts:360 📤 [WebRTC] Sending offer to a68e162a-688c-4e64-8bd8-be81373e760d
+8useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to 75f42bda-0cdf-4827-bab8-d8052c9cabf2
+8useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+8useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to ba73d0d3-91b1-474b-89ab-12e033c88eb1
+8useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to a68e162a-688c-4e64-8bd8-be81373e760d
+2useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to 75f42bda-0cdf-4827-bab8-d8052c9cabf2
+2useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+2useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to ba73d0d3-91b1-474b-89ab-12e033c88eb1
+2useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to a68e162a-688c-4e64-8bd8-be81373e760d
+8useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to 75f42bda-0cdf-4827-bab8-d8052c9cabf2
+8useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+8useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to ba73d0d3-91b1-474b-89ab-12e033c88eb1
+8useWebRTC.ts:67 🧊 [WebRTC] Sending ICE candidate to a68e162a-688c-4e64-8bd8-be81373e760d
+useWebRTC.ts:102 🔌 [WebRTC] ICE connection state for 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb: checking
+useWebRTC.ts:281 📥 [WebRTC] Received answer from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+4useWebRTC.ts:303 🧊 [WebRTC] Received ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
+useWebRTC.ts:78 📹 [WebRTC] Received remote track from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb (audio)
+useWebRTC.ts:78 📹 [WebRTC] Received remote track from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb (video)
+useWebRTC.ts:102 🔌 [WebRTC] ICE connection state for 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb: connected
+5useWebRTC.ts:303 🧊 [WebRTC] Received ICE candidate from 5dab0b03-b84d-4978-abd1-12e1fcd7e5eb
