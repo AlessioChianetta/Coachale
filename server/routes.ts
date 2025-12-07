@@ -7788,6 +7788,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add TURN servers based on provider
       if (effectiveTurnConfig.provider === "metered") {
         iceServers.push(
+          // Standard relay servers (piano 20GB+)
+          {
+            urls: "turn:standard.relay.metered.ca:80",
+            username,
+            credential: password
+          },
+          {
+            urls: "turn:standard.relay.metered.ca:80?transport=tcp",
+            username,
+            credential: password
+          },
+          {
+            urls: "turn:standard.relay.metered.ca:443",
+            username,
+            credential: password
+          },
+          {
+            urls: "turns:standard.relay.metered.ca:443?transport=tcp",
+            username,
+            credential: password
+          },
+          // Global relay servers (piano base 500MB - fallback)
           {
             urls: "turn:global.relay.metered.ca:80",
             username,
