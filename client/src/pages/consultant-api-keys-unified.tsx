@@ -3246,8 +3246,10 @@ export default function ConsultantApiKeysUnified() {
                             <p className="font-semibold text-red-900">Configura la schermata di consenso OAuth</p>
                             <p className="text-sm text-gray-700 mt-1">
                               • Vai su "API e servizi" → "Schermata di consenso OAuth"<br/>
+                              • Seleziona <strong>"Esterno"</strong> come tipo di utente (permette a chiunque con Google di accedere)<br/>
                               • Configura il nome dell'app e i domini autorizzati<br/>
-                              • Aggiungi gli scope necessari: email, profile, openid
+                              • Aggiungi gli scope necessari: email, profile, openid<br/>
+                              • In "Utenti di test" aggiungi le email delle persone autorizzate (max 100 in modalità test)
                             </p>
                           </div>
                         </div>
