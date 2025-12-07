@@ -1,0 +1,73 @@
+[MeetGreenRoom] Joining call with: Object
+useWebRTC.ts:82 🌐 [WebRTC] Loading ICE servers for meeting zR-DwEeiuMSEQ9wV...
+useWebRTC.ts:812 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=false
+useWebRTC.ts:93 ✅ [WebRTC] Loaded 6 ICE servers (TURN: YES)
+useWebRTC.ts:812 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=true
+useVideoCopilot.ts:305 🎥 WebSocket connected to Video Copilot
+useVideoCopilot.ts:122 ✅ Video Copilot connected: Object
+useWebRTC.ts:812 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=false, joined=false, ice=true
+useWebRTC.ts:312 📹 [WebRTC] Starting local stream (video: true, audio: true)
+useWebRTC.ts:339 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:340 🎤 [WebRTC-AUDIO-DEBUG] STREAM LOCALE CREATO
+useWebRTC.ts:341 🎤 [WebRTC-AUDIO-DEBUG] Tracce audio: 1
+useWebRTC.ts:342 🎤 [WebRTC-AUDIO-DEBUG] Tracce video: 1
+useWebRTC.ts:344 🎤 [WebRTC-AUDIO-DEBUG] Audio track 0:
+useWebRTC.ts:345    - ID: 1ebe3d85-6ab9-44b9-acae-b14b46774f40
+useWebRTC.ts:346    - Label: Microphone (GameDAC Chat) (1038:1282)
+useWebRTC.ts:347    - Enabled: true
+useWebRTC.ts:348    - Muted: false
+useWebRTC.ts:349    - ReadyState: live
+useWebRTC.ts:351 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:376 ✅ [WebRTC] Local stream started with 2 tracks
+useWebRTC.ts:812 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=true, joined=false, ice=true
+useAudioLevelMonitor.ts:121 [AudioLevelMonitor] Started monitoring audio level
+useVideoCopilot.ts:212 ✅ Join confirmed, my participant ID: 44a56581-0781-4ae7-af48-cbe17df1a8d5
+useWebRTC.ts:817 👥 [WebRTC] Checking 1 other participants for connections (my ID: 44a56581-0781-4ae7-af48-cbe17df1a8d5)
+useWebRTC.ts:821 🔗 [WebRTC] No existing connection to 3e94dd5f-f3a4-4897-a0dd-f10648125ac3, attempting to initiate...
+useWebRTC.ts:551 🔍 [WebRTC] Connection decision: myId=44a56581... vs remoteId=3e94dd5f... → I INITIATE (higher ID)
+useWebRTC.ts:565 🚀 [WebRTC] Initiating connection to 3e94dd5f-f3a4-4897-a0dd-f10648125ac3 (attempt 1/3)
+useWebRTC.ts:137 🔗 [WebRTC] Creating peer connection for 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:138 🔗 [WebRTC] Using ICE config with 6 servers
+useWebRTC.ts:301 ➕ [WebRTC] Adding local track audio to connection with 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:301 ➕ [WebRTC] Adding local track video to connection with 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:296 🔄 [WebRTC] Negotiation needed for 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:817 👥 [WebRTC] Checking 1 other participants for connections (my ID: 44a56581-0781-4ae7-af48-cbe17df1a8d5)
+useWebRTC.ts:825 ✓ [WebRTC] Already have connection to 3e94dd5f-f3a4-4897-a0dd-f10648125ac3 (state: new)
+useVideoCopilot.ts:258 📡 Participant socket ready: Dz HyperLoop (44a56581-0781-4ae7-af48-cbe17df1a8d5)
+useWebRTC.ts:636 📡 [WebRTC] Received own socket_ready, ignoring
+useWebRTC.ts:583 📤 [WebRTC] Sending offer to 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+18useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:230 🔌 [WebRTC-AUDIO-DEBUG] ICE state per 3e94dd5f-f3a4-4897-a0dd-f10648125ac3: checking
+useWebRTC.ts:482 📥 [WebRTC] Received answer from 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:488 ✅ [WebRTC] Cleared offer retry timeout for 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+2useWebRTC.ts:512 🧊 [WebRTC] Received ICE candidate from 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:158 🎧 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:159 🎧 [WebRTC-AUDIO-DEBUG] RICEVUTO TRACK REMOTO da 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:160 🎧 [WebRTC-AUDIO-DEBUG] Tipo: audio
+useWebRTC.ts:161 🎧 [WebRTC-AUDIO-DEBUG] Track ID: a77f1f4e-ef1c-446e-80e5-14a67356e34d
+useWebRTC.ts:162 🎧 [WebRTC-AUDIO-DEBUG] Track enabled: true
+useWebRTC.ts:163 🎧 [WebRTC-AUDIO-DEBUG] Track muted: true
+useWebRTC.ts:164 🎧 [WebRTC-AUDIO-DEBUG] Track readyState: live
+useWebRTC.ts:165 🎧 [WebRTC-AUDIO-DEBUG] Streams nell'evento: 1
+useWebRTC.ts:166 🎧 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:158 🎧 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:159 🎧 [WebRTC-AUDIO-DEBUG] RICEVUTO TRACK REMOTO da 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:160 🎧 [WebRTC-AUDIO-DEBUG] Tipo: video
+useWebRTC.ts:161 🎧 [WebRTC-AUDIO-DEBUG] Track ID: 0787e3b0-20a3-4513-a89e-7e57908180b8
+useWebRTC.ts:162 🎧 [WebRTC-AUDIO-DEBUG] Track enabled: true
+useWebRTC.ts:163 🎧 [WebRTC-AUDIO-DEBUG] Track muted: true
+useWebRTC.ts:164 🎧 [WebRTC-AUDIO-DEBUG] Track readyState: live
+useWebRTC.ts:165 🎧 [WebRTC-AUDIO-DEBUG] Streams nell'evento: 1
+useWebRTC.ts:166 🎧 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:185 🔊 [WebRTC-AUDIO-DEBUG] TRACK AUDIO SMUTATO da 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:230 🔌 [WebRTC-AUDIO-DEBUG] ICE state per 3e94dd5f-f3a4-4897-a0dd-f10648125ac3: connected
+useWebRTC.ts:244 ✅ [WebRTC] Connection established with 3e94dd5f..., cleaning up retry timers
+useWebRTC.ts:512 🧊 [WebRTC] Received ICE candidate from 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:216 📊 [WebRTC-AUDIO-DEBUG] Stream per 3e94dd5f-f3a4-4897-a0dd-f10648125ac3: 1 audio, 1 video
+useWebRTC.ts:218    🔈 Audio track 0: enabled=true, muted=false, state=live
+useWebRTC.ts:216 📊 [WebRTC-AUDIO-DEBUG] Stream per 3e94dd5f-f3a4-4897-a0dd-f10648125ac3: 1 audio, 1 video
+useWebRTC.ts:218    🔈 Audio track 0: enabled=true, muted=false, state=live
+useWebRTC.ts:512 🧊 [WebRTC] Received ICE candidate from 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:817 👥 [WebRTC] Checking 0 other participants for connections (my ID: 44a56581-0781-4ae7-af48-cbe17df1a8d5)
+useWebRTC.ts:869 🗑️ [WebRTC] Removing stream for disconnected participant 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
+useWebRTC.ts:193 ⏹️ [WebRTC-AUDIO-DEBUG] TRACK AUDIO TERMINATO da 3e94dd5f-f3a4-4897-a0dd-f10648125ac3
