@@ -63,6 +63,8 @@ interface CopilotState {
   myParticipantId: string | null;
 }
 
+type WebRTCMessageHandler = (message: any) => void;
+
 interface UseVideoCopilotResult extends CopilotState {
   connect: () => void;
   disconnect: () => void;
@@ -73,6 +75,8 @@ interface UseVideoCopilotResult extends CopilotState {
   toggleScriptItem: (id: string) => void;
   dismissBattleCard: () => void;
   endSession: () => void;
+  sendWebRTCMessage: (message: any) => void;
+  setWebRTCMessageHandler: (handler: WebRTCMessageHandler) => void;
 }
 
 function getWebSocketUrl(meetingToken: string): string {
@@ -88,6 +92,7 @@ function getWebSocketUrl(meetingToken: string): string {
 export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotResult {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const webrtcMessageHandlerRef = useRef<WebRTCMessageHandler | null>(null);
   const [state, setState] = useState<CopilotState>({
     isConnected: false,
     isConnecting: false,
@@ -229,6 +234,14 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
             error: message.data.message,
           }));
           break;
+
+        case 'webrtc_offer':
+        case 'webrtc_answer':
+        case 'ice_candidate':
+          if (webrtcMessageHandlerRef.current) {
+            webrtcMessageHandlerRef.current(message);
+          }
+          break;
       }
     } catch (e) {
       console.error('Error parsing WebSocket message:', e);
@@ -360,6 +373,14 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     disconnect();
   }, [sendMessage, disconnect]);
 
+  const sendWebRTCMessage = useCallback((message: any) => {
+    sendMessage(message);
+  }, [sendMessage]);
+
+  const setWebRTCMessageHandler = useCallback((handler: WebRTCMessageHandler) => {
+    webrtcMessageHandlerRef.current = handler;
+  }, []);
+
   useEffect(() => {
     if (meetingToken) {
       connect();
@@ -381,5 +402,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     toggleScriptItem,
     dismissBattleCard,
     endSession,
+    sendWebRTCMessage,
+    setWebRTCMessageHandler,
   };
 }

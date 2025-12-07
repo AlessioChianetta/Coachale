@@ -5,6 +5,7 @@ import VideoControls from './VideoControls';
 import AICopilotHUD from './AICopilotHUD';
 import { useVideoMeeting } from '@/hooks/useVideoMeeting';
 import { useVideoCopilot } from '@/hooks/useVideoCopilot';
+import { useWebRTC } from '@/hooks/useWebRTC';
 import { Loader2 } from 'lucide-react';
 
 export interface VideoRoomProps {
@@ -61,11 +62,49 @@ export default function VideoRoom({
     joinParticipant,
     leaveParticipant,
     endSession,
+    sendWebRTCMessage,
+    setWebRTCMessageHandler,
   } = useVideoCopilot(meeting?.meetingToken ?? null);
+
+  const activeParticipantsForWebRTC = useMemo(() => {
+    return copilotParticipants.filter(p => !p.leftAt).map(p => ({
+      id: p.id,
+      name: p.name,
+      role: p.role,
+    }));
+  }, [copilotParticipants]);
+
+  const {
+    localStream,
+    remoteStreams,
+    isLocalStreamReady,
+    startLocalStream,
+    stopLocalStream,
+    handleWebRTCMessage,
+    toggleVideo: toggleWebRTCVideo,
+    toggleAudio: toggleWebRTCAudio,
+  } = useWebRTC({
+    myParticipantId,
+    participants: activeParticipantsForWebRTC,
+    isConnected,
+    sendWebRTCMessage,
+  });
 
   // Track if we've joined this session (to avoid duplicate joins)
   const [hasJoined, setHasJoined] = useState(false);
   const myParticipantIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    setWebRTCMessageHandler(handleWebRTCMessage);
+  }, [setWebRTCMessageHandler, handleWebRTCMessage]);
+
+  useEffect(() => {
+    if (isConnected && !isLocalStreamReady) {
+      startLocalStream(!isVideoOff, !isMuted).catch(err => {
+        console.error('Failed to start local stream:', err);
+      });
+    }
+  }, [isConnected, isLocalStreamReady, isVideoOff, isMuted, startLocalStream]);
 
   useEffect(() => {
     if (meeting && meeting.status === 'scheduled') {
@@ -166,7 +205,20 @@ export default function VideoRoom({
      isConnected ? 'In attesa di suggerimenti dall\'AI...' : 
      'Copilot non connesso');
 
+  const handleToggleMute = () => {
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
+    toggleWebRTCAudio(!newMutedState);
+  };
+
+  const handleToggleVideo = () => {
+    const newVideoOffState = !isVideoOff;
+    setIsVideoOff(newVideoOffState);
+    toggleWebRTCVideo(!newVideoOffState);
+  };
+
   const handleEndCall = async () => {
+    stopLocalStream();
     if (meeting) {
       await updateMeetingStatus('completed');
     }
@@ -257,6 +309,7 @@ export default function VideoRoom({
                 isMuted={participant.isMuted}
                 isVideoOff={participant.isVideoOff}
                 isLocalUser={participant.isLocalUser}
+                remoteStream={!participant.isLocalUser ? remoteStreams.get(participant.id) : null}
               />
             ))}
           </AnimatePresence>
@@ -269,8 +322,8 @@ export default function VideoRoom({
         isScreenSharing={isScreenSharing}
         showHUD={showHUD}
         isHost={isHost}
-        onToggleMute={() => setIsMuted(!isMuted)}
-        onToggleVideo={() => setIsVideoOff(!isVideoOff)}
+        onToggleMute={handleToggleMute}
+        onToggleVideo={handleToggleVideo}
         onToggleScreenShare={() => setIsScreenSharing(!isScreenSharing)}
         onToggleHUD={() => setShowHUD(!showHUD)}
         onEndCall={handleEndCall}

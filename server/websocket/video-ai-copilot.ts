@@ -51,7 +51,7 @@ interface SessionState {
 }
 
 interface IncomingMessage {
-  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session';
+  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate';
   data?: string;
   speakerId?: string;
   speakerName?: string;
@@ -64,16 +64,34 @@ interface IncomingMessage {
     role: 'host' | 'guest' | 'prospect';
   };
   participantId?: string;
+  targetParticipantId?: string;
+  fromParticipantId?: string;
+  sdp?: RTCSessionDescriptionInit;
+  candidate?: RTCIceCandidateInit;
+}
+
+interface RTCSessionDescriptionInit {
+  type: 'offer' | 'answer';
+  sdp: string;
+}
+
+interface RTCIceCandidateInit {
+  candidate: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
 }
 
 interface OutgoingMessage {
-  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed';
+  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate';
   data: any;
   timestamp: number;
 }
 
 const activeSessions = new Map<string, SessionState>();
 const meetingClients = new Map<string, Set<WebSocket>>();
+const participantSockets = new Map<string, Map<string, WebSocket>>();
+const socketToParticipants = new Map<WebSocket, Set<{ meetingId: string; participantId: string }>>();
 const ANALYSIS_THROTTLE_MS = 3000;
 
 async function authenticateConnection(req: any): Promise<{
@@ -648,6 +666,8 @@ async function handleParticipantJoin(
     
     session.participants.set(inserted.id, participant);
     
+    registerParticipantSocket(session.meetingId, inserted.id, ws);
+    
     console.log(`✅ [VideoCopilot] Participant joined: ${name} (${role}) - ID: ${inserted.id}`);
 
     // Send confirmation directly to the requesting client with their ID
@@ -709,6 +729,8 @@ async function handleParticipantLeave(
 
     const participant = session.participants.get(participantId);
     session.participants.delete(participantId);
+    
+    unregisterParticipantSocket(session.meetingId, participantId);
     
     console.log(`👋 [VideoCopilot] Participant left: ${participant?.name || participantId}`);
 
@@ -806,6 +828,187 @@ async function autoLoadPlaybook(
     console.error(`❌ [VideoCopilot] Error auto-loading playbook:`, error.message);
     return null;
   }
+}
+
+function handleWebRTCOffer(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage
+) {
+  if (!message.targetParticipantId || !message.fromParticipantId || !message.sdp) {
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Missing targetParticipantId, fromParticipantId, or sdp for WebRTC offer' },
+      timestamp: Date.now(),
+    });
+    return;
+  }
+
+  const meetingSockets = participantSockets.get(session.meetingId);
+  if (!meetingSockets) {
+    console.warn(`⚠️ [VideoCopilot] No sockets registered for meeting ${session.meetingId}`);
+    return;
+  }
+
+  const targetSocket = meetingSockets.get(message.targetParticipantId);
+  if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
+    sendMessage(targetSocket, {
+      type: 'webrtc_offer',
+      data: {
+        fromParticipantId: message.fromParticipantId,
+        sdp: message.sdp,
+      },
+      timestamp: Date.now(),
+    });
+    console.log(`📤 [VideoCopilot] Forwarded WebRTC offer from ${message.fromParticipantId} to ${message.targetParticipantId}`);
+  } else {
+    console.warn(`⚠️ [VideoCopilot] Target participant ${message.targetParticipantId} not connected`);
+  }
+}
+
+function handleWebRTCAnswer(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage
+) {
+  if (!message.targetParticipantId || !message.fromParticipantId || !message.sdp) {
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Missing targetParticipantId, fromParticipantId, or sdp for WebRTC answer' },
+      timestamp: Date.now(),
+    });
+    return;
+  }
+
+  const meetingSockets = participantSockets.get(session.meetingId);
+  if (!meetingSockets) {
+    console.warn(`⚠️ [VideoCopilot] No sockets registered for meeting ${session.meetingId}`);
+    return;
+  }
+
+  const targetSocket = meetingSockets.get(message.targetParticipantId);
+  if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
+    sendMessage(targetSocket, {
+      type: 'webrtc_answer',
+      data: {
+        fromParticipantId: message.fromParticipantId,
+        sdp: message.sdp,
+      },
+      timestamp: Date.now(),
+    });
+    console.log(`📤 [VideoCopilot] Forwarded WebRTC answer from ${message.fromParticipantId} to ${message.targetParticipantId}`);
+  } else {
+    console.warn(`⚠️ [VideoCopilot] Target participant ${message.targetParticipantId} not connected`);
+  }
+}
+
+function handleICECandidate(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage
+) {
+  if (!message.targetParticipantId || !message.fromParticipantId || !message.candidate) {
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Missing targetParticipantId, fromParticipantId, or candidate for ICE candidate' },
+      timestamp: Date.now(),
+    });
+    return;
+  }
+
+  const meetingSockets = participantSockets.get(session.meetingId);
+  if (!meetingSockets) {
+    console.warn(`⚠️ [VideoCopilot] No sockets registered for meeting ${session.meetingId}`);
+    return;
+  }
+
+  const targetSocket = meetingSockets.get(message.targetParticipantId);
+  if (targetSocket && targetSocket.readyState === WebSocket.OPEN) {
+    sendMessage(targetSocket, {
+      type: 'ice_candidate',
+      data: {
+        fromParticipantId: message.fromParticipantId,
+        candidate: message.candidate,
+      },
+      timestamp: Date.now(),
+    });
+    console.log(`📤 [VideoCopilot] Forwarded ICE candidate from ${message.fromParticipantId} to ${message.targetParticipantId}`);
+  } else {
+    console.warn(`⚠️ [VideoCopilot] Target participant ${message.targetParticipantId} not connected for ICE`);
+  }
+}
+
+function registerParticipantSocket(meetingId: string, participantId: string, ws: WebSocket) {
+  if (!participantSockets.has(meetingId)) {
+    participantSockets.set(meetingId, new Map());
+  }
+  participantSockets.get(meetingId)!.set(participantId, ws);
+  
+  if (!socketToParticipants.has(ws)) {
+    socketToParticipants.set(ws, new Set());
+  }
+  socketToParticipants.get(ws)!.add({ meetingId, participantId });
+  console.log(`🔗 [VideoCopilot] Registered socket for participant ${participantId} in meeting ${meetingId}`);
+}
+
+function unregisterParticipantSocket(meetingId: string, participantId: string) {
+  const meetingSockets = participantSockets.get(meetingId);
+  if (meetingSockets) {
+    const ws = meetingSockets.get(participantId);
+    if (ws) {
+      const participantSet = socketToParticipants.get(ws);
+      if (participantSet) {
+        for (const entry of participantSet) {
+          if (entry.meetingId === meetingId && entry.participantId === participantId) {
+            participantSet.delete(entry);
+            break;
+          }
+        }
+        if (participantSet.size === 0) {
+          socketToParticipants.delete(ws);
+        }
+      }
+    }
+    meetingSockets.delete(participantId);
+    console.log(`🔓 [VideoCopilot] Unregistered socket for participant ${participantId} in meeting ${meetingId}`);
+    if (meetingSockets.size === 0) {
+      participantSockets.delete(meetingId);
+    }
+  }
+}
+
+function unregisterParticipantBySocket(ws: WebSocket, broadcast: (msg: OutgoingMessage) => void): string[] {
+  const participantSet = socketToParticipants.get(ws);
+  if (!participantSet || participantSet.size === 0) return [];
+  
+  const unregisteredIds: string[] = [];
+  
+  for (const { meetingId, participantId } of participantSet) {
+    const meetingSockets = participantSockets.get(meetingId);
+    if (meetingSockets) {
+      meetingSockets.delete(participantId);
+      console.log(`🔓 [VideoCopilot] Auto-unregistered socket for participant ${participantId} on disconnect`);
+      if (meetingSockets.size === 0) {
+        participantSockets.delete(meetingId);
+      }
+    }
+    
+    broadcast({
+      type: 'participant_left',
+      data: {
+        id: participantId,
+        leftAt: new Date().toISOString(),
+        reason: 'disconnected',
+      },
+      timestamp: Date.now(),
+    });
+    
+    unregisteredIds.push(participantId);
+  }
+  
+  socketToParticipants.delete(ws);
+  
+  return unregisteredIds;
 }
 
 async function handleEndSession(
@@ -959,6 +1162,15 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
             await handleEndSession(ws, session!);
             ws.close(1000, 'Session ended');
             break;
+          case 'webrtc_offer':
+            handleWebRTCOffer(ws, session!, message);
+            break;
+          case 'webrtc_answer':
+            handleWebRTCAnswer(ws, session!, message);
+            break;
+          case 'ice_candidate':
+            handleICECandidate(ws, session!, message);
+            break;
           default:
             console.warn(`⚠️ [VideoCopilot] Unknown message type: ${(message as any).type}`);
         }
@@ -982,6 +1194,9 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
           meetingClients.delete(meetingId);
         }
       }
+      
+      // Clean up participant socket on disconnect using reverse map
+      unregisterParticipantBySocket(ws, broadcast);
     });
 
     ws.on('error', (error) => {

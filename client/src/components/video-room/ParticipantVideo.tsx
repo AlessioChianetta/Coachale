@@ -11,6 +11,7 @@ interface ParticipantVideoProps {
   isMuted?: boolean;
   isVideoOff?: boolean;
   isLocalUser?: boolean;
+  remoteStream?: MediaStream | null;
 }
 
 const sentimentColors: Record<SentimentType, string> = {
@@ -32,6 +33,7 @@ export default function ParticipantVideo({
   isMuted = false,
   isVideoOff = false,
   isLocalUser = false,
+  remoteStream = null,
 }: ParticipantVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -39,7 +41,16 @@ export default function ParticipantVideo({
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLocalUser) return;
+    if (remoteStream && videoRef.current) {
+      videoRef.current.srcObject = remoteStream;
+      setHasStream(true);
+      return;
+    }
+    
+    if (!isLocalUser) {
+      setHasStream(false);
+      return;
+    }
 
     let cancelled = false;
 
@@ -95,7 +106,7 @@ export default function ParticipantVideo({
       cancelled = true;
       stopStream();
     };
-  }, [isLocalUser, isVideoOff]);
+  }, [isLocalUser, isVideoOff, remoteStream]);
 
   useEffect(() => {
     if (videoRef.current && streamRef.current) {
@@ -103,7 +114,7 @@ export default function ParticipantVideo({
     }
   }, [hasStream]);
 
-  const showVideo = isLocalUser && hasStream && !isVideoOff && !cameraError;
+  const showVideo = (isLocalUser || remoteStream) && hasStream && !isVideoOff && !cameraError;
 
   return (
     <motion.div
