@@ -7768,6 +7768,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         username = decryptForConsultant(effectiveTurnConfig.usernameEncrypted!, consultant.encryptionSalt);
         password = decryptForConsultant(effectiveTurnConfig.passwordEncrypted!, consultant.encryptionSalt);
+        // DEBUG: Log credentials (REMOVE after testing)
+        console.log(`🔑 [ICE-DEBUG] TURN username: ${username.substring(0, 8)}...`);
+        console.log(`🔑 [ICE-DEBUG] TURN password: ${password.substring(0, 8)}...`);
       } catch (decryptError) {
         console.error("❌ Error decrypting TURN credentials for meeting:", decryptError);
         return res.json({
