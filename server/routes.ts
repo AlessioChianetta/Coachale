@@ -110,6 +110,7 @@ import {
   isGoogleCalendarConnected,
   buildBaseUrlFromRequest
 } from "./google-calendar-service";
+import { encryptForConsultant, decryptForConsultant } from "./encryption";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -7490,6 +7491,287 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("❌ Error updating client AI config:", error);
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TURN Server Configuration - Per WebRTC Video Calls
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // GET /api/consultant/turn-config - Retrieve TURN configuration
+  app.get("/api/consultant/turn-config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const [config] = await db
+        .select()
+        .from(schema.consultantTurnConfig)
+        .where(eq(schema.consultantTurnConfig.consultantId, consultantId))
+        .limit(1);
+
+      if (!config) {
+        return res.json({
+          configured: false,
+          config: null
+        });
+      }
+
+      // Get consultant salt for decryption
+      const [consultant] = await db
+        .select({ encryptionSalt: schema.users.encryptionSalt })
+        .from(schema.users)
+        .where(eq(schema.users.id, consultantId))
+        .limit(1);
+
+      let username = "";
+      let password = "";
+
+      if (consultant?.encryptionSalt && config.usernameEncrypted && config.passwordEncrypted) {
+        try {
+          username = decryptForConsultant(config.usernameEncrypted, consultant.encryptionSalt);
+          password = decryptForConsultant(config.passwordEncrypted, consultant.encryptionSalt);
+        } catch (decryptError) {
+          console.error("❌ Error decrypting TURN credentials:", decryptError);
+        }
+      }
+
+      res.json({
+        configured: true,
+        config: {
+          id: config.id,
+          provider: config.provider,
+          username,
+          password: password ? "••••••••" : "", // Mask password
+          turnUrls: config.turnUrls,
+          enabled: config.enabled,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt
+        }
+      });
+    } catch (error: any) {
+      console.error("❌ Error fetching TURN config:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/consultant/turn-config - Save TURN configuration
+  app.post("/api/consultant/turn-config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { provider, username, password, turnUrls, enabled } = req.body;
+
+      // Validate required fields
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username e password sono obbligatori" });
+      }
+
+      // Get or create consultant encryption salt
+      let [consultant] = await db
+        .select({ encryptionSalt: schema.users.encryptionSalt })
+        .from(schema.users)
+        .where(eq(schema.users.id, consultantId))
+        .limit(1);
+
+      let encryptionSalt = consultant?.encryptionSalt;
+      
+      // If no salt exists, generate one
+      if (!encryptionSalt) {
+        const { generateEncryptionSalt } = await import("./encryption");
+        encryptionSalt = generateEncryptionSalt();
+        await db
+          .update(schema.users)
+          .set({ encryptionSalt })
+          .where(eq(schema.users.id, consultantId));
+      }
+
+      // Encrypt credentials
+      const usernameEncrypted = encryptForConsultant(username, encryptionSalt);
+      const passwordEncrypted = encryptForConsultant(password, encryptionSalt);
+
+      // Check if config already exists
+      const [existingConfig] = await db
+        .select()
+        .from(schema.consultantTurnConfig)
+        .where(eq(schema.consultantTurnConfig.consultantId, consultantId))
+        .limit(1);
+
+      if (existingConfig) {
+        // Update existing config
+        const [updated] = await db
+          .update(schema.consultantTurnConfig)
+          .set({
+            provider: provider || "metered",
+            usernameEncrypted,
+            passwordEncrypted,
+            turnUrls: turnUrls || null,
+            enabled: enabled !== false,
+            updatedAt: new Date()
+          })
+          .where(eq(schema.consultantTurnConfig.id, existingConfig.id))
+          .returning();
+
+        return res.json({
+          message: "Configurazione TURN aggiornata con successo",
+          config: {
+            id: updated.id,
+            provider: updated.provider,
+            enabled: updated.enabled
+          }
+        });
+      }
+
+      // Create new config
+      const [newConfig] = await db
+        .insert(schema.consultantTurnConfig)
+        .values({
+          consultantId,
+          provider: provider || "metered",
+          usernameEncrypted,
+          passwordEncrypted,
+          turnUrls: turnUrls || null,
+          enabled: enabled !== false
+        })
+        .returning();
+
+      res.json({
+        message: "Configurazione TURN salvata con successo",
+        config: {
+          id: newConfig.id,
+          provider: newConfig.provider,
+          enabled: newConfig.enabled
+        }
+      });
+    } catch (error: any) {
+      console.error("❌ Error saving TURN config:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/video-meeting/ice-servers - Get ICE servers for WebRTC (public for meeting participants)
+  app.get("/api/video-meeting/ice-servers/:meetingId", async (req, res) => {
+    try {
+      const { meetingId } = req.params;
+
+      // Get meeting to find consultant
+      const [meeting] = await db
+        .select({ consultantId: schema.videoMeetings.consultantId })
+        .from(schema.videoMeetings)
+        .where(eq(schema.videoMeetings.id, meetingId))
+        .limit(1);
+
+      if (!meeting) {
+        // Return default STUN servers if meeting not found
+        return res.json({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        });
+      }
+
+      // Get consultant's TURN config
+      const [turnConfig] = await db
+        .select()
+        .from(schema.consultantTurnConfig)
+        .where(and(
+          eq(schema.consultantTurnConfig.consultantId, meeting.consultantId),
+          eq(schema.consultantTurnConfig.enabled, true)
+        ))
+        .limit(1);
+
+      if (!turnConfig || !turnConfig.usernameEncrypted || !turnConfig.passwordEncrypted) {
+        // No TURN config, return STUN only
+        return res.json({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        });
+      }
+
+      // Get consultant salt for decryption
+      const [consultant] = await db
+        .select({ encryptionSalt: schema.users.encryptionSalt })
+        .from(schema.users)
+        .where(eq(schema.users.id, meeting.consultantId))
+        .limit(1);
+
+      if (!consultant?.encryptionSalt) {
+        return res.json({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        });
+      }
+
+      // Decrypt credentials
+      let username = "";
+      let password = "";
+      try {
+        username = decryptForConsultant(turnConfig.usernameEncrypted, consultant.encryptionSalt);
+        password = decryptForConsultant(turnConfig.passwordEncrypted, consultant.encryptionSalt);
+      } catch (decryptError) {
+        console.error("❌ Error decrypting TURN credentials for meeting:", decryptError);
+        return res.json({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        });
+      }
+
+      // Build ICE servers array with STUN + TURN
+      const iceServers: RTCIceServer[] = [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ];
+
+      // Add TURN servers based on provider
+      if (turnConfig.provider === "metered") {
+        iceServers.push(
+          {
+            urls: "turn:a.relay.metered.ca:80",
+            username,
+            credential: password
+          },
+          {
+            urls: "turn:a.relay.metered.ca:80?transport=tcp",
+            username,
+            credential: password
+          },
+          {
+            urls: "turn:a.relay.metered.ca:443",
+            username,
+            credential: password
+          },
+          {
+            urls: "turns:a.relay.metered.ca:443?transport=tcp",
+            username,
+            credential: password
+          }
+        );
+      } else if (turnConfig.provider === "custom" && turnConfig.turnUrls) {
+        // Custom TURN URLs
+        for (const url of turnConfig.turnUrls) {
+          iceServers.push({
+            urls: url,
+            username,
+            credential: password
+          });
+        }
+      }
+
+      res.json({ iceServers });
+    } catch (error: any) {
+      console.error("❌ Error fetching ICE servers:", error);
+      // Return default STUN servers on error
+      res.json({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+      });
     }
   });
 

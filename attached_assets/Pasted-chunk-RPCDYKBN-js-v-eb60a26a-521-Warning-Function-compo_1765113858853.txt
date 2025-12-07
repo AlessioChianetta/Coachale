@@ -1,0 +1,83 @@
+chunk-RPCDYKBN.js?v=eb60a26a:521 Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+
+Check the render method of `PopChild`.
+    at ParticipantVideo (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/src/components/video-room/ParticipantVideo.tsx?t=1765112898875:32:3)
+    at PopChildMeasure (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7683:23)
+    at PopChild (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7704:21)
+    at PresenceChild (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7742:24)
+    at AnimatePresence (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/framer-motion.js?v=eb60a26a:7800:26)
+    at div
+    at main
+    at div
+    at VideoRoom (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/src/components/video-room/VideoRoom.tsx?t=1765112875449:28:3)
+    at MeetVideoRoom (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/src/pages/meet-video-room.tsx:24:21)
+    at Route (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb60a26a:323:16)
+    at Switch (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb60a26a:379:17)
+    at Suspense
+    at Router (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/src/App.tsx?v=qCXASihY9tDvCm8lq6-aP:196:35)
+    at Provider (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb60a26a:38:15)
+    at TooltipProvider (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=eb60a26a:64:5)
+    at TourProvider (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at QueryClientProvider (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=eb60a26a:2805:3)
+    at V (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=eb60a26a:44:25)
+    at J (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=eb60a26a:42:18)
+    at App (https://2154e091-2703-488a-9902-47285b0049ff-00-1nybpoiykni9f.spock.replit.dev/src/App.tsx?v=qCXASihY9tDvCm8lq6-aP:1238:22)
+printWarning @ chunk-RPCDYKBN.js?v=eb60a26a:521Understand this error
+useVideoCopilot.ts:293 🎥 WebSocket connected to Video Copilot
+useVideoCopilot.ts:118 ✅ Video Copilot connected: Object
+useWebRTC.ts:240 📹 [WebRTC] Starting local stream (video: true, audio: true)
+useVideoCopilot.ts:208 ✅ Join confirmed, my participant ID: e3fe11cf-f759-4981-abdc-a918ea3030f8
+useVideoCopilot.ts:254 📡 Participant socket ready: Alessio Chianetta (e3fe11cf-f759-4981-abdc-a918ea3030f8)
+useWebRTC.ts:267 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:268 🎤 [WebRTC-AUDIO-DEBUG] STREAM LOCALE CREATO
+useWebRTC.ts:269 🎤 [WebRTC-AUDIO-DEBUG] Tracce audio: 1
+useWebRTC.ts:270 🎤 [WebRTC-AUDIO-DEBUG] Tracce video: 1
+useWebRTC.ts:272 🎤 [WebRTC-AUDIO-DEBUG] Audio track 0:
+useWebRTC.ts:273    - ID: 0daaaba9-a0eb-442c-86c7-32ce24e8d2a9
+useWebRTC.ts:274    - Label: Microphone (GameDAC Chat) (1038:1282)
+useWebRTC.ts:275    - Enabled: true
+useWebRTC.ts:276    - Muted: false
+useWebRTC.ts:277    - ReadyState: live
+useWebRTC.ts:279 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:304 ✅ [WebRTC] Local stream started with 2 tracks
+useWebRTC.ts:471 🚀 [WebRTC] Initiating connection to 59dc257e-f535-49ec-b80f-1a9e01721295 (attempt 1/3)
+useWebRTC.ts:83 🔗 [WebRTC] Creating peer connection for 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:229 ➕ [WebRTC] Adding local track audio to connection with 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:229 ➕ [WebRTC] Adding local track video to connection with 59dc257e-f535-49ec-b80f-1a9e01721295
+useVideoCopilot.ts:254 📡 Participant socket ready: Prova (59dc257e-f535-49ec-b80f-1a9e01721295)
+useWebRTC.ts:537 📡 [WebRTC] Participant socket ready: 59dc257e-f535-49ec-b80f-1a9e01721295, initiating connection...
+useWebRTC.ts:471 🚀 [WebRTC] Initiating connection to 59dc257e-f535-49ec-b80f-1a9e01721295 (attempt 1/3)
+useWebRTC.ts:224 🔄 [WebRTC] Negotiation needed for 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:489 📤 [WebRTC] Sending offer to 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:516 ❌ [WebRTC] Error creating offer for 59dc257e-f535-49ec-b80f-1a9e01721295: InvalidAccessError: Failed to execute 'setLocalDescription' on 'RTCPeerConnection': Failed to set local offer sdp: The order of m-lines in subsequent offer doesn't match order from previous offer/answer.
+(anonymous) @ useWebRTC.ts:516Understand this error
+18useWebRTC.ts:89 🧊 [WebRTC] Sending ICE candidate to 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:404 📥 [WebRTC] Received answer from 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:410 ✅ [WebRTC] Cleared offer retry timeout for 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:103 🎧 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:104 🎧 [WebRTC-AUDIO-DEBUG] RICEVUTO TRACK REMOTO da 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:105 🎧 [WebRTC-AUDIO-DEBUG] Tipo: audio
+useWebRTC.ts:106 🎧 [WebRTC-AUDIO-DEBUG] Track ID: 3013ff06-9cc8-4433-8d19-60ed5b85ad91
+useWebRTC.ts:107 🎧 [WebRTC-AUDIO-DEBUG] Track enabled: true
+useWebRTC.ts:108 🎧 [WebRTC-AUDIO-DEBUG] Track muted: true
+useWebRTC.ts:109 🎧 [WebRTC-AUDIO-DEBUG] Track readyState: live
+useWebRTC.ts:110 🎧 [WebRTC-AUDIO-DEBUG] Streams nell'evento: 1
+useWebRTC.ts:111 🎧 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:103 🎧 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:104 🎧 [WebRTC-AUDIO-DEBUG] RICEVUTO TRACK REMOTO da 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:105 🎧 [WebRTC-AUDIO-DEBUG] Tipo: video
+useWebRTC.ts:106 🎧 [WebRTC-AUDIO-DEBUG] Track ID: 15c28c82-bf86-46ea-af51-b97ea8cf1f40
+useWebRTC.ts:107 🎧 [WebRTC-AUDIO-DEBUG] Track enabled: true
+useWebRTC.ts:108 🎧 [WebRTC-AUDIO-DEBUG] Track muted: true
+useWebRTC.ts:109 🎧 [WebRTC-AUDIO-DEBUG] Track readyState: live
+useWebRTC.ts:110 🎧 [WebRTC-AUDIO-DEBUG] Streams nell'evento: 1
+useWebRTC.ts:111 🎧 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:130 🔊 [WebRTC-AUDIO-DEBUG] TRACK AUDIO SMUTATO da 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:161 📊 [WebRTC-AUDIO-DEBUG] Stream per 59dc257e-f535-49ec-b80f-1a9e01721295: 1 audio, 1 video
+useWebRTC.ts:163    🔈 Audio track 0: enabled=true, muted=false, state=live
+useWebRTC.ts:161 📊 [WebRTC-AUDIO-DEBUG] Stream per 59dc257e-f535-49ec-b80f-1a9e01721295: 1 audio, 1 video
+useWebRTC.ts:163    🔈 Audio track 0: enabled=true, muted=false, state=live
+useWebRTC.ts:434 🧊 [WebRTC] Received ICE candidate from 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:175 🔌 [WebRTC-AUDIO-DEBUG] ICE state per 59dc257e-f535-49ec-b80f-1a9e01721295: checking
+7useWebRTC.ts:434 🧊 [WebRTC] Received ICE candidate from 59dc257e-f535-49ec-b80f-1a9e01721295
+useWebRTC.ts:175 🔌 [WebRTC-AUDIO-DEBUG] ICE state per 59dc257e-f535-49ec-b80f-1a9e01721295: disconnected

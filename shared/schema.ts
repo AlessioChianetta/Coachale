@@ -4095,3 +4095,23 @@ export const videoMeetingAnalytics = pgTable("video_meeting_analytics", {
 
 export type VideoMeetingAnalytic = typeof videoMeetingAnalytics.$inferSelect;
 export type InsertVideoMeetingAnalytic = typeof videoMeetingAnalytics.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Consultant TURN Config - Configurazione TURN servers per WebRTC
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const consultantTurnConfig = pgTable("consultant_turn_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  provider: text("provider").$type<"metered" | "twilio" | "custom">().default("metered").notNull(),
+  usernameEncrypted: text("username_encrypted"), // Encrypted with consultant salt
+  passwordEncrypted: text("password_encrypted"), // Encrypted with consultant salt
+  apiKeyEncrypted: text("api_key_encrypted"), // For providers that need API key (optional)
+  turnUrls: jsonb("turn_urls").$type<string[]>(), // Custom TURN URLs (optional, for custom provider)
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConsultantTurnConfig = typeof consultantTurnConfig.$inferSelect;
+export type InsertConsultantTurnConfig = typeof consultantTurnConfig.$inferInsert;
