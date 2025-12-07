@@ -303,8 +303,6 @@ export function useWebRTC({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: video ? { 
           facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
         } : false,
         audio: audio ? {
           echoCancellation: true,
@@ -312,6 +310,13 @@ export function useWebRTC({
           autoGainControl: true,
         } : false,
       });
+      
+      if (video && stream.getVideoTracks().length > 0) {
+        const videoTrack = stream.getVideoTracks()[0];
+        const settings = videoTrack.getSettings();
+        console.log(`📹 [WebRTC] Camera native resolution: ${settings.width}x${settings.height} @ ${settings.frameRate}fps`);
+        console.log(`📹 [WebRTC] Camera device: ${videoTrack.label}`);
+      }
 
       localStreamRef.current = stream;
       setLocalStream(stream);
