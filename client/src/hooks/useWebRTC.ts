@@ -333,56 +333,12 @@ export function useWebRTC({
     }
   }, []);
 
-  const handleParticipantSocketReady = useCallback((participantId: string) => {
-    if (!myParticipantId || !isLocalStreamReady || participantId === myParticipantId) {
-      return;
-    }
-    
-    const existingPc = peerConnectionsRef.current.get(participantId);
-    if (existingPc) {
-      const isNegotiating = existingPc.signalingState !== 'stable' && existingPc.signalingState !== 'closed';
-      const isConnected = existingPc.iceConnectionState === 'connected' || existingPc.iceConnectionState === 'completed';
-      if (isNegotiating || isConnected) {
-        console.log(`📡 [WebRTC] Participant socket ready: ${participantId}, but negotiation in progress or already connected, skipping`);
-        return;
-      }
-    }
-    
-    console.log(`📡 [WebRTC] Participant socket ready: ${participantId}, initiating connection...`);
-    offerRetryCountRef.current.set(participantId, 0);
-    const existingTimeout = offerRetryTimeoutRef.current.get(participantId);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
-      offerRetryTimeoutRef.current.delete(participantId);
-    }
-    
-    initiateConnection(participantId);
-  }, [myParticipantId, isLocalStreamReady, initiateConnection]);
-
-  const handleWebRTCMessage = useCallback((message: any) => {
-    switch (message.type) {
-      case 'webrtc_offer':
-        handleWebRTCOffer(message.data.fromParticipantId, message.data.sdp);
-        break;
-      case 'webrtc_answer':
-        handleWebRTCAnswer(message.data.fromParticipantId, message.data.sdp);
-        break;
-      case 'ice_candidate':
-        handleICECandidate(message.data.fromParticipantId, message.data.candidate);
-        break;
-      case 'participant_socket_ready':
-        handleParticipantSocketReady(message.data.participantId);
-        break;
-    }
-  }, [handleWebRTCOffer, handleWebRTCAnswer, handleICECandidate, handleParticipantSocketReady]);
-
   const initiateConnection = useCallback(async (remoteParticipantId: string) => {
     if (!myParticipantId || !isLocalStreamReady) {
       console.warn(`⚠️ [WebRTC] Cannot initiate connection: myId=${myParticipantId}, streamReady=${isLocalStreamReady}`);
       return;
     }
 
-    // Use deterministic initiator logic: participant with higher ID initiates
     if (myParticipantId <= remoteParticipantId) {
       console.log(`⏭️ [WebRTC] Skipping connection initiation (not the initiator)`);
       return;
@@ -445,6 +401,49 @@ export function useWebRTC({
       makingOfferRef.current.set(remoteParticipantId, false);
     }
   }, [myParticipantId, isLocalStreamReady, createPeerConnection, sendWebRTCMessage]);
+
+  const handleParticipantSocketReady = useCallback((participantId: string) => {
+    if (!myParticipantId || !isLocalStreamReady || participantId === myParticipantId) {
+      return;
+    }
+    
+    const existingPc = peerConnectionsRef.current.get(participantId);
+    if (existingPc) {
+      const isNegotiating = existingPc.signalingState !== 'stable' && existingPc.signalingState !== 'closed';
+      const isConnected = existingPc.iceConnectionState === 'connected' || existingPc.iceConnectionState === 'completed';
+      if (isNegotiating || isConnected) {
+        console.log(`📡 [WebRTC] Participant socket ready: ${participantId}, but negotiation in progress or already connected, skipping`);
+        return;
+      }
+    }
+    
+    console.log(`📡 [WebRTC] Participant socket ready: ${participantId}, initiating connection...`);
+    offerRetryCountRef.current.set(participantId, 0);
+    const existingTimeout = offerRetryTimeoutRef.current.get(participantId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      offerRetryTimeoutRef.current.delete(participantId);
+    }
+    
+    initiateConnection(participantId);
+  }, [myParticipantId, isLocalStreamReady, initiateConnection]);
+
+  const handleWebRTCMessage = useCallback((message: any) => {
+    switch (message.type) {
+      case 'webrtc_offer':
+        handleWebRTCOffer(message.data.fromParticipantId, message.data.sdp);
+        break;
+      case 'webrtc_answer':
+        handleWebRTCAnswer(message.data.fromParticipantId, message.data.sdp);
+        break;
+      case 'ice_candidate':
+        handleICECandidate(message.data.fromParticipantId, message.data.candidate);
+        break;
+      case 'participant_socket_ready':
+        handleParticipantSocketReady(message.data.participantId);
+        break;
+    }
+  }, [handleWebRTCOffer, handleWebRTCAnswer, handleICECandidate, handleParticipantSocketReady]);
 
   useEffect(() => {
     reconnectCallbackRef.current = (participantId: string) => {
