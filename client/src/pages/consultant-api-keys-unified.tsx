@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Bot, Key, Mail, MessageSquare, Server, Cloud, Sparkles, Save, 
   AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
-  RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays
+  RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -391,6 +391,15 @@ export default function ConsultantApiKeysUnified() {
   // Google OAuth for Video Meetings state
   const [googleOAuthClientId, setGoogleOAuthClientId] = useState("");
 
+  // TURN Config for Video Meetings state
+  const [turnConfigFormData, setTurnConfigFormData] = useState({
+    username: "",
+    password: "",
+    enabled: true,
+  });
+  const [showTurnPassword, setShowTurnPassword] = useState(false);
+  const [isSavingTurnConfig, setIsSavingTurnConfig] = useState(false);
+
   // Lead Import state
   const [showLeadApiKey, setShowLeadApiKey] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -509,6 +518,21 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
+  // TURN Config for Video Meetings query
+  const { data: turnConfigData, isLoading: isLoadingTurnConfig } = useQuery({
+    queryKey: ["/api/consultant/turn-config"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/turn-config", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Failed to fetch TURN config");
+      }
+      if (response.status === 404) return null;
+      return response.json();
+    },
+  });
+
   // Lead Import queries and mutations
   const { data: leadImportConfigs } = useExternalApiConfigs();
   const { data: campaignsData, isLoading: campaignsLoading } = useCampaigns();
@@ -598,6 +622,17 @@ export default function ConsultantApiKeysUnified() {
       setGoogleOAuthClientId(googleOAuthSettings.googleClientId);
     }
   }, [googleOAuthSettings]);
+
+  // Sync TURN config settings
+  useEffect(() => {
+    if (turnConfigData?.config) {
+      setTurnConfigFormData({
+        username: turnConfigData.config.username || "",
+        password: "", // Password is never sent back for security
+        enabled: turnConfigData.config.enabled ?? true,
+      });
+    }
+  }, [turnConfigData]);
 
   // WhatsApp AI Configuration State
   const [whatsAppVertexFormData, setWhatsAppVertexFormData] = useState({
@@ -1051,6 +1086,55 @@ export default function ConsultantApiKeysUnified() {
     }
   };
 
+  const handleSaveTurnConfig = async () => {
+    if (!turnConfigFormData.username || !turnConfigFormData.password) {
+      toast({
+        title: "Errore",
+        description: "Username e password sono obbligatori",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingTurnConfig(true);
+    try {
+      const response = await fetch("/api/consultant/turn-config", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: turnConfigFormData.username,
+          password: turnConfigFormData.password,
+          enabled: turnConfigFormData.enabled,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante il salvataggio");
+      }
+
+      toast({
+        title: "Successo",
+        description: "Configurazione TURN salvata con successo",
+      });
+
+      // Clear password field for security
+      setTurnConfigFormData(prev => ({ ...prev, password: "" }));
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/turn-config"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingTurnConfig(false);
+    }
+  };
+
   const handleLeadInputChange = (field: string, value: any) => {
     setLeadImportFormData((prev) => ({
       ...prev,
@@ -1299,7 +1383,7 @@ export default function ConsultantApiKeysUnified() {
           {/* Tabs Container */}
           <div className="max-w-6xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-8 gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg">
                 <TabsTrigger value="ai" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
                   <Bot className="h-4 w-4 mr-2" />
                   AI (Gemini)
@@ -1327,6 +1411,10 @@ export default function ConsultantApiKeysUnified() {
                 <TabsTrigger value="google-oauth" className="data-[state=active]:bg-red-100 data-[state=active]:text-red-700">
                   <ExternalLink className="h-4 w-4 mr-2" />
                   Google OAuth
+                </TabsTrigger>
+                <TabsTrigger value="video-meeting" className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700">
+                  <Video className="h-4 w-4 mr-2" />
+                  Video Meeting
                 </TabsTrigger>
               </TabsList>
 
@@ -3317,6 +3405,174 @@ export default function ConsultantApiKeysUnified() {
                       >
                         <Save className="h-4 w-4 mr-2" />
                         Salva Google Client ID
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Video Meeting Tab Content */}
+              <TabsContent value="video-meeting" className="space-y-6">
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-gradient-to-br from-teal-100 to-cyan-100 rounded-xl">
+                        <Video className="h-6 w-6 text-teal-600" />
+                      </div>
+                      <div>
+                        <CardTitle>Configurazione TURN Server per Video Meeting</CardTitle>
+                        <CardDescription>
+                          Configura le credenziali TURN per garantire connessioni video stabili su tutte le reti
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        <strong>Perché serve un TURN server?</strong> Quando i partecipanti sono su reti restrittive 
+                        (es. NAT simmetrico, firewall aziendali, mobile 4G/5G), le connessioni dirette WebRTC falliscono. 
+                        Un server TURN fa da relay per garantire che la videochiamata funzioni sempre.
+                      </AlertDescription>
+                    </Alert>
+
+                    {turnConfigData?.config && (
+                      <Alert className={turnConfigData.config.enabled ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}>
+                        {turnConfigData.config.enabled ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        )}
+                        <AlertDescription className="text-sm">
+                          {turnConfigData.config.enabled 
+                            ? "TURN server configurato e attivo. Le videochiamate useranno il relay quando necessario."
+                            : "TURN server configurato ma disabilitato. Le videochiamate useranno solo connessioni dirette."}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="space-y-4 pl-4 border-l-4 border-teal-300">
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            1
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-teal-900">Registrati su Metered.ca</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Vai su <a href="https://www.metered.ca/" target="_blank" rel="noopener" className="text-teal-600 hover:text-teal-800 underline font-medium">metered.ca</a> e crea un account gratuito
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              💡 Il piano gratuito include 50GB/mese di traffico TURN - sufficiente per molte videochiamate
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            2
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-teal-900">Copia le credenziali</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              • Nella dashboard Metered, vai su "TURN Server"<br/>
+                              • Copia <strong>Username</strong> e <strong>Password</strong> (Credential)
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            3
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-green-900">Incolla qui sotto</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Inserisci le credenziali e salva. Le videochiamate useranno automaticamente i server TURN di Metered.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t">
+                      <div className="space-y-2">
+                        <Label htmlFor="turnUsername">Username TURN *</Label>
+                        <Input
+                          id="turnUsername"
+                          type="text"
+                          placeholder="0bbb54d1704ff1c8da4fe5aa"
+                          value={turnConfigFormData.username}
+                          onChange={(e) => setTurnConfigFormData(prev => ({ ...prev, username: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="turnPassword">Password TURN *</Label>
+                        <div className="relative">
+                          <Input
+                            id="turnPassword"
+                            type={showTurnPassword ? "text" : "password"}
+                            placeholder="La tua password TURN"
+                            value={turnConfigFormData.password}
+                            onChange={(e) => setTurnConfigFormData(prev => ({ ...prev, password: e.target.value }))}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 -translate-y-1/2"
+                            onClick={() => setShowTurnPassword(!showTurnPassword)}
+                          >
+                            {showTurnPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                        {turnConfigData?.config && (
+                          <p className="text-xs text-gray-500">
+                            Credenziali già salvate. Lascia vuoto per mantenere la password esistente, oppure inserisci una nuova password.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="turnEnabled">Abilita TURN Server</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Attiva il relay per le videochiamate
+                          </p>
+                        </div>
+                        <Switch
+                          id="turnEnabled"
+                          checked={turnConfigFormData.enabled}
+                          onCheckedChange={(checked) => setTurnConfigFormData(prev => ({ ...prev, enabled: checked }))}
+                        />
+                      </div>
+
+                      <Button
+                        onClick={handleSaveTurnConfig}
+                        disabled={isSavingTurnConfig || (!turnConfigFormData.username || (!turnConfigFormData.password && !turnConfigData?.config))}
+                        className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700"
+                      >
+                        {isSavingTurnConfig ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Salvataggio...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4 mr-2" />
+                            {turnConfigData?.config ? "Aggiorna" : "Salva"} Configurazione TURN
+                          </>
+                        )}
                       </Button>
                     </div>
                   </CardContent>
