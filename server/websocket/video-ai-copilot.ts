@@ -51,7 +51,7 @@ interface SessionState {
 }
 
 interface IncomingMessage {
-  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate';
+  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'lobby_join' | 'lobby_leave';
   data?: string;
   speakerId?: string;
   speakerName?: string;
@@ -68,6 +68,10 @@ interface IncomingMessage {
   fromParticipantId?: string;
   sdp?: RTCSessionDescriptionInit;
   candidate?: RTCIceCandidateInit;
+  lobbyParticipant?: {
+    name: string;
+    isHost: boolean;
+  };
 }
 
 interface RTCSessionDescriptionInit {
@@ -83,9 +87,16 @@ interface RTCIceCandidateInit {
 }
 
 interface OutgoingMessage {
-  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready';
+  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready' | 'lobby_participant_joined' | 'lobby_participant_left' | 'lobby_participants_list';
   data: any;
   timestamp: number;
+}
+
+interface LobbyParticipant {
+  id: string;
+  name: string;
+  isHost: boolean;
+  joinedAt: number;
 }
 
 const activeSessions = new Map<string, SessionState>();
@@ -93,6 +104,9 @@ const meetingClients = new Map<string, Set<WebSocket>>();
 const participantSockets = new Map<string, Map<string, WebSocket>>();
 const socketToParticipants = new Map<WebSocket, Set<{ meetingId: string; participantId: string }>>();
 const ANALYSIS_THROTTLE_MS = 3000;
+
+const lobbyParticipants = new Map<string, Map<string, LobbyParticipant>>();
+const lobbySocketToId = new Map<WebSocket, { meetingId: string; lobbyId: string }>();
 
 // Buffer per messaggi WebRTC quando il target non è ancora connesso
 interface PendingWebRTCMessage {
@@ -1126,6 +1140,153 @@ async function unregisterParticipantBySocket(ws: WebSocket, broadcast: (msg: Out
   return unregisteredIds;
 }
 
+function handleLobbyJoin(
+  ws: WebSocket,
+  meetingId: string,
+  message: IncomingMessage,
+  broadcast: (msg: OutgoingMessage) => void
+) {
+  if (!message.lobbyParticipant) {
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Missing lobbyParticipant data' },
+      timestamp: Date.now(),
+    });
+    return;
+  }
+
+  const { name, isHost } = message.lobbyParticipant;
+  const lobbyId = `lobby_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+  if (!lobbyParticipants.has(meetingId)) {
+    lobbyParticipants.set(meetingId, new Map());
+  }
+
+  const lobbyParticipant: LobbyParticipant = {
+    id: lobbyId,
+    name,
+    isHost,
+    joinedAt: Date.now(),
+  };
+
+  lobbyParticipants.get(meetingId)!.set(lobbyId, lobbyParticipant);
+  lobbySocketToId.set(ws, { meetingId, lobbyId });
+
+  console.log(`🚪 [VideoCopilot] Lobby join: ${name} (${isHost ? 'host' : 'guest'}) in meeting ${meetingId}`);
+
+  sendMessage(ws, {
+    type: 'lobby_participant_joined',
+    data: {
+      id: lobbyId,
+      name,
+      isHost,
+      isSelf: true,
+    },
+    timestamp: Date.now(),
+  });
+
+  broadcast({
+    type: 'lobby_participant_joined',
+    data: {
+      id: lobbyId,
+      name,
+      isHost,
+      isSelf: false,
+    },
+    timestamp: Date.now(),
+  });
+
+  const lobbyList = Array.from(lobbyParticipants.get(meetingId)!.values());
+  broadcast({
+    type: 'lobby_participants_list',
+    data: { participants: lobbyList },
+    timestamp: Date.now(),
+  });
+}
+
+function handleLobbyLeave(
+  ws: WebSocket,
+  meetingId: string,
+  broadcast: (msg: OutgoingMessage) => void
+) {
+  const lobbyInfo = lobbySocketToId.get(ws);
+  if (!lobbyInfo) {
+    return;
+  }
+
+  const { lobbyId } = lobbyInfo;
+  const meetingLobby = lobbyParticipants.get(meetingId);
+  
+  if (meetingLobby) {
+    const participant = meetingLobby.get(lobbyId);
+    if (participant) {
+      meetingLobby.delete(lobbyId);
+      console.log(`🚪 [VideoCopilot] Lobby leave: ${participant.name} from meeting ${meetingId}`);
+
+      broadcast({
+        type: 'lobby_participant_left',
+        data: {
+          id: lobbyId,
+          name: participant.name,
+        },
+        timestamp: Date.now(),
+      });
+
+      const lobbyList = Array.from(meetingLobby.values());
+      broadcast({
+        type: 'lobby_participants_list',
+        data: { participants: lobbyList },
+        timestamp: Date.now(),
+      });
+    }
+
+    if (meetingLobby.size === 0) {
+      lobbyParticipants.delete(meetingId);
+    }
+  }
+
+  lobbySocketToId.delete(ws);
+}
+
+function unregisterLobbyParticipantBySocket(ws: WebSocket, broadcast: (msg: OutgoingMessage) => void) {
+  const lobbyInfo = lobbySocketToId.get(ws);
+  if (!lobbyInfo) return;
+
+  const { meetingId, lobbyId } = lobbyInfo;
+  const meetingLobby = lobbyParticipants.get(meetingId);
+
+  if (meetingLobby) {
+    const participant = meetingLobby.get(lobbyId);
+    if (participant) {
+      meetingLobby.delete(lobbyId);
+      console.log(`🚪 [VideoCopilot] Auto-removed from lobby on disconnect: ${participant.name}`);
+
+      broadcast({
+        type: 'lobby_participant_left',
+        data: {
+          id: lobbyId,
+          name: participant.name,
+          reason: 'disconnected',
+        },
+        timestamp: Date.now(),
+      });
+
+      const lobbyList = Array.from(meetingLobby.values());
+      broadcast({
+        type: 'lobby_participants_list',
+        data: { participants: lobbyList },
+        timestamp: Date.now(),
+      });
+    }
+
+    if (meetingLobby.size === 0) {
+      lobbyParticipants.delete(meetingId);
+    }
+  }
+
+  lobbySocketToId.delete(ws);
+}
+
 async function handleEndSession(
   ws: WebSocket,
   session: SessionState
@@ -1245,6 +1406,17 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
       });
     }
 
+    // Send existing lobby participants list
+    const meetingLobby = lobbyParticipants.get(meetingId);
+    if (meetingLobby && meetingLobby.size > 0) {
+      const lobbyList = Array.from(meetingLobby.values());
+      sendMessage(ws, {
+        type: 'lobby_participants_list',
+        data: { participants: lobbyList },
+        timestamp: Date.now(),
+      });
+    }
+
     if (session.playbook) {
       sendMessage(ws, {
         type: 'script_progress',
@@ -1286,6 +1458,12 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
           case 'ice_candidate':
             handleICECandidate(ws, session!, message);
             break;
+          case 'lobby_join':
+            handleLobbyJoin(ws, meetingId, message, broadcast);
+            break;
+          case 'lobby_leave':
+            handleLobbyLeave(ws, meetingId, broadcast);
+            break;
           default:
             console.warn(`⚠️ [VideoCopilot] Unknown message type: ${(message as any).type}`);
         }
@@ -1309,6 +1487,9 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
           meetingClients.delete(meetingId);
         }
       }
+      
+      // Clean up lobby participant on disconnect
+      unregisterLobbyParticipantBySocket(ws, broadcast);
       
       // Clean up participant socket on disconnect using reverse map
       unregisterParticipantBySocket(ws, broadcast);
