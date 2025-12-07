@@ -1,5 +1,4 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { Server } from 'http';
 import jwt from 'jsonwebtoken';
 import { getVertexAITokenForLive } from './provider-factory';
 import { 
@@ -922,13 +921,10 @@ async function getUserIdFromRequest(req: any): Promise<{
 /**
  * Setup WebSocket server per Gemini Live API
  */
-export function setupGeminiLiveWSService(server: Server) {
+export function setupGeminiLiveWSService(): WebSocketServer {
   console.log('🔧 Setting up Gemini Live WebSocket server...');
   
-  const wss = new WebSocketServer({ 
-    server,
-    path: '/ws/ai-voice'
-  });
+  const wss = new WebSocketServer({ noServer: true });
 
   console.log('🔧 WebSocketServer instance created, attaching connection handler...');
 
@@ -5958,6 +5954,8 @@ ${compactFeedback}
   });
 
   console.log('✅ Gemini Live API WebSocket server setup on /ws/ai-voice');
+  
+  return wss;
 }
 
 /**
