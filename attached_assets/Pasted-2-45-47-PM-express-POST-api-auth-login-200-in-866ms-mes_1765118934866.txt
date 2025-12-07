@@ -1,0 +1,116 @@
+2:45:47 PM [express] POST /api/auth/login 200 in 866ms :: {"message":"Login successful","token":"eyJ…
+Session start request - user: 7e40b56c-2cc8-4515-b843-dc105e478f38
+Creating session with data: {
+  userId: '7e40b56c-2cc8-4515-b843-dc105e478f38',
+  sessionId: '46ba8cb5-e0c1-45c2-8fe0-190541b3645a',
+  ipAddress: '172.31.80.130',
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+}
+Logging login activity for session: 46ba8cb5-e0c1-45c2-8fe0-190541b3645a
+Session created successfully: 46ba8cb5-e0c1-45c2-8fe0-190541b3645a
+2:45:48 PM [express] POST /api/activity/session/start 201 in 916ms :: {"sessionId":"46ba8cb5-e0c1-45…
+2:45:50 PM [express] GET /api/badges/7e40b56c-2cc8-4515-b843-dc105e478f38 200 in 230ms :: []
+2:45:51 PM [express] GET /api/calendar/events 200 in 903ms :: [{"id":"86eea401-ee34-4a8d-a69b-71852c…
+2:45:51 PM [express] GET /api/momentum/goals 200 in 908ms :: []
+2:45:51 PM [express] GET /api/momentum/checkins/daily-stats 200 in 920ms :: {"date":"2025-12-07","to…
+2:45:51 PM [express] GET /api/momentum/checkins/current-streak 200 in 933ms :: {"streak":0}
+2:45:51 PM [express] GET /api/exercise-assignments/client 200 in 677ms :: [{"id":"15c333e8-e47f-4771…
+2:45:51 PM [express] GET /api/daily-tasks/client 200 in 15ms
+2:45:52 PM [express] GET /api/consultations/client 200 in 231ms :: [{"id":"8e0aacdf-3550-4315-8dab-9…
+2:45:52 PM [express] GET /api/daily-reflections 200 in 337ms :: [{"id":"5a1be378-c0ea-4579-8e61-f371…
+2:45:52 PM [express] GET /api/stats/client 200 in 1597ms :: {"completedExercises":18,"totalExercises…
+2:45:55 PM [express] GET /api/client/human-sellers/scripts 200 in 228ms :: [{"id":"60f67d3c-7877-4d8…
+2:45:55 PM [express] GET /api/client/human-sellers/meetings 200 in 230ms :: [{"id":"b24b1713-abc6-4f…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+2:46:18 PM [express] POST /api/activity/session/heartbeat 200 in 955ms :: {"success":true,"lastActiv…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+2:46:30 PM [express] GET /api/meet/LrZ1pmGzojbvpBgZ 200 in 1015ms :: {"id":"b24b1713-abc6-4fc7-8573-…
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+2:46:38 PM [express] POST /api/meet/verify-google 200 in 38ms :: {"email":"chianettaalessio@gmail.co…
+[PublicMeet] Participant Alessio Chianetta joined meeting b24b1713-abc6-4fc7-8573-f3027c234a03
+2:46:52 PM [express] POST /api/meet/LrZ1pmGzojbvpBgZ/join 201 in 904ms :: {"participantId":"5016dedc…
+2:46:54 PM [express] GET /api/meet/LrZ1pmGzojbvpBgZ 304 in 339ms :: {"id":"b24b1713-abc6-4fc7-8573-f…
+[PublicMeeting] Fetching meeting for token: LrZ1pmGzojbvpBgZ
+[PublicMeeting] Meeting found: b24b1713-abc6-4fc7-8573-f3027c234a03 - ds
+2:46:55 PM [express] GET /api/public/meeting/LrZ1pmGzojbvpBgZ 200 in 672ms :: {"meeting":{"id":"b24b…
+2:46:55 PM [express] GET /api/video-meeting/ice-servers/LrZ1pmGzojbvpBgZ 200 in 1153ms :: {"iceServe…
+🎥 [3gi5vh] Client connected to Video AI Copilot
+✅ [VideoCopilot] Connection authenticated - Meeting: b24b1713-abc6-4fc7-8573-f3027c234a03, Guest: true
+📘 [VideoCopilot] Auto-loaded playbook: Script più leggero (0 phases, 0 objections)
+🧹 [VideoCopilot] Cleaned zombie participant: Alessio Saponetta (0130eef8-36a0-44d6-b88a-ec5c34d10dca)
+🧹 [VideoCopilot] Cleaned zombie participant: Alessio Chianetta (5016dedc-42d3-4a5b-b913-564906527931)
+👥 [VideoCopilot] Participants updated: 2 participants
+🔄 [VideoCopilot] Recycling inactive participant: Alessio Chianetta (host) - ID: 5016dedc-42d3-4a5b-b913-564906527931
+🔗 [VideoCopilot] Registered socket for participant 5016dedc-42d3-4a5b-b913-564906527931 in meeting b24b1713-abc6-4fc7-8573-f3027c234a03
+📡 [VideoCopilot] Broadcast participant_socket_ready for Alessio Chianetta (5016dedc-42d3-4a5b-b913-564906527931)
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+2:47:25 PM [express] GET /api/meet/LrZ1pmGzojbvpBgZ 200 in 1085ms :: {"id":"b24b1713-abc6-4fc7-8573-…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+2:48:07 PM [express] GET /api/meet/LrZ1pmGzojbvpBgZ 304 in 339ms :: {"id":"b24b1713-abc6-4fc7-8573-f…
+[PublicMeet] Participant Vbb joined meeting b24b1713-abc6-4fc7-8573-f3027c234a03
+2:48:16 PM [express] POST /api/meet/LrZ1pmGzojbvpBgZ/join 201 in 236ms :: {"participantId":"bc47fe12…
+2:48:19 PM [express] GET /api/meet/LrZ1pmGzojbvpBgZ 304 in 340ms :: {"id":"b24b1713-abc6-4fc7-8573-f…
+[PublicMeeting] Fetching meeting for token: LrZ1pmGzojbvpBgZ
+[PublicMeeting] Meeting found: b24b1713-abc6-4fc7-8573-f3027c234a03 - ds
+2:48:19 PM [express] GET /api/public/meeting/LrZ1pmGzojbvpBgZ 200 in 674ms :: {"meeting":{"id":"b24b…
+2:48:20 PM [express] GET /api/video-meeting/ice-servers/LrZ1pmGzojbvpBgZ 200 in 1156ms :: {"iceServe…
+🎥 [23ba3] Client connected to Video AI Copilot
+✅ [VideoCopilot] Connection authenticated - Meeting: b24b1713-abc6-4fc7-8573-f3027c234a03, Guest: true
+🧹 [VideoCopilot] Cleaned zombie participant: Prova (59dc257e-f535-49ec-b80f-1a9e01721295)
+🧹 [VideoCopilot] Cleaned zombie participant: Vbb (bc47fe12-72b7-4e9a-828b-ef54aa941ab6)
+👥 [VideoCopilot] Participants updated: 2 participants
+✅ [VideoCopilot] New participant joined: Vbb (prospect) - ID: 53282d8e-072c-4f6a-87f4-94484d80c48d
+🔗 [VideoCopilot] Registered socket for participant 53282d8e-072c-4f6a-87f4-94484d80c48d in meeting b24b1713-abc6-4fc7-8573-f3027c234a03
+📡 [VideoCopilot] Broadcast participant_socket_ready for Vbb (53282d8e-072c-4f6a-87f4-94484d80c48d)
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
