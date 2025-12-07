@@ -298,10 +298,14 @@ export default function ExerciseDetails() {
           ok: draftResponse.ok
         });
 
-        // If assignment doesn't exist or access denied, disable auto-save immediately
-        if (draftResponse.status === 403 || draftResponse.status === 404) {
-          console.warn(`Assignment ${draftResponse.status === 403 ? 'access denied' : 'not found'} - disabling auto-save immediately`);
+        // If access denied (403), disable auto-save - but NOT for 404!
+        // 404 on draft endpoint just means "no draft saved yet" which is normal
+        if (draftResponse.status === 403) {
+          console.warn('Assignment access denied (403) - disabling auto-save');
           setAutoSaveEnabled(false);
+        } else if (draftResponse.status === 404) {
+          // 404 is normal - it just means no draft exists yet, auto-save should stay enabled
+          console.log('ℹ️ No existing draft found for assignment:', assignmentId, '- this is normal, auto-save remains enabled');
         }
 
         if (draftResponse.ok) {
