@@ -7,7 +7,7 @@
  * BUFFER SIZE: 1920 samples = 40ms at 48kHz native rate
  * After resampling 48kHz → 16kHz (3:1), becomes 640 samples = 40ms at 16kHz
  * 
- * NOISE GATE: 0.02 RMS - Filters background noise, Gemini Proactive Audio handles the rest
+ * NOISE GATE: 0 (DISABLED) - All audio passes through, Gemini handles everything
  */
 
 class PCMProcessor extends AudioWorkletProcessor {
@@ -28,13 +28,12 @@ class PCMProcessor extends AudioWorkletProcessor {
     this.audioBuffer = [];
     
     /** 
-     * @type {number} - Noise Gate RE-ENABLED
-     * 0.02 RMS threshold filters background noise (fans, AC, ambient)
-     * Gemini Proactive Audio handles speech vs chatter detection
+     * @type {number} - Noise Gate DISABLED
+     * All audio passes through to Gemini
      */
-    this.NOISE_THRESHOLD = 0.02;
+    this.NOISE_THRESHOLD = 0;
     
-    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples = 40ms @48kHz, noise gate: 0.02 RMS)');
+    console.log('🎙️ PCMProcessor initialized (buffer: 1920 samples = 40ms @48kHz, noise gate: DISABLED)');
   }
 
   /**
