@@ -7684,7 +7684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Get the consultant (clientId) from the humanSeller
+      // Get the owner (clientId) from the humanSeller
       const [seller] = await db
         .select({ clientId: schema.humanSellers.clientId })
         .from(schema.humanSellers)
@@ -7700,46 +7700,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const consultantId = seller.clientId;
+      // Check if the owner is a client or consultant
+      // If client, get their associated consultant's TURN config
+      const [owner] = await db
+        .select({ 
+          role: schema.users.role,
+          consultantId: schema.users.consultantId 
+        })
+        .from(schema.users)
+        .where(eq(schema.users.id, seller.clientId))
+        .limit(1);
 
-      // Get consultant's TURN config
+      // Determine which consultant's TURN config to use
+      let turnConfigOwnerId = seller.clientId;
+      
+      if (owner?.role === 'client' && owner.consultantId) {
+        // If owner is a client, use their consultant's TURN config
+        console.log(`🔗 [ICE] Owner ${seller.clientId} is a client, looking for consultant ${owner.consultantId}'s TURN config`);
+        turnConfigOwnerId = owner.consultantId;
+      }
+
+      // Get TURN config from the determined owner (consultant)
       const [turnConfig] = await db
         .select()
         .from(schema.consultantTurnConfig)
         .where(and(
-          eq(schema.consultantTurnConfig.consultantId, consultantId),
+          eq(schema.consultantTurnConfig.consultantId, turnConfigOwnerId),
           eq(schema.consultantTurnConfig.enabled, true)
         ))
         .limit(1);
 
       let effectiveTurnConfig = turnConfig;
-      let effectiveConsultantId = consultantId;
+      let effectiveConsultantId = turnConfigOwnerId;
 
-      // Fallback: se il consulente del meeting non ha TURN, cerca qualsiasi config TURN attiva
+      // If no TURN config found, return error (no fallback)
       if (!turnConfig || !turnConfig.usernameEncrypted || !turnConfig.passwordEncrypted) {
-        console.log(`⚠️ [ICE] Consultant ${consultantId} has no TURN config, looking for global fallback...`);
-        
-        const [anyTurnConfig] = await db
-          .select()
-          .from(schema.consultantTurnConfig)
-          .where(eq(schema.consultantTurnConfig.enabled, true))
-          .limit(1);
-        
-        if (anyTurnConfig && anyTurnConfig.usernameEncrypted && anyTurnConfig.passwordEncrypted) {
-          console.log(`✅ [ICE] Using TURN config from consultant ${anyTurnConfig.consultantId} as fallback`);
-          effectiveTurnConfig = anyTurnConfig;
-          effectiveConsultantId = anyTurnConfig.consultantId;
-        } else {
-          // No TURN config anywhere, return STUN only
-          console.log(`❌ [ICE] No TURN config found anywhere, returning STUN only`);
-          return res.json({
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-          });
-        }
+        console.log(`❌ [ICE] No TURN config found for consultant ${turnConfigOwnerId}, returning STUN only`);
+        return res.json({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        });
       }
+      
+      console.log(`✅ [ICE] Using TURN config from consultant ${turnConfigOwnerId}`);
 
       // Get consultant salt for decryption (use effective consultant)
       const [consultant] = await db
