@@ -1,0 +1,74 @@
+client:74 [GSI_LOGGER]: Provided button width is invalid: 100%
+_.F @ client:74Understand this warning
+2@radix-ui_react-select.js?v=eb60a26a:874 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js?v=eb60a26a:874:13
+    at renderWithHooks (chunk-RPCDYKBN.js?v=eb60a26a:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=eb60a26a:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=eb60a26a:15946:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=eb60a26a:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=eb60a26a:3699:24)
+    at invokeGuardedCallback (chunk-RPCDYKBN.js?v=eb60a26a:3733:39)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=eb60a26a:19765:15)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=eb60a26a:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=eb60a26a:19137:13)Understand this error
+chunk-RPCDYKBN.js?v=eb60a26a:14032 The above error occurred in the <SelectItem> component:
+
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=eb60a26a:847:7
+    at _c11 (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/src/components/ui/select.tsx:208:13)
+    at div
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=eb60a26a:42:13
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb60a26a:79:13
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb60a26a:56:13
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TPYHSINA.js?v=eb60a26a:39:15
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=eb60a26a:758:13
+    at div
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb60a26a:79:13
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb60a26a:56:13
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TPYHSINA.js?v=eb60a26a:39:15
+    at Provider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb60a26a:38:15)
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=eb60a26a:301:58
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb60a26a:79:13
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb60a26a:56:13
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=eb60a26a:42:13
+    at https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-G76BAGTM.js?v=eb60a26a:260:22
+    at SelectPortal
+    at _c7 (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/src/components/ui/select.tsx:123:12)
+    at Provider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb60a26a:38:15)
+    at Provider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb60a26a:38:15)
+    at CollectionProvider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TPYHSINA.js?v=eb60a26a:29:13)
+    at Provider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb60a26a:38:15)
+    at Provider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb60a26a:38:15)
+    at Popper (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TSMXHQXX.js?v=eb60a26a:1921:11)
+    at Select (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-select.js?v=eb60a26a:89:5)
+    at div
+    at div
+    at div
+    at div
+    at div
+    at MeetGreenRoom (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/src/pages/meet-green-room.tsx:42:21)
+    at Route (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb60a26a:323:16)
+    at Switch (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb60a26a:379:17)
+    at Suspense
+    at Router (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/src/App.tsx?v=rVLgtP_OqBDZp21Hh8Oe5:196:35)
+    at Provider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb60a26a:38:15)
+    at TooltipProvider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=eb60a26a:64:5)
+    at TourProvider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at QueryClientProvider (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=eb60a26a:2805:3)
+    at V (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=eb60a26a:44:25)
+    at J (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/next-themes.js?v=eb60a26a:42:18)
+    at App (https://b6f5587f-f679-4c0b-a6e1-a504ba0fffad-00-q4fu6heaa2k.janeway.replit.dev/src/App.tsx?v=rVLgtP_OqBDZp21Hh8Oe5:1238:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=eb60a26a:14032Understand this error
+chunk-RPCDYKBN.js?v=eb60a26a:19413 Uncaught Error: A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set to an empty string to clear the selection and show the placeholder.
+    at @radix-ui_react-select.js?v=eb60a26a:874:13
+    at renderWithHooks (chunk-RPCDYKBN.js?v=eb60a26a:11548:26)
+    at updateForwardRef (chunk-RPCDYKBN.js?v=eb60a26a:14325:28)
+    at beginWork (chunk-RPCDYKBN.js?v=eb60a26a:15946:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=eb60a26a:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=eb60a26a:19198:20)
+    at workLoopSync (chunk-RPCDYKBN.js?v=eb60a26a:19137:13)
+    at renderRootSync (chunk-RPCDYKBN.js?v=eb60a26a:19116:15)
+    at recoverFromConcurrentError (chunk-RPCDYKBN.js?v=eb60a26a:18736:28)
+    at performConcurrentWorkOnRoot (chunk-RPCDYKBN.js?v=eb60a26a:18684:30)

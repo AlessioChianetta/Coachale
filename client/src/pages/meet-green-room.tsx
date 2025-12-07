@@ -193,10 +193,10 @@ export default function MeetGreenRoom() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videos = devices
-        .filter(d => d.kind === 'videoinput')
+        .filter(d => d.kind === 'videoinput' && d.deviceId)
         .map(d => ({ deviceId: d.deviceId, label: d.label || `Camera ${d.deviceId.slice(0, 5)}` }));
       const audios = devices
-        .filter(d => d.kind === 'audioinput')
+        .filter(d => d.kind === 'audioinput' && d.deviceId)
         .map(d => ({ deviceId: d.deviceId, label: d.label || `Microphone ${d.deviceId.slice(0, 5)}` }));
       
       setVideoDevices(videos);
