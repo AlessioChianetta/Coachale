@@ -11,6 +11,7 @@ interface PeerConnectionState {
 }
 
 interface UseWebRTCProps {
+  meetingId: string;
   myParticipantId: string | null;
   participants: Array<{ id: string; name: string; role: string }>;
   isConnected: boolean;
@@ -39,7 +40,7 @@ interface UseWebRTCResult {
   audioDiagnostics: AudioDiagnostics;
 }
 
-const ICE_SERVERS: RTCConfiguration = {
+const DEFAULT_ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
@@ -50,6 +51,7 @@ const ICE_SERVERS: RTCConfiguration = {
 };
 
 export function useWebRTC({
+  meetingId,
   myParticipantId,
   participants,
   isConnected,
@@ -59,6 +61,8 @@ export function useWebRTC({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [isLocalStreamReady, setIsLocalStreamReady] = useState(false);
+  const [iceConfig, setIceConfig] = useState<RTCConfiguration>(DEFAULT_ICE_SERVERS);
+  const [iceConfigLoaded, setIceConfigLoaded] = useState(false);
   const [audioDiagnostics, setAudioDiagnostics] = useState<AudioDiagnostics>({
     localAudioTrackExists: false,
     localAudioEnabled: false,
@@ -67,8 +71,46 @@ export function useWebRTC({
     lastAudioEvent: 'Nessun evento',
   });
 
+  useEffect(() => {
+    const loadIceServers = async () => {
+      if (!meetingId) {
+        setIceConfigLoaded(true);
+        return;
+      }
+      
+      try {
+        console.log(`🌐 [WebRTC] Loading ICE servers for meeting ${meetingId}...`);
+        const response = await fetch(`/api/video-meeting/ice-servers/${meetingId}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.iceServers && data.iceServers.length > 0) {
+            const hasTurn = data.iceServers.some((s: RTCIceServer) => 
+              Array.isArray(s.urls) 
+                ? s.urls.some(u => u.startsWith('turn:'))
+                : s.urls.startsWith('turn:')
+            );
+            console.log(`✅ [WebRTC] Loaded ${data.iceServers.length} ICE servers (TURN: ${hasTurn ? 'YES' : 'NO'})`);
+            setIceConfig({ iceServers: data.iceServers });
+          } else {
+            console.log(`ℹ️ [WebRTC] No custom ICE servers configured, using default STUN servers`);
+          }
+        } else {
+          console.warn(`⚠️ [WebRTC] Failed to load ICE servers (${response.status}), using defaults`);
+        }
+      } catch (error) {
+        console.error(`❌ [WebRTC] Error loading ICE servers:`, error);
+      } finally {
+        setIceConfigLoaded(true);
+      }
+    };
+    
+    loadIceServers();
+  }, [meetingId]);
+
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
+  const pendingOffersRef = useRef<Map<string, RTCSessionDescriptionInit>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const makingOfferRef = useRef<Map<string, boolean>>(new Map());
   const connectionRetryRef = useRef<Map<string, number>>(new Map());
@@ -81,8 +123,9 @@ export function useWebRTC({
 
   const createPeerConnection = useCallback((remoteParticipantId: string): RTCPeerConnection => {
     console.log(`🔗 [WebRTC] Creating peer connection for ${remoteParticipantId}`);
+    console.log(`🔗 [WebRTC] Using ICE config with ${iceConfig.iceServers?.length || 0} servers`);
     
-    const pc = new RTCPeerConnection(ICE_SERVERS);
+    const pc = new RTCPeerConnection(iceConfig);
 
     pc.onicecandidate = (event) => {
       if (event.candidate && myParticipantId) {
@@ -233,7 +276,7 @@ export function useWebRTC({
 
     peerConnectionsRef.current.set(remoteParticipantId, pc);
     return pc;
-  }, [myParticipantId, sendWebRTCMessage]);
+  }, [myParticipantId, sendWebRTCMessage, iceConfig]);
 
   const startLocalStream = useCallback(async (video: boolean, audio: boolean) => {
     try {
@@ -345,6 +388,12 @@ export function useWebRTC({
   const handleWebRTCOffer = useCallback(async (fromParticipantId: string, sdp: RTCSessionDescriptionInit) => {
     console.log(`📥 [WebRTC] Received offer from ${fromParticipantId}`);
     
+    if (!iceConfigLoaded) {
+      console.warn(`⏳ [WebRTC] ICE config not loaded yet, queuing offer from ${fromParticipantId}`);
+      pendingOffersRef.current.set(fromParticipantId, sdp);
+      return;
+    }
+    
     let pc = peerConnectionsRef.current.get(fromParticipantId);
     if (!pc) {
       pc = createPeerConnection(fromParticipantId);
@@ -398,7 +447,7 @@ export function useWebRTC({
     } catch (error) {
       console.error(`❌ [WebRTC] Error handling offer from ${fromParticipantId}:`, error);
     }
-  }, [createPeerConnection, myParticipantId, sendWebRTCMessage]);
+  }, [createPeerConnection, myParticipantId, sendWebRTCMessage, iceConfigLoaded]);
 
   const handleWebRTCAnswer = useCallback(async (fromParticipantId: string, sdp: RTCSessionDescriptionInit) => {
     console.log(`📥 [WebRTC] Received answer from ${fromParticipantId}`);
@@ -451,8 +500,8 @@ export function useWebRTC({
   }, []);
 
   const initiateConnection = useCallback(async (remoteParticipantId: string) => {
-    if (!myParticipantId || !isLocalStreamReady) {
-      console.warn(`⚠️ [WebRTC] Cannot initiate connection: myId=${myParticipantId}, streamReady=${isLocalStreamReady}`);
+    if (!myParticipantId || !isLocalStreamReady || !iceConfigLoaded) {
+      console.warn(`⚠️ [WebRTC] Cannot initiate connection: myId=${myParticipantId}, streamReady=${isLocalStreamReady}, iceLoaded=${iceConfigLoaded}`);
       return;
     }
 
@@ -517,7 +566,7 @@ export function useWebRTC({
     } finally {
       makingOfferRef.current.set(remoteParticipantId, false);
     }
-  }, [myParticipantId, isLocalStreamReady, createPeerConnection, sendWebRTCMessage]);
+  }, [myParticipantId, isLocalStreamReady, iceConfigLoaded, createPeerConnection, sendWebRTCMessage]);
 
   const handleParticipantSocketReady = useCallback((participantId: string) => {
     if (!myParticipantId || !isLocalStreamReady || participantId === myParticipantId) {
@@ -563,6 +612,20 @@ export function useWebRTC({
   }, [handleWebRTCOffer, handleWebRTCAnswer, handleICECandidate, handleParticipantSocketReady]);
 
   useEffect(() => {
+    if (!iceConfigLoaded) return;
+    
+    const pendingOffers = pendingOffersRef.current;
+    if (pendingOffers.size > 0) {
+      console.log(`🔄 [WebRTC] Processing ${pendingOffers.size} queued offers after ICE config loaded`);
+      pendingOffers.forEach((sdp, fromParticipantId) => {
+        console.log(`📥 [WebRTC] Processing queued offer from ${fromParticipantId}`);
+        handleWebRTCOffer(fromParticipantId, sdp);
+      });
+      pendingOffers.clear();
+    }
+  }, [iceConfigLoaded, handleWebRTCOffer]);
+
+  useEffect(() => {
     reconnectCallbackRef.current = (participantId: string) => {
       console.log(`🔄 [WebRTC] Reconnecting to ${participantId}`);
       initiateConnection(participantId);
@@ -584,7 +647,7 @@ export function useWebRTC({
         initiateConnection(participant.id);
       }
     }
-  }, [isConnected, myParticipantId, participants, isLocalStreamReady, isJoinConfirmed, initiateConnection]);
+  }, [isConnected, myParticipantId, participants, isLocalStreamReady, isJoinConfirmed, iceConfigLoaded, initiateConnection]);
 
   useEffect(() => {
     return () => {

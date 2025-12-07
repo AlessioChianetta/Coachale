@@ -85,6 +85,7 @@ export default function VideoRoom({
     toggleAudio: toggleWebRTCAudio,
     audioDiagnostics,
   } = useWebRTC({
+    meetingId,
     myParticipantId,
     participants: activeParticipantsForWebRTC,
     isConnected,
