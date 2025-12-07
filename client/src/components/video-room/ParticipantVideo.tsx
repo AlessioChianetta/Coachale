@@ -167,59 +167,56 @@ export default function ParticipantVideo({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="relative w-full h-full flex items-center justify-center"
+      className={`relative w-full h-full overflow-hidden ${isSpeaking ? 'ring-4 ring-green-500/60 ring-inset' : ''}`}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-gray-900 to-gray-950" />
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={isLocalUser}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
+        style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
+      />
       
-      <div className="relative z-10 flex items-center justify-center">
-        <div 
-          className={`relative rounded-full overflow-hidden shadow-2xl ${speakingRingClass}`}
-          style={{ width: 'min(50vw, 300px)', height: 'min(50vw, 300px)' }}
+      {!showVideoElement && (
+        <motion.div
+          animate={isSpeaking ? { scale: [1, 1.02, 1] } : {}}
+          transition={{ duration: 1, repeat: isSpeaking ? Infinity : 0 }}
+          className="absolute inset-0 bg-gradient-to-br from-gray-800 via-gray-900 to-gray-950 flex items-center justify-center"
         >
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted={isLocalUser}
-            className={`w-full h-full object-cover absolute inset-0 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
-            style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
-          />
-          
-          {!showVideoElement && (
-            <motion.div
-              animate={isSpeaking ? { scale: [1, 1.05, 1] } : {}}
-              transition={{ duration: 0.5, repeat: isSpeaking ? Infinity : 0 }}
-              className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center"
-            >
-              <span className="text-white font-medium" style={{ fontSize: 'min(15vw, 80px)' }}>
+          <div className="flex flex-col items-center gap-4">
+            <div className={`w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-2xl ${isSpeaking ? 'ring-4 ring-green-500/60' : ''}`}>
+              <span className="text-white font-semibold text-5xl sm:text-6xl md:text-7xl">
                 {initials}
               </span>
-            </motion.div>
-          )}
-        </div>
-      </div>
+            </div>
+            <span className="text-white/80 text-lg sm:text-xl font-medium">
+              {participantName}
+            </span>
+          </div>
+        </motion.div>
+      )}
 
-      {isSpeaking && (
+      {isSpeaking && showVideoElement && (
         <motion.div
-          className="absolute z-5 rounded-full border-4 border-green-500/50"
-          style={{ width: 'min(55vw, 330px)', height: 'min(55vw, 330px)' }}
-          animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.2, 0.5] }}
+          className="absolute inset-0 pointer-events-none border-4 border-green-500/50"
+          animate={{ opacity: [0.5, 0.8, 0.5] }}
           transition={{ duration: 1.5, repeat: Infinity }}
         />
       )}
 
       <div className="absolute bottom-6 left-6 z-20">
-        <div className="flex items-center gap-3">
-          <span className="text-white text-lg sm:text-xl font-medium">
+        <div className="flex items-center gap-3 bg-black/40 backdrop-blur-sm px-3 py-2 rounded-lg">
+          <span className="text-white text-base sm:text-lg font-medium">
             {participantName}
           </span>
           {isHost && (
-            <span className="px-2 py-0.5 bg-blue-500/80 text-white text-xs rounded-full">
+            <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">
               Host
             </span>
           )}
           {isLocalUser && (
-            <span className="px-2 py-0.5 bg-purple-500/80 text-white text-xs rounded-full">
+            <span className="px-2 py-0.5 bg-purple-500 text-white text-xs rounded-full">
               Tu
             </span>
           )}
@@ -238,13 +235,13 @@ export default function ParticipantVideo({
 
       <div className="absolute bottom-6 right-6 z-20 flex items-center gap-2">
         {isMuted && (
-          <div className="p-2 bg-red-500/80 rounded-full">
-            <MicOff className="w-4 h-4 text-white" />
+          <div className="p-2.5 bg-red-500/90 rounded-full shadow-lg">
+            <MicOff className="w-5 h-5 text-white" />
           </div>
         )}
         {isVideoOff && (
-          <div className="p-2 bg-red-500/80 rounded-full">
-            <VideoOff className="w-4 h-4 text-white" />
+          <div className="p-2.5 bg-red-500/90 rounded-full shadow-lg">
+            <VideoOff className="w-5 h-5 text-white" />
           </div>
         )}
       </div>
