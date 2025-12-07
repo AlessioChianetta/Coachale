@@ -92,11 +92,28 @@ app.use((req, res, next) => {
   // Setup WebSocket test server
   //setupWebSocketTest(server);
 
-  // Setup Gemini Live API WebSocket server
-  setupGeminiLiveWSService(server);
+  // Setup Gemini Live API WebSocket server (noServer mode)
+  const wssGemini = setupGeminiLiveWSService();
 
-  // Setup Video AI Copilot WebSocket server for video calls
-  setupVideoCopilotWebSocket(server);
+  // Setup Video AI Copilot WebSocket server for video calls (noServer mode)
+  const wssVideo = setupVideoCopilotWebSocket();
+
+  // Handle WebSocket upgrades - route to appropriate WebSocket server based on path
+  server.on('upgrade', (request, socket, head) => {
+    const pathname = new URL(request.url!, `http://${request.headers.host}`).pathname;
+    
+    if (pathname === '/ws/ai-voice') {
+      wssGemini.handleUpgrade(request, socket, head, (ws) => {
+        wssGemini.emit('connection', ws, request);
+      });
+    } else if (pathname === '/ws/video-copilot') {
+      wssVideo.handleUpgrade(request, socket, head, (ws) => {
+        wssVideo.emit('connection', ws, request);
+      });
+    } else {
+      socket.destroy();
+    }
+  });
 
   // Enhanced database error handling middleware
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {

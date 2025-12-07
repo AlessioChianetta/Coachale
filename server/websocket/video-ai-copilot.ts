@@ -1,5 +1,4 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { Server } from 'http';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
 import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts } from '@shared/schema';
@@ -644,13 +643,10 @@ async function handleEndSession(
   });
 }
 
-export function setupVideoCopilotWebSocket(server: Server) {
+export function setupVideoCopilotWebSocket(): WebSocketServer {
   console.log('🎥 Setting up Video AI Copilot WebSocket server...');
   
-  const wss = new WebSocketServer({
-    server,
-    path: '/ws/video-copilot',
-  });
+  const wss = new WebSocketServer({ noServer: true });
 
   wss.on('error', (error) => {
     console.error('❌ [VideoCopilot] WebSocket server error:', error);
@@ -761,4 +757,6 @@ export function setupVideoCopilotWebSocket(server: Server) {
   });
 
   console.log('✅ Video AI Copilot WebSocket server ready on /ws/video-copilot');
+  
+  return wss;
 }
