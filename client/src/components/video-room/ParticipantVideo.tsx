@@ -38,21 +38,21 @@ export default function ParticipantVideo({
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
+    // Funzione helper per assegnare e forzare il play
     const setAndPlay = (stream: MediaStream, sourceName: string) => {
-      if (videoEl.srcObject === stream) return;
-
-      const audioTracks = stream.getAudioTracks();
-      const videoTracks = stream.getVideoTracks();
-      
-      console.log(`🎬 [ParticipantVideo] Assegnando stream a ${participantName} (${sourceName})`);
-      console.log(`   Audio: ${audioTracks.length}, Video: ${videoTracks.length}`);
-      
+      // Assegna sempre per sicurezza
       videoEl.srcObject = stream;
-      
-      videoEl.play().then(() => {
-        console.log(`▶️ [ParticipantVideo] Play SUCCESS per ${participantName}`);
-      }).catch(e => {
-        console.warn(`⚠️ [ParticipantVideo] Autoplay blocked per ${participantName}:`, e);
+
+      console.log(`▶️ [ParticipantVideo] Attempting play for ${participantName} (${sourceName})`);
+
+      // Promessa di play per sbloccare audio/video su mobile (Safari/Chrome)
+      videoEl.play().catch(e => {
+        console.warn(`⚠️ [ParticipantVideo] Autoplay blocked for ${participantName}:`, e);
+        // Tenta di mutare e riprodurre se l'autoplay con audio è bloccato
+        if (!videoEl.muted) {
+            videoEl.muted = true;
+            videoEl.play().catch(e2 => console.error("Play failed even muted:", e2));
+        }
       });
       setHasStream(true);
     };
@@ -63,7 +63,6 @@ export default function ParticipantVideo({
       setAndPlay(localStream, 'LOCAL');
     } else {
       if (!isLocalUser) {
-        console.log(`⏳ [ParticipantVideo] In attesa stream per ${participantName}...`);
         setHasStream(false);
       }
     }

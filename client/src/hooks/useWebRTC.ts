@@ -151,77 +151,40 @@ export function useWebRTC({
       }
     };
 
-   pc.ontrack = (event) => {
+    pc.ontrack = (event) => {
       const track = event.track;
-      const isAudio = track.kind === 'audio';
-      
-      console.log(`🎧 [WebRTC-AUDIO-DEBUG] ========================================`);
-      console.log(`🎧 [WebRTC-AUDIO-DEBUG] RICEVUTO TRACK REMOTO da ${remoteParticipantId}`);
-      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Tipo: ${track.kind}`);
-      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Track ID: ${track.id}`);
-      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Track enabled: ${track.enabled}`);
-      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Track muted: ${track.muted}`);
-      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Track readyState: ${track.readyState}`);
-      console.log(`🎧 [WebRTC-AUDIO-DEBUG] Streams nell'evento: ${event.streams.length}`);
-      console.log(`🎧 [WebRTC-AUDIO-DEBUG] ========================================`);
-      
-      if (isAudio) {
-        setAudioDiagnostics(prev => ({
-          ...prev,
-          remoteAudioTracks: prev.remoteAudioTracks + 1,
-          lastAudioEvent: `Audio remoto ricevuto da ${remoteParticipantId} - enabled: ${track.enabled}, muted: ${track.muted}`,
-        }));
-        
-        // Monitor per cambiamenti di stato della traccia audio
-        track.onmute = () => {
-          console.log(`🔇 [WebRTC-AUDIO-DEBUG] TRACK AUDIO MUTATO da ${remoteParticipantId}`);
-          setAudioDiagnostics(prev => ({
-            ...prev,
-            lastAudioEvent: `Audio MUTATO da ${remoteParticipantId}`,
-          }));
-        };
-        
-        track.onunmute = () => {
-          console.log(`🔊 [WebRTC-AUDIO-DEBUG] TRACK AUDIO SMUTATO da ${remoteParticipantId}`);
-          setAudioDiagnostics(prev => ({
-            ...prev,
-            lastAudioEvent: `Audio ATTIVO da ${remoteParticipantId}`,
-          }));
-        };
-        
-        track.onended = () => {
-          console.log(`⏹️ [WebRTC-AUDIO-DEBUG] TRACK AUDIO TERMINATO da ${remoteParticipantId}`);
-          setAudioDiagnostics(prev => ({
-            ...prev,
-            lastAudioEvent: `Audio TERMINATO da ${remoteParticipantId}`,
-          }));
-        };
-      }
-      
+      console.log(`📹 [WebRTC] Received remote track from ${remoteParticipantId} (${track.kind})`);
+
+      // Abilita la traccia per sicurezza
+      track.enabled = true;
+
       setRemoteStreams(prev => {
         const newMap = new Map(prev);
-        
-        // 1. Recupera lo stream esistente O usa quello dell'evento O ne crea uno nuovo
-        let stream = newMap.get(remoteParticipantId) || event.streams[0] || new MediaStream();
-        
-        // 2. Se abbiamo creato un nuovo MediaStream manuale, aggiungiamo la traccia
-        if (!stream.getTrackById(track.id)) {
-          stream.addTrack(track);
-          console.log(`➕ [WebRTC-AUDIO-DEBUG] Aggiunta traccia ${track.kind} allo stream per ${remoteParticipantId}`);
+
+        // 1. Recupera lo stream esistente
+        const existingStream = newMap.get(remoteParticipantId);
+
+        // 2. IMPORTANTE: Creiamo SEMPRE un NUOVO oggetto MediaStream.
+        // Questo è il trucco per far capire a React che qualcosa è cambiato.
+        // Partiamo dalle tracce esistenti (se c'era già uno stream) o da zero.
+        const newStream = new MediaStream(existingStream ? existingStream.getTracks() : []);
+
+        // 3. Aggiungiamo la nuova traccia se non è già presente
+        if (!newStream.getTrackById(track.id)) {
+          newStream.addTrack(track);
+          console.log(`➕ [WebRTC] Added ${track.kind} track to NEW stream for ${remoteParticipantId}`);
         }
 
-        // Log dettagliato dello stream
-        const audioTracks = stream.getAudioTracks();
-        const videoTracks = stream.getVideoTracks();
-        console.log(`📊 [WebRTC-AUDIO-DEBUG] Stream per ${remoteParticipantId}: ${audioTracks.length} audio, ${videoTracks.length} video`);
-        audioTracks.forEach((t, i) => {
-          console.log(`   🔈 Audio track ${i}: enabled=${t.enabled}, muted=${t.muted}, state=${t.readyState}`);
-        });
+        // 4. Se l'evento browser ci ha dato uno stream nativo con altre tracce, prendiamo anche quelle
+        if (event.streams && event.streams[0]) {
+          event.streams[0].getTracks().forEach(t => {
+            if (!newStream.getTrackById(t.id)) {
+                newStream.addTrack(t);
+            }
+          });
+        }
 
-        // 3. Aggiorna la mappa. 
-        // IMPORTANTE: Creiamo un clone del MediaStream se necessario per forzare il re-render di React
-        // (A volte React non "vede" che lo stream interno è cambiato se l'oggetto riferimento è lo stesso)
-        newMap.set(remoteParticipantId, stream);
+        newMap.set(remoteParticipantId, newStream);
         return newMap;
       });
     };

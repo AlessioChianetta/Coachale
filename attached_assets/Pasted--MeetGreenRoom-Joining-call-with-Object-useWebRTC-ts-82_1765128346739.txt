@@ -1,0 +1,51 @@
+[MeetGreenRoom] Joining call with: Object
+useWebRTC.ts:82 🌐 [WebRTC] Loading ICE servers for meeting Kr4B7a9kqwqK6bod...
+useWebRTC.ts:775 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=false
+useWebRTC.ts:93 ✅ [WebRTC] Loaded 7 ICE servers (TURN: YES)
+useWebRTC.ts:775 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=true
+useVideoCopilot.ts:305 🎥 WebSocket connected to Video Copilot
+useVideoCopilot.ts:122 ✅ Video Copilot connected: Object
+useWebRTC.ts:775 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=false, joined=false, ice=true
+useWebRTC.ts:275 📹 [WebRTC] Starting local stream (video: true, audio: true)
+useVideoCopilot.ts:212 ✅ Join confirmed, my participant ID: ff9f5420-35a1-4800-956a-bb59858b40c5
+useWebRTC.ts:775 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=true, stream=false, joined=true, ice=true
+useVideoCopilot.ts:258 📡 Participant socket ready: Alessio Chianetta (ff9f5420-35a1-4800-956a-bb59858b40c5)
+useWebRTC.ts:599 📡 [WebRTC] Received own socket_ready, ignoring
+useWebRTC.ts:302 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:303 🎤 [WebRTC-AUDIO-DEBUG] STREAM LOCALE CREATO
+useWebRTC.ts:304 🎤 [WebRTC-AUDIO-DEBUG] Tracce audio: 1
+useWebRTC.ts:305 🎤 [WebRTC-AUDIO-DEBUG] Tracce video: 1
+useWebRTC.ts:307 🎤 [WebRTC-AUDIO-DEBUG] Audio track 0:
+useWebRTC.ts:308    - ID: 6d8d23ae-fa6e-4bc5-a416-e8f39d31009e
+useWebRTC.ts:309    - Label: Microphone (GameDAC Chat) (1038:1282)
+useWebRTC.ts:310    - Enabled: true
+useWebRTC.ts:311    - Muted: false
+useWebRTC.ts:312    - ReadyState: live
+useWebRTC.ts:314 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:339 ✅ [WebRTC] Local stream started with 2 tracks
+useWebRTC.ts:780 👥 [WebRTC] Checking 0 other participants for connections (my ID: ff9f5420-35a1-4800-956a-bb59858b40c5)
+useAudioLevelMonitor.ts:121 [AudioLevelMonitor] Started monitoring audio level
+useVideoCopilot.ts:258 📡 Participant socket ready: Dz HyperLoop (f34bba72-874e-475d-8089-e52503fa328b)
+useWebRTC.ts:605 📡 [WebRTC] Participant f34bba72... no longer active, aborting connection attempt
+useWebRTC.ts:780 👥 [WebRTC] Checking 1 other participants for connections (my ID: ff9f5420-35a1-4800-956a-bb59858b40c5)
+useWebRTC.ts:784 🔗 [WebRTC] No existing connection to f34bba72-874e-475d-8089-e52503fa328b, attempting to initiate...
+useWebRTC.ts:514 🔍 [WebRTC] Connection decision: myId=ff9f5420... vs remoteId=f34bba72... → I INITIATE (higher ID)
+useWebRTC.ts:528 🚀 [WebRTC] Initiating connection to f34bba72-874e-475d-8089-e52503fa328b (attempt 1/3)
+useWebRTC.ts:137 🔗 [WebRTC] Creating peer connection for f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:138 🔗 [WebRTC] Using ICE config with 7 servers
+useWebRTC.ts:264 ➕ [WebRTC] Adding local track audio to connection with f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:264 ➕ [WebRTC] Adding local track video to connection with f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:259 🔄 [WebRTC] Negotiation needed for f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:546 📤 [WebRTC] Sending offer to f34bba72-874e-475d-8089-e52503fa328b
+26useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:445 📥 [WebRTC] Received answer from f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:451 ✅ [WebRTC] Cleared offer retry timeout for f34bba72-874e-475d-8089-e52503fa328b
+2useWebRTC.ts:475 🧊 [WebRTC] Received ICE candidate from f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:156 📹 [WebRTC] Received remote track from f34bba72-874e-475d-8089-e52503fa328b (audio)
+useWebRTC.ts:175 ➕ [WebRTC] Added audio track to NEW stream for f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:156 📹 [WebRTC] Received remote track from f34bba72-874e-475d-8089-e52503fa328b (video)
+useWebRTC.ts:475 🧊 [WebRTC] Received ICE candidate from f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:193 🔌 [WebRTC-AUDIO-DEBUG] ICE state per f34bba72-874e-475d-8089-e52503fa328b: checking
+13useWebRTC.ts:475 🧊 [WebRTC] Received ICE candidate from f34bba72-874e-475d-8089-e52503fa328b
+useWebRTC.ts:193 🔌 [WebRTC-AUDIO-DEBUG] ICE state per f34bba72-874e-475d-8089-e52503fa328b: connected
+useWebRTC.ts:207 ✅ [WebRTC] Connection established with f34bba72..., cleaning up retry timers
