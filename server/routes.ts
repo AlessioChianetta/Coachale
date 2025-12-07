@@ -7712,21 +7712,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ))
         .limit(1);
 
+      let effectiveTurnConfig = turnConfig;
+      let effectiveConsultantId = consultantId;
+
+      // Fallback: se il consulente del meeting non ha TURN, cerca qualsiasi config TURN attiva
       if (!turnConfig || !turnConfig.usernameEncrypted || !turnConfig.passwordEncrypted) {
-        // No TURN config, return STUN only
-        return res.json({
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        });
+        console.log(`⚠️ [ICE] Consultant ${consultantId} has no TURN config, looking for global fallback...`);
+        
+        const [anyTurnConfig] = await db
+          .select()
+          .from(schema.consultantTurnConfig)
+          .where(eq(schema.consultantTurnConfig.enabled, true))
+          .limit(1);
+        
+        if (anyTurnConfig && anyTurnConfig.usernameEncrypted && anyTurnConfig.passwordEncrypted) {
+          console.log(`✅ [ICE] Using TURN config from consultant ${anyTurnConfig.consultantId} as fallback`);
+          effectiveTurnConfig = anyTurnConfig;
+          effectiveConsultantId = anyTurnConfig.consultantId;
+        } else {
+          // No TURN config anywhere, return STUN only
+          console.log(`❌ [ICE] No TURN config found anywhere, returning STUN only`);
+          return res.json({
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+          });
+        }
       }
 
-      // Get consultant salt for decryption
+      // Get consultant salt for decryption (use effective consultant)
       const [consultant] = await db
         .select({ encryptionSalt: schema.users.encryptionSalt })
         .from(schema.users)
-        .where(eq(schema.users.id, consultantId))
+        .where(eq(schema.users.id, effectiveConsultantId))
         .limit(1);
 
       if (!consultant?.encryptionSalt) {
@@ -7742,8 +7761,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let username = "";
       let password = "";
       try {
-        username = decryptForConsultant(turnConfig.usernameEncrypted, consultant.encryptionSalt);
-        password = decryptForConsultant(turnConfig.passwordEncrypted, consultant.encryptionSalt);
+        username = decryptForConsultant(effectiveTurnConfig.usernameEncrypted!, consultant.encryptionSalt);
+        password = decryptForConsultant(effectiveTurnConfig.passwordEncrypted!, consultant.encryptionSalt);
       } catch (decryptError) {
         console.error("❌ Error decrypting TURN credentials for meeting:", decryptError);
         return res.json({
@@ -7761,7 +7780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       // Add TURN servers based on provider
-      if (turnConfig.provider === "metered") {
+      if (effectiveTurnConfig.provider === "metered") {
         iceServers.push(
           {
             urls: "turn:a.relay.metered.ca:80",
@@ -7784,9 +7803,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             credential: password
           }
         );
-      } else if (turnConfig.provider === "custom" && turnConfig.turnUrls) {
+      } else if (effectiveTurnConfig.provider === "custom" && effectiveTurnConfig.turnUrls) {
         // Custom TURN URLs
-        for (const url of turnConfig.turnUrls) {
+        for (const url of effectiveTurnConfig.turnUrls) {
           iceServers.push({
             urls: url,
             username,
