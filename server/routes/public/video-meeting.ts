@@ -34,9 +34,8 @@ router.get("/:meetingToken", async (req, res) => {
       const [sellerData] = await db
         .select({
           id: humanSellers.id,
-          name: humanSellers.name,
-          email: humanSellers.email,
-          defaultScriptId: humanSellers.defaultScriptId,
+          name: humanSellers.displayName,
+          email: humanSellers.ownerEmail,
         })
         .from(humanSellers)
         .where(eq(humanSellers.id, meeting.sellerId))
@@ -46,7 +45,7 @@ router.get("/:meetingToken", async (req, res) => {
     }
 
     let script = null;
-    const scriptId = meeting.playbookId || seller?.defaultScriptId;
+    const scriptId = meeting.playbookId;
 
     if (scriptId) {
       const [scriptData] = await db
@@ -107,7 +106,6 @@ router.get("/:meetingToken", async (req, res) => {
         id: seller.id,
         name: seller.name,
         email: seller.email,
-        defaultScriptId: seller.defaultScriptId,
       } : null,
       script,
       participants,
