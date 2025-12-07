@@ -7780,6 +7780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Build ICE servers array with STUN + TURN
       const iceServers: RTCIceServer[] = [
+        { urls: 'stun:stun.relay.metered.ca:80' },
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' }
       ];
@@ -7788,22 +7789,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (effectiveTurnConfig.provider === "metered") {
         iceServers.push(
           {
-            urls: "turn:a.relay.metered.ca:80",
+            urls: "turn:global.relay.metered.ca:80",
             username,
             credential: password
           },
           {
-            urls: "turn:a.relay.metered.ca:80?transport=tcp",
+            urls: "turn:global.relay.metered.ca:80?transport=tcp",
             username,
             credential: password
           },
           {
-            urls: "turn:a.relay.metered.ca:443",
+            urls: "turn:global.relay.metered.ca:443",
             username,
             credential: password
           },
           {
-            urls: "turns:a.relay.metered.ca:443?transport=tcp",
+            urls: "turns:global.relay.metered.ca:443?transport=tcp",
             username,
             credential: password
           }
