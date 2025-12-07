@@ -113,14 +113,25 @@ export function useWebRTC({
   const pendingOffersRef = useRef<Map<string, RTCSessionDescriptionInit>>(new Map());
   const pendingSocketReadyRef = useRef<Set<string>>(new Set());
   const localStreamRef = useRef<MediaStream | null>(null);
+  const participantsRef = useRef<Array<{ id: string; name: string; role: string }>>(participants);
+  
+  useEffect(() => {
+    participantsRef.current = participants;
+  }, [participants]);
   const makingOfferRef = useRef<Map<string, boolean>>(new Map());
   const connectionRetryRef = useRef<Map<string, number>>(new Map());
   const retryTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const reconnectCallbackRef = useRef<((participantId: string) => void) | null>(null);
   const offerRetryTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const offerRetryCountRef = useRef<Map<string, number>>(new Map());
+  const socketReadyRetryRef = useRef<Map<string, { count: number; timeout: NodeJS.Timeout | null }>>(new Map());
+  const bothTryTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const bothTryActiveRef = useRef<Set<string>>(new Set());
   const OFFER_RETRY_TIMEOUT_MS = 5000;
   const MAX_OFFER_RETRIES = 3;
+  const SOCKET_READY_RETRY_MAX = 5;
+  const SOCKET_READY_RETRY_BASE_MS = 500;
+  const BOTH_TRY_TIMEOUT_MS = 8000;
 
   const createPeerConnection = useCallback((remoteParticipantId: string): RTCPeerConnection => {
     console.log(`🔗 [WebRTC] Creating peer connection for ${remoteParticipantId}`);
@@ -229,13 +240,30 @@ export function useWebRTC({
         };
       });
       
-      if (pc.iceConnectionState === 'connected') {
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        console.log(`✅ [WebRTC] Connection established with ${remoteParticipantId.slice(0,8)}..., cleaning up retry timers`);
         connectionRetryRef.current.set(remoteParticipantId, 0);
+        
         const timeout = retryTimeoutRef.current.get(remoteParticipantId);
         if (timeout) {
           clearTimeout(timeout);
           retryTimeoutRef.current.delete(remoteParticipantId);
         }
+        
+        // Cleanup socket ready retry
+        const socketReadyRetry = socketReadyRetryRef.current.get(remoteParticipantId);
+        if (socketReadyRetry?.timeout) {
+          clearTimeout(socketReadyRetry.timeout);
+          socketReadyRetryRef.current.delete(remoteParticipantId);
+        }
+        
+        // Cleanup both-try fallback
+        const bothTryTimeout = bothTryTimeoutRef.current.get(remoteParticipantId);
+        if (bothTryTimeout) {
+          clearTimeout(bothTryTimeout);
+          bothTryTimeoutRef.current.delete(remoteParticipantId);
+        }
+        bothTryActiveRef.current.delete(remoteParticipantId);
       } else if (pc.iceConnectionState === 'failed') {
         console.warn(`⚠️ [WebRTC] Connection failed with ${remoteParticipantId}, will retry`);
         const retries = connectionRetryRef.current.get(remoteParticipantId) || 0;
@@ -500,15 +528,27 @@ export function useWebRTC({
     }
   }, []);
 
-  const initiateConnection = useCallback(async (remoteParticipantId: string) => {
+  const initiateConnection = useCallback(async (remoteParticipantId: string, forceBothTry: boolean = false) => {
     if (!myParticipantId || !isLocalStreamReady || !iceConfigLoaded) {
       console.warn(`⚠️ [WebRTC] Cannot initiate connection: myId=${myParticipantId}, streamReady=${isLocalStreamReady}, iceLoaded=${iceConfigLoaded}`);
       return;
     }
 
+    // Check if already connected or connecting
+    const existingPc = peerConnectionsRef.current.get(remoteParticipantId);
+    if (existingPc) {
+      const isConnected = existingPc.iceConnectionState === 'connected' || existingPc.iceConnectionState === 'completed';
+      if (isConnected) {
+        console.log(`✅ [WebRTC] Already connected to ${remoteParticipantId.slice(0,8)}..., skipping`);
+        return;
+      }
+    }
+
     // The participant with the GREATER ID initiates the connection
-    const shouldInitiate = myParticipantId > remoteParticipantId;
-    console.log(`🔍 [WebRTC] Connection decision: myId=${myParticipantId.slice(0,8)}... vs remoteId=${remoteParticipantId.slice(0,8)}... → ${shouldInitiate ? 'I INITIATE' : 'THEY INITIATE'}`);
+    // Unless forceBothTry is true (fallback mode where both participants try)
+    const shouldInitiate = forceBothTry || myParticipantId > remoteParticipantId;
+    const reason = forceBothTry ? 'BOTH-TRY FALLBACK' : (myParticipantId > remoteParticipantId ? 'I INITIATE (higher ID)' : 'THEY INITIATE (lower ID)');
+    console.log(`🔍 [WebRTC] Connection decision: myId=${myParticipantId.slice(0,8)}... vs remoteId=${remoteParticipantId.slice(0,8)}... → ${reason}`);
     
     if (!shouldInitiate) {
       console.log(`⏭️ [WebRTC] Skipping connection initiation (waiting for ${remoteParticipantId.slice(0,8)}... to initiate)`);
@@ -573,9 +613,34 @@ export function useWebRTC({
     }
   }, [myParticipantId, isLocalStreamReady, iceConfigLoaded, createPeerConnection, sendWebRTCMessage]);
 
-  const handleParticipantSocketReady = useCallback((participantId: string) => {
+  const isParticipantActive = useCallback((participantId: string): boolean => {
+    return participantsRef.current.some(p => p.id === participantId);
+  }, []);
+
+  const cleanupParticipantRetries = useCallback((participantId: string) => {
+    const socketRetry = socketReadyRetryRef.current.get(participantId);
+    if (socketRetry?.timeout) {
+      clearTimeout(socketRetry.timeout);
+      socketReadyRetryRef.current.delete(participantId);
+    }
+    const bothTimeout = bothTryTimeoutRef.current.get(participantId);
+    if (bothTimeout) {
+      clearTimeout(bothTimeout);
+      bothTryTimeoutRef.current.delete(participantId);
+    }
+    bothTryActiveRef.current.delete(participantId);
+  }, []);
+
+  const handleParticipantSocketReady = useCallback((participantId: string, retryAttempt: number = 0) => {
     if (participantId === myParticipantId) {
       console.log(`📡 [WebRTC] Received own socket_ready, ignoring`);
+      return;
+    }
+    
+    // Check if participant still exists (prevents orphaned retries)
+    if (!isParticipantActive(participantId)) {
+      console.log(`📡 [WebRTC] Participant ${participantId.slice(0,8)}... no longer active, aborting connection attempt`);
+      cleanupParticipantRetries(participantId);
       return;
     }
     
@@ -586,26 +651,102 @@ export function useWebRTC({
       return;
     }
     
+    // Clear any existing retry timeout for this participant
+    const existingRetry = socketReadyRetryRef.current.get(participantId);
+    if (existingRetry?.timeout) {
+      clearTimeout(existingRetry.timeout);
+    }
+    
+    // Fresh socket_ready resets both-try state to prevent glare loops
+    if (retryAttempt === 0) {
+      bothTryActiveRef.current.delete(participantId);
+    }
+    
     const existingPc = peerConnectionsRef.current.get(participantId);
     if (existingPc) {
       const isNegotiating = existingPc.signalingState !== 'stable' && existingPc.signalingState !== 'closed';
       const isConnected = existingPc.iceConnectionState === 'connected' || existingPc.iceConnectionState === 'completed';
       if (isNegotiating || isConnected) {
-        console.log(`📡 [WebRTC] Participant socket ready: ${participantId}, but negotiation in progress or already connected, skipping`);
+        console.log(`📡 [WebRTC] Participant socket ready: ${participantId.slice(0,8)}..., but negotiation in progress or already connected, skipping`);
+        cleanupParticipantRetries(participantId);
         return;
       }
     }
     
-    console.log(`📡 [WebRTC] Participant socket ready: ${participantId}, initiating connection...`);
+    console.log(`📡 [WebRTC] Participant socket ready: ${participantId.slice(0,8)}..., initiating connection (attempt ${retryAttempt + 1})...`);
     offerRetryCountRef.current.set(participantId, 0);
-    const existingTimeout = offerRetryTimeoutRef.current.get(participantId);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
+    const existingOfferTimeout = offerRetryTimeoutRef.current.get(participantId);
+    if (existingOfferTimeout) {
+      clearTimeout(existingOfferTimeout);
       offerRetryTimeoutRef.current.delete(participantId);
     }
     
-    initiateConnection(participantId);
-  }, [myParticipantId, isLocalStreamReady, iceConfigLoaded, initiateConnection]);
+    // Try to initiate connection
+    initiateConnection(participantId, bothTryActiveRef.current.has(participantId));
+    
+    // Setup retry with exponential backoff if connection doesn't establish
+    if (retryAttempt < SOCKET_READY_RETRY_MAX) {
+      const delay = SOCKET_READY_RETRY_BASE_MS * Math.pow(2, retryAttempt);
+      const retryTimeout = setTimeout(() => {
+        // Guard: verify participant still exists before retry
+        if (!isParticipantActive(participantId)) {
+          console.log(`🛑 [WebRTC] Retry cancelled - participant ${participantId.slice(0,8)}... left`);
+          cleanupParticipantRetries(participantId);
+          return;
+        }
+        
+        const pc = peerConnectionsRef.current.get(participantId);
+        const isConnected = pc && (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed');
+        
+        if (!isConnected) {
+          console.log(`🔄 [WebRTC] Connection not established with ${participantId.slice(0,8)}..., retrying (${retryAttempt + 1}/${SOCKET_READY_RETRY_MAX})...`);
+          handleParticipantSocketReady(participantId, retryAttempt + 1);
+        } else {
+          console.log(`✅ [WebRTC] Connection established with ${participantId.slice(0,8)}..., no retry needed`);
+          cleanupParticipantRetries(participantId);
+        }
+      }, delay);
+      
+      socketReadyRetryRef.current.set(participantId, { count: retryAttempt, timeout: retryTimeout });
+    }
+    
+    // Setup "both try" fallback timeout (only on first attempt)
+    if (retryAttempt === 0 && !bothTryTimeoutRef.current.has(participantId)) {
+      console.log(`⏰ [WebRTC] Setting up both-try fallback for ${participantId.slice(0,8)}... in ${BOTH_TRY_TIMEOUT_MS}ms`);
+      const bothTryTimeout = setTimeout(() => {
+        bothTryTimeoutRef.current.delete(participantId);
+        
+        // Guard: verify participant still exists before both-try fallback
+        if (!isParticipantActive(participantId)) {
+          console.log(`🛑 [WebRTC] Both-try fallback cancelled - participant ${participantId.slice(0,8)}... left`);
+          cleanupParticipantRetries(participantId);
+          return;
+        }
+        
+        const pc = peerConnectionsRef.current.get(participantId);
+        const isConnected = pc && (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed');
+        
+        if (!isConnected) {
+          console.warn(`⚡ [WebRTC] BOTH-TRY FALLBACK: Connection not established with ${participantId.slice(0,8)}... after ${BOTH_TRY_TIMEOUT_MS}ms, both participants will now try to connect`);
+          bothTryActiveRef.current.add(participantId);
+          
+          // Reset offer retry count so forced attempt actually runs
+          offerRetryCountRef.current.set(participantId, 0);
+          
+          // Close existing connection if any and retry
+          if (pc) {
+            pc.close();
+            peerConnectionsRef.current.delete(participantId);
+          }
+          
+          // Force initiate with both-try flag
+          initiateConnection(participantId, true);
+        }
+      }, BOTH_TRY_TIMEOUT_MS);
+      
+      bothTryTimeoutRef.current.set(participantId, bothTryTimeout);
+    }
+  }, [myParticipantId, isLocalStreamReady, iceConfigLoaded, initiateConnection, isParticipantActive, cleanupParticipantRetries]);
 
   const handleWebRTCMessage = useCallback((message: any) => {
     switch (message.type) {
@@ -658,7 +799,8 @@ export function useWebRTC({
   useEffect(() => {
     reconnectCallbackRef.current = (participantId: string) => {
       console.log(`🔄 [WebRTC] Reconnecting to ${participantId}`);
-      initiateConnection(participantId);
+      const forceBothTry = bothTryActiveRef.current.has(participantId);
+      initiateConnection(participantId, forceBothTry);
     };
     return () => {
       reconnectCallbackRef.current = null;
@@ -692,6 +834,17 @@ export function useWebRTC({
       
       offerRetryTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
       offerRetryTimeoutRef.current.clear();
+      
+      // Cleanup socket ready retry timeouts
+      socketReadyRetryRef.current.forEach(({ timeout }) => {
+        if (timeout) clearTimeout(timeout);
+      });
+      socketReadyRetryRef.current.clear();
+      
+      // Cleanup both-try fallback timeouts
+      bothTryTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
+      bothTryTimeoutRef.current.clear();
+      bothTryActiveRef.current.clear();
       
       peerConnectionsRef.current.forEach((pc, id) => {
         console.log(`🔌 [WebRTC] Closing connection to ${id}`);
@@ -732,9 +885,12 @@ export function useWebRTC({
           offerRetryTimeoutRef.current.delete(id);
         }
         offerRetryCountRef.current.delete(id);
+        
+        // Cleanup all retry/both-try state using helper
+        cleanupParticipantRetries(id);
       }
     });
-  }, [participants, myParticipantId, remoteStreams]);
+  }, [participants, myParticipantId, remoteStreams, cleanupParticipantRetries]);
 
   return {
     localStream,
