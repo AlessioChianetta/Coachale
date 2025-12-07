@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ParticipantVideo, { SentimentType } from './ParticipantVideo';
 import VideoControls from './VideoControls';
 import AICopilotHUD from './AICopilotHUD';
+import { useVideoMeeting } from '@/hooks/useVideoMeeting';
+import { useVideoCopilot } from '@/hooks/useVideoCopilot';
+import { Loader2 } from 'lucide-react';
 
 export interface VideoRoomProps {
   meetingId: string;
@@ -11,45 +14,13 @@ export interface VideoRoomProps {
   onEndCall: () => void;
 }
 
-interface Participant {
+interface DisplayParticipant {
   id: string;
   name: string;
   sentiment: SentimentType;
   isHost: boolean;
   isMuted: boolean;
   isVideoOff: boolean;
-}
-
-const mockScript = [
-  { id: '1', text: 'Presentazione iniziale', completed: true },
-  { id: '2', text: 'Scopri il problema principale', completed: true },
-  { id: '3', text: 'Identifica pain points', completed: false },
-  { id: '4', text: 'Presenta la soluzione', completed: false },
-  { id: '5', text: 'Gestisci obiezioni', completed: false },
-  { id: '6', text: 'Call to action finale', completed: false },
-];
-
-const mockSuggestions = [
-  "Prova a chiedere: 'Qual è la sfida più grande che stai affrontando in questo momento?'",
-  "Il prospect sembra interessato. È il momento giusto per parlare dei benefici principali.",
-  "Fai una domanda aperta per approfondire le sue esigenze specifiche.",
-  "Ottimo engagement! Considera di proporre una demo personalizzata.",
-];
-
-const mockBattleCards = [
-  {
-    objection: "È troppo costoso per noi in questo momento",
-    response: "Capisco la preoccupazione sul budget. Molti dei nostri clienti inizialmente pensavano lo stesso, ma hanno scoperto che il ROI si manifesta già nei primi 3 mesi. Posso mostrarti alcuni casi studio?"
-  },
-  {
-    objection: "Stiamo già usando un'altra soluzione",
-    response: "È fantastico che abbiate già investito in questo ambito. La nostra soluzione si integra perfettamente con i tool esistenti e molti clienti l'hanno affiancata inizialmente per poi migrare gradualmente."
-  },
-];
-
-function getRandomSentiment(): SentimentType {
-  const sentiments: SentimentType[] = ['positive', 'neutral', 'negative'];
-  return sentiments[Math.floor(Math.random() * sentiments.length)];
 }
 
 export default function VideoRoom({
@@ -62,95 +33,135 @@ export default function VideoRoom({
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showHUD, setShowHUD] = useState(isHost);
-  const [scriptItems, setScriptItems] = useState(mockScript);
-  const [currentSuggestionIndex, setCurrentSuggestionIndex] = useState(0);
-  const [battleCard, setBattleCard] = useState<{ objection: string; response: string } | null>(null);
 
-  const [participants, setParticipants] = useState<Participant[]>([
-    {
-      id: 'host',
-      name: participantName,
-      sentiment: 'positive',
-      isHost: true,
-      isMuted: false,
-      isVideoOff: false,
-    },
-    {
-      id: 'prospect-1',
-      name: 'Marco Rossi',
-      sentiment: getRandomSentiment(),
-      isHost: false,
-      isMuted: false,
-      isVideoOff: false,
-    },
-    {
-      id: 'prospect-2',
-      name: 'Laura Bianchi',
-      sentiment: getRandomSentiment(),
-      isHost: false,
-      isMuted: true,
-      isVideoOff: false,
-    },
-  ]);
+  const {
+    meeting,
+    seller,
+    script,
+    participants: meetingParticipants,
+    isLoading: meetingLoading,
+    error: meetingError,
+    updateMeetingStatus,
+  } = useVideoMeeting(meetingId);
+
+  const {
+    isConnected,
+    isConnecting,
+    error: copilotError,
+    scriptItems,
+    currentSuggestion,
+    battleCard,
+    participantSentiments,
+    toggleScriptItem,
+    dismissBattleCard,
+    updateParticipants,
+    endSession,
+  } = useVideoCopilot(meeting?.meetingToken ?? null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setParticipants((prev) =>
-        prev.map((p) => ({
-          ...p,
-          sentiment: p.isHost ? p.sentiment : getRandomSentiment(),
-        }))
-      );
-    }, 8000);
-
-    return () => clearInterval(interval);
-  }, []);
+    if (meeting && meeting.status === 'scheduled') {
+      updateMeetingStatus('in_progress');
+    }
+  }, [meeting, updateMeetingStatus]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSuggestionIndex((prev) => (prev + 1) % mockSuggestions.length);
-    }, 15000);
+    if (isConnected && meetingParticipants.length > 0) {
+      updateParticipants(meetingParticipants.map(p => ({
+        id: p.id,
+        name: p.name,
+        role: p.role,
+      })));
+    }
+  }, [isConnected, meetingParticipants, updateParticipants]);
 
-    return () => clearInterval(interval);
-  }, []);
+  const displayParticipants: DisplayParticipant[] = useMemo(() => {
+    if (meetingParticipants.length === 0) {
+      return [{
+        id: 'host',
+        name: participantName,
+        sentiment: 'neutral' as SentimentType,
+        isHost: true,
+        isMuted: isMuted,
+        isVideoOff: isVideoOff,
+      }];
+    }
 
-  useEffect(() => {
-    const showBattleCard = () => {
-      if (Math.random() > 0.7 && !battleCard) {
-        const randomCard = mockBattleCards[Math.floor(Math.random() * mockBattleCards.length)];
-        setBattleCard(randomCard);
-      }
-    };
+    return meetingParticipants.map(p => ({
+      id: p.id,
+      name: p.name,
+      sentiment: participantSentiments.get(p.id) || 'neutral' as SentimentType,
+      isHost: p.role === 'host',
+      isMuted: p.id === 'host' ? isMuted : false,
+      isVideoOff: p.id === 'host' ? isVideoOff : false,
+    }));
+  }, [meetingParticipants, participantSentiments, participantName, isMuted, isVideoOff]);
 
-    const interval = setInterval(showBattleCard, 20000);
-    const initialTimeout = setTimeout(showBattleCard, 10000);
+  const displayScriptItems = useMemo(() => {
+    if (scriptItems.length > 0) {
+      return scriptItems;
+    }
 
-    return () => {
-      clearInterval(interval);
-      clearTimeout(initialTimeout);
-    };
-  }, [battleCard]);
+    if (script?.structure?.phases) {
+      return script.structure.phases.map((phase, index) => ({
+        id: phase.id || String(index + 1),
+        text: phase.name || `Fase ${index + 1}`,
+        completed: false,
+      }));
+    }
 
-  const handleToggleScriptItem = (id: string) => {
-    setScriptItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
-  };
+    return [
+      { id: '1', text: 'Caricamento script...', completed: false },
+    ];
+  }, [scriptItems, script]);
 
-  const handlePresentBattleCard = () => {
-    setBattleCard(null);
+  const displaySuggestion = currentSuggestion || 
+    (isConnecting ? 'Connessione al copilot in corso...' : 
+     isConnected ? 'In attesa di suggerimenti dall\'AI...' : 
+     'Copilot non connesso');
+
+  const handleEndCall = async () => {
+    if (meeting) {
+      await updateMeetingStatus('completed');
+    }
+    endSession();
+    onEndCall();
   };
 
   const gridClass = useMemo(() => {
-    const count = participants.length;
+    const count = displayParticipants.length;
     if (count <= 1) return 'grid-cols-1';
     if (count === 2) return 'grid-cols-1 md:grid-cols-2';
     if (count <= 4) return 'grid-cols-2';
     if (count <= 6) return 'grid-cols-2 md:grid-cols-3';
     return 'grid-cols-3';
-  }, [participants.length]);
+  }, [displayParticipants.length]);
+
+  if (meetingLoading) {
+    return (
+      <div className="w-full h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
+          <p className="text-white text-lg">Caricamento meeting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (meetingError) {
+    return (
+      <div className="w-full h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-400 text-lg mb-4">Errore: {meetingError}</p>
+          <button
+            onClick={onEndCall}
+            className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+          >
+            Torna indietro
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full h-screen bg-gray-950 overflow-hidden">
@@ -159,12 +170,30 @@ export default function VideoRoom({
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
             <span className="text-white font-medium">In diretta</span>
-            <span className="text-gray-400 text-sm">ID: {meetingId}</span>
+            <span className="text-gray-400 text-sm">
+              {meeting?.prospectName || `ID: ${meetingId}`}
+            </span>
+            {isConnected && (
+              <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full">
+                AI Copilot attivo
+              </span>
+            )}
+            {isConnecting && (
+              <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Connessione...
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 bg-gray-800 rounded-full text-gray-300 text-sm">
-              {participants.length} partecipanti
+              {displayParticipants.length} partecipanti
             </span>
+            {seller?.name && (
+              <span className="px-3 py-1 bg-purple-800/50 rounded-full text-purple-300 text-sm">
+                {seller.name}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -172,14 +201,14 @@ export default function VideoRoom({
       <div className="absolute inset-0 pt-16 pb-24 px-4 md:px-8">
         <div className={`grid ${gridClass} gap-4 h-full max-w-6xl mx-auto place-content-center`}>
           <AnimatePresence mode="popLayout">
-            {participants.map((participant) => (
+            {displayParticipants.map((participant) => (
               <ParticipantVideo
                 key={participant.id}
                 participantName={participant.name}
                 sentiment={participant.sentiment}
                 isHost={participant.isHost}
-                isMuted={participant.id === 'host' ? isMuted : participant.isMuted}
-                isVideoOff={participant.id === 'host' ? isVideoOff : participant.isVideoOff}
+                isMuted={participant.isMuted}
+                isVideoOff={participant.isVideoOff}
               />
             ))}
           </AnimatePresence>
@@ -196,21 +225,29 @@ export default function VideoRoom({
         onToggleVideo={() => setIsVideoOff(!isVideoOff)}
         onToggleScreenShare={() => setIsScreenSharing(!isScreenSharing)}
         onToggleHUD={() => setShowHUD(!showHUD)}
-        onEndCall={onEndCall}
+        onEndCall={handleEndCall}
       />
 
       <AnimatePresence>
         {isHost && showHUD && (
           <AICopilotHUD
-            scriptItems={scriptItems}
-            onToggleItem={handleToggleScriptItem}
-            currentSuggestion={mockSuggestions[currentSuggestionIndex]}
+            scriptItems={displayScriptItems}
+            onToggleItem={toggleScriptItem}
+            currentSuggestion={displaySuggestion}
             battleCard={battleCard}
-            onPresentBattleCard={handlePresentBattleCard}
+            onPresentBattleCard={dismissBattleCard}
             onClose={() => setShowHUD(false)}
           />
         )}
       </AnimatePresence>
+
+      {copilotError && (
+        <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-red-900/90 text-red-200 px-4 py-2 rounded-lg text-sm">
+            Copilot: {copilotError}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

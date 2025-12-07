@@ -1,0 +1,314 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+export type SentimentType = 'positive' | 'neutral' | 'negative';
+
+interface Participant {
+  id: string;
+  name: string;
+  role: 'host' | 'guest' | 'prospect';
+  isSpeaking?: boolean;
+}
+
+interface ScriptItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
+
+interface BattleCard {
+  objection: string;
+  response: string;
+  category?: string;
+}
+
+interface ScriptProgress {
+  currentPhase: number;
+  totalPhases: number;
+  phaseName: string;
+  completionPercentage: number;
+}
+
+interface TranscriptEntry {
+  speakerId: string;
+  speakerName: string;
+  text: string;
+  timestamp: number;
+}
+
+interface SentimentUpdate {
+  speakerId: string;
+  speakerName: string;
+  sentiment: SentimentType;
+}
+
+interface CopilotState {
+  isConnected: boolean;
+  isConnecting: boolean;
+  error: string | null;
+  scriptItems: ScriptItem[];
+  currentSuggestion: string;
+  battleCard: BattleCard | null;
+  scriptProgress: ScriptProgress | null;
+  transcripts: TranscriptEntry[];
+  participantSentiments: Map<string, SentimentType>;
+}
+
+interface UseVideoCopilotResult extends CopilotState {
+  connect: () => void;
+  disconnect: () => void;
+  sendAudioChunk: (audioBase64: string, speakerId: string, speakerName: string) => void;
+  updateParticipants: (participants: Participant[]) => void;
+  toggleScriptItem: (id: string) => void;
+  dismissBattleCard: () => void;
+  endSession: () => void;
+}
+
+function getWebSocketUrl(meetingToken: string): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  const token = localStorage.getItem('token');
+  return `${protocol}//${host}/ws/video-copilot?token=${token}&meetingToken=${meetingToken}`;
+}
+
+export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotResult {
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [state, setState] = useState<CopilotState>({
+    isConnected: false,
+    isConnecting: false,
+    error: null,
+    scriptItems: [],
+    currentSuggestion: '',
+    battleCard: null,
+    scriptProgress: null,
+    transcripts: [],
+    participantSentiments: new Map(),
+  });
+
+  const handleMessage = useCallback((event: MessageEvent) => {
+    try {
+      const message = JSON.parse(event.data);
+      
+      switch (message.type) {
+        case 'connected':
+          console.log('✅ Video Copilot connected:', message.data);
+          setState(prev => ({
+            ...prev,
+            isConnected: true,
+            isConnecting: false,
+            error: null,
+          }));
+          break;
+
+        case 'transcript':
+          setState(prev => ({
+            ...prev,
+            transcripts: [...prev.transcripts, {
+              speakerId: message.data.speakerId,
+              speakerName: message.data.speakerName,
+              text: message.data.text,
+              timestamp: message.timestamp,
+            }],
+          }));
+          break;
+
+        case 'sentiment':
+          setState(prev => {
+            const newSentiments = new Map(prev.participantSentiments);
+            newSentiments.set(message.data.speakerId, message.data.sentiment);
+            return { ...prev, participantSentiments: newSentiments };
+          });
+          break;
+
+        case 'suggestion':
+          setState(prev => ({
+            ...prev,
+            currentSuggestion: message.data.text,
+          }));
+          break;
+
+        case 'battle_card':
+          if (message.data.detected) {
+            setState(prev => ({
+              ...prev,
+              battleCard: {
+                objection: message.data.objection,
+                response: message.data.response,
+                category: message.data.category,
+              },
+            }));
+          }
+          break;
+
+        case 'script_progress':
+          const progress = message.data as ScriptProgress;
+          setState(prev => {
+            const items: ScriptItem[] = [];
+            for (let i = 1; i <= progress.totalPhases; i++) {
+              items.push({
+                id: String(i),
+                text: i === progress.currentPhase ? progress.phaseName : `Fase ${i}`,
+                completed: i < progress.currentPhase,
+              });
+            }
+            return {
+              ...prev,
+              scriptProgress: progress,
+              scriptItems: items,
+            };
+          });
+          break;
+
+        case 'session_ended':
+          console.log('📍 Session ended:', message.data);
+          setState(prev => ({
+            ...prev,
+            isConnected: false,
+          }));
+          break;
+
+        case 'error':
+          console.error('❌ Copilot error:', message.data);
+          setState(prev => ({
+            ...prev,
+            error: message.data.message,
+          }));
+          break;
+      }
+    } catch (e) {
+      console.error('Error parsing WebSocket message:', e);
+    }
+  }, []);
+
+  const connect = useCallback(() => {
+    if (!meetingToken || wsRef.current?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    setState(prev => ({ ...prev, isConnecting: true, error: null }));
+
+    try {
+      const url = getWebSocketUrl(meetingToken);
+      const ws = new WebSocket(url);
+
+      ws.onopen = () => {
+        console.log('🎥 WebSocket connected to Video Copilot');
+      };
+
+      ws.onmessage = handleMessage;
+
+      ws.onclose = (event) => {
+        console.log('🔌 WebSocket closed:', event.code, event.reason);
+        setState(prev => ({
+          ...prev,
+          isConnected: false,
+          isConnecting: false,
+        }));
+
+        if (event.code !== 1000 && event.code !== 4401) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('🔄 Attempting reconnection...');
+            connect();
+          }, 3000);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+        setState(prev => ({
+          ...prev,
+          error: 'Errore di connessione al copilot',
+          isConnecting: false,
+        }));
+      };
+
+      wsRef.current = ws;
+    } catch (e) {
+      console.error('Failed to create WebSocket:', e);
+      setState(prev => ({
+        ...prev,
+        error: 'Impossibile connettersi al copilot',
+        isConnecting: false,
+      }));
+    }
+  }, [meetingToken, handleMessage]);
+
+  const disconnect = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    if (wsRef.current) {
+      wsRef.current.close(1000, 'User disconnected');
+      wsRef.current = null;
+    }
+
+    setState(prev => ({
+      ...prev,
+      isConnected: false,
+      isConnecting: false,
+    }));
+  }, []);
+
+  const sendMessage = useCallback((message: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+    }
+  }, []);
+
+  const sendAudioChunk = useCallback((audioBase64: string, speakerId: string, speakerName: string) => {
+    sendMessage({
+      type: 'audio_chunk',
+      data: audioBase64,
+      speakerId,
+      speakerName,
+    });
+  }, [sendMessage]);
+
+  const updateParticipants = useCallback((participants: Participant[]) => {
+    sendMessage({
+      type: 'participant_update',
+      participants,
+    });
+  }, [sendMessage]);
+
+  const toggleScriptItem = useCallback((id: string) => {
+    setState(prev => ({
+      ...prev,
+      scriptItems: prev.scriptItems.map(item =>
+        item.id === id ? { ...item, completed: !item.completed } : item
+      ),
+    }));
+  }, []);
+
+  const dismissBattleCard = useCallback(() => {
+    setState(prev => ({ ...prev, battleCard: null }));
+  }, []);
+
+  const endSession = useCallback(() => {
+    sendMessage({ type: 'end_session' });
+    disconnect();
+  }, [sendMessage, disconnect]);
+
+  useEffect(() => {
+    if (meetingToken) {
+      connect();
+    }
+
+    return () => {
+      disconnect();
+    };
+  }, [meetingToken]);
+
+  return {
+    ...state,
+    connect,
+    disconnect,
+    sendAudioChunk,
+    updateParticipants,
+    toggleScriptItem,
+    dismissBattleCard,
+    endSession,
+  };
+}

@@ -116,12 +116,31 @@ async function authenticateConnection(req: any): Promise<{
       }
     }
 
+    let playbookId = meeting.playbookId || null;
+    
+    if (!playbookId && consultantId) {
+      const [activeScript] = await db
+        .select({ id: salesScripts.id })
+        .from(salesScripts)
+        .where(and(
+          eq(salesScripts.clientId, consultantId),
+          eq(salesScripts.scriptType, 'discovery'),
+          eq(salesScripts.isActive, true)
+        ))
+        .limit(1);
+      
+      if (activeScript) {
+        playbookId = activeScript.id;
+        console.log(`📘 [VideoCopilot] Using active discovery script as fallback: ${playbookId}`);
+      }
+    }
+
     return {
       meetingId: meeting.id,
       clientId: decoded.userId,
       consultantId,
       sellerId: meeting.sellerId,
-      playbookId: meeting.playbookId || null,
+      playbookId,
     };
   } catch (error: any) {
     console.error('❌ [VideoCopilot] Auth error:', error.message);
