@@ -2629,6 +2629,7 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
         
         // 1. Send setup message
         geminiSession.send(JSON.stringify(setupMessage));
+        console.log(`✅ [${connectionId}] Setup message SENT to Gemini WebSocket - awaiting response...`);
         
         // ✅ FIX CACHE OPTIMIZATION: Send dynamic context IMMEDIATELY after setup
         // Not after setupComplete - this ensures cache stays warm and timing is deterministic
@@ -2787,8 +2788,36 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
         }
       });
 
+      // 🔍 DEBUG: Counter for message logging
+      let geminiMessageCount = 0;
+      
       geminiSession.on('message', async (data: Buffer) => {
         if (!isSessionActive) return;
+        
+        geminiMessageCount++;
+        
+        // 🔍 DEBUG: Log RAW data BEFORE JSON parsing to debug "Invalid frame header" errors
+        const rawDataStr = data.toString();
+        const rawDataLength = data.length;
+        const rawDataPreview = rawDataStr.substring(0, 200);
+        
+        // Log first message in detail, then only if it looks suspicious
+        const isFirstChars = rawDataStr.substring(0, 20);
+        const looksLikeJson = isFirstChars.trim().startsWith('{') || isFirstChars.trim().startsWith('[');
+        
+        // ALWAYS log basic metadata for first 5 messages and any suspicious ones
+        if (geminiMessageCount <= 5) {
+          console.log(`📥 [${connectionId}] RAW MSG #${geminiMessageCount}: ${rawDataLength} bytes, starts with: "${isFirstChars.replace(/\n/g, '\\n')}"`);
+        }
+        
+        // Log detailed info for suspicious messages (non-JSON or very short)
+        if (!looksLikeJson || rawDataLength < 10) {
+          console.log(`\n🚨 [${connectionId}] SUSPICIOUS RAW MESSAGE #${geminiMessageCount}:`);
+          console.log(`   Length: ${rawDataLength} bytes`);
+          console.log(`   First 20 chars: "${isFirstChars}"`);
+          console.log(`   Hex dump (first 50 bytes): ${data.slice(0, 50).toString('hex')}`);
+          console.log(`   Full preview: "${rawDataPreview}"`);
+        }
         
         try {
           const response = JSON.parse(data.toString());
@@ -4819,6 +4848,26 @@ ${compactFeedback}
         console.log(`   1008 = Policy Violation`);
         console.log(`   1009 = Message Too Big`);
         console.log(`   1011 = Internal Server Error`);
+        
+        if (code === 1006) {
+          console.log(`\n⚠️  ERROR 1006: Abnormal Closure (no close frame received)`);
+          console.log(`   This error typically means:`);
+          console.log(`   1. Connection was terminated unexpectedly`);
+          console.log(`   2. Network interruption occurred`);
+          console.log(`   3. Server rejected the request before sending a response`);
+          console.log(`   4. Invalid WebSocket frame or protocol violation`);
+          console.log(`   5. Proxy/firewall interference`);
+          console.log(`\n🔧 Debugging info:`);
+          console.log(`   - Model ID: ${vertexConfig.modelId}`);
+          console.log(`   - Voice: ${voiceName}`);
+          console.log(`   - System instruction length: ${systemInstruction?.length || 0} chars`);
+          console.log(`   - Reason buffer length: ${reason.length} bytes`);
+          console.log(`   - Reason hex: ${reason.toString('hex')}`);
+          console.log(`\n💡 The "Invalid frame header" browser error suggests:`);
+          console.log(`   - Gemini might have sent binary data that wasn't expected`);
+          console.log(`   - Or Gemini immediately closed with an error message`);
+          console.log(`   - Check previous logs for RAW data received`);
+        }
         
         if (code === 1007) {
           console.log(`\n⚠️  ERROR 1007: Request contains an invalid argument`);
