@@ -3268,6 +3268,22 @@ export default function ConsultantApiKeysUnified() {
                           </div>
                         </div>
                       </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            5
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-purple-900">Rimuovi limite 100 utenti (opzionale)</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              • Vai su "Schermata di consenso OAuth" e clicca <strong>"Pubblica app"</strong><br/>
+                              • Con scope di base (email, profile, openid) la pubblicazione è immediata<br/>
+                              • Una volta pubblicata, chiunque potrà accedere senza limiti
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-4 pt-4 border-t">
