@@ -25,6 +25,7 @@ export const users = pgTable("users", {
   geminiApiKeyIndex: integer("gemini_api_key_index").default(0), // Current index for API key rotation
   preferredAiProvider: text("preferred_ai_provider").$type<"vertex_admin" | "google_studio" | "custom" | "vertex_self">().default("vertex_admin"), // AI provider preference: vertex_admin (default Vertex AI), google_studio (fallback Google AI Studio), custom (client's own Google AI Studio API keys), vertex_self (client's own Vertex AI)
   encryptionSalt: text("encryption_salt"), // Unique salt for per-consultant encryption key derivation (only for consultants)
+  googleClientId: text("google_client_id"), // Google OAuth Client ID for video meeting authentication (consultant-level)
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -4010,6 +4011,7 @@ export const humanSellers = pgTable("human_sellers", {
   sellerName: text("seller_name").notNull(),
   displayName: text("display_name").notNull(),
   description: text("description"),
+  ownerEmail: text("owner_email"), // Email del proprietario/venditore per riconoscimento come host nel meeting
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

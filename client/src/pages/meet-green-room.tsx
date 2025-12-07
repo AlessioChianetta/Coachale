@@ -42,8 +42,6 @@ declare global {
   }
 }
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-
 export default function MeetGreenRoom() {
   const { token } = useParams<{ token: string }>();
   const [, navigate] = useLocation();
@@ -80,6 +78,7 @@ export default function MeetGreenRoom() {
     sellerId: string | null;
     sellerClientId: string | null;
     ownerEmail: string | null;
+    googleClientId: string | null;
     seller: { displayName: string; description: string | null } | null;
   } | null>(null);
   const [isHost, setIsHost] = useState(false);
@@ -98,7 +97,7 @@ export default function MeetGreenRoom() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           credential: response.credential,
-          clientId: GOOGLE_CLIENT_ID,
+          clientId: meetingInfo?.googleClientId,
         }),
       });
 
@@ -134,16 +133,16 @@ export default function MeetGreenRoom() {
   };
 
   useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || !isTokenValid) return;
+    if (!meetingInfo?.googleClientId || !isTokenValid) return;
 
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      if (window.google && googleButtonRef.current) {
+      if (window.google && googleButtonRef.current && meetingInfo?.googleClientId) {
         window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
+          client_id: meetingInfo.googleClientId,
           callback: handleGoogleCredentialResponse,
         });
         window.google.accounts.id.renderButton(googleButtonRef.current, {
@@ -572,7 +571,7 @@ export default function MeetGreenRoom() {
 
           <div className="space-y-5 mb-8">
             {/* Google Sign-In Section */}
-            {GOOGLE_CLIENT_ID && !googleUser && (
+            {meetingInfo?.googleClientId && !googleUser && (
               <div className="space-y-4">
                 <div className="text-center">
                   <p className="text-white/60 lg:text-slate-500 text-sm mb-3">

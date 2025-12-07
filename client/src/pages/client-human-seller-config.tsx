@@ -26,6 +26,7 @@ const humanSellerSchema = z.object({
   sellerName: z.string().min(1, 'Il nome del venditore è obbligatorio'),
   displayName: z.string().min(1, 'Il display name è obbligatorio'),
   description: z.string().optional(),
+  ownerEmail: z.string().email('Email non valida').optional().or(z.literal('')),
   isActive: z.boolean(),
 });
 
@@ -36,6 +37,7 @@ interface HumanSeller {
   sellerName: string;
   displayName: string;
   description: string | null;
+  ownerEmail: string | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -57,6 +59,7 @@ export default function ClientHumanSellerConfig() {
       sellerName: '',
       displayName: '',
       description: '',
+      ownerEmail: '',
       isActive: true,
     },
   });
@@ -78,6 +81,7 @@ export default function ClientHumanSellerConfig() {
             sellerName: seller.sellerName,
             displayName: seller.displayName,
             description: seller.description || '',
+            ownerEmail: seller.ownerEmail || '',
             isActive: seller.isActive,
           });
         })
@@ -232,6 +236,24 @@ export default function ClientHumanSellerConfig() {
                         rows={4}
                         {...form.register('description')}
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="ownerEmail">Email Proprietario (per Video Meeting)</Label>
+                      <Input
+                        id="ownerEmail"
+                        type="email"
+                        placeholder="es: venditore@azienda.it"
+                        {...form.register('ownerEmail')}
+                      />
+                      <p className="text-xs text-gray-500">
+                        L'email usata per riconoscere il proprietario durante i video meeting con Google Sign-In
+                      </p>
+                      {form.formState.errors.ownerEmail && (
+                        <p className="text-sm text-red-600 dark:text-red-400">
+                          {form.formState.errors.ownerEmail.message}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">

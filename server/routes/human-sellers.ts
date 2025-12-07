@@ -158,7 +158,7 @@ router.post('/', authenticateToken, requireClient, async (req: AuthRequest, res:
       return res.status(400).json({ error: 'Dati non validi', details: validation.error.errors });
     }
     
-    const { sellerName, displayName, description, isActive } = validation.data;
+    const { sellerName, displayName, description, isActive, ownerEmail } = validation.data;
     
     const [newSeller] = await db
       .insert(humanSellers)
@@ -167,6 +167,7 @@ router.post('/', authenticateToken, requireClient, async (req: AuthRequest, res:
         sellerName,
         displayName,
         description: description || null,
+        ownerEmail: ownerEmail || null,
         isActive: isActive ?? true,
       })
       .returning();
@@ -183,7 +184,7 @@ router.put('/:id', authenticateToken, requireClient, async (req: AuthRequest, re
   try {
     const clientId = req.user!.id;
     const { id } = req.params;
-    const { sellerName, displayName, description, isActive } = req.body;
+    const { sellerName, displayName, description, isActive, ownerEmail } = req.body;
     
     const [existing] = await db
       .select()
@@ -203,6 +204,7 @@ router.put('/:id', authenticateToken, requireClient, async (req: AuthRequest, re
         sellerName: sellerName ?? existing.sellerName,
         displayName: displayName ?? existing.displayName,
         description: description !== undefined ? description : existing.description,
+        ownerEmail: ownerEmail !== undefined ? ownerEmail : existing.ownerEmail,
         isActive: isActive !== undefined ? isActive : existing.isActive,
         updatedAt: new Date(),
       })
@@ -372,11 +374,15 @@ router.post('/:sellerId/meetings', authenticateToken, requireClient, async (req:
       return res.status(400).json({ error: 'Nome prospect obbligatorio' });
     }
     
-    // Recupera l'email del proprietario (creatore del meeting)
-    const [owner] = await db
-      .select({ email: users.email })
-      .from(users)
-      .where(eq(users.id, clientId));
+    // Priorità ownerEmail: 1) seller.ownerEmail 2) consultant email
+    let ownerEmail = seller.ownerEmail || null;
+    if (!ownerEmail) {
+      const [owner] = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, clientId));
+      ownerEmail = owner?.email || null;
+    }
     
     const [newMeeting] = await db
       .insert(videoMeetings)
@@ -385,7 +391,7 @@ router.post('/:sellerId/meetings', authenticateToken, requireClient, async (req:
         meetingToken,
         prospectName,
         prospectEmail: prospectEmail || null,
-        ownerEmail: owner?.email || null,
+        ownerEmail,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         playbookId: playbookId || null,
         status: 'scheduled',
@@ -547,6 +553,19 @@ publicMeetRouter.get('/:token', async (req, res) => {
       return res.status(404).json({ error: 'Meeting non trovato' });
     }
     
+    // Recupera googleClientId dal consultant (proprietario del seller)
+    let googleClientId: string | null = null;
+    if (meeting.seller?.clientId) {
+      const [consultant] = await db
+        .select({ googleClientId: users.googleClientId })
+        .from(users)
+        .where(eq(users.id, meeting.seller.clientId));
+      googleClientId = consultant?.googleClientId || null;
+    }
+    
+    // ownerEmail dal seller (ogni venditore ha la sua email)
+    const ownerEmail = meeting.seller?.ownerEmail || meeting.meeting.ownerEmail || null;
+    
     res.json({
       id: meeting.meeting.id,
       prospectName: meeting.meeting.prospectName,
@@ -554,7 +573,8 @@ publicMeetRouter.get('/:token', async (req, res) => {
       status: meeting.meeting.status,
       sellerId: meeting.meeting.sellerId,
       sellerClientId: meeting.seller?.clientId || null,
-      ownerEmail: meeting.meeting.ownerEmail || null,
+      ownerEmail,
+      googleClientId,
       seller: meeting.seller ? {
         displayName: meeting.seller.displayName,
         description: meeting.seller.description,

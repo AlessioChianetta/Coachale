@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import { z } from "zod";
 import { sendEmail } from "../services/email-scheduler";
 import { db } from "../db";
-import { automatedEmailsLog } from "../../shared/schema";
+import { automatedEmailsLog, users } from "../../shared/schema";
 import { eq, sql } from "drizzle-orm";
 
 const router = Router();
@@ -1834,6 +1834,48 @@ router.post("/consultant/smtp-settings/test", authenticateToken, requireRole("co
       error: error.message,
       code: error.code
     });
+  }
+});
+
+// ==========================================
+// GOOGLE OAUTH SETTINGS (for video meeting authentication)
+// ==========================================
+
+// GET Google OAuth settings
+router.get("/consultant/google-oauth", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const [user] = await db
+      .select({ googleClientId: users.googleClientId })
+      .from(users)
+      .where(eq(users.id, req.user!.id));
+    
+    res.json({
+      googleClientId: user?.googleClientId || null,
+    });
+  } catch (error: any) {
+    console.error("[GoogleOAuth GET] Error:", error);
+    res.status(500).json({ error: "Errore nel recupero delle impostazioni Google OAuth" });
+  }
+});
+
+// PUT/Save Google OAuth settings
+router.put("/consultant/google-oauth", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const { googleClientId } = req.body;
+    
+    await db
+      .update(users)
+      .set({ googleClientId: googleClientId || null })
+      .where(eq(users.id, req.user!.id));
+    
+    console.log(`[GoogleOAuth PUT] Saved googleClientId for consultant ${req.user!.id}`);
+    res.json({
+      success: true,
+      message: "Impostazioni Google OAuth salvate con successo",
+    });
+  } catch (error: any) {
+    console.error("[GoogleOAuth PUT] Error:", error);
+    res.status(500).json({ error: "Errore nel salvataggio delle impostazioni Google OAuth" });
   }
 });
 
