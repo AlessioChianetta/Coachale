@@ -28,6 +28,22 @@ interface MediaDevice {
   label: string;
 }
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          renderButton: (element: HTMLElement, config: any) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
 export default function MeetGreenRoom() {
   const { token } = useParams<{ token: string }>();
   const [, navigate] = useLocation();
@@ -54,6 +70,7 @@ export default function MeetGreenRoom() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
 
   const [meetingInfo, setMeetingInfo] = useState<{
     id: string;
@@ -62,22 +79,92 @@ export default function MeetGreenRoom() {
     status: string;
     sellerId: string | null;
     sellerClientId: string | null;
+    ownerEmail: string | null;
     seller: { displayName: string; description: string | null } | null;
   } | null>(null);
   const [isHost, setIsHost] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [googleUser, setGoogleUser] = useState<{
+    email: string;
+    name: string;
+    picture: string;
+  } | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleCredentialResponse = async (response: any) => {
+    setIsGoogleLoading(true);
+    try {
+      const res = await fetch('/api/meet/verify-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          credential: response.credential,
+          clientId: GOOGLE_CLIENT_ID,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error('Verifica Google fallita');
+      }
+
+      const data = await res.json();
+      setGoogleUser(data);
+      setGuestName(data.name || '');
+      
+      if (meetingInfo?.ownerEmail && data.email) {
+        const isOwner = data.email.toLowerCase() === meetingInfo.ownerEmail.toLowerCase();
+        setIsHost(isOwner);
+        
+        toast({
+          title: isOwner ? '👑 Sei il proprietario!' : '👋 Accesso effettuato',
+          description: isOwner 
+            ? 'Riconosciuto come host del meeting' 
+            : `Benvenuto ${data.name}`,
+        });
+      }
+    } catch (error: any) {
+      console.error('[MeetGreenRoom] Google verification error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Errore Google',
+        description: error.message || 'Impossibile verificare l\'account Google',
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const authToken = localStorage.getItem('token');
-    if (authToken) {
-      try {
-        const payload = JSON.parse(atob(authToken.split('.')[1]));
-        setCurrentUserId(payload.id ?? payload.userId ?? payload.sub ?? null);
-      } catch (e) {
-        console.error('[MeetGreenRoom] Error parsing JWT:', e);
+    if (!GOOGLE_CLIENT_ID || !isTokenValid) return;
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google && googleButtonRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredentialResponse,
+        });
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: '100%',
+        });
       }
-    }
-  }, []);
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
+  }, [isTokenValid, meetingInfo]);
 
   useEffect(() => {
     const validateToken = async () => {
@@ -91,11 +178,6 @@ export default function MeetGreenRoom() {
         const data = await res.json();
         setMeetingInfo(data);
         setIsTokenValid(true);
-        
-        if (currentUserId && data.sellerClientId && currentUserId === data.sellerClientId) {
-          setIsHost(true);
-          setGuestName(data.seller?.displayName || 'Host');
-        }
       } catch (error) {
         console.error('[MeetGreenRoom] Token validation error:', error);
         setIsTokenValid(false);
@@ -106,7 +188,7 @@ export default function MeetGreenRoom() {
     if (token) {
       validateToken();
     }
-  }, [token, currentUserId]);
+  }, [token]);
 
   const enumerateDevices = useCallback(async () => {
     try {
@@ -489,6 +571,61 @@ export default function MeetGreenRoom() {
           <div className="h-px bg-gradient-to-r from-transparent via-white/20 lg:via-slate-200 to-transparent mb-8" />
 
           <div className="space-y-5 mb-8">
+            {/* Google Sign-In Section */}
+            {GOOGLE_CLIENT_ID && !googleUser && (
+              <div className="space-y-4">
+                <div className="text-center">
+                  <p className="text-white/60 lg:text-slate-500 text-sm mb-3">
+                    Accedi con Google per essere riconosciuto come proprietario
+                  </p>
+                  <div 
+                    ref={googleButtonRef}
+                    className="flex justify-center"
+                  />
+                  {isGoogleLoading && (
+                    <div className="flex items-center justify-center gap-2 mt-3 text-white/60 lg:text-slate-500 text-sm">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Verifica in corso...
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 h-px bg-white/20 lg:bg-slate-200" />
+                  <span className="text-white/40 lg:text-slate-400 text-xs uppercase">oppure</span>
+                  <div className="flex-1 h-px bg-white/20 lg:bg-slate-200" />
+                </div>
+              </div>
+            )}
+
+            {/* Logged-in Google User Display */}
+            {googleUser && (
+              <div className="p-4 rounded-xl bg-white/10 lg:bg-slate-100 border border-white/20 lg:border-slate-200">
+                <div className="flex items-center gap-3">
+                  {googleUser.picture ? (
+                    <img 
+                      src={googleUser.picture} 
+                      alt={googleUser.name}
+                      className="w-12 h-12 rounded-full border-2 border-white/20 lg:border-slate-300"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                      {googleUser.name?.charAt(0)?.toUpperCase() || 'G'}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <p className="font-semibold text-white lg:text-slate-900">{googleUser.name}</p>
+                    <p className="text-sm text-white/60 lg:text-slate-500">{googleUser.email}</p>
+                  </div>
+                  {isHost && (
+                    <div className="px-2 py-1 bg-green-500/20 lg:bg-green-100 rounded-full">
+                      <span className="text-xs font-bold text-green-400 lg:text-green-700">OWNER</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label className="text-white/80 lg:text-slate-700 font-semibold flex items-center gap-2">
                 <User className="w-4 h-4" />
@@ -499,6 +636,7 @@ export default function MeetGreenRoom() {
                 onChange={(e) => setGuestName(e.target.value)}
                 placeholder="Come vuoi essere chiamato?"
                 className="h-12 text-base bg-white/10 lg:bg-slate-50 border-white/20 lg:border-slate-200 text-white lg:text-slate-900 placeholder:text-white/40 lg:placeholder:text-slate-400 focus:border-purple-500 focus:ring-purple-500/20"
+                disabled={!!googleUser}
               />
             </div>
 

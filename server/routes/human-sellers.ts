@@ -1,9 +1,10 @@
 import { Router, Response } from 'express';
 import { db } from '../db';
-import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics } from '@shared/schema';
+import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics, users } from '@shared/schema';
 import { eq, and, desc, asc } from 'drizzle-orm';
 import { AuthRequest, authenticateToken, requireRole } from '../middleware/auth';
 import { nanoid } from 'nanoid';
+import { OAuth2Client } from 'google-auth-library';
 
 const router = Router();
 
@@ -371,6 +372,12 @@ router.post('/:sellerId/meetings', authenticateToken, requireClient, async (req:
       return res.status(400).json({ error: 'Nome prospect obbligatorio' });
     }
     
+    // Recupera l'email del proprietario (creatore del meeting)
+    const [owner] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, clientId));
+    
     const [newMeeting] = await db
       .insert(videoMeetings)
       .values({
@@ -378,6 +385,7 @@ router.post('/:sellerId/meetings', authenticateToken, requireClient, async (req:
         meetingToken,
         prospectName,
         prospectEmail: prospectEmail || null,
+        ownerEmail: owner?.email || null,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
         playbookId: playbookId || null,
         status: 'scheduled',
@@ -546,6 +554,7 @@ publicMeetRouter.get('/:token', async (req, res) => {
       status: meeting.meeting.status,
       sellerId: meeting.meeting.sellerId,
       sellerClientId: meeting.seller?.clientId || null,
+      ownerEmail: meeting.meeting.ownerEmail || null,
       seller: meeting.seller ? {
         displayName: meeting.seller.displayName,
         description: meeting.seller.description,
@@ -607,6 +616,46 @@ publicMeetRouter.post('/:token/join', async (req, res) => {
   } catch (error: any) {
     console.error('[PublicMeet] POST join error:', error);
     res.status(500).json({ error: 'Errore nel join al meeting' });
+  }
+});
+
+// Verifica token Google e restituisce email (come Google Meet)
+publicMeetRouter.post('/verify-google', async (req, res) => {
+  try {
+    const { credential, clientId } = req.body;
+    
+    if (!credential) {
+      return res.status(400).json({ error: 'Token Google mancante' });
+    }
+    
+    // Verifica il token Google
+    const googleClientId = clientId || process.env.GOOGLE_CLIENT_ID;
+    if (!googleClientId) {
+      return res.status(500).json({ error: 'Google Client ID non configurato' });
+    }
+    
+    const client = new OAuth2Client(googleClientId);
+    
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: googleClientId,
+    });
+    
+    const payload = ticket.getPayload();
+    
+    if (!payload) {
+      return res.status(401).json({ error: 'Token Google non valido' });
+    }
+    
+    res.json({
+      email: payload.email,
+      name: payload.name,
+      picture: payload.picture,
+      emailVerified: payload.email_verified,
+    });
+  } catch (error: any) {
+    console.error('[PublicMeet] Google verify error:', error);
+    res.status(401).json({ error: 'Verifica Google fallita' });
   }
 });
 

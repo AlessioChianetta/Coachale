@@ -4032,6 +4032,7 @@ export const videoMeetings = pgTable("video_meetings", {
   playbookId: varchar("playbook_id"),
   prospectName: text("prospect_name").notNull(),
   prospectEmail: text("prospect_email"),
+  ownerEmail: text("owner_email"), // Email del proprietario del meeting (per riconoscimento come Google Meet)
   scheduledAt: timestamp("scheduled_at"),
   startedAt: timestamp("started_at"),
   endedAt: timestamp("ended_at"),
