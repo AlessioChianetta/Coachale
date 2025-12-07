@@ -4115,3 +4115,110 @@ export const consultantTurnConfig = pgTable("consultant_turn_config", {
 
 export type ConsultantTurnConfig = typeof consultantTurnConfig.$inferSelect;
 export type InsertConsultantTurnConfig = typeof consultantTurnConfig.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Human Seller Analytics - Analytics dettagliate per venditori umani
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Coaching Events - Eventi di coaching registrati durante le chiamate
+export const humanSellerCoachingEvents = pgTable("human_seller_coaching_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  meetingId: varchar("meeting_id").references(() => videoMeetings.id, { onDelete: "cascade" }).notNull(),
+  sellerId: varchar("seller_id").references(() => humanSellers.id, { onDelete: "cascade" }).notNull(),
+  eventType: text("event_type").notNull().$type<"buy_signal" | "objection" | "checkpoint_complete" | "phase_advance" | "tone_warning" | "coaching_feedback">(),
+  eventData: jsonb("event_data").$type<{
+    phrase?: string;
+    confidence?: number;
+    suggestedAction?: string;
+    suggestedResponse?: string;
+    fromScript?: boolean;
+    checkpointId?: string;
+    checkpointName?: string;
+    phaseId?: string;
+    phaseName?: string;
+    priority?: string;
+    message?: string;
+    toneReminder?: string;
+    feedbackType?: string;
+  }>(),
+  prospectArchetype: text("prospect_archetype").$type<"analizzatore" | "decisore" | "amichevole" | "scettico" | "impaziente" | "riflessivo" | "esigente" | "prudente" | "neutral">(),
+  timestampMs: integer("timestamp_ms"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => {
+  return {
+    meetingIdx: index("coaching_events_meeting_idx").on(table.meetingId),
+    sellerIdx: index("coaching_events_seller_idx").on(table.sellerId),
+    typeIdx: index("coaching_events_type_idx").on(table.eventType),
+  };
+});
+
+export type HumanSellerCoachingEvent = typeof humanSellerCoachingEvents.$inferSelect;
+export type InsertHumanSellerCoachingEvent = typeof humanSellerCoachingEvents.$inferInsert;
+
+// Session Metrics - Metriche di sessione aggregate per meeting completati
+export const humanSellerSessionMetrics = pgTable("human_seller_session_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  meetingId: varchar("meeting_id").references(() => videoMeetings.id, { onDelete: "cascade" }).notNull().unique(),
+  sellerId: varchar("seller_id").references(() => humanSellers.id, { onDelete: "cascade" }).notNull(),
+  durationSeconds: integer("duration_seconds"),
+  totalBuySignals: integer("total_buy_signals").default(0),
+  totalObjections: integer("total_objections").default(0),
+  objectionsHandled: integer("objections_handled").default(0),
+  checkpointsCompleted: integer("checkpoints_completed").default(0),
+  totalCheckpoints: integer("total_checkpoints").default(0),
+  phasesCompleted: integer("phases_completed").default(0),
+  totalPhases: integer("total_phases").default(0),
+  scriptAdherenceScore: real("script_adherence_score"), // 0-100
+  toneWarningsCount: integer("tone_warnings_count").default(0),
+  prospectArchetype: text("prospect_archetype").$type<"analizzatore" | "decisore" | "amichevole" | "scettico" | "impaziente" | "riflessivo" | "esigente" | "prudente" | "neutral">(),
+  outcome: text("outcome").$type<"won" | "lost" | "follow_up" | "no_decision">(),
+  outcomeNotes: text("outcome_notes"),
+  aiAnalysisSummary: text("ai_analysis_summary"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => {
+  return {
+    sellerIdx: index("session_metrics_seller_idx").on(table.sellerId),
+    outcomeIdx: index("session_metrics_outcome_idx").on(table.outcome),
+  };
+});
+
+export type HumanSellerSessionMetric = typeof humanSellerSessionMetrics.$inferSelect;
+export type InsertHumanSellerSessionMetric = typeof humanSellerSessionMetrics.$inferInsert;
+
+// Performance Summary - Metriche aggregate per periodo (giornaliera, settimanale, mensile)
+export const humanSellerPerformanceSummary = pgTable("human_seller_performance_summary", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sellerId: varchar("seller_id").references(() => humanSellers.id, { onDelete: "cascade" }).notNull(),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  period: text("period").notNull().$type<"daily" | "weekly" | "monthly">(),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  totalMeetings: integer("total_meetings").default(0),
+  completedMeetings: integer("completed_meetings").default(0),
+  totalDurationMinutes: integer("total_duration_minutes").default(0),
+  avgDurationMinutes: integer("avg_duration_minutes").default(0),
+  totalBuySignals: integer("total_buy_signals").default(0),
+  avgBuySignalsPerMeeting: real("avg_buy_signals_per_meeting").default(0),
+  totalObjections: integer("total_objections").default(0),
+  objectionHandlingRate: real("objection_handling_rate").default(0), // percentage
+  avgScriptAdherence: real("avg_script_adherence").default(0), // 0-100
+  avgCheckpointCompletion: real("avg_checkpoint_completion").default(0), // percentage
+  wonDeals: integer("won_deals").default(0),
+  lostDeals: integer("lost_deals").default(0),
+  followUps: integer("follow_ups").default(0),
+  conversionRate: real("conversion_rate").default(0), // percentage
+  archetypeBreakdown: jsonb("archetype_breakdown").$type<Record<string, number>>(), // { "analizzatore": 5, "decisore": 3, ... }
+  toneWarningsTotal: integer("tone_warnings_total").default(0),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => {
+  return {
+    sellerIdx: index("performance_summary_seller_idx").on(table.sellerId),
+    periodIdx: index("performance_summary_period_idx").on(table.period, table.periodStart),
+    clientIdx: index("performance_summary_client_idx").on(table.clientId),
+  };
+});
+
+export type HumanSellerPerformanceSummary = typeof humanSellerPerformanceSummary.$inferSelect;
+export type InsertHumanSellerPerformanceSummary = typeof humanSellerPerformanceSummary.$inferInsert;

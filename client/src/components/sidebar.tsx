@@ -207,6 +207,7 @@ const clientItems: SidebarItemWithChildren[] = [
     children: [
       { name: "I Miei Venditori", href: "/client/human-sellers", icon: Users, color: "text-purple-600" },
       { name: "Video Meetings", href: "/client/human-sellers/meetings", icon: Video, color: "text-blue-600" },
+      { name: "Analytics Venditori", href: "/client/human-sellers/analytics", icon: BarChart3, color: "text-indigo-600" },
     ]
   },
   { 

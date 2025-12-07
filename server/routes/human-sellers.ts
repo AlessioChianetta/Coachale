@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import { db } from '../db';
-import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics, users } from '@shared/schema';
-import { eq, and, desc, asc } from 'drizzle-orm';
+import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics, users, humanSellerCoachingEvents, humanSellerSessionMetrics, humanSellerPerformanceSummary } from '@shared/schema';
+import { eq, and, desc, asc, gte, lte, sql, count, inArray } from 'drizzle-orm';
 import { AuthRequest, authenticateToken, requireRole } from '../middleware/auth';
 import { nanoid } from 'nanoid';
 import { OAuth2Client } from 'google-auth-library';
@@ -123,6 +123,322 @@ router.get('/', authenticateToken, requireClient, async (req: AuthRequest, res: 
     res.status(500).json({ error: 'Errore nel recupero dei venditori' });
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HUMAN SELLER ANALYTICS ENDPOINTS (MUST BE BEFORE /:id to avoid route conflict)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Get analytics overview for all sellers (dashboard)
+router.get('/analytics/overview', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { startDate, endDate } = req.query;
+    
+    // Get all sellers for this client
+    const sellers = await db
+      .select()
+      .from(humanSellers)
+      .where(eq(humanSellers.clientId, clientId));
+    
+    const sellerIds = sellers.map(s => s.id);
+    
+    if (sellerIds.length === 0) {
+      return res.json({
+        totalMeetings: 0,
+        completedMeetings: 0,
+        totalBuySignals: 0,
+        totalObjections: 0,
+        avgScriptAdherence: 0,
+        wonDeals: 0,
+        lostDeals: 0,
+        conversionRate: 0,
+        sellers: [],
+      });
+    }
+    
+    // Get session metrics aggregated
+    const sessionMetrics = await db
+      .select({
+        sellerId: humanSellerSessionMetrics.sellerId,
+        totalMeetings: count(),
+        totalBuySignals: sql<number>`COALESCE(SUM(${humanSellerSessionMetrics.totalBuySignals}), 0)`,
+        totalObjections: sql<number>`COALESCE(SUM(${humanSellerSessionMetrics.totalObjections}), 0)`,
+        avgScriptAdherence: sql<number>`COALESCE(AVG(${humanSellerSessionMetrics.scriptAdherenceScore}), 0)`,
+        wonDeals: sql<number>`COALESCE(SUM(CASE WHEN ${humanSellerSessionMetrics.outcome} = 'won' THEN 1 ELSE 0 END), 0)`,
+        lostDeals: sql<number>`COALESCE(SUM(CASE WHEN ${humanSellerSessionMetrics.outcome} = 'lost' THEN 1 ELSE 0 END), 0)`,
+      })
+      .from(humanSellerSessionMetrics)
+      .where(inArray(humanSellerSessionMetrics.sellerId, sellerIds))
+      .groupBy(humanSellerSessionMetrics.sellerId);
+    
+    // Aggregate totals
+    const totals = sessionMetrics.reduce((acc, m) => ({
+      totalMeetings: acc.totalMeetings + Number(m.totalMeetings),
+      totalBuySignals: acc.totalBuySignals + Number(m.totalBuySignals),
+      totalObjections: acc.totalObjections + Number(m.totalObjections),
+      wonDeals: acc.wonDeals + Number(m.wonDeals),
+      lostDeals: acc.lostDeals + Number(m.lostDeals),
+      scriptAdherenceSum: acc.scriptAdherenceSum + Number(m.avgScriptAdherence),
+      count: acc.count + 1,
+    }), { totalMeetings: 0, totalBuySignals: 0, totalObjections: 0, wonDeals: 0, lostDeals: 0, scriptAdherenceSum: 0, count: 0 });
+    
+    const avgScriptAdherence = totals.count > 0 ? totals.scriptAdherenceSum / totals.count : 0;
+    const conversionRate = (totals.wonDeals + totals.lostDeals) > 0 
+      ? (totals.wonDeals / (totals.wonDeals + totals.lostDeals)) * 100 
+      : 0;
+    
+    // Enrich with seller info
+    const sellersWithMetrics = sellers.map(seller => {
+      const metrics = sessionMetrics.find(m => m.sellerId === seller.id);
+      const won = metrics ? Number(metrics.wonDeals) : 0;
+      const lost = metrics ? Number(metrics.lostDeals) : 0;
+      const meetings = metrics ? Number(metrics.totalMeetings) : 0;
+      const buySignals = metrics ? Number(metrics.totalBuySignals) : 0;
+      return {
+        sellerId: seller.id,
+        sellerName: seller.sellerName,
+        displayName: seller.displayName,
+        totalMeetings: meetings,
+        totalBuySignals: buySignals,
+        avgBuySignals: meetings > 0 ? Math.round((buySignals / meetings) * 10) / 10 : 0,
+        avgScriptAdherence: metrics ? Number(metrics.avgScriptAdherence) : 0,
+        wonDeals: won,
+        lostDeals: lost,
+        conversionRate: (won + lost) > 0 ? Math.round((won / (won + lost)) * 1000) / 10 : 0,
+      };
+    });
+    
+    res.json({
+      totalMeetings: totals.totalMeetings,
+      completedMeetings: totals.totalMeetings,
+      totalBuySignals: totals.totalBuySignals,
+      totalObjections: totals.totalObjections,
+      avgScriptAdherence: Math.round(avgScriptAdherence * 10) / 10,
+      wonDeals: totals.wonDeals,
+      lostDeals: totals.lostDeals,
+      conversionRate: Math.round(conversionRate * 10) / 10,
+      sellers: sellersWithMetrics,
+    });
+  } catch (error: any) {
+    console.error('[HumanSellerAnalytics] GET overview error:', error);
+    res.status(500).json({ error: 'Errore nel recupero delle analytics' });
+  }
+});
+
+// Get detailed analytics for a specific seller
+router.get('/analytics/sellers/:sellerId', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { sellerId } = req.params;
+    
+    // Verify seller belongs to client
+    const [seller] = await db
+      .select()
+      .from(humanSellers)
+      .where(and(
+        eq(humanSellers.id, sellerId),
+        eq(humanSellers.clientId, clientId)
+      ));
+    
+    if (!seller) {
+      return res.status(404).json({ error: 'Venditore non trovato' });
+    }
+    
+    // Get all session metrics for this seller
+    const sessions = await db
+      .select({
+        metrics: humanSellerSessionMetrics,
+        meeting: videoMeetings,
+      })
+      .from(humanSellerSessionMetrics)
+      .innerJoin(videoMeetings, eq(humanSellerSessionMetrics.meetingId, videoMeetings.id))
+      .where(eq(humanSellerSessionMetrics.sellerId, sellerId))
+      .orderBy(desc(videoMeetings.startedAt));
+    
+    // Aggregate metrics
+    const totalMeetings = sessions.length;
+    const totalBuySignals = sessions.reduce((sum, s) => sum + (s.metrics.totalBuySignals || 0), 0);
+    const totalObjections = sessions.reduce((sum, s) => sum + (s.metrics.totalObjections || 0), 0);
+    const objectionsHandled = sessions.reduce((sum, s) => sum + (s.metrics.objectionsHandled || 0), 0);
+    const avgScriptAdherence = totalMeetings > 0 
+      ? sessions.reduce((sum, s) => sum + (s.metrics.scriptAdherenceScore || 0), 0) / totalMeetings 
+      : 0;
+    const wonDeals = sessions.filter(s => s.metrics.outcome === 'won').length;
+    const lostDeals = sessions.filter(s => s.metrics.outcome === 'lost').length;
+    const followUps = sessions.filter(s => s.metrics.outcome === 'follow_up').length;
+    
+    // Archetype breakdown
+    const archetypeBreakdown: Record<string, number> = {};
+    sessions.forEach(s => {
+      if (s.metrics.prospectArchetype) {
+        archetypeBreakdown[s.metrics.prospectArchetype] = (archetypeBreakdown[s.metrics.prospectArchetype] || 0) + 1;
+      }
+    });
+    
+    res.json({
+      seller: {
+        id: seller.id,
+        sellerName: seller.sellerName,
+        displayName: seller.displayName,
+      },
+      summary: {
+        totalMeetings,
+        totalBuySignals,
+        avgBuySignalsPerMeeting: totalMeetings > 0 ? Math.round((totalBuySignals / totalMeetings) * 10) / 10 : 0,
+        totalObjections,
+        objectionsHandled,
+        objectionHandlingRate: totalObjections > 0 ? Math.round((objectionsHandled / totalObjections) * 100) : 0,
+        avgScriptAdherence: Math.round(avgScriptAdherence * 10) / 10,
+        wonDeals,
+        lostDeals,
+        followUps,
+        conversionRate: (wonDeals + lostDeals) > 0 ? Math.round((wonDeals / (wonDeals + lostDeals)) * 1000) / 10 : 0,
+        archetypeBreakdown,
+      },
+      recentSessions: sessions.slice(0, 10).map(s => ({
+        meetingId: s.meeting.id,
+        prospectName: s.meeting.prospectName,
+        startedAt: s.meeting.startedAt,
+        durationSeconds: s.metrics.durationSeconds,
+        buySignals: s.metrics.totalBuySignals,
+        objections: s.metrics.totalObjections,
+        scriptAdherence: s.metrics.scriptAdherenceScore,
+        outcome: s.metrics.outcome,
+        archetype: s.metrics.prospectArchetype,
+      })),
+    });
+  } catch (error: any) {
+    console.error('[HumanSellerAnalytics] GET seller analytics error:', error);
+    res.status(500).json({ error: 'Errore nel recupero delle analytics del venditore' });
+  }
+});
+
+// Get coaching events for a specific meeting
+router.get('/analytics/meetings/:meetingId/events', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { meetingId } = req.params;
+    
+    // Verify meeting belongs to client's seller
+    const [meeting] = await db
+      .select({
+        meeting: videoMeetings,
+        seller: humanSellers,
+      })
+      .from(videoMeetings)
+      .innerJoin(humanSellers, eq(videoMeetings.sellerId, humanSellers.id))
+      .where(and(
+        eq(videoMeetings.id, meetingId),
+        eq(humanSellers.clientId, clientId)
+      ));
+    
+    if (!meeting) {
+      return res.status(404).json({ error: 'Meeting non trovato' });
+    }
+    
+    // Get all coaching events for this meeting
+    const events = await db
+      .select()
+      .from(humanSellerCoachingEvents)
+      .where(eq(humanSellerCoachingEvents.meetingId, meetingId))
+      .orderBy(asc(humanSellerCoachingEvents.timestampMs));
+    
+    // Get session metrics
+    const [sessionMetrics] = await db
+      .select()
+      .from(humanSellerSessionMetrics)
+      .where(eq(humanSellerSessionMetrics.meetingId, meetingId));
+    
+    res.json({
+      meetingId,
+      prospectName: meeting.meeting.prospectName,
+      startedAt: meeting.meeting.startedAt,
+      endedAt: meeting.meeting.endedAt,
+      sessionMetrics: sessionMetrics || null,
+      events: events.map(e => ({
+        id: e.id,
+        eventType: e.eventType,
+        eventData: e.eventData,
+        prospectArchetype: e.prospectArchetype,
+        timestampMs: e.timestampMs,
+        createdAt: e.createdAt,
+      })),
+    });
+  } catch (error: any) {
+    console.error('[HumanSellerAnalytics] GET meeting events error:', error);
+    res.status(500).json({ error: 'Errore nel recupero degli eventi' });
+  }
+});
+
+// Update meeting outcome (for post-call analysis)
+router.patch('/analytics/meetings/:meetingId/outcome', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { meetingId } = req.params;
+    const { outcome, outcomeNotes } = req.body;
+    
+    const validOutcomes = ['won', 'lost', 'follow_up', 'no_decision'];
+    if (outcome && !validOutcomes.includes(outcome)) {
+      return res.status(400).json({ error: 'Outcome non valido' });
+    }
+    
+    // Verify meeting belongs to client's seller
+    const [meeting] = await db
+      .select({
+        meeting: videoMeetings,
+        seller: humanSellers,
+      })
+      .from(videoMeetings)
+      .innerJoin(humanSellers, eq(videoMeetings.sellerId, humanSellers.id))
+      .where(and(
+        eq(videoMeetings.id, meetingId),
+        eq(humanSellers.clientId, clientId)
+      ));
+    
+    if (!meeting) {
+      return res.status(404).json({ error: 'Meeting non trovato' });
+    }
+    
+    // Update or create session metrics
+    const [existing] = await db
+      .select()
+      .from(humanSellerSessionMetrics)
+      .where(eq(humanSellerSessionMetrics.meetingId, meetingId));
+    
+    if (existing) {
+      const [updated] = await db
+        .update(humanSellerSessionMetrics)
+        .set({
+          outcome: outcome || existing.outcome,
+          outcomeNotes: outcomeNotes !== undefined ? outcomeNotes : existing.outcomeNotes,
+          updatedAt: new Date(),
+        })
+        .where(eq(humanSellerSessionMetrics.meetingId, meetingId))
+        .returning();
+      
+      res.json(updated);
+    } else {
+      const [created] = await db
+        .insert(humanSellerSessionMetrics)
+        .values({
+          meetingId,
+          sellerId: meeting.meeting.sellerId,
+          outcome,
+          outcomeNotes,
+        })
+        .returning();
+      
+      res.json(created);
+    }
+  } catch (error: any) {
+    console.error('[HumanSellerAnalytics] PATCH meeting outcome error:', error);
+    res.status(500).json({ error: 'Errore nell\'aggiornamento dell\'outcome' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HUMAN SELLERS CRUD (/:id comes AFTER analytics routes)
+// ═══════════════════════════════════════════════════════════════════════════
 
 router.get('/:id', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
   try {

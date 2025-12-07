@@ -85,6 +85,7 @@ const ClientHumanSellersList = lazy(() => import("@/pages/client-human-sellers-l
 const ClientHumanSellerConfig = lazy(() => import("@/pages/client-human-seller-config"));
 const ClientHumanSellerMeetings = lazy(() => import("@/pages/client-human-seller-meetings"));
 const ClientHumanSellerAnalytics = lazy(() => import("@/pages/client-human-seller-analytics"));
+const ClientHumanSellersAnalyticsDashboard = lazy(() => import("@/pages/client-human-sellers-analytics-dashboard"));
 const ClientSalesAgentAnalytics = lazy(() => import("@/pages/client-sales-agent-analytics"));
 const ClientScriptManager = lazy(() => import("@/pages/client-script-manager"));
 const ScriptBuilder = lazy(() => import("@/pages/script-builder"));
@@ -478,6 +479,12 @@ function Router() {
       <Route path="/client/human-sellers">
         <AuthGuard requiredRole="client">
           <ClientHumanSellersList />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/client/human-sellers/analytics">
+        <AuthGuard requiredRole="client">
+          <ClientHumanSellersAnalyticsDashboard />
         </AuthGuard>
       </Route>
 

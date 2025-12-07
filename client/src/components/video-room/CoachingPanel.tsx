@@ -1,0 +1,302 @@
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Brain, 
+  Target, 
+  AlertTriangle, 
+  TrendingUp, 
+  CheckCircle, 
+  XCircle, 
+  Clock,
+  ChevronRight,
+  X,
+  Lightbulb,
+  MessageSquare,
+  User,
+  Volume2
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import type { SalesCoachingState, ArchetypeId } from './hooks/useSalesCoaching';
+
+interface CoachingPanelProps {
+  coaching: SalesCoachingState;
+  onDismissFeedback: () => void;
+  onDismissBuySignal: (index: number) => void;
+  onDismissObjection: (index: number) => void;
+  onClose: () => void;
+}
+
+const ARCHETYPE_LABELS: Record<ArchetypeId, { label: string; emoji: string; color: string }> = {
+  analizzatore: { label: 'Analizzatore', emoji: '🔍', color: 'text-blue-400' },
+  decisore: { label: 'Decisore', emoji: '⚡', color: 'text-yellow-400' },
+  amichevole: { label: 'Amichevole', emoji: '😊', color: 'text-green-400' },
+  scettico: { label: 'Scettico', emoji: '🤔', color: 'text-orange-400' },
+  impaziente: { label: 'Impaziente', emoji: '⏱️', color: 'text-red-400' },
+  riflessivo: { label: 'Riflessivo', emoji: '💭', color: 'text-purple-400' },
+  esigente: { label: 'Esigente', emoji: '👔', color: 'text-indigo-400' },
+  prudente: { label: 'Prudente', emoji: '🛡️', color: 'text-cyan-400' },
+  neutral: { label: 'Neutro', emoji: '😐', color: 'text-gray-400' },
+};
+
+const PRIORITY_STYLES = {
+  critical: 'bg-red-500/20 border-red-500/50 text-red-300',
+  high: 'bg-orange-500/20 border-orange-500/50 text-orange-300',
+  medium: 'bg-yellow-500/20 border-yellow-500/50 text-yellow-300',
+  low: 'bg-blue-500/20 border-blue-500/50 text-blue-300',
+};
+
+export default function CoachingPanel({
+  coaching,
+  onDismissFeedback,
+  onDismissBuySignal,
+  onDismissObjection,
+  onClose,
+}: CoachingPanelProps) {
+  const { 
+    scriptProgress, 
+    buySignals, 
+    objections, 
+    checkpointStatus, 
+    prospectProfile,
+    currentFeedback,
+    toneWarnings,
+  } = coaching;
+
+  return (
+    <motion.div
+      initial={{ x: 320, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 320, opacity: 0 }}
+      className="fixed right-0 top-0 h-full w-80 bg-gray-900/95 backdrop-blur-md border-l border-gray-700/50 z-40 overflow-y-auto"
+    >
+      <div className="sticky top-0 bg-gray-900/95 backdrop-blur-md z-10 p-3 border-b border-gray-700/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Brain className="w-5 h-5 text-purple-400" />
+            <h2 className="text-white font-semibold">Sales Coach</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-700 rounded-lg transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
+      </div>
+
+      <div className="p-3 space-y-3">
+        {scriptProgress && (
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Target className="w-4 h-4 text-purple-400" />
+              <span className="text-xs text-gray-400">Fase Corrente</span>
+            </div>
+            <p className="text-white text-sm font-medium mb-2">
+              {scriptProgress.currentPhaseName}
+            </p>
+            <p className="text-gray-400 text-xs mb-2">
+              Step: {scriptProgress.currentStepName}
+            </p>
+            <div className="w-full bg-gray-700 rounded-full h-1.5">
+              <div 
+                className="bg-purple-500 h-1.5 rounded-full transition-all"
+                style={{ width: `${scriptProgress.completionPercentage}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {scriptProgress.completionPercentage}% completato
+            </p>
+          </div>
+        )}
+
+        {prospectProfile && prospectProfile.archetype !== 'neutral' && (
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+            <div className="flex items-center gap-2 mb-2">
+              <User className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs text-gray-400">Archetipo Prospect</span>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">
+                {ARCHETYPE_LABELS[prospectProfile.archetype]?.emoji}
+              </span>
+              <span className={cn("font-semibold", ARCHETYPE_LABELS[prospectProfile.archetype]?.color)}>
+                {ARCHETYPE_LABELS[prospectProfile.archetype]?.label}
+              </span>
+              <span className="text-xs text-gray-500">
+                {Math.round(prospectProfile.confidence * 100)}%
+              </span>
+            </div>
+            {prospectProfile.instruction && (
+              <p className="text-xs text-gray-300 bg-gray-700/50 p-2 rounded">
+                💡 {prospectProfile.instruction}
+              </p>
+            )}
+          </div>
+        )}
+
+        <AnimatePresence>
+          {currentFeedback && (
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={cn(
+                "rounded-lg p-3 border",
+                PRIORITY_STYLES[currentFeedback.priority]
+              )}
+            >
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="w-4 h-4" />
+                  <span className="text-xs font-medium uppercase">
+                    {currentFeedback.priority === 'critical' ? '🚨 Urgente' : 'Suggerimento'}
+                  </span>
+                </div>
+                <button
+                  onClick={onDismissFeedback}
+                  className="p-0.5 hover:bg-white/10 rounded"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+              <p className="text-sm">{currentFeedback.message}</p>
+              {currentFeedback.toneReminder && (
+                <p className="text-xs mt-2 opacity-75">
+                  🎭 {currentFeedback.toneReminder}
+                </p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {buySignals.length > 0 && (
+            <motion.div
+              initial={{ y: -10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -10, opacity: 0 }}
+              className="bg-green-500/20 rounded-lg p-3 border border-green-500/50"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-green-400" />
+                <span className="text-green-300 text-xs font-medium">
+                  💰 SEGNALE D'ACQUISTO!
+                </span>
+              </div>
+              {buySignals.slice(0, 3).map((signal, i) => (
+                <div key={i} className="mb-2 last:mb-0">
+                  <p className="text-green-200 text-sm italic">"{signal.phrase}"</p>
+                  <p className="text-green-300/80 text-xs mt-1">
+                    📝 {signal.suggestedAction}
+                  </p>
+                  <button
+                    onClick={() => onDismissBuySignal(i)}
+                    className="text-xs text-green-400/60 hover:text-green-400 mt-1"
+                  >
+                    Nascondi
+                  </button>
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {objections.length > 0 && (
+            <motion.div
+              initial={{ y: -10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -10, opacity: 0 }}
+              className="bg-red-500/20 rounded-lg p-3 border border-red-500/50"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                <span className="text-red-300 text-xs font-medium">
+                  🛡️ OBIEZIONE RILEVATA
+                </span>
+              </div>
+              {objections.slice(0, 2).map((obj, i) => (
+                <div key={i} className="mb-3 last:mb-0 bg-gray-800/50 rounded p-2">
+                  <p className="text-red-200 text-sm italic">"{obj.phrase}"</p>
+                  <div className="mt-2 bg-gray-700/50 rounded p-2">
+                    <p className="text-xs text-gray-400 mb-1">
+                      {obj.fromScript ? '📜 Risposta dallo script:' : '💡 Suggerimento:'}
+                    </p>
+                    <p className="text-gray-200 text-sm">{obj.suggestedResponse}</p>
+                  </div>
+                  <button
+                    onClick={() => onDismissObjection(i)}
+                    className="text-xs text-red-400/60 hover:text-red-400 mt-2"
+                  >
+                    Nascondi
+                  </button>
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {checkpointStatus && (
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-4 h-4 text-blue-400" />
+              <span className="text-xs text-gray-400">
+                Checkpoint: {checkpointStatus.checkpointName}
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {checkpointStatus.itemDetails?.map((item, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  {item.status === 'validated' ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
+                  ) : item.status === 'vague' ? (
+                    <Clock className="w-3.5 h-3.5 text-yellow-400 mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5 text-gray-500 mt-0.5 shrink-0" />
+                  )}
+                  <span className={cn(
+                    "text-xs",
+                    item.status === 'validated' ? 'text-green-300' :
+                    item.status === 'vague' ? 'text-yellow-300' : 'text-gray-500'
+                  )}>
+                    {item.check}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {checkpointStatus.canAdvance && (
+              <div className="mt-2 flex items-center gap-1 text-green-400 text-xs">
+                <ChevronRight className="w-3 h-3" />
+                Puoi avanzare alla fase successiva
+              </div>
+            )}
+          </div>
+        )}
+
+        {toneWarnings.length > 0 && (
+          <div className="bg-yellow-500/10 rounded-lg p-3 border border-yellow-500/30">
+            <div className="flex items-center gap-2 mb-2">
+              <Volume2 className="w-4 h-4 text-yellow-400" />
+              <span className="text-yellow-300 text-xs font-medium">
+                Promemoria Tono
+              </span>
+            </div>
+            {toneWarnings.slice(0, 2).map((warning, i) => (
+              <p key={i} className="text-yellow-200/80 text-xs mb-1">
+                • {warning}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {!coaching.isActive && (
+          <div className="text-center py-8">
+            <Brain className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm">
+              Il coaching si attiverà quando inizierà la conversazione
+            </p>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}

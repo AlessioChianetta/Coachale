@@ -67,6 +67,8 @@ interface CopilotState {
 
 type WebRTCMessageHandler = (message: any) => void;
 
+type CoachingMessageHandler = (message: any) => void;
+
 interface UseVideoCopilotResult extends CopilotState {
   connect: () => void;
   disconnect: () => void;
@@ -79,6 +81,7 @@ interface UseVideoCopilotResult extends CopilotState {
   endSession: () => void;
   sendWebRTCMessage: (message: any) => void;
   setWebRTCMessageHandler: (handler: WebRTCMessageHandler) => void;
+  setCoachingMessageHandler: (handler: CoachingMessageHandler) => void;
   sendSpeakingState: (isSpeaking: boolean) => void;
 }
 
@@ -96,6 +99,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const webrtcMessageHandlerRef = useRef<WebRTCMessageHandler | null>(null);
+  const coachingMessageHandlerRef = useRef<((message: any) => void) | null>(null);
   const latestSpeakingRef = useRef<boolean | null>(null);
   const [state, setState] = useState<CopilotState>({
     isConnected: false,
@@ -284,6 +288,20 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
             return { ...prev, participantSpeakingStates: newSpeakingStates };
           });
           break;
+
+        case 'sales_coaching':
+        case 'buy_signal':
+        case 'objection_detected':
+        case 'checkpoint_status':
+        case 'prospect_profile':
+        case 'tone_warning':
+        case 'script_progress_update':
+        case 'coaching_session_start':
+        case 'coaching_session_end':
+          if (coachingMessageHandlerRef.current) {
+            coachingMessageHandlerRef.current(message);
+          }
+          break;
       }
     } catch (e) {
       console.error('Error parsing WebSocket message:', e);
@@ -424,6 +442,10 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     webrtcMessageHandlerRef.current = handler;
   }, []);
 
+  const setCoachingMessageHandler = useCallback((handler: CoachingMessageHandler) => {
+    coachingMessageHandlerRef.current = handler;
+  }, []);
+
   const emitSpeakingState = useCallback((value: boolean): boolean => {
     if (!state.myParticipantId || wsRef.current?.readyState !== WebSocket.OPEN) {
       return false;
@@ -472,6 +494,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     endSession,
     sendWebRTCMessage,
     setWebRTCMessageHandler,
+    setCoachingMessageHandler,
     sendSpeakingState,
   };
 }

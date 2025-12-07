@@ -1,10 +1,11 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts } from '@shared/schema';
+import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, humanSellerSessionMetrics } from '@shared/schema';
 import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
 import { convertWebMToPCM, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
+import { SalesManagerAgent, type SalesManagerAnalysis, type ArchetypeState, type ConversationMessage } from '../ai/sales-manager-agent';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -31,6 +32,15 @@ interface Playbook {
   }>;
 }
 
+interface CoachingMetrics {
+  totalBuySignals: number;
+  totalObjections: number;
+  objectionsHandled: number;
+  scriptAdherenceScores: number[];
+  prospectArchetype: string | null;
+  sessionStartTime: number;
+}
+
 interface SessionState {
   meetingId: string;
   clientId: string;
@@ -39,6 +49,7 @@ interface SessionState {
   participants: Map<string, Participant>;
   playbook: Playbook | null;
   currentPhaseIndex: number;
+  currentStepIndex: number;
   transcriptBuffer: Array<{
     speakerId: string;
     speakerName: string;
@@ -47,7 +58,12 @@ interface SessionState {
     sentiment: 'positive' | 'neutral' | 'negative';
   }>;
   lastAnalysisTime: number;
+  lastSalesManagerAnalysisTime: number;
   totalTranscriptText: string;
+  conversationMessages: ConversationMessage[];
+  archetypeState: ArchetypeState | null;
+  scriptStructure: any | null;
+  coachingMetrics: CoachingMetrics;
 }
 
 interface IncomingMessage {
@@ -91,7 +107,7 @@ interface RTCIceCandidateInit {
 }
 
 interface OutgoingMessage {
-  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready' | 'lobby_participant_joined' | 'lobby_participant_left' | 'lobby_participants_list' | 'speaking_state';
+  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready' | 'lobby_participant_joined' | 'lobby_participant_left' | 'lobby_participants_list' | 'speaking_state' | 'sales_coaching' | 'buy_signal' | 'objection_detected' | 'checkpoint_status' | 'prospect_profile' | 'tone_warning';
   data: any;
   timestamp: number;
 }
@@ -584,6 +600,212 @@ async function handleAudioChunk(
         timestamp: Date.now(),
       });
     }
+
+    const speakerRole = participant?.role === 'host' ? 'assistant' : 'user';
+    session.conversationMessages.push({
+      role: speakerRole,
+      content: transcript,
+      timestamp: new Date().toISOString(),
+    });
+
+    const SALES_MANAGER_THROTTLE_MS = 5000;
+    if (now - session.lastSalesManagerAnalysisTime > SALES_MANAGER_THROTTLE_MS) {
+      session.lastSalesManagerAnalysisTime = now;
+      
+      await runSalesManagerAnalysis(ws, session);
+    }
+  }
+}
+
+async function runSalesManagerAnalysis(
+  ws: WebSocket,
+  session: SessionState
+) {
+  if (!session.scriptStructure || !session.consultantId) {
+    console.log(`⚠️ [VideoCopilot] Skipping Sales Manager: missing script structure or consultantId`);
+    return;
+  }
+
+  try {
+    const currentPhase = session.scriptStructure.phases?.[session.currentPhaseIndex];
+    const currentStep = currentPhase?.steps?.[session.currentStepIndex];
+
+    const analysis = await SalesManagerAgent.analyze({
+      recentMessages: session.conversationMessages.slice(-20),
+      script: session.scriptStructure,
+      currentPhaseId: currentPhase?.id || 'phase_1',
+      currentStepId: currentStep?.id,
+      currentPhaseIndex: session.currentPhaseIndex,
+      currentStepIndex: session.currentStepIndex,
+      clientId: session.clientId,
+      consultantId: session.consultantId,
+      archetypeState: session.archetypeState || undefined,
+      currentTurn: session.conversationMessages.length,
+    });
+
+    console.log(`🎩 [VideoCopilot] Sales Manager analysis completed in ${analysis.analysisTimeMs}ms`);
+
+    if (analysis.archetypeState) {
+      session.archetypeState = analysis.archetypeState;
+    }
+
+    if (analysis.stepAdvancement.shouldAdvance) {
+      if (analysis.stepAdvancement.nextStepId) {
+        const nextStepIdx = currentPhase?.steps?.findIndex(
+          (s: any) => s.id === analysis.stepAdvancement.nextStepId
+        );
+        if (nextStepIdx !== undefined && nextStepIdx >= 0) {
+          session.currentStepIndex = nextStepIdx;
+        }
+      }
+      if (analysis.stepAdvancement.nextPhaseId) {
+        const nextPhaseIdx = session.scriptStructure.phases?.findIndex(
+          (p: any) => p.id === analysis.stepAdvancement.nextPhaseId
+        );
+        if (nextPhaseIdx !== undefined && nextPhaseIdx >= 0) {
+          session.currentPhaseIndex = nextPhaseIdx;
+          session.currentStepIndex = 0;
+        }
+      }
+    }
+
+    const timestampMs = Date.now() - session.coachingMetrics.sessionStartTime;
+
+    if (analysis.feedbackForAgent?.shouldInject) {
+      sendMessage(ws, {
+        type: 'sales_coaching',
+        data: {
+          priority: analysis.feedbackForAgent.priority,
+          type: analysis.feedbackForAgent.type,
+          message: analysis.feedbackForAgent.message,
+          toneReminder: analysis.feedbackForAgent.toneReminder,
+        },
+        timestamp: Date.now(),
+      });
+
+      if (session.sellerId) {
+        await persistCoachingEvent(session.meetingId, session.sellerId, 'coaching', {
+          priority: analysis.feedbackForAgent.priority,
+          type: analysis.feedbackForAgent.type,
+          message: analysis.feedbackForAgent.message,
+        }, session.coachingMetrics.prospectArchetype, timestampMs);
+      }
+    }
+
+    if (analysis.buySignals.detected && analysis.buySignals.signals.length > 0) {
+      sendMessage(ws, {
+        type: 'buy_signal',
+        data: {
+          signals: analysis.buySignals.signals,
+        },
+        timestamp: Date.now(),
+      });
+
+      session.coachingMetrics.totalBuySignals += analysis.buySignals.signals.length;
+
+      if (session.sellerId) {
+        await persistCoachingEvent(session.meetingId, session.sellerId, 'buy_signal', {
+          signals: analysis.buySignals.signals,
+        }, session.coachingMetrics.prospectArchetype, timestampMs);
+      }
+    }
+
+    if (analysis.objections.detected && analysis.objections.objections.length > 0) {
+      sendMessage(ws, {
+        type: 'objection_detected',
+        data: {
+          objections: analysis.objections.objections,
+        },
+        timestamp: Date.now(),
+      });
+
+      session.coachingMetrics.totalObjections += analysis.objections.objections.length;
+
+      if (session.sellerId) {
+        await persistCoachingEvent(session.meetingId, session.sellerId, 'objection', {
+          objections: analysis.objections.objections,
+        }, session.coachingMetrics.prospectArchetype, timestampMs);
+      }
+    }
+
+    if (analysis.checkpointStatus) {
+      sendMessage(ws, {
+        type: 'checkpoint_status',
+        data: analysis.checkpointStatus,
+        timestamp: Date.now(),
+      });
+
+      if (analysis.checkpointStatus.completedPercentage) {
+        session.coachingMetrics.scriptAdherenceScores.push(analysis.checkpointStatus.completedPercentage);
+      }
+    }
+
+    if (analysis.profilingResult) {
+      sendMessage(ws, {
+        type: 'prospect_profile',
+        data: {
+          archetype: analysis.profilingResult.archetype,
+          confidence: analysis.profilingResult.confidence,
+          instruction: analysis.profilingResult.instruction,
+        },
+        timestamp: Date.now(),
+      });
+
+      if (analysis.profilingResult.confidence > 0.6) {
+        session.coachingMetrics.prospectArchetype = analysis.profilingResult.archetype;
+      }
+
+      if (session.sellerId) {
+        await persistCoachingEvent(session.meetingId, session.sellerId, 'profiling', {
+          archetype: analysis.profilingResult.archetype,
+          confidence: analysis.profilingResult.confidence,
+        }, analysis.profilingResult.archetype, timestampMs);
+      }
+    }
+
+    if (analysis.toneAnalysis.issues.length > 0) {
+      sendMessage(ws, {
+        type: 'tone_warning',
+        data: {
+          issues: analysis.toneAnalysis.issues,
+          isRobotic: analysis.toneAnalysis.isRobotic,
+          consecutiveQuestions: analysis.toneAnalysis.consecutiveQuestions,
+        },
+        timestamp: Date.now(),
+      });
+
+      if (session.sellerId) {
+        await persistCoachingEvent(session.meetingId, session.sellerId, 'tone_warning', {
+          issues: analysis.toneAnalysis.issues,
+          isRobotic: analysis.toneAnalysis.isRobotic,
+        }, session.coachingMetrics.prospectArchetype, timestampMs);
+      }
+    }
+
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Sales Manager analysis error:`, error.message);
+  }
+}
+
+async function persistCoachingEvent(
+  meetingId: string,
+  sellerId: string,
+  eventType: string,
+  eventData: any,
+  prospectArchetype: string | null,
+  timestampMs: number
+) {
+  try {
+    await db.insert(humanSellerCoachingEvents).values({
+      meetingId,
+      sellerId,
+      eventType,
+      eventData,
+      prospectArchetype,
+      timestampMs,
+    });
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Failed to persist coaching event:`, error.message);
   }
 }
 
@@ -619,7 +841,9 @@ async function handleSetPlaybook(
           phases: content?.phases || [],
           objections: content?.objections || [],
         };
+        session.scriptStructure = content;
         session.currentPhaseIndex = 0;
+        session.currentStepIndex = 0;
         
         sendMessage(ws, {
           type: 'script_progress',
@@ -1334,6 +1558,32 @@ async function handleEndSession(
     })
     .where(eq(videoMeetings.id, session.meetingId));
 
+  // Persist session metrics for human seller analytics
+  if (session.sellerId) {
+    try {
+      const durationSeconds = Math.floor((Date.now() - session.coachingMetrics.sessionStartTime) / 1000);
+      const avgScriptAdherence = session.coachingMetrics.scriptAdherenceScores.length > 0
+        ? session.coachingMetrics.scriptAdherenceScores.reduce((a, b) => a + b, 0) / session.coachingMetrics.scriptAdherenceScores.length
+        : 0;
+
+      await db.insert(humanSellerSessionMetrics).values({
+        meetingId: session.meetingId,
+        sellerId: session.sellerId,
+        durationSeconds,
+        totalBuySignals: session.coachingMetrics.totalBuySignals,
+        totalObjections: session.coachingMetrics.totalObjections,
+        objectionsHandled: session.coachingMetrics.objectionsHandled,
+        scriptAdherenceScore: Math.round(avgScriptAdherence * 10) / 10,
+        prospectArchetype: session.coachingMetrics.prospectArchetype,
+        outcome: null, // To be updated later by the client
+      });
+
+      console.log(`📊 [VideoCopilot] Session metrics persisted for seller ${session.sellerId}`);
+    } catch (error: any) {
+      console.error(`❌ [VideoCopilot] Failed to persist session metrics:`, error.message);
+    }
+  }
+
   activeSessions.delete(session.meetingId);
   
   sendMessage(ws, {
@@ -1378,9 +1628,22 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
         participants: new Map(),
         playbook: null,
         currentPhaseIndex: 0,
+        currentStepIndex: 0,
         transcriptBuffer: [],
         lastAnalysisTime: 0,
+        lastSalesManagerAnalysisTime: 0,
         totalTranscriptText: '',
+        conversationMessages: [],
+        archetypeState: null,
+        scriptStructure: null,
+        coachingMetrics: {
+          totalBuySignals: 0,
+          totalObjections: 0,
+          objectionsHandled: 0,
+          scriptAdherenceScores: [],
+          prospectArchetype: null,
+          sessionStartTime: Date.now(),
+        },
       };
       activeSessions.set(meetingId, session);
     }

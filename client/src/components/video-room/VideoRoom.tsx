@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ParticipantVideo, { SentimentType } from './ParticipantVideo';
 import VideoControls from './VideoControls';
 import AICopilotHUD from './AICopilotHUD';
+import CoachingPanel from './CoachingPanel';
 import { useVideoMeeting } from '@/hooks/useVideoMeeting';
 import { useVideoCopilot } from '@/hooks/useVideoCopilot';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { useAudioLevelMonitor } from '@/hooks/useAudioLevelMonitor';
+import { useSalesCoaching } from './hooks/useSalesCoaching';
 import { Loader2 } from 'lucide-react';
 
 export interface VideoRoomProps {
@@ -36,6 +38,7 @@ export default function VideoRoom({
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showHUD, setShowHUD] = useState(isHost);
+  const [showCoachingPanel, setShowCoachingPanel] = useState(isHost);
 
   const {
     meeting,
@@ -66,8 +69,25 @@ export default function VideoRoom({
     leaveParticipant,
     sendWebRTCMessage,
     setWebRTCMessageHandler,
+    setCoachingMessageHandler,
     sendSpeakingState,
   } = useVideoCopilot(meeting?.meetingToken ?? null);
+
+  const {
+    isActive: isCoachingActive,
+    scriptProgress: coachingScriptProgress,
+    buySignals,
+    objections,
+    checkpointStatus,
+    prospectProfile,
+    currentFeedback,
+    feedbackHistory,
+    toneWarnings,
+    handleCoachingMessage,
+    dismissFeedback,
+    dismissBuySignal,
+    dismissObjection,
+  } = useSalesCoaching({ isHost });
 
   const activeParticipantsForWebRTC = useMemo(() => {
     return copilotParticipants.filter(p => !p.leftAt).map(p => ({
@@ -108,6 +128,10 @@ export default function VideoRoom({
   useEffect(() => {
     setWebRTCMessageHandler(handleWebRTCMessage);
   }, [setWebRTCMessageHandler, handleWebRTCMessage]);
+
+  useEffect(() => {
+    setCoachingMessageHandler(handleCoachingMessage);
+  }, [setCoachingMessageHandler, handleCoachingMessage]);
 
   useEffect(() => {
     if (isConnected && !isLocalStreamReady) {
@@ -397,6 +421,28 @@ export default function VideoRoom({
             battleCard={battleCard}
             onPresentBattleCard={dismissBattleCard}
             onClose={() => setShowHUD(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isHost && showCoachingPanel && (
+          <CoachingPanel
+            coaching={{
+              isActive: isCoachingActive,
+              scriptProgress: coachingScriptProgress,
+              buySignals,
+              objections,
+              checkpointStatus,
+              prospectProfile,
+              currentFeedback,
+              feedbackHistory,
+              toneWarnings,
+            }}
+            onDismissFeedback={dismissFeedback}
+            onDismissBuySignal={dismissBuySignal}
+            onDismissObjection={dismissObjection}
+            onClose={() => setShowCoachingPanel(false)}
           />
         )}
       </AnimatePresence>
