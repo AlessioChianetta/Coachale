@@ -26,7 +26,7 @@ const humanSellerSchema = z.object({
   sellerName: z.string().min(1, 'Il nome del venditore è obbligatorio'),
   displayName: z.string().min(1, 'Il display name è obbligatorio'),
   description: z.string().optional(),
-  ownerEmail: z.string().email('Email non valida').optional().or(z.literal('')),
+  ownerEmail: z.string().min(1, 'Email proprietario è obbligatoria').email('Email non valida'),
   isActive: z.boolean(),
 });
 
@@ -239,7 +239,7 @@ export default function ClientHumanSellerConfig() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="ownerEmail">Email Proprietario (per Video Meeting)</Label>
+                      <Label htmlFor="ownerEmail">Email Proprietario (per Video Meeting) *</Label>
                       <Input
                         id="ownerEmail"
                         type="email"
