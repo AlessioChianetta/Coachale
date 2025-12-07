@@ -61,6 +61,7 @@ interface CopilotState {
   participantSentiments: Map<string, SentimentType>;
   participants: CopilotParticipant[];
   myParticipantId: string | null;
+  isJoinConfirmed: boolean;
 }
 
 type WebRTCMessageHandler = (message: any) => void;
@@ -105,6 +106,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     participantSentiments: new Map(),
     participants: [],
     myParticipantId: null,
+    isJoinConfirmed: false,
   });
 
   const handleMessage = useCallback((event: MessageEvent) => {
@@ -207,6 +209,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           setState(prev => ({
             ...prev,
             myParticipantId: message.data.id,
+            isJoinConfirmed: true,
           }));
           break;
 
@@ -336,6 +339,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
       ...prev,
       isConnected: false,
       isConnecting: false,
+      isJoinConfirmed: false,
     }));
   }, []);
 

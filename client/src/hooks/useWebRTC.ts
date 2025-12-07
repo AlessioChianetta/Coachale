@@ -14,6 +14,7 @@ interface UseWebRTCProps {
   myParticipantId: string | null;
   participants: Array<{ id: string; name: string; role: string }>;
   isConnected: boolean;
+  isJoinConfirmed: boolean;
   sendWebRTCMessage: (message: any) => void;
   onWebRTCMessage?: (message: any) => void;
 }
@@ -43,6 +44,7 @@ export function useWebRTC({
   myParticipantId,
   participants,
   isConnected,
+  isJoinConfirmed,
   sendWebRTCMessage,
 }: UseWebRTCProps): UseWebRTCResult {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -382,7 +384,7 @@ export function useWebRTC({
   }, [initiateConnection]);
 
   useEffect(() => {
-    if (!isConnected || !myParticipantId || !isLocalStreamReady) {
+    if (!isConnected || !myParticipantId || !isLocalStreamReady || !isJoinConfirmed) {
       return;
     }
 
@@ -393,7 +395,7 @@ export function useWebRTC({
         initiateConnection(participant.id);
       }
     }
-  }, [isConnected, myParticipantId, participants, isLocalStreamReady, initiateConnection]);
+  }, [isConnected, myParticipantId, participants, isLocalStreamReady, isJoinConfirmed, initiateConnection]);
 
   useEffect(() => {
     return () => {

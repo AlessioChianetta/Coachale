@@ -56,6 +56,7 @@ export default function VideoRoom({
     participantSentiments,
     participants: copilotParticipants,
     myParticipantId,
+    isJoinConfirmed,
     toggleScriptItem,
     dismissBattleCard,
     updateParticipants,
@@ -86,6 +87,7 @@ export default function VideoRoom({
     myParticipantId,
     participants: activeParticipantsForWebRTC,
     isConnected,
+    isJoinConfirmed,
     sendWebRTCMessage,
   });
 
