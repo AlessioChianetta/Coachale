@@ -32,51 +32,88 @@ export default function ParticipantVideo({
   audioLevel = 0,
 }: ParticipantVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [hasStream, setHasStream] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+  const activeStream = remoteStream || (isLocalUser ? localStream : null);
 
   useEffect(() => {
     const videoEl = videoRef.current;
-    if (!videoEl) return;
-
-    // Funzione helper per assegnare e forzare il play
-    const setAndPlay = (stream: MediaStream, sourceName: string) => {
-      // Assegna sempre per sicurezza
-      videoEl.srcObject = stream;
-
-      console.log(`▶️ [ParticipantVideo] Attempting play for ${participantName} (${sourceName})`);
-
-      // Promessa di play per sbloccare audio/video su mobile (Safari/Chrome)
-      videoEl.play().catch(e => {
-        console.warn(`⚠️ [ParticipantVideo] Autoplay blocked for ${participantName}:`, e);
-        // Tenta di mutare e riprodurre se l'autoplay con audio è bloccato
-        if (!videoEl.muted) {
-            videoEl.muted = true;
-            videoEl.play().catch(e2 => console.error("Play failed even muted:", e2));
-        }
-      });
-      setHasStream(true);
-    };
-
-    if (remoteStream) {
-      setAndPlay(remoteStream, 'REMOTE');
-    } else if (isLocalUser && localStream) {
-      setAndPlay(localStream, 'LOCAL');
-    } else {
-      if (!isLocalUser) {
-        setHasStream(false);
-      }
+    if (!videoEl) {
+      console.log(`⚠️ [ParticipantVideo] videoRef is null for ${participantName}`);
+      return;
     }
-  }, [remoteStream, localStream, isLocalUser, participantName]);
 
-  const showVideo = (localStream || remoteStream) && hasStream && !isVideoOff;
+    if (activeStream) {
+      console.log(`🎬 [ParticipantVideo] Assigning stream to video element for ${participantName}`);
+      console.log(`   - Stream ID: ${activeStream.id}`);
+      console.log(`   - Video tracks: ${activeStream.getVideoTracks().length}`);
+      console.log(`   - Audio tracks: ${activeStream.getAudioTracks().length}`);
+      
+      videoEl.srcObject = activeStream;
+
+      const playVideo = async () => {
+        try {
+          await videoEl.play();
+          console.log(`▶️ [ParticipantVideo] Play successful for ${participantName}`);
+          setIsVideoPlaying(true);
+        } catch (e: any) {
+          console.warn(`⚠️ [ParticipantVideo] Autoplay blocked for ${participantName}:`, e.message);
+          if (!videoEl.muted) {
+            videoEl.muted = true;
+            try {
+              await videoEl.play();
+              console.log(`▶️ [ParticipantVideo] Play successful (muted) for ${participantName}`);
+              setIsVideoPlaying(true);
+            } catch (e2) {
+              console.error(`❌ [ParticipantVideo] Play failed even muted for ${participantName}:`, e2);
+              setIsVideoPlaying(false);
+            }
+          }
+        }
+      };
+
+      playVideo();
+
+      activeStream.getVideoTracks().forEach(track => {
+        track.onended = () => {
+          console.log(`🔴 [ParticipantVideo] Video track ended for ${participantName}`);
+          setIsVideoPlaying(false);
+        };
+        track.onmute = () => {
+          console.log(`🔇 [ParticipantVideo] Video track muted for ${participantName}`);
+        };
+        track.onunmute = () => {
+          console.log(`🔊 [ParticipantVideo] Video track unmuted for ${participantName}`);
+        };
+      });
+    } else {
+      console.log(`📭 [ParticipantVideo] No stream available for ${participantName}`);
+      videoEl.srcObject = null;
+      setIsVideoPlaying(false);
+    }
+
+    return () => {
+      if (activeStream) {
+        activeStream.getVideoTracks().forEach(track => {
+          track.onended = null;
+          track.onmute = null;
+          track.onunmute = null;
+        });
+      }
+    };
+  }, [activeStream, participantName]);
+
+  const hasActiveVideo = activeStream && 
+    activeStream.getVideoTracks().length > 0 && 
+    activeStream.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
+  
+  const showVideoElement = hasActiveVideo && isVideoPlaying && !isVideoOff;
   const initials = participantName.charAt(0).toUpperCase();
 
-  // Speaking indicator ring animation
   const speakingRingClass = isSpeaking 
     ? 'ring-4 ring-green-500 ring-opacity-75' 
     : '';
 
-  // PIP variant (small picture-in-picture in bottom right)
   if (variant === 'pip') {
     return (
       <motion.div
@@ -85,16 +122,16 @@ export default function ParticipantVideo({
         exit={{ opacity: 0, scale: 0.8, y: 20 }}
         className={`absolute bottom-24 right-4 z-30 w-32 h-24 sm:w-44 sm:h-32 rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700 ${speakingRingClass}`}
       >
-        {showVideo ? (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted={isLocalUser}
-            className="w-full h-full object-cover"
-            style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
-          />
-        ) : (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isLocalUser}
+          className={`w-full h-full object-cover absolute inset-0 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
+          style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
+        />
+        
+        {!showVideoElement && (
           <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-blue-500 flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg">
               {initials}
@@ -102,19 +139,16 @@ export default function ParticipantVideo({
           </div>
         )}
         
-        {/* Name label */}
         <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gradient-to-t from-black/80 to-transparent">
           <span className="text-white text-xs truncate block">{participantName}</span>
         </div>
 
-        {/* Mute indicator */}
         {isMuted && (
           <div className="absolute top-2 right-2 p-1 bg-red-500/80 rounded-full">
             <MicOff className="w-3 h-3 text-white" />
           </div>
         )}
 
-        {/* Speaking audio level bar */}
         {isSpeaking && audioLevel > 0 && (
           <div className="absolute bottom-8 left-2 right-2 h-1 bg-gray-800/50 rounded-full overflow-hidden">
             <motion.div 
@@ -128,7 +162,6 @@ export default function ParticipantVideo({
     );
   }
 
-  // Main variant (full screen participant)
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -136,38 +169,36 @@ export default function ParticipantVideo({
       exit={{ opacity: 0 }}
       className="relative w-full h-full flex items-center justify-center"
     >
-      {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-gray-900 to-gray-950" />
       
-      {/* Video or Avatar */}
       <div className="relative z-10 flex items-center justify-center">
-        {showVideo ? (
-          <div className={`relative rounded-full overflow-hidden shadow-2xl ${speakingRingClass}`}
-               style={{ width: 'min(50vw, 300px)', height: 'min(50vw, 300px)' }}>
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted={isLocalUser}
-              className="w-full h-full object-cover"
-              style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
-            />
-          </div>
-        ) : (
-          <motion.div
-            animate={isSpeaking ? { scale: [1, 1.05, 1] } : {}}
-            transition={{ duration: 0.5, repeat: isSpeaking ? Infinity : 0 }}
-            className={`rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-2xl ${speakingRingClass}`}
-            style={{ width: 'min(40vw, 200px)', height: 'min(40vw, 200px)' }}
-          >
-            <span className="text-white font-medium" style={{ fontSize: 'min(15vw, 80px)' }}>
-              {initials}
-            </span>
-          </motion.div>
-        )}
+        <div 
+          className={`relative rounded-full overflow-hidden shadow-2xl ${speakingRingClass}`}
+          style={{ width: 'min(50vw, 300px)', height: 'min(50vw, 300px)' }}
+        >
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted={isLocalUser}
+            className={`w-full h-full object-cover absolute inset-0 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
+            style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
+          />
+          
+          {!showVideoElement && (
+            <motion.div
+              animate={isSpeaking ? { scale: [1, 1.05, 1] } : {}}
+              transition={{ duration: 0.5, repeat: isSpeaking ? Infinity : 0 }}
+              className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center"
+            >
+              <span className="text-white font-medium" style={{ fontSize: 'min(15vw, 80px)' }}>
+                {initials}
+              </span>
+            </motion.div>
+          )}
+        </div>
       </div>
 
-      {/* Speaking indicator ring animation */}
       {isSpeaking && (
         <motion.div
           className="absolute z-5 rounded-full border-4 border-green-500/50"
@@ -177,7 +208,6 @@ export default function ParticipantVideo({
         />
       )}
 
-      {/* Name and status - bottom left */}
       <div className="absolute bottom-6 left-6 z-20">
         <div className="flex items-center gap-3">
           <span className="text-white text-lg sm:text-xl font-medium">
@@ -195,7 +225,6 @@ export default function ParticipantVideo({
           )}
         </div>
 
-        {/* Audio level indicator */}
         {isSpeaking && audioLevel > 0 && (
           <div className="mt-2 w-32 h-1.5 bg-gray-700/50 rounded-full overflow-hidden">
             <motion.div 
@@ -207,7 +236,6 @@ export default function ParticipantVideo({
         )}
       </div>
 
-      {/* Mute/Video off indicators - bottom right */}
       <div className="absolute bottom-6 right-6 z-20 flex items-center gap-2">
         {isMuted && (
           <div className="p-2 bg-red-500/80 rounded-full">

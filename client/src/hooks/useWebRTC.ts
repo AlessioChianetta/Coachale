@@ -155,31 +155,33 @@ export function useWebRTC({
       const track = event.track;
       console.log(`📹 [WebRTC] Received remote track from ${remoteParticipantId} (${track.kind})`);
 
-      // Abilita la traccia per sicurezza
       track.enabled = true;
+
+      let isNewAudioTrack = false;
 
       setRemoteStreams(prev => {
         const newMap = new Map(prev);
 
-        // 1. Recupera lo stream esistente
         const existingStream = newMap.get(remoteParticipantId);
 
-        // 2. IMPORTANTE: Creiamo SEMPRE un NUOVO oggetto MediaStream.
-        // Questo è il trucco per far capire a React che qualcosa è cambiato.
-        // Partiamo dalle tracce esistenti (se c'era già uno stream) o da zero.
         const newStream = new MediaStream(existingStream ? existingStream.getTracks() : []);
 
-        // 3. Aggiungiamo la nuova traccia se non è già presente
         if (!newStream.getTrackById(track.id)) {
           newStream.addTrack(track);
           console.log(`➕ [WebRTC] Added ${track.kind} track to NEW stream for ${remoteParticipantId}`);
+          
+          if (track.kind === 'audio') {
+            isNewAudioTrack = true;
+          }
         }
 
-        // 4. Se l'evento browser ci ha dato uno stream nativo con altre tracce, prendiamo anche quelle
         if (event.streams && event.streams[0]) {
           event.streams[0].getTracks().forEach(t => {
             if (!newStream.getTrackById(t.id)) {
-                newStream.addTrack(t);
+              newStream.addTrack(t);
+              if (t.kind === 'audio') {
+                isNewAudioTrack = true;
+              }
             }
           });
         }
@@ -187,6 +189,26 @@ export function useWebRTC({
         newMap.set(remoteParticipantId, newStream);
         return newMap;
       });
+
+      if (track.kind === 'audio') {
+        console.log(`🎤 [WebRTC-AUDIO-DEBUG] Received AUDIO track from ${remoteParticipantId}`);
+        console.log(`   - Track ID: ${track.id}`);
+        console.log(`   - Track enabled: ${track.enabled}`);
+        console.log(`   - Track readyState: ${track.readyState}`);
+        
+        setAudioDiagnostics(prev => ({
+          ...prev,
+          remoteAudioTracks: prev.remoteAudioTracks + 1,
+          lastAudioEvent: `Ricevuta traccia audio da ${remoteParticipantId.slice(0,8)}...`,
+        }));
+      }
+
+      if (track.kind === 'video') {
+        console.log(`📹 [WebRTC-VIDEO-DEBUG] Received VIDEO track from ${remoteParticipantId}`);
+        console.log(`   - Track ID: ${track.id}`);
+        console.log(`   - Track enabled: ${track.enabled}`);
+        console.log(`   - Track readyState: ${track.readyState}`);
+      }
     };
 
     pc.oniceconnectionstatechange = () => {
@@ -830,11 +852,24 @@ export function useWebRTC({
     currentRemoteIds.forEach(id => {
       if (!activeParticipantIds.has(id)) {
         console.log(`🗑️ [WebRTC] Removing stream for disconnected participant ${id}`);
+        
+        const streamToRemove = remoteStreams.get(id);
+        const audioTracksToRemove = streamToRemove ? streamToRemove.getAudioTracks().length : 0;
+        
         setRemoteStreams(prev => {
           const newMap = new Map(prev);
           newMap.delete(id);
           return newMap;
         });
+
+        if (audioTracksToRemove > 0) {
+          console.log(`🎤 [WebRTC-AUDIO-DEBUG] Removing ${audioTracksToRemove} audio track(s) from ${id}`);
+          setAudioDiagnostics(prev => ({
+            ...prev,
+            remoteAudioTracks: Math.max(0, prev.remoteAudioTracks - audioTracksToRemove),
+            lastAudioEvent: `Rimossa traccia audio da ${id.slice(0,8)}...`,
+          }));
+        }
 
         const pc = peerConnectionsRef.current.get(id);
         if (pc) {
@@ -849,7 +884,6 @@ export function useWebRTC({
         }
         offerRetryCountRef.current.delete(id);
         
-        // Cleanup all retry/both-try state using helper
         cleanupParticipantRetries(id);
       }
     });
