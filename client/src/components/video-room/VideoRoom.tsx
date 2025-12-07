@@ -55,6 +55,7 @@ export default function VideoRoom({
     currentSuggestion,
     battleCard,
     participantSentiments,
+    participantSpeakingStates,
     participants: copilotParticipants,
     myParticipantId,
     isJoinConfirmed,
@@ -65,6 +66,7 @@ export default function VideoRoom({
     leaveParticipant,
     sendWebRTCMessage,
     setWebRTCMessageHandler,
+    sendSpeakingState,
   } = useVideoCopilot(meeting?.meetingToken ?? null);
 
   const activeParticipantsForWebRTC = useMemo(() => {
@@ -124,6 +126,14 @@ export default function VideoRoom({
     }
     return () => stopMonitoring();
   }, [localStream, isMuted, startMonitoring, stopMonitoring]);
+
+  // Send speaking state to other participants via WebSocket
+  // Only send when WebSocket is connected, join is confirmed, and we have a participant ID
+  useEffect(() => {
+    if (isConnected && isJoinConfirmed && myParticipantId) {
+      sendSpeakingState(isSpeaking);
+    }
+  }, [isSpeaking, isConnected, isJoinConfirmed, myParticipantId, sendSpeakingState]);
 
   useEffect(() => {
     if (meeting && meeting.status === 'scheduled') {
@@ -337,7 +347,7 @@ export default function VideoRoom({
               localStream={mainParticipant.isLocalUser ? localStream : null}
               remoteStream={!mainParticipant.isLocalUser ? remoteStreams.get(mainParticipant.id) : null}
               variant="main"
-              isSpeaking={mainParticipant.isLocalUser ? isSpeaking : false}
+              isSpeaking={mainParticipant.isLocalUser ? isSpeaking : (participantSpeakingStates.get(mainParticipant.id) || false)}
               audioLevel={mainParticipant.isLocalUser ? audioLevel : 0}
             />
           )}

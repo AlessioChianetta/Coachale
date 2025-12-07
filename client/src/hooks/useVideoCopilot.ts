@@ -59,6 +59,7 @@ interface CopilotState {
   scriptProgress: ScriptProgress | null;
   transcripts: TranscriptEntry[];
   participantSentiments: Map<string, SentimentType>;
+  participantSpeakingStates: Map<string, boolean>;
   participants: CopilotParticipant[];
   myParticipantId: string | null;
   isJoinConfirmed: boolean;
@@ -78,6 +79,7 @@ interface UseVideoCopilotResult extends CopilotState {
   endSession: () => void;
   sendWebRTCMessage: (message: any) => void;
   setWebRTCMessageHandler: (handler: WebRTCMessageHandler) => void;
+  sendSpeakingState: (isSpeaking: boolean) => void;
 }
 
 function getWebSocketUrl(meetingToken: string): string {
@@ -94,6 +96,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const webrtcMessageHandlerRef = useRef<WebRTCMessageHandler | null>(null);
+  const latestSpeakingRef = useRef<boolean | null>(null);
   const [state, setState] = useState<CopilotState>({
     isConnected: false,
     isConnecting: false,
@@ -104,6 +107,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     scriptProgress: null,
     transcripts: [],
     participantSentiments: new Map(),
+    participantSpeakingStates: new Map(),
     participants: [],
     myParticipantId: null,
     isJoinConfirmed: false,
@@ -272,6 +276,14 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
             webrtcMessageHandlerRef.current(message);
           }
           break;
+
+        case 'speaking_state':
+          setState(prev => {
+            const newSpeakingStates = new Map(prev.participantSpeakingStates);
+            newSpeakingStates.set(message.data.participantId, message.data.isSpeaking);
+            return { ...prev, participantSpeakingStates: newSpeakingStates };
+          });
+          break;
       }
     } catch (e) {
       console.error('Error parsing WebSocket message:', e);
@@ -412,6 +424,31 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     webrtcMessageHandlerRef.current = handler;
   }, []);
 
+  const emitSpeakingState = useCallback((value: boolean): boolean => {
+    if (!state.myParticipantId || wsRef.current?.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+    wsRef.current.send(JSON.stringify({
+      type: 'speaking_state',
+      speakingState: {
+        participantId: state.myParticipantId,
+        isSpeaking: value,
+      },
+    }));
+    return true;
+  }, [state.myParticipantId]);
+
+  const sendSpeakingState = useCallback((isSpeaking: boolean) => {
+    latestSpeakingRef.current = isSpeaking;
+    emitSpeakingState(isSpeaking);
+  }, [emitSpeakingState]);
+
+  useEffect(() => {
+    if (state.isConnected && state.isJoinConfirmed && state.myParticipantId && latestSpeakingRef.current !== null) {
+      emitSpeakingState(latestSpeakingRef.current);
+    }
+  }, [state.isConnected, state.isJoinConfirmed, state.myParticipantId, emitSpeakingState]);
+
   useEffect(() => {
     if (meetingToken) {
       connect();
@@ -435,5 +472,6 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     endSession,
     sendWebRTCMessage,
     setWebRTCMessageHandler,
+    sendSpeakingState,
   };
 }

@@ -51,7 +51,7 @@ interface SessionState {
 }
 
 interface IncomingMessage {
-  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'lobby_join' | 'lobby_leave';
+  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'lobby_join' | 'lobby_leave' | 'speaking_state';
   data?: string;
   speakerId?: string;
   speakerName?: string;
@@ -72,6 +72,10 @@ interface IncomingMessage {
     name: string;
     isHost: boolean;
   };
+  speakingState?: {
+    participantId: string;
+    isSpeaking: boolean;
+  };
 }
 
 interface RTCSessionDescriptionInit {
@@ -87,7 +91,7 @@ interface RTCIceCandidateInit {
 }
 
 interface OutgoingMessage {
-  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready' | 'lobby_participant_joined' | 'lobby_participant_left' | 'lobby_participants_list';
+  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready' | 'lobby_participant_joined' | 'lobby_participant_left' | 'lobby_participants_list' | 'speaking_state';
   data: any;
   timestamp: number;
 }
@@ -1287,6 +1291,35 @@ function unregisterLobbyParticipantBySocket(ws: WebSocket, broadcast: (msg: Outg
   lobbySocketToId.delete(ws);
 }
 
+function handleSpeakingState(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage,
+  broadcast: (msg: OutgoingMessage) => void
+) {
+  if (!message.speakingState) {
+    sendMessage(ws, {
+      type: 'error',
+      data: { message: 'Missing speakingState data' },
+      timestamp: Date.now(),
+    });
+    return;
+  }
+
+  const { participantId, isSpeaking } = message.speakingState;
+
+  const outMessage: OutgoingMessage = {
+    type: 'speaking_state',
+    data: {
+      participantId,
+      isSpeaking,
+    },
+    timestamp: Date.now(),
+  };
+
+  broadcast(outMessage);
+}
+
 async function handleEndSession(
   ws: WebSocket,
   session: SessionState
@@ -1463,6 +1496,9 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
             break;
           case 'lobby_leave':
             handleLobbyLeave(ws, meetingId, broadcast);
+            break;
+          case 'speaking_state':
+            handleSpeakingState(ws, session!, message, broadcast);
             break;
           default:
             console.warn(`⚠️ [VideoCopilot] Unknown message type: ${(message as any).type}`);
