@@ -83,6 +83,7 @@ import salesAgentConfigRouter from "./routes/client/sales-agent-config";
 import salesAgentKnowledgeRouter from "./routes/client/sales-agent-knowledge";
 import publicSalesAgentRouter from "./routes/public/sales-agent";
 import publicConsultationInvitesRouter from "./routes/public/consultation-invites";
+import publicVideoMeetingRouter from "./routes/public/video-meeting";
 import trainingAssistantRouter from "./routes/training-assistant";
 import salesScriptsRouter from "./routes/sales-scripts";
 import scriptBuilderRouter from "./routes/script-builder";
@@ -6613,6 +6614,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Public Consultation Invites routes (unauthenticated access for prospects via invite links)
   app.use("/api/public/invite", publicConsultationInvitesRouter);
+
+  // Public Video Meeting routes (unauthenticated access for guests joining meetings)
+  app.use("/api/public/meeting", publicVideoMeetingRouter);
 
   // External API Lead Import routes
   app.use("/api/external-api", externalApiRouter);

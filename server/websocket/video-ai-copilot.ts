@@ -82,20 +82,15 @@ async function authenticateConnection(req: any): Promise<{
   consultantId: string | null;
   sellerId: string | null;
   playbookId: string | null;
+  isGuest: boolean;
 } | null> {
   try {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const token = url.searchParams.get('token');
     const meetingToken = url.searchParams.get('meetingToken');
 
-    if (!token || !meetingToken) {
-      console.error('❌ [VideoCopilot] Missing token or meetingToken');
-      return null;
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
-    if (!decoded.userId) {
-      console.error('❌ [VideoCopilot] Invalid JWT - no userId');
+    if (!meetingToken) {
+      console.error('❌ [VideoCopilot] Missing meetingToken');
       return null;
     }
 
@@ -108,6 +103,26 @@ async function authenticateConnection(req: any): Promise<{
     if (!meeting) {
       console.error(`❌ [VideoCopilot] Meeting not found: ${meetingToken}`);
       return null;
+    }
+
+    if (meeting.status === 'cancelled' || meeting.status === 'completed') {
+      console.error(`❌ [VideoCopilot] Meeting not accessible: ${meeting.status}`);
+      return null;
+    }
+
+    let clientId: string = 'guest';
+    let isGuest = true;
+
+    if (token && token !== 'null') {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET) as any;
+        if (decoded.userId) {
+          clientId = decoded.userId;
+          isGuest = false;
+        }
+      } catch (jwtError) {
+        console.warn('⚠️ [VideoCopilot] Invalid JWT, connecting as guest');
+      }
     }
 
     let consultantId: string | null = null;
@@ -142,12 +157,15 @@ async function authenticateConnection(req: any): Promise<{
       }
     }
 
+    console.log(`✅ [VideoCopilot] Connection authenticated - Meeting: ${meeting.id}, Guest: ${isGuest}`);
+
     return {
       meetingId: meeting.id,
-      clientId: decoded.userId,
+      clientId,
       consultantId,
       sellerId: meeting.sellerId,
       playbookId,
+      isGuest,
     };
   } catch (error: any) {
     console.error('❌ [VideoCopilot] Auth error:', error.message);

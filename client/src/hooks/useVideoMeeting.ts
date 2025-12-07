@@ -74,17 +74,49 @@ interface UseVideoMeetingResult {
   updateMeetingStatus: (status: Meeting['status']) => Promise<void>;
 }
 
-async function fetchMeetingData(meetingIdOrToken: string): Promise<{
+async function fetchPublicMeetingData(meetingToken: string): Promise<{
   meeting: Meeting;
   seller: Seller;
   script: Script | null;
   participants: Participant[];
 }> {
-  const authToken = localStorage.getItem('token');
-  if (!authToken) {
-    throw new Error('Non autenticato');
+  const response = await fetch(`/api/public/meeting/${meetingToken}`, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Meeting non trovato');
   }
 
+  const data = await response.json();
+  
+  const dbParticipants: Participant[] = (data.participants || []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    role: p.role as 'host' | 'guest' | 'prospect',
+    joinedAt: p.joinedAt,
+    leftAt: p.leftAt,
+  }));
+
+  const activeParticipants = dbParticipants.filter(p => !p.leftAt);
+
+  return {
+    meeting: data.meeting,
+    seller: data.seller,
+    script: data.script,
+    participants: activeParticipants,
+  };
+}
+
+async function fetchAuthenticatedMeetingData(meetingIdOrToken: string, authToken: string): Promise<{
+  meeting: Meeting;
+  seller: Seller;
+  script: Script | null;
+  participants: Participant[];
+}> {
   let meetingDetailsResponse = await fetch(`/api/human-sellers/meetings/${meetingIdOrToken}`, {
     headers: {
       'Authorization': `Bearer ${authToken}`,
@@ -145,7 +177,6 @@ async function fetchMeetingData(meetingIdOrToken: string): Promise<{
     }
   }
 
-  // Use participants from database if available
   const dbParticipants: Participant[] = (details.participants || []).map((p: any) => ({
     id: p.id,
     name: p.name,
@@ -154,7 +185,6 @@ async function fetchMeetingData(meetingIdOrToken: string): Promise<{
     leftAt: p.leftAt,
   }));
 
-  // Filter out participants who have left
   const activeParticipants = dbParticipants.filter(p => !p.leftAt);
 
   return {
@@ -163,6 +193,25 @@ async function fetchMeetingData(meetingIdOrToken: string): Promise<{
     script,
     participants: activeParticipants,
   };
+}
+
+async function fetchMeetingData(meetingIdOrToken: string): Promise<{
+  meeting: Meeting;
+  seller: Seller;
+  script: Script | null;
+  participants: Participant[];
+}> {
+  const authToken = localStorage.getItem('token');
+  
+  if (authToken) {
+    try {
+      return await fetchAuthenticatedMeetingData(meetingIdOrToken, authToken);
+    } catch (error) {
+      console.warn('Authenticated fetch failed, falling back to public endpoint:', error);
+    }
+  }
+  
+  return await fetchPublicMeetingData(meetingIdOrToken);
 }
 
 export function useVideoMeeting(meetingToken: string | null): UseVideoMeetingResult {

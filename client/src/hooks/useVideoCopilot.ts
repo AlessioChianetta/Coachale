@@ -79,7 +79,10 @@ function getWebSocketUrl(meetingToken: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host;
   const token = localStorage.getItem('token');
-  return `${protocol}//${host}/ws/video-copilot?token=${token}&meetingToken=${meetingToken}`;
+  if (token) {
+    return `${protocol}//${host}/ws/video-copilot?token=${token}&meetingToken=${meetingToken}`;
+  }
+  return `${protocol}//${host}/ws/video-copilot?meetingToken=${meetingToken}`;
 }
 
 export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotResult {
