@@ -553,14 +553,26 @@ publicMeetRouter.get('/:token', async (req, res) => {
       return res.status(404).json({ error: 'Meeting non trovato' });
     }
     
-    // Recupera googleClientId dal consultant (proprietario del seller)
+    // Recupera googleClientId dal consulente (risale la catena: seller -> client -> consultant)
     let googleClientId: string | null = null;
     if (meeting.seller?.clientId) {
-      const [consultant] = await db
-        .select({ googleClientId: users.googleClientId })
+      // Prima ottieni il client (proprietario del seller)
+      const [client] = await db
+        .select({ consultantId: users.consultantId, googleClientId: users.googleClientId })
         .from(users)
         .where(eq(users.id, meeting.seller.clientId));
-      googleClientId = consultant?.googleClientId || null;
+      
+      // Se il client ha un consultant, prendi il googleClientId dal consultant
+      if (client?.consultantId) {
+        const [consultant] = await db
+          .select({ googleClientId: users.googleClientId })
+          .from(users)
+          .where(eq(users.id, client.consultantId));
+        googleClientId = consultant?.googleClientId || null;
+      } else {
+        // Se il client è già un consultant (non ha consultantId), usa il suo googleClientId
+        googleClientId = client?.googleClientId || null;
+      }
     }
     
     // ownerEmail dal seller (ogni venditore ha la sua email)
