@@ -733,6 +733,19 @@ async function handleParticipantJoin(
     };
     
     broadcast(outMessage);
+    
+    // Broadcast participant_socket_ready to notify that this participant's socket is now registered
+    const socketReadyMessage: OutgoingMessage = {
+      type: 'participant_socket_ready',
+      data: {
+        participantId: participantRecord.id,
+        name: participantRecord.name,
+        role: participantRecord.role,
+      },
+      timestamp: Date.now(),
+    };
+    broadcast(socketReadyMessage);
+    console.log(`📡 [VideoCopilot] Broadcast participant_socket_ready for ${participantRecord.name} (${participantRecord.id})`);
   } catch (error: any) {
     console.error(`❌ [VideoCopilot] Error adding participant:`, error.message);
     sendMessage(ws, {

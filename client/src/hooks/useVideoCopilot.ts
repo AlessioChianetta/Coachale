@@ -250,6 +250,13 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           }));
           break;
 
+        case 'participant_socket_ready':
+          console.log(`📡 Participant socket ready: ${message.data.name} (${message.data.participantId})`);
+          if (webrtcMessageHandlerRef.current) {
+            webrtcMessageHandlerRef.current(message);
+          }
+          break;
+
         case 'error':
           console.error('❌ Copilot error:', message.data);
           setState(prev => ({

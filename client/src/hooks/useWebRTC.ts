@@ -58,6 +58,10 @@ export function useWebRTC({
   const connectionRetryRef = useRef<Map<string, number>>(new Map());
   const retryTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const reconnectCallbackRef = useRef<((participantId: string) => void) | null>(null);
+  const offerRetryTimeoutRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const offerRetryCountRef = useRef<Map<string, number>>(new Map());
+  const OFFER_RETRY_TIMEOUT_MS = 5000;
+  const MAX_OFFER_RETRIES = 3;
 
   const createPeerConnection = useCallback((remoteParticipantId: string): RTCPeerConnection => {
     console.log(`🔗 [WebRTC] Creating peer connection for ${remoteParticipantId}`);
@@ -282,6 +286,14 @@ export function useWebRTC({
   const handleWebRTCAnswer = useCallback(async (fromParticipantId: string, sdp: RTCSessionDescriptionInit) => {
     console.log(`📥 [WebRTC] Received answer from ${fromParticipantId}`);
     
+    const existingOfferTimeout = offerRetryTimeoutRef.current.get(fromParticipantId);
+    if (existingOfferTimeout) {
+      clearTimeout(existingOfferTimeout);
+      offerRetryTimeoutRef.current.delete(fromParticipantId);
+      console.log(`✅ [WebRTC] Cleared offer retry timeout for ${fromParticipantId}`);
+    }
+    offerRetryCountRef.current.set(fromParticipantId, 0);
+    
     const pc = peerConnectionsRef.current.get(fromParticipantId);
     if (!pc) {
       console.warn(`⚠️ [WebRTC] No peer connection for ${fromParticipantId}`);
@@ -321,6 +333,32 @@ export function useWebRTC({
     }
   }, []);
 
+  const handleParticipantSocketReady = useCallback((participantId: string) => {
+    if (!myParticipantId || !isLocalStreamReady || participantId === myParticipantId) {
+      return;
+    }
+    
+    const existingPc = peerConnectionsRef.current.get(participantId);
+    if (existingPc) {
+      const isNegotiating = existingPc.signalingState !== 'stable' && existingPc.signalingState !== 'closed';
+      const isConnected = existingPc.iceConnectionState === 'connected' || existingPc.iceConnectionState === 'completed';
+      if (isNegotiating || isConnected) {
+        console.log(`📡 [WebRTC] Participant socket ready: ${participantId}, but negotiation in progress or already connected, skipping`);
+        return;
+      }
+    }
+    
+    console.log(`📡 [WebRTC] Participant socket ready: ${participantId}, initiating connection...`);
+    offerRetryCountRef.current.set(participantId, 0);
+    const existingTimeout = offerRetryTimeoutRef.current.get(participantId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      offerRetryTimeoutRef.current.delete(participantId);
+    }
+    
+    initiateConnection(participantId);
+  }, [myParticipantId, isLocalStreamReady, initiateConnection]);
+
   const handleWebRTCMessage = useCallback((message: any) => {
     switch (message.type) {
       case 'webrtc_offer':
@@ -332,8 +370,11 @@ export function useWebRTC({
       case 'ice_candidate':
         handleICECandidate(message.data.fromParticipantId, message.data.candidate);
         break;
+      case 'participant_socket_ready':
+        handleParticipantSocketReady(message.data.participantId);
+        break;
     }
-  }, [handleWebRTCOffer, handleWebRTCAnswer, handleICECandidate]);
+  }, [handleWebRTCOffer, handleWebRTCAnswer, handleICECandidate, handleParticipantSocketReady]);
 
   const initiateConnection = useCallback(async (remoteParticipantId: string) => {
     if (!myParticipantId || !isLocalStreamReady) {
@@ -347,7 +388,20 @@ export function useWebRTC({
       return;
     }
 
-    console.log(`🚀 [WebRTC] Initiating connection to ${remoteParticipantId}`);
+    const currentRetries = offerRetryCountRef.current.get(remoteParticipantId) || 0;
+    if (currentRetries >= MAX_OFFER_RETRIES) {
+      console.error(`❌ [WebRTC] Max offer retries (${MAX_OFFER_RETRIES}) reached for ${remoteParticipantId}, giving up`);
+      offerRetryCountRef.current.delete(remoteParticipantId);
+      return;
+    }
+
+    console.log(`🚀 [WebRTC] Initiating connection to ${remoteParticipantId} (attempt ${currentRetries + 1}/${MAX_OFFER_RETRIES})`);
+    
+    const existingTimeout = offerRetryTimeoutRef.current.get(remoteParticipantId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      offerRetryTimeoutRef.current.delete(remoteParticipantId);
+    }
     
     let pc = peerConnectionsRef.current.get(remoteParticipantId);
     if (!pc) {
@@ -366,6 +420,25 @@ export function useWebRTC({
         fromParticipantId: myParticipantId,
         sdp: { type: 'offer', sdp: offer.sdp },
       });
+      
+      const timeoutId = setTimeout(() => {
+        offerRetryTimeoutRef.current.delete(remoteParticipantId);
+        const pc = peerConnectionsRef.current.get(remoteParticipantId);
+        if (!pc || !pc.remoteDescription) {
+          const nextRetry = (offerRetryCountRef.current.get(remoteParticipantId) || 0) + 1;
+          offerRetryCountRef.current.set(remoteParticipantId, nextRetry);
+          if (nextRetry < MAX_OFFER_RETRIES) {
+            console.warn(`⏱️ [WebRTC] No answer received from ${remoteParticipantId} after ${OFFER_RETRY_TIMEOUT_MS}ms, retrying (${nextRetry}/${MAX_OFFER_RETRIES})...`);
+            if (reconnectCallbackRef.current) {
+              reconnectCallbackRef.current(remoteParticipantId);
+            }
+          } else {
+            console.error(`❌ [WebRTC] Failed to connect to ${remoteParticipantId} after ${MAX_OFFER_RETRIES} attempts`);
+            offerRetryCountRef.current.delete(remoteParticipantId);
+          }
+        }
+      }, OFFER_RETRY_TIMEOUT_MS);
+      offerRetryTimeoutRef.current.set(remoteParticipantId, timeoutId);
     } catch (error) {
       console.error(`❌ [WebRTC] Error creating offer for ${remoteParticipantId}:`, error);
     } finally {
@@ -402,6 +475,9 @@ export function useWebRTC({
       retryTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
       retryTimeoutRef.current.clear();
       
+      offerRetryTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
+      offerRetryTimeoutRef.current.clear();
+      
       peerConnectionsRef.current.forEach((pc, id) => {
         console.log(`🔌 [WebRTC] Closing connection to ${id}`);
         pc.close();
@@ -434,6 +510,13 @@ export function useWebRTC({
           pc.close();
           peerConnectionsRef.current.delete(id);
         }
+        
+        const offerTimeout = offerRetryTimeoutRef.current.get(id);
+        if (offerTimeout) {
+          clearTimeout(offerTimeout);
+          offerRetryTimeoutRef.current.delete(id);
+        }
+        offerRetryCountRef.current.delete(id);
       }
     });
   }, [participants, myParticipantId, remoteStreams]);
