@@ -131,9 +131,9 @@ export default function ParticipantVideo({
             ref={videoRef}
             autoPlay
             playsInline
-            muted
+            muted={isLocalUser}
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ transform: 'scaleX(-1)' }}
+            style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
           />
         ) : isVideoOff ? (
           <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center">

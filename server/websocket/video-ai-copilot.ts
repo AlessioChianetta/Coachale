@@ -2,7 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
 import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
 import { convertWebMToPCM, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
 
@@ -762,7 +762,7 @@ async function loadExistingParticipants(session: SessionState): Promise<Particip
       .from(videoMeetingParticipants)
       .where(and(
         eq(videoMeetingParticipants.meetingId, session.meetingId),
-        eq(videoMeetingParticipants.leftAt, null as any)
+        isNull(videoMeetingParticipants.leftAt)
       ));
 
     for (const p of participants) {
