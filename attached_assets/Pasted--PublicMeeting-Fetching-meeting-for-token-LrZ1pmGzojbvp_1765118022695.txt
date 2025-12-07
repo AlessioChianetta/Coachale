@@ -1,0 +1,38 @@
+[PublicMeeting] Fetching meeting for token: LrZ1pmGzojbvpBgZ
+❌ Error fetching ICE servers: TypeError: Cannot convert undefined or null to object
+    at Function.entries (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:16)
+    at <anonymous> (/home/runner/workspace/node_modules/src/utils.ts:88:19)
+    at Array.reduce (<anonymous>)
+    at orderSelectedFields (/home/runner/workspace/node_modules/src/utils.ts:77:32)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:979:23)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase._prepare (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:978:17)
+    at <anonymous> (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1009:16)
+    at Object.startActiveSpan (/home/runner/workspace/node_modules/src/tracing.ts:27:11)
+    at PgSelectBase.execute (/home/runner/workspace/node_modules/src/pg-core/query-builders/select.ts:1008:17)
+    at PgSelectBase.then (/home/runner/workspace/node_modules/src/query-promise.ts:31:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2:32:19 PM [express] GET /api/video-meeting/ice-servers/LrZ1pmGzojbvpBgZ 200 in 2ms :: {"iceServers"…
+[PublicMeeting] Meeting found: b24b1713-abc6-4fc7-8573-f3027c234a03 - ds
+2:32:19 PM [express] GET /api/public/meeting/LrZ1pmGzojbvpBgZ 200 in 855ms :: {"meeting":{"id":"b24b…
+🎥 [de6kpi] Client connected to Video AI Copilot
+✅ [VideoCopilot] Connection authenticated - Meeting: b24b1713-abc6-4fc7-8573-f3027c234a03, Guest: true
+🧹 [VideoCopilot] Cleaned zombie participant: Prova (59dc257e-f535-49ec-b80f-1a9e01721295)
+🧹 [VideoCopilot] Cleaned zombie participant: Dz HyperLoop (13b6dbb8-a5ca-4785-8320-6a1c111e6aab)
+👥 [VideoCopilot] Participants updated: 2 participants
+🔓 [VideoCopilot] Unregistered socket for participant e2548344-094c-40f4-8279-db226aacda25 in meeting b24b1713-abc6-4fc7-8573-f3027c234a03
+🔄 [VideoCopilot] Recycling inactive participant: Dz HyperLoop (prospect) - ID: e2548344-094c-40f4-8279-db226aacda25
+🔗 [VideoCopilot] Registered socket for participant e2548344-094c-40f4-8279-db226aacda25 in meeting b24b1713-abc6-4fc7-8573-f3027c234a03
+📡 [VideoCopilot] Broadcast participant_socket_ready for Dz HyperLoop (e2548344-094c-40f4-8279-db226aacda25)
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete

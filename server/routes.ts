@@ -7648,16 +7648,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/video-meeting/ice-servers - Get ICE servers for WebRTC (public for meeting participants)
-  app.get("/api/video-meeting/ice-servers/:meetingId", async (req, res) => {
+  app.get("/api/video-meeting/ice-servers/:meetingIdOrToken", async (req, res) => {
     try {
-      const { meetingId } = req.params;
+      const { meetingIdOrToken } = req.params;
 
-      // Get meeting to find consultant
-      const [meeting] = await db
-        .select({ consultantId: schema.videoMeetings.consultantId })
+      // Try to find meeting by ID first, then by token (supports both)
+      let meeting = await db
+        .select({ 
+          sellerId: schema.videoMeetings.sellerId 
+        })
         .from(schema.videoMeetings)
-        .where(eq(schema.videoMeetings.id, meetingId))
-        .limit(1);
+        .where(eq(schema.videoMeetings.id, meetingIdOrToken))
+        .limit(1)
+        .then(rows => rows[0]);
+      
+      if (!meeting) {
+        // Try by meetingToken
+        meeting = await db
+          .select({ 
+            sellerId: schema.videoMeetings.sellerId 
+          })
+          .from(schema.videoMeetings)
+          .where(eq(schema.videoMeetings.meetingToken, meetingIdOrToken))
+          .limit(1)
+          .then(rows => rows[0]);
+      }
 
       if (!meeting) {
         // Return default STUN servers if meeting not found
@@ -7669,12 +7684,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get the consultant (clientId) from the humanSeller
+      const [seller] = await db
+        .select({ clientId: schema.humanSellers.clientId })
+        .from(schema.humanSellers)
+        .where(eq(schema.humanSellers.id, meeting.sellerId))
+        .limit(1);
+
+      if (!seller) {
+        return res.json({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        });
+      }
+
+      const consultantId = seller.clientId;
+
       // Get consultant's TURN config
       const [turnConfig] = await db
         .select()
         .from(schema.consultantTurnConfig)
         .where(and(
-          eq(schema.consultantTurnConfig.consultantId, meeting.consultantId),
+          eq(schema.consultantTurnConfig.consultantId, consultantId),
           eq(schema.consultantTurnConfig.enabled, true)
         ))
         .limit(1);
@@ -7693,7 +7726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const [consultant] = await db
         .select({ encryptionSalt: schema.users.encryptionSalt })
         .from(schema.users)
-        .where(eq(schema.users.id, meeting.consultantId))
+        .where(eq(schema.users.id, consultantId))
         .limit(1);
 
       if (!consultant?.encryptionSalt) {

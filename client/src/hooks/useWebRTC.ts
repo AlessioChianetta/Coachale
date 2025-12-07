@@ -111,6 +111,7 @@ export function useWebRTC({
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const pendingOffersRef = useRef<Map<string, RTCSessionDescriptionInit>>(new Map());
+  const pendingSocketReadyRef = useRef<Set<string>>(new Set());
   const localStreamRef = useRef<MediaStream | null>(null);
   const makingOfferRef = useRef<Map<string, boolean>>(new Map());
   const connectionRetryRef = useRef<Map<string, number>>(new Map());
@@ -505,8 +506,12 @@ export function useWebRTC({
       return;
     }
 
-    if (myParticipantId <= remoteParticipantId) {
-      console.log(`⏭️ [WebRTC] Skipping connection initiation (not the initiator)`);
+    // The participant with the GREATER ID initiates the connection
+    const shouldInitiate = myParticipantId > remoteParticipantId;
+    console.log(`🔍 [WebRTC] Connection decision: myId=${myParticipantId.slice(0,8)}... vs remoteId=${remoteParticipantId.slice(0,8)}... → ${shouldInitiate ? 'I INITIATE' : 'THEY INITIATE'}`);
+    
+    if (!shouldInitiate) {
+      console.log(`⏭️ [WebRTC] Skipping connection initiation (waiting for ${remoteParticipantId.slice(0,8)}... to initiate)`);
       return;
     }
 
@@ -569,7 +574,15 @@ export function useWebRTC({
   }, [myParticipantId, isLocalStreamReady, iceConfigLoaded, createPeerConnection, sendWebRTCMessage]);
 
   const handleParticipantSocketReady = useCallback((participantId: string) => {
-    if (!myParticipantId || !isLocalStreamReady || participantId === myParticipantId) {
+    if (participantId === myParticipantId) {
+      console.log(`📡 [WebRTC] Received own socket_ready, ignoring`);
+      return;
+    }
+    
+    // If not ready, queue for later processing
+    if (!myParticipantId || !isLocalStreamReady || !iceConfigLoaded) {
+      console.log(`⏳ [WebRTC] Queueing socket_ready for ${participantId} (myId=${!!myParticipantId}, stream=${isLocalStreamReady}, ice=${iceConfigLoaded})`);
+      pendingSocketReadyRef.current.add(participantId);
       return;
     }
     
@@ -592,7 +605,7 @@ export function useWebRTC({
     }
     
     initiateConnection(participantId);
-  }, [myParticipantId, isLocalStreamReady, initiateConnection]);
+  }, [myParticipantId, isLocalStreamReady, iceConfigLoaded, initiateConnection]);
 
   const handleWebRTCMessage = useCallback((message: any) => {
     switch (message.type) {
@@ -625,6 +638,23 @@ export function useWebRTC({
     }
   }, [iceConfigLoaded, handleWebRTCOffer]);
 
+  // Process queued socket_ready events when ready
+  useEffect(() => {
+    if (!myParticipantId || !isLocalStreamReady || !iceConfigLoaded) return;
+    
+    const pendingSocketReady = pendingSocketReadyRef.current;
+    if (pendingSocketReady.size > 0) {
+      console.log(`🔄 [WebRTC] Processing ${pendingSocketReady.size} queued socket_ready events`);
+      pendingSocketReady.forEach((participantId) => {
+        if (participantId !== myParticipantId) {
+          console.log(`📡 [WebRTC] Processing queued socket_ready for ${participantId}`);
+          handleParticipantSocketReady(participantId);
+        }
+      });
+      pendingSocketReady.clear();
+    }
+  }, [myParticipantId, isLocalStreamReady, iceConfigLoaded, handleParticipantSocketReady]);
+
   useEffect(() => {
     reconnectCallbackRef.current = (participantId: string) => {
       console.log(`🔄 [WebRTC] Reconnecting to ${participantId}`);
@@ -636,15 +666,21 @@ export function useWebRTC({
   }, [initiateConnection]);
 
   useEffect(() => {
-    if (!isConnected || !myParticipantId || !isLocalStreamReady || !isJoinConfirmed) {
+    if (!isConnected || !myParticipantId || !isLocalStreamReady || !isJoinConfirmed || !iceConfigLoaded) {
+      console.log(`⏳ [WebRTC] Participants effect waiting: connected=${isConnected}, myId=${!!myParticipantId}, stream=${isLocalStreamReady}, joined=${isJoinConfirmed}, ice=${iceConfigLoaded}`);
       return;
     }
 
     const otherParticipants = participants.filter(p => p.id !== myParticipantId);
+    console.log(`👥 [WebRTC] Checking ${otherParticipants.length} other participants for connections (my ID: ${myParticipantId})`);
     
     for (const participant of otherParticipants) {
       if (!peerConnectionsRef.current.has(participant.id)) {
+        console.log(`🔗 [WebRTC] No existing connection to ${participant.id}, attempting to initiate...`);
         initiateConnection(participant.id);
+      } else {
+        const pc = peerConnectionsRef.current.get(participant.id);
+        console.log(`✓ [WebRTC] Already have connection to ${participant.id} (state: ${pc?.iceConnectionState})`);
       }
     }
   }, [isConnected, myParticipantId, participants, isLocalStreamReady, isJoinConfirmed, iceConfigLoaded, initiateConnection]);
