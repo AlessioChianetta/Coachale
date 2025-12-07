@@ -43,21 +43,33 @@ export default function ParticipantVideo({
 
   useEffect(() => {
     if (remoteStream && videoRef.current) {
+      console.log(`🎥 [ParticipantVideo] Setting REMOTE stream for ${participantName}`);
+      const audioTracks = remoteStream.getAudioTracks();
+      const videoTracks = remoteStream.getVideoTracks();
+      console.log(`🔊 [ParticipantVideo] Remote stream ${participantName}: ${audioTracks.length} audio tracks, ${videoTracks.length} video tracks`);
+      audioTracks.forEach((track, i) => {
+        console.log(`   Audio track ${i}: enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
+      });
       videoRef.current.srcObject = remoteStream;
       setHasStream(true);
       return;
     }
     
     if (isLocalUser && localStream && videoRef.current) {
+      console.log(`🎥 [ParticipantVideo] Setting LOCAL stream for ${participantName}`);
+      const audioTracks = localStream.getAudioTracks();
+      const videoTracks = localStream.getVideoTracks();
+      console.log(`🔊 [ParticipantVideo] Local stream: ${audioTracks.length} audio tracks, ${videoTracks.length} video tracks`);
       videoRef.current.srcObject = localStream;
       setHasStream(true);
       return;
     }
     
     if (!isLocalUser) {
+      console.log(`⚠️ [ParticipantVideo] No stream available for ${participantName}`);
       setHasStream(false);
     }
-  }, [isLocalUser, isVideoOff, remoteStream, localStream]);
+  }, [isLocalUser, isVideoOff, remoteStream, localStream, participantName]);
 
   const showVideo = (localStream || remoteStream) && hasStream && !isVideoOff && !cameraError;
 

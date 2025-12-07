@@ -2,7 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
 import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts } from '@shared/schema';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
 import { convertWebMToPCM, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
 
@@ -651,33 +651,62 @@ async function handleParticipantJoin(
   const { name, role } = message.participant;
   
   try {
-    const [inserted] = await db.insert(videoMeetingParticipants).values({
-      meetingId: session.meetingId,
-      name,
-      role,
-      joinedAt: new Date(),
-    }).returning();
+    // Check if participant with same name AND role already left this meeting (can be recycled)
+    // Only reuse participants who have leftAt set (not currently active)
+    const [inactiveExisting] = await db.select()
+      .from(videoMeetingParticipants)
+      .where(and(
+        eq(videoMeetingParticipants.meetingId, session.meetingId),
+        eq(videoMeetingParticipants.name, name),
+        eq(videoMeetingParticipants.role, role),
+        isNotNull(videoMeetingParticipants.leftAt) // Only recycle inactive participants
+      ))
+      .orderBy(desc(videoMeetingParticipants.leftAt)) // Get the most recently left
+      .limit(1);
+    
+    let participantRecord;
+    
+    if (inactiveExisting) {
+      // Clean up any stale socket bound to this participant ID (shouldn't exist but just in case)
+      unregisterParticipantSocket(session.meetingId, inactiveExisting.id);
+      session.participants.delete(inactiveExisting.id);
+      
+      // Reuse inactive participant - update joinedAt and clear leftAt
+      await db.update(videoMeetingParticipants)
+        .set({ joinedAt: new Date(), leftAt: null })
+        .where(eq(videoMeetingParticipants.id, inactiveExisting.id));
+      participantRecord = { ...inactiveExisting, joinedAt: new Date(), leftAt: null };
+      console.log(`🔄 [VideoCopilot] Recycling inactive participant: ${name} (${role}) - ID: ${inactiveExisting.id}`);
+    } else {
+      // Create new participant
+      const [inserted] = await db.insert(videoMeetingParticipants).values({
+        meetingId: session.meetingId,
+        name,
+        role,
+        joinedAt: new Date(),
+      }).returning();
+      participantRecord = inserted;
+      console.log(`✅ [VideoCopilot] New participant joined: ${name} (${role}) - ID: ${inserted.id}`);
+    }
 
     const participant: Participant = {
-      id: inserted.id,
-      name: inserted.name,
-      role: inserted.role as 'host' | 'guest' | 'prospect',
+      id: participantRecord.id,
+      name: participantRecord.name,
+      role: participantRecord.role as 'host' | 'guest' | 'prospect',
     };
     
-    session.participants.set(inserted.id, participant);
+    session.participants.set(participantRecord.id, participant);
     
-    registerParticipantSocket(session.meetingId, inserted.id, ws);
-    
-    console.log(`✅ [VideoCopilot] Participant joined: ${name} (${role}) - ID: ${inserted.id}`);
+    registerParticipantSocket(session.meetingId, participantRecord.id, ws);
 
     // Send confirmation directly to the requesting client with their ID
     sendMessage(ws, {
       type: 'join_confirmed',
       data: {
-        id: inserted.id,
-        name: inserted.name,
-        role: inserted.role,
-        joinedAt: inserted.joinedAt?.toISOString(),
+        id: participantRecord.id,
+        name: participantRecord.name,
+        role: participantRecord.role,
+        joinedAt: participantRecord.joinedAt?.toISOString(),
       },
       timestamp: Date.now(),
     });
@@ -686,10 +715,10 @@ async function handleParticipantJoin(
     const outMessage: OutgoingMessage = {
       type: 'participant_joined',
       data: {
-        id: inserted.id,
-        name: inserted.name,
-        role: inserted.role,
-        joinedAt: inserted.joinedAt?.toISOString(),
+        id: participantRecord.id,
+        name: participantRecord.name,
+        role: participantRecord.role,
+        joinedAt: participantRecord.joinedAt?.toISOString(),
       },
       timestamp: Date.now(),
     };
@@ -977,7 +1006,7 @@ function unregisterParticipantSocket(meetingId: string, participantId: string) {
   }
 }
 
-function unregisterParticipantBySocket(ws: WebSocket, broadcast: (msg: OutgoingMessage) => void): string[] {
+async function unregisterParticipantBySocket(ws: WebSocket, broadcast: (msg: OutgoingMessage) => void): Promise<string[]> {
   const participantSet = socketToParticipants.get(ws);
   if (!participantSet || participantSet.size === 0) return [];
   
@@ -991,6 +1020,23 @@ function unregisterParticipantBySocket(ws: WebSocket, broadcast: (msg: OutgoingM
       if (meetingSockets.size === 0) {
         participantSockets.delete(meetingId);
       }
+    }
+    
+    // Update database with leftAt
+    try {
+      await db.update(videoMeetingParticipants)
+        .set({ leftAt: new Date() })
+        .where(eq(videoMeetingParticipants.id, participantId));
+      console.log(`📝 [VideoCopilot] Marked participant ${participantId} as left in database`);
+    } catch (error: any) {
+      console.error(`❌ [VideoCopilot] Failed to update leftAt for ${participantId}:`, error.message);
+    }
+    
+    // Remove from session.participants
+    const session = activeSessions.get(meetingId);
+    if (session) {
+      session.participants.delete(participantId);
+      console.log(`🗑️ [VideoCopilot] Removed participant ${participantId} from session`);
     }
     
     broadcast({
