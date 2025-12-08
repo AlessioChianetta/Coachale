@@ -64,6 +64,7 @@ export function useAudioCapture({
     }
 
     const base64Audio = float32ToBase64PCM16(resampledData);
+    console.log(`📤 [STEP 2] Sending audio chunk to server - Speaker: ${speakerName}, Size: ${base64Audio.length} chars`);
     onAudioChunk(base64Audio, speakerId, speakerName);
 
     buffer.length = 0;
@@ -104,10 +105,16 @@ export function useAudioCapture({
         localSource.connect(scriptProcessor);
         scriptProcessor.connect(audioContext.destination);
 
+        let hostChunkCount = 0;
         scriptProcessor.onaudioprocess = (event) => {
           const inputData = event.inputBuffer.getChannelData(0);
           hostBufferRef.current.push(new Float32Array(inputData));
           hostBufferSizeRef.current += inputData.length;
+          hostChunkCount++;
+
+          if (hostChunkCount % 50 === 1) {
+            console.log(`🎤 [STEP 1] HOST audio captured - Chunk #${hostChunkCount}, BufferSize: ${hostBufferSizeRef.current}`);
+          }
 
           let sum = 0;
           for (let i = 0; i < inputData.length; i++) {
@@ -140,10 +147,16 @@ export function useAudioCapture({
           remoteSource.connect(scriptProcessor);
           scriptProcessor.connect(audioContext.destination);
 
+          let prospectChunkCount = 0;
           scriptProcessor.onaudioprocess = (event) => {
             const inputData = event.inputBuffer.getChannelData(0);
             prospectBufferRef.current.push(new Float32Array(inputData));
             prospectBufferSizeRef.current += inputData.length;
+            prospectChunkCount++;
+
+            if (prospectChunkCount % 50 === 1) {
+              console.log(`🎧 [STEP 1] PROSPECT audio captured - Chunk #${prospectChunkCount}, BufferSize: ${prospectBufferSizeRef.current}`);
+            }
 
             let sum = 0;
             for (let i = 0; i < inputData.length; i++) {

@@ -135,6 +135,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           break;
 
         case 'transcript':
+          console.log(`📥 [STEP 6] Received transcript from server:`, message.data);
           setState(prev => {
             const { speakerId, speakerName, text, isPartial, turnComplete } = message.data;
             

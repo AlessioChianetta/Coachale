@@ -826,6 +826,7 @@ async function transcribeBufferedAudio(
     
     session.totalTranscriptText += ` ${transcript}`;
     
+    console.log(`📤 [STEP 5] Sending transcript to client - Speaker: ${buffer.speakerName}, Text: "${transcript.substring(0, 60)}..."`);
     sendMessage(ws, {
       type: 'transcript',
       data: {
@@ -846,7 +847,7 @@ async function transcribeBufferedAudio(
       sentiment: 'neutral',
     });
     
-    console.log(`📝 [TurnTaking] Transcribed ${buffer.speakerName}: "${transcript.substring(0, 60)}..." (partial: ${isPartial})`);
+    console.log(`📝 [STEP 5 DONE] Transcribed ${buffer.speakerName}: "${transcript.substring(0, 60)}..." (partial: ${isPartial})`);
   } else if (session.aiProviderFailed) {
     // Provider failed during this call - notify client
     sendMessage(ws, {
@@ -872,7 +873,7 @@ async function handleSilenceDetected(
   
   const buffer = turnState.currentSpeaker;
   
-  console.log(`🔇 [TurnTaking] Silence detected for ${buffer.speakerName} (${buffer.chunks.length} chunks buffered)`);
+  console.log(`🔇 [STEP 4] Silence detected for ${buffer.speakerName} (${buffer.chunks.length} chunks buffered) - Starting transcription...`);
   
   const transcript = await transcribeBufferedAudio(ws, session, buffer, true);
   
@@ -1074,12 +1075,17 @@ async function handleAudioChunk(
     console.log(`🎤 [TurnTaking] Started buffering for ${speakerName}`);
   }
 
+  const chunkSize = message.data?.length || 0;
   turnState.currentSpeaker.chunks.push({
     data: message.data,
     timestamp: Date.now(),
     durationMs: estimateChunkDuration(message.data),
   });
   turnState.currentSpeaker.lastChunkTime = Date.now();
+  
+  if (turnState.currentSpeaker.chunks.length % 20 === 1) {
+    console.log(`📦 [STEP 3] Received audio chunk from ${speakerName} - Chunks: ${turnState.currentSpeaker.chunks.length}, Size: ${chunkSize} chars`);
+  }
 
   turnState.silenceTimer = setTimeout(async () => {
     await handleSilenceDetected(ws, session, turnState!);
@@ -1096,8 +1102,9 @@ async function runSalesManagerAnalysis(
   ws: WebSocket,
   session: SessionState
 ) {
+  console.log(`🤖 [STEP 7] Starting Sales Manager Analysis...`);
   if (!session.scriptStructure || !session.consultantId) {
-    console.log(`⚠️ [VideoCopilot] Skipping Sales Manager: missing script structure or consultantId`);
+    console.log(`⚠️ [STEP 7] Skipping Sales Manager: missing script structure or consultantId`);
     return;
   }
 
