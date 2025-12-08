@@ -1,0 +1,378 @@
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔓 [VideoCopilot] Unregistered socket for participant d5a7fee9-df24-4d6f-b56f-06e74695e4ad in meeting 59d17401-8c48-4b39-a335-81ad5bc4ce61
+👋 [VideoCopilot] Participant left: Alessio Chianetta
+🔌 [vsd3kw] Client disconnected: 1000 - User disconnected
+🔇 [TurnTaking] Silence detected for Alessio Chianetta (7088 chunks buffered)
+🎤 [VideoCopilot] Transcribing audio from Alessio Chianetta (25806612 chars base64)
+⚠️ [VideoCopilot] Audio too large (19354958 bytes), truncating to 2097152 bytes
+🔄 [VideoCopilot] Truncated PCM 2097152 bytes → WAV 2097196 bytes
+🔍 [VideoCopilot] Getting AI provider (first time or cache expired)...
+🔍 Finding AI provider for client guest (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: guest)...
+⚠️ TIER 1: No client-managed Vertex AI settings found
+🔍 TIER 2: Finding Vertex AI settings for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (isConsultantUsingOwnAI: false)
+📋 TIER 2: Found 1 Vertex AI setting(s) for consultant
+🔍 Checking Vertex AI setting: managedBy=self, usageScope=both
+✅ usageScope is 'both' - access granted
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 2: Successfully created Vertex AI client (managedBy: self, usageScope: both)
+✅ [VideoCopilot] AI provider cached (source: admin)
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+📝 [VideoCopilot] Transcription result: "Allora, io sono Alessio Chianetta, sono il fondatore di Digital Coach. Digital Coach è la scuola di ..."
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+📝 [TurnTaking] Transcribed Alessio Chianetta: "Allora, io sono Alessio Chianetta, sono il fondatore di Digi..." (partial: true)
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-11-16T01:55:16.000Z
+❌ [WHATSAPP POLLING] Error for agent Marco setter: RestException [Error]: Authentication Error - invalid username
+    at MessagePage.processResponse (/home/runner/workspace/node_modules/twilio/lib/base/Page.js:135:19)
+    at new Page (/home/runner/workspace/node_modules/twilio/lib/base/Page.js:17:28)
+    at new MessagePage (/home/runner/workspace/node_modules/twilio/lib/rest/api/v2010/account/message.js:360:9)
+    at /home/runner/workspace/node_modules/twilio/lib/rest/api/v2010/account/message.js:328:63
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  status: 401,
+  code: 20003,
+  moreInfo: 'https://www.twilio.com/docs/errors/20003',
+  details: undefined
+}
+✅ [WHATSAPP POLLING] Poll cycle complete
+12:13:19 PM [express] POST /api/activity/session/heartbeat 200 in 1149ms :: {"success":true,"lastActi…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-12-08T12:15:00.020Z
+📋 Found 0 pending leads to contact
+📊 [CALENDAR SYNC] Syncing 1 consultant(s)...
+
+🔄 [CALENDAR SYNC] Starting sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+📋 Found 3 leads ready for follow-up
+📤 Processing lead: Gianluca Perna (+393933318891)
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: 881b6ed6-3910-4198-9276-0bc9c3030b50
+   Lead Name: Gianluca Perna
+   Message Type: followup_final (25 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+📤 Processing lead: Alessio Chianetta (+393890566422)
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+🔗 [OAUTH] Redirect URI for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: https://6fb176c8-5598-4daf-88b3-1430d1306410-00-19r1i4a0m8xsx.kirk.replit.dev/api/calendar-settings/oauth/callback
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: fd82df05-3a7f-449e-82f0-269935cebc5a
+   Lead Name: Alessio Chianetta
+   Message Type: followup_final (25 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+📤 Processing lead: Dario borloni (+393333887043)
+✅ Using saved calendar ID from settings: primary
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: 01e0a582-9554-4204-91be-1a77e17af14a
+   Lead Name: Dario borloni
+   Message Type: followup_final (25 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+
+✅ [PROACTIVE OUTREACH] Completed in 1760ms
+   📊 Results: 3 success, 0 errors, 3 total
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+✅ [CALENDAR SYNC] No confirmed appointments to sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b in the next 90 days
+
+✅ [CALENDAR SYNC] Sync cycle complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+12:17:56 PM [express] POST /api/activity/session/heartbeat 200 in 1205ms :: {"success":true,"lastActi…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
