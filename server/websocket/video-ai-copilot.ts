@@ -120,10 +120,60 @@ interface LobbyParticipant {
   joinedAt: number;
 }
 
+interface AudioChunk {
+  data: string;
+  timestamp: number;
+  durationMs: number;
+}
+
+interface SpeakerTurnBuffer {
+  speakerId: string;
+  speakerName: string;
+  chunks: AudioChunk[];
+  startTime: number;
+  lastChunkTime: number;
+  transcriptParts: string[];
+  fullTranscript: string;
+  role: 'host' | 'guest' | 'prospect';
+}
+
+interface TurnState {
+  meetingId: string;
+  currentSpeaker: SpeakerTurnBuffer | null;
+  previousSpeaker: SpeakerTurnBuffer | null;
+  silenceTimer: NodeJS.Timeout | null;
+  analysisDebounceTimer: NodeJS.Timeout | null;
+  lastAnalysisTime: number;
+  pendingAnalysis: boolean;
+}
+
+const TURN_TAKING_CONFIG = {
+  SILENCE_THRESHOLD_MS: 700,
+  SPEAKER_CHANGE_THRESHOLD_MS: 300,
+  LONG_PAUSE_THRESHOLD_MS: 2000,
+  ANALYSIS_DEBOUNCE_MS: 2000,
+  MIN_AUDIO_CHUNKS: 3,
+  MIN_AUDIO_DURATION_MS: 500,
+  MAX_TIME_WITHOUT_ANALYSIS_MS: 30000,
+};
+
+interface RetryConfig {
+  maxRetries: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxRetries: 5,
+  baseDelayMs: 1000,
+  maxDelayMs: 30000,
+};
+
 const activeSessions = new Map<string, SessionState>();
 const meetingClients = new Map<string, Set<WebSocket>>();
 const participantSockets = new Map<string, Map<string, WebSocket>>();
 const socketToParticipants = new Map<WebSocket, Set<{ meetingId: string; participantId: string }>>();
+const turnStates = new Map<string, TurnState>();
 const ANALYSIS_THROTTLE_MS = 3000;
 
 const lobbyParticipants = new Map<string, Map<string, LobbyParticipant>>();
@@ -284,6 +334,83 @@ function sendMessage(ws: WebSocket, message: OutgoingMessage) {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(message));
   }
+}
+
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  config: RetryConfig = DEFAULT_RETRY_CONFIG,
+  operationName: string = 'API call'
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      lastError = error;
+      
+      const is429 = error.status === 429 || 
+                    error.message?.includes('429') ||
+                    error.message?.includes('Too Many Requests') ||
+                    error.message?.includes('RESOURCE_EXHAUSTED');
+      
+      if (!is429 || attempt === config.maxRetries) {
+        throw error;
+      }
+      
+      const delay = Math.min(
+        config.baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000,
+        config.maxDelayMs
+      );
+      
+      console.log(`⚠️ [RETRY] ${operationName} - 429 error, attempt ${attempt + 1}/${config.maxRetries}, waiting ${Math.round(delay)}ms`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
+
+function createTurnState(meetingId: string): TurnState {
+  return {
+    meetingId,
+    currentSpeaker: null,
+    previousSpeaker: null,
+    silenceTimer: null,
+    analysisDebounceTimer: null,
+    lastAnalysisTime: 0,
+    pendingAnalysis: false,
+  };
+}
+
+function createSpeakerBuffer(
+  speakerId: string, 
+  speakerName: string, 
+  session: SessionState
+): SpeakerTurnBuffer {
+  const participant = session.participants.get(speakerId);
+  return {
+    speakerId,
+    speakerName,
+    chunks: [],
+    startTime: Date.now(),
+    lastChunkTime: Date.now(),
+    transcriptParts: [],
+    fullTranscript: '',
+    role: participant?.role || 'guest',
+  };
+}
+
+function combineAudioChunks(chunks: AudioChunk[]): string {
+  const buffers = chunks.map(c => Buffer.from(c.data, 'base64'));
+  const combined = Buffer.concat(buffers);
+  return combined.toString('base64');
+}
+
+function estimateChunkDuration(base64Audio: string): number {
+  const bytes = Buffer.from(base64Audio, 'base64').length;
+  return (bytes / 32000) * 1000;
 }
 
 async function transcribeAudio(
@@ -557,6 +684,205 @@ function calculateScriptProgress(session: SessionState): {
   };
 }
 
+async function transcribeBufferedAudio(
+  ws: WebSocket,
+  session: SessionState,
+  buffer: SpeakerTurnBuffer,
+  isPartial: boolean = true
+): Promise<string | null> {
+  if (buffer.chunks.length < TURN_TAKING_CONFIG.MIN_AUDIO_CHUNKS) {
+    console.log(`⏭️ [TurnTaking] Too few chunks (${buffer.chunks.length}), skipping transcription`);
+    return null;
+  }
+  
+  const combinedAudio = combineAudioChunks(buffer.chunks);
+  
+  const transcript = await withRetry(
+    () => transcribeAudio(session, combinedAudio, buffer.speakerId, buffer.speakerName),
+    DEFAULT_RETRY_CONFIG,
+    `Transcription for ${buffer.speakerName}`
+  );
+  
+  if (transcript) {
+    buffer.transcriptParts.push(transcript);
+    buffer.fullTranscript = buffer.transcriptParts.join(' ');
+    
+    session.totalTranscriptText += ` ${transcript}`;
+    
+    sendMessage(ws, {
+      type: 'transcript',
+      data: {
+        speakerId: buffer.speakerId,
+        speakerName: buffer.speakerName,
+        text: transcript,
+        isPartial,
+        turnComplete: !isPartial,
+      },
+      timestamp: Date.now(),
+    });
+    
+    session.transcriptBuffer.push({
+      speakerId: buffer.speakerId,
+      speakerName: buffer.speakerName,
+      text: transcript,
+      timestamp: Date.now(),
+      sentiment: 'neutral',
+    });
+    
+    console.log(`📝 [TurnTaking] Transcribed ${buffer.speakerName}: "${transcript.substring(0, 60)}..." (partial: ${isPartial})`);
+  }
+  
+  buffer.chunks = [];
+  
+  return transcript;
+}
+
+async function handleSilenceDetected(
+  ws: WebSocket,
+  session: SessionState,
+  turnState: TurnState
+) {
+  if (!turnState.currentSpeaker) return;
+  
+  const buffer = turnState.currentSpeaker;
+  
+  console.log(`🔇 [TurnTaking] Silence detected for ${buffer.speakerName} (${buffer.chunks.length} chunks buffered)`);
+  
+  const transcript = await transcribeBufferedAudio(ws, session, buffer, true);
+  
+  if (transcript) {
+    const participant = session.participants.get(buffer.speakerId);
+    if (participant?.role === 'prospect') {
+      try {
+        const battleCard = await withRetry(
+          () => detectObjectionAndGenerateBattleCard(session, transcript),
+          DEFAULT_RETRY_CONFIG,
+          'Battle card detection'
+        );
+        if (battleCard?.detected) {
+          sendMessage(ws, {
+            type: 'battle_card',
+            data: battleCard,
+            timestamp: Date.now(),
+          });
+        }
+      } catch (error) {
+        console.error(`❌ [TurnTaking] Battle card detection error:`, error);
+      }
+    }
+  }
+}
+
+async function finalizeTurn(
+  ws: WebSocket,
+  session: SessionState,
+  turnState: TurnState
+) {
+  const buffer = turnState.currentSpeaker;
+  if (!buffer) return;
+  
+  console.log(`🏁 [TurnTaking] Finalizing turn for ${buffer.speakerName}`);
+  
+  if (buffer.chunks.length >= TURN_TAKING_CONFIG.MIN_AUDIO_CHUNKS) {
+    await transcribeBufferedAudio(ws, session, buffer, false);
+  }
+  
+  if (buffer.fullTranscript) {
+    sendMessage(ws, {
+      type: 'transcript',
+      data: {
+        speakerId: buffer.speakerId,
+        speakerName: buffer.speakerName,
+        text: buffer.fullTranscript,
+        isPartial: false,
+        turnComplete: true,
+      },
+      timestamp: Date.now(),
+    });
+    
+    const speakerRole = buffer.role === 'host' ? 'assistant' : 'user';
+    session.conversationMessages.push({
+      role: speakerRole,
+      content: buffer.fullTranscript,
+      timestamp: new Date().toISOString(),
+    });
+    
+    console.log(`✅ [TurnTaking] Turn complete: ${buffer.speakerName} - "${buffer.fullTranscript.substring(0, 80)}..."`);
+  }
+}
+
+function scheduleAnalysis(
+  ws: WebSocket,
+  session: SessionState,
+  turnState: TurnState
+) {
+  if (turnState.analysisDebounceTimer) {
+    clearTimeout(turnState.analysisDebounceTimer);
+  }
+  
+  turnState.pendingAnalysis = true;
+  
+  turnState.analysisDebounceTimer = setTimeout(async () => {
+    if (!turnState.pendingAnalysis) return;
+    
+    const hasPreviousTurn = turnState.previousSpeaker?.fullTranscript && turnState.previousSpeaker.fullTranscript.length > 10;
+    const hasCurrentTurn = turnState.currentSpeaker?.fullTranscript && turnState.currentSpeaker.fullTranscript.length > 10;
+    
+    if (!hasPreviousTurn && !hasCurrentTurn) {
+      console.log(`⏭️ [TurnTaking] No complete turns for analysis, skipping`);
+      return;
+    }
+    
+    console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`🎯 [TURN-EXCHANGE] Analysis after turn exchange`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    if (turnState.previousSpeaker?.fullTranscript) {
+      console.log(`   Previous: ${turnState.previousSpeaker.speakerName}`);
+      console.log(`   → "${turnState.previousSpeaker.fullTranscript.substring(0, 80)}..."`);
+    }
+    if (turnState.currentSpeaker?.fullTranscript) {
+      console.log(`   Current: ${turnState.currentSpeaker.speakerName}`);
+      console.log(`   → "${turnState.currentSpeaker.fullTranscript.substring(0, 80)}..."`);
+    }
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    
+    try {
+      await runSalesManagerAnalysis(ws, session);
+      
+      const recentTranscripts = session.transcriptBuffer
+        .slice(-10)
+        .map(t => `${t.speakerName}: ${t.text}`)
+        .join('\n');
+      
+      const suggestion = await withRetry(
+        () => generateSuggestion(session, recentTranscripts),
+        DEFAULT_RETRY_CONFIG,
+        'Suggestion generation'
+      );
+      
+      if (suggestion) {
+        sendMessage(ws, {
+          type: 'suggestion',
+          data: { text: suggestion },
+          timestamp: Date.now(),
+        });
+      }
+      
+      sendMessage(ws, {
+        type: 'script_progress',
+        data: calculateScriptProgress(session),
+        timestamp: Date.now(),
+      });
+    } catch (error) {
+      console.error(`❌ [TurnTaking] Analysis error:`, error);
+    }
+    
+    turnState.lastAnalysisTime = Date.now();
+    turnState.pendingAnalysis = false;
+    
+  }, TURN_TAKING_CONFIG.ANALYSIS_DEBOUNCE_MS);
+}
+
 async function handleAudioChunk(
   ws: WebSocket,
   session: SessionState,
@@ -571,100 +897,58 @@ async function handleAudioChunk(
     return;
   }
 
+  const { meetingId } = session;
+  const speakerId = message.speakerId;
   const speakerName = message.speakerName || 
-    session.participants.get(message.speakerId)?.name || 
+    session.participants.get(speakerId)?.name || 
     'Unknown Speaker';
 
-  const transcript = await transcribeAudio(
-    session,
-    message.data,
-    message.speakerId,
-    speakerName
-  );
+  let turnState = turnStates.get(meetingId);
+  if (!turnState) {
+    turnState = createTurnState(meetingId);
+    turnStates.set(meetingId, turnState);
+    console.log(`🆕 [TurnTaking] Created turn state for meeting ${meetingId}`);
+  }
 
-  if (transcript) {
-    session.totalTranscriptText += ` ${transcript}`;
+  if (turnState.silenceTimer) {
+    clearTimeout(turnState.silenceTimer);
+    turnState.silenceTimer = null;
+  }
+
+  const isNewSpeaker = !turnState.currentSpeaker || 
+                       turnState.currentSpeaker.speakerId !== speakerId;
+
+  if (isNewSpeaker && turnState.currentSpeaker) {
+    console.log(`🔄 [TurnTaking] Speaker change: ${turnState.currentSpeaker.speakerName} → ${speakerName}`);
     
-    sendMessage(ws, {
-      type: 'transcript',
-      data: {
-        speakerId: message.speakerId,
-        speakerName,
-        text: transcript,
-      },
-      timestamp: Date.now(),
-    });
-
-    const sentiment = await analyzeSentiment(session, transcript, message.speakerId);
+    await finalizeTurn(ws, session, turnState);
     
-    session.transcriptBuffer.push({
-      speakerId: message.speakerId,
-      speakerName,
-      text: transcript,
-      timestamp: Date.now(),
-      sentiment,
-    });
+    turnState.previousSpeaker = turnState.currentSpeaker;
+    turnState.currentSpeaker = createSpeakerBuffer(speakerId, speakerName, session);
+    
+    scheduleAnalysis(ws, session, turnState);
+  }
 
-    sendMessage(ws, {
-      type: 'sentiment',
-      data: {
-        speakerId: message.speakerId,
-        speakerName,
-        sentiment,
-      },
-      timestamp: Date.now(),
-    });
+  if (!turnState.currentSpeaker) {
+    turnState.currentSpeaker = createSpeakerBuffer(speakerId, speakerName, session);
+    console.log(`🎤 [TurnTaking] Started buffering for ${speakerName}`);
+  }
 
-    const participant = session.participants.get(message.speakerId);
-    if (participant?.role === 'prospect') {
-      const battleCard = await detectObjectionAndGenerateBattleCard(session, transcript);
-      if (battleCard?.detected) {
-        sendMessage(ws, {
-          type: 'battle_card',
-          data: battleCard,
-          timestamp: Date.now(),
-        });
-      }
-    }
+  turnState.currentSpeaker.chunks.push({
+    data: message.data,
+    timestamp: Date.now(),
+    durationMs: estimateChunkDuration(message.data),
+  });
+  turnState.currentSpeaker.lastChunkTime = Date.now();
 
-    const now = Date.now();
-    if (now - session.lastAnalysisTime > ANALYSIS_THROTTLE_MS) {
-      session.lastAnalysisTime = now;
-      
-      const recentTranscripts = session.transcriptBuffer
-        .slice(-10)
-        .map(t => `${t.speakerName}: ${t.text}`)
-        .join('\n');
-      
-      const suggestion = await generateSuggestion(session, recentTranscripts);
-      if (suggestion) {
-        sendMessage(ws, {
-          type: 'suggestion',
-          data: { text: suggestion },
-          timestamp: Date.now(),
-        });
-      }
+  turnState.silenceTimer = setTimeout(async () => {
+    await handleSilenceDetected(ws, session, turnState!);
+  }, TURN_TAKING_CONFIG.SILENCE_THRESHOLD_MS);
 
-      sendMessage(ws, {
-        type: 'script_progress',
-        data: calculateScriptProgress(session),
-        timestamp: Date.now(),
-      });
-    }
-
-    const speakerRole = participant?.role === 'host' ? 'assistant' : 'user';
-    session.conversationMessages.push({
-      role: speakerRole,
-      content: transcript,
-      timestamp: new Date().toISOString(),
-    });
-
-    const SALES_MANAGER_THROTTLE_MS = 5000;
-    if (now - session.lastSalesManagerAnalysisTime > SALES_MANAGER_THROTTLE_MS) {
-      session.lastSalesManagerAnalysisTime = now;
-      
-      await runSalesManagerAnalysis(ws, session);
-    }
+  const timeSinceLastAnalysis = Date.now() - turnState.lastAnalysisTime;
+  if (timeSinceLastAnalysis > TURN_TAKING_CONFIG.MAX_TIME_WITHOUT_ANALYSIS_MS) {
+    console.log(`⏰ [TurnTaking] Forcing analysis after ${Math.round(timeSinceLastAnalysis / 1000)}s`);
+    scheduleAnalysis(ws, session, turnState);
   }
 }
 
