@@ -194,7 +194,11 @@ async function authenticateConnection(req: any): Promise<{
         .where(eq(humanSellers.id, meeting.sellerId))
         .limit(1);
       
-      if (seller?.clientId) {
+      // CRITICAL: Use seller.consultantId for Vertex AI credentials lookup (consultant hierarchy)
+      // Falls back to seller.clientId if no consultant configured
+      if (seller?.consultantId) {
+        consultantId = seller.consultantId;
+      } else if (seller?.clientId) {
         consultantId = seller.clientId;
       }
     }

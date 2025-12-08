@@ -15,6 +15,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 import { getAIProvider } from "./provider-factory";
+import { retryWithBackoff, type AiRetryContext } from "./retry-manager";
 import { StepAdvancementAgent, type CheckpointAnalysisResult } from "./step-advancement-agent";
 import { 
   type ArchetypeId, 
@@ -1759,22 +1760,40 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     detectedArchetype?: ArchetypeId | null;
     archetypeReasoning?: string | null;
   }> {
-    const { client: aiClient, cleanup } = await getAIProvider(params.clientId, params.consultantId);
+    const { client: aiClient, cleanup, provider } = await getAIProvider(params.clientId, params.consultantId);
+
+    // Retry context for error recovery (500/503)
+    const retryContext: AiRetryContext = {
+      conversationId: `sales-manager-${params.clientId}`,
+      provider: {
+        name: provider?.name || 'Google AI Studio',
+        managedBy: provider?.managedBy,
+      },
+      emit: () => {}, // No-op for internal non-streaming calls
+    };
 
     try {
       const prompt = this.buildAdvancementPrompt(params);
 
-      const response = await Promise.race([
-        aiClient.generateContent({
-          model: this.MODEL,
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0,
-            maxOutputTokens: 800,
-          }
-        }),
-        this.timeout(this.TIMEOUT_MS)
-      ]);
+      const response = await retryWithBackoff(
+        async (attemptCtx) => {
+          console.log(`🔄 [SALES-MANAGER] AI call attempt ${attemptCtx.attempt + 1}/${attemptCtx.maxAttempts}...`);
+          
+          return Promise.race([
+            aiClient.generateContent({
+              model: this.MODEL,
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: {
+                temperature: 0,
+                maxOutputTokens: 800,
+              }
+            }),
+            this.timeout(this.TIMEOUT_MS)
+          ]);
+        },
+        retryContext,
+        { maxAttempts: 3 } // 3 attempts for internal calls
+      );
 
       if (!response || typeof response === 'string') {
         console.warn(`⚠️ [SALES-MANAGER] AI response was null or timeout.`);

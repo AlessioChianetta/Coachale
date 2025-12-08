@@ -93,14 +93,19 @@ export interface OperationAttemptContext {
  */
 export function isRetryableError(error: any): boolean {
   return (
+    error.status === 500 ||
     error.status === 503 ||
     error.status === 'UNAVAILABLE' ||
     error.status === 'SERVICE_UNAVAILABLE' ||
+    error.status === 'INTERNAL' ||
     (error.error && error.error.status === 'UNAVAILABLE') ||
+    (error.error && error.error.code === 500) ||
     (error.error && error.error.code === 503) ||
+    (error.message && error.message.includes('500')) ||
     (error.message && error.message.includes('503')) ||
     (error.message && error.message.toLowerCase().includes('overloaded')) ||
-    (error.message && error.message.toLowerCase().includes('unavailable'))
+    (error.message && error.message.toLowerCase().includes('unavailable')) ||
+    (error.message && error.message.toLowerCase().includes('internal'))
   );
 }
 
