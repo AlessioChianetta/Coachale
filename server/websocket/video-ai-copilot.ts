@@ -5,7 +5,7 @@ import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, human
 import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
 import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
-import { SalesManagerAgent, type SalesManagerAnalysis, type ArchetypeState, type ConversationMessage } from '../ai/sales-manager-agent';
+import { SalesManagerAgent, type SalesManagerAnalysis, type ArchetypeState, type ConversationMessage, type BusinessContext } from '../ai/sales-manager-agent';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -64,6 +64,7 @@ interface SessionState {
   archetypeState: ArchetypeState | null;
   scriptStructure: any | null;
   coachingMetrics: CoachingMetrics;
+  businessContext: BusinessContext | null;
 }
 
 interface IncomingMessage {
@@ -144,6 +145,7 @@ async function authenticateConnection(req: any): Promise<{
   sellerId: string | null;
   playbookId: string | null;
   isGuest: boolean;
+  businessContext: BusinessContext | null;
 } | null> {
   try {
     const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -187,6 +189,8 @@ async function authenticateConnection(req: any): Promise<{
     }
 
     let consultantId: string | null = null;
+    let businessContext: BusinessContext | null = null;
+    
     if (meeting.sellerId) {
       const [seller] = await db
         .select()
@@ -194,19 +198,49 @@ async function authenticateConnection(req: any): Promise<{
         .where(eq(humanSellers.id, meeting.sellerId))
         .limit(1);
       
-      // CRITICAL: Consultant hierarchy traversal for Vertex AI credentials
-      // Priority: seller.consultantId → client.consultantId → clientId (self-managed)
-      if (seller?.consultantId) {
-        consultantId = seller.consultantId;
-      } else if (seller?.clientId) {
-        // Look up client's consultant if seller doesn't have one configured
-        const [client] = await db
-          .select({ consultantId: users.consultantId })
-          .from(users)
-          .where(eq(users.id, seller.clientId))
-          .limit(1);
+      if (seller) {
+        // Build BusinessContext from seller data
+        // Parse servicesOffered safely (could be JSON string or already parsed array)
+        let parsedServices: string[] = [];
+        try {
+          const rawServices = seller.servicesOffered;
+          if (rawServices) {
+            const servicesArray = typeof rawServices === 'string' 
+              ? JSON.parse(rawServices) 
+              : rawServices;
+            if (Array.isArray(servicesArray)) {
+              parsedServices = servicesArray.map((s: any) => 
+                typeof s === 'string' ? s : (s?.name || String(s))
+              ).filter(Boolean);
+            }
+          }
+        } catch (parseError) {
+          console.warn(`⚠️ [VideoCopilot] Failed to parse servicesOffered:`, parseError);
+        }
+
+        businessContext = {
+          businessName: seller.businessName || seller.sellerName || 'Azienda',
+          whatWeDo: seller.whatWeDo || seller.businessDescription || '',
+          servicesOffered: parsedServices,
+          targetClient: seller.targetClient || '',
+          nonTargetClient: seller.nonTargetClient || '',
+        };
+        console.log(`📦 [VideoCopilot] Loaded business context for seller: ${businessContext.businessName} (${parsedServices.length} services)`);
         
-        consultantId = client?.consultantId || seller.clientId;
+        // CRITICAL: Consultant hierarchy traversal for Vertex AI credentials
+        // Priority: seller.consultantId → client.consultantId → clientId (self-managed)
+        if (seller.consultantId) {
+          consultantId = seller.consultantId;
+        } else if (seller.clientId) {
+          // Look up client's consultant if seller doesn't have one configured
+          const [client] = await db
+            .select({ consultantId: users.consultantId })
+            .from(users)
+            .where(eq(users.id, seller.clientId))
+            .limit(1);
+          
+          consultantId = client?.consultantId || seller.clientId;
+        }
       }
     }
 
@@ -229,7 +263,7 @@ async function authenticateConnection(req: any): Promise<{
       }
     }
 
-    console.log(`✅ [VideoCopilot] Connection authenticated - Meeting: ${meeting.id}, Guest: ${isGuest}`);
+    console.log(`✅ [VideoCopilot] Connection authenticated - Meeting: ${meeting.id}, Guest: ${isGuest}, BusinessContext: ${businessContext ? 'loaded' : 'none'}`);
 
     return {
       meetingId: meeting.id,
@@ -238,6 +272,7 @@ async function authenticateConnection(req: any): Promise<{
       sellerId: meeting.sellerId,
       playbookId,
       isGuest,
+      businessContext,
     };
   } catch (error: any) {
     console.error('❌ [VideoCopilot] Auth error:', error.message);
@@ -691,6 +726,7 @@ async function runSalesManagerAnalysis(
       consultantId: session.consultantId,
       archetypeState: session.archetypeState || undefined,
       currentTurn: session.conversationMessages.length,
+      businessContext: session.businessContext || undefined,
     });
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1733,7 +1769,7 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
       return;
     }
 
-    const { meetingId, clientId, consultantId, sellerId, playbookId } = authResult;
+    const { meetingId, clientId, consultantId, sellerId, playbookId, businessContext } = authResult;
 
     let session = activeSessions.get(meetingId);
     if (!session) {
@@ -1761,6 +1797,7 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
           prospectArchetype: null,
           sessionStartTime: Date.now(),
         },
+        businessContext: businessContext || null,
       };
       activeSessions.set(meetingId, session);
     }
