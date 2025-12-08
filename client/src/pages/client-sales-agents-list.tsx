@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
@@ -21,14 +21,10 @@ import {
   Clock,
   FileText,
   HelpCircle,
-  Sparkles,
-  Menu,
-  ArrowRight,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -53,8 +49,7 @@ import { getAuthHeaders } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import Sidebar from '@/components/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-const VertexAnalyticsDashboard = lazy(() => import('@/components/vertex-analytics-dashboard'));
+import { Menu } from 'lucide-react';
 
 interface SalesAgent {
   id: string;
@@ -84,7 +79,6 @@ export default function ClientSalesAgentsList() {
   const [scheduledDate, setScheduledDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [activeTab, setActiveTab] = useState('agents');
 
   const { data: agents = [], isLoading } = useQuery<SalesAgent[]>({
     queryKey: ['/api/client/sales-agent/config'],
@@ -213,234 +207,13 @@ export default function ClientSalesAgentsList() {
     },
   });
 
-  const AgentsListContent = () => (
-    <>
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-lg text-gray-600 dark:text-gray-400">
-              I tuoi assistenti di vendita intelligenti
-            </p>
-          </div>
-          <Button
-            size="lg"
-            className="bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg"
-            onClick={() => setLocation('/client/sales-agents/new')}
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Nuovo Agente
-          </Button>
-        </div>
-      </motion.div>
-
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="bg-white dark:bg-gray-800 animate-pulse">
-              <CardContent className="p-6">
-                <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : agents.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-        >
-          <Card className="bg-white dark:bg-gray-800 border-dashed border-2 border-gray-300 dark:border-gray-700">
-            <CardContent className="p-12 text-center">
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center mx-auto mb-6 border border-blue-500/30">
-                <Bot className="h-12 w-12 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                Nessun agente creato
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                Crea il tuo primo assistente di vendita AI per iniziare a convertire prospect automaticamente 24/7
-              </p>
-              <Button
-                size="lg"
-                className="bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
-                onClick={() => setLocation('/client/sales-agents/new')}
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Crea Primo Agente
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.map((agent, index) => (
-            <motion.div
-              key={agent.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 h-full group">
-                <CardContent className="p-6 flex flex-col h-full">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                      <Bot className="h-7 w-7 text-white" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={agent.isActive ? 'default' : 'secondary'}
-                        className={agent.isActive ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'}
-                      >
-                        {agent.isActive ? (
-                          <>
-                            <Power className="h-3 w-3 mr-1" />
-                            Attivo
-                          </>
-                        ) : (
-                          <>
-                            <PowerOff className="h-3 w-3 mr-1" />
-                            Spento
-                          </>
-                        )}
-                      </Badge>
-                      {agent._conversationCount && agent._conversationCount > 0 && (
-                        <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700">
-                          <MessageSquare className="h-3 w-3 mr-1" />
-                          {agent._conversationCount}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
-                    {agent.agentName}
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    {agent.displayName} • {agent.businessName}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
-                    Creato il {new Date(agent.createdAt).toLocaleDateString('it-IT')}
-                  </p>
-
-                  <div className="flex-grow" />
-
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                      <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                      <input
-                        type="text"
-                        value={getPublicUrl(agent.shareToken)}
-                        readOnly
-                        className="flex-1 bg-transparent text-xs text-gray-700 dark:text-gray-300 outline-none"
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => copyToClipboard(getPublicUrl(agent.shareToken), 'Link pubblico')}
-                        className="h-7 w-7 p-0"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button
-                    size="sm"
-                    onClick={() => handleGenerateInvite(agent)}
-                    className="w-full mb-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-                  >
-                    <Link2 className="h-3 w-3 mr-1.5" />
-                    Genera Link Invito
-                  </Button>
-
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setLocation(`/client/sales-agents/${agent.id}`)}
-                      className="text-xs"
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      Modifica
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setLocation(`/client/sales-agents/${agent.id}/analytics`)}
-                      className="text-xs"
-                    >
-                      <BarChart3 className="h-3 w-3 mr-1" />
-                      Analytics
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setLocation(`/client/sales-agents/${agent.id}/scripts`)}
-                      className="text-xs"
-                    >
-                      <FileText className="h-3 w-3 mr-1" />
-                      Script
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleQrCode(agent)}
-                      className="text-xs"
-                      title="Visualizza QR Code"
-                    >
-                      <QrCode className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => toggleActiveMutation.mutate({ agentId: agent.id, isActive: agent.isActive })}
-                      className="text-xs"
-                      title={agent.isActive ? 'Disattiva' : 'Attiva'}
-                    >
-                      {agent.isActive ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setLocation('/client/faq')}
-                      className="text-xs"
-                      title="Visualizza Guida"
-                    >
-                      <HelpCircle className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(agent)}
-                      className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      title="Elimina Agente"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      )}
-    </>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
       <div className="flex h-screen">
         <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 overflow-y-auto bg-transparent">
+          {/* Header with menu button */}
           <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700">
             <div className="px-4 md:px-8 py-3 flex items-center gap-3">
               <Button
@@ -453,95 +226,232 @@ export default function ClientSalesAgentsList() {
               </Button>
               <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <Bot className="h-6 w-6 text-blue-600" />
-                Agenti AI
+                Sales Agents AI
               </h1>
             </div>
-            
-            <div className="px-4 md:px-8 pb-2">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-3">
-                  <TabsTrigger value="agents" className="flex items-center gap-2">
-                    <Bot className="h-4 w-4" />
-                    <span className="hidden sm:inline">Gestione Agenti</span>
-                    <span className="sm:hidden">Agenti</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="analytics" className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    <span className="hidden sm:inline">AI Analytics</span>
-                    <span className="sm:hidden">Analytics</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="scripts" className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span className="hidden sm:inline">Script Manager</span>
-                    <span className="sm:hidden">Script</span>
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
           </div>
 
+          {/* Main Content */}
           <div className="p-4 sm:p-8">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsContent value="agents" className="mt-0">
-                <AgentsListContent />
-              </TabsContent>
-              
-              <TabsContent value="analytics" className="mt-0">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-lg text-gray-600 dark:text-gray-400">
+                    I tuoi assistenti di vendita intelligenti
+                  </p>
+                </div>
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg"
+                  onClick={() => setLocation('/client/sales-agents/new')}
                 >
-                  <Suspense 
-                    fallback={
-                      <Card className="bg-white dark:bg-gray-800">
-                        <CardContent className="p-12 text-center">
-                          <Sparkles className="h-16 w-16 mx-auto mb-4 text-purple-400 animate-pulse" />
-                          <p className="text-gray-600 dark:text-gray-400">Caricamento analytics Vertex AI...</p>
-                        </CardContent>
-                      </Card>
-                    }
-                  >
-                    <VertexAnalyticsDashboard />
-                  </Suspense>
-                </motion.div>
-              </TabsContent>
-              
-              <TabsContent value="scripts" className="mt-0">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                    <CardContent className="p-8 text-center">
-                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center mx-auto mb-6 border border-amber-500/30">
-                        <FileText className="h-10 w-10 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-                        Script Manager
-                      </h3>
-                      <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                        Crea e gestisci script di vendita personalizzati per i tuoi agenti AI. Definisci fasi, domande e strategie di conversazione.
-                      </p>
-                      <Button
-                        size="lg"
-                        className="bg-gradient-to-br from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white"
-                        onClick={() => setLocation('/client/scripts')}
-                      >
-                        <FileText className="h-5 w-5 mr-2" />
-                        Apri Script Manager
-                        <ArrowRight className="h-5 w-5 ml-2" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
-      </div>
+                  <Plus className="h-5 w-5 mr-2" />
+                  Nuovo Agente
+                </Button>
+              </div>
+        </motion.div>
 
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="bg-white dark:bg-gray-800 animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded mb-4" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : agents.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <Card className="bg-white dark:bg-gray-800 border-dashed border-2 border-gray-300 dark:border-gray-700">
+              <CardContent className="p-12 text-center">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center mx-auto mb-6 border border-blue-500/30">
+                  <Bot className="h-12 w-12 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                  Nessun agente creato
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
+                  Crea il tuo primo assistente di vendita AI per iniziare a convertire prospect automaticamente 24/7
+                </p>
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
+                  onClick={() => setLocation('/client/sales-agents/new')}
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Crea Primo Agente
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {agents.map((agent, index) => (
+              <motion.div
+                key={agent.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 h-full group">
+                  <CardContent className="p-6 flex flex-col h-full">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                        <Bot className="h-7 w-7 text-white" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={agent.isActive ? 'default' : 'secondary'}
+                          className={agent.isActive ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'}
+                        >
+                          {agent.isActive ? (
+                            <>
+                              <Power className="h-3 w-3 mr-1" />
+                              Attivo
+                            </>
+                          ) : (
+                            <>
+                              <PowerOff className="h-3 w-3 mr-1" />
+                              Spento
+                            </>
+                          )}
+                        </Badge>
+                        {agent._conversationCount && agent._conversationCount > 0 && (
+                          <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700">
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            {agent._conversationCount}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                      {agent.agentName}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      {agent.displayName} • {agent.businessName}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
+                      Creato il {new Date(agent.createdAt).toLocaleDateString('it-IT')}
+                    </p>
+
+                    <div className="flex-grow" />
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+                        <ExternalLink className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        <input
+                          type="text"
+                          value={getPublicUrl(agent.shareToken)}
+                          readOnly
+                          className="flex-1 bg-transparent text-xs text-gray-700 dark:text-gray-300 outline-none"
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => copyToClipboard(getPublicUrl(agent.shareToken), 'Link pubblico')}
+                          className="h-7 w-7 p-0"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      onClick={() => handleGenerateInvite(agent)}
+                      className="w-full mb-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+                    >
+                      <Link2 className="h-3 w-3 mr-1.5" />
+                      Genera Link Invito
+                    </Button>
+
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLocation(`/client/sales-agents/${agent.id}`)}
+                        className="text-xs"
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Modifica
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLocation(`/client/sales-agents/${agent.id}/analytics`)}
+                        className="text-xs"
+                      >
+                        <BarChart3 className="h-3 w-3 mr-1" />
+                        Analytics
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLocation(`/client/sales-agents/${agent.id}/scripts`)}
+                        className="text-xs"
+                      >
+                        <FileText className="h-3 w-3 mr-1" />
+                        Script
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleQrCode(agent)}
+                        className="text-xs"
+                        title="Visualizza QR Code"
+                      >
+                        <QrCode className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => toggleActiveMutation.mutate({ agentId: agent.id, isActive: agent.isActive })}
+                        className="text-xs"
+                        title={agent.isActive ? 'Disattiva' : 'Attiva'}
+                      >
+                        {agent.isActive ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLocation('/client/faq')}
+                        className="text-xs"
+                        title="Visualizza Guida"
+                      >
+                        <HelpCircle className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(agent)}
+                        className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        title="Elimina Agente"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -563,6 +473,7 @@ export default function ClientSalesAgentsList() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* QR Code Dialog - Placeholder for now */}
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -593,6 +504,7 @@ export default function ClientSalesAgentsList() {
         </DialogContent>
       </Dialog>
 
+      {/* Generate Invite Dialog */}
       <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -697,7 +609,7 @@ export default function ClientSalesAgentsList() {
 
               <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Tip: Se programmi un orario, il prospect potrà accedere solo nella fascia oraria specificata. Senza orario, il link non scade mai.
+                  💡 Tip: Se programmi un orario, il prospect potrà accedere solo nella fascia oraria specificata. Senza orario, il link non scade mai.
                 </p>
               </div>
             </div>
@@ -730,7 +642,7 @@ export default function ClientSalesAgentsList() {
 
               <div className="bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-lg p-3">
                 <p className="text-sm text-purple-800 dark:text-purple-200">
-                  Link pronto! Condividilo con il prospect tramite email, WhatsApp o qualsiasi altro canale.
+                  ✅ Link pronto! Condividilo con il prospect tramite email, WhatsApp o qualsiasi altro canale.
                 </p>
               </div>
             </div>
@@ -794,6 +706,9 @@ export default function ClientSalesAgentsList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
