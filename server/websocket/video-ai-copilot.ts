@@ -79,7 +79,7 @@ interface SessionState {
 }
 
 interface IncomingMessage {
-  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'lobby_join' | 'lobby_leave' | 'speaking_state';
+  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'lobby_join' | 'lobby_leave' | 'speaking_state' | 'speech_start' | 'speech_end';
   data?: string;
   speakerId?: string;
   speakerName?: string;
@@ -898,6 +898,116 @@ async function handleSilenceDetected(
       }
     }
   }
+}
+
+function handleSpeechStart(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage
+) {
+  const { meetingId } = session;
+  const speakerId = message.speakerId;
+  const speakerName = message.speakerName || 'Unknown Speaker';
+  
+  console.log(`🎤 [VAD-SPEECH-START] ${speakerName} started speaking (client VAD)`);
+  
+  let turnState = turnStates.get(meetingId);
+  if (!turnState) {
+    turnState = createTurnState(meetingId);
+    turnStates.set(meetingId, turnState);
+  }
+  
+  if (turnState.silenceTimer) {
+    clearTimeout(turnState.silenceTimer);
+    turnState.silenceTimer = null;
+  }
+  
+  const isNewSpeaker = !turnState.currentSpeaker || 
+                       turnState.currentSpeaker.speakerId !== speakerId;
+  
+  if (isNewSpeaker && turnState.currentSpeaker) {
+    console.log(`🔄 [VAD] Speaker change detected: ${turnState.currentSpeaker.speakerName} → ${speakerName}`);
+    turnState.previousSpeaker = turnState.currentSpeaker;
+    turnState.currentSpeaker = createSpeakerBuffer(speakerId!, speakerName, session);
+    scheduleAnalysis(ws, session, turnState);
+  } else if (!turnState.currentSpeaker) {
+    turnState.currentSpeaker = createSpeakerBuffer(speakerId!, speakerName, session);
+  }
+}
+
+async function handleSpeechEndFromClient(
+  ws: WebSocket,
+  session: SessionState,
+  message: IncomingMessage
+) {
+  const { meetingId } = session;
+  const speakerId = message.speakerId;
+  const speakerName = message.speakerName || 'Unknown Speaker';
+  
+  console.log(`🔇 [VAD-SPEECH-END] ${speakerName} stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!`);
+  
+  const turnState = turnStates.get(meetingId);
+  if (!turnState || !turnState.currentSpeaker) {
+    console.log(`⚠️ [VAD-SPEECH-END] No turn state or speaker buffer for ${speakerName}`);
+    return;
+  }
+  
+  if (turnState.silenceTimer) {
+    clearTimeout(turnState.silenceTimer);
+    turnState.silenceTimer = null;
+  }
+  
+  const buffer = turnState.currentSpeaker;
+  
+  if (buffer.speakerId !== speakerId) {
+    console.log(`⚠️ [VAD-SPEECH-END] Speaker mismatch: buffer=${buffer.speakerName}, message=${speakerName}`);
+    return;
+  }
+  
+  if (buffer.chunks.length < TURN_TAKING_CONFIG.MIN_AUDIO_CHUNKS) {
+    console.log(`⏭️ [VAD-SPEECH-END] Too little audio (${buffer.chunks.length} chunks), skipping`);
+    return;
+  }
+  
+  console.log(`⚡ [TRUST-THE-CLIENT] Transcribing ${buffer.chunks.length} chunks immediately (no server-side delay)`);
+  
+  const transcript = await transcribeBufferedAudio(ws, session, buffer, false);
+  
+  if (transcript) {
+    const speakerRole = buffer.role === 'host' ? 'assistant' : 'user';
+    session.conversationMessages.push({
+      role: speakerRole,
+      content: buffer.fullTranscript || transcript,
+      timestamp: new Date().toISOString(),
+    });
+    
+    console.log(`✅ [VAD-SPEECH-END] Turn finalized: ${buffer.speakerName} - "${(buffer.fullTranscript || transcript).substring(0, 80)}..."`);
+    
+    const participant = session.participants.get(buffer.speakerId);
+    if (participant?.role === 'prospect') {
+      try {
+        const battleCard = await withRetry(
+          () => detectObjectionAndGenerateBattleCard(session, transcript),
+          DEFAULT_RETRY_CONFIG,
+          'Battle card detection'
+        );
+        if (battleCard?.detected) {
+          sendMessage(ws, {
+            type: 'battle_card',
+            data: battleCard,
+            timestamp: Date.now(),
+          });
+        }
+      } catch (error) {
+        console.error(`❌ [VAD-SPEECH-END] Battle card detection error:`, error);
+      }
+    }
+  }
+  
+  turnState.previousSpeaker = buffer;
+  turnState.currentSpeaker = null;
+  
+  scheduleAnalysis(ws, session, turnState);
 }
 
 async function finalizeTurn(
@@ -2362,6 +2472,12 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
             break;
           case 'speaking_state':
             handleSpeakingState(ws, session!, message, broadcast);
+            break;
+          case 'speech_start':
+            handleSpeechStart(ws, session!, message);
+            break;
+          case 'speech_end':
+            await handleSpeechEndFromClient(ws, session!, message);
             break;
           default:
             console.warn(`⚠️ [VideoCopilot] Unknown message type: ${(message as any).type}`);

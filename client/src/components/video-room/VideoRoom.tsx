@@ -9,7 +9,7 @@ import { useVideoCopilot } from '@/hooks/useVideoCopilot';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { useAudioLevelMonitor } from '@/hooks/useAudioLevelMonitor';
 import { useSalesCoaching } from './hooks/useSalesCoaching';
-import { useAudioCapture } from './hooks/useAudioCapture';
+import { useVADAudioCapture } from './hooks/useVADAudioCapture';
 import { Loader2 } from 'lucide-react';
 
 export interface VideoRoomProps {
@@ -74,6 +74,8 @@ export default function VideoRoom({
     setCoachingMessageHandler,
     sendSpeakingState,
     sendAudioChunk,
+    sendSpeechStart,
+    sendSpeechEnd,
   } = useVideoCopilot(meeting?.meetingToken ?? null);
 
   const {
@@ -124,13 +126,17 @@ export default function VideoRoom({
   // Audio level monitoring for speaking indicator
   const { audioLevel, isSpeaking, startMonitoring, stopMonitoring } = useAudioLevelMonitor();
 
-  // Audio capture for AI transcription and coaching (only for host)
+  // Audio capture with VAD for AI transcription and coaching (only for host)
   const {
     isCapturing,
     startCapture,
     stopCapture,
-  } = useAudioCapture({
+    hostIsSpeaking: vadHostIsSpeaking,
+    prospectIsSpeaking: vadProspectIsSpeaking,
+  } = useVADAudioCapture({
     onAudioChunk: sendAudioChunk,
+    onSpeechStart: sendSpeechStart,
+    onSpeechEnd: sendSpeechEnd,
     hostParticipantId: myParticipantId,
     hostName: participantName,
     enabled: isHost,

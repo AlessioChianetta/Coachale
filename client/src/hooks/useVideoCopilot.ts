@@ -423,6 +423,24 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     });
   }, [sendMessage]);
 
+  const sendSpeechStart = useCallback((speakerId: string, speakerName: string) => {
+    console.log(`🎤 [WS] Sending speech_start for ${speakerName}`);
+    sendMessage({
+      type: 'speech_start',
+      speakerId,
+      speakerName,
+    });
+  }, [sendMessage]);
+
+  const sendSpeechEnd = useCallback((speakerId: string, speakerName: string) => {
+    console.log(`🔇 [WS] Sending speech_end for ${speakerName}`);
+    sendMessage({
+      type: 'speech_end',
+      speakerId,
+      speakerName,
+    });
+  }, [sendMessage]);
+
   const updateParticipants = useCallback((participants: Participant[]) => {
     sendMessage({
       type: 'participant_update',
@@ -514,6 +532,8 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     connect,
     disconnect,
     sendAudioChunk,
+    sendSpeechStart,
+    sendSpeechEnd,
     updateParticipants,
     joinParticipant,
     leaveParticipant,
