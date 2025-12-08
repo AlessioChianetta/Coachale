@@ -5,6 +5,7 @@ import { eq, and, desc, asc, gte, lte, sql, count, inArray } from 'drizzle-orm';
 import { AuthRequest, authenticateToken, requireRole } from '../middleware/auth';
 import { nanoid } from 'nanoid';
 import { OAuth2Client } from 'google-auth-library';
+import { extractSalesAgentContext } from '../ai/sales-agent-context-builder';
 
 const router = Router();
 
@@ -468,27 +469,53 @@ router.post('/', authenticateToken, requireClient, async (req: AuthRequest, res:
   try {
     const clientId = req.user!.id;
     
-    // Validazione Zod
-    const validation = insertHumanSellerSchema.safeParse({ ...req.body, clientId });
-    if (!validation.success) {
-      return res.status(400).json({ error: 'Dati non validi', details: validation.error.errors });
-    }
+    // Get consultant_id from user profile (if sub-client)
+    const [user] = await db.select().from(users).where(eq(users.id, clientId));
+    const consultantId = user?.consultantId || clientId;
     
-    const { sellerName, displayName, description, isActive, ownerEmail } = validation.data;
+    const { 
+      sellerName, displayName, description, isActive, ownerEmail,
+      businessName, businessDescription, consultantBio,
+      vision, mission, values, usp, targetClient, nonTargetClient, whatWeDo, howWeDoIt,
+      yearsExperience, clientsHelped, resultsGenerated, guarantees,
+      servicesOffered, voiceName
+    } = req.body;
+    
+    if (!sellerName || !displayName) {
+      return res.status(400).json({ error: 'sellerName e displayName sono obbligatori' });
+    }
     
     const [newSeller] = await db
       .insert(humanSellers)
       .values({
         clientId,
+        consultantId,
         sellerName,
         displayName,
         description: description || null,
         ownerEmail: ownerEmail || null,
         isActive: isActive ?? true,
+        businessName: businessName || null,
+        businessDescription: businessDescription || null,
+        consultantBio: consultantBio || null,
+        vision: vision || null,
+        mission: mission || null,
+        values: values || [],
+        usp: usp || null,
+        targetClient: targetClient || null,
+        nonTargetClient: nonTargetClient || null,
+        whatWeDo: whatWeDo || null,
+        howWeDoIt: howWeDoIt || null,
+        yearsExperience: yearsExperience || 0,
+        clientsHelped: clientsHelped || 0,
+        resultsGenerated: resultsGenerated || null,
+        guarantees: guarantees || null,
+        servicesOffered: servicesOffered || [],
+        voiceName: voiceName || 'achernar',
       })
       .returning();
     
-    console.log(`[HumanSellers] Created seller ${newSeller.id} for client ${clientId}`);
+    console.log(`[HumanSellers] Created seller ${newSeller.id} for client ${clientId} (consultant: ${consultantId})`);
     res.status(201).json(newSeller);
   } catch (error: any) {
     console.error('[HumanSellers] POST create error:', error);
@@ -500,7 +527,13 @@ router.put('/:id', authenticateToken, requireClient, async (req: AuthRequest, re
   try {
     const clientId = req.user!.id;
     const { id } = req.params;
-    const { sellerName, displayName, description, isActive, ownerEmail } = req.body;
+    const { 
+      sellerName, displayName, description, isActive, ownerEmail,
+      businessName, businessDescription, consultantBio,
+      vision, mission, values, usp, targetClient, nonTargetClient, whatWeDo, howWeDoIt,
+      yearsExperience, clientsHelped, resultsGenerated, guarantees,
+      servicesOffered, voiceName
+    } = req.body;
     
     const [existing] = await db
       .select()
@@ -522,6 +555,23 @@ router.put('/:id', authenticateToken, requireClient, async (req: AuthRequest, re
         description: description !== undefined ? description : existing.description,
         ownerEmail: ownerEmail !== undefined ? ownerEmail : existing.ownerEmail,
         isActive: isActive !== undefined ? isActive : existing.isActive,
+        businessName: businessName !== undefined ? businessName : existing.businessName,
+        businessDescription: businessDescription !== undefined ? businessDescription : existing.businessDescription,
+        consultantBio: consultantBio !== undefined ? consultantBio : existing.consultantBio,
+        vision: vision !== undefined ? vision : existing.vision,
+        mission: mission !== undefined ? mission : existing.mission,
+        values: values !== undefined ? values : existing.values,
+        usp: usp !== undefined ? usp : existing.usp,
+        targetClient: targetClient !== undefined ? targetClient : existing.targetClient,
+        nonTargetClient: nonTargetClient !== undefined ? nonTargetClient : existing.nonTargetClient,
+        whatWeDo: whatWeDo !== undefined ? whatWeDo : existing.whatWeDo,
+        howWeDoIt: howWeDoIt !== undefined ? howWeDoIt : existing.howWeDoIt,
+        yearsExperience: yearsExperience !== undefined ? yearsExperience : existing.yearsExperience,
+        clientsHelped: clientsHelped !== undefined ? clientsHelped : existing.clientsHelped,
+        resultsGenerated: resultsGenerated !== undefined ? resultsGenerated : existing.resultsGenerated,
+        guarantees: guarantees !== undefined ? guarantees : existing.guarantees,
+        servicesOffered: servicesOffered !== undefined ? servicesOffered : existing.servicesOffered,
+        voiceName: voiceName !== undefined ? voiceName : existing.voiceName,
         updatedAt: new Date(),
       })
       .where(eq(humanSellers.id, id))
@@ -595,6 +645,88 @@ router.patch('/:id/toggle', authenticateToken, requireClient, async (req: AuthRe
   } catch (error: any) {
     console.error('[HumanSellers] PATCH toggle error:', error);
     res.status(500).json({ error: 'Errore nel toggle del venditore' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAGIC BUTTON - Auto-fill seller profile from client data
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.post('/:id/magic-button', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { id } = req.params;
+    
+    // Verify seller belongs to client
+    const [seller] = await db
+      .select()
+      .from(humanSellers)
+      .where(and(
+        eq(humanSellers.id, id),
+        eq(humanSellers.clientId, clientId)
+      ));
+    
+    if (!seller) {
+      return res.status(404).json({ error: 'Venditore non trovato' });
+    }
+    
+    // Get consultant_id from seller or user profile
+    const consultantId = seller.consultantId || clientId;
+    
+    console.log(`[HumanSellers] Magic Button triggered for seller ${id}, client ${clientId}, consultant ${consultantId}`);
+    
+    // Extract context using AI
+    const extractedContext = await extractSalesAgentContext(clientId, consultantId);
+    
+    // Update seller with extracted data (only fields that are empty/null)
+    const updateData: Record<string, any> = {};
+    
+    if (!seller.businessName && extractedContext.businessName) updateData.businessName = extractedContext.businessName;
+    if (!seller.businessDescription && extractedContext.businessDescription) updateData.businessDescription = extractedContext.businessDescription;
+    if (!seller.consultantBio && extractedContext.consultantBio) updateData.consultantBio = extractedContext.consultantBio;
+    if (!seller.vision && extractedContext.vision) updateData.vision = extractedContext.vision;
+    if (!seller.mission && extractedContext.mission) updateData.mission = extractedContext.mission;
+    if ((!seller.values || (seller.values as string[]).length === 0) && extractedContext.values) updateData.values = extractedContext.values;
+    if (!seller.usp && extractedContext.usp) updateData.usp = extractedContext.usp;
+    if (!seller.targetClient && extractedContext.targetClient) updateData.targetClient = extractedContext.targetClient;
+    if (!seller.nonTargetClient && extractedContext.nonTargetClient) updateData.nonTargetClient = extractedContext.nonTargetClient;
+    if (!seller.whatWeDo && extractedContext.whatWeDo) updateData.whatWeDo = extractedContext.whatWeDo;
+    if (!seller.howWeDoIt && extractedContext.howWeDoIt) updateData.howWeDoIt = extractedContext.howWeDoIt;
+    if (!seller.yearsExperience && extractedContext.yearsExperience) updateData.yearsExperience = extractedContext.yearsExperience;
+    if (!seller.clientsHelped && extractedContext.clientsHelped) updateData.clientsHelped = extractedContext.clientsHelped;
+    if (!seller.resultsGenerated && extractedContext.resultsGenerated) updateData.resultsGenerated = extractedContext.resultsGenerated;
+    if (!seller.guarantees && extractedContext.guarantees) updateData.guarantees = extractedContext.guarantees;
+    if ((!seller.servicesOffered || (seller.servicesOffered as any[]).length === 0) && extractedContext.servicesOffered) {
+      updateData.servicesOffered = extractedContext.servicesOffered;
+    }
+    
+    if (Object.keys(updateData).length > 0) {
+      updateData.updatedAt = new Date();
+      
+      const [updated] = await db
+        .update(humanSellers)
+        .set(updateData)
+        .where(eq(humanSellers.id, id))
+        .returning();
+      
+      console.log(`[HumanSellers] Magic Button updated ${Object.keys(updateData).length} fields for seller ${id}`);
+      res.json({ 
+        success: true, 
+        seller: updated,
+        fieldsUpdated: Object.keys(updateData).filter(k => k !== 'updatedAt')
+      });
+    } else {
+      console.log(`[HumanSellers] Magic Button - no fields to update for seller ${id}`);
+      res.json({ 
+        success: true, 
+        seller,
+        fieldsUpdated: [],
+        message: 'Tutti i campi sono già compilati'
+      });
+    }
+  } catch (error: any) {
+    console.error('[HumanSellers] Magic Button error:', error);
+    res.status(500).json({ error: 'Errore nell\'estrazione automatica dei dati' });
   }
 });
 
