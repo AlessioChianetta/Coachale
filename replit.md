@@ -67,6 +67,14 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Error Handling**: `withRetry` wrapper with exponential backoff for all Gemini API calls (max 5 retries, 1s-30s delays).
 - **Cleanup**: Proper timer and state cleanup in `handleEndSession` prevents memory leaks.
 - **Result**: Reduces API calls from ~50/second to 2-3 per conversation turn.
+- **Client-Side VAD (Voice Activity Detection)**:
+  - **Hook**: `useVADAudioCapture.ts` with Silero VAD neural network via `@ricky0123/vad-web`.
+  - **Host Detection**: Silero MicVAD directly on local microphone stream with 500ms pre-roll buffer.
+  - **Prospect Detection**: RMS-based VAD fallback using ScriptProcessor (SPEECH_THRESHOLD=0.01, SILENCE_FRAMES=12).
+  - **Audio Processing**: 16kHz downsampling for Gemini compatibility, echo cancellation enabled.
+  - **Trust-the-Client Pattern**: Server transcribes immediately on `speech_end` event from client VAD (eliminates 1.2s double-wait latency).
+  - **WebSocket Events**: `speech_start` / `speech_end` messages with speakerId and speakerName metadata.
+  - **Server Handlers**: `handleSpeechStart` (buffer management), `handleSpeechEndFromClient` (immediate transcription with isPartial=false).
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
