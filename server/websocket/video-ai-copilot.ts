@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, humanSellerSessionMetrics } from '@shared/schema';
+import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, humanSellerSessionMetrics, users } from '@shared/schema';
 import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
 import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
@@ -194,12 +194,19 @@ async function authenticateConnection(req: any): Promise<{
         .where(eq(humanSellers.id, meeting.sellerId))
         .limit(1);
       
-      // CRITICAL: Use seller.consultantId for Vertex AI credentials lookup (consultant hierarchy)
-      // Falls back to seller.clientId if no consultant configured
+      // CRITICAL: Consultant hierarchy traversal for Vertex AI credentials
+      // Priority: seller.consultantId → client.consultantId → clientId (self-managed)
       if (seller?.consultantId) {
         consultantId = seller.consultantId;
       } else if (seller?.clientId) {
-        consultantId = seller.clientId;
+        // Look up client's consultant if seller doesn't have one configured
+        const [client] = await db
+          .select({ consultantId: users.consultantId })
+          .from(users)
+          .where(eq(users.id, seller.clientId))
+          .limit(1);
+        
+        consultantId = client?.consultantId || seller.clientId;
       }
     }
 
