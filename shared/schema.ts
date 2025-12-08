@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, integer, timestamp, json, jsonb, date, real, unique, index } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, bigint, timestamp, json, jsonb, date, real, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -4101,7 +4101,7 @@ export const videoMeetingTranscripts = pgTable("video_meeting_transcripts", {
   speakerId: varchar("speaker_id"),
   speakerName: text("speaker_name"),
   text: text("text").notNull(),
-  timestampMs: integer("timestamp_ms"),
+  timestampMs: bigint("timestamp_ms", { mode: "number" }),
   sentiment: text("sentiment").$type<"positive" | "neutral" | "negative">(),
   createdAt: timestamp("created_at").default(sql`now()`),
 });
@@ -4173,7 +4173,7 @@ export const humanSellerCoachingEvents = pgTable("human_seller_coaching_events",
     feedbackType?: string;
   }>(),
   prospectArchetype: text("prospect_archetype").$type<"analizzatore" | "decisore" | "amichevole" | "scettico" | "impaziente" | "riflessivo" | "esigente" | "prudente" | "neutral">(),
-  timestampMs: integer("timestamp_ms"),
+  timestampMs: bigint("timestamp_ms", { mode: "number" }),
   createdAt: timestamp("created_at").default(sql`now()`),
 }, (table) => {
   return {

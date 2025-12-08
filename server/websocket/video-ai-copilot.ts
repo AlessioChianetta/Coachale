@@ -1044,8 +1044,18 @@ async function handleAudioChunk(
   const isNewSpeaker = !turnState.currentSpeaker || 
                        turnState.currentSpeaker.speakerId !== speakerId;
 
-  if (isNewSpeaker && turnState.currentSpeaker) {
-    console.log(`🔄 [TurnTaking] Speaker change: ${turnState.currentSpeaker.speakerName} → ${speakerName}`);
+  // DEBOUNCE: Only change speaker if enough time has passed since current speaker's last chunk
+  // This prevents rapid ping-pong between speakers when both mics are sending audio
+  const timeSinceLastChunk = turnState.currentSpeaker 
+    ? Date.now() - turnState.currentSpeaker.lastChunkTime 
+    : Infinity;
+  
+  const shouldChangeSpeaker = isNewSpeaker && 
+                              turnState.currentSpeaker && 
+                              timeSinceLastChunk >= TURN_TAKING_CONFIG.SPEAKER_CHANGE_THRESHOLD_MS;
+
+  if (shouldChangeSpeaker) {
+    console.log(`🔄 [TurnTaking] Speaker change: ${turnState.currentSpeaker!.speakerName} → ${speakerName} (after ${timeSinceLastChunk}ms silence)`);
     
     await finalizeTurn(ws, session, turnState);
     
@@ -1053,6 +1063,10 @@ async function handleAudioChunk(
     turnState.currentSpeaker = createSpeakerBuffer(speakerId, speakerName, session);
     
     scheduleAnalysis(ws, session, turnState);
+  } else if (isNewSpeaker && turnState.currentSpeaker) {
+    // Different speaker but not enough silence - ignore this chunk (keep current speaker)
+    // Don't log every ignored chunk to avoid log spam
+    return;
   }
 
   if (!turnState.currentSpeaker) {
