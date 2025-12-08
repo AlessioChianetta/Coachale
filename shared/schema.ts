@@ -4008,11 +4008,42 @@ export type InsertAITrainingSession = typeof aiTrainingSessions.$inferInsert;
 export const humanSellers = pgTable("human_sellers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id), // Consultant con Vertex AI configurato
+  
+  // Basic Info
   sellerName: text("seller_name").notNull(),
   displayName: text("display_name").notNull(),
   description: text("description"),
   ownerEmail: text("owner_email"), // Email del proprietario/venditore per riconoscimento come host nel meeting
   isActive: boolean("is_active").default(true),
+  
+  // Business Info (come client_sales_agents)
+  businessName: text("business_name"),
+  businessDescription: text("business_description"),
+  consultantBio: text("consultant_bio"),
+  
+  // Authority & Positioning
+  vision: text("vision"),
+  mission: text("mission"),
+  values: jsonb("values").$type<string[]>().default(sql`'[]'::jsonb`),
+  usp: text("usp"),
+  targetClient: text("target_client"),
+  nonTargetClient: text("non_target_client"),
+  whatWeDo: text("what_we_do"),
+  howWeDoIt: text("how_we_do_it"),
+  
+  // Credentials & Results
+  yearsExperience: integer("years_experience").default(0),
+  clientsHelped: integer("clients_helped").default(0),
+  resultsGenerated: text("results_generated"),
+  guarantees: text("guarantees"),
+  
+  // Services
+  servicesOffered: jsonb("services_offered").$type<Array<{name: string; description: string; price: string}>>().default(sql`'[]'::jsonb`),
+  
+  // Voice configuration
+  voiceName: varchar("voice_name", { length: 50 }).default("achernar"),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

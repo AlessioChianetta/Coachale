@@ -1,0 +1,243 @@
+👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏢 Name: Premium
+   🎯 What we do: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibr...
+   👥 Target client: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le ...
+   🚫 Non-target: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che p...
+   📋 Services: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📨 Calling SalesManagerAgent.analyze()...
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Starting comprehensive analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_2 / phase_2_step_3
+   💬 Messages: 13
+   🚀 Launching PARALLEL AI calls (checkpoint + advancement)...
+
+🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   📋 Total checks: 6
+   🔒 Already validated (sticky): 0
+   🔍 Remaining to analyze: 6
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [CHECKPOINT-AI] Starting semantic analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   ✅ Checks to verify: 6
+   💬 Messages to analyze: 13
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+   🚀 [CHECKPOINT-AI] Filtered 13 → 13 messages
+   📋 Checks to verify:
+      1. Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+      2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+      3. Capisci il VERO dolore o la frustrazione dietro il problema
+      4. Sai cosa ha già provato per migliorare e perché non ha funzionato
+      5. Sai da quanto tempo affronta questo ostacolo
+      6. Sai quanto ha già investito in tempo ed energie per superare questo problema
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+🤖 [SALES-MANAGER] Raw AI response (576 chars): ```json
+{
+  "shouldAdvance": false,
+  "nextPhaseId": null,
+  "nextStepId": null,
+  "reasoning": "L'obiettivo dello step è trovare il pain point principale, ma il prospect ha risposto con 'curiosità' e poi 'Dimmi di più', indicando che non ha ancora espresso chiaramente il suo problema principale. L'...
+✅ [SALES-MANAGER] Extracted JSON (564 chars)
+✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=false, confidence=0.9
+   🧠 AI Archetype Intuition: neutral - "Il prospect mostra curiosità ma non ha ancora rivelato un problema specifico o un'emozione chiara."
+   📄 AI Response (first 300 chars): "```json
+{
+  "isComplete": false,
+  "completedItems": [],
+  "missingItems": [
+    "1. Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",
+    "2. È SPECIFICO e CONCRETO (non vago tipo \"migliorare le performance\" o \"sentirsi meglio\")",
+    "3. Capisci il..."
+   📥 Raw AI response length: 4195 chars
+   📥 First 200 chars: ```json\n{\n  "isComplete": false,\n  "completedItems": [],\n  "missingItems": [\n    "1. Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",\n    "2. È SPECIFICO
+   📥 Cleaned JSON length: 4183 chars
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [CHECKPOINT-AI] Analysis completed in 3794ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[FASE 2] - Checkpoint Totali: 6 | Validati: 0 | Mancanti: 6
+  CHECK 1: [MANCANTE] "1. Sai IL problema principale legato alle sue performance o ..."
+    Motivo: L'agente ha posto la domanda in modo generico, ma il prospect non ha f...
+  CHECK 2: [MANCANTE] "2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le perf..."
+    Motivo: Non è stata acquisita alcuna informazione, quindi non è possibile valu...
+  CHECK 3: [MANCANTE] "3. Capisci il VERO dolore o la frustrazione dietro il proble..."
+    Motivo: Non essendo stato identificato alcun problema, non è possibile compren...
+  CHECK 4: [MANCANTE] "4. Sai cosa ha già provato per migliorare e perché non ha fu..."
+    Motivo: Nessuna informazione è stata raccolta riguardo ai tentativi passati de...
+  CHECK 5: [MANCANTE] "5. Sai da quanto tempo affronta questo ostacolo"
+    Motivo: Non è stata acquisita alcuna informazione sulla durata del problema.
+  CHECK 6: [MANCANTE] "6. Sai quanto ha già investito in tempo ed energie per super..."
+    Motivo: Non sono state raccolte informazioni sugli investimenti passati del pr...
+  Quality Score: 0/10 | Progress: 0%
+  Stato: BLOCCO ATTIVO - Non puoi passare alla fase successiva
+✅ [SALES-MANAGER] AI checkpoint analysis complete (with sticky merge)
+   🔒 Sticky (preserved): 0
+   🆕 New from AI: 6
+   🟢 Total validated: 0/6
+   🔴 Missing/Vague: 6
+   📊 Confidence: 90%
+   📈 Quality Score: 0/10
+   ✅ PARALLEL AI completed in 3796ms (target: <2000ms)
+   💰 Buy signals: 0
+   🛡️ Objections: 0
+   🎭 Tone issues: 0
+   🎯 Control: OK
+   👤 Business: Premium
+
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ CHECKPOINT FASE #2: "⛔ CHECKPOINT FASE #2"
+   ⛔ DOMANDE DA FARE: 0/6 completate
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🔴 ✗ [1] 1. Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+        └─ Motivo: L'agente ha posto la domanda in modo generico, ma il prospec...
+        └─ Suggerimento AI: Devi ottenere una risposta chiara e specifica dal prospect r...
+   🔴 ✗ [2] 2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+        └─ Motivo: Non è stata acquisita alcuna informazione, quindi non è poss...
+        └─ Suggerimento AI: Una volta identificato il problema principale, devi guidare ...
+   🔴 ✗ [3] 3. Capisci il VERO dolore o la frustrazione dietro il problema
+        └─ Motivo: Non essendo stato identificato alcun problema, non è possibi...
+        └─ Suggerimento AI: Dopo aver identificato il problema, devi scavare per compren...
+   🔴 ✗ [4] 4. Sai cosa ha già provato per migliorare e perché non ha funzionato
+        └─ Motivo: Nessuna informazione è stata raccolta riguardo ai tentativi ...
+        └─ Suggerimento AI: Devi chiedere al prospect quali soluzioni ha già adottato in...
+   🔴 ✗ [5] 5. Sai da quanto tempo affronta questo ostacolo
+        └─ Motivo: Non è stata acquisita alcuna informazione sulla durata del p...
+        └─ Suggerimento AI: È necessario chiedere al prospect da quanto tempo sta vivend...
+   🔴 ✗ [6] 6. Sai quanto ha già investito in tempo ed energie per superare questo problema
+        └─ Motivo: Non sono state raccolte informazioni sugli investimenti pass...
+        └─ Suggerimento AI: Devi indagare sull'impegno in termini di tempo ed energie ch...
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ STATO: 🚫 BLOCCO ATTIVO - NON PUÒ AVANZARE
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⚡ Regex Signals: enthusiast(30%)
+
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 [SALES-MANAGER] AI REASONING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 MODEL: gemini-2.5-flash-lite
+   ⏱️ LATENCY: 3796ms
+
+   🧠 FULL REASONING:
+      L'obiettivo dello step è trovare il pain point principale, ma il prospect ha risposto con 'curiosità' e poi 'Dimmi di più', indicando che non ha ancora espresso chiaramente il suo problema principale. L'agente deve approfondire ulteriormente per capire le reali motivazioni dietro la call.
+
+   📤 AI DECISIONS:
+      └─ Should Advance: ❌ NO
+      └─ Next Phase: same
+      └─ Next Step: same
+      └─ Confidence: 90%
+
+   🎭 ARCHETYPE INTUITION:
+      └─ Detected: neutral
+      └─ Reasoning: "Il prospect mostra curiosità ma non ha ancora rivelato un problema specifico o un'emozione chiara."
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🧠 AI Intuition: neutral - "Il prospect mostra curiosità ma non ha ancora rivelato un problema specifico o un'emozione chiara."
+   🧠 AI Intuition WINS: neutral (confidence: 85%)
+   🔄 ARCHETYPE CHANGE: defensive → neutral
+      Reason: confidence=85%, consecutive=1
+   🎭 Final Archetype: 😐 NEUTRO (85%)
+      ⚡ Regex suggested: enthusiast → 🧠 AI overrode to: neutral
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Analysis complete in 3797ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → Step advance: false (90%)
+   → Feedback: checkpoint (medium)
+   → Archetype: 😐 NEUTRO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🎭 Archetype state SAVED: neutral (85%)
+🔒 [TRACKER] Validated items updated: 2 checkpoints
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [ffo2r] SALES MANAGER AGENT - RESULT (3797ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 90%
+   💡 reasoning: L'obiettivo dello step è trovare il pain point principale, ma il prospect ha risposto con 'curiosità' e poi 'Dimmi di più', indicando che non ha ancora espresso chiaramente il suo problema principale. L'agente deve approfondire ulteriormente per capire le reali motivazioni dietro la call.
+   🔧 FEEDBACK (checkpoint): Devi ottenere una risposta chiara e specifica dal prospect riguardo al problema principale che lo ha...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 [LASER FOCUS] Feedback compatto (183 chars, 1 sezioni)
+
+📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 [ffo2r] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📢 Priority: MEDIUM
+   📋 Type: checkpoint
+   📝 Needs Improvement: Devi ottenere una risposta chiara e specifica dal prospect riguardo al problema principale che lo ha portato a questa call, sia esso legato alle perfo...
+   💭 Reasoning: L'obiettivo dello step è trovare il pain point principale, ma il prospect ha risposto con 'curiosità...
+   🎵 Tone: N/A
+   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+══════════════════════════════════════════════════════════════════════════════════════════
+📤 SALES MANAGER → SALES AGENT: MESSAGGIO COMPLETO (62 token)
+══════════════════════════════════════════════════════════════════════════════════════════
+🎯 DECISION SUMMARY:
+   • Step Advancement: ❌ NO
+   • Checkpoint Status: ⛔ INCOMPLETE
+     → Missing: 1. Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere, 2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio"), 3. Capisci il VERO dolore o la frustrazione dietro il problema...
+   • Feedback Type: CHECKPOINT
+   • Feedback Priority: MEDIUM
+
+📋 FULL MESSAGE TO SALES AGENT (62 token):
+──────────────────────────────────────────────────────────────────────────────────────────
+<<<SALES_MANAGER_INSTRUCTION>>>
+💬 AZIONE: Devi ottenere una risposta chiara e specifica dal prospect riguardo al problema principale che lo ha portato a questa call, sia esso legato alle performance o al benessere.
+<<</SALES_MANAGER_INSTRUCTION>>>
+──────────────────────────────────────────────────────────────────────────────────────────
+📊 TOKEN METRICS:
+   • Message size: 248 characters
+   • Estimated tokens: 62 (at ~4 chars/token)
+   • Priority: medium
+══════════════════════════════════════════════════════════════════════════════════════════
+
+   ✅ Feedback SENT to Gemini with turnComplete:false
+   💾 Feedback also saved to DB (for reconnection backup)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
