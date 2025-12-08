@@ -946,8 +946,8 @@ async function handleAudioChunk(
   }, TURN_TAKING_CONFIG.SILENCE_THRESHOLD_MS);
 
   const timeSinceLastAnalysis = Date.now() - turnState.lastAnalysisTime;
-  if (timeSinceLastAnalysis > TURN_TAKING_CONFIG.MAX_TIME_WITHOUT_ANALYSIS_MS) {
-    console.log(`⏰ [TurnTaking] Forcing analysis after ${Math.round(timeSinceLastAnalysis / 1000)}s`);
+  if (timeSinceLastAnalysis > TURN_TAKING_CONFIG.MAX_TIME_WITHOUT_ANALYSIS_MS && !turnState.pendingAnalysis) {
+    console.log(`⏰ [TurnTaking] Forcing analysis after ${Math.round(timeSinceLastAnalysis)}ms (${Math.round(timeSinceLastAnalysis / 1000)}s inactivity)`);
     scheduleAnalysis(ws, session, turnState);
   }
 }
