@@ -4,7 +4,7 @@ import { db } from '../db';
 import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, humanSellerSessionMetrics } from '@shared/schema';
 import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
-import { convertWebMToPCM, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
+import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
 import { SalesManagerAgent, type SalesManagerAnalysis, type ArchetypeState, type ConversationMessage } from '../ai/sales-manager-agent';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -247,14 +247,19 @@ async function transcribeAudio(
   speakerName: string
 ): Promise<string | null> {
   try {
-    const audioBuffer = base64ToBuffer(audioBase64);
-    let pcmBuffer: Buffer;
+    console.log(`🎤 [VideoCopilot] Transcribing audio from ${speakerName} (${audioBase64.length} chars base64)`);
     
-    try {
-      pcmBuffer = await convertWebMToPCM(audioBuffer);
-    } catch (conversionError) {
-      pcmBuffer = audioBuffer;
+    const pcmBuffer = base64ToBuffer(audioBase64);
+    
+    if (pcmBuffer.length < 100) {
+      console.log(`⚠️ [VideoCopilot] Audio too short (${pcmBuffer.length} bytes), skipping transcription`);
+      return null;
     }
+    
+    const wavBuffer = addWAVHeaders(pcmBuffer, 16000, 1, 16);
+    const wavBase64 = bufferToBase64(wavBuffer);
+    
+    console.log(`🔄 [VideoCopilot] PCM ${pcmBuffer.length} bytes → WAV ${wavBuffer.length} bytes`);
 
     const aiProvider = await getAIProvider(
       session.clientId,
@@ -265,8 +270,6 @@ async function transcribeAudio(
 
 Context: This is from a sales video call. The speaker is ${speakerName}.`;
 
-    const audioForAI = bufferToBase64(pcmBuffer);
-
     const response = await aiProvider.client.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
@@ -274,7 +277,7 @@ Context: This is from a sales video call. The speaker is ${speakerName}.`;
           role: 'user',
           parts: [
             { text: prompt },
-            { text: `[Audio data: ${audioForAI.substring(0, 100)}... (${audioForAI.length} chars)]` }
+            { inlineData: { mimeType: 'audio/wav', data: wavBase64 } }
           ]
         }
       ],
@@ -285,6 +288,8 @@ Context: This is from a sales video call. The speaker is ${speakerName}.`;
     });
 
     const transcript = response.response.text().trim();
+    
+    console.log(`📝 [VideoCopilot] Transcription result: "${transcript.substring(0, 100)}${transcript.length > 100 ? '...' : ''}"`);
     
     if (transcript && transcript.length > 0) {
       await db.insert(videoMeetingTranscripts).values({

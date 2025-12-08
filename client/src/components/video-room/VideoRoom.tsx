@@ -9,6 +9,7 @@ import { useVideoCopilot } from '@/hooks/useVideoCopilot';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { useAudioLevelMonitor } from '@/hooks/useAudioLevelMonitor';
 import { useSalesCoaching } from './hooks/useSalesCoaching';
+import { useAudioCapture } from './hooks/useAudioCapture';
 import { Loader2 } from 'lucide-react';
 
 export interface VideoRoomProps {
@@ -72,6 +73,7 @@ export default function VideoRoom({
     setWebRTCMessageHandler,
     setCoachingMessageHandler,
     sendSpeakingState,
+    sendAudioChunk,
   } = useVideoCopilot(meeting?.meetingToken ?? null);
 
   const {
@@ -121,6 +123,18 @@ export default function VideoRoom({
 
   // Audio level monitoring for speaking indicator
   const { audioLevel, isSpeaking, startMonitoring, stopMonitoring } = useAudioLevelMonitor();
+
+  // Audio capture for AI transcription and coaching (only for host)
+  const {
+    isCapturing,
+    startCapture,
+    stopCapture,
+  } = useAudioCapture({
+    onAudioChunk: sendAudioChunk,
+    hostParticipantId: myParticipantId,
+    hostName: participantName,
+    enabled: isHost,
+  });
 
   // Track if we've joined this session (to avoid duplicate joins)
   const [hasJoined, setHasJoined] = useState(false);
@@ -196,6 +210,30 @@ export default function VideoRoom({
       }
     };
   }, [leaveParticipant]);
+
+  // Start audio capture for AI transcription when streams are ready (host only)
+  useEffect(() => {
+    if (!isHost || !isConnected || !localStream) {
+      return;
+    }
+
+    const prospect = copilotParticipants.find(p => p.role === 'prospect' && !p.leftAt);
+    const remoteStream = prospect ? remoteStreams.get(prospect.id) : null;
+
+    console.log(`[AudioCapture] Starting capture - Host: ${participantName}, Prospect: ${prospect?.name || 'N/A'}, ParticipantId: ${myParticipantId || 'pending'}`);
+    
+    startCapture(
+      localStream,
+      remoteStream || null,
+      prospect?.id || null,
+      prospect?.name || 'Prospect'
+    );
+
+    return () => {
+      console.log('[AudioCapture] Stopping capture on cleanup');
+      stopCapture();
+    };
+  }, [isHost, isConnected, localStream, myParticipantId, copilotParticipants, remoteStreams, participantName, startCapture, stopCapture]);
 
   useEffect(() => {
     if (isConnected && meetingParticipants.length > 0) {
