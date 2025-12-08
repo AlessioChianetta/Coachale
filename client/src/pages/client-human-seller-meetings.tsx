@@ -392,7 +392,7 @@ export default function ClientHumanSellerMeetings() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                     <Button
                       size="sm"
                       variant={viewMode === 'list' ? 'default' : 'ghost'}
