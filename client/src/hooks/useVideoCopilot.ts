@@ -33,6 +33,8 @@ interface TranscriptEntry {
   speakerName: string;
   text: string;
   timestamp: number;
+  isPartial?: boolean;
+  turnComplete?: boolean;
 }
 
 interface SentimentUpdate {
@@ -133,15 +135,40 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           break;
 
         case 'transcript':
-          setState(prev => ({
-            ...prev,
-            transcripts: [...prev.transcripts, {
-              speakerId: message.data.speakerId,
-              speakerName: message.data.speakerName,
-              text: message.data.text,
-              timestamp: message.timestamp,
-            }],
-          }));
+          setState(prev => {
+            const { speakerId, speakerName, text, isPartial, turnComplete } = message.data;
+            
+            if (turnComplete) {
+              const existingIndex = prev.transcripts.findIndex(
+                t => t.speakerId === speakerId && t.isPartial === true
+              );
+              
+              if (existingIndex >= 0) {
+                const updated = [...prev.transcripts];
+                updated[existingIndex] = {
+                  speakerId,
+                  speakerName,
+                  text,
+                  timestamp: message.timestamp,
+                  isPartial: false,
+                  turnComplete: true,
+                };
+                return { ...prev, transcripts: updated };
+              }
+            }
+            
+            return {
+              ...prev,
+              transcripts: [...prev.transcripts, {
+                speakerId,
+                speakerName,
+                text,
+                timestamp: message.timestamp,
+                isPartial: isPartial ?? false,
+                turnComplete: turnComplete ?? false,
+              }],
+            };
+          });
           break;
 
         case 'sentiment':

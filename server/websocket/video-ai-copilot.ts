@@ -1987,6 +1987,18 @@ async function handleEndSession(
 ) {
   console.log(`🔚 [VideoCopilot] Session ending for meeting ${session.meetingId}`);
   
+  const turnState = turnStates.get(session.meetingId);
+  if (turnState) {
+    if (turnState.silenceTimer) {
+      clearTimeout(turnState.silenceTimer);
+    }
+    if (turnState.analysisDebounceTimer) {
+      clearTimeout(turnState.analysisDebounceTimer);
+    }
+    turnStates.delete(session.meetingId);
+    console.log(`🧹 [TurnTaking] Cleaned up turn state for meeting ${session.meetingId}`);
+  }
+  
   await db
     .update(videoMeetings)
     .set({
