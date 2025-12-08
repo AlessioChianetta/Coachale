@@ -1,0 +1,64 @@
+📄 Technical Specs: Native VAD & Transcription Architecture
+Obiettivo: Integrare un VAD neurale ad alta precisione e trascrizione real-time direttamente nel core della nostra piattaforma di video-call.
+
+1. Strategia Architetturale: "Client-Side VAD + Server-Side STT"
+Non dobbiamo fare il VAD sul server (spreco di CPU e banda). Lo facciamo direttamente nel browser dell'utente usando WebAssembly.
+
+Frontend (Client): Rileva quando l'utente parla (VAD) e invia i pacchetti audio o i metadati.
+
+Backend (Server): Riceve lo stream audio pulito e lo inoltra al motore di trascrizione.
+
+2. Frontend Implementation (Browser)
+Il vecchio metodo ScriptProcessorNode è deprecato. Dobbiamo usare Audio Worklets.
+
+Libreria VAD: Usa @ricky0123/vad-web (che è un wrapper per Silero VAD in WebAssembly/ONNX).
+
+Perché: Gira nel browser a latenza zero. È una rete neurale, non un semplice "noise gate", quindi distingue il parlato umano dal rumore di una tastiera o di un cane che abbaia.
+
+Audio Pipeline:
+
+Intercetta il MediaStream del microfono.
+
+Passalo all' AudioWorkletProcessor.
+
+Esegui l'inferenza VAD ogni ~30ms.
+
+Logica di invio: Quando probability > 0.5 (start speech), segnala visivamente (bordo verde sull'utente) e prepara il chunk per l'invio al servizio di trascrizione.
+
+3. Gestione del "Buffer" (Il segreto della qualità)
+Per evitare che la trascrizione perda la prima sillaba (es. "Ciao" -> "..ao"), implementa un Sliding Window Buffer lato client:
+
+Mantieni sempre in memoria gli ultimi 300ms-500ms di audio prima che il VAD scatti a true.
+
+Quando il VAD rileva il parlato, invia al server: [Pre-roll Buffer] + [Live Stream].
+
+Quando il VAD rileva silenzio per > 500ms, chiudi il pacchetto e invia segnale di End of Utterance.
+
+4. Backend Integration (Media Server/SFU)
+Dipende da cosa stiamo usando per il video (Mediasoup, LiveKit, Janus, o WebRTC puro):
+
+Scenario A (Consigliato - LiveKit/Mediasoup): Il server SFU riceve l'audio RTP. Dobbiamo fare un "Fork" dello stream audio di chi sta parlando. Uno stream va agli altri partecipanti, l'altro va tramite WebSocket al servizio STT (Speech-To-Text).
+
+Scenario B (WebRTC Puro): Il client apre un WebSocket separato dedicato solo all'audio per la trascrizione e invia i blob audio (audio/webm o PCM) solo quando il VAD locale è attivo.
+
+5. Transcription Engine (STT)
+Abbiamo due strade per la trascrizione vera e propria:
+
+Opzione Cloud (Massima qualità/Zero devops): Invia lo stream audio via WebSocket a Deepgram Nova-2 o AssemblyAI.
+
+Vantaggio: Hanno già la diarization e la gestione della punteggiatura incluse. Latenza < 300ms.
+
+Opzione Self-Hosted (Privacy/Costi fissi): Invia lo stream a un container Docker con Faster-Whisper (Server Python).
+
+Nota: Richiede GPU sul server per essere real-time con più utenti contemporanei.
+
+Riassunto operativo per il programmatore
+Installa Silero VAD (ONNX version) lato client per capire quando l'utente parla.
+
+Usa un AudioWorklet per processare l'audio senza bloccare il thread principale della UI.
+
+Implementa un buffer circolare di 500ms per catturare l'attacco delle frasi.
+
+Invia l'audio al backend via WebSocket solo durante l'attività vocale (onSpeechStart -> onSpeechEnd).
+
+Il backend inoltra lo stream (fork) al motore STT scelto.
