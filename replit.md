@@ -53,6 +53,20 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Sales Agent AI token usage is optimized through dynamic script loading based on the current phase.
 - **Prospect Profiling System**: Intelligent prospect personality profiling during voice calls with dynamic sales strategy adaptation using a hybrid regex and AI intuition approach. Includes sticky archetype logic and 8 behavioral archetypes with specific playbooks. Integrates with TTS for archetype-specific voice parameters.
 - AI sales agent follows scripts in strict sequential order, programmatically enforced with validation.
+## Video Copilot Turn-Taking System
+- **Purpose**: Prevent API bombardment (429 errors) during human-to-human video meetings by implementing Fathom-style intelligent turn-taking.
+- **Architecture**: State machine with per-meeting TurnState tracking audio buffers per speaker.
+- **Key Components**:
+  - `SpeakerTurnBuffer`: Accumulates audio chunks, transcript parts, and speaker metadata.
+  - `TurnState`: Tracks current/previous speakers, silence timers, and analysis debounce timers.
+  - `handleAudioChunk`: Buffers audio instead of immediate transcription.
+  - `handleSilenceDetected`: Triggers transcription after 700ms silence.
+  - `finalizeTurn`: Completes speaker turn on speaker change.
+  - `scheduleAnalysis`: Triggers Sales Manager analysis with 2s debounce after turn exchange.
+- **Configuration**: `TURN_TAKING_CONFIG` with tunable thresholds (SILENCE_THRESHOLD_MS=700, ANALYSIS_DEBOUNCE_MS=2000, MAX_TIME_WITHOUT_ANALYSIS_MS=30000).
+- **Error Handling**: `withRetry` wrapper with exponential backoff for all Gemini API calls (max 5 retries, 1s-30s delays).
+- **Cleanup**: Proper timer and state cleanup in `handleEndSession` prevents memory leaks.
+- **Result**: Reduces API calls from ~50/second to 2-3 per conversation turn.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
