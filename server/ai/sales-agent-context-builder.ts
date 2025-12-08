@@ -259,7 +259,7 @@ Ricorda: rispondi SOLO con il JSON richiesto, nient'altro.`;
         generationConfig: {
           systemInstruction: systemPrompt,
           temperature: 0.3, // Low temperature for more consistent JSON output
-          maxOutputTokens: 4096, // Increased to handle longer responses
+          maxOutputTokens: 8192, // Increased to prevent truncation
         },
       });
 
@@ -282,11 +282,48 @@ Ricorda: rispondi SOLO con il JSON richiesto, nient'altro.`;
     if (!jsonMatch) {
       throw new Error("No JSON found in AI response");
     }
-    extracted = JSON.parse(jsonMatch[0]);
-    console.log(`[MagicButton] Successfully parsed AI response`);
+    
+    let jsonString = jsonMatch[0];
+    
+    // Try to fix truncated JSON by completing incomplete arrays/objects
+    try {
+      extracted = JSON.parse(jsonString);
+      console.log(`[MagicButton] Successfully parsed AI response`);
+    } catch (parseError) {
+      console.warn(`[MagicButton] First parse attempt failed, trying to fix truncated JSON...`);
+      
+      // Try to fix common truncation issues
+      // 1. Incomplete string value at the end
+      jsonString = jsonString.replace(/,\s*"[^"]*$/, '');
+      
+      // 2. Incomplete array at the end
+      if (jsonString.match(/\[\s*\{[^\]]*$/)) {
+        jsonString = jsonString.replace(/,\s*\{[^\]]*$/, '');
+        jsonString += ']';
+      }
+      
+      // 3. Incomplete object at the end
+      if (!jsonString.endsWith('}')) {
+        const openBraces = (jsonString.match(/\{/g) || []).length;
+        const closeBraces = (jsonString.match(/\}/g) || []).length;
+        const missingBraces = openBraces - closeBraces;
+        
+        // Remove last incomplete property
+        jsonString = jsonString.replace(/,\s*"[^"]*"\s*:\s*[^,}]*$/, '');
+        
+        // Close missing braces
+        for (let i = 0; i < missingBraces; i++) {
+          jsonString += '}';
+        }
+      }
+      
+      // Try parsing the fixed JSON
+      extracted = JSON.parse(jsonString);
+      console.log(`[MagicButton] Successfully parsed AI response after fixing truncation`);
+    }
   } catch (error) {
     console.error(`[MagicButton] Failed to parse AI response:`, error);
-    console.error(`[MagicButton] Raw response:`, result);
+    console.error(`[MagicButton] Raw response:`, result.substring(0, 1000));
     throw new Error("Failed to parse AI response as JSON");
   }
 
