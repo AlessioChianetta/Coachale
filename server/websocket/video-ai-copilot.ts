@@ -41,6 +41,14 @@ interface CoachingMetrics {
   sessionStartTime: number;
 }
 
+interface CachedAiProvider {
+  client: any;
+  metadata: any;
+  source: string;
+  cleanup?: () => Promise<void>;
+  cachedAt: number;
+}
+
 interface SessionState {
   meetingId: string;
   clientId: string;
@@ -65,6 +73,9 @@ interface SessionState {
   scriptStructure: any | null;
   coachingMetrics: CoachingMetrics;
   businessContext: BusinessContext | null;
+  cachedAiProvider: CachedAiProvider | null;
+  aiProviderFailed: boolean;
+  aiProviderErrorMessage: string | null;
 }
 
 interface IncomingMessage {
@@ -413,6 +424,57 @@ function estimateChunkDuration(base64Audio: string): number {
   return (bytes / 32000) * 1000;
 }
 
+const AI_PROVIDER_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
+
+async function getOrCreateCachedAiProvider(session: SessionState): Promise<CachedAiProvider | null> {
+  // If provider already failed, don't retry (prevents loop)
+  if (session.aiProviderFailed) {
+    return null;
+  }
+
+  // Check if we have a valid cached provider
+  if (session.cachedAiProvider) {
+    const age = Date.now() - session.cachedAiProvider.cachedAt;
+    if (age < AI_PROVIDER_CACHE_TTL_MS) {
+      return session.cachedAiProvider;
+    }
+    // Cache expired, cleanup old provider
+    if (session.cachedAiProvider.cleanup) {
+      try {
+        await session.cachedAiProvider.cleanup();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+    session.cachedAiProvider = null;
+  }
+
+  // Try to get a new provider
+  try {
+    console.log(`🔍 [VideoCopilot] Getting AI provider (first time or cache expired)...`);
+    const aiProvider = await getAIProvider(
+      session.clientId,
+      session.consultantId || undefined
+    );
+    
+    session.cachedAiProvider = {
+      client: aiProvider.client,
+      metadata: aiProvider.metadata,
+      source: aiProvider.source,
+      cleanup: aiProvider.cleanup,
+      cachedAt: Date.now(),
+    };
+    
+    console.log(`✅ [VideoCopilot] AI provider cached (source: ${aiProvider.source})`);
+    return session.cachedAiProvider;
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Failed to get AI provider:`, error.message);
+    session.aiProviderFailed = true;
+    session.aiProviderErrorMessage = error.message;
+    return null;
+  }
+}
+
 async function transcribeAudio(
   session: SessionState,
   audioBase64: string,
@@ -420,6 +482,12 @@ async function transcribeAudio(
   speakerName: string
 ): Promise<string | null> {
   try {
+    // GUARD: If AI provider already failed, skip transcription to prevent loop
+    if (session.aiProviderFailed) {
+      console.log(`⏭️ [VideoCopilot] Skipping transcription - AI provider not available: ${session.aiProviderErrorMessage}`);
+      return null;
+    }
+
     console.log(`🎤 [VideoCopilot] Transcribing audio from ${speakerName} (${audioBase64.length} chars base64)`);
     
     const pcmBuffer = base64ToBuffer(audioBase64);
@@ -429,61 +497,89 @@ async function transcribeAudio(
       return null;
     }
     
+    // GUARD: Limit buffer size to prevent memory issues (max 2MB WAV)
+    const MAX_AUDIO_SIZE = 2 * 1024 * 1024;
+    if (pcmBuffer.length > MAX_AUDIO_SIZE) {
+      console.log(`⚠️ [VideoCopilot] Audio too large (${pcmBuffer.length} bytes), truncating to ${MAX_AUDIO_SIZE} bytes`);
+      // Take the last 2MB (most recent audio)
+      const truncatedBuffer = pcmBuffer.slice(-MAX_AUDIO_SIZE);
+      const wavBuffer = addWAVHeaders(truncatedBuffer, 16000, 1, 16);
+      const wavBase64 = bufferToBase64(wavBuffer);
+      
+      console.log(`🔄 [VideoCopilot] Truncated PCM ${truncatedBuffer.length} bytes → WAV ${wavBuffer.length} bytes`);
+      
+      return await performTranscription(session, wavBase64, speakerId, speakerName);
+    }
+    
     const wavBuffer = addWAVHeaders(pcmBuffer, 16000, 1, 16);
     const wavBase64 = bufferToBase64(wavBuffer);
     
     console.log(`🔄 [VideoCopilot] PCM ${pcmBuffer.length} bytes → WAV ${wavBuffer.length} bytes`);
 
-    const aiProvider = await getAIProvider(
-      session.clientId,
-      session.consultantId || undefined
-    );
+    return await performTranscription(session, wavBase64, speakerId, speakerName);
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Transcription error:`, error.message);
+    
+    // If this is a provider error, mark it as failed to prevent loop
+    if (error.message.includes('API key') || error.message.includes('credentials') || error.message.includes('provider')) {
+      session.aiProviderFailed = true;
+      session.aiProviderErrorMessage = error.message;
+    }
+    
+    return null;
+  }
+}
 
-    const prompt = `Transcribe the following audio to Italian text. Return ONLY the transcribed text, nothing else. If you cannot understand the audio or it's silent, return an empty string.
+async function performTranscription(
+  session: SessionState,
+  wavBase64: string,
+  speakerId: string,
+  speakerName: string
+): Promise<string | null> {
+  const cachedProvider = await getOrCreateCachedAiProvider(session);
+  
+  if (!cachedProvider) {
+    console.log(`⚠️ [VideoCopilot] No AI provider available, skipping transcription`);
+    return null;
+  }
+
+  const prompt = `Transcribe the following audio to Italian text. Return ONLY the transcribed text, nothing else. If you cannot understand the audio or it's silent, return an empty string.
 
 Context: This is from a sales video call. The speaker is ${speakerName}.`;
 
-    const response = await aiProvider.client.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: 'audio/wav', data: wavBase64 } }
-          ]
-        }
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 500,
+  const response = await cachedProvider.client.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: 'audio/wav', data: wavBase64 } }
+        ]
       }
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      maxOutputTokens: 500,
+    }
+  });
+
+  const transcript = response.response.text().trim();
+  
+  console.log(`📝 [VideoCopilot] Transcription result: "${transcript.substring(0, 100)}${transcript.length > 100 ? '...' : ''}"`);
+  
+  if (transcript && transcript.length > 0) {
+    await db.insert(videoMeetingTranscripts).values({
+      meetingId: session.meetingId,
+      speakerId,
+      speakerName,
+      text: transcript,
+      timestampMs: Date.now(),
+      sentiment: 'neutral',
     });
-
-    const transcript = response.response.text().trim();
-    
-    console.log(`📝 [VideoCopilot] Transcription result: "${transcript.substring(0, 100)}${transcript.length > 100 ? '...' : ''}"`);
-    
-    if (transcript && transcript.length > 0) {
-      await db.insert(videoMeetingTranscripts).values({
-        meetingId: session.meetingId,
-        speakerId,
-        speakerName,
-        text: transcript,
-        timestampMs: Date.now(),
-        sentiment: 'neutral',
-      });
-    }
-
-    if (aiProvider.cleanup) {
-      await aiProvider.cleanup();
-    }
-
-    return transcript || null;
-  } catch (error: any) {
-    console.error(`❌ [VideoCopilot] Transcription error:`, error.message);
-    return null;
   }
+
+  return transcript || null;
 }
 
 async function analyzeSentiment(
@@ -492,12 +588,16 @@ async function analyzeSentiment(
   speakerId: string
 ): Promise<'positive' | 'neutral' | 'negative'> {
   try {
-    const aiProvider = await getAIProvider(
-      session.clientId,
-      session.consultantId || undefined
-    );
+    if (session.aiProviderFailed) {
+      return 'neutral';
+    }
 
-    const response = await aiProvider.client.generateContent({
+    const cachedProvider = await getOrCreateCachedAiProvider(session);
+    if (!cachedProvider) {
+      return 'neutral';
+    }
+
+    const response = await cachedProvider.client.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
         {
@@ -525,10 +625,6 @@ Response (one word only):`
     });
 
     const result = response.response.text().toLowerCase().trim();
-    
-    if (aiProvider.cleanup) {
-      await aiProvider.cleanup();
-    }
 
     if (result.includes('positive')) return 'positive';
     if (result.includes('negative')) return 'negative';
@@ -546,12 +642,16 @@ async function generateSuggestion(
   if (!session.playbook) return null;
 
   try {
+    if (session.aiProviderFailed) {
+      return null;
+    }
+
+    const cachedProvider = await getOrCreateCachedAiProvider(session);
+    if (!cachedProvider) {
+      return null;
+    }
+
     const currentPhase = session.playbook.phases[session.currentPhaseIndex];
-    
-    const aiProvider = await getAIProvider(
-      session.clientId,
-      session.consultantId || undefined
-    );
 
     const prompt = `You are an AI sales copilot helping a salesperson during a live video call.
 
@@ -567,7 +667,7 @@ Based on the conversation, provide ONE brief, actionable suggestion for the sale
 Keep it under 50 words. Be specific and practical.
 Format: Just the suggestion text, no prefixes.`;
 
-    const response = await aiProvider.client.generateContent({
+    const response = await cachedProvider.client.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -575,10 +675,6 @@ Format: Just the suggestion text, no prefixes.`;
         maxOutputTokens: 100,
       }
     });
-
-    if (aiProvider.cleanup) {
-      await aiProvider.cleanup();
-    }
 
     return response.response.text().trim();
   } catch (error: any) {
@@ -594,14 +690,18 @@ async function detectObjectionAndGenerateBattleCard(
   if (!session.playbook?.objections?.length) return null;
 
   try {
+    if (session.aiProviderFailed) {
+      return null;
+    }
+
+    const cachedProvider = await getOrCreateCachedAiProvider(session);
+    if (!cachedProvider) {
+      return null;
+    }
+
     const objectionsList = session.playbook.objections
       .map((o, i) => `${i + 1}. Trigger: "${o.trigger}" | Category: ${o.category}`)
       .join('\n');
-
-    const aiProvider = await getAIProvider(
-      session.clientId,
-      session.consultantId || undefined
-    );
 
     const prompt = `Analyze if the following prospect statement contains an objection from our list.
 
@@ -618,7 +718,7 @@ If no objection detected, respond with:
 
 Response (JSON only):`;
 
-    const response = await aiProvider.client.generateContent({
+    const response = await cachedProvider.client.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
@@ -628,10 +728,6 @@ Response (JSON only):`;
     });
 
     const result = response.response.text().trim();
-    
-    if (aiProvider.cleanup) {
-      await aiProvider.cleanup();
-    }
 
     try {
       const parsed = JSON.parse(result.replace(/```json\n?|\n?```/g, ''));
@@ -694,14 +790,35 @@ async function transcribeBufferedAudio(
     console.log(`⏭️ [TurnTaking] Too few chunks (${buffer.chunks.length}), skipping transcription`);
     return null;
   }
+
+  // GUARD: If AI provider already failed, skip transcription and notify client once
+  if (session.aiProviderFailed) {
+    // Only send error message once (check if we haven't already)
+    if (session.aiProviderErrorMessage && !session.aiProviderErrorMessage.includes('[NOTIFIED]')) {
+      console.log(`⚠️ [TurnTaking] AI provider not available, skipping transcription`);
+      sendMessage(ws, {
+        type: 'error',
+        data: { 
+          message: 'Trascrizione non disponibile: provider AI non configurato. Contatta il supporto.',
+          code: 'AI_PROVIDER_UNAVAILABLE',
+          details: session.aiProviderErrorMessage,
+        },
+        timestamp: Date.now(),
+      });
+      session.aiProviderErrorMessage = `[NOTIFIED] ${session.aiProviderErrorMessage}`;
+    }
+    // Clear buffer to prevent memory accumulation
+    buffer.chunks = [];
+    return null;
+  }
   
   const combinedAudio = combineAudioChunks(buffer.chunks);
   
-  const transcript = await withRetry(
-    () => transcribeAudio(session, combinedAudio, buffer.speakerId, buffer.speakerName),
-    DEFAULT_RETRY_CONFIG,
-    `Transcription for ${buffer.speakerName}`
-  );
+  // Don't use retry if we know the provider might fail - try once directly
+  const transcript = await transcribeAudio(session, combinedAudio, buffer.speakerId, buffer.speakerName);
+  
+  // Always clear buffer after attempting transcription (prevents infinite accumulation)
+  buffer.chunks = [];
   
   if (transcript) {
     buffer.transcriptParts.push(transcript);
@@ -730,9 +847,18 @@ async function transcribeBufferedAudio(
     });
     
     console.log(`📝 [TurnTaking] Transcribed ${buffer.speakerName}: "${transcript.substring(0, 60)}..." (partial: ${isPartial})`);
+  } else if (session.aiProviderFailed) {
+    // Provider failed during this call - notify client
+    sendMessage(ws, {
+      type: 'error',
+      data: { 
+        message: 'Trascrizione non disponibile: problema con il provider AI.',
+        code: 'AI_PROVIDER_ERROR',
+        details: session.aiProviderErrorMessage,
+      },
+      timestamp: Date.now(),
+    });
   }
-  
-  buffer.chunks = [];
   
   return transcript;
 }
@@ -2094,6 +2220,9 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
           sessionStartTime: Date.now(),
         },
         businessContext: businessContext || null,
+        cachedAiProvider: null,
+        aiProviderFailed: false,
+        aiProviderErrorMessage: null,
       };
       activeSessions.set(meetingId, session);
     }
