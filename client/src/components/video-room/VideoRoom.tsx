@@ -356,6 +356,25 @@ export default function VideoRoom({
     onEndCall();
   };
 
+  // Determine layout mode based on participant count
+  const layoutMode = useMemo(() => {
+    const count = displayParticipants.length;
+    if (count <= 1) return 'single';
+    if (count === 2) return 'dual';
+    return 'grid';
+  }, [displayParticipants.length]);
+
+  // Calculate grid dimensions
+  const gridConfig = useMemo(() => {
+    const count = displayParticipants.length;
+    if (count <= 1) return { cols: 1, rows: 1 };
+    if (count === 2) return { cols: 2, rows: 1 };
+    if (count <= 4) return { cols: 2, rows: 2 };
+    if (count <= 6) return { cols: 3, rows: 2 };
+    if (count <= 9) return { cols: 3, rows: 3 };
+    return { cols: 4, rows: Math.ceil(count / 4) };
+  }, [displayParticipants.length]);
+
   // Get main participant (remote user) and local participant for Google Meet layout
   const { mainParticipant, localParticipant } = useMemo(() => {
     const local = displayParticipants.find(p => p.isLocalUser);
@@ -435,45 +454,87 @@ export default function VideoRoom({
       </header>
 
       <main className="flex-1 overflow-hidden relative">
-        {/* Main participant (full screen Google Meet style) */}
-        <AnimatePresence mode="wait">
-          {mainParticipant && (
-            <ParticipantVideo
-              key={mainParticipant.id}
-              participantName={mainParticipant.name}
-              sentiment={mainParticipant.sentiment}
-              isHost={mainParticipant.isHost}
-              isMuted={mainParticipant.isMuted}
-              isVideoOff={mainParticipant.isVideoOff}
-              isLocalUser={mainParticipant.isLocalUser}
-              localStream={mainParticipant.isLocalUser ? localStream : null}
-              remoteStream={!mainParticipant.isLocalUser ? remoteStreams.get(mainParticipant.id) : null}
-              variant="main"
-              isSpeaking={mainParticipant.isLocalUser ? isSpeaking : (participantSpeakingStates.get(mainParticipant.id) || false)}
-              audioLevel={mainParticipant.isLocalUser ? audioLevel : 0}
-            />
-          )}
-        </AnimatePresence>
+        {layoutMode === 'single' || layoutMode === 'dual' ? (
+          <>
+            {/* Main participant (full screen Google Meet style) */}
+            <AnimatePresence mode="wait">
+              {mainParticipant && (
+                <ParticipantVideo
+                  key={mainParticipant.id}
+                  participantName={mainParticipant.name}
+                  sentiment={mainParticipant.sentiment}
+                  isHost={mainParticipant.isHost}
+                  isMuted={mainParticipant.isMuted}
+                  isVideoOff={mainParticipant.isVideoOff}
+                  isLocalUser={mainParticipant.isLocalUser}
+                  localStream={mainParticipant.isLocalUser ? localStream : null}
+                  remoteStream={!mainParticipant.isLocalUser ? remoteStreams.get(mainParticipant.id) : null}
+                  variant="main"
+                  isSpeaking={mainParticipant.isLocalUser ? isSpeaking : (participantSpeakingStates.get(mainParticipant.id) || false)}
+                  audioLevel={mainParticipant.isLocalUser ? audioLevel : 0}
+                />
+              )}
+            </AnimatePresence>
 
-        {/* Local user PIP (picture-in-picture) when there are other participants */}
-        <AnimatePresence>
-          {localParticipant && (
-            <ParticipantVideo
-              key={`pip-${localParticipant.id}`}
-              participantName={localParticipant.name}
-              sentiment={localParticipant.sentiment}
-              isHost={localParticipant.isHost}
-              isMuted={localParticipant.isMuted}
-              isVideoOff={localParticipant.isVideoOff}
-              isLocalUser={true}
-              localStream={localStream}
-              remoteStream={null}
-              variant="pip"
-              isSpeaking={isSpeaking}
-              audioLevel={audioLevel}
-            />
-          )}
-        </AnimatePresence>
+            {/* Local user PIP (picture-in-picture) when there are other participants */}
+            <AnimatePresence>
+              {localParticipant && (
+                <ParticipantVideo
+                  key={`pip-${localParticipant.id}`}
+                  participantName={localParticipant.name}
+                  sentiment={localParticipant.sentiment}
+                  isHost={localParticipant.isHost}
+                  isMuted={localParticipant.isMuted}
+                  isVideoOff={localParticipant.isVideoOff}
+                  isLocalUser={true}
+                  localStream={localStream}
+                  remoteStream={null}
+                  variant="pip"
+                  isSpeaking={isSpeaking}
+                  audioLevel={audioLevel}
+                />
+              )}
+            </AnimatePresence>
+          </>
+        ) : (
+          /* Dynamic Grid Layout for 3+ participants */
+          <div 
+            className="w-full h-full p-2 sm:p-4"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${gridConfig.cols}, 1fr)`,
+              gridTemplateRows: `repeat(${gridConfig.rows}, 1fr)`,
+              gap: '0.5rem',
+            }}
+          >
+            <AnimatePresence>
+              {displayParticipants.map((participant, index) => (
+                <motion.div
+                  key={participant.id}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="relative rounded-lg overflow-hidden bg-gray-900"
+                >
+                  <ParticipantVideo
+                    participantName={participant.name}
+                    sentiment={participant.sentiment}
+                    isHost={participant.isHost}
+                    isMuted={participant.isMuted}
+                    isVideoOff={participant.isVideoOff}
+                    isLocalUser={participant.isLocalUser}
+                    localStream={participant.isLocalUser ? localStream : null}
+                    remoteStream={!participant.isLocalUser ? remoteStreams.get(participant.id) : null}
+                    variant="grid"
+                    isSpeaking={participant.isLocalUser ? isSpeaking : (participantSpeakingStates.get(participant.id) || false)}
+                    audioLevel={participant.isLocalUser ? audioLevel : 0}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
       </main>
 
       <VideoControls

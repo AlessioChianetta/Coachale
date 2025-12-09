@@ -13,7 +13,7 @@ interface ParticipantVideoProps {
   isLocalUser?: boolean;
   localStream?: MediaStream | null;
   remoteStream?: MediaStream | null;
-  variant?: 'main' | 'pip';
+  variant?: 'main' | 'pip' | 'grid';
   isSpeaking?: boolean;
   audioLevel?: number;
 }
@@ -113,6 +113,71 @@ export default function ParticipantVideo({
   const speakingRingClass = isSpeaking 
     ? 'ring-4 ring-green-500 ring-opacity-75' 
     : '';
+
+  if (variant === 'grid') {
+    return (
+      <div className={`relative w-full h-full overflow-hidden ${isSpeaking ? 'ring-2 ring-green-500' : ''}`}>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={isLocalUser}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
+          style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
+        />
+        
+        {!showVideoElement && (
+          <div className="absolute inset-0 bg-gradient-to-br from-gray-800 via-gray-900 to-gray-950 flex items-center justify-center">
+            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-xl ${isSpeaking ? 'ring-2 ring-green-500' : ''}`}>
+              <span className="text-white font-semibold text-2xl sm:text-3xl">
+                {initials}
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5 bg-gradient-to-t from-black/80 to-transparent">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-white text-xs sm:text-sm font-medium truncate flex-1">
+              {participantName}
+            </span>
+            <div className="flex items-center gap-1">
+              {isHost && (
+                <span className="px-1.5 py-0.5 bg-blue-500 text-white text-[10px] rounded">
+                  Host
+                </span>
+              )}
+              {isLocalUser && (
+                <span className="px-1.5 py-0.5 bg-purple-500 text-white text-[10px] rounded">
+                  Tu
+                </span>
+              )}
+              {isMuted && (
+                <div className="p-1 bg-red-500/90 rounded-full">
+                  <MicOff className="w-3 h-3 text-white" />
+                </div>
+              )}
+              {isVideoOff && (
+                <div className="p-1 bg-red-500/90 rounded-full">
+                  <VideoOff className="w-3 h-3 text-white" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {isSpeaking && audioLevel > 0 && (
+            <div className="mt-1 h-1 bg-gray-700/50 rounded-full overflow-hidden">
+              <motion.div 
+                className="h-full bg-green-500"
+                animate={{ width: `${Math.min(audioLevel * 100, 100)}%` }}
+                transition={{ duration: 0.1 }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (variant === 'pip') {
     return (
