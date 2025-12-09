@@ -559,12 +559,25 @@ export function useWebRTC({
       return;
     }
 
+    // CRITICAL: Check if we're already making an offer to prevent race conditions
+    // This prevents concurrent initiateConnection calls from creating conflicting offers
+    if (makingOfferRef.current.get(remoteParticipantId)) {
+      console.log(`⏳ [WebRTC] Already making offer to ${remoteParticipantId.slice(0,8)}..., skipping duplicate call`);
+      return;
+    }
+
     // Check if already connected or connecting
     const existingPc = peerConnectionsRef.current.get(remoteParticipantId);
     if (existingPc) {
       const isConnected = existingPc.iceConnectionState === 'connected' || existingPc.iceConnectionState === 'completed';
       if (isConnected) {
         console.log(`✅ [WebRTC] Already connected to ${remoteParticipantId.slice(0,8)}..., skipping`);
+        return;
+      }
+      
+      // Also check if we're in the middle of negotiation (have-local-offer or have-remote-offer)
+      if (existingPc.signalingState === 'have-local-offer') {
+        console.log(`⏳ [WebRTC] Already have pending offer to ${remoteParticipantId.slice(0,8)}..., waiting for answer`);
         return;
       }
     }
