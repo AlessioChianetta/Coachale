@@ -545,9 +545,7 @@ async function performTranscription(
     return null;
   }
 
-  const prompt = `Trascrivi questo audio in italiano. Scrivi SOLO le parole pronunciate, senza aggiungere nulla.
-
-Speaker: ${speakerName}`;
+  const prompt = `Trascrivi questo audio in italiano. Scrivi SOLO le parole pronunciate, senza aggiungere nulla.`;
 
   console.log(`🎯 [Trascrizione] Inviando richiesta a Gemini con prompt italiano...`);
   
