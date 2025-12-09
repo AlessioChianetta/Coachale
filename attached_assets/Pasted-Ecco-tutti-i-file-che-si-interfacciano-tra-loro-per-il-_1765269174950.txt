@@ -1,0 +1,64 @@
+Ecco tutti i file che si interfacciano tra loro per il sistema Meet (video conferencing):
+
+Frontend (Client)
+Pagine principali
+client/src/pages/meet-green-room.tsx - Lobby pre-chiamata dove l'utente si prepara
+client/src/pages/meet-video-room.tsx - Wrapper della pagina video room
+Componenti Video Room
+client/src/components/video-room/VideoRoom.tsx - Componente principale della video room
+client/src/components/video-room/ParticipantVideo.tsx - Rendering video dei partecipanti
+client/src/components/video-room/VideoControls.tsx - Controlli (mute, video, etc.)
+client/src/components/video-room/AICopilotHUD.tsx - HUD AI per l'host
+client/src/components/video-room/CoachingPanel.tsx - Panel di coaching in tempo reale
+Hooks Custom
+client/src/hooks/useVideoMeeting.ts - Gestione dati meeting (API)
+client/src/hooks/useVideoCopilot.ts - Connessione WebSocket per AI copilot
+client/src/hooks/useWebRTC.ts - Gestione peer-to-peer WebRTC
+client/src/hooks/useAudioLevelMonitor.ts - Monitoraggio livello audio
+client/src/components/video-room/hooks/useVADAudioCapture.ts - Voice Activity Detection e cattura audio
+client/src/components/video-room/hooks/useSalesCoaching.ts - Gestione messaggi coaching
+Utilities Audio
+client/src/components/ai-assistant/live-mode/audio-worklet/audio-converter.ts - Conversione formati audio (PCM, base64)
+Backend (Server)
+WebSocket
+server/websocket/video-ai-copilot.ts - Server WebSocket principale per AI copilot (trascrizioni, coaching, WebRTC signaling)
+API Routes
+server/routes/public/video-meeting.ts - API pubbliche per meeting
+server/routes/human-sellers.ts - API per gestione meeting e analytics
+AI Services
+server/ai/sales-manager-agent.ts - Agente AI che analizza conversazioni e fornisce coaching
+server/ai/provider-factory.ts - Factory per provider AI (Gemini, Vertex AI)
+server/ai/audio-converter.ts - Conversione audio lato server (PCM → WAV)
+server/ai/sales-script-structure-parser.ts - Parser struttura script di vendita
+server/ai/sales-script-tracker.ts - Tracciamento avanzamento script
+Database Schema
+shared/schema.ts - Schema database (tabelle: videoMeetings, videoMeetingParticipants, videoMeetingTranscripts, humanSellers, salesScripts, etc.)
+Flusso Dati
+[Client Browser]
+    ↓ HTTP
+[meet-green-room.tsx] → Carica dati meeting
+    ↓
+[meet-video-room.tsx] → Inizializza VideoRoom
+    ↓
+[VideoRoom.tsx] → Orchestratore principale
+    ├─→ [useVideoMeeting] → Fetch dati meeting via API
+    ├─→ [useVideoCopilot] → WebSocket a video-ai-copilot.ts
+    │     ↓ (trascrizioni, coaching, signaling)
+    ├─→ [useWebRTC] → Peer-to-peer video/audio
+    │     ↓ (offer/answer/ICE via WebSocket)
+    └─→ [useVADAudioCapture] → Cattura audio + VAD
+          ↓ (invia chunk audio via WebSocket)
+[video-ai-copilot.ts] ← WebSocket Server
+    ├─→ [provider-factory] → AI Client (Gemini/Vertex)
+    ├─→ [sales-manager-agent] → Analisi conversazione
+    ├─→ [audio-converter] → PCM → WAV
+    └─→ Database (transcripts, events, metrics)
+File di Configurazione Chiave
+.replit - Configurazione Replit (workflow, ports)
+server/index.ts - Entry point server (setup WebSocket)
+Questi sono tutti i file principali che lavorano insieme per il sistema Meet. Il cuore del sistema è il WebSocket server (video-ai-copilot.ts) che coordina:
+
+Signaling WebRTC
+Trascrizioni audio in tempo reale
+Coaching AI dal Sales Manager Agent
+Sincronizzazione stato tra partecipanti
