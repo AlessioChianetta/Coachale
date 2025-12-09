@@ -120,7 +120,7 @@ export default function VideoRoom({
     isJoinConfirmed,
     sendWebRTCMessage,
   });
-  
+
   const [showDebugPanel, setShowDebugPanel] = useState(false);
 
   // Audio level monitoring for speaking indicator
@@ -220,15 +220,10 @@ export default function VideoRoom({
   }, [leaveParticipant]);
 
   // Start audio capture for AI transcription when streams are ready (host only)
-  // Only start ONCE when all conditions are met
-  const hasStartedCaptureRef = useRef(false);
+  // Note: We keep copilotParticipants and remoteStreams in deps so capture restarts when prospects change
+  const remoteStreamsSize = remoteStreams.size;
   useEffect(() => {
-    if (!isHost || !isConnected || !localStream || !myParticipantId || !isJoinConfirmed) {
-      return;
-    }
-
-    // Start capture only once
-    if (hasStartedCaptureRef.current) {
+    if (!isHost || !isConnected || !localStream || !myParticipantId) {
       return;
     }
 
@@ -236,9 +231,8 @@ export default function VideoRoom({
       .filter(p => p.role === 'prospect' && !p.leftAt)
       .map(p => ({ id: p.id, name: p.name }));
 
-    console.log(`[AudioCapture] Starting capture ONCE - Host: ${participantName}, Prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}, ParticipantId: ${myParticipantId}`);
-    
-    hasStartedCaptureRef.current = true;
+    console.log(`[AudioCapture] Starting capture - Host: ${participantName}, Prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}, ParticipantId: ${myParticipantId}`);
+
     startCapture(
       localStream,
       remoteStreams,
@@ -246,27 +240,15 @@ export default function VideoRoom({
     );
 
     return () => {
-      console.log('[AudioCapture] Component unmounting - stopping capture');
-      hasStartedCaptureRef.current = false;
+      console.log('[AudioCapture] Stopping capture on cleanup');
       stopCapture();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, isConnected, localStream, myParticipantId, isJoinConfirmed]);
+  }, [isHost, isConnected, localStream, myParticipantId, copilotParticipants, remoteStreamsSize, participantName, startCapture, stopCapture]);
 
   // Update prospect audio capture when participants or remote streams change (for dynamic updates)
-  // This only updates the prospect list without restarting the entire capture
-  const remoteStreamsSize = remoteStreams.size;
-  const prospectIds = useMemo(() => 
-    copilotParticipants
-      .filter(p => p.role === 'prospect' && !p.leftAt)
-      .map(p => p.id)
-      .sort()
-      .join(','),
-    [copilotParticipants]
-  );
-
   useEffect(() => {
-    if (!isHost || !isCapturing || !hasStartedCaptureRef.current) {
+    if (!isHost || !isCapturing) {
       return;
     }
 
@@ -274,10 +256,10 @@ export default function VideoRoom({
       .filter(p => p.role === 'prospect' && !p.leftAt)
       .map(p => ({ id: p.id, name: p.name }));
 
-    console.log(`[AudioCapture] Updating prospects dynamically: ${activeProspects.map(p => p.name).join(', ') || 'none'}`);
+    console.log(`[AudioCapture] Updating prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}`);
     updateProspects(remoteStreams, activeProspects);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, isCapturing, prospectIds, remoteStreamsSize]);
+  }, [isHost, isCapturing, copilotParticipants, remoteStreamsSize, updateProspects]);
 
   useEffect(() => {
     if (isConnected && meetingParticipants.length > 0) {
@@ -365,7 +347,7 @@ export default function VideoRoom({
   const { mainParticipant, localParticipant } = useMemo(() => {
     const local = displayParticipants.find(p => p.isLocalUser);
     const remote = displayParticipants.find(p => !p.isLocalUser);
-    
+
     // If there's a remote participant, they are the main focus
     // Otherwise, local user is the main (solo mode)
     return {
@@ -552,7 +534,7 @@ export default function VideoRoom({
       {showDebugPanel && (
         <div className="fixed bottom-16 left-4 z-50 w-80 bg-gray-900/95 border border-gray-700 rounded-lg p-4 text-xs font-mono">
           <h3 className="text-white font-bold mb-3 text-sm">🔊 Audio Diagnostics</h3>
-          
+
           <div className="space-y-2">
             <div className={`p-2 rounded ${audioDiagnostics.localAudioTrackExists ? 'bg-green-900/50' : 'bg-red-900/50'}`}>
               <span className="text-gray-300">Mic locale: </span>
@@ -560,26 +542,26 @@ export default function VideoRoom({
                 {audioDiagnostics.localAudioTrackExists ? '✅ RILEVATO' : '❌ NON TROVATO'}
               </span>
             </div>
-            
+
             <div className={`p-2 rounded ${audioDiagnostics.localAudioEnabled ? 'bg-green-900/50' : 'bg-yellow-900/50'}`}>
               <span className="text-gray-300">Mic attivo: </span>
               <span className={audioDiagnostics.localAudioEnabled ? 'text-green-400' : 'text-yellow-400'}>
                 {audioDiagnostics.localAudioEnabled ? '✅ ATTIVO' : '🔇 MUTO'}
               </span>
             </div>
-            
+
             <div className={`p-2 rounded ${audioDiagnostics.remoteAudioTracks > 0 ? 'bg-green-900/50' : 'bg-red-900/50'}`}>
               <span className="text-gray-300">Audio remoti ricevuti: </span>
               <span className={audioDiagnostics.remoteAudioTracks > 0 ? 'text-green-400' : 'text-red-400'}>
                 {audioDiagnostics.remoteAudioTracks}
               </span>
             </div>
-            
+
             <div className="p-2 rounded bg-gray-800">
               <span className="text-gray-300">Ultimo evento: </span>
               <span className="text-blue-400 block mt-1">{audioDiagnostics.lastAudioEvent}</span>
             </div>
-            
+
             <div className="p-2 rounded bg-gray-800">
               <span className="text-gray-300">Connessioni ICE:</span>
               {audioDiagnostics.iceConnectionStates.size > 0 ? (
@@ -601,13 +583,13 @@ export default function VideoRoom({
                 <span className="text-gray-500 block mt-1">Nessuna connessione</span>
               )}
             </div>
-            
+
             <div className="p-2 rounded bg-gray-800">
               <span className="text-gray-300">Remote streams: </span>
               <span className="text-purple-400">{remoteStreams.size}</span>
             </div>
           </div>
-          
+
           <p className="text-gray-500 mt-3 text-[10px]">Apri console (F12) per log dettagliati</p>
         </div>
       )}

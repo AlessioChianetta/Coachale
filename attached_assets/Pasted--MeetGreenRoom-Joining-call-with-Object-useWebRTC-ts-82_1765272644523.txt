@@ -1,0 +1,790 @@
+
+[MeetGreenRoom] Joining call with: Object
+useWebRTC.ts:82 🌐 [WebRTC] Loading ICE servers for meeting NGTxJIdM06C0Hxf8...
+useWebRTC.ts:847 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=false
+2ParticipantVideo.tsx:90 📭 [ParticipantVideo] No stream available for Alessio Chianetta
+useWebRTC.ts:93 ✅ [WebRTC] Loaded 11 ICE servers (TURN: YES)
+useWebRTC.ts:847 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=true
+useVideoCopilot.ts:351 🎥 WebSocket connected to Video Copilot
+useVideoCopilot.ts:128 ✅ Video Copilot connected: Object
+useWebRTC.ts:847 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=false, joined=false, ice=true
+useWebRTC.ts:300 📹 [WebRTC] Starting local stream (video: true, audio: true)
+useWebRTC.ts:320 📹 [WebRTC] Camera native resolution: 640x480 @ 30fps
+useWebRTC.ts:321 📹 [WebRTC] Camera device: Asus Webcam
+useWebRTC.ts:332 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:333 🎤 [WebRTC-AUDIO-DEBUG] STREAM LOCALE CREATO
+useWebRTC.ts:334 🎤 [WebRTC-AUDIO-DEBUG] Tracce audio: 1
+useWebRTC.ts:335 🎤 [WebRTC-AUDIO-DEBUG] Tracce video: 1
+useWebRTC.ts:337 🎤 [WebRTC-AUDIO-DEBUG] Audio track 0:
+useWebRTC.ts:338    - ID: bdf06842-84db-4135-98f6-4f1a2d163edc
+useWebRTC.ts:339    - Label: Microphone (GameDAC Chat) (1038:1282)
+useWebRTC.ts:340    - Enabled: true
+useWebRTC.ts:341    - Muted: false
+useWebRTC.ts:342    - ReadyState: live
+useWebRTC.ts:344 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:369 ✅ [WebRTC] Local stream started with 2 tracks
+useWebRTC.ts:847 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=true, joined=false, ice=true
+useAudioLevelMonitor.ts:121 [AudioLevelMonitor] Started monitoring audio level
+useVideoCopilot.ts:244 ✅ Join confirmed, my participant ID: 240df6b2-a173-4bf2-b97f-168361c0fef3
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Alessio Chianetta
+ParticipantVideo.tsx:48    - Stream ID: a6b1ab1f-fd41-4391-a97a-fc90c72649e3
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:852 👥 [WebRTC] Checking 0 other participants for connections (my ID: 240df6b2-a173-4bf2-b97f-168361c0fef3)
+VideoRoom.tsx:234 [AudioCapture] Starting capture - Host: Alessio Chianetta, Prospects: none, ParticipantId: 240df6b2-a173-4bf2-b97f-168361c0fef3
+useVADAudioCapture.ts:329 [VAD-AudioCapture] Starting with Silero VAD neural network...
+useVADAudioCapture.ts:337 [VAD] Initializing HOST VAD with Silero neural network...
+useVADAudioCapture.ts:33 📦 [VAD] Loading ONNX Runtime from CDN...
+VideoRoom.tsx:259 [AudioCapture] Updating prospects: none
+useVideoCopilot.ts:290 📡 Participant socket ready: Alessio Chianetta (240df6b2-a173-4bf2-b97f-168361c0fef3)
+useWebRTC.ts:671 📡 [WebRTC] Received own socket_ready, ignoring
+VideoRoom.tsx:243 [AudioCapture] Stopping capture on cleanup
+useVADAudioCapture.ts:421 [VAD-AudioCapture] Stopping...
+useVADAudioCapture.ts:455 [VAD-AudioCapture] Stopped
+useWebRTC.ts:852 👥 [WebRTC] Checking 0 other participants for connections (my ID: 240df6b2-a173-4bf2-b97f-168361c0fef3)
+VideoRoom.tsx:234 [AudioCapture] Starting capture - Host: Alessio Chianetta, Prospects: none, ParticipantId: 240df6b2-a173-4bf2-b97f-168361c0fef3
+useVADAudioCapture.ts:329 [VAD-AudioCapture] Starting with Silero VAD neural network...
+useVADAudioCapture.ts:337 [VAD] Initializing HOST VAD with Silero neural network...
+useVADAudioCapture.ts:33 📦 [VAD] Loading ONNX Runtime from CDN...
+VideoRoom.tsx:259 [AudioCapture] Updating prospects: none
+2useVADAudioCapture.ts:36 📦 [VAD] Loading VAD bundle from CDN...
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Alessio Chianetta
+useVADAudioCapture.ts:41 🔍 [VAD] window.ort available: true
+useVADAudioCapture.ts:44 ✅ [VAD] Library loaded from CDN successfully
+bundle.min.js:2 VAD | debug > initializing vad
+useVADAudioCapture.ts:41 🔍 [VAD] window.ort available: true
+useVADAudioCapture.ts:44 ✅ [VAD] Library loaded from CDN successfully
+bundle.min.js:2 VAD | debug > initializing vad
+2bundle.min.js:2 VAD | debug > vad is initialized
+2bundle.min.js:2 VAD | debug > initializing micVAD
+bundle.min.js:2 VAD | debug > started micVAD
+useVADAudioCapture.ts:365 ✅ [VAD] HOST Silero VAD started successfully
+useVADAudioCapture.ts:380 [VAD-AudioCapture] Capture started successfully (HOST + 0 prospects)
+bundle.min.js:2 VAD | debug > started micVAD
+useVADAudioCapture.ts:365 ✅ [VAD] HOST Silero VAD started successfully
+useVADAudioCapture.ts:380 [VAD-AudioCapture] Capture started successfully (HOST + 0 prospects)
+useVADAudioCapture.ts:152 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+useVADAudioCapture.ts:152 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+2bundle.min.js:2 VAD | debug > Detected real speech start
+2useVADAudioCapture.ts:164 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:171 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:136 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 78336, Base64: 208896 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: Object
+useWebRTC.ts:397 🎤 [WebRTC-AUDIO-DEBUG] Toggle audio: MUTO - track.enabled=false
+useVideoCopilot.ts:290 📡 Participant socket ready: Dz HyperLoop (337a88ef-d6be-411d-bc30-9573779b5cc8)
+useWebRTC.ts:677 📡 [WebRTC] Participant 337a88ef... no longer active, aborting connection attempt
+VideoRoom.tsx:243 [AudioCapture] Stopping capture on cleanup
+useVADAudioCapture.ts:421 [VAD-AudioCapture] Stopping...
+bundle.min.js:2 VAD | debug > destroy called
+vad.worklet.bundle.min.js:1 VAD | debug > Worklet received speech stop message
+useVADAudioCapture.ts:455 [VAD-AudioCapture] Stopped
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Alessio Chianetta
+ParticipantVideo.tsx:48    - Stream ID: a6b1ab1f-fd41-4391-a97a-fc90c72649e3
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:852 👥 [WebRTC] Checking 1 other participants for connections (my ID: 240df6b2-a173-4bf2-b97f-168361c0fef3)
+useWebRTC.ts:856 🔗 [WebRTC] No existing connection to 337a88ef-d6be-411d-bc30-9573779b5cc8, attempting to initiate...
+useWebRTC.ts:576 🔍 [WebRTC] Connection decision: myId=240df6b2... vs remoteId=337a88ef... → THEY INITIATE (lower ID)
+useWebRTC.ts:579 ⏭️ [WebRTC] Skipping connection initiation (waiting for 337a88ef... to initiate)
+VideoRoom.tsx:234 [AudioCapture] Starting capture - Host: Alessio Chianetta, Prospects: Dz HyperLoop, ParticipantId: 240df6b2-a173-4bf2-b97f-168361c0fef3
+useVADAudioCapture.ts:329 [VAD-AudioCapture] Starting with Silero VAD neural network...
+useVADAudioCapture.ts:337 [VAD] Initializing HOST VAD with Silero neural network...
+VideoRoom.tsx:259 [AudioCapture] Updating prospects: Dz HyperLoop
+bundle.min.js:2 VAD | debug > initializing vad
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Alessio Chianetta
+bundle.min.js:2 VAD | debug > vad is initialized
+bundle.min.js:2 VAD | debug > initializing micVAD
+bundle.min.js:2 VAD | debug > started micVAD
+useVADAudioCapture.ts:365 ✅ [VAD] HOST Silero VAD started successfully
+useVADAudioCapture.ts:380 [VAD-AudioCapture] Capture started successfully (HOST + 1 prospects)
+useWebRTC.ts:411 📥 [WebRTC] Received offer from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:137 🔗 [WebRTC] Creating peer connection for 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:138 🔗 [WebRTC] Using ICE config with 11 servers
+useWebRTC.ts:285 📹 [WebRTC] localStreamRef.current EXISTS - adding 2 tracks to peer connection
+useWebRTC.ts:287 ➕ [WebRTC] Adding local track audio to connection with 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:287 ➕ [WebRTC] Adding local track video to connection with 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:156 📹 [WebRTC] Received remote track from 337a88ef-d6be-411d-bc30-9573779b5cc8 (audio)
+useWebRTC.ts:171 ➕ [WebRTC] Added audio track to NEW stream for 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:194 🎤 [WebRTC-AUDIO-DEBUG] Received AUDIO track from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:195    - Track ID: 0e2238f8-f529-47b5-b12b-5bd1e6772426
+useWebRTC.ts:196    - Track enabled: true
+useWebRTC.ts:197    - Track readyState: live
+useWebRTC.ts:156 📹 [WebRTC] Received remote track from 337a88ef-d6be-411d-bc30-9573779b5cc8 (video)
+useWebRTC.ts:207 📹 [WebRTC-VIDEO-DEBUG] Received VIDEO track from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:208    - Track ID: a31ee7d2-8e0f-46c3-a9e4-616e01e16e5a
+useWebRTC.ts:209    - Track enabled: true
+useWebRTC.ts:210    - Track readyState: live
+VideoRoom.tsx:243 [AudioCapture] Stopping capture on cleanup
+useVADAudioCapture.ts:421 [VAD-AudioCapture] Stopping...
+bundle.min.js:2 VAD | debug > destroy called
+vad.worklet.bundle.min.js:1 VAD | debug > Worklet received speech stop message
+useVADAudioCapture.ts:455 [VAD-AudioCapture] Stopped
+VideoRoom.tsx:234 [AudioCapture] Starting capture - Host: Alessio Chianetta, Prospects: Dz HyperLoop, ParticipantId: 240df6b2-a173-4bf2-b97f-168361c0fef3
+useVADAudioCapture.ts:329 [VAD-AudioCapture] Starting with Silero VAD neural network...
+useVADAudioCapture.ts:337 [VAD] Initializing HOST VAD with Silero neural network...
+VideoRoom.tsx:259 [AudioCapture] Updating prospects: Dz HyperLoop
+useVADAudioCapture.ts:191 [VAD] Setting up audio capture for PROSPECT: Dz HyperLoop (337a88ef-d6be-411d-bc30-9573779b5cc8)
+useVADAudioCapture.ts:202 [Deprecation] The ScriptProcessorNode is deprecated. Use AudioWorkletNode instead. (https://bit.ly/audio-worklet)
+(anonymous) @ useVADAudioCapture.ts:202Understand this warning
+useVADAudioCapture.ts:297 ✅ [VAD] PROSPECT Dz HyperLoop audio capture ready (total: 1 prospects)
+bundle.min.js:2 VAD | debug > initializing vad
+useWebRTC.ts:537 🧊 [WebRTC] Received ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:493 📤 [WebRTC] Sending answer to 337a88ef-d6be-411d-bc30-9573779b5cc8
+5useWebRTC.ts:537 🧊 [WebRTC] Received ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Dz HyperLoop
+ParticipantVideo.tsx:48    - Stream ID: 8a668644-cbc6-4aeb-9ff5-9d6525b3b9ba
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:215 🔌 [WebRTC-AUDIO-DEBUG] ICE state per 337a88ef-d6be-411d-bc30-9573779b5cc8: checking
+2useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 337a88ef-d6be-411d-bc30-9573779b5cc8
+bundle.min.js:2 VAD | debug > vad is initialized
+bundle.min.js:2 VAD | debug > initializing micVAD
+2useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 337a88ef-d6be-411d-bc30-9573779b5cc8
+bundle.min.js:2 VAD | debug > started micVAD
+useVADAudioCapture.ts:365 ✅ [VAD] HOST Silero VAD started successfully
+useVADAudioCapture.ts:187 [VAD] Prospect Dz HyperLoop already has audio capture setup
+useVADAudioCapture.ts:380 [VAD-AudioCapture] Capture started successfully (HOST + 1 prospects)
+useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 337a88ef-d6be-411d-bc30-9573779b5cc8
+3useWebRTC.ts:537 🧊 [WebRTC] Received ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8
+4useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 337a88ef-d6be-411d-bc30-9573779b5cc8
+7useWebRTC.ts:537 🧊 [WebRTC] Received ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8
+2useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 337a88ef-d6be-411d-bc30-9573779b5cc8
+3useWebRTC.ts:537 🧊 [WebRTC] Received ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 337a88ef-d6be-411d-bc30-9573779b5cc8
+9useWebRTC.ts:537 🧊 [WebRTC] Received ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 337a88ef-d6be-411d-bc30-9573779b5cc8
+2useWebRTC.ts:537 🧊 [WebRTC] Received ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:215 🔌 [WebRTC-AUDIO-DEBUG] ICE state per 337a88ef-d6be-411d-bc30-9573779b5cc8: connected
+useWebRTC.ts:229 ✅ [WebRTC] Connection established with 337a88ef..., cleaning up retry timers
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Dz HyperLoop
+useVADAudioCapture.ts:247 🎧 [VAD] PROSPECT speech started - Dz HyperLoop
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Dz HyperLoop
+useVADAudioCapture.ts:259 🔇 [VAD] PROSPECT speech ended - Dz HyperLoop - scheduling flush after 1200ms
+useVADAudioCapture.ts:266 ⏰ [VAD] PROSPECT Dz HyperLoop - True silence detected, flushing buffer
+useVADAudioCapture.ts:126 ⏭️ [VAD] Audio too short (4096 samples = 256ms), skipping
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Dz HyperLoop
+useVADAudioCapture.ts:237 🔄 [VAD] PROSPECT Dz HyperLoop - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:247 🎧 [VAD] PROSPECT speech started - Dz HyperLoop
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Dz HyperLoop
+useVADAudioCapture.ts:259 🔇 [VAD] PROSPECT speech ended - Dz HyperLoop - scheduling flush after 1200ms
+useVADAudioCapture.ts:266 ⏰ [VAD] PROSPECT Dz HyperLoop - True silence detected, flushing buffer
+useVADAudioCapture.ts:136 📤 [VAD] Sending audio - Speaker: Dz HyperLoop, Samples: 5461, Base64: 14564 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Dz HyperLoop
+useVADAudioCapture.ts:237 🔄 [VAD] PROSPECT Dz HyperLoop - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:247 🎧 [VAD] PROSPECT speech started - Dz HyperLoop
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Dz HyperLoop
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: Object
+useVADAudioCapture.ts:259 🔇 [VAD] PROSPECT speech ended - Dz HyperLoop - scheduling flush after 1200ms
+useVADAudioCapture.ts:237 🔄 [VAD] PROSPECT Dz HyperLoop - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:247 🎧 [VAD] PROSPECT speech started - Dz HyperLoop
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Dz HyperLoop
+useVADAudioCapture.ts:259 🔇 [VAD] PROSPECT speech ended - Dz HyperLoop - scheduling flush after 1200ms
+useVADAudioCapture.ts:237 🔄 [VAD] PROSPECT Dz HyperLoop - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:247 🎧 [VAD] PROSPECT speech started - Dz HyperLoop
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Dz HyperLoop
+useVADAudioCapture.ts:259 🔇 [VAD] PROSPECT speech ended - Dz HyperLoop - scheduling flush after 1200ms
+useVADAudioCapture.ts:237 🔄 [VAD] PROSPECT Dz HyperLoop - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:247 🎧 [VAD] PROSPECT speech started - Dz HyperLoop
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Dz HyperLoop
+useVADAudioCapture.ts:259 🔇 [VAD] PROSPECT speech ended - Dz HyperLoop - scheduling flush after 1200ms
+useVADAudioCapture.ts:266 ⏰ [VAD] PROSPECT Dz HyperLoop - True silence detected, flushing buffer
+useVADAudioCapture.ts:136 📤 [VAD] Sending audio - Speaker: Dz HyperLoop, Samples: 126976, Base64: 338604 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Dz HyperLoop
+useWebRTC.ts:397 🎤 [WebRTC-AUDIO-DEBUG] Toggle audio: ATTIVO - track.enabled=true
+useAudioLevelMonitor.ts:121 [AudioLevelMonitor] Started monitoring audio level
+
+
+
+
+
+
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+9:21:51 AM [express] GET /api/badges/7e40b56c-2cc8-4515-b843-dc105e478f38 304 in 227ms :: []
+9:21:51 AM [express] GET /api/momentum/checkins/daily-stats 304 in 225ms :: {"date":"2025-12-09","to…
+9:21:51 AM [express] GET /api/momentum/checkins/current-streak 304 in 230ms :: {"streak":0}
+9:21:52 AM [express] GET /api/daily-tasks/client 200 in 7ms
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+9:21:52 AM [express] GET /api/calendar/events 304 in 902ms :: [{"id":"86eea401-ee34-4a8d-a69b-71852c…
+9:21:52 AM [express] GET /api/consultations/client 304 in 560ms :: [{"id":"8e0aacdf-3550-4315-8dab-9…
+9:21:52 AM [express] GET /api/momentum/goals 304 in 953ms :: []
+9:21:52 AM [express] GET /api/exercise-assignments/client 304 in 690ms :: [{"id":"15c333e8-e47f-4771…
+9:21:52 AM [express] GET /api/meet/m5rMST1Yhd1luRQx 200 in 343ms :: {"id":"31711408-00ee-420b-99b3-1…
+✅ [WHATSAPP POLLING] Poll cycle complete
+[PublicMeeting] Fetching meeting for token: m5rMST1Yhd1luRQx
+9:21:53 AM [express] GET /api/stats/client 304 in 1691ms :: {"completedExercises":18,"totalExercises…
+🔗 [ICE] Owner 7e40b56c-2cc8-4515-b843-dc105e478f38 is a client, looking for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's TURN config
+✅ [ICE] Using TURN config from consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+9:21:53 AM [express] GET /api/daily-reflections 304 in 1006ms :: [{"id":"5a1be378-c0ea-4579-8e61-f37…
+[PublicMeeting] Meeting found: 31711408-00ee-420b-99b3-15c9bfba4171 - xzc
+9:21:53 AM [express] GET /api/public/meeting/m5rMST1Yhd1luRQx 200 in 669ms :: {"meeting":{"id":"3171…
+🔑 [ICE-DEBUG] TURN username: cac83f96...
+🔑 [ICE-DEBUG] TURN password: AATl1bJo...
+9:21:53 AM [express] GET /api/video-meeting/ice-servers/m5rMST1Yhd1luRQx 304 in 788ms :: {"iceServer…
+🎥 [461dm] Client connected to Video AI Copilot
+📦 [VideoCopilot] Loaded business context for seller: Alessio (3 services)
+✅ [VideoCopilot] Connection authenticated - Meeting: 31711408-00ee-420b-99b3-15c9bfba4171, Guest: true, BusinessContext: loaded
+📘 [VideoCopilot] Auto-loaded playbook: Script più leggero (0 phases, 0 objections)
+🧹 [VideoCopilot] Cleaned zombie participant: Alessio Chianetta (f49dd7e5-2a20-4946-8049-dea9db6265fb)
+🧹 [VideoCopilot] Cleaned zombie participant: Dz HyperLoop (749d7eaa-4a96-4a65-999a-ca28b8895ff8)
+9:21:55 AM [express] GET /api/meet/m5rMST1Yhd1luRQx 200 in 335ms :: {"id":"31711408-00ee-420b-99b3-1…
+👥 [VideoCopilot] Participants updated: 2 participants
+[PublicMeeting] Fetching meeting for token: m5rMST1Yhd1luRQx
+🔄 [VideoCopilot] Recycling inactive participant: Alessio Chianetta (host) - ID: f49dd7e5-2a20-4946-8049-dea9db6265fb
+🔗 [VideoCopilot] Registered socket for participant f49dd7e5-2a20-4946-8049-dea9db6265fb in meeting 31711408-00ee-420b-99b3-15c9bfba4171
+📡 [VideoCopilot] Broadcast participant_socket_ready for Alessio Chianetta (f49dd7e5-2a20-4946-8049-dea9db6265fb)
+🔗 [ICE] Owner 7e40b56c-2cc8-4515-b843-dc105e478f38 is a client, looking for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's TURN config
+✅ [ICE] Using TURN config from consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+[PublicMeeting] Meeting found: 31711408-00ee-420b-99b3-15c9bfba4171 - xzc
+9:21:56 AM [express] GET /api/public/meeting/m5rMST1Yhd1luRQx 200 in 569ms :: {"meeting":{"id":"3171…
+🔑 [ICE-DEBUG] TURN username: cac83f96...
+🔑 [ICE-DEBUG] TURN password: AATl1bJo...
+9:21:56 AM [express] GET /api/video-meeting/ice-servers/m5rMST1Yhd1luRQx 304 in 776ms :: {"iceServer…
+🎥 [qkfjyf] Client connected to Video AI Copilot
+📦 [VideoCopilot] Loaded business context for seller: Alessio (3 services)
+✅ [VideoCopilot] Connection authenticated - Meeting: 31711408-00ee-420b-99b3-15c9bfba4171, Guest: true, BusinessContext: loaded
+👥 [VideoCopilot] Participants updated: 1 participants
+🔓 [VideoCopilot] Unregistered socket for participant 749d7eaa-4a96-4a65-999a-ca28b8895ff8 in meeting 31711408-00ee-420b-99b3-15c9bfba4171
+🔄 [VideoCopilot] Recycling inactive participant: Dz HyperLoop (prospect) - ID: 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+🔗 [VideoCopilot] Registered socket for participant 749d7eaa-4a96-4a65-999a-ca28b8895ff8 in meeting 31711408-00ee-420b-99b3-15c9bfba4171
+📡 [VideoCopilot] Broadcast participant_socket_ready for Dz HyperLoop (749d7eaa-4a96-4a65-999a-ca28b8895ff8)
+📤 [VideoCopilot] Forwarded WebRTC offer from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded ICE candidate from f49dd7e5-2a20-4946-8049-dea9db6265fb to 749d7eaa-4a96-4a65-999a-ca28b8895ff8
+📤 [VideoCopilot] Forwarded WebRTC answer from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+📤 [VideoCopilot] Forwarded ICE candidate from 749d7eaa-4a96-4a65-999a-ca28b8895ff8 to f49dd7e5-2a20-4946-8049-dea9db6265fb
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:22:19 AM [express] POST /api/activity/session/heartbeat 200 in 913ms :: {"success":true,"lastActiv…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔌 [461dm] Client disconnected: 1000 - User disconnected
+🔓 [VideoCopilot] Auto-unregistered socket for participant f49dd7e5-2a20-4946-8049-dea9db6265fb on disconnect
+🔓 [VideoCopilot] Unregistered socket for participant f49dd7e5-2a20-4946-8049-dea9db6265fb in meeting 31711408-00ee-420b-99b3-15c9bfba4171
+👋 [VideoCopilot] Participant left: Alessio Chianetta
+🔓 [VideoCopilot] Unregistered socket for participant 749d7eaa-4a96-4a65-999a-ca28b8895ff8 in meeting 31711408-00ee-420b-99b3-15c9bfba4171
+👋 [VideoCopilot] Participant left: Dz HyperLoop
+📝 [VideoCopilot] Marked participant f49dd7e5-2a20-4946-8049-dea9db6265fb as left in database
+🗑️ [VideoCopilot] Removed participant f49dd7e5-2a20-4946-8049-dea9db6265fb from session
+🔌 [qkfjyf] Client disconnected: 1000 - User disconnected
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-11-16T01:55:16.000Z
+❌ [WHATSAPP POLLING] Error for agent Marco setter: RestException [Error]: Authentication Error - invalid username
+    at MessagePage.processResponse (/home/runner/workspace/node_modules/twilio/lib/base/Page.js:135:19)
+    at new Page (/home/runner/workspace/node_modules/twilio/lib/base/Page.js:17:28)
+    at new MessagePage (/home/runner/workspace/node_modules/twilio/lib/rest/api/v2010/account/message.js:360:9)
+    at /home/runner/workspace/node_modules/twilio/lib/rest/api/v2010/account/message.js:328:63
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  status: 401,
+  code: 20003,
+  moreInfo: 'https://www.twilio.com/docs/errors/20003',
+  details: undefined
+}
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:23:05 AM [express] GET /api/client/human-sellers/scripts 304 in 247ms :: [{"id":"60f67d3c-7877-4d8…
+9:23:05 AM [express] GET /api/client/human-sellers/meetings 200 in 251ms :: [{"id":"31711408-00ee-42…
+[VideoMeetings] Deleted meeting 47a27742-c502-4053-9008-399d89081cae
+9:23:08 AM [express] DELETE /api/client/human-sellers/meetings/47a27742-c502-4053-9008-399d89081cae …
+9:23:08 AM [express] GET /api/client/human-sellers/meetings 200 in 229ms :: [{"id":"31711408-00ee-42…
+[VideoMeetings] Deleted meeting 31711408-00ee-420b-99b3-15c9bfba4171
+9:23:10 AM [express] DELETE /api/client/human-sellers/meetings/31711408-00ee-420b-99b3-15c9bfba4171 …
+9:23:10 AM [express] GET /api/client/human-sellers/meetings 200 in 227ms :: [{"id":"524941ec-1b41-46…
+[VideoMeetings] Deleted meeting 524941ec-1b41-46ca-8317-a5b3ab9ea1c0
+9:23:12 AM [express] DELETE /api/client/human-sellers/meetings/524941ec-1b41-46ca-8317-a5b3ab9ea1c0 …
+9:23:12 AM [express] GET /api/client/human-sellers/meetings 200 in 226ms :: []
+9:23:21 AM [express] GET /api/client/human-sellers 304 in 227ms :: [{"id":"d6d90b5c-45bb-400c-b52a-1…
+[VideoMeetings] Created meeting 3c3c6f38-4040-4a47-a171-59b304b274d3 with token NGTxJIdM06C0Hxf8
+9:23:21 AM [express] POST /api/client/human-sellers/d6d90b5c-45bb-400c-b52a-1d67a9047bb8/meetings 20…
+9:23:22 AM [express] GET /api/client/human-sellers/meetings 200 in 226ms :: [{"id":"3c3c6f38-4040-4a…
+9:23:28 AM [express] GET /api/meet/NGTxJIdM06C0Hxf8 200 in 340ms :: {"id":"3c3c6f38-4040-4a47-a171-5…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+9:23:33 AM [express] POST /api/meet/verify-google 200 in 18ms :: {"email":"chianettaalessio@gmail.co…
+✅ [WHATSAPP POLLING] Poll cycle complete
+[PublicMeet] Participant Alessio Chianetta joined meeting 3c3c6f38-4040-4a47-a171-59b304b274d3
+9:23:34 AM [express] POST /api/meet/NGTxJIdM06C0Hxf8/join 201 in 228ms :: {"participantId":"240df6b2…
+9:23:35 AM [express] GET /api/meet/NGTxJIdM06C0Hxf8 304 in 336ms :: {"id":"3c3c6f38-4040-4a47-a171-5…
+[PublicMeeting] Fetching meeting for token: NGTxJIdM06C0Hxf8
+[PublicMeeting] Meeting found: 3c3c6f38-4040-4a47-a171-59b304b274d3 - ggg
+9:23:36 AM [express] GET /api/public/meeting/NGTxJIdM06C0Hxf8 200 in 676ms :: {"meeting":{"id":"3c3c…
+🔗 [ICE] Owner 7e40b56c-2cc8-4515-b843-dc105e478f38 is a client, looking for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's TURN config
+✅ [ICE] Using TURN config from consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔑 [ICE-DEBUG] TURN username: cac83f96...
+🔑 [ICE-DEBUG] TURN password: AATl1bJo...
+9:23:37 AM [express] GET /api/video-meeting/ice-servers/NGTxJIdM06C0Hxf8 200 in 1484ms :: {"iceServe…
+🎥 [u3svh] Client connected to Video AI Copilot
+📦 [VideoCopilot] Loaded business context for seller: Alessio (3 services)
+✅ [VideoCopilot] Connection authenticated - Meeting: 3c3c6f38-4040-4a47-a171-59b304b274d3, Guest: true, BusinessContext: loaded
+📘 [VideoCopilot] Auto-loaded playbook: Script più leggero (0 phases, 0 objections)
+🧹 [VideoCopilot] Cleaned zombie participant: Alessio Chianetta (240df6b2-a173-4bf2-b97f-168361c0fef3)
+👥 [VideoCopilot] Participants updated: 1 participants
+🔄 [VideoCopilot] Recycling inactive participant: Alessio Chianetta (host) - ID: 240df6b2-a173-4bf2-b97f-168361c0fef3
+🔗 [VideoCopilot] Registered socket for participant 240df6b2-a173-4bf2-b97f-168361c0fef3 in meeting 3c3c6f38-4040-4a47-a171-59b304b274d3
+📡 [VideoCopilot] Broadcast participant_socket_ready for Alessio Chianetta (240df6b2-a173-4bf2-b97f-168361c0fef3)
+🎤 [VAD-SPEECH-START] Alessio Chianetta started speaking (client VAD)
+🆕 [VAD-SPEECH-START] Created new buffer for Alessio Chianetta (240df6b2-a173-4bf2-b97f-168361c0fef3)
+🎤 [VAD-SPEECH-START] Alessio Chianetta started speaking (client VAD)
+♻️ [VAD-SPEECH-START] Reusing existing buffer for Alessio Chianetta (0 chunks)
+📦 [STEP 3] Received audio chunk from Alessio Chianetta - Chunks: 1, Size: 208896 chars
+⏰ [TurnTaking] Forcing analysis after 1765272226112ms (1765272226s inactivity)
+🔇 [VAD-SPEECH-END] Alessio Chianetta stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⚡ [TRUST-THE-CLIENT] Transcribing 1 chunks for Alessio Chianetta immediately
+🎤 [VideoCopilot] Transcribing audio from Alessio Chianetta (208896 chars base64)
+🔄 [VideoCopilot] PCM 156672 bytes → WAV 156716 bytes
+✅ Audio saved: /uploads/ai-voice/guest/3c3c6f38-4040-4a47-a171-59b304b274d3/meeting-3c3c6f38-4040-4a47-a171-59b304b274d3-speaker-240df6b2-a173-4bf2-b97f-168361c0fef3-1765272226124.wav (153.04 KB)
+💾 [VideoCopilot] WAV saved: /uploads/ai-voice/guest/3c3c6f38-4040-4a47-a171-59b304b274d3/meeting-3c3c6f38-4040-4a47-a171-59b304b274d3-speaker-240df6b2-a173-4bf2-b97f-168361c0fef3-1765272226124.wav
+🔍 [VideoCopilot] Getting AI provider (first time or cache expired)...
+🔍 Finding AI provider for client guest (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: guest)...
+⚠️ TIER 1: No client-managed Vertex AI settings found
+🔍 TIER 2: Finding Vertex AI settings for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (isConsultantUsingOwnAI: false)
+📋 TIER 2: Found 1 Vertex AI setting(s) for consultant
+🔍 Checking Vertex AI setting: managedBy=self, usageScope=both
+✅ usageScope is 'both' - access granted
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 2: Successfully created Vertex AI client (managedBy: self, usageScope: both)
+✅ [VideoCopilot] AI provider cached (source: admin)
+🎯 [Trascrizione] Inviando richiesta a Gemini con prompt italiano...
+📊 [Trascrizione] Risposta ricevuta, estrazione testo...
+📝 [VideoCopilot] Raw transcription: "Ciao mi senti forte e chiaro oppure no no no"
+📝 [VideoCopilot] Final transcription: "Ciao mi senti forte e chiaro oppure no no no"
+📤 [STEP 5] Sending transcript to client - Speaker: Alessio Chianetta, Text: "Ciao mi senti forte e chiaro oppure no no no..."
+📝 [STEP 5 DONE] Transcribed Alessio Chianetta: "Ciao mi senti forte e chiaro oppure no no no..." (partial: false)
+✅ [VAD-SPEECH-END] Turn finalized: Alessio Chianetta - "Ciao mi senti forte e chiaro oppure no no no..."
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [TURN-EXCHANGE] Analysis after turn exchange
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Previous: Alessio Chianetta
+   → "Ciao mi senti forte e chiaro oppure no no no..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤖 [STEP 7] Starting Sales Manager Analysis...
+⚠️ [STEP 7] Skipping Sales Manager: missing script structure or consultantId
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+9:24:01 AM [express] GET /api/meet/NGTxJIdM06C0Hxf8 200 in 1062ms :: {"id":"3c3c6f38-4040-4a47-a171-…
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:24:04 AM [express] GET /api/meet/NGTxJIdM06C0Hxf8 200 in 345ms :: {"id":"3c3c6f38-4040-4a47-a171-5…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:24:49 AM [express] POST /api/activity/session/heartbeat 200 in 925ms :: {"success":true,"lastActiv…
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-12-09T09:25:00.021Z
+📋 Found 0 pending leads to contact
+📊 [CALENDAR SYNC] Syncing 1 consultant(s)...
+
+🔄 [CALENDAR SYNC] Starting sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📋 Found 3 leads ready for follow-up
+📤 Processing lead: Gianluca Perna (+393933318891)
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: 881b6ed6-3910-4198-9276-0bc9c3030b50
+   Lead Name: Gianluca Perna
+   Message Type: followup_final (26 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+📤 Processing lead: Alessio Chianetta (+393890566422)
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: fd82df05-3a7f-449e-82f0-269935cebc5a
+   Lead Name: Alessio Chianetta
+   Message Type: followup_final (26 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+📤 Processing lead: Dario borloni (+393333887043)
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+🔗 [OAUTH] Redirect URI for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: https://43cee6c8-9db7-41c8-b3b9-1b183fd9f280-00-3pm9onqtah4ew.riker.replit.dev/api/calendar-settings/oauth/callback
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: 01e0a582-9554-4204-91be-1a77e17af14a
+   Lead Name: Dario borloni
+   Message Type: followup_final (26 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+
+✅ [PROACTIVE OUTREACH] Completed in 1392ms
+   📊 Results: 3 success, 0 errors, 3 total
+✅ Using saved calendar ID from settings: primary
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+✅ [CALENDAR SYNC] No confirmed appointments to sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b in the next 90 days
+
+✅ [CALENDAR SYNC] Sync cycle complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:25:17 AM [express] POST /api/meet/verify-google 200 in 12ms :: {"email":"chianettalessio7@gmail.co…
+[PublicMeet] Participant Dz HyperLoop joined meeting 3c3c6f38-4040-4a47-a171-59b304b274d3
+9:25:20 AM [express] POST /api/meet/NGTxJIdM06C0Hxf8/join 201 in 901ms :: {"participantId":"3903b417…
+9:25:22 AM [express] GET /api/meet/NGTxJIdM06C0Hxf8 304 in 337ms :: {"id":"3c3c6f38-4040-4a47-a171-5…
+[PublicMeeting] Fetching meeting for token: NGTxJIdM06C0Hxf8
+[PublicMeeting] Meeting found: 3c3c6f38-4040-4a47-a171-59b304b274d3 - ggg
+9:25:23 AM [express] GET /api/public/meeting/NGTxJIdM06C0Hxf8 200 in 667ms :: {"meeting":{"id":"3c3c…
+🔗 [ICE] Owner 7e40b56c-2cc8-4515-b843-dc105e478f38 is a client, looking for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's TURN config
+✅ [ICE] Using TURN config from consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔑 [ICE-DEBUG] TURN username: cac83f96...
+🔑 [ICE-DEBUG] TURN password: AATl1bJo...
+9:25:24 AM [express] GET /api/video-meeting/ice-servers/NGTxJIdM06C0Hxf8 200 in 1471ms :: {"iceServe…
+🎥 [6f7x8c] Client connected to Video AI Copilot
+📦 [VideoCopilot] Loaded business context for seller: Alessio (3 services)
+✅ [VideoCopilot] Connection authenticated - Meeting: 3c3c6f38-4040-4a47-a171-59b304b274d3, Guest: true, BusinessContext: loaded
+🧹 [VideoCopilot] Cleaned zombie participant: Dz HyperLoop (3903b417-2e58-4223-a98f-39d78be8795f)
+👥 [VideoCopilot] Participants updated: 2 participants
+✅ [VideoCopilot] New participant joined: Dz HyperLoop (prospect) - ID: 337a88ef-d6be-411d-bc30-9573779b5cc8
+🔗 [VideoCopilot] Registered socket for participant 337a88ef-d6be-411d-bc30-9573779b5cc8 in meeting 3c3c6f38-4040-4a47-a171-59b304b274d3
+📡 [VideoCopilot] Broadcast participant_socket_ready for Dz HyperLoop (337a88ef-d6be-411d-bc30-9573779b5cc8)
+📤 [VideoCopilot] Forwarded WebRTC offer from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded WebRTC answer from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 240df6b2-a173-4bf2-b97f-168361c0fef3 to 337a88ef-d6be-411d-bc30-9573779b5cc8
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+📤 [VideoCopilot] Forwarded ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8 to 240df6b2-a173-4bf2-b97f-168361c0fef3
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+🆕 [VAD-SPEECH-START] Created new buffer for Dz HyperLoop (337a88ef-d6be-411d-bc30-9573779b5cc8)
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⏭️ [VAD-SPEECH-END] Too little audio (0 chunks) for Dz HyperLoop, skipping
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+🆕 [VAD-SPEECH-START] Created new buffer for Dz HyperLoop (337a88ef-d6be-411d-bc30-9573779b5cc8)
+📦 [STEP 3] Received audio chunk from Dz HyperLoop - Chunks: 1, Size: 14564 chars
+⏰ [TurnTaking] Forcing analysis after 116767ms (117s inactivity)
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⚡ [TRUST-THE-CLIENT] Transcribing 1 chunks for Dz HyperLoop immediately
+🎤 [VideoCopilot] Transcribing audio from Dz HyperLoop (14564 chars base64)
+🔄 [VideoCopilot] PCM 10922 bytes → WAV 10966 bytes
+✅ Audio saved: /uploads/ai-voice/guest/3c3c6f38-4040-4a47-a171-59b304b274d3/meeting-3c3c6f38-4040-4a47-a171-59b304b274d3-speaker-337a88ef-d6be-411d-bc30-9573779b5cc8-1765272347424.wav (10.71 KB)
+💾 [VideoCopilot] WAV saved: /uploads/ai-voice/guest/3c3c6f38-4040-4a47-a171-59b304b274d3/meeting-3c3c6f38-4040-4a47-a171-59b304b274d3-speaker-337a88ef-d6be-411d-bc30-9573779b5cc8-1765272347424.wav
+🎯 [Trascrizione] Inviando richiesta a Gemini con prompt italiano...
+📊 [Trascrizione] Risposta ricevuta, estrazione testo...
+📝 [VideoCopilot] Raw transcription: "Mhm"
+📝 [VideoCopilot] Final transcription: "Mhm"
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+♻️ [VAD-SPEECH-START] Reusing existing buffer for Dz HyperLoop (1 chunks)
+📤 [STEP 5] Sending transcript to client - Speaker: Dz HyperLoop, Text: "Mhm..."
+📝 [STEP 5 DONE] Transcribed Dz HyperLoop: "Mhm..." (partial: false)
+✅ [VAD-SPEECH-END] Turn finalized: Dz HyperLoop - "Mhm..."
+⏭️ [TurnTaking] No complete turns for analysis, skipping
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+🆕 [VAD-SPEECH-START] Created new buffer for Dz HyperLoop (337a88ef-d6be-411d-bc30-9573779b5cc8)
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+♻️ [VAD-SPEECH-START] Reusing existing buffer for Dz HyperLoop (0 chunks)
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+♻️ [VAD-SPEECH-START] Reusing existing buffer for Dz HyperLoop (0 chunks)
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+📦 [STEP 3] Received audio chunk from Dz HyperLoop - Chunks: 1, Size: 338604 chars
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⚡ [TRUST-THE-CLIENT] Transcribing 1 chunks for Dz HyperLoop immediately
+🎤 [VideoCopilot] Transcribing audio from Dz HyperLoop (338604 chars base64)
+🔄 [VideoCopilot] PCM 253952 bytes → WAV 253996 bytes
+✅ Audio saved: /uploads/ai-voice/guest/3c3c6f38-4040-4a47-a171-59b304b274d3/meeting-3c3c6f38-4040-4a47-a171-59b304b274d3-speaker-337a88ef-d6be-411d-bc30-9573779b5cc8-1765272365602.wav (248.04 KB)
+💾 [VideoCopilot] WAV saved: /uploads/ai-voice/guest/3c3c6f38-4040-4a47-a171-59b304b274d3/meeting-3c3c6f38-4040-4a47-a171-59b304b274d3-speaker-337a88ef-d6be-411d-bc30-9573779b5cc8-1765272365602.wav
+🎯 [Trascrizione] Inviando richiesta a Gemini con prompt italiano...
+📊 [Trascrizione] Risposta ricevuta, estrazione testo...
+❌ [VertexAI Adapter] Failed to extract text. Response structure: {
+  "hasResponse": true,
+  "responseType": "object",
+  "hasText": false,
+  "textType": "undefined",
+  "hasCandidates": true,
+  "candidatesLength": 1,
+  "candidateContent": {
+    "role": "model",
+    "parts": [
+      {
+        "text": ""
+      }
+    ]
+  },
+  "candidateParts": [
+    {
+      "text": ""
+    }
+  ],
+  "finishReason": "STOP"
+}
+❌ [VideoCopilot] Transcription 
