@@ -218,10 +218,11 @@ export function useVADAudioCapture({
             redemptionFrames: 8,
             minSpeechFrames: 3,
             preSpeechPadFrames: 10,
-            baseAssetPath: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.30/dist/",
-            onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/",
+            baseAssetPath: "/vad-assets/",
+            onnxWASMBasePath: "/vad-assets/",
             ortConfig: (ort: any) => {
               ort.env.wasm.numThreads = 1;
+              ort.env.wasm.wasmPaths = "/vad-assets/";
             },
             onSpeechStart: () => {
               handleHostSpeechStart();

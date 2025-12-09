@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -9,6 +10,42 @@ export default defineConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: path.resolve(__dirname, "node_modules/@ricky0123/vad-web/dist/silero_vad_legacy.onnx"),
+          dest: "vad-assets"
+        },
+        {
+          src: path.resolve(__dirname, "node_modules/@ricky0123/vad-web/dist/silero_vad_v5.onnx"),
+          dest: "vad-assets"
+        },
+        {
+          src: path.resolve(__dirname, "node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js"),
+          dest: "vad-assets"
+        },
+        {
+          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm"),
+          dest: "vad-assets"
+        },
+        {
+          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs"),
+          dest: "vad-assets"
+        },
+        {
+          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm"),
+          dest: "vad-assets"
+        },
+        {
+          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs"),
+          dest: "vad-assets"
+        },
+        {
+          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort.wasm.min.mjs"),
+          dest: "vad-assets"
+        },
+      ]
+    }),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -48,8 +85,9 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'wouter', '@tanstack/react-query'],
-    exclude: ['@shared/schema'],
+    exclude: ['@shared/schema', 'onnxruntime-web'],
   },
+  assetsInclude: ['**/*.onnx', '**/*.wasm'],
   server: {
     fs: {
       strict: true,
