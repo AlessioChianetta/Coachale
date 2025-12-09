@@ -107,6 +107,7 @@ export function useVADAudioCapture({
   const hostPendingAudioRef = useRef<Float32Array | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const prospectsRef = useRef<Map<string, ProspectAudioState>>(new Map());
+  const clonedHostStreamRef = useRef<MediaStream | null>(null);
 
   const calculateRMS = useCallback((data: Float32Array): number => {
     let sum = 0;
@@ -336,8 +337,14 @@ export function useVADAudioCapture({
         if (localAudioTrack) {
           console.log('[VAD] Initializing HOST VAD with Silero neural network...');
 
+          // CRITICAL FIX: Clone the audio track so VAD destruction doesn't affect the original WebRTC stream
+          const clonedAudioTrack = localAudioTrack.clone();
+          const clonedStream = new MediaStream([clonedAudioTrack]);
+          clonedHostStreamRef.current = clonedStream;
+          console.log('[VAD] Created CLONED audio stream for VAD (original WebRTC stream protected)');
+
           const hostVadOptions = {
-            getStream: async () => localStream,
+            getStream: async () => clonedStream,
             positiveSpeechThreshold: 0.2,
             negativeSpeechThreshold: 0.05,
             redemptionFrames: 45,
@@ -365,6 +372,12 @@ export function useVADAudioCapture({
             console.log('✅ [VAD] HOST Silero VAD started successfully');
           } catch (vadError) {
             console.error('❌ [VAD] Failed to initialize HOST VAD:', vadError);
+            // Cleanup the cloned stream if VAD initialization fails
+            if (clonedHostStreamRef.current) {
+              clonedHostStreamRef.current.getTracks().forEach(track => track.stop());
+              clonedHostStreamRef.current = null;
+              console.log('[VAD] Cleaned up cloned stream after VAD init failure');
+            }
             throw vadError;
           }
         }
@@ -434,6 +447,15 @@ export function useVADAudioCapture({
       hostVadRef.current.pause();
       hostVadRef.current.destroy();
       hostVadRef.current = null;
+    }
+
+    // Stop the CLONED stream tracks (not the original WebRTC stream)
+    if (clonedHostStreamRef.current) {
+      clonedHostStreamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('[VAD] Stopped CLONED audio track (original WebRTC stream untouched)');
+      });
+      clonedHostStreamRef.current = null;
     }
 
     if (audioContextRef.current) {

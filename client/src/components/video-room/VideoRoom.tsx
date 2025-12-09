@@ -219,11 +219,20 @@ export default function VideoRoom({
     };
   }, [leaveParticipant]);
 
-  // Start audio capture for AI transcription when streams are ready (host only)
-  // Note: We keep copilotParticipants and remoteStreams in deps so capture restarts when prospects change
+  // Track if audio capture has been started (to avoid restart loops)
+  const audioCaptureStartedRef = useRef(false);
   const remoteStreamsSize = remoteStreams.size;
+
+  // Start audio capture ONCE when conditions are met (host only)
+  // This effect should NOT restart when participants change - we use updateProspects for that
   useEffect(() => {
     if (!isHost || !isConnected || !localStream || !myParticipantId) {
+      return;
+    }
+
+    // Only start capture once per session
+    if (audioCaptureStartedRef.current) {
+      console.log('[AudioCapture] Already started, skipping re-initialization');
       return;
     }
 
@@ -231,24 +240,28 @@ export default function VideoRoom({
       .filter(p => p.role === 'prospect' && !p.leftAt)
       .map(p => ({ id: p.id, name: p.name }));
 
-    console.log(`[AudioCapture] Starting capture - Host: ${participantName}, Prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}, ParticipantId: ${myParticipantId}`);
+    console.log(`[AudioCapture] Starting capture ONCE - Host: ${participantName}, Prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}, ParticipantId: ${myParticipantId}`);
 
     startCapture(
       localStream,
       remoteStreams,
       activeProspects
     );
+    audioCaptureStartedRef.current = true;
 
+    // Only stop capture when component unmounts or WebSocket disconnects
     return () => {
-      console.log('[AudioCapture] Stopping capture on cleanup');
+      console.log('[AudioCapture] Stopping capture on unmount/disconnect');
       stopCapture();
+      audioCaptureStartedRef.current = false;
     };
+    // CRITICAL: Only depend on connection state and host stream, NOT on participants
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, isConnected, localStream, myParticipantId, copilotParticipants, remoteStreamsSize, participantName, startCapture, stopCapture]);
+  }, [isHost, isConnected, localStream, myParticipantId, participantName, startCapture, stopCapture]);
 
-  // Update prospect audio capture when participants or remote streams change (for dynamic updates)
+  // Update prospect audio capture dynamically when participants join/leave (lightweight update, no restart)
   useEffect(() => {
-    if (!isHost || !isCapturing) {
+    if (!isHost || !isCapturing || !audioCaptureStartedRef.current) {
       return;
     }
 
@@ -256,7 +269,7 @@ export default function VideoRoom({
       .filter(p => p.role === 'prospect' && !p.leftAt)
       .map(p => ({ id: p.id, name: p.name }));
 
-    console.log(`[AudioCapture] Updating prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}`);
+    console.log(`[AudioCapture] Updating prospects (no restart): ${activeProspects.map(p => p.name).join(', ') || 'none'}`);
     updateProspects(remoteStreams, activeProspects);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, isCapturing, copilotParticipants, remoteStreamsSize, updateProspects]);
