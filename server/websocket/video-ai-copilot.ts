@@ -613,8 +613,26 @@ function detectAndFilterHallucination(text: string): string | null {
     return null;
   }
   
+  const lowerText = text.toLowerCase();
+  
+  // Check if model echoed back the prompt (prompt leakage hallucination)
+  const promptKeywords = [
+    'trascrivi questo audio',
+    'scrivi solo le parole pronunciate',
+    'senza aggiungere nulla',
+    'transcribe this audio',
+    'write only the spoken words',
+  ];
+  
+  for (const keyword of promptKeywords) {
+    if (lowerText.includes(keyword)) {
+      console.log(`⚠️ [Hallucination] Prompt leakage detected: "${keyword}"`);
+      return null;
+    }
+  }
+  
   // Split into words
-  const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+  const words = lowerText.split(/\s+/).filter(w => w.length > 0);
   
   if (words.length === 0) {
     return null;
