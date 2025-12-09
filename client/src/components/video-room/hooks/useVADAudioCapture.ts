@@ -1,9 +1,45 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { StreamingResampler, float32ToBase64PCM16 } from '@/components/ai-assistant/live-mode/audio-worklet/audio-converter';
 
-// Tipo per MicVAD - lo importiamo dinamicamente per evitare errori con onnxruntime-web
+// Caricamento dinamico della libreria VAD dal CDN per evitare problemi di bundling
+let vadModule: any = null;
+const VAD_CDN_URL = 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.18/dist/bundle.min.js';
+
+async function loadVADFromCDN(): Promise<any> {
+  if (vadModule) return vadModule;
+  
+  return new Promise((resolve, reject) => {
+    // Controlla se è già stato caricato
+    if ((window as any).vad) {
+      vadModule = (window as any).vad;
+      resolve(vadModule);
+      return;
+    }
+    
+    const script = document.createElement('script');
+    script.src = VAD_CDN_URL;
+    script.async = true;
+    
+    script.onload = () => {
+      vadModule = (window as any).vad;
+      if (vadModule) {
+        console.log('✅ [VAD] Library loaded from CDN');
+        resolve(vadModule);
+      } else {
+        reject(new Error('VAD library not found after loading script'));
+      }
+    };
+    
+    script.onerror = () => {
+      reject(new Error('Failed to load VAD library from CDN'));
+    };
+    
+    document.head.appendChild(script);
+  });
+}
+
+// Tipo per MicVAD
 type MicVADType = any;
-type RealTimeVADOptionsType = any;
 
 interface VADAudioCaptureState {
   isCapturing: boolean;
@@ -264,9 +300,9 @@ export function useVADAudioCapture({
           };
 
           try {
-            // Import dinamico per evitare errori "Dynamic require of onnxruntime-web/wasm is not supported"
-            const { MicVAD } = await import('@ricky0123/vad-web');
-            hostVadRef.current = await MicVAD.new(hostVadOptions);
+            // Carica la libreria VAD dal CDN per evitare problemi di bundling CommonJS/ESM
+            const vad = await loadVADFromCDN();
+            hostVadRef.current = await vad.MicVAD.new(hostVadOptions);
             hostVadRef.current.start();
             console.log('✅ [VAD] HOST Silero VAD started successfully');
           } catch (vadError) {
