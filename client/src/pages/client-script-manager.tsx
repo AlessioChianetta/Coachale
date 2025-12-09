@@ -1148,8 +1148,10 @@ export default function ClientScriptManager() {
                           ) : (
                             humanSellers.map((seller) => {
                               const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
+                              if (!scriptToActivateData) return null; // Skip if script not found
+                              
                               const currentAssignment = seller.assignments?.find(
-                                a => a.scriptType === scriptToActivateData?.scriptType
+                                a => a.scriptType === scriptToActivateData.scriptType
                               );
                               const isCurrentlyAssigned = currentAssignment?.scriptId === scriptToActivate;
                               const hasActiveScriptOfSameType = currentAssignment && !isCurrentlyAssigned;
