@@ -77,6 +77,17 @@ interface Script {
   name: string;
 }
 
+interface HumanSeller {
+  id: string;
+  sellerName: string;
+  displayName: string;
+  assignments: Array<{
+    scriptId: string;
+    scriptType: string;
+    scriptName: string;
+  }>;
+}
+
 export default function ClientHumanSellerMeetings() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -96,7 +107,7 @@ export default function ClientHumanSellerMeetings() {
     scheduledDate: '',
     startTime: '',
     endTime: '',
-    scriptId: '',
+    sellerId: '',
   });
 
   const { data: meetings = [], isLoading: meetingsLoading } = useQuery<VideoMeeting[]>({
@@ -111,31 +122,23 @@ export default function ClientHumanSellerMeetings() {
     }
   });
 
-  const { data: scripts = [] } = useQuery<Script[]>({
-    queryKey: ['/api/client/human-sellers/scripts'],
+  const { data: humanSellers = [] } = useQuery<HumanSeller[]>({
+    queryKey: ['/api/client/human-sellers/with-script-assignments'],
     queryFn: async () => {
       const token = localStorage.getItem('token');
-      const res = await fetch('/api/client/human-sellers/scripts', {
+      const res = await fetch('/api/client/human-sellers/with-script-assignments', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Failed to fetch scripts');
+      if (!res.ok) throw new Error('Failed to fetch sellers');
       return res.json();
     }
   });
 
   const createMeetingMutation = useMutation({
-    mutationFn: async (data: { prospectName: string; prospectEmail?: string; scheduledAt: string; scriptId?: string }) => {
+    mutationFn: async (data: { prospectName: string; prospectEmail?: string; scheduledAt: string; sellerId: string }) => {
       const token = localStorage.getItem('token');
-      const sellersRes = await fetch('/api/client/human-sellers', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const sellers = await sellersRes.json();
-      if (!sellers || sellers.length === 0) {
-        throw new Error('Nessun venditore configurato. Crea prima un venditore.');
-      }
-      const sellerId = sellers[0].id;
       
-      const res = await fetch(`/api/client/human-sellers/${sellerId}/meetings`, {
+      const res = await fetch(`/api/client/human-sellers/${data.sellerId}/meetings`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -145,7 +148,7 @@ export default function ClientHumanSellerMeetings() {
           prospectName: data.prospectName,
           prospectEmail: data.prospectEmail,
           scheduledAt: data.scheduledAt,
-          playbookId: data.scriptId || null
+          playbookId: null // Lo script verrà caricato automaticamente dal backend tramite humanSellerScriptAssignments
         })
       });
       if (!res.ok) throw new Error('Failed to create meeting');
@@ -223,10 +226,10 @@ export default function ClientHumanSellerMeetings() {
   };
 
   const handleCreateMeeting = () => {
-    if (!formData.prospectName || !formData.scheduledDate || !formData.startTime) {
+    if (!formData.prospectName || !formData.scheduledDate || !formData.startTime || !formData.sellerId) {
       toast({
         title: '❌ Errore',
-        description: 'Compila i campi obbligatori: Nome prospect, Data e Ora inizio',
+        description: 'Compila i campi obbligatori: Venditore, Nome prospect, Data e Ora inizio',
         variant: 'destructive',
       });
       return;
@@ -236,7 +239,7 @@ export default function ClientHumanSellerMeetings() {
       prospectName: formData.prospectName,
       prospectEmail: formData.prospectEmail || undefined,
       scheduledAt: new Date(`${formData.scheduledDate}T${formData.startTime}`).toISOString(),
-      scriptId: formData.scriptId || undefined
+      sellerId: formData.sellerId
     });
   };
 
@@ -247,7 +250,7 @@ export default function ClientHumanSellerMeetings() {
       scheduledDate: '',
       startTime: '',
       endTime: '',
-      scriptId: '',
+      sellerId: '',
     });
     setGeneratedLink(null);
   };
@@ -774,22 +777,32 @@ export default function ClientHumanSellerMeetings() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="script">Script/Playbook</Label>
+                  <Label htmlFor="seller">Venditore *</Label>
                   <Select
-                    value={formData.scriptId}
-                    onValueChange={(value) => setFormData({ ...formData, scriptId: value })}
+                    value={formData.sellerId}
+                    onValueChange={(value) => setFormData({ ...formData, sellerId: value })}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleziona uno script..." />
+                      <SelectValue placeholder="Seleziona un venditore..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {scripts.map((script) => (
-                        <SelectItem key={script.id} value={script.id}>
-                          {script.name}
+                      {humanSellers.map((seller) => (
+                        <SelectItem key={seller.id} value={seller.id}>
+                          {seller.displayName}
+                          {seller.assignments.length > 0 && (
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({seller.assignments.map(a => a.scriptName).join(', ')})
+                            </span>
+                          )}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {formData.sellerId && (
+                    <p className="text-xs text-gray-500">
+                      Lo script associato al venditore verrà utilizzato automaticamente
+                    </p>
+                  )}
                 </div>
               </div>
 
