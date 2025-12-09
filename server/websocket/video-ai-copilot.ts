@@ -921,8 +921,16 @@ function calculateScriptProgress(session: SessionState): {
   phaseName: string;
   phaseNames: string[];
   completionPercentage: number;
+  currentStep?: number;
+  totalSteps?: number;
+  stepName?: string;
+  currentPhaseId?: string;
+  currentStepId?: string;
 } {
-  if (!session.playbook) {
+  // BUG #4 FIX: Use scriptStructure (parsed script) instead of playbook
+  const phases = session.scriptStructure?.phases || session.playbook?.phases;
+  
+  if (!phases || phases.length === 0) {
     return {
       currentPhase: 0,
       totalPhases: 0,
@@ -932,10 +940,19 @@ function calculateScriptProgress(session: SessionState): {
     };
   }
 
-  const totalPhases = session.playbook.phases.length;
+  const totalPhases = phases.length;
   const currentPhase = session.currentPhaseIndex + 1;
-  const phaseName = session.playbook.phases[session.currentPhaseIndex]?.name || 'Unknown';
-  const phaseNames = session.playbook.phases.map(p => p.name);
+  const currentPhaseData = phases[session.currentPhaseIndex];
+  const phaseName = currentPhaseData?.name || currentPhaseData?.title || 'Unknown';
+  const phaseNames = phases.map((p: any) => p.name || p.title || 'Fase');
+  
+  // Add step information
+  const steps = currentPhaseData?.steps || [];
+  const totalSteps = steps.length;
+  const currentStep = session.currentStepIndex + 1;
+  const currentStepData = steps[session.currentStepIndex];
+  const stepName = currentStepData?.name || currentStepData?.title || '';
+  
   const completionPercentage = Math.round((currentPhase / totalPhases) * 100);
 
   return {
@@ -944,6 +961,11 @@ function calculateScriptProgress(session: SessionState): {
     phaseName,
     phaseNames,
     completionPercentage,
+    currentStep,
+    totalSteps,
+    stepName,
+    currentPhaseId: currentPhaseData?.id || `phase_${currentPhase}`,
+    currentStepId: currentStepData?.id || `step_${currentStep}`,
   };
 }
 
@@ -1593,6 +1615,20 @@ async function runSalesManagerAnalysis(
           });
           console.log(`   ✅ [CHECKPOINT] Marked as completed: ${checkpointId}`);
         }
+
+        // BUG #1 FIX: Force phase advancement when canAdvance=true but stepAdvancement didn't trigger
+        if (!analysis.stepAdvancement.shouldAdvance) {
+          const currentPhaseForAdvance = session.scriptStructure?.phases?.[session.currentPhaseIndex];
+          const isLastStepOfPhase = session.currentStepIndex >= ((currentPhaseForAdvance?.steps?.length || 1) - 1);
+          if (isLastStepOfPhase) {
+            const nextPhaseIndex = session.currentPhaseIndex + 1;
+            if (nextPhaseIndex < (session.scriptStructure?.phases?.length || 0)) {
+              console.log(`   🚀 [FORCE-ADVANCE] Checkpoint canAdvance=true, forcing phase ${session.currentPhaseIndex + 1} → ${nextPhaseIndex + 1}`);
+              session.currentPhaseIndex = nextPhaseIndex;
+              session.currentStepIndex = 0;
+            }
+          }
+        }
       }
     }
 
@@ -1614,6 +1650,26 @@ async function runSalesManagerAnalysis(
           session.currentStepIndex = 0;
         }
       }
+    }
+
+    // BUG #2 FIX: Notify frontend of phase/step progress after any advancement
+    if (analysis.stepAdvancement.shouldAdvance || analysis.checkpointStatus?.canAdvance) {
+      const progressUpdate = calculateScriptProgress(session);
+      const currentPhaseData = session.scriptStructure?.phases?.[session.currentPhaseIndex];
+      const currentStepData = currentPhaseData?.steps?.[session.currentStepIndex];
+      
+      sendMessage(ws, {
+        type: 'script_progress_update',
+        data: {
+          ...progressUpdate,
+          currentPhaseId: currentPhaseData?.id || `phase_${session.currentPhaseIndex + 1}`,
+          currentStepId: currentStepData?.id || `step_${session.currentStepIndex + 1}`,
+          currentPhaseIndex: session.currentPhaseIndex,
+          currentStepIndex: session.currentStepIndex,
+        },
+        timestamp: Date.now(),
+      });
+      console.log(`   📤 [PROGRESS] Sent script_progress_update: phase=${session.currentPhaseIndex + 1}, step=${session.currentStepIndex + 1}`);
     }
 
     const timestampMs = Date.now() - session.coachingMetrics.sessionStartTime;

@@ -202,7 +202,9 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           break;
 
         case 'script_progress':
+        case 'script_progress_update': // BUG #3 FIX: Handle both event names
           const progress = message.data as ScriptProgress;
+          console.log(`📊 [SCRIPT_PROGRESS] Received ${message.type}:`, progress);
           setState(prev => {
             const items: ScriptItem[] = [];
             const phaseNames = progress.phaseNames || [];
@@ -325,7 +327,6 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
         case 'checkpoint_status':
         case 'prospect_profile':
         case 'tone_warning':
-        case 'script_progress_update':
         case 'coaching_session_start':
         case 'coaching_session_end':
           if (coachingMessageHandlerRef.current) {
