@@ -218,7 +218,9 @@ export default function ClientScriptManager() {
     queryFn: async () => {
       const res = await fetch('/api/human-sellers/with-script-assignments', { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch human sellers');
-      return res.json();
+      const data = await res.json();
+      console.log('[ScriptManager] Human sellers loaded:', data);
+      return data;
     },
   });
 
