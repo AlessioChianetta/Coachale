@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { db } from '../db';
-import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics, users, humanSellerCoachingEvents, humanSellerSessionMetrics, humanSellerPerformanceSummary } from '@shared/schema';
+import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics, users, humanSellerCoachingEvents, humanSellerSessionMetrics, humanSellerPerformanceSummary, humanSellerScriptAssignments } from '@shared/schema';
 import { eq, and, desc, asc, gte, lte, sql, count, inArray } from 'drizzle-orm';
 import { AuthRequest, authenticateToken, requireRole } from '../middleware/auth';
 import { nanoid } from 'nanoid';
@@ -1136,6 +1136,192 @@ publicMeetRouter.post('/verify-google', async (req, res) => {
   } catch (error: any) {
     console.error('[PublicMeet] Google verify error:', error);
     res.status(401).json({ error: 'Verifica Google fallita' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HUMAN SELLER SCRIPT ASSIGNMENTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// GET /api/human-sellers/with-script-assignments - Lista venditori con loro script assignments
+router.get('/with-script-assignments', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    
+    // Get all sellers for this client
+    const sellers = await db
+      .select({
+        id: humanSellers.id,
+        sellerName: humanSellers.sellerName,
+        displayName: humanSellers.displayName,
+        businessName: humanSellers.businessName,
+        isActive: humanSellers.isActive,
+      })
+      .from(humanSellers)
+      .where(eq(humanSellers.clientId, clientId));
+    
+    const sellerIds = sellers.map(s => s.id);
+    
+    let rawAssignments: Array<{
+      sellerId: string;
+      scriptId: string;
+      scriptType: string;
+      scriptName: string | null;
+    }> = [];
+    
+    if (sellerIds.length > 0) {
+      const dbAssignments = await db
+        .select({
+          sellerId: humanSellerScriptAssignments.sellerId,
+          scriptId: humanSellerScriptAssignments.scriptId,
+          scriptType: humanSellerScriptAssignments.scriptType,
+          scriptName: salesScripts.name,
+        })
+        .from(humanSellerScriptAssignments)
+        .leftJoin(salesScripts, eq(humanSellerScriptAssignments.scriptId, salesScripts.id));
+      
+      rawAssignments = dbAssignments.filter(a => sellerIds.includes(a.sellerId));
+    }
+    
+    // Combine sellers with their assignments
+    const sellersWithAssignments = sellers.map(seller => {
+      const sellerAssignments = rawAssignments
+        .filter(a => a.sellerId === seller.id)
+        .map(a => ({
+          scriptId: a.scriptId,
+          scriptType: a.scriptType,
+          scriptName: a.scriptName || 'Script senza nome',
+        }));
+      
+      return {
+        ...seller,
+        assignments: sellerAssignments,
+      };
+    });
+    
+    console.log(`[HumanSellers] Found ${sellers.length} sellers with script assignments for client ${clientId}`);
+    res.json(sellersWithAssignments);
+  } catch (error: any) {
+    console.error('[HumanSellers] GET with-script-assignments error:', error);
+    res.status(500).json({ error: 'Errore nel recupero dei venditori con assegnazioni' });
+  }
+});
+
+// POST /api/human-sellers/:sellerId/assign-script - Assegna script a venditore (upsert)
+router.post('/:sellerId/assign-script', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { sellerId } = req.params;
+    const { scriptId } = req.body;
+    
+    if (!scriptId) {
+      return res.status(400).json({ error: 'scriptId è obbligatorio' });
+    }
+    
+    // Verify seller belongs to client
+    const [seller] = await db
+      .select()
+      .from(humanSellers)
+      .where(and(
+        eq(humanSellers.id, sellerId),
+        eq(humanSellers.clientId, clientId)
+      ));
+    
+    if (!seller) {
+      return res.status(404).json({ error: 'Venditore non trovato' });
+    }
+    
+    // Verify script belongs to client
+    const [script] = await db
+      .select()
+      .from(salesScripts)
+      .where(and(
+        eq(salesScripts.id, scriptId),
+        eq(salesScripts.clientId, clientId)
+      ));
+    
+    if (!script) {
+      return res.status(404).json({ error: 'Script non trovato' });
+    }
+    
+    // Delete existing assignment for this seller + scriptType (upsert logic)
+    await db
+      .delete(humanSellerScriptAssignments)
+      .where(and(
+        eq(humanSellerScriptAssignments.sellerId, sellerId),
+        eq(humanSellerScriptAssignments.scriptType, script.scriptType)
+      ));
+    
+    // Create new assignment
+    const [assignment] = await db
+      .insert(humanSellerScriptAssignments)
+      .values({
+        sellerId,
+        scriptId,
+        scriptType: script.scriptType as "discovery" | "demo",
+        assignedBy: clientId,
+      })
+      .returning();
+    
+    console.log(`[HumanSellers] Script ${scriptId} assigned to seller ${sellerId} (type: ${script.scriptType})`);
+    
+    res.json({
+      success: true,
+      assignment,
+      seller: { id: seller.id, name: seller.sellerName },
+      script: { id: script.id, name: script.name, type: script.scriptType },
+    });
+  } catch (error: any) {
+    console.error('[HumanSellers] POST assign-script error:', error);
+    res.status(500).json({ error: 'Errore nell\'assegnazione dello script' });
+  }
+});
+
+// DELETE /api/human-sellers/:sellerId/unassign-script/:scriptType - Rimuove assegnazione
+router.delete('/:sellerId/unassign-script/:scriptType', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { sellerId, scriptType } = req.params;
+    
+    if (!['discovery', 'demo'].includes(scriptType)) {
+      return res.status(400).json({ error: 'Tipo script non valido (deve essere discovery o demo)' });
+    }
+    
+    // Verify seller belongs to client
+    const [seller] = await db
+      .select()
+      .from(humanSellers)
+      .where(and(
+        eq(humanSellers.id, sellerId),
+        eq(humanSellers.clientId, clientId)
+      ));
+    
+    if (!seller) {
+      return res.status(404).json({ error: 'Venditore non trovato' });
+    }
+    
+    // Delete assignment
+    const deleted = await db
+      .delete(humanSellerScriptAssignments)
+      .where(and(
+        eq(humanSellerScriptAssignments.sellerId, sellerId),
+        eq(humanSellerScriptAssignments.scriptType, scriptType)
+      ))
+      .returning();
+    
+    if (deleted.length === 0) {
+      return res.status(404).json({ error: 'Assegnazione non trovata' });
+    }
+    
+    console.log(`[HumanSellers] Script unassigned from seller ${sellerId} (type: ${scriptType})`);
+    
+    res.json({
+      success: true,
+      message: `Script ${scriptType} rimosso dal venditore`,
+    });
+  } catch (error: any) {
+    console.error('[HumanSellers] DELETE unassign-script error:', error);
+    res.status(500).json({ error: 'Errore nella rimozione dell\'assegnazione' });
   }
 });
 

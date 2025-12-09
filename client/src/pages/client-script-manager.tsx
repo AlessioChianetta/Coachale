@@ -177,6 +177,23 @@ export default function ClientScriptManager() {
     };
   }
 
+  // Types for human sellers with script assignments
+  interface HumanSellerWithAssignments {
+    id: string;
+    sellerName: string;
+    displayName: string;
+    businessName: string | null;
+    isActive: boolean;
+    assignments: Array<{
+      scriptId: string;
+      scriptType: string;
+      scriptName: string;
+    }>;
+  }
+
+  // State for dialog tab (AI Agents vs Human Sellers)
+  const [agentDialogTab, setAgentDialogTab] = useState<'agents' | 'sellers'>('agents');
+
   // API Calls
   const { data: scripts = [], isLoading: isLoadingScripts } = useQuery<SalesScript[]>({
     queryKey: ['sales-scripts'],
@@ -192,6 +209,15 @@ export default function ClientScriptManager() {
     queryFn: async () => {
       const res = await fetch('/api/sales-scripts/agents', { headers: getAuthHeaders() });
       if (!res.ok) throw new Error('Failed to fetch agents');
+      return res.json();
+    },
+  });
+
+  const { data: humanSellers = [] } = useQuery<HumanSellerWithAssignments[]>({
+    queryKey: ['human-sellers-with-assignments'],
+    queryFn: async () => {
+      const res = await fetch('/api/human-sellers/with-script-assignments', { headers: getAuthHeaders() });
+      if (!res.ok) throw new Error('Failed to fetch human sellers');
       return res.json();
     },
   });
@@ -247,6 +273,32 @@ export default function ClientScriptManager() {
       toast({ 
         title: 'Script attivato', 
         description: `Lo script è ora attivo per l'agente "${data.agent?.name || 'selezionato'}".` 
+      });
+    },
+    onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
+  });
+
+  const assignScriptToSellerMutation = useMutation({
+    mutationFn: async ({ scriptId, sellerId }: { scriptId: string; sellerId: string }) => {
+      const res = await fetch(`/api/human-sellers/${sellerId}/assign-script`, { 
+        method: 'POST', 
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scriptId }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Errore nell\'assegnazione');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['sales-scripts'] });
+      queryClient.invalidateQueries({ queryKey: ['human-sellers-with-assignments'] });
+      setShowAgentSelectDialog(false);
+      setScriptToActivate(null);
+      toast({ 
+        title: 'Script assegnato', 
+        description: `Lo script è ora attivo per "${data.seller?.name || 'il venditore selezionato'}".` 
       });
     },
     onError: (error: Error) => toast({ title: 'Errore', description: error.message, variant: 'destructive' }),
@@ -967,97 +1019,189 @@ export default function ClientScriptManager() {
                 </div>
               </ScrollArea>
 
-              {/* Dialog Selezione Agente per Attivazione Script */}
+              {/* Dialog Selezione Agente/Venditore per Attivazione Script */}
                 <Dialog open={showAgentSelectDialog} onOpenChange={(open) => {
                   setShowAgentSelectDialog(open);
-                  if (!open) setScriptToActivate(null);
+                  if (!open) {
+                    setScriptToActivate(null);
+                    setAgentDialogTab('agents');
+                  }
                 }}>
                   <DialogContent className="max-w-md">
                     <DialogHeader>
                       <DialogTitle className="flex items-center gap-2">
                         <Users className="h-5 w-5 text-primary" />
-                        Seleziona Agente
+                        Seleziona Destinatario
                       </DialogTitle>
                       <DialogDescription>
-                        Scegli per quale AI Sales Agent vuoi attivare questo script. 
-                        Ogni agente può avere un solo script per tipo.
+                        Scegli a chi vuoi assegnare questo script.
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-2 py-4 max-h-[300px] overflow-y-auto">
-                      {agents.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
-                          <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                          <p>Nessun agente configurato.</p>
-                          <p className="text-sm">Crea prima un AI Sales Agent.</p>
-                        </div>
-                      ) : (
-                        agents.map((agent) => {
-                          const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
-                          const assignments = agent.scriptAssignments || { discovery: null, demo: null, objections: null };
-                          const currentAssignment = scriptToActivateData 
-                            ? assignments[scriptToActivateData.scriptType as keyof typeof assignments]
-                            : null;
-                          const isCurrentlyAssigned = currentAssignment?.scriptId === scriptToActivate;
-                          const hasActiveScriptOfSameType = currentAssignment && !isCurrentlyAssigned;
-                          
-                          return (
-                            <button
-                              key={agent.id}
-                              className={cn(
-                                "w-full text-left p-4 rounded-lg border transition-all hover:bg-muted/50",
-                                isCurrentlyAssigned && "border-primary bg-primary/5",
-                                hasActiveScriptOfSameType && "border-amber-500/50"
-                              )}
-                              onClick={() => {
-                                if (scriptToActivate) {
-                                  if (hasActiveScriptOfSameType && currentAssignment) {
-                                    setPendingActivation({
-                                      scriptId: scriptToActivate,
-                                      agentId: agent.id,
-                                      currentScriptName: currentAssignment.scriptName
-                                    });
-                                    setShowReplaceConfirmDialog(true);
-                                    setShowAgentSelectDialog(false);
-                                  } else {
-                                    activateScriptMutation.mutate({ 
-                                      scriptId: scriptToActivate, 
-                                      agentId: agent.id 
-                                    });
-                                  }
-                                }
-                              }}
-                              disabled={activateScriptMutation.isPending}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <Bot className="h-5 w-5 text-primary" />
+                    
+                    {/* Tabs per AI Agents / Venditori Umani */}
+                    <Tabs value={agentDialogTab} onValueChange={(v) => setAgentDialogTab(v as 'agents' | 'sellers')} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="agents" className="flex items-center gap-2">
+                          <Bot className="h-4 w-4" />
+                          AI Agents
+                        </TabsTrigger>
+                        <TabsTrigger value="sellers" className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Venditori Umani
+                        </TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+
+                    <div className="space-y-2 py-2 max-h-[300px] overflow-y-auto">
+                      {/* AI Agents Tab */}
+                      {agentDialogTab === 'agents' && (
+                        <>
+                          {agents.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                              <p>Nessun agente configurato.</p>
+                              <p className="text-sm">Crea prima un AI Sales Agent.</p>
+                            </div>
+                          ) : (
+                            agents.map((agent) => {
+                              const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
+                              const assignments = agent.scriptAssignments || { discovery: null, demo: null, objections: null };
+                              const currentAssignment = scriptToActivateData 
+                                ? assignments[scriptToActivateData.scriptType as keyof typeof assignments]
+                                : null;
+                              const isCurrentlyAssigned = currentAssignment?.scriptId === scriptToActivate;
+                              const hasActiveScriptOfSameType = currentAssignment && !isCurrentlyAssigned;
+                              
+                              return (
+                                <button
+                                  key={agent.id}
+                                  className={cn(
+                                    "w-full text-left p-4 rounded-lg border transition-all hover:bg-muted/50",
+                                    isCurrentlyAssigned && "border-primary bg-primary/5",
+                                    hasActiveScriptOfSameType && "border-amber-500/50"
+                                  )}
+                                  onClick={() => {
+                                    if (scriptToActivate) {
+                                      if (hasActiveScriptOfSameType && currentAssignment) {
+                                        setPendingActivation({
+                                          scriptId: scriptToActivate,
+                                          agentId: agent.id,
+                                          currentScriptName: currentAssignment.scriptName
+                                        });
+                                        setShowReplaceConfirmDialog(true);
+                                        setShowAgentSelectDialog(false);
+                                      } else {
+                                        activateScriptMutation.mutate({ 
+                                          scriptId: scriptToActivate, 
+                                          agentId: agent.id 
+                                        });
+                                      }
+                                    }
+                                  }}
+                                  disabled={activateScriptMutation.isPending}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <Bot className="h-5 w-5 text-primary" />
+                                      </div>
+                                      <div>
+                                        <p className="font-medium">{agent.agentName}</p>
+                                        <p className="text-sm text-muted-foreground">{agent.businessName}</p>
+                                      </div>
+                                    </div>
+                                    {isCurrentlyAssigned && (
+                                      <Badge variant="default" className="text-xs">
+                                        <CheckCircle className="h-3 w-3 mr-1" /> Attivo
+                                      </Badge>
+                                    )}
+                                    {hasActiveScriptOfSameType && (
+                                      <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">
+                                        <AlertTriangle className="h-3 w-3 mr-1" /> Attivo altro
+                                      </Badge>
+                                    )}
                                   </div>
-                                  <div>
-                                    <p className="font-medium">{agent.agentName}</p>
-                                    <p className="text-sm text-muted-foreground">{agent.businessName}</p>
+                                  {hasActiveScriptOfSameType && currentAssignment && (
+                                    <p className="text-xs text-amber-600 mt-2 pl-13 flex items-center gap-1">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      Attualmente usa: {currentAssignment.scriptName}
+                                    </p>
+                                  )}
+                                </button>
+                              );
+                            })
+                          )}
+                        </>
+                      )}
+
+                      {/* Venditori Umani Tab */}
+                      {agentDialogTab === 'sellers' && (
+                        <>
+                          {humanSellers.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                              <p>Nessun venditore configurato.</p>
+                              <p className="text-sm">Crea prima un Venditore Umano.</p>
+                            </div>
+                          ) : (
+                            humanSellers.map((seller) => {
+                              const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
+                              const currentAssignment = seller.assignments?.find(
+                                a => a.scriptType === scriptToActivateData?.scriptType
+                              );
+                              const isCurrentlyAssigned = currentAssignment?.scriptId === scriptToActivate;
+                              const hasActiveScriptOfSameType = currentAssignment && !isCurrentlyAssigned;
+                              
+                              return (
+                                <button
+                                  key={seller.id}
+                                  className={cn(
+                                    "w-full text-left p-4 rounded-lg border transition-all hover:bg-muted/50",
+                                    isCurrentlyAssigned && "border-primary bg-primary/5",
+                                    hasActiveScriptOfSameType && "border-amber-500/50"
+                                  )}
+                                  onClick={() => {
+                                    if (scriptToActivate) {
+                                      assignScriptToSellerMutation.mutate({ 
+                                        scriptId: scriptToActivate, 
+                                        sellerId: seller.id 
+                                      });
+                                    }
+                                  }}
+                                  disabled={assignScriptToSellerMutation.isPending}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                      <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
+                                        <Users className="h-5 w-5 text-green-600" />
+                                      </div>
+                                      <div>
+                                        <p className="font-medium">{seller.sellerName}</p>
+                                        <p className="text-sm text-muted-foreground">{seller.businessName || seller.displayName}</p>
+                                      </div>
+                                    </div>
+                                    {isCurrentlyAssigned && (
+                                      <Badge variant="default" className="text-xs">
+                                        <CheckCircle className="h-3 w-3 mr-1" /> Attivo
+                                      </Badge>
+                                    )}
+                                    {hasActiveScriptOfSameType && (
+                                      <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">
+                                        <AlertTriangle className="h-3 w-3 mr-1" /> Attivo altro
+                                      </Badge>
+                                    )}
                                   </div>
-                                </div>
-                                {isCurrentlyAssigned && (
-                                  <Badge variant="default" className="text-xs">
-                                    <CheckCircle className="h-3 w-3 mr-1" /> Attivo
-                                  </Badge>
-                                )}
-                                {hasActiveScriptOfSameType && (
-                                  <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">
-                                    <AlertTriangle className="h-3 w-3 mr-1" /> Attivo altro
-                                  </Badge>
-                                )}
-                              </div>
-                              {hasActiveScriptOfSameType && currentAssignment && (
-                                <p className="text-xs text-amber-600 mt-2 pl-13 flex items-center gap-1">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  Attualmente usa: {currentAssignment.scriptName}
-                                </p>
-                              )}
-                            </button>
-                          );
-                        })
+                                  {hasActiveScriptOfSameType && currentAssignment && (
+                                    <p className="text-xs text-amber-600 mt-2 pl-13 flex items-center gap-1">
+                                      <AlertTriangle className="h-3 w-3" />
+                                      Attualmente usa: {currentAssignment.scriptName}
+                                    </p>
+                                  )}
+                                </button>
+                              );
+                            })
+                          )}
+                        </>
                       )}
                     </div>
                     <DialogFooter>

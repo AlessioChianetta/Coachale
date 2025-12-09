@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "../../db";
-import { videoMeetings, videoMeetingParticipants, humanSellers, salesScripts } from "@shared/schema";
+import { videoMeetings, videoMeetingParticipants, humanSellers, salesScripts, humanSellerScriptAssignments } from "@shared/schema";
 import { eq, and, isNull } from "drizzle-orm";
 
 const router = Router();
@@ -45,7 +45,32 @@ router.get("/:meetingToken", async (req, res) => {
     }
 
     let script = null;
-    const scriptId = meeting.playbookId;
+    let scriptId = meeting.playbookId;
+
+    if (!scriptId && meeting.sellerId) {
+      let [sellerAssignment] = await db.select()
+        .from(humanSellerScriptAssignments)
+        .where(and(
+          eq(humanSellerScriptAssignments.sellerId, meeting.sellerId),
+          eq(humanSellerScriptAssignments.scriptType, 'discovery')
+        ))
+        .limit(1);
+      
+      if (!sellerAssignment) {
+        [sellerAssignment] = await db.select()
+          .from(humanSellerScriptAssignments)
+          .where(and(
+            eq(humanSellerScriptAssignments.sellerId, meeting.sellerId),
+            eq(humanSellerScriptAssignments.scriptType, 'demo')
+          ))
+          .limit(1);
+      }
+      
+      if (sellerAssignment) {
+        scriptId = sellerAssignment.scriptId;
+        console.log(`[PublicMeeting] Using script from seller assignment (${sellerAssignment.scriptType}): ${scriptId}`);
+      }
+    }
 
     if (scriptId) {
       const [scriptData] = await db

@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, humanSellerSessionMetrics, users } from '@shared/schema';
+import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, humanSellerSessionMetrics, users, humanSellerScriptAssignments } from '@shared/schema';
 import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
 import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
@@ -2442,6 +2442,35 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
       if (loadedPlaybook) {
         session.playbook = loadedPlaybook;
         session.currentPhaseIndex = 0;
+      }
+    }
+
+    if (!session.playbook && sellerId) {
+      let [sellerAssignment] = await db.select()
+        .from(humanSellerScriptAssignments)
+        .where(and(
+          eq(humanSellerScriptAssignments.sellerId, sellerId),
+          eq(humanSellerScriptAssignments.scriptType, 'discovery')
+        ))
+        .limit(1);
+      
+      if (!sellerAssignment) {
+        [sellerAssignment] = await db.select()
+          .from(humanSellerScriptAssignments)
+          .where(and(
+            eq(humanSellerScriptAssignments.sellerId, sellerId),
+            eq(humanSellerScriptAssignments.scriptType, 'demo')
+          ))
+          .limit(1);
+      }
+      
+      if (sellerAssignment) {
+        console.log(`📘 [VideoCopilot] Loading script from seller assignment (${sellerAssignment.scriptType}): ${sellerAssignment.scriptId}`);
+        const loadedPlaybook = await autoLoadPlaybook(session, sellerAssignment.scriptId);
+        if (loadedPlaybook) {
+          session.playbook = loadedPlaybook;
+          session.currentPhaseIndex = 0;
+        }
       }
     }
 
