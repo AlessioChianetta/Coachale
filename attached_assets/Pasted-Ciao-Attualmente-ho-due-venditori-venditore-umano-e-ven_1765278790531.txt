@@ -1,0 +1,89 @@
+Ciao! Attualmente, ho due venditori, venditore umano e venditore agente ai, quando entro dentro lo script manager, posso andare ad attivare quello script per i miei agenti ai, adesso però ho anche configurato i vendotori umani, supportati da sales manager ai, e vorrei che quando vado ad assegnare uno script, oltre all'agente ai, mi venga proposto anche se voglio associarlo ad un venditore umano che creo dentro /client/human-sellers, e poi venga associato permamentemente sul database invece di andare sul singolo video meetings, e associargli lo script, deve leggerlo dal venditore di riferimento, tieni conto che c'è disco e demo da associare SI OSSESSIVO COMPULSIVO QUANDO LA LEGGI E CAPISCI COSA FUNZIONA E COSA NON FUNZIONA DAMMI UN DETTAGLIO DI QUELLO CHE ANDRAI A FARE E CONVINCIMI CHE LO FARAI BENE, grazie, poi crea le task
+
+DialogContent
+32 minutes ago
+Checkpoint made
+32 minutes ago
+•
+Free
+Saved your changes before starting work
+
+Rollback here
+
+Changes
+
+Show less
+
+Decided on script assignment logic (4 seconds)
+Ciao! Capisco - vuoi che il dialog di selezione agente mostri anche i venditori umani oltre agli AI Agent, e che l'associazione script-venditore sia permanente nel database (non solo per singolo video meeting).
+
+Fammi analizzare come funziona attualmente il sistema per darti un piano dettagliato.
+
+
+Searched for "Human sellers database schema and how they are stored with script associations"
+
+Decided on human seller script assignment (16 seconds)
+Ora ho un quadro completo del sistema. Lasciami analizzare in modo OSSESSIVO COMPULSIVO ogni aspetto:
+
+Analisi Attuale (Cosa Funziona e Cosa No)
+COSA FUNZIONA GIA':
+Per AI Agents: L'assegnazione script funziona perfettamente tramite tabella agent_script_assignments → quando attivi uno script viene salvato permanentemente con agentId + scriptId + scriptType (discovery/demo/objections)
+
+Il Dialog (linee 970-1069): Mostra correttamente la lista degli AI agents e gestisce bene il caso di sostituzione script
+
+COSA NON FUNZIONA / MANCA:
+Venditori Umani NON hanno associazione permanente:
+
+La tabella humanSellers NON ha campi per script permanenti
+Attualmente lo script viene assegnato singolarmente per ogni videoMeeting tramite il campo playbookId
+Ogni volta che crei un meeting devi ri-selezionare lo script manualmente
+Video AI Copilot (video-ai-copilot.ts):
+
+Carica lo script dal playbookId del meeting (linea ~2440: autoLoadPlaybook(session, playbookId))
+NON legge mai dal venditore di riferimento
+Il Dialog Script Manager:
+
+Mostra SOLO gli AI agents (array agents)
+NON ha nessuna logica per i venditori umani
+Piano Dettagliato (Cosa Faro)
+FASE 1: Schema Database
+Creo una nuova tabella human_seller_script_assignments identica a agent_script_assignments ma con sellerId:
+
+- id (PK)
+- sellerId (FK → humanSellers)
+- scriptId (FK → salesScripts)  
+- scriptType ('discovery' | 'demo')
+- assignedAt
+- assignedBy
+
+Vincolo: 1 seller = max 1 script per tipo (come per agenti)
+
+FASE 2: Backend Routes
+GET /api/human-sellers/:sellerId/script-assignments - ritorna script assegnati
+POST /api/human-sellers/:sellerId/assign-script - assegna script (upsert)
+DELETE /api/human-sellers/:sellerId/unassign-script/:scriptType - rimuove assegnazione
+FASE 3: Modifica Video AI Copilot
+In autoLoadPlaybook():
+
+Se il meeting ha playbookId → usa quello (backward compatible)
+Altrimenti, cerca script dal seller:
+SELECT scriptId FROM human_seller_script_assignments 
+WHERE sellerId = meeting.sellerId AND scriptType = currentPhase
+
+FASE 4: Frontend Dialog
+Modifico il dialog in client-script-manager.tsx (linee 970-1069):
+
+Aggiungo Tabs: "AI Agents" | "Venditori Umani"
+Fetch dei venditori umani con loro script assignments
+Click su venditore → chiama nuova mutation per assegnare script
+Mostro badge "Attivo" se lo script è già assegnato a quel venditore
+FASE 5: Lettura Script nei Video Meetings
+Modifico server/routes/public/video-meeting.ts:
+
+Se il meeting NON ha playbookId, cerco nello script assignment del seller
+Priorità: meeting.playbookId > seller.scriptAssignments[type]
+Garanzie di Qualita
+Backward Compatible: I meeting esistenti con playbookId continuano a funzionare
+Consistenza: Stesso pattern usato per AI agents → facile manutenzione
+UI Coerente: Dialog unificato con tabs, stessa UX per entrambi i tipi
+Database Migration: Creo la tabella con Drizzle, push automatico
