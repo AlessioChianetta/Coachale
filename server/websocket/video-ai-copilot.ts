@@ -648,7 +648,7 @@ async function performTranscription(
     ],
     generationConfig: {
       temperature: 0,  // Temperatura 0 per trascrizione precisa
-      maxOutputTokens: 1000,
+      maxOutputTokens: 2000,
       topP: 1,
       topK: 1,  // Forza il modello a scegliere sempre la parola più probabile
     }
@@ -886,7 +886,7 @@ Response (JSON only):`;
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 50,
+        maxOutputTokens: 150,
       }
     });
 

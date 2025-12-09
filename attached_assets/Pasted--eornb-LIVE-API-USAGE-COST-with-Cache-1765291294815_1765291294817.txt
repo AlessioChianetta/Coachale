@@ -1,0 +1,2328 @@
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [eornb] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 14,751 tokens → $0.007376 ($0.50/1M)
+   - Audio Output: 422 tokens → $0.005064 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.012439 USD
+
+📊 Session totals:
+   - Text Input: 68,020 tokens → $0.034010
+   - Audio Output: 1,619 tokens → $0.019428
+   - SESSION TOTAL: $0.053438 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 9,905 (~9.9k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 68,020 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 68,020 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (9,905 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~9,905 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 9,905 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [eornb] SESSION RESUMPTION UPDATE received
+   - New handle: 29cb0b36-18b9-449b-84be-c93919...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [eornb] Usage tracked → DB saved (Turn cost: $0.012439)
+✅ [eornb] Turn complete
+💾 [eornb] Saved USER message: "S ì, sì, ma me l'hanno già fatta questa premessa. Possiamo andare avanti, ok?" (6 total)
+⚠️  [eornb] Sales tracking: Fallback - committed user message without isFinal flag
+✓ [TRACKER] Checkpoint progress detected: User confirmed in phase_2
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_2)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ S ì, sì, ma me l'hanno già fatta questa premessa. Possiamo andare avanti,    │
+│ ok?                                                                          │
+│ Time: 14:39:38                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+📝 [eornb] Fallback: User message saved, NO watchdog needed (AI already responded)
+🔇 [eornb] AI finished speaking (turn complete)
+💾 [eornb] Saved AI message (server-side): 7 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_2)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Evvai! Capisco perfettamente l'entusiasmo! E proprio per questo voglio       │
+│ essere precisissimo con te. Dammi letteralmente due minuti per capire la     │
+│ tua...                                                                       │
+│ Time: 14:39:38                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [eornb] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Sales Manager Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [eornb] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_2
+   📍 Current Step: phase_2_step_3
+   📍 Phase Index: 1, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 7 messages
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [eornb] MESSAGGI PASSATI AL SALES MANAGER (7 - TUTTI):
+   2. [USER]: "Molto bene. Tu?"
+   3. [ASSISTANT]: "Fantastico, alla grande! Senti, da dove mi chiami?"
+   4. [USER]: "Ti chiamo da Roma."
+   5. [ASSISTANT]: "Roma! Bellissima zona! Conosco, davvero incredibile. Ok Romeo, per ottimizzare i..."
+   6. [USER]: "S ì, sì, ma me l'hanno già fatta questa premessa. Possiamo andare avanti, ok?"
+   7. [ASSISTANT]: "Evvai! Capisco perfettamente l'entusiasmo! E proprio per questo voglio essere pr..."
+   ... (+ 1 messaggi precedenti inclusi)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] CHECKPOINT DATA FROM PARSER:
+   📍 Phase 1 (phase_1):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_1
+         description: ⛔ CHECKPOINT FASE #1...
+         verifications: 4 items
+            1. Hai salutato e chiesto "come stai"...
+            2. Hai chiesto "da dove mi chiami"...
+            3. Hai spiegato il processo della call...
+            4. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 2 (phase_2):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_2
+         description: ⛔ CHECKPOINT FASE #2...
+         verifications: 6 items
+            1. Sai IL problema principale legato alle sue performance o al ...
+            2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le perform...
+            3. Capisci il VERO dolore o la frustrazione dietro il problema...
+            4. Sai cosa ha già provato per migliorare e perché non ha funzi...
+            5. Sai da quanto tempo affronta questo ostacolo...
+            6. Sai quanto ha già investito in tempo ed energie per superare...
+   📍 Phase 3 (phase_3):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_3
+         description: ⛔ CHECKPOINT FASE #3...
+         verifications: 6 items
+            1. CONTESTO PRINCIPALE: Sai qual è il suo contesto principale (...
+            2. SUPPORTO: Sai se è da solo o ha supporto (famiglia/partner/c...
+            3. DURATA: Sai da QUANTO TEMPO affronta questa situazione...
+            4. STRESS: Hai un NUMERO 1-10 del livello di stress o frustrazi...
+            5. DISPONIBILITÀ: Hai capito come organizza le giornate e la su...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 4 (phase_4):
+      checkpoints array: 0
+   📍 Phase 5 (phase_5):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_5
+         description: ⛔ CHECKPOINT FASE #5...
+         verifications: 6 items
+            1. Hai un OBIETTIVO SPECIFICO (es. un livello, una performance,...
+            2. Sai PERCHÉ l'atleta vuole raggiungere quell'obiettivo...
+            3. Hai collegato l'obiettivo alle EMOZIONI PROFONDE che prova o...
+            4. Hai fatto 1-2 'perché' sulle emozioni, scavando a fondo...
+            5. Sai LA cosa PIÙ IMPORTANTE che cambierà per l'atleta una vol...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 6 (phase_6):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_6
+         description: ⛔ CHECKPOINT FASE #6...
+         verifications: 5 items
+            1. Hai chiesto: "...cosa ti sta impedendo di fare questo salto ...
+            2. Il prospect ha risposto alla domanda...
+            3. Il prospect ha ammesso UNO dei MAGICI 3:   - "Non sono in gr...
+            4. Se NON ha detto uno dei Magici 3, hai fatto la disqualifica...
+            5. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 7 (phase_7):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_FINALE
+         description: ⛔ CHECKPOINT FINALE DISCOVERY...
+         verifications: 6 items
+            1. L'atleta ha riconosciuto il costo di non agire e la necessit...
+            2. L'atleta ha espresso un'urgenza (6-10) e motivato il suo tim...
+            3. L'atleta ha un'idea del budget richiesto per un programma di...
+            4. È l'atleta il decision maker o hai coinvolto il co-decisore ...
+            5. Hai fissato la data e l'ora per la presentazione del program...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⛔ Checkpoints trovati: 6 fasi con checkpoint
+      - Fase 1: "⛔ CHECKPOINT FASE #1" (4 checks)
+      - Fase 2: "⛔ CHECKPOINT FASE #2" (6 checks)
+      - Fase 3: "⛔ CHECKPOINT FASE #3" (6 checks)
+      - Fase 5: "⛔ CHECKPOINT FASE #5" (6 checks)
+      - Fase 6: "⛔ CHECKPOINT FASE #6" (5 checks)
+      - Fase 7: "⛔ CHECKPOINT FINALE DISCOVERY" (6 checks)
+
+👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏢 Name: Premium
+   🎯 What we do: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibr...
+   👥 Target client: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le ...
+   🚫 Non-target: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che p...
+   📋 Services: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📨 Calling SalesManagerAgent.analyze()...
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Starting comprehensive analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_2 / phase_2_step_3
+   💬 Messages: 7
+   🚀 Launching PARALLEL AI calls (checkpoint + advancement)...
+
+🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   📋 Total checks: 6
+   🔒 Already validated (sticky): 0
+   🔍 Remaining to analyze: 6
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [CHECKPOINT-AI] Starting semantic analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   ✅ Checks to verify: 6
+   💬 Messages to analyze: 7
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+   🚀 [CHECKPOINT-AI] Filtered 7 → 7 messages
+   📋 Checks to verify:
+      1. Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+      2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+      3. Capisci il VERO dolore o la frustrazione dietro il problema
+      4. Sai cosa ha già provato per migliorare e perché non ha funzionato
+      5. Sai da quanto tempo affronta questo ostacolo
+      6. Sai quanto ha già investito in tempo ed energie per superare questo problema
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_jmLPwU0_XdzIyTbi, ConversationId: 3ff0a8c8-9f31-48c8-8b50-bf6a21d7aa6e
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+🔄 AI operation attempt 1/3...
+🔄 [SALES-MANAGER] AI call attempt 1/3...
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+✅ AI operation successful on attempt 1
+🤖 [SALES-MANAGER] Raw AI response (611 chars): ```json
+{
+  "shouldAdvance": false,
+  "nextPhaseId": null,
+  "nextStepId": null,
+  "reasoning": "L'obiettivo dello step è trovare il pain point principale, ma il prospect ha interrotto l'agente, mostrando impazienza e desiderio di procedere rapidamente. Non sono state poste domande per identificare ...
+✅ [SALES-MANAGER] Extracted JSON (599 chars)
+✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=false, confidence=0.9
+   🧠 AI Archetype Intuition: skeptic - "Ha interrotto l'agente, mostrando impazienza e scetticismo verso la premessa, suggerendo esperienze passate negative."
+   📄 AI Response (first 300 chars): "```json
+{
+  "isComplete": false,
+  "completedItems": [],
+  "missingItems": [
+    "Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",
+    "È SPECIFICO e CONCRETO (non vago tipo \"migliorare le performance\" o \"sentirsi meglio\")",
+    "Capisci il VERO dol..."
+   📥 Raw AI response length: 3579 chars
+   📥 First 200 chars: ```json\n{\n  "isComplete": false,\n  "completedItems": [],\n  "missingItems": [\n    "Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",\n    "È SPECIFICO e CON
+   📥 Cleaned JSON length: 3567 chars
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [CHECKPOINT-AI] Analysis completed in 3355ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[FASE 2] - Checkpoint Totali: 6 | Validati: 0 | Mancanti: 6
+  CHECK 1: [MANCANTE] "Sai IL problema principale legato alle sue performance o al ..."
+    Motivo: La domanda non è stata posta. La conversazione è ancora nella fase di ...
+  CHECK 2: [MANCANTE] "È SPECIFICO e CONCRETO (non vago tipo "migliorare le perform..."
+    Motivo: La domanda non è stata posta. Non ci sono ancora informazioni specific...
+  CHECK 3: [MANCANTE] "Capisci il VERO dolore o la frustrazione dietro il problema"
+    Motivo: La domanda non è stata posta. Non sono state esplorate le emozioni o l...
+  CHECK 4: [MANCANTE] "Sai cosa ha già provato per migliorare e perché non ha funzi..."
+    Motivo: La domanda non è stata posta. Non sono state raccolte informazioni su ...
+  CHECK 5: [MANCANTE] "Sai da quanto tempo affronta questo ostacolo"
+    Motivo: La domanda non è stata posta. Non è stata raccolta alcuna informazione...
+  CHECK 6: [MANCANTE] "Sai quanto ha già investito in tempo ed energie per superare..."
+    Motivo: La domanda non è stata posta. Non sono state raccolte informazioni sug...
+  Quality Score: 0/10 | Progress: 0%
+  Stato: BLOCCO ATTIVO - Non puoi passare alla fase successiva
+✅ [SALES-MANAGER] AI checkpoint analysis complete (with sticky merge)
+   🔒 Sticky (preserved): 0
+   🆕 New from AI: 6
+   🟢 Total validated: 0/6
+   🔴 Missing/Vague: 6
+   📊 Confidence: 100%
+   📈 Quality Score: 0/10
+   ✅ PARALLEL AI completed in 3356ms (target: <2000ms)
+   💰 Buy signals: 0
+   🛡️ Objections: 0
+   🎭 Tone issues: 0
+   🎯 Control: OK
+   👤 Business: Premium
+
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ CHECKPOINT FASE #2: "⛔ CHECKPOINT FASE #2"
+   ⛔ DOMANDE DA FARE: 0/6 completate
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🔴 ✗ [1] Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+        └─ Motivo: La domanda non è stata posta. La conversazione è ancora nell...
+        └─ Suggerimento AI: Indaga sul problema principale che il prospect desidera riso...
+   🔴 ✗ [2] È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+        └─ Motivo: La domanda non è stata posta. Non ci sono ancora informazion...
+        └─ Suggerimento AI: Assicurati che il problema identificato sia descritto con de...
+   🔴 ✗ [3] Capisci il VERO dolore o la frustrazione dietro il problema
+        └─ Motivo: La domanda non è stata posta. Non sono state esplorate le em...
+        └─ Suggerimento AI: Approfondisci per comprendere le emozioni e le frustrazioni ...
+   🔴 ✗ [4] Sai cosa ha già provato per migliorare e perché non ha funzionato
+        └─ Motivo: La domanda non è stata posta. Non sono state raccolte inform...
+        └─ Suggerimento AI: Chiedi al prospect quali soluzioni ha già adottato in passat...
+   🔴 ✗ [5] Sai da quanto tempo affronta questo ostacolo
+        └─ Motivo: La domanda non è stata posta. Non è stata raccolta alcuna in...
+        └─ Suggerimento AI: Indaga da quanto tempo il prospect sta vivendo questo ostaco...
+   🔴 ✗ [6] Sai quanto ha già investito in tempo ed energie per superare questo problema
+        └─ Motivo: La domanda non è stata posta. Non sono state raccolte inform...
+        └─ Suggerimento AI: Comprendi l'impegno in termini di tempo ed energie che il pr...
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ STATO: 🚫 BLOCCO ATTIVO - NON PUÒ AVANZARE
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 [SALES-MANAGER] AI REASONING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 MODEL: gemini-2.5-flash-lite
+   ⏱️ LATENCY: 3356ms
+
+   🧠 FULL REASONING:
+      L'obiettivo dello step è trovare il pain point principale, ma il prospect ha interrotto l'agente, mostrando impazienza e desiderio di procedere rapidamente. Non sono state poste domande per identificare il problema principale. L'agente deve chiedere direttamente quale sia il problema che vuole risolvere.
+
+   📤 AI DECISIONS:
+      └─ Should Advance: ❌ NO
+      └─ Next Phase: same
+      └─ Next Step: same
+      └─ Confidence: 90%
+
+   🎭 ARCHETYPE INTUITION:
+      └─ Detected: skeptic
+      └─ Reasoning: "Ha interrotto l'agente, mostrando impazienza e scetticismo verso la premessa, suggerendo esperienze passate negative."
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🧠 AI Intuition: skeptic - "Ha interrotto l'agente, mostrando impazienza e scetticismo verso la premessa, suggerendo esperienze passate negative."
+   🧠 AI Intuition WINS: skeptic (confidence: 85%)
+   🔄 ARCHETYPE CHANGE: neutral → skeptic
+      Reason: confidence=85%, consecutive=1
+   🎭 Final Archetype: 🤨 SCETTICO (85%)
+      ⚡ Regex suggested: neutral → 🧠 AI overrode to: skeptic
+   📢 ARCHETYPE INJECTION at turn 7 (archetype just changed)
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Analysis complete in 3359ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → Step advance: false (90%)
+   → Feedback: checkpoint (medium)
+   → Archetype: 🤨 SCETTICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🎭 Archetype state SAVED: skeptic (85%)
+🔒 [TRACKER] Validated items updated: 2 checkpoints
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [eornb] SALES MANAGER AGENT - RESULT (3360ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 90%
+   💡 reasoning: L'obiettivo dello step è trovare il pain point principale, ma il prospect ha interrotto l'agente, mostrando impazienza e desiderio di procedere rapidamente. Non sono state poste domande per identificare il problema principale. L'agente deve chiedere direttamente quale sia il problema che vuole risolvere.
+   🔧 FEEDBACK (checkpoint): Indaga sul problema principale che il prospect desidera risolvere, sia esso legato alle performance ...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 [LASER FOCUS] Feedback compatto (343 chars, 3 sezioni)
+
+📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 [eornb] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📢 Priority: MEDIUM
+   📋 Type: checkpoint
+   📝 Needs Improvement: Indaga sul problema principale che il prospect desidera risolvere, sia esso legato alle performance o al benessere personale.
+   💭 Reasoning: L'obiettivo dello step è trovare il pain point principale, ma il prospect ha interrotto l'agente, mo...
+   🎵 Tone: 🎭 TONO: Scettico
+🎤 Energia: MEDIA | Ritmo: LENTO
+🗣️ Voce: Calmo, sicuro, leggermente distaccato
+🪞 Stile: Professionale e non difensivo. Pause più lunghe. Non riempire i silenzi.
+   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+══════════════════════════════════════════════════════════════════════════════════════════
+📤 SALES MANAGER → SALES AGENT: MESSAGGIO COMPLETO (102 token)
+══════════════════════════════════════════════════════════════════════════════════════════
+🎯 DECISION SUMMARY:
+   • Step Advancement: ❌ NO
+   • Checkpoint Status: ⛔ INCOMPLETE
+     → Missing: Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere, È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio"), Capisci il VERO dolore o la frustrazione dietro il problema...
+   • Feedback Type: CHECKPOINT
+   • Feedback Priority: MEDIUM
+
+📋 FULL MESSAGE TO SALES AGENT (102 token):
+──────────────────────────────────────────────────────────────────────────────────────────
+<<<SALES_MANAGER_INSTRUCTION>>>
+💬 AZIONE: Indaga sul problema principale che il prospect desidera risolvere, sia esso legato alle performance o al benessere personale.
+🧠 ARCHETIPO: skeptic
+🎵 TONO: 🎭 Scettico
+🎤 Energia: MEDIA | Ritmo: LENTO
+🗣️ Voce: Calmo, sicuro, leggermente distaccato
+🪞 Stile: Professionale e non difensivo. Pause più lunghe. Non riempire i silenzi.
+<<</SALES_MANAGER_INSTRUCTION>>>
+──────────────────────────────────────────────────────────────────────────────────────────
+📊 TOKEN METRICS:
+   • Message size: 408 characters
+   • Estimated tokens: 102 (at ~4 chars/token)
+   • Priority: medium
+══════════════════════════════════════════════════════════════════════════════════════════
+
+   ✅ Feedback SENT to Gemini with turnComplete:false
+   💾 Feedback also saved to DB (for reconnection backup)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📡 Sent sales_manager_analysis event to client
+
+🛑 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛑 [eornb] BARGE-IN: serverContent.interrupted detected
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏰ Timestamp: 2025-12-09T14:39:42.704Z
+🎤 AI was speaking: NO
+🎯 Action: Stop audio playback immediately
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=0.9, hasIds=false
+🔓 [eornb] Sales Manager lock released
+🎤 [eornb] Receiving audio chunks (last logged: seq 1528)
+💾 [eornb] Autosave: Saving 4 new messages...
+✅ [eornb] Autosave: 4 messages saved successfully (total saved: 7/7)
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "S"
+   → Timestamp: 2025-12-09T14:39:45.409Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] New phrase: "S" + "ì, sì, va bene, possiamo andare avanti." = "S ì, sì, va bene, possiamo andare avanti."
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "ì, sì, va bene, possiamo andare avanti."
+   → Timestamp: 2025-12-09T14:39:45.508Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [eornb] AI transcript (output): Fantastico! Evvai,
+🎤 [eornb] AI started speaking (audio streaming)
+📝 [eornb] AI transcript (output):  iniziamo
+📝 [eornb] AI transcript (output):  subito
+📝 [eornb] AI transcript (output):  allora!
+📝 [eornb] AI transcript (output):  Dimmi,
+📝 [eornb] AI transcript (output):  perché
+📝 [eornb] AI transcript (output):  hai deciso
+📝 [eornb] AI transcript (output):  di partecipare
+📝 [eornb] AI transcript (output):  a questa
+📝 [eornb] AI transcript (output):  call?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 15350,
+  "candidatesTokenCount": 197,
+  "totalTokenCount": 15547,
+  "promptTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 1714
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 13636
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 34
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 163
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 15,350 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 15,350 tokens × $0.50/1M = $0.007675
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [eornb] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 15,350 tokens → $0.007675 ($0.50/1M)
+   - Audio Output: 197 tokens → $0.002364 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.010039 USD
+
+📊 Session totals:
+   - Text Input: 83,370 tokens → $0.041685
+   - Audio Output: 1,816 tokens → $0.021792
+   - SESSION TOTAL: $0.063477 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 9,905 (~9.9k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 83,370 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 83,370 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (9,905 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~9,905 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 9,905 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [eornb] SESSION RESUMPTION UPDATE received
+   - New handle: 58c4b126-06ae-453d-8c74-d33f07...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [eornb] Usage tracked → DB saved (Turn cost: $0.010039)
+✅ [eornb] Turn complete
+💾 [eornb] Saved USER message: "S ì, sì, va bene, possiamo andare avanti." (8 total)
+⚠️  [eornb] Sales tracking: Fallback - committed user message without isFinal flag
+✓ [TRACKER] Checkpoint progress detected: User confirmed in phase_2
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_jmLPwU0_XdzIyTbi, ConversationId: 3ff0a8c8-9f31-48c8-8b50-bf6a21d7aa6e
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_2)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ S ì, sì, va bene, possiamo andare avanti.                                    │
+│ Time: 14:39:48                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+📝 [eornb] Fallback: User message saved, NO watchdog needed (AI already responded)
+🔇 [eornb] AI finished speaking (turn complete)
+💾 [eornb] Saved AI message (server-side): 9 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_2)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Fantastico! Evvai, iniziamo subito allora! Dimmi, perché hai deciso di       │
+│ partecipare a questa call?                                                   │
+│ Time: 14:39:49                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [eornb] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Sales Manager Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [eornb] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_2
+   📍 Current Step: phase_2_step_3
+   📍 Phase Index: 1, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 9 messages
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [eornb] MESSAGGI PASSATI AL SALES MANAGER (9 - TUTTI):
+   4. [USER]: "Ti chiamo da Roma."
+   5. [ASSISTANT]: "Roma! Bellissima zona! Conosco, davvero incredibile. Ok Romeo, per ottimizzare i..."
+   6. [USER]: "S ì, sì, ma me l'hanno già fatta questa premessa. Possiamo andare avanti, ok?"
+   7. [ASSISTANT]: "Evvai! Capisco perfettamente l'entusiasmo! E proprio per questo voglio essere pr..."
+   8. [USER]: "S ì, sì, va bene, possiamo andare avanti."
+   9. [ASSISTANT]: "Fantastico! Evvai, iniziamo subito allora! Dimmi, perché hai deciso di partecipa..."
+   ... (+ 3 messaggi precedenti inclusi)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] CHECKPOINT DATA FROM PARSER:
+   📍 Phase 1 (phase_1):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_1
+         description: ⛔ CHECKPOINT FASE #1...
+         verifications: 4 items
+            1. Hai salutato e chiesto "come stai"...
+            2. Hai chiesto "da dove mi chiami"...
+            3. Hai spiegato il processo della call...
+            4. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 2 (phase_2):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_2
+         description: ⛔ CHECKPOINT FASE #2...
+         verifications: 6 items
+            1. Sai IL problema principale legato alle sue performance o al ...
+            2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le perform...
+            3. Capisci il VERO dolore o la frustrazione dietro il problema...
+            4. Sai cosa ha già provato per migliorare e perché non ha funzi...
+            5. Sai da quanto tempo affronta questo ostacolo...
+            6. Sai quanto ha già investito in tempo ed energie per superare...
+   📍 Phase 3 (phase_3):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_3
+         description: ⛔ CHECKPOINT FASE #3...
+         verifications: 6 items
+            1. CONTESTO PRINCIPALE: Sai qual è il suo contesto principale (...
+            2. SUPPORTO: Sai se è da solo o ha supporto (famiglia/partner/c...
+            3. DURATA: Sai da QUANTO TEMPO affronta questa situazione...
+            4. STRESS: Hai un NUMERO 1-10 del livello di stress o frustrazi...
+            5. DISPONIBILITÀ: Hai capito come organizza le giornate e la su...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 4 (phase_4):
+      checkpoints array: 0
+   📍 Phase 5 (phase_5):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_5
+         description: ⛔ CHECKPOINT FASE #5...
+         verifications: 6 items
+            1. Hai un OBIETTIVO SPECIFICO (es. un livello, una performance,...
+            2. Sai PERCHÉ l'atleta vuole raggiungere quell'obiettivo...
+            3. Hai collegato l'obiettivo alle EMOZIONI PROFONDE che prova o...
+            4. Hai fatto 1-2 'perché' sulle emozioni, scavando a fondo...
+            5. Sai LA cosa PIÙ IMPORTANTE che cambierà per l'atleta una vol...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 6 (phase_6):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_6
+         description: ⛔ CHECKPOINT FASE #6...
+         verifications: 5 items
+            1. Hai chiesto: "...cosa ti sta impedendo di fare questo salto ...
+            2. Il prospect ha risposto alla domanda...
+            3. Il prospect ha ammesso UNO dei MAGICI 3:   - "Non sono in gr...
+            4. Se NON ha detto uno dei Magici 3, hai fatto la disqualifica...
+            5. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 7 (phase_7):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_FINALE
+         description: ⛔ CHECKPOINT FINALE DISCOVERY...
+         verifications: 6 items
+            1. L'atleta ha riconosciuto il costo di non agire e la necessit...
+            2. L'atleta ha espresso un'urgenza (6-10) e motivato il suo tim...
+            3. L'atleta ha un'idea del budget richiesto per un programma di...
+            4. È l'atleta il decision maker o hai coinvolto il co-decisore ...
+            5. Hai fissato la data e l'ora per la presentazione del program...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⛔ Checkpoints trovati: 6 fasi con checkpoint
+      - Fase 1: "⛔ CHECKPOINT FASE #1" (4 checks)
+      - Fase 2: "⛔ CHECKPOINT FASE #2" (6 checks)
+      - Fase 3: "⛔ CHECKPOINT FASE #3" (6 checks)
+      - Fase 5: "⛔ CHECKPOINT FASE #5" (6 checks)
+      - Fase 6: "⛔ CHECKPOINT FASE #6" (5 checks)
+      - Fase 7: "⛔ CHECKPOINT FINALE DISCOVERY" (6 checks)
+
+👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏢 Name: Premium
+   🎯 What we do: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibr...
+   👥 Target client: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le ...
+   🚫 Non-target: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che p...
+   📋 Services: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📨 Calling SalesManagerAgent.analyze()...
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Starting comprehensive analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_2 / phase_2_step_3
+   💬 Messages: 9
+   🚀 Launching PARALLEL AI calls (checkpoint + advancement)...
+
+🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   📋 Total checks: 6
+   🔒 Already validated (sticky): 0
+   🔍 Remaining to analyze: 6
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [CHECKPOINT-AI] Starting semantic analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   ✅ Checks to verify: 6
+   💬 Messages to analyze: 9
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+   🚀 [CHECKPOINT-AI] Filtered 9 → 9 messages
+   📋 Checks to verify:
+      1. Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+      2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+      3. Capisci il VERO dolore o la frustrazione dietro il problema
+      4. Sai cosa ha già provato per migliorare e perché non ha funzionato
+      5. Sai da quanto tempo affronta questo ostacolo
+      6. Sai quanto ha già investito in tempo ed energie per superare questo problema
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+🔄 AI operation attempt 1/3...
+🔄 [SALES-MANAGER] AI call attempt 1/3...
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+✅ AI operation successful on attempt 1
+🤖 [SALES-MANAGER] Raw AI response (787 chars): ```json
+{
+  "shouldAdvance": false,
+  "nextPhaseId": null,
+  "nextStepId": null,
+  "reasoning": "L'obiettivo dello step è capire il vero motivo dietro la call e il problema principale. Il prospect ha risposto in modo evasivo e ha mostrato impazienza riguardo alla premessa, indicando una possibile re...
+✅ [SALES-MANAGER] Extracted JSON (775 chars)
+✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=false, confidence=0.9
+   🧠 AI Archetype Intuition: skeptic - "Mostra impazienza e desiderio di saltare le premesse, suggerendo esperienze passate negative o diffidenza."
+   📄 AI Response (first 300 chars): "```json
+{
+  "isComplete": false,
+  "completedItems": [],
+  "missingItems": [
+    "Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",
+    "È SPECIFICO e CONCRETO (non vago tipo \"migliorare le performance\" o \"sentirsi meglio\")",
+    "Capisci il VERO dol..."
+   📥 Raw AI response length: 3527 chars
+   📥 First 200 chars: ```json\n{\n  "isComplete": false,\n  "completedItems": [],\n  "missingItems": [\n    "Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",\n    "È SPECIFICO e CON
+   📥 Cleaned JSON length: 3515 chars
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [CHECKPOINT-AI] Analysis completed in 3498ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[FASE 2] - Checkpoint Totali: 6 | Validati: 0 | Mancanti: 6
+  CHECK 1: [MANCANTE] "Sai IL problema principale legato alle sue performance o al ..."
+    Motivo: La domanda non è stata ancora posta.
+  CHECK 2: [MANCANTE] "È SPECIFICO e CONCRETO (non vago tipo "migliorare le perform..."
+    Motivo: La domanda non è stata ancora posta, quindi non è possibile valutare l...
+  CHECK 3: [MANCANTE] "Capisci il VERO dolore o la frustrazione dietro il problema"
+    Motivo: La conversazione non ha ancora raggiunto il punto in cui si esplorano ...
+  CHECK 4: [MANCANTE] "Sai cosa ha già provato per migliorare e perché non ha funzi..."
+    Motivo: Non sono state poste domande relative ai tentativi passati del prospec...
+  CHECK 5: [MANCANTE] "Sai da quanto tempo affronta questo ostacolo"
+    Motivo: La durata del problema non è stata ancora indagata.
+  CHECK 6: [MANCANTE] "Sai quanto ha già investito in tempo ed energie per superare..."
+    Motivo: Non sono state poste domande sull'investimento di tempo ed energie del...
+  Quality Score: 0/10 | Progress: 0%
+  Stato: BLOCCO ATTIVO - Non puoi passare alla fase successiva
+✅ [SALES-MANAGER] AI checkpoint analysis complete (with sticky merge)
+   🔒 Sticky (preserved): 0
+   🆕 New from AI: 6
+   🟢 Total validated: 0/6
+   🔴 Missing/Vague: 6
+   📊 Confidence: 100%
+   📈 Quality Score: 0/10
+   ✅ PARALLEL AI completed in 3499ms (target: <2000ms)
+   💰 Buy signals: 0
+   🛡️ Objections: 0
+   🎭 Tone issues: 0
+   🎯 Control: OK
+   👤 Business: Premium
+
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ CHECKPOINT FASE #2: "⛔ CHECKPOINT FASE #2"
+   ⛔ DOMANDE DA FARE: 0/6 completate
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🔴 ✗ [1] Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+        └─ Motivo: La domanda non è stata ancora posta.
+        └─ Suggerimento AI: Individua il problema principale che il prospect desidera ri...
+   🔴 ✗ [2] È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+        └─ Motivo: La domanda non è stata ancora posta, quindi non è possibile ...
+        └─ Suggerimento AI: Assicurati che il problema identificato sia descritto in ter...
+   🔴 ✗ [3] Capisci il VERO dolore o la frustrazione dietro il problema
+        └─ Motivo: La conversazione non ha ancora raggiunto il punto in cui si ...
+        └─ Suggerimento AI: Approfondisci le motivazioni emotive e le frustrazioni che s...
+   🔴 ✗ [4] Sai cosa ha già provato per migliorare e perché non ha funzionato
+        └─ Motivo: Non sono state poste domande relative ai tentativi passati d...
+        └─ Suggerimento AI: Chiedi al prospect quali soluzioni ha già adottato in passat...
+   🔴 ✗ [5] Sai da quanto tempo affronta questo ostacolo
+        └─ Motivo: La durata del problema non è stata ancora indagata.
+        └─ Suggerimento AI: Determina da quanto tempo il prospect sta vivendo l'ostacolo...
+   🔴 ✗ [6] Sai quanto ha già investito in tempo ed energie per superare questo problema
+        └─ Motivo: Non sono state poste domande sull'investimento di tempo ed e...
+        └─ Suggerimento AI: Comprendi l'impegno in termini di tempo ed energie che il pr...
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ STATO: 🚫 BLOCCO ATTIVO - NON PUÒ AVANZARE
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 [SALES-MANAGER] AI REASONING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 MODEL: gemini-2.5-flash-lite
+   ⏱️ LATENCY: 3499ms
+
+   🧠 FULL REASONING:
+      L'obiettivo dello step è capire il vero motivo dietro la call e il problema principale. Il prospect ha risposto in modo evasivo e ha mostrato impazienza riguardo alla premessa, indicando una possibile resistenza o fretta. La domanda finale dell'agente ('Dimmi, perché hai deciso di partecipare a questa call?') è diretta, ma la risposta del prospect è ancora mancante. È necessario attendere la sua risposta per poter valutare se l'obiettivo dello step è stato raggiunto e se si può avanzare.
+
+   📤 AI DECISIONS:
+      └─ Should Advance: ❌ NO
+      └─ Next Phase: same
+      └─ Next Step: same
+      └─ Confidence: 90%
+
+   🎭 ARCHETYPE INTUITION:
+      └─ Detected: skeptic
+      └─ Reasoning: "Mostra impazienza e desiderio di saltare le premesse, suggerendo esperienze passate negative o diffidenza."
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🧠 AI Intuition: skeptic - "Mostra impazienza e desiderio di saltare le premesse, suggerendo esperienze passate negative o diffidenza."
+   🧠 AI Intuition WINS: skeptic (confidence: 85%)
+   🎭 Final Archetype: 🤨 SCETTICO (85%)
+      ⚡ Regex suggested: neutral → 🧠 AI overrode to: skeptic
+   📢 ARCHETYPE INJECTION at turn 9 (different from last injected (none))
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Analysis complete in 3503ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → Step advance: false (90%)
+   → Feedback: checkpoint (medium)
+   → Archetype: 🤨 SCETTICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🎭 Archetype state SAVED: skeptic (85%)
+🔒 [TRACKER] Validated items updated: 2 checkpoints
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [eornb] SALES MANAGER AGENT - RESULT (3504ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 90%
+   💡 reasoning: L'obiettivo dello step è capire il vero motivo dietro la call e il problema principale. Il prospect ha risposto in modo evasivo e ha mostrato impazienza riguardo alla premessa, indicando una possibile resistenza o fretta. La domanda finale dell'agente ('Dimmi, perché hai deciso di partecipare a questa call?') è diretta, ma la risposta del prospect è ancora mancante. È necessario attendere la sua risposta per poter valutare se l'obiettivo dello step è stato raggiunto e se si può avanzare.
+   🔧 FEEDBACK (checkpoint): Individua il problema principale che il prospect desidera risolvere, sia esso legato alle performanc...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 [LASER FOCUS] Feedback compatto (345 chars, 3 sezioni)
+
+📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 [eornb] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📢 Priority: MEDIUM
+   📋 Type: checkpoint
+   📝 Needs Improvement: Individua il problema principale che il prospect desidera risolvere, sia esso legato alle performance o al benessere personale.
+   💭 Reasoning: L'obiettivo dello step è capire il vero motivo dietro la call e il problema principale. Il prospect ...
+   🎵 Tone: 🎭 TONO: Scettico
+🎤 Energia: MEDIA | Ritmo: LENTO
+🗣️ Voce: Calmo, sicuro, leggermente distaccato
+🪞 Stile: Professionale e non difensivo. Pause più lunghe. Non riempire i silenzi.
+   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+══════════════════════════════════════════════════════════════════════════════════════════
+📤 SALES MANAGER → SALES AGENT: MESSAGGIO COMPLETO (103 token)
+══════════════════════════════════════════════════════════════════════════════════════════
+🎯 DECISION SUMMARY:
+   • Step Advancement: ❌ NO
+   • Checkpoint Status: ⛔ INCOMPLETE
+     → Missing: Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere, È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio"), Capisci il VERO dolore o la frustrazione dietro il problema...
+   • Feedback Type: CHECKPOINT
+   • Feedback Priority: MEDIUM
+
+📋 FULL MESSAGE TO SALES AGENT (103 token):
+──────────────────────────────────────────────────────────────────────────────────────────
+<<<SALES_MANAGER_INSTRUCTION>>>
+💬 AZIONE: Individua il problema principale che il prospect desidera risolvere, sia esso legato alle performance o al benessere personale.
+🧠 ARCHETIPO: skeptic
+🎵 TONO: 🎭 Scettico
+🎤 Energia: MEDIA | Ritmo: LENTO
+🗣️ Voce: Calmo, sicuro, leggermente distaccato
+🪞 Stile: Professionale e non difensivo. Pause più lunghe. Non riempire i silenzi.
+<<</SALES_MANAGER_INSTRUCTION>>>
+──────────────────────────────────────────────────────────────────────────────────────────
+📊 TOKEN METRICS:
+   • Message size: 410 characters
+   • Estimated tokens: 103 (at ~4 chars/token)
+   • Priority: medium
+══════════════════════════════════════════════════════════════════════════════════════════
+
+   ✅ Feedback SENT to Gemini with turnComplete:false
+   💾 Feedback also saved to DB (for reconnection backup)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📡 Sent sales_manager_analysis event to client
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=0.9, hasIds=false
+🔓 [eornb] Sales Manager lock released
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-12-09T14:40:00.017Z
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Found 0 pending leads to contact
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+📋 Found 3 leads ready for follow-up
+📤 Processing lead: Gianluca Perna (+393933318891)
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: 881b6ed6-3910-4198-9276-0bc9c3030b50
+   Lead Name: Gianluca Perna
+   Message Type: followup_final (26 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+📤 Processing lead: Alessio Chianetta (+393890566422)
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: fd82df05-3a7f-449e-82f0-269935cebc5a
+   Lead Name: Alessio Chianetta
+   Message Type: followup_final (26 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+📤 Processing lead: Dario borloni (+393333887043)
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "V"
+   → Timestamp: 2025-12-09T14:40:00.668Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+
+🎯 [TEMPLATE PRECEDENCE] Resolving template assignment
+   Agent Templates (defaults):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+   Campaign Templates (override if set):
+     - Opening: NOT SET
+     - Gentle: NOT SET
+     - Value: NOT SET
+     - Final: NOT SET
+   Final Templates (after precedence):
+     - Opening: HX922112cd9b1d531c5be56772acd50034
+     - Gentle: HX5e6d27c6d82026f3620247262ef67340
+     - Value: NOT SET
+     - Final: NOT SET
+
+❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Lead ID: 01e0a582-9554-4204-91be-1a77e17af14a
+   Lead Name: Dario borloni
+   Message Type: followup_final (26 days since contact)
+   Reason: No final follow-up template assigned
+   Action: Lead skipped, no message sent
+
+✅ [PROACTIVE OUTREACH] Completed in 678ms
+   📊 Results: 3 success, 0 errors, 3 total
+📝 [VAD CONCAT] Word fragment: "V" + "olevo capire come risolvere il mio problema alla spalla." = "Volevo capire come risolvere il mio problema alla spalla."
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "olevo capire come risolvere il mio problema alla spalla."
+   → Timestamp: 2025-12-09T14:40:00.775Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+📊 [CALENDAR SYNC] Syncing 1 consultant(s)...
+
+🔄 [CALENDAR SYNC] Starting sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📝 [eornb] AI transcript (output): Interessante. Qual
+🎤 [eornb] AI started speaking (audio streaming)
+🔗 [OAUTH] Redirect URI for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: https://d6b033ef-9cb4-4837-8a0e-f45927d19166-00-1nwxevy2emrtr.riker.replit.dev/api/calendar-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+📝 [eornb] AI transcript (output):  è il
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [CALENDAR SYNC] No confirmed appointments to sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b in the next 90 days
+📝 [eornb] AI transcript (output):  problema
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+📝 [eornb] AI transcript (output):  principale
+📝 [eornb] AI transcript (output):  legato
+
+✅ [CALENDAR SYNC] Sync cycle complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+📝 [eornb] AI transcript (output):  alla
+📝 [eornb] AI transcript (output):  tua
+📝 [eornb] AI transcript (output):  performance
+📝 [eornb] AI transcript (output):  o
+📝 [eornb] AI transcript (output):  al tuo
+📝 [eornb] AI transcript (output):  benessere
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+📝 [eornb] AI transcript (output):  fisico
+📝 [eornb] AI transcript (output):  che
+📝 [eornb] AI transcript (output):  stai
+📝 [eornb] AI transcript (output):  cercando
+📝 [eornb] AI transcript (output):  di risolvere
+📝 [eornb] AI transcript (output):  oggi?
+📝 [eornb] AI transcript (output):  E
+📝 [eornb] AI transcript (output):  cosa
+📝 [eornb] AI transcript (output):  intendi
+📝 [eornb] AI transcript (output):  per
+📝 [eornb] AI transcript (output):  "problema
+📝 [eornb] AI transcript (output):  alla spalla"?
+📝 [eornb] AI transcript (output):  Che
+📝 [eornb] AI transcript (output):  succede?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 15774,
+  "candidatesTokenCount": 389,
+  "totalTokenCount": 16163,
+  "promptTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 13782
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 1992
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "TEXT",
+      "tokenCount": 51
+    },
+    {
+      "modality": "AUDIO",
+      "tokenCount": 338
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 15,774 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 15,774 tokens × $0.50/1M = $0.007887
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [eornb] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 15,774 tokens → $0.007887 ($0.50/1M)
+   - Audio Output: 389 tokens → $0.004668 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.012555 USD
+
+📊 Session totals:
+   - Text Input: 99,144 tokens → $0.049572
+   - Audio Output: 2,205 tokens → $0.026460
+   - SESSION TOTAL: $0.076032 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 9,905 (~9.9k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 99,144 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 99,144 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (9,905 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~9,905 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 9,905 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [eornb] SESSION RESUMPTION UPDATE received
+   - New handle: 36a5e0fb-f4ee-44d1-9fbb-3aeba2...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [eornb] Usage tracked → DB saved (Turn cost: $0.012555)
+✅ [eornb] Turn complete
+💾 [eornb] Saved USER message: "Volevo capire come risolvere il mio problema alla spalla." (10 total)
+⚠️  [eornb] Sales tracking: Fallback - committed user message without isFinal flag
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_jmLPwU0_XdzIyTbi, ConversationId: 3ff0a8c8-9f31-48c8-8b50-bf6a21d7aa6e
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_2)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Volevo capire come risolvere il mio problema alla spalla.                    │
+│ Time: 14:40:06                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+📝 [eornb] Fallback: User message saved, NO watchdog needed (AI already responded)
+🔇 [eornb] AI finished speaking (turn complete)
+
+⚠️  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[eornb] AI MESSAGE QUALITY WARNING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🚨 MULTIPLE QUESTIONS: 3 questions detected (should ask ONE at a time)
+   📝 Message: "Interessante. Qual è il problema principale legato alla tua performance o al tuo benessere fisico che stai cercando di risolvere oggi? E cosa intendi ..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [eornb] Saved AI message (server-side): 11 total messages
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_2)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Interessante. Qual è il problema principale legato alla tua performance o al │
+│ tuo benessere fisico che stai cercando di risolvere oggi? E cosa inten...    │
+│ Time: 14:40:06                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [eornb] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Sales Manager Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [eornb] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_2
+   📍 Current Step: phase_2_step_3
+   📍 Phase Index: 1, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 11 messages
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [eornb] MESSAGGI PASSATI AL SALES MANAGER (11 - TUTTI):
+   6. [USER]: "S ì, sì, ma me l'hanno già fatta questa premessa. Possiamo andare avanti, ok?"
+   7. [ASSISTANT]: "Evvai! Capisco perfettamente l'entusiasmo! E proprio per questo voglio essere pr..."
+   8. [USER]: "S ì, sì, va bene, possiamo andare avanti."
+   9. [ASSISTANT]: "Fantastico! Evvai, iniziamo subito allora! Dimmi, perché hai deciso di partecipa..."
+   10. [USER]: "Volevo capire come risolvere il mio problema alla spalla."
+   11. [ASSISTANT]: "Interessante. Qual è il problema principale legato alla tua performance o al tuo..."
+   ... (+ 5 messaggi precedenti inclusi)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] CHECKPOINT DATA FROM PARSER:
+   📍 Phase 1 (phase_1):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_1
+         description: ⛔ CHECKPOINT FASE #1...
+         verifications: 4 items
+            1. Hai salutato e chiesto "come stai"...
+            2. Hai chiesto "da dove mi chiami"...
+            3. Hai spiegato il processo della call...
+            4. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 2 (phase_2):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_2
+         description: ⛔ CHECKPOINT FASE #2...
+         verifications: 6 items
+            1. Sai IL problema principale legato alle sue performance o al ...
+            2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le perform...
+            3. Capisci il VERO dolore o la frustrazione dietro il problema...
+            4. Sai cosa ha già provato per migliorare e perché non ha funzi...
+            5. Sai da quanto tempo affronta questo ostacolo...
+            6. Sai quanto ha già investito in tempo ed energie per superare...
+   📍 Phase 3 (phase_3):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_3
+         description: ⛔ CHECKPOINT FASE #3...
+         verifications: 6 items
+            1. CONTESTO PRINCIPALE: Sai qual è il suo contesto principale (...
+            2. SUPPORTO: Sai se è da solo o ha supporto (famiglia/partner/c...
+            3. DURATA: Sai da QUANTO TEMPO affronta questa situazione...
+            4. STRESS: Hai un NUMERO 1-10 del livello di stress o frustrazi...
+            5. DISPONIBILITÀ: Hai capito come organizza le giornate e la su...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 4 (phase_4):
+      checkpoints array: 0
+   📍 Phase 5 (phase_5):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_5
+         description: ⛔ CHECKPOINT FASE #5...
+         verifications: 6 items
+            1. Hai un OBIETTIVO SPECIFICO (es. un livello, una performance,...
+            2. Sai PERCHÉ l'atleta vuole raggiungere quell'obiettivo...
+            3. Hai collegato l'obiettivo alle EMOZIONI PROFONDE che prova o...
+            4. Hai fatto 1-2 'perché' sulle emozioni, scavando a fondo...
+            5. Sai LA cosa PIÙ IMPORTANTE che cambierà per l'atleta una vol...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 6 (phase_6):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_6
+         description: ⛔ CHECKPOINT FASE #6...
+         verifications: 5 items
+            1. Hai chiesto: "...cosa ti sta impedendo di fare questo salto ...
+            2. Il prospect ha risposto alla domanda...
+            3. Il prospect ha ammesso UNO dei MAGICI 3:   - "Non sono in gr...
+            4. Se NON ha detto uno dei Magici 3, hai fatto la disqualifica...
+            5. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 7 (phase_7):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_FINALE
+         description: ⛔ CHECKPOINT FINALE DISCOVERY...
+         verifications: 6 items
+            1. L'atleta ha riconosciuto il costo di non agire e la necessit...
+            2. L'atleta ha espresso un'urgenza (6-10) e motivato il suo tim...
+            3. L'atleta ha un'idea del budget richiesto per un programma di...
+            4. È l'atleta il decision maker o hai coinvolto il co-decisore ...
+            5. Hai fissato la data e l'ora per la presentazione del program...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⛔ Checkpoints trovati: 6 fasi con checkpoint
+      - Fase 1: "⛔ CHECKPOINT FASE #1" (4 checks)
+      - Fase 2: "⛔ CHECKPOINT FASE #2" (6 checks)
+      - Fase 3: "⛔ CHECKPOINT FASE #3" (6 checks)
+      - Fase 5: "⛔ CHECKPOINT FASE #5" (6 checks)
+      - Fase 6: "⛔ CHECKPOINT FASE #6" (5 checks)
+      - Fase 7: "⛔ CHECKPOINT FINALE DISCOVERY" (6 checks)
+
+👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏢 Name: Premium
+   🎯 What we do: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibr...
+   👥 Target client: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le ...
+   🚫 Non-target: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che p...
+   📋 Services: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📨 Calling SalesManagerAgent.analyze()...
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Starting comprehensive analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_2 / phase_2_step_3
+   💬 Messages: 11
+   🚀 Launching PARALLEL AI calls (checkpoint + advancement)...
+
+🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   📋 Total checks: 6
+   🔒 Already validated (sticky): 0
+   🔍 Remaining to analyze: 6
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [CHECKPOINT-AI] Starting semantic analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   ✅ Checks to verify: 6
+   💬 Messages to analyze: 11
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+   🚀 [CHECKPOINT-AI] Filtered 11 → 11 messages
+   📋 Checks to verify:
+      1. Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+      2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+      3. Capisci il VERO dolore o la frustrazione dietro il problema
+      4. Sai cosa ha già provato per migliorare e perché non ha funzionato
+      5. Sai da quanto tempo affronta questo ostacolo
+      6. Sai quanto ha già investito in tempo ed energie per superare questo problema
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+🔄 AI operation attempt 1/3...
+🔄 [SALES-MANAGER] AI call attempt 1/3...
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+✅ AI operation successful on attempt 1
+🤖 [SALES-MANAGER] Raw AI response (708 chars): ```json
+{
+  "shouldAdvance": false,
+  "nextPhaseId": null,
+  "nextStepId": null,
+  "reasoning": "L'agente ha posto una domanda aperta per identificare il pain point principale, ma il prospect ha fornito una risposta generica ('problema alla spalla'). L'agente ha cercato di approfondire, ma il prospe...
+✅ [SALES-MANAGER] Extracted JSON (696 chars)
+✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=false, confidence=0.9
+   🧠 AI Archetype Intuition: neutral - "Il prospect è diretto e vuole arrivare al punto, ma non ci sono ancora segnali chiari di scetticismo o entusiasmo."
+   📄 AI Response (first 300 chars): "```json
+{
+  "isComplete": false,
+  "completedItems": [],
+  "missingItems": [
+    "Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",
+    "È SPECIFICO e CONCRETO (non vago tipo \"migliorare le performance\" o \"sentirsi meglio\")",
+    "Capisci il VERO dol..."
+   📥 Raw AI response length: 4005 chars
+   📥 First 200 chars: ```json\n{\n  "isComplete": false,\n  "completedItems": [],\n  "missingItems": [\n    "Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",\n    "È SPECIFICO e CON
+   📥 Cleaned JSON length: 3993 chars
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [CHECKPOINT-AI] Analysis completed in 3420ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[FASE 2] - Checkpoint Totali: 6 | Validati: 0 | Mancanti: 6
+  CHECK 1: [MANCANTE] "Sai IL problema principale legato alle sue performance o al ..."
+    Motivo: La domanda è stata posta, ma la risposta del prospect è stata troppo g...
+  CHECK 2: [MANCANTE] "È SPECIFICO e CONCRETO (non vago tipo "migliorare le perform..."
+    Motivo: La risposta del prospect ('il mio problema alla spalla') è vaga e non ...
+  CHECK 3: [MANCANTE] "Capisci il VERO dolore o la frustrazione dietro il problema"
+    Motivo: Non sono state raccolte informazioni sul vero dolore o sulla frustrazi...
+  CHECK 4: [MANCANTE] "Sai cosa ha già provato per migliorare e perché non ha funzi..."
+    Motivo: Questa informazione non è stata ancora richiesta o ottenuta.
+  CHECK 5: [MANCANTE] "Sai da quanto tempo affronta questo ostacolo"
+    Motivo: Questa informazione non è stata ancora richiesta o ottenuta.
+  CHECK 6: [MANCANTE] "Sai quanto ha già investito in tempo ed energie per superare..."
+    Motivo: Questa informazione non è stata ancora richiesta o ottenuta.
+  Quality Score: 0/10 | Progress: 0%
+  Stato: BLOCCO ATTIVO - Non puoi passare alla fase successiva
+✅ [SALES-MANAGER] AI checkpoint analysis complete (with sticky merge)
+   🔒 Sticky (preserved): 0
+   🆕 New from AI: 6
+   🟢 Total validated: 0/6
+   🔴 Missing/Vague: 6
+   📊 Confidence: 90%
+   📈 Quality Score: 0/10
+   ✅ PARALLEL AI completed in 3421ms (target: <2000ms)
+   💰 Buy signals: 0
+   🛡️ Objections: 0
+   🎭 Tone issues: 1
+   🎯 Control: OK
+   👤 Business: Premium
+
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ CHECKPOINT FASE #2: "⛔ CHECKPOINT FASE #2"
+   ⛔ DOMANDE DA FARE: 0/6 completate
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🔴 ✗ [1] Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+        └─ Motivo: La domanda è stata posta, ma la risposta del prospect è stat...
+        └─ Suggerimento AI: Devi ottenere una descrizione chiara e specifica del problem...
+   🔴 ✗ [2] È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+        └─ Motivo: La risposta del prospect ('il mio problema alla spalla') è v...
+        └─ Suggerimento AI: Chiedi al prospect di descrivere in modo concreto cosa gli i...
+   🔴 ✗ [3] Capisci il VERO dolore o la frustrazione dietro il problema
+        └─ Motivo: Non sono state raccolte informazioni sul vero dolore o sulla...
+        └─ Suggerimento AI: Indaga sulle conseguenze del problema alla spalla nella vita...
+   🔴 ✗ [4] Sai cosa ha già provato per migliorare e perché non ha funzionato
+        └─ Motivo: Questa informazione non è stata ancora richiesta o ottenuta.
+        └─ Suggerimento AI: Chiedi al prospect quali tentativi ha già fatto per risolver...
+   🔴 ✗ [5] Sai da quanto tempo affronta questo ostacolo
+        └─ Motivo: Questa informazione non è stata ancora richiesta o ottenuta.
+        └─ Suggerimento AI: Chiedi al prospect da quanto tempo sperimenta questo problem...
+   🔴 ✗ [6] Sai quanto ha già investito in tempo ed energie per superare questo problema
+        └─ Motivo: Questa informazione non è stata ancora richiesta o ottenuta.
+        └─ Suggerimento AI: Indaga sull'impegno (tempo, denaro, sforzo) che il prospect ...
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ STATO: 🚫 BLOCCO ATTIVO - NON PUÒ AVANZARE
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⚡ Regex Signals: technical(35%)
+
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 [SALES-MANAGER] AI REASONING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 MODEL: gemini-2.5-flash-lite
+   ⏱️ LATENCY: 3421ms
+
+   🧠 FULL REASONING:
+      L'agente ha posto una domanda aperta per identificare il pain point principale, ma il prospect ha fornito una risposta generica ('problema alla spalla'). L'agente ha cercato di approfondire, ma il prospect non ha ancora fornito dettagli sufficienti per identificare il vero motivo della call e il problema principale. È necessario attendere una risposta più specifica dal prospect prima di poter avanzare.
+
+   📤 AI DECISIONS:
+      └─ Should Advance: ❌ NO
+      └─ Next Phase: same
+      └─ Next Step: same
+      └─ Confidence: 90%
+
+   🎭 ARCHETYPE INTUITION:
+      └─ Detected: neutral
+      └─ Reasoning: "Il prospect è diretto e vuole arrivare al punto, ma non ci sono ancora segnali chiari di scetticismo o entusiasmo."
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🧠 AI Intuition: neutral - "Il prospect è diretto e vuole arrivare al punto, ma non ci sono ancora segnali chiari di scetticismo o entusiasmo."
+   🧠 AI Intuition WINS: neutral (confidence: 85%)
+   🔄 ARCHETYPE CHANGE: skeptic → neutral
+      Reason: confidence=85%, consecutive=1
+   🎭 Final Archetype: 😐 NEUTRO (85%)
+      ⚡ Regex suggested: technical → 🧠 AI overrode to: neutral
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Analysis complete in 3422ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → Step advance: false (90%)
+   → Feedback: tone (medium)
+   → Archetype: 😐 NEUTRO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🎭 Archetype state SAVED: neutral (85%)
+🔒 [TRACKER] Validated items updated: 2 checkpoints
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [eornb] SALES MANAGER AGENT - RESULT (3423ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 90%
+   💡 reasoning: L'agente ha posto una domanda aperta per identificare il pain point principale, ma il prospect ha fornito una risposta generica ('problema alla spalla'). L'agente ha cercato di approfondire, ma il prospect non ha ancora fornito dettagli sufficienti per identificare il vero motivo della call e il problema principale. È necessario attendere una risposta più specifica dal prospect prima di poter avanzare.
+   🎭 TONE ISSUES: 3 domande consecutive senza aspettare risposta
+   🔧 FEEDBACK (tone): 🎭 CORREZIONE TONO: 3 domande consecutive senza aspettare risposta...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 [LASER FOCUS] Feedback compatto (77 chars, 1 sezioni)
+
+📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 [eornb] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📢 Priority: MEDIUM
+   📋 Type: tone
+   📝 Needs Improvement: 🎭 CORREZIONE TONO: 3 domande consecutive senza aspettare risposta
+   💭 Reasoning: L'agente ha posto una domanda aperta per identificare il pain point principale, ma il prospect ha fo...
+   🎵 Tone: N/A
+   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+══════════════════════════════════════════════════════════════════════════════════════════
+📤 SALES MANAGER → SALES AGENT: MESSAGGIO COMPLETO (36 token)
+══════════════════════════════════════════════════════════════════════════════════════════
+🎯 DECISION SUMMARY:
+   • Step Advancement: ❌ NO
+   • Checkpoint Status: ⛔ INCOMPLETE
+     → Missing: Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere, È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio"), Capisci il VERO dolore o la frustrazione dietro il problema...
+   • Feedback Type: TONE
+   • Feedback Priority: MEDIUM
+
+📋 FULL MESSAGE TO SALES AGENT (36 token):
+──────────────────────────────────────────────────────────────────────────────────────────
+<<<SALES_MANAGER_INSTRUCTION>>>
+💬 AZIONE: 🎭 CORREZIONE TONO: 3 domande consecutive senza aspettare risposta
+<<</SALES_MANAGER_INSTRUCTION>>>
+──────────────────────────────────────────────────────────────────────────────────────────
+📊 TOKEN METRICS:
+   • Message size: 142 characters
+   • Estimated tokens: 36 (at ~4 chars/token)
+   • Priority: medium
+══════════════════════════════════════════════════════════════════════════════════════════
+
+   ✅ Feedback SENT to Gemini with turnComplete:false
+   💾 Feedback also saved to DB (for reconnection backup)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📡 Sent sales_manager_analysis event to client
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=0.9, hasIds=false
+🔓 [eornb] Sales Manager lock released
+🎤 [eornb] Receiving audio chunks (last logged: seq 2278)
+💾 [eornb] Autosave: Saving 4 new messages...
+✅ [eornb] Autosave: 4 messages saved successfully (total saved: 11/11)
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "Quando"
+   → Timestamp: 2025-12-09T14:40:31.050Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+📝 [VAD CONCAT] Italian word + new phrase: "Quando" + "faccio pesi, mi brucia un casino e non riesco più a fare" = "Quando faccio pesi, mi brucia un casino e non riesco più a fare"
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "faccio pesi, mi brucia un casino e non riesco più a fare"
+   → Timestamp: 2025-12-09T14:40:31.180Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📝 [VAD CONCAT] Word fragment: "Quando faccio pesi, mi brucia un casino e non riesco più a fare" + "pesi, infatti ho smesso di fare la spalla." = "Quando faccio pesi, mi brucia un casino e non riesco più a farepesi, infatti ho smesso di fare la spalla."
+
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎤 [VAD DETECTION] Gemini rilevato parlato utente!
+   → Testo rilevato: "pesi, infatti ho smesso di fare la spalla."
+   → Timestamp: 2025-12-09T14:40:31.296Z
+   → AI sta parlando? No
+🚨 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+📝 [eornb] AI transcript (output): Ah, ok!
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🎤 [eornb] AI started speaking (audio streaming)
+📝 [eornb] AI transcript (output):  Quindi
+📝 [eornb] AI transcript (output):  è proprio
+📝 [eornb] AI transcript (output):  questo
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+📝 [eornb] AI transcript (output):  bruciore
+📝 [eornb] AI transcript (output):  che
+📝 [eornb] AI transcript (output):  ti impedisce
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+📝 [eornb] AI transcript (output):  di allenarti
+📝 [eornb] AI transcript (output):  come
+📝 [eornb] AI transcript (output):  vorresti,
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+📝 [eornb] AI transcript (output):  giusto?
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+📝 [eornb] AI transcript (output):  E
+📝 [eornb] AI transcript (output):  perché
+✅ [WHATSAPP POLLING] Poll cycle complete
+📝 [eornb] AI transcript (output):  è così
+📝 [eornb] AI transcript (output):  importante
+📝 [eornb] AI transcript (output):  risolvere
+📝 [eornb] AI transcript (output):  questo
+📝 [eornb] AI transcript (output):  problema
+📝 [eornb] AI transcript (output):  alla spalla
+📝 [eornb] AI transcript (output):  per te
+📝 [eornb] AI transcript (output):  e
+📝 [eornb] AI transcript (output):  per le
+📝 [eornb] AI transcript (output):  tue
+📝 [eornb] AI transcript (output):  performance?
+📝 [eornb] AI transcript (output):  Cosa
+📝 [eornb] AI transcript (output):  ti sta
+📝 [eornb] AI transcript (output):  limitando
+📝 [eornb] AI transcript (output):  esattamente?
+
+🔬 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔬 FULL GEMINI usageMetadata (to see ALL available fields):
+{
+  "promptTokenCount": 16448,
+  "candidatesTokenCount": 489,
+  "totalTokenCount": 16937,
+  "promptTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 2563
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 13885
+    }
+  ],
+  "candidatesTokensDetails": [
+    {
+      "modality": "AUDIO",
+      "tokenCount": 408
+    },
+    {
+      "modality": "TEXT",
+      "tokenCount": 81
+    }
+  ]
+}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [FRESH TEXT INPUT BREAKDOWN] - 16,448 tokens ($0.50/1M)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️  No messages tracked in current turn
+   This might be audio-only input or system messages
+
+💾 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 CACHE PERFORMANCE ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ NO CACHED TOKENS DETECTED
+   ⚠️  This is expected ONLY for the FIRST turn after setup.
+   ⚠️  If this is NOT the first turn, CHUNKS ARE NOT BEING CACHED!
+   💸 Missing out on 94% cost savings!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💰 COST BREAKDOWN:
+   Fresh Text Input: 16,448 tokens × $0.50/1M = $0.008224
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💰 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [eornb] LIVE API USAGE & COST (with Cache Optimization)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📥 This turn:
+   - Fresh Text Input: 16,448 tokens → $0.008224 ($0.50/1M)
+   - Audio Output: 489 tokens → $0.005868 ($12.00/1M) 💸 Most expensive!
+   - Turn total: $0.014092 USD
+
+📊 Session totals:
+   - Text Input: 115,592 tokens → $0.057796
+   - Audio Output: 2,694 tokens → $0.032328
+   - SESSION TOTAL: $0.090124 USD
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 TASK 5: TOKEN USAGE COMPARISON REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Initial Chunks Sent:
+   • Estimated tokens: 9,905 (~9.9k)
+   • Purpose: User data context, sales scripts, prospect info
+   • Expected: Should be CACHED after first turn
+
+📊 Actual Gemini Reporting:
+   • Fresh Text Input: 115,592 tokens
+   • Cached Tokens: 0 tokens
+   • Total Input: 115,592 tokens
+
+🎯 ANALYSIS:
+   ❌ WARNING: NO CACHING DETECTED!
+   • Initial chunks (9,905 tokens) are being counted as FRESH every turn
+   • This means we're paying $0.50/1M instead of $0.03/1M (94% more expensive!)
+   • Expected cached: ~9,905 tokens
+   • Actual cached: 0 tokens
+   • Discrepancy: 9,905 tokens NOT cached
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [eornb] SESSION RESUMPTION UPDATE received
+   - New handle: 860f9b90-f17e-4230-a76b-d207c5...
+   - Resumable: true
+   ✅ Handle saved server-side for proactive reconnect
+💾 [eornb] Usage tracked → DB saved (Turn cost: $0.014092)
+✅ [eornb] Turn complete
+💾 [eornb] Saved USER message: "Quando faccio pesi, mi brucia un casino e non riesco più a farepesi, infatti ho ..." (12 total)
+⚠️  [eornb] Sales tracking: Fallback - committed user message without isFinal flag
+✓ [TRACKER] Checkpoint progress detected: User confirmed in phase_2
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 👤 USER MESSAGE (phase_2)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Quando faccio pesi, mi brucia un casino e non riesco più a farepesi, infatti │
+│ ho smesso di fare la spalla.                                                 │
+│ Time: 14:40:38                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+📝 [eornb] Fallback: User message saved, NO watchdog needed (AI already responded)
+🔇 [eornb] AI finished speaking (turn complete)
+
+⚠️  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[eornb] AI MESSAGE QUALITY WARNING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🚨 MULTIPLE QUESTIONS: 3 questions detected (should ask ONE at a time)
+   📝 Message: "Ah, ok! Quindi è proprio questo bruciore che ti impedisce di allenarti come vorresti, giusto? E perché è così importante risolvere questo problema all..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [eornb] Saved AI message (server-side): 13 total messages
+🔍 [TRACKER] LADDER ACTIVATED - Level 1 in phase_2
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 🔍 LADDER ATTIVATO - LIVELLO 1 (Chiarificazione)                        ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ Phase: phase_2                                                              ║
+║ Regola: 3-5 PERCHÉ - SCAVO PROFONDO                                         ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ Domanda AI:                                                                  ║
+║ Ah, ok! Quindi è proprio questo bruciore che ti impedisce di allenarti come  ║
+║ vorresti, giusto? E perché è così importante risolvere questo problema alla  ║
+║ spalla per te e per le tue performance? Cosa ti sta limitando esattamente?   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🤖 AI MESSAGE (phase_2)                                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Ah, ok! Quindi è proprio questo bruciore che ti impedisce di allenarti come  │
+│ vorresti, giusto? E perché è così importante risolvere questo problema ...   │
+│ Time: 14:40:38                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [eornb] STEP ADVANCEMENT CHECK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📋 trackerClientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📋 trackerConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   🔒 isAdvancementInProgress: false
+   ✅ PROCEEDING with Sales Manager Agent call...
+
+🚀 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 [eornb] STEP ADVANCEMENT AGENT - STARTING ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current Phase: phase_2
+   📍 Current Step: phase_2_step_3
+   📍 Phase Index: 1, Step Index: 0
+   📜 Script has 7 phases
+   💬 Conversation has 13 messages
+
+📋 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 [eornb] MESSAGGI PASSATI AL SALES MANAGER (13 - TUTTI):
+   8. [USER]: "S ì, sì, va bene, possiamo andare avanti."
+   9. [ASSISTANT]: "Fantastico! Evvai, iniziamo subito allora! Dimmi, perché hai deciso di partecipa..."
+   10. [USER]: "Volevo capire come risolvere il mio problema alla spalla."
+   11. [ASSISTANT]: "Interessante. Qual è il problema principale legato alla tua performance o al tuo..."
+   12. [USER]: "Quando faccio pesi, mi brucia un casino e non riesco più a farepesi, infatti ho ..."
+   13. [ASSISTANT]: "Ah, ok! Quindi è proprio questo bruciore che ti impedisce di allenarti come vorr..."
+   ... (+ 7 messaggi precedenti inclusi)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] CHECKPOINT DATA FROM PARSER:
+   📍 Phase 1 (phase_1):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_1
+         description: ⛔ CHECKPOINT FASE #1...
+         verifications: 4 items
+            1. Hai salutato e chiesto "come stai"...
+            2. Hai chiesto "da dove mi chiami"...
+            3. Hai spiegato il processo della call...
+            4. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 2 (phase_2):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_2
+         description: ⛔ CHECKPOINT FASE #2...
+         verifications: 6 items
+            1. Sai IL problema principale legato alle sue performance o al ...
+            2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le perform...
+            3. Capisci il VERO dolore o la frustrazione dietro il problema...
+            4. Sai cosa ha già provato per migliorare e perché non ha funzi...
+            5. Sai da quanto tempo affronta questo ostacolo...
+            6. Sai quanto ha già investito in tempo ed energie per superare...
+   📍 Phase 3 (phase_3):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_3
+         description: ⛔ CHECKPOINT FASE #3...
+         verifications: 6 items
+            1. CONTESTO PRINCIPALE: Sai qual è il suo contesto principale (...
+            2. SUPPORTO: Sai se è da solo o ha supporto (famiglia/partner/c...
+            3. DURATA: Sai da QUANTO TEMPO affronta questa situazione...
+            4. STRESS: Hai un NUMERO 1-10 del livello di stress o frustrazi...
+            5. DISPONIBILITÀ: Hai capito come organizza le giornate e la su...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 4 (phase_4):
+      checkpoints array: 0
+   📍 Phase 5 (phase_5):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_5
+         description: ⛔ CHECKPOINT FASE #5...
+         verifications: 6 items
+            1. Hai un OBIETTIVO SPECIFICO (es. un livello, una performance,...
+            2. Sai PERCHÉ l'atleta vuole raggiungere quell'obiettivo...
+            3. Hai collegato l'obiettivo alle EMOZIONI PROFONDE che prova o...
+            4. Hai fatto 1-2 'perché' sulle emozioni, scavando a fondo...
+            5. Sai LA cosa PIÙ IMPORTANTE che cambierà per l'atleta una vol...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 6 (phase_6):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_6
+         description: ⛔ CHECKPOINT FASE #6...
+         verifications: 5 items
+            1. Hai chiesto: "...cosa ti sta impedendo di fare questo salto ...
+            2. Il prospect ha risposto alla domanda...
+            3. Il prospect ha ammesso UNO dei MAGICI 3:   - "Non sono in gr...
+            4. Se NON ha detto uno dei Magici 3, hai fatto la disqualifica...
+            5. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+   📍 Phase 7 (phase_7):
+      checkpoints array: 1
+      └─ Checkpoint 1:
+         id: checkpoint_FINALE
+         description: ⛔ CHECKPOINT FINALE DISCOVERY...
+         verifications: 6 items
+            1. L'atleta ha riconosciuto il costo di non agire e la necessit...
+            2. L'atleta ha espresso un'urgenza (6-10) e motivato il suo tim...
+            3. L'atleta ha un'idea del budget richiesto per un programma di...
+            4. È l'atleta il decision maker o hai coinvolto il co-decisore ...
+            5. Hai fissato la data e l'ora per la presentazione del program...
+            6. SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⛔ Checkpoints trovati: 6 fasi con checkpoint
+      - Fase 1: "⛔ CHECKPOINT FASE #1" (4 checks)
+      - Fase 2: "⛔ CHECKPOINT FASE #2" (6 checks)
+      - Fase 3: "⛔ CHECKPOINT FASE #3" (6 checks)
+      - Fase 5: "⛔ CHECKPOINT FASE #5" (6 checks)
+      - Fase 6: "⛔ CHECKPOINT FASE #6" (5 checks)
+      - Fase 7: "⛔ CHECKPOINT FINALE DISCOVERY" (6 checks)
+
+👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 BUSINESS CONTEXT AVAILABLE FOR FEEDBACK:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🏢 Name: Premium
+   🎯 What we do: Giusy Dattilo offre programmi di massoterapia e benessere focalizzati sulla 'Tecnica Flow e Ricalibr...
+   👥 Target client: Atleti che cercano programmi di trasformazione ad alto valore per migliorare le ...
+   🚫 Non-target: Clienti che cercano singole sedute di massoterapia a basso costo piuttosto che p...
+   📋 Services: Pacchetto Base Tecnica Flow e Ricalibrazione, Pacchetto Medio Tecnica Flow e Ricalibrazione, Pacchetto Premium Tecnica Flow e Ricalibrazione
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📨 Calling SalesManagerAgent.analyze()...
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Starting comprehensive analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Current: phase_2 / phase_2_step_3
+   💬 Messages: 13
+   🚀 Launching PARALLEL AI calls (checkpoint + advancement)...
+
+🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   📋 Total checks: 6
+   🔒 Already validated (sticky): 0
+   🔍 Remaining to analyze: 6
+
+🔍 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [CHECKPOINT-AI] Starting semantic analysis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📍 Phase: PAIN POINT DISCOVERY (phase_2)
+   🎯 Checkpoint: ⛔ CHECKPOINT FASE #2
+   ✅ Checks to verify: 6
+   💬 Messages to analyze: 13
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+   🚀 [CHECKPOINT-AI] Filtered 13 → 13 messages
+   📋 Checks to verify:
+      1. Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+      2. È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+      3. Capisci il VERO dolore o la frustrazione dietro il problema
+      4. Sai cosa ha già provato per migliorare e perché non ha funzionato
+      5. Sai da quanto tempo affronta questo ostacolo
+      6. Sai quanto ha già investito in tempo ed energie per superare questo problema
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+   ✅ Handle saved to database with ownership metadata
+      → Mode: consultation_invite
+      → InviteToken: inv_jmLPwU0_XdzIyTbi, ConversationId: 3ff0a8c8-9f31-48c8-8b50-bf6a21d7aa6e
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+🔄 AI operation attempt 1/3...
+🔄 [SALES-MANAGER] AI call attempt 1/3...
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+✅ AI operation successful on attempt 1
+🤖 [SALES-MANAGER] Raw AI response (892 chars): ```json
+{
+  "shouldAdvance": false,
+  "nextPhaseId": null,
+  "nextStepId": null,
+  "reasoning": "L'obiettivo dello step è trovare il pain point principale. Il prospect ha identificato un problema alla spalla che gli causa bruciore durante i pesi e lo ha portato a smettere di allenare quella parte. T...
+✅ [SALES-MANAGER] Extracted JSON (880 chars)
+✅ [SALES-MANAGER] Parsed successfully: shouldAdvance=false, confidence=0.9
+   🧠 AI Archetype Intuition: neutral - "Il prospect è focalizzato sul suo problema fisico e risponde alle domande in modo diretto, senza particolari segnali di scetticismo o entusiasmo."
+   📄 AI Response (first 300 chars): "```json
+{
+  "isComplete": false,
+  "completedItems": [
+    "Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",
+    "È SPECIFICO e CONCRETO (non vago tipo \"migliorare le performance\" o \"sentirsi meglio\")",
+    "Capisci il VERO dolore o la frustrazione ..."
+   📥 Raw AI response length: 4094 chars
+   📥 First 200 chars: ```json\n{\n  "isComplete": false,\n  "completedItems": [\n    "Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere",\n    "È SPECIFICO e CONCRETO (non vago tipo \
+   📥 Cleaned JSON length: 4082 chars
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [CHECKPOINT-AI] Analysis completed in 3822ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[FASE 2] - Checkpoint Totali: 6 | Validati: 3 | Mancanti: 3
+  CHECK 1: [VALIDATO] "Sai IL problema principale legato alle sue performance o al ..."
+    Info: Problema alla spalla che causa bruciore durante i pesi.
+  CHECK 2: [VALIDATO] "È SPECIFICO e CONCRETO (non vago tipo "migliorare le perform..."
+    Info: Il problema è un bruciore alla spalla che impedisce di fare pesi e ha ...
+  CHECK 3: [VALIDATO] "Capisci il VERO dolore o la frustrazione dietro il problema"
+    Info: La frustrazione deriva dall'impossibilità di allenarsi come vorrebbe a...
+  CHECK 4: [MANCANTE] "Sai cosa ha già provato per migliorare e perché non ha funzi..."
+    Motivo: L'agente non ha chiesto quali tentativi sono stati fatti per risolvere...
+  CHECK 5: [MANCANTE] "Sai da quanto tempo affronta questo ostacolo"
+    Motivo: Non è stata indagata la durata del problema alla spalla.
+  CHECK 6: [MANCANTE] "Sai quanto ha già investito in tempo ed energie per superare..."
+    Motivo: L'agente non ha chiesto informazioni sugli investimenti (tempo, energi...
+  Quality Score: 6.1/10 | Progress: 50%
+  Stato: BLOCCO ATTIVO - Non puoi passare alla fase successiva
+✅ [SALES-MANAGER] AI checkpoint analysis complete (with sticky merge)
+   🔒 Sticky (preserved): 0
+   🆕 New from AI: 6
+   🟢 Total validated: 3/6
+   🔴 Missing/Vague: 3
+   📊 Confidence: 80%
+   📈 Quality Score: 6.1/10
+   ✅ PARALLEL AI completed in 3823ms (target: <2000ms)
+   💰 Buy signals: 0
+   🛡️ Objections: 0
+   🎭 Tone issues: 1
+   🎯 Control: OK
+   👤 Business: Premium
+
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ CHECKPOINT FASE #2: "⛔ CHECKPOINT FASE #2"
+   ⛔ DOMANDE DA FARE: 3/6 completate
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🟢 ✓ [1] Sai IL problema principale legato alle sue performance o al suo benessere che vuole risolvere
+   🟢 ✓ [2] È SPECIFICO e CONCRETO (non vago tipo "migliorare le performance" o "sentirsi meglio")
+   🟢 ✓ [3] Capisci il VERO dolore o la frustrazione dietro il problema
+   🔴 ✗ [4] Sai cosa ha già provato per migliorare e perché non ha funzionato
+        └─ Motivo: L'agente non ha chiesto quali tentativi sono stati fatti per...
+        └─ Suggerimento AI: Comprendere i tentativi passati del prospect per risolvere i...
+   🔴 ✗ [5] Sai da quanto tempo affronta questo ostacolo
+        └─ Motivo: Non è stata indagata la durata del problema alla spalla.
+        └─ Suggerimento AI: Determinare da quanto tempo il prospect sta affrontando ques...
+   🔴 ✗ [6] Sai quanto ha già investito in tempo ed energie per superare questo problema
+        └─ Motivo: L'agente non ha chiesto informazioni sugli investimenti (tem...
+        └─ Suggerimento AI: Valutare l'impegno e le risorse che il prospect ha già dedic...
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ⛔ STATO: 🚫 BLOCCO ATTIVO - NON PUÒ AVANZARE
+   ⛔ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ⚡ Regex Signals: technical(35%)
+
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 [SALES-MANAGER] AI REASONING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 MODEL: gemini-2.5-flash-lite
+   ⏱️ LATENCY: 3823ms
+
+   🧠 FULL REASONING:
+      L'obiettivo dello step è trovare il pain point principale. Il prospect ha identificato un problema alla spalla che gli causa bruciore durante i pesi e lo ha portato a smettere di allenare quella parte. Tuttavia, la domanda "Perché è così importante risolvere questo problema alla spalla per te e per le tue performance? Cosa ti sta limitando esattamente?" è ancora in sospeso e richiede una risposta più approfondita per capire la vera motivazione e l'impatto del problema. Non c'è ancora una risposta esaustiva del prospect all'ultima domanda dell'agente.
+
+   📤 AI DECISIONS:
+      └─ Should Advance: ❌ NO
+      └─ Next Phase: same
+      └─ Next Step: same
+      └─ Confidence: 90%
+
+   🎭 ARCHETYPE INTUITION:
+      └─ Detected: neutral
+      └─ Reasoning: "Il prospect è focalizzato sul suo problema fisico e risponde alle domande in modo diretto, senza particolari segnali di scetticismo o entusiasmo."
+🧠 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🧠 AI Intuition: neutral - "Il prospect è focalizzato sul suo problema fisico e risponde alle domande in modo diretto, senza particolari segnali di scetticismo o entusiasmo."
+   🧠 AI Intuition WINS: neutral (confidence: 85%)
+   🎭 Final Archetype: 😐 NEUTRO (85%)
+      ⚡ Regex suggested: technical → 🧠 AI overrode to: neutral
+
+🎩 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎩 [SALES-MANAGER] Analysis complete in 3824ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   → Step advance: false (90%)
+   → Feedback: tone (medium)
+   → Archetype: 😐 NEUTRO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   🎭 Archetype state SAVED: neutral (85%)
+   🔒 STICKY VALIDATION SAVED: 3 validated items for checkpoint_2
+      → 3 NEW items added this turn
+🔒 [TRACKER] Validated items updated: 2 checkpoints
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [eornb] SALES MANAGER AGENT - RESULT (3824ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 shouldAdvance: false
+   📍 nextPhaseId: null
+   📍 nextStepId: null
+   📈 confidence: 90%
+   💡 reasoning: L'obiettivo dello step è trovare il pain point principale. Il prospect ha identificato un problema alla spalla che gli causa bruciore durante i pesi e lo ha portato a smettere di allenare quella parte. Tuttavia, la domanda "Perché è così importante risolvere questo problema alla spalla per te e per le tue performance? Cosa ti sta limitando esattamente?" è ancora in sospeso e richiede una risposta più approfondita per capire la vera motivazione e l'impatto del problema. Non c'è ancora una risposta esaustiva del prospect all'ultima domanda dell'agente.
+   🎭 TONE ISSUES: 3 domande consecutive senza aspettare risposta
+   🔧 FEEDBACK (tone): 🎭 CORREZIONE TONO: 3 domande consecutive senza aspettare risposta...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📊 [LASER FOCUS] Feedback compatto (77 chars, 1 sezioni)
+
+📤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 [eornb] IMMEDIATE FEEDBACK INJECTION (Trojan Horse)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📢 Priority: MEDIUM
+   📋 Type: tone
+   📝 Needs Improvement: 🎭 CORREZIONE TONO: 3 domande consecutive senza aspettare risposta
+   💭 Reasoning: L'obiettivo dello step è trovare il pain point principale. Il prospect ha identificato un problema a...
+   🎵 Tone: N/A
+   🎯 Strategy: Inject NOW with turnComplete:false (before user speaks)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+══════════════════════════════════════════════════════════════════════════════════════════
+📤 SALES MANAGER → SALES AGENT: MESSAGGIO COMPLETO (36 token)
+══════════════════════════════════════════════════════════════════════════════════════════
+🎯 DECISION SUMMARY:
+   • Step Advancement: ❌ NO
+   • Checkpoint Status: ⛔ INCOMPLETE
+     → Missing: Sai cosa ha già provato per migliorare e perché non ha funzionato, Sai da quanto tempo affronta questo ostacolo, Sai quanto ha già investito in tempo ed energie per superare questo problema
+   • Feedback Type: TONE
+   • Feedback Priority: MEDIUM
+
+📋 FULL MESSAGE TO SALES AGENT (36 token):
+──────────────────────────────────────────────────────────────────────────────────────────
+<<<SALES_MANAGER_INSTRUCTION>>>
+💬 AZIONE: 🎭 CORREZIONE TONO: 3 domande consecutive senza aspettare risposta
+<<</SALES_MANAGER_INSTRUCTION>>>
+──────────────────────────────────────────────────────────────────────────────────────────
+📊 TOKEN METRICS:
+   • Message size: 142 characters
+   • Estimated tokens: 36 (at ~4 chars/token)
+   • Priority: medium
+══════════════════════════════════════════════════════════════════════════════════════════
+
+   ✅ Feedback SENT to Gemini with turnComplete:false
+   💾 Feedback also saved to DB (for reconnection backup)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   📡 Sent sales_manager_analysis event to client
+   ⏸️  NOT advancing: shouldAdvance=false, confidence=0.9, hasIds=false
+🔓 [eornb] Sales Manager lock released
+🎤 [eornb] Receiving audio chunks (last logged: seq 3029)
+💾 [eornb] Autosave: Saving 2 new messages...
+✅ [eornb] Autosave: 2 messages saved successfully (total saved: 13/13)
+👋 [eornb] Client requested session end
+⚠️  [TRACKER] User response still VAGUE - Ladder should continue
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+⚠️  [TRACKER] User response still VAGUE - Ladder should continue
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+✅ [TRACKER] User response SPECIFIC - Ladder can stop
+✓ [TRACKER] Checkpoint progress detected: User confirmed in phase_2
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+✓ [TRACKER] Checkpoint progress detected: User confirmed in phase_2
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+❌ [eornb] Client disconnected - Code: 1005, Reason: 
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 📊 CONVERSATION SUMMARY                                                      ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ Phases Reached: 2                                                           ║
+║   → phase_1, phase_2                                                         ║
+║ Checkpoints: 0/9                                                            ║
+║ Ladder Activations: 1                                                       ║
+║ Questions Asked: 0                                                          ║
+║ Duration: 0s                                                                ║
+║ Completion: 28.6%                                                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+💾 [eornb] Saving final training state before disconnect...
+💾 [TRACKER] Saving final state for conversation 3ff0a8c8-9f31-48c8-8b50-bf6a21d7aa6e...
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+✓ [TRACKER] Checkpoint progress detected: User confirmed in phase_2
+
+🎯 [AUTO-DETECT] Checking 1 checkpoint(s) for phase_2
+   ℹ️ Checkpoint detection now handled by StepAdvancementAgent (AI semantico)
+   ℹ️ Pending checkpoints: checkpoint_2
+✅ [eornb] Sales tracking: processed 6 new messages (0 duplicates skipped)
+💾 [eornb] Saving Consultation Invite conversation...
+
+📊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[eornb] SALES AGENT TRACKING - ANALYZING CONVERSATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   📝 Transcript length: 1790 chars
+   📊 Current Phase: DISCOVERY
+   🎯 Agent Mode: discovery=true, demo=true
+   ⏰ EXTRACTED - Urgency: HIGH
+
+   💾 UPDATING DATABASE:
+      - Phase: discovery
+      - Objections: 0 total
+      - Outcome: pending
+      - Collected Data fields: 2
+
+   💬 SAVING 13 NEW MESSAGES to aiConversation 1d9444be-f2ce-43d1-9b84-70fa4350dead...
+✅ [eornb] Final training state saved successfully
+✅ [eornb] Sales tracker cleaned up
+💾 [eornb] Autosave interval stopped (client close)
+💾 [eornb] AUTO-SAVE: Saving 13 messages before closing...
+💾 [eornb] Saving 13 new consultation invite messages to aiConversation 1d9444be-f2ce-43d1-9b84-70fa4350dead...
+[PublicInvite] Fetching invite for token: inv_jmLPwU0_XdzIyTbi
+   ✅ Saved 13 new messages to aiConversation (transaction committed)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [eornb] Sales Agent conversation saved with tracking data and message history
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔌 [eornb] GEMINI WEBSOCKET CLOSED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ Close Code: 1000
