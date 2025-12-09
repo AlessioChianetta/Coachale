@@ -1174,14 +1174,18 @@ async function handleSpeechEndFromClient(
   const transcript = await transcribeBufferedAudio(ws, session, buffer, false);
 
   if (transcript) {
+    // 🔧 FIX: Aggiungi messaggio a conversationMessages PRIMA dell'analisi
     const speakerRole = buffer.role === 'host' ? 'assistant' : 'user';
+    const messageContent = buffer.fullTranscript || transcript;
+    
     session.conversationMessages.push({
       role: speakerRole,
-      content: buffer.fullTranscript || transcript,
+      content: messageContent,
       timestamp: new Date().toISOString(),
     });
 
-    console.log(`✅ [VAD-SPEECH-END] Turn finalized: ${buffer.speakerName} - "${(buffer.fullTranscript || transcript).substring(0, 80)}..."`);
+    console.log(`✅ [VAD-SPEECH-END] Turn finalized: ${buffer.speakerName} - "${messageContent.substring(0, 80)}..."`);
+    console.log(`📋 [VAD-SPEECH-END] Added to conversationMessages (${speakerRole}): "${messageContent.substring(0, 60)}..."`);
 
     const participant = session.participants.get(buffer.speakerId);
     if (participant?.role === 'prospect') {
