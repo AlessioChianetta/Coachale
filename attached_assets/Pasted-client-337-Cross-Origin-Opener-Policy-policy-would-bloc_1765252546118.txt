@@ -1,0 +1,312 @@
+client:337 Cross-Origin-Opener-Policy policy would block the window.postMessage call.
+Ot @ client:337
+(anonymous) @ client:303
+Bf @ client:115
+b @ client:112Understand this error
+client:337 Cross-Origin-Opener-Policy policy would block the window.postMessage call.
+Ot @ client:337
+(anonymous) @ client:303
+Bf @ client:115
+b @ client:112Understand this error
+meet-green-room.tsx:356 [MeetGreenRoom] Joining call with: {token: 'aCxCFKZ8JMhcNV0m', guestName: 'Alessio Chianetta', videoDevice: 'c192eacc1217c9f45768d2af6ee4224dfc6859d190700d2860998d1053670a47', audioDevice: '18469f2cb80df40155d743b38691ecfc6003c3d1aefd513d563e4db36503288f'}
+useWebRTC.ts:82 🌐 [WebRTC] Loading ICE servers for meeting aCxCFKZ8JMhcNV0m...
+useWebRTC.ts:802 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=false
+ParticipantVideo.tsx:90 📭 [ParticipantVideo] No stream available for Alessio Chianetta
+ParticipantVideo.tsx:90 📭 [ParticipantVideo] No stream available for Alessio Chianetta
+useWebRTC.ts:93 ✅ [WebRTC] Loaded 11 ICE servers (TURN: YES)
+useWebRTC.ts:802 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=true
+useVideoCopilot.ts:351 🎥 WebSocket connected to Video Copilot
+useVideoCopilot.ts:128 ✅ Video Copilot connected: {meetingId: '3dcbc669-9595-408e-91c8-5df421c29970', message: 'Video AI Copilot connected successfully', playbookLoaded: 'Script più leggero'}
+useWebRTC.ts:802 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=false, joined=false, ice=true
+useWebRTC.ts:297 📹 [WebRTC] Starting local stream (video: true, audio: true)
+useWebRTC.ts:317 📹 [WebRTC] Camera native resolution: 640x480 @ 29.970029830932617fps
+useWebRTC.ts:318 📹 [WebRTC] Camera device: DroidCam Source 3
+useWebRTC.ts:329 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:330 🎤 [WebRTC-AUDIO-DEBUG] STREAM LOCALE CREATO
+useWebRTC.ts:331 🎤 [WebRTC-AUDIO-DEBUG] Tracce audio: 1
+useWebRTC.ts:332 🎤 [WebRTC-AUDIO-DEBUG] Tracce video: 1
+useWebRTC.ts:334 🎤 [WebRTC-AUDIO-DEBUG] Audio track 0:
+useWebRTC.ts:335    - ID: d96a7267-bbca-4768-bfca-6f891613aa50
+useWebRTC.ts:336    - Label: Microphone (GameDAC Chat) (1038:1282)
+useWebRTC.ts:337    - Enabled: true
+useWebRTC.ts:338    - Muted: false
+useWebRTC.ts:339    - ReadyState: live
+useWebRTC.ts:341 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:366 ✅ [WebRTC] Local stream started with 2 tracks
+useWebRTC.ts:802 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=true, joined=false, ice=true
+useAudioLevelMonitor.ts:121 [AudioLevelMonitor] Started monitoring audio level
+VideoRoom.tsx:229 [AudioCapture] Starting capture - Host: Alessio Chianetta, Prospect: N/A, ParticipantId: pending
+useVADAudioCapture.ts:200 [VAD-AudioCapture] Starting with Silero VAD neural network...
+useVADAudioCapture.ts:332 [VAD-AudioCapture] Capture started successfully
+useVideoCopilot.ts:244 ✅ Join confirmed, my participant ID: 65870f52-4b69-4c4d-8d96-1a4677fda0eb
+VideoRoom.tsx:239 [AudioCapture] Stopping capture on cleanup
+useVADAudioCapture.ts:352 [VAD-AudioCapture] Stopping...
+useVADAudioCapture.ts:394 [VAD-AudioCapture] Stopped
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Alessio Chianetta
+ParticipantVideo.tsx:48    - Stream ID: 11826dff-3f3b-4a0b-8190-6cb0e6c0f114
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:807 👥 [WebRTC] Checking 0 other participants for connections (my ID: 65870f52-4b69-4c4d-8d96-1a4677fda0eb)
+VideoRoom.tsx:229 [AudioCapture] Starting capture - Host: Alessio Chianetta, Prospect: N/A, ParticipantId: 65870f52-4b69-4c4d-8d96-1a4677fda0eb
+useVADAudioCapture.ts:200 [VAD-AudioCapture] Starting with Silero VAD neural network...
+useVADAudioCapture.ts:212 [VAD] Initializing HOST VAD with Silero neural network...
+useVADAudioCapture.ts:260 VAD | debug > initializing vad
+useVideoCopilot.ts:290 📡 Participant socket ready: Alessio Chianetta (65870f52-4b69-4c4d-8d96-1a4677fda0eb)
+useWebRTC.ts:626 📡 [WebRTC] Received own socket_ready, ignoring
+VideoRoom.tsx:239 [AudioCapture] Stopping capture on cleanup
+useVADAudioCapture.ts:352 [VAD-AudioCapture] Stopping...
+useVADAudioCapture.ts:394 [VAD-AudioCapture] Stopped
+useWebRTC.ts:807 👥 [WebRTC] Checking 0 other participants for connections (my ID: 65870f52-4b69-4c4d-8d96-1a4677fda0eb)
+VideoRoom.tsx:229 [AudioCapture] Starting capture - Host: Alessio Chianetta, Prospect: N/A, ParticipantId: 65870f52-4b69-4c4d-8d96-1a4677fda0eb
+useVADAudioCapture.ts:200 [VAD-AudioCapture] Starting with Silero VAD neural network...
+useVADAudioCapture.ts:212 [VAD] Initializing HOST VAD with Silero neural network...
+useVADAudioCapture.ts:260 VAD | debug > initializing vad
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Alessio Chianetta
+useVADAudioCapture.ts:260  GET https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort-wasm-simd-threaded.mjs net::ERR_ABORTED 404 (Not Found)
+Mn @ @ricky0123_vad-web.js?v=7ac7dad3:9691
+en @ @ricky0123_vad-web.js?v=7ac7dad3:9705
+Oe @ @ricky0123_vad-web.js?v=7ac7dad3:9744
+ln @ @ricky0123_vad-web.js?v=7ac7dad3:10402
+init @ @ricky0123_vad-web.js?v=7ac7dad3:10546
+Dn @ @ricky0123_vad-web.js?v=7ac7dad3:9088
+ht @ @ricky0123_vad-web.js?v=7ac7dad3:9098
+create @ @ricky0123_vad-web.js?v=7ac7dad3:9537
+SileroLegacy.new @ @ricky0123_vad-web.js?v=7ac7dad3:8625
+await in SileroLegacy.new
+new @ @ricky0123_vad-web.js?v=7ac7dad3:10921
+(anonymous) @ useVADAudioCapture.ts:260
+(anonymous) @ VideoRoom.tsx:231
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7ac7dad3:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7ac7dad3:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7ac7dad3:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7ac7dad3:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7ac7dad3:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19432
+commitRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=7ac7dad3:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18718
+workLoop @ chunk-XQLYTHWV.js?v=7ac7dad3:197
+flushWork @ chunk-XQLYTHWV.js?v=7ac7dad3:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7ac7dad3:384Understand this error
+2useVADAudioCapture.ts:260 Encountered an error while loading model file ./silero_vad_legacy.onnx
+new @ @ricky0123_vad-web.js?v=7ac7dad3:10923
+await in new
+(anonymous) @ useVADAudioCapture.ts:260
+(anonymous) @ VideoRoom.tsx:231
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7ac7dad3:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7ac7dad3:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7ac7dad3:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7ac7dad3:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7ac7dad3:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19432
+commitRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=7ac7dad3:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18718
+workLoop @ chunk-XQLYTHWV.js?v=7ac7dad3:197
+flushWork @ chunk-XQLYTHWV.js?v=7ac7dad3:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7ac7dad3:384Understand this error
+useVADAudioCapture.ts:264 ❌ [VAD] Failed to initialize HOST VAD: Error: no available backend found. ERR: [wasm] TypeError: Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort-wasm-simd-threaded.mjs, [cpu] Error: previous call to 'initWasm()' failed.
+    at ht (@ricky0123_vad-web.js?v=7ac7dad3:9101:25)
+    at async e.create (@ricky0123_vad-web.js?v=7ac7dad3:9537:26)
+    at async SileroLegacy.new (@ricky0123_vad-web.js?v=7ac7dad3:8625:24)
+    at async _MicVAD.new (@ricky0123_vad-web.js?v=7ac7dad3:10921:19)
+    at async useVADAudioCapture.ts:260:34
+(anonymous) @ useVADAudioCapture.ts:264
+await in (anonymous)
+(anonymous) @ VideoRoom.tsx:231
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7ac7dad3:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7ac7dad3:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7ac7dad3:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7ac7dad3:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7ac7dad3:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19432
+commitRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=7ac7dad3:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18718
+workLoop @ chunk-XQLYTHWV.js?v=7ac7dad3:197
+flushWork @ chunk-XQLYTHWV.js?v=7ac7dad3:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7ac7dad3:384Understand this error
+useVADAudioCapture.ts:335 [VAD-AudioCapture] Error: Error: no available backend found. ERR: [wasm] TypeError: Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort-wasm-simd-threaded.mjs, [cpu] Error: previous call to 'initWasm()' failed.
+    at ht (@ricky0123_vad-web.js?v=7ac7dad3:9101:25)
+    at async e.create (@ricky0123_vad-web.js?v=7ac7dad3:9537:26)
+    at async SileroLegacy.new (@ricky0123_vad-web.js?v=7ac7dad3:8625:24)
+    at async _MicVAD.new (@ricky0123_vad-web.js?v=7ac7dad3:10921:19)
+    at async useVADAudioCapture.ts:260:34
+(anonymous) @ useVADAudioCapture.ts:335
+await in (anonymous)
+(anonymous) @ VideoRoom.tsx:231
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7ac7dad3:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7ac7dad3:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7ac7dad3:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7ac7dad3:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7ac7dad3:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19432
+commitRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=7ac7dad3:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18718
+workLoop @ chunk-XQLYTHWV.js?v=7ac7dad3:197
+flushWork @ chunk-XQLYTHWV.js?v=7ac7dad3:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7ac7dad3:384Understand this error
+useVADAudioCapture.ts:264 ❌ [VAD] Failed to initialize HOST VAD: Error: no available backend found. ERR: [wasm] TypeError: Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort-wasm-simd-threaded.mjs, [cpu] Error: previous call to 'initWasm()' failed.
+    at ht (@ricky0123_vad-web.js?v=7ac7dad3:9101:25)
+    at async e.create (@ricky0123_vad-web.js?v=7ac7dad3:9537:26)
+    at async SileroLegacy.new (@ricky0123_vad-web.js?v=7ac7dad3:8625:24)
+    at async _MicVAD.new (@ricky0123_vad-web.js?v=7ac7dad3:10921:19)
+    at async useVADAudioCapture.ts:260:34
+(anonymous) @ useVADAudioCapture.ts:264
+await in (anonymous)
+(anonymous) @ VideoRoom.tsx:231
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7ac7dad3:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7ac7dad3:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7ac7dad3:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7ac7dad3:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7ac7dad3:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19432
+commitRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=7ac7dad3:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18718
+workLoop @ chunk-XQLYTHWV.js?v=7ac7dad3:197
+flushWork @ chunk-XQLYTHWV.js?v=7ac7dad3:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7ac7dad3:384Understand this error
+useVADAudioCapture.ts:335 [VAD-AudioCapture] Error: Error: no available backend found. ERR: [wasm] TypeError: Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort-wasm-simd-threaded.mjs, [cpu] Error: previous call to 'initWasm()' failed.
+    at ht (@ricky0123_vad-web.js?v=7ac7dad3:9101:25)
+    at async e.create (@ricky0123_vad-web.js?v=7ac7dad3:9537:26)
+    at async SileroLegacy.new (@ricky0123_vad-web.js?v=7ac7dad3:8625:24)
+    at async _MicVAD.new (@ricky0123_vad-web.js?v=7ac7dad3:10921:19)
+    at async useVADAudioCapture.ts:260:34
+(anonymous) @ useVADAudioCapture.ts:335
+await in (anonymous)
+(anonymous) @ VideoRoom.tsx:231
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7ac7dad3:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7ac7dad3:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7ac7dad3:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7ac7dad3:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7ac7dad3:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19432
+commitRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=7ac7dad3:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18718
+workLoop @ chunk-XQLYTHWV.js?v=7ac7dad3:197
+flushWork @ chunk-XQLYTHWV.js?v=7ac7dad3:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7ac7dad3:384Understand this error
+useVideoCopilot.ts:290 📡 Participant socket ready: Hj (6b10f1f9-6260-4491-9f70-cab24f0f3245)
+useWebRTC.ts:632 📡 [WebRTC] Participant 6b10f1f9... no longer active, aborting connection attempt
+VideoRoom.tsx:239 [AudioCapture] Stopping capture on cleanup
+useVADAudioCapture.ts:352 [VAD-AudioCapture] Stopping...
+useVADAudioCapture.ts:394 [VAD-AudioCapture] Stopped
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Alessio Chianetta
+ParticipantVideo.tsx:48    - Stream ID: 11826dff-3f3b-4a0b-8190-6cb0e6c0f114
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:807 👥 [WebRTC] Checking 1 other participants for connections (my ID: 65870f52-4b69-4c4d-8d96-1a4677fda0eb)
+useWebRTC.ts:811 🔗 [WebRTC] No existing connection to 6b10f1f9-6260-4491-9f70-cab24f0f3245, attempting to initiate...
+useWebRTC.ts:541 🔍 [WebRTC] Connection decision: myId=65870f52... vs remoteId=6b10f1f9... → THEY INITIATE (lower ID)
+useWebRTC.ts:544 ⏭️ [WebRTC] Skipping connection initiation (waiting for 6b10f1f9... to initiate)
+VideoRoom.tsx:229 [AudioCapture] Starting capture - Host: Alessio Chianetta, Prospect: Hj, ParticipantId: 65870f52-4b69-4c4d-8d96-1a4677fda0eb
+useVADAudioCapture.ts:200 [VAD-AudioCapture] Starting with Silero VAD neural network...
+useVADAudioCapture.ts:212 [VAD] Initializing HOST VAD with Silero neural network...
+useVADAudioCapture.ts:260 VAD | debug > initializing vad
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Alessio Chianetta
+ParticipantVideo.tsx:90 📭 [ParticipantVideo] No stream available for Hj
+useVADAudioCapture.ts:260 Encountered an error while loading model file ./silero_vad_legacy.onnx
+new @ @ricky0123_vad-web.js?v=7ac7dad3:10923
+await in new
+(anonymous) @ useVADAudioCapture.ts:260
+(anonymous) @ VideoRoom.tsx:231
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7ac7dad3:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7ac7dad3:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7ac7dad3:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7ac7dad3:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7ac7dad3:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19432
+commitRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=7ac7dad3:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18718
+workLoop @ chunk-XQLYTHWV.js?v=7ac7dad3:197
+flushWork @ chunk-XQLYTHWV.js?v=7ac7dad3:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7ac7dad3:384Understand this error
+useVADAudioCapture.ts:264 ❌ [VAD] Failed to initialize HOST VAD: Error: no available backend found. ERR: [wasm] TypeError: Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort-wasm-simd-threaded.mjs, [cpu] Error: previous call to 'initWasm()' failed.
+    at ht (@ricky0123_vad-web.js?v=7ac7dad3:9101:25)
+    at async e.create (@ricky0123_vad-web.js?v=7ac7dad3:9537:26)
+    at async SileroLegacy.new (@ricky0123_vad-web.js?v=7ac7dad3:8625:24)
+    at async _MicVAD.new (@ricky0123_vad-web.js?v=7ac7dad3:10921:19)
+    at async useVADAudioCapture.ts:260:34
+(anonymous) @ useVADAudioCapture.ts:264
+await in (anonymous)
+(anonymous) @ VideoRoom.tsx:231
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7ac7dad3:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7ac7dad3:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7ac7dad3:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7ac7dad3:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7ac7dad3:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19432
+commitRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=7ac7dad3:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18718
+workLoop @ chunk-XQLYTHWV.js?v=7ac7dad3:197
+flushWork @ chunk-XQLYTHWV.js?v=7ac7dad3:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7ac7dad3:384Understand this error
+useVADAudioCapture.ts:335 [VAD-AudioCapture] Error: Error: no available backend found. ERR: [wasm] TypeError: Failed to fetch dynamically imported module: https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort-wasm-simd-threaded.mjs, [cpu] Error: previous call to 'initWasm()' failed.
+    at ht (@ricky0123_vad-web.js?v=7ac7dad3:9101:25)
+    at async e.create (@ricky0123_vad-web.js?v=7ac7dad3:9537:26)
+    at async SileroLegacy.new (@ricky0123_vad-web.js?v=7ac7dad3:8625:24)
+    at async _MicVAD.new (@ricky0123_vad-web.js?v=7ac7dad3:10921:19)
+    at async useVADAudioCapture.ts:260:34
+(anonymous) @ useVADAudioCapture.ts:335
+await in (anonymous)
+(anonymous) @ VideoRoom.tsx:231
+commitHookEffectListMount @ chunk-XQLYTHWV.js?v=7ac7dad3:16915
+commitPassiveMountOnFiber @ chunk-XQLYTHWV.js?v=7ac7dad3:18156
+commitPassiveMountEffects_complete @ chunk-XQLYTHWV.js?v=7ac7dad3:18129
+commitPassiveMountEffects_begin @ chunk-XQLYTHWV.js?v=7ac7dad3:18119
+commitPassiveMountEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:18109
+flushPassiveEffectsImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19490
+flushPassiveEffects @ chunk-XQLYTHWV.js?v=7ac7dad3:19447
+performSyncWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18868
+flushSyncCallbacks @ chunk-XQLYTHWV.js?v=7ac7dad3:9119
+commitRootImpl @ chunk-XQLYTHWV.js?v=7ac7dad3:19432
+commitRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:19277
+finishConcurrentRender @ chunk-XQLYTHWV.js?v=7ac7dad3:18805
+performConcurrentWorkOnRoot @ chunk-XQLYTHWV.js?v=7ac7dad3:18718
+workLoop @ chunk-XQLYTHWV.js?v=7ac7dad3:197
+flushWork @ chunk-XQLYTHWV.js?v=7ac7dad3:176
+performWorkUntilDeadline @ chunk-XQLYTHWV.js?v=7ac7dad3:384Understand this error
+useWebRTC.ts:408 📥 [WebRTC] Received offer from 6b10f1f9-6260-4491-9f70-cab24f0f3245
+useWebRTC.ts:137 🔗 [WebRTC] Creating peer connection for 6b10f1f9-6260-4491-9f70-cab24f0f3245
+useWebRTC.ts:138 🔗 [WebRTC] Using ICE config with 11 servers
+useWebRTC.ts:286 ➕ [WebRTC] Adding local track audio to connection with 6b10f1f9-6260-4491-9f70-cab24f0f3245
+useWebRTC.ts:286 ➕ [WebRTC] Adding local track video to connection with 6b10f1f9-6260-4491-9f70-cab24f0f3245
+useWebRTC.ts:502 🧊 [WebRTC] Received ICE candidate from 6b10f1f9-6260-4491-9f70-cab24f0f3245
+useWebRTC.ts:156 📹 [WebRTC] Received remote t

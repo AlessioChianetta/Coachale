@@ -212,16 +212,15 @@ export function useVADAudioCapture({
           console.log('[VAD] Initializing HOST VAD with Silero neural network...');
           
           const hostVadOptions: Partial<RealTimeVADOptions> = {
-            stream: localStream,
+            getStream: async () => localStream,
             positiveSpeechThreshold: 0.5,
             negativeSpeechThreshold: 0.35,
             redemptionFrames: 8,
             minSpeechFrames: 3,
             preSpeechPadFrames: 10,
-            workletURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/vad.worklet.bundle.min.js",
-            modelURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/silero_vad.onnx",
+            baseAssetPath: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.30/dist/",
+            onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/",
             ortConfig: (ort: any) => {
-              ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
               ort.env.wasm.numThreads = 1;
             },
             onSpeechStart: () => {
