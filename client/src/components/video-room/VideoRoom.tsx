@@ -584,6 +584,7 @@ export default function VideoRoom({
             onDismissBuySignal={dismissBuySignal}
             onDismissObjection={dismissObjection}
             onClose={() => setShowCoachingPanel(false)}
+            isFloating={false}
           />
         )}
       </AnimatePresence>

@@ -37,6 +37,7 @@ interface CoachingPanelProps {
   onDismissBuySignal: (index: number) => void;
   onDismissObjection: (index: number) => void;
   onClose: () => void;
+  isFloating?: boolean;
 }
 
 const ARCHETYPE_LABELS: Record<ArchetypeId, { label: string; emoji: string; color: string }> = {
@@ -66,8 +67,13 @@ export default function CoachingPanel({
   onDismissBuySignal,
   onDismissObjection,
   onClose,
+  isFloating: initialFloating = false,
 }: CoachingPanelProps) {
   const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(false);
+  const [isFloating, setIsFloating] = useState(initialFloating);
+  const [position, setPosition] = useState({ x: 20, y: 100 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
   const { 
@@ -86,25 +92,80 @@ export default function CoachingPanel({
     }
   }, [transcript, isTranscriptExpanded]);
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!isFloating) return;
+    if ((e.target as HTMLElement).closest('[data-no-drag]')) return;
+    setIsDragging(true);
+    setDragOffset({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    });
+  };
+
+  useEffect(() => {
+    if (!isFloating) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const newX = Math.max(0, Math.min(window.innerWidth - 320, e.clientX - dragOffset.x));
+      const newY = Math.max(0, Math.min(window.innerHeight - 200, e.clientY - dragOffset.y));
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isFloating, isDragging, dragOffset]);
+
   return (
     <motion.div
-      initial={{ x: 320, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 320, opacity: 0 }}
-      className="fixed right-0 top-0 h-full w-80 bg-gray-900/95 backdrop-blur-md border-l border-gray-700/50 z-40 overflow-y-auto"
+      initial={isFloating ? { opacity: 0, scale: 0.9 } : { x: 320, opacity: 0 }}
+      animate={isFloating ? { opacity: 1, scale: 1 } : { x: 0, opacity: 1 }}
+      exit={isFloating ? { opacity: 0, scale: 0.9 } : { x: 320, opacity: 0 }}
+      style={isFloating ? { left: position.x, top: position.y } : undefined}
+      onMouseDown={handleMouseDown}
+      className={cn(
+        "w-80 bg-gray-900/95 backdrop-blur-md border border-gray-700/50 z-40 overflow-y-auto",
+        isFloating 
+          ? "fixed rounded-2xl shadow-2xl max-h-[80vh]" + (isDragging ? " cursor-grabbing" : " cursor-grab")
+          : "fixed right-0 top-0 h-full border-l"
+      )}
     >
       <div className="sticky top-0 bg-gray-900/95 backdrop-blur-md z-10 p-3 border-b border-gray-700/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-purple-400" />
-            <h2 className="text-white font-semibold">Sales Coach</h2>
+            <h2 className="text-white font-semibold text-sm">Sales Coach</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <X className="w-4 h-4 text-gray-400" />
-          </button>
+          <div className="flex items-center gap-1" data-no-drag>
+            <button
+              onClick={() => setIsFloating(!isFloating)}
+              className="p-1 hover:bg-gray-700 rounded-lg transition-colors"
+              title={isFloating ? "Ancora al lato" : "Rendi fluttuante"}
+            >
+              {isFloating ? (
+                <div className="w-4 h-4 text-cyan-400">📌</div>
+              ) : (
+                <div className="w-4 h-4 text-gray-400">🔓</div>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1 hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
         </div>
       </div>
 
