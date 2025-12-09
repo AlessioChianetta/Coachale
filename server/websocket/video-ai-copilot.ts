@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, humanSellerSessionMetrics, users, humanSellerScriptAssignments } from '@shared/schema';
+import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, users, humanSellerScriptAssignments } from '@shared/schema';
 import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
 import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
@@ -1017,6 +1017,15 @@ async function transcribeBufferedAudio(
     session.totalTranscriptText += ` ${transcript}`;
 
     console.log(`📤 [STEP 5] Sending transcript to client - Speaker: ${buffer.speakerName}, Text: "${transcript.substring(0, 60)}..."`);
+
+    // 🔧 FIX: Aggiungi a conversationMessages PRIMA dell'analisi Sales Manager
+    const speakerRole = buffer.role === 'host' ? 'assistant' : 'user';
+    session.conversationMessages.push({
+      role: speakerRole,
+      content: transcript,
+      timestamp: new Date().toISOString(),
+    });
+
     sendMessage(ws, {
       type: 'transcript',
       data: {
@@ -1174,18 +1183,14 @@ async function handleSpeechEndFromClient(
   const transcript = await transcribeBufferedAudio(ws, session, buffer, false);
 
   if (transcript) {
-    // 🔧 FIX: Aggiungi messaggio a conversationMessages PRIMA dell'analisi
+    // 🔧 FIX: Aggiungi messaggio a conversationMessages PRIMA dell'analisi Sales Manager
     const speakerRole = buffer.role === 'host' ? 'assistant' : 'user';
-    const messageContent = buffer.fullTranscript || transcript;
-    
     session.conversationMessages.push({
       role: speakerRole,
-      content: messageContent,
+      content: transcript,
       timestamp: new Date().toISOString(),
     });
-
-    console.log(`✅ [VAD-SPEECH-END] Turn finalized: ${buffer.speakerName} - "${messageContent.substring(0, 80)}..."`);
-    console.log(`📋 [VAD-SPEECH-END] Added to conversationMessages (${speakerRole}): "${messageContent.substring(0, 60)}..."`);
+    console.log(`📋 [VAD-SPEECH-END] Added to conversationMessages (${speakerRole}): "${transcript.substring(0, 60)}..."`);
 
     const participant = session.participants.get(buffer.speakerId);
     if (participant?.role === 'prospect') {
@@ -1452,7 +1457,7 @@ async function runSalesManagerAnalysis(
       if(participantA) {
         transcriptA = participantA.transcriptions?.find(t => t.text === a.content);
       }
-      
+
       // Find participant for 'b'
       let participantB = session.participants.get(b.role === 'assistant' ? hostParticipant?.id || '' : '');
        if (!participantB) {
@@ -1637,7 +1642,7 @@ async function runSalesManagerAnalysis(
     // 🆕 CHECKPOINT PERSISTENCE: Salva validated items (verde = resta verde)
     // Stesso processo usato in gemini-live-ws-service.ts (linee 4288-4310)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    if (analysis.checkpointStatus?.itemDetails && analysis.checkpointStatus?.checkpointId) {
+    if (analysis.checkpointStatus?.itemDetails && analysis.checkpointStatus.checkpointId) {
       const checkpointId = analysis.checkpointStatus.checkpointId;
       const newValidatedItems = analysis.checkpointStatus.itemDetails.filter(
         (item: any) => item.status === 'validated'
