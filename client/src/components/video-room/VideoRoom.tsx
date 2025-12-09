@@ -131,6 +131,8 @@ export default function VideoRoom({
     isCapturing,
     startCapture,
     stopCapture,
+    updateProspects,
+    speakingProspects,
     hostIsSpeaking: vadHostIsSpeaking,
     prospectIsSpeaking: vadProspectIsSpeaking,
   } = useVADAudioCapture({
@@ -218,28 +220,46 @@ export default function VideoRoom({
   }, [leaveParticipant]);
 
   // Start audio capture for AI transcription when streams are ready (host only)
+  // Note: We keep copilotParticipants and remoteStreams in deps so capture restarts when prospects change
+  const remoteStreamsSize = remoteStreams.size;
   useEffect(() => {
     if (!isHost || !isConnected || !localStream || !myParticipantId) {
       return;
     }
 
-    const prospect = copilotParticipants.find(p => p.role === 'prospect' && !p.leftAt);
-    const remoteStream = prospect ? remoteStreams.get(prospect.id) : null;
+    const activeProspects = copilotParticipants
+      .filter(p => p.role === 'prospect' && !p.leftAt)
+      .map(p => ({ id: p.id, name: p.name }));
 
-    console.log(`[AudioCapture] Starting capture - Host: ${participantName}, Prospect: ${prospect?.name || 'N/A'}, ParticipantId: ${myParticipantId || 'pending'}`);
+    console.log(`[AudioCapture] Starting capture - Host: ${participantName}, Prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}, ParticipantId: ${myParticipantId}`);
     
     startCapture(
       localStream,
-      remoteStream || null,
-      prospect?.id || null,
-      prospect?.name || 'Prospect'
+      remoteStreams,
+      activeProspects
     );
 
     return () => {
       console.log('[AudioCapture] Stopping capture on cleanup');
       stopCapture();
     };
-  }, [isHost, isConnected, localStream, myParticipantId, copilotParticipants, remoteStreams, participantName, startCapture, stopCapture]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, isConnected, localStream, myParticipantId, copilotParticipants, remoteStreamsSize, participantName, startCapture, stopCapture]);
+
+  // Update prospect audio capture when participants or remote streams change (for dynamic updates)
+  useEffect(() => {
+    if (!isHost || !isCapturing) {
+      return;
+    }
+
+    const activeProspects = copilotParticipants
+      .filter(p => p.role === 'prospect' && !p.leftAt)
+      .map(p => ({ id: p.id, name: p.name }));
+
+    console.log(`[AudioCapture] Updating prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}`);
+    updateProspects(remoteStreams, activeProspects);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, isCapturing, copilotParticipants, remoteStreamsSize, updateProspects]);
 
   useEffect(() => {
     if (isConnected && meetingParticipants.length > 0) {
