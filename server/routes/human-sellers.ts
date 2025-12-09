@@ -126,6 +126,76 @@ router.get('/', authenticateToken, requireClient, async (req: AuthRequest, res: 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// HUMAN SELLER SCRIPT ASSIGNMENTS (MUST BE BEFORE /:id to avoid route conflict)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// GET /api/human-sellers/with-script-assignments - Lista venditori con loro script assignments
+router.get('/with-script-assignments', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    console.log('[HumanSellers] GET with-script-assignments - clientId:', clientId);
+    
+    // Get all sellers for this client
+    const sellers = await db
+      .select({
+        id: humanSellers.id,
+        sellerName: humanSellers.sellerName,
+        displayName: humanSellers.displayName,
+        businessName: humanSellers.businessName,
+        isActive: humanSellers.isActive,
+      })
+      .from(humanSellers)
+      .where(eq(humanSellers.clientId, clientId));
+    
+    console.log('[HumanSellers] Found sellers:', sellers.length, sellers.map(s => s.sellerName));
+    
+    const sellerIds = sellers.map(s => s.id);
+    
+    let rawAssignments: Array<{
+      sellerId: string;
+      scriptId: string;
+      scriptType: string;
+      scriptName: string | null;
+    }> = [];
+    
+    if (sellerIds.length > 0) {
+      const dbAssignments = await db
+        .select({
+          sellerId: humanSellerScriptAssignments.sellerId,
+          scriptId: humanSellerScriptAssignments.scriptId,
+          scriptType: humanSellerScriptAssignments.scriptType,
+          scriptName: salesScripts.name,
+        })
+        .from(humanSellerScriptAssignments)
+        .leftJoin(salesScripts, eq(humanSellerScriptAssignments.scriptId, salesScripts.id));
+      
+      rawAssignments = dbAssignments.filter(a => sellerIds.includes(a.sellerId));
+    }
+    
+    // Combine sellers with their assignments
+    const sellersWithAssignments = sellers.map(seller => {
+      const sellerAssignments = rawAssignments
+        .filter(a => a.sellerId === seller.id)
+        .map(a => ({
+          scriptId: a.scriptId,
+          scriptType: a.scriptType,
+          scriptName: a.scriptName || 'Script senza nome',
+        }));
+      
+      return {
+        ...seller,
+        assignments: sellerAssignments,
+      };
+    });
+    
+    res.json(sellersWithAssignments);
+  } catch (error: any) {
+    console.error('[HumanSellers] GET with-script-assignments error:', error);
+    res.status(500).json({ error: 'Errore nel recupero dei venditori con assegnazioni' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // HUMAN SELLER ANALYTICS ENDPOINTS (MUST BE BEFORE /:id to avoid route conflict)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1136,74 +1206,6 @@ publicMeetRouter.post('/verify-google', async (req, res) => {
   } catch (error: any) {
     console.error('[PublicMeet] Google verify error:', error);
     res.status(401).json({ error: 'Verifica Google fallita' });
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// HUMAN SELLER SCRIPT ASSIGNMENTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-// GET /api/human-sellers/with-script-assignments - Lista venditori con loro script assignments
-router.get('/with-script-assignments', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
-  try {
-    const clientId = req.user!.id;
-    
-    // Get all sellers for this client
-    const sellers = await db
-      .select({
-        id: humanSellers.id,
-        sellerName: humanSellers.sellerName,
-        displayName: humanSellers.displayName,
-        businessName: humanSellers.businessName,
-        isActive: humanSellers.isActive,
-      })
-      .from(humanSellers)
-      .where(eq(humanSellers.clientId, clientId));
-    
-    const sellerIds = sellers.map(s => s.id);
-    
-    let rawAssignments: Array<{
-      sellerId: string;
-      scriptId: string;
-      scriptType: string;
-      scriptName: string | null;
-    }> = [];
-    
-    if (sellerIds.length > 0) {
-      const dbAssignments = await db
-        .select({
-          sellerId: humanSellerScriptAssignments.sellerId,
-          scriptId: humanSellerScriptAssignments.scriptId,
-          scriptType: humanSellerScriptAssignments.scriptType,
-          scriptName: salesScripts.name,
-        })
-        .from(humanSellerScriptAssignments)
-        .leftJoin(salesScripts, eq(humanSellerScriptAssignments.scriptId, salesScripts.id));
-      
-      rawAssignments = dbAssignments.filter(a => sellerIds.includes(a.sellerId));
-    }
-    
-    // Combine sellers with their assignments
-    const sellersWithAssignments = sellers.map(seller => {
-      const sellerAssignments = rawAssignments
-        .filter(a => a.sellerId === seller.id)
-        .map(a => ({
-          scriptId: a.scriptId,
-          scriptType: a.scriptType,
-          scriptName: a.scriptName || 'Script senza nome',
-        }));
-      
-      return {
-        ...seller,
-        assignments: sellerAssignments,
-      };
-    });
-    
-    console.log(`[HumanSellers] Found ${sellers.length} sellers with script assignments for client ${clientId}`);
-    res.json(sellersWithAssignments);
-  } catch (error: any) {
-    console.error('[HumanSellers] GET with-script-assignments error:', error);
-    res.status(500).json({ error: 'Errore nel recupero dei venditori con assegnazioni' });
   }
 });
 
