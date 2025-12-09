@@ -48,19 +48,8 @@ export default function ParticipantVideo({
       console.log(`   - Stream ID: ${activeStream.id}`);
       console.log(`   - Video tracks: ${activeStream.getVideoTracks().length}`);
       console.log(`   - Audio tracks: ${activeStream.getAudioTracks().length}`);
-      console.log(`   - Is local user: ${isLocalUser}`);
       
       videoEl.srcObject = activeStream;
-      
-      // CRITICAL: Remote audio must NOT be muted so it plays in speakers
-      // Only local user should be muted to prevent echo
-      if (isLocalUser) {
-        videoEl.muted = true;
-        console.log(`🔇 [ParticipantVideo] Muted LOCAL user ${participantName} to prevent echo`);
-      } else {
-        videoEl.muted = false;
-        console.log(`🔊 [ParticipantVideo] UNMUTED REMOTE user ${participantName} for audio playback`);
-      }
 
       const playVideo = async () => {
         try {
@@ -69,34 +58,21 @@ export default function ParticipantVideo({
           setIsVideoPlaying(true);
         } catch (e: any) {
           console.warn(`⚠️ [ParticipantVideo] Autoplay blocked for ${participantName}:`, e.message);
-          
-          // If autoplay fails and this is a REMOTE user, try unmuting and playing
-          if (!isLocalUser && !videoEl.muted) {
-            console.log(`🔄 [ParticipantVideo] Retrying play for REMOTE user ${participantName}...`);
+          if (!videoEl.muted) {
+            videoEl.muted = true;
             try {
               await videoEl.play();
-              console.log(`▶️ [ParticipantVideo] Retry successful for ${participantName}`);
+              console.log(`▶️ [ParticipantVideo] Play successful (muted) for ${participantName}`);
               setIsVideoPlaying(true);
             } catch (e2) {
-              console.error(`❌ [ParticipantVideo] Retry failed for ${participantName}:`, e2);
+              console.error(`❌ [ParticipantVideo] Play failed even muted for ${participantName}:`, e2);
               setIsVideoPlaying(false);
             }
-          } else {
-            setIsVideoPlaying(false);
           }
         }
       };
 
       playVideo();
-
-      // Log audio tracks state
-      activeStream.getAudioTracks().forEach((track, idx) => {
-        console.log(`🎤 [ParticipantVideo] Audio track ${idx} for ${participantName}:`);
-        console.log(`   - ID: ${track.id}`);
-        console.log(`   - Enabled: ${track.enabled}`);
-        console.log(`   - Muted: ${track.muted}`);
-        console.log(`   - ReadyState: ${track.readyState}`);
-      });
 
       activeStream.getVideoTracks().forEach(track => {
         track.onended = () => {
@@ -125,7 +101,7 @@ export default function ParticipantVideo({
         });
       }
     };
-  }, [activeStream, participantName, isLocalUser]);
+  }, [activeStream, participantName]);
 
   const hasActiveVideo = activeStream && 
     activeStream.getVideoTracks().length > 0 && 
@@ -153,9 +129,6 @@ export default function ParticipantVideo({
           muted={isLocalUser}
           className={`w-full h-full object-cover absolute inset-0 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
           style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
-          onLoadedMetadata={() => {
-            console.log(`📺 [ParticipantVideo-PIP] Video metadata loaded for ${participantName}, muted=${isLocalUser}`);
-          }}
         />
         
         {!showVideoElement && (
@@ -203,9 +176,6 @@ export default function ParticipantVideo({
         muted={isLocalUser}
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
         style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
-        onLoadedMetadata={() => {
-          console.log(`📺 [ParticipantVideo] Video metadata loaded for ${participantName}, muted=${isLocalUser}`);
-        }}
       />
       
       {!showVideoElement && (

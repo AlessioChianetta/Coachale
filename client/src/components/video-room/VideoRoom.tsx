@@ -366,23 +366,11 @@ export default function VideoRoom({
     const local = displayParticipants.find(p => p.isLocalUser);
     const remote = displayParticipants.find(p => !p.isLocalUser);
     
-    console.log(`📹 [VideoRoom] Participant layout - Local: ${local?.name}, Remote: ${remote?.name}`);
-    
-    // If there's a remote participant, they are ALWAYS the main focus
-    // Local user goes to PIP when there's a remote participant
-    if (remote) {
-      console.log(`📹 [VideoRoom] 1-on-1 mode: Remote ${remote.name} as MAIN, Local ${local?.name} as PIP`);
-      return {
-        mainParticipant: remote,
-        localParticipant: local || null,
-      };
-    }
-    
-    // Solo mode: only local user, no PIP
-    console.log(`📹 [VideoRoom] Solo mode: Local ${local?.name} as MAIN, no PIP`);
+    // If there's a remote participant, they are the main focus
+    // Otherwise, local user is the main (solo mode)
     return {
-      mainParticipant: local || displayParticipants[0],
-      localParticipant: null,
+      mainParticipant: remote || local || displayParticipants[0],
+      localParticipant: remote ? local : null, // Only show PIP if there's someone else
     };
   }, [displayParticipants]);
 
