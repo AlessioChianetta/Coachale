@@ -213,13 +213,22 @@ export default function ClientScriptManager() {
     },
   });
 
-  const { data: humanSellers = [] } = useQuery<HumanSellerWithAssignments[]>({
+  const { data: humanSellers = [], isLoading: isLoadingHumanSellers, error: humanSellersError } = useQuery<HumanSellerWithAssignments[]>({
     queryKey: ['human-sellers-with-assignments'],
     queryFn: async () => {
+      console.log('[ScriptManager] 🔍 Fetching human sellers...');
       const res = await fetch('/api/human-sellers/with-script-assignments', { headers: getAuthHeaders() });
-      if (!res.ok) throw new Error('Failed to fetch human sellers');
+      console.log('[ScriptManager] 📡 Response status:', res.status);
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('[ScriptManager] ❌ Error response:', errorText);
+        throw new Error('Failed to fetch human sellers');
+      }
       const data = await res.json();
-      console.log('[ScriptManager] Human sellers loaded:', data);
+      console.log('[ScriptManager] ✅ Human sellers loaded:', {
+        count: data.length,
+        sellers: data.map((s: any) => ({ id: s.id, name: s.sellerName, assignments: s.assignments?.length || 0 }))
+      });
       return data;
     },
   });
@@ -1139,11 +1148,23 @@ export default function ClientScriptManager() {
                       {/* Venditori Umani Tab */}
                       {agentDialogTab === 'sellers' && (
                         <>
-                          {humanSellers.length === 0 ? (
+                          {isLoadingHumanSellers ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                              <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin" />
+                              <p>Caricamento venditori...</p>
+                            </div>
+                          ) : humanSellersError ? (
+                            <div className="text-center py-8 text-destructive">
+                              <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                              <p>Errore nel caricamento</p>
+                              <p className="text-sm">{(humanSellersError as Error).message}</p>
+                            </div>
+                          ) : humanSellers.length === 0 ? (
                             <div className="text-center py-8 text-muted-foreground">
                               <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
                               <p>Nessun venditore configurato.</p>
                               <p className="text-sm">Crea prima un Venditore Umano.</p>
+                              <p className="text-xs mt-2 text-amber-600">Debug: Array length = {humanSellers.length}</p>
                             </div>
                           ) : (
                             humanSellers.map((seller) => {
