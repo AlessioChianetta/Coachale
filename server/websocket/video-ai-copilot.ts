@@ -545,15 +545,14 @@ async function performTranscription(
 
   const prompt = `Transcribe the following audio to Italian text.
 
-CRITICAL RULES:
-1. Return ONLY the exact words spoken - nothing more, nothing less
-2. If you cannot understand the audio clearly, return an empty string ""
-3. If the audio is silent or contains only noise, return an empty string ""
-4. NEVER invent, guess, or fill in words that are not clearly audible
-5. NEVER repeat words unless the speaker actually repeated them
-6. If in doubt about what was said, return an empty string ""
+RULES:
+1. Return the exact words spoken - nothing more, nothing less
+2. Transcribe EVERYTHING you hear, even single words, letters, or short sounds like "sì", "no", "ah", "ok"
+3. If the audio is completely silent with zero speech, return empty string ""
+4. Do NOT repeat words unless the speaker actually repeated them
+5. Do NOT invent words that weren't spoken
 
-Context: This is from a sales video call. The speaker is ${speakerName}.`;
+Context: Sales video call. Speaker: ${speakerName}.`;
 
   const response = await cachedProvider.client.generateContent({
     model: 'gemini-2.5-flash',
