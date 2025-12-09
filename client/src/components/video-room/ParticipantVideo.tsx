@@ -48,7 +48,7 @@ export default function ParticipantVideo({
       console.log(`   - Stream ID: ${activeStream.id}`);
       console.log(`   - Video tracks: ${activeStream.getVideoTracks().length}`);
       console.log(`   - Audio tracks: ${activeStream.getAudioTracks().length}`);
-
+      
       videoEl.srcObject = activeStream;
 
       const playVideo = async () => {
@@ -106,7 +106,7 @@ export default function ParticipantVideo({
   const hasActiveVideo = activeStream && 
     activeStream.getVideoTracks().length > 0 && 
     activeStream.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
-
+  
   const showVideoElement = hasActiveVideo && isVideoPlaying && !isVideoOff;
   const initials = participantName.charAt(0).toUpperCase();
 
@@ -127,10 +127,10 @@ export default function ParticipantVideo({
           autoPlay
           playsInline
           muted={isLocalUser}
-          className={`w-full h-full object-contain absolute inset-0 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
+          className={`w-full h-full object-cover absolute inset-0 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
           style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
         />
-
+        
         {!showVideoElement && (
           <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center">
             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-blue-500 flex items-center justify-center text-white text-lg sm:text-xl font-bold shadow-lg">
@@ -138,7 +138,7 @@ export default function ParticipantVideo({
             </div>
           </div>
         )}
-
+        
         <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-gradient-to-t from-black/80 to-transparent">
           <span className="text-white text-xs truncate block">{participantName}</span>
         </div>
@@ -174,10 +174,10 @@ export default function ParticipantVideo({
         autoPlay
         playsInline
         muted={isLocalUser}
-        className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
         style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
       />
-
+      
       {!showVideoElement && (
         <motion.div
           animate={isSpeaking ? { scale: [1, 1.02, 1] } : {}}
