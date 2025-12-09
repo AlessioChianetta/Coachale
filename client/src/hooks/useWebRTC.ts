@@ -561,6 +561,16 @@ export function useWebRTC({
     }
     
     let pc = peerConnectionsRef.current.get(remoteParticipantId);
+    
+    // If peer connection exists but has problematic signaling state, reset it
+    // This prevents "m-lines order mismatch" errors on renegotiation
+    if (pc && pc.signalingState !== 'stable' && pc.signalingState !== 'closed') {
+      console.log(`🔄 [WebRTC] Resetting peer connection for ${remoteParticipantId} (signalingState: ${pc.signalingState})`);
+      pc.close();
+      peerConnectionsRef.current.delete(remoteParticipantId);
+      pc = null;
+    }
+    
     if (!pc) {
       pc = createPeerConnection(remoteParticipantId);
     }

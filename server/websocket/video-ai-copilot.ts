@@ -150,9 +150,9 @@ interface SpeakerTurnBuffer {
 
 interface TurnState {
   meetingId: string;
-  currentSpeaker: SpeakerTurnBuffer | null;
+  speakerBuffers: Map<string, SpeakerTurnBuffer>;
   previousSpeaker: SpeakerTurnBuffer | null;
-  silenceTimer: NodeJS.Timeout | null;
+  silenceTimers: Map<string, NodeJS.Timeout>;
   analysisDebounceTimer: NodeJS.Timeout | null;
   lastAnalysisTime: number;
   pendingAnalysis: boolean;
@@ -386,9 +386,9 @@ async function withRetry<T>(
 function createTurnState(meetingId: string): TurnState {
   return {
     meetingId,
-    currentSpeaker: null,
+    speakerBuffers: new Map<string, SpeakerTurnBuffer>(),
     previousSpeaker: null,
-    silenceTimer: null,
+    silenceTimers: new Map<string, NodeJS.Timeout>(),
     analysisDebounceTimer: null,
     lastAnalysisTime: 0,
     pendingAnalysis: false,
@@ -933,14 +933,14 @@ async function transcribeBufferedAudio(
   return transcript;
 }
 
-async function handleSilenceDetected(
+async function handleSilenceDetectedForSpeaker(
   ws: WebSocket,
   session: SessionState,
-  turnState: TurnState
+  turnState: TurnState,
+  speakerId: string
 ) {
-  if (!turnState.currentSpeaker) return;
-  
-  const buffer = turnState.currentSpeaker;
+  const buffer = turnState.speakerBuffers.get(speakerId);
+  if (!buffer) return;
   
   console.log(`🔇 [STEP 4] Silence detected for ${buffer.speakerName} (${buffer.chunks.length} chunks buffered) - Starting transcription...`);
   
@@ -978,6 +978,11 @@ function handleSpeechStart(
   const speakerId = message.speakerId;
   const speakerName = message.speakerName || 'Unknown Speaker';
   
+  if (!speakerId) {
+    console.log(`⚠️ [VAD-SPEECH-START] Missing speakerId, ignoring`);
+    return;
+  }
+  
   console.log(`🎤 [VAD-SPEECH-START] ${speakerName} started speaking (client VAD)`);
   
   let turnState = turnStates.get(meetingId);
@@ -986,21 +991,19 @@ function handleSpeechStart(
     turnStates.set(meetingId, turnState);
   }
   
-  if (turnState.silenceTimer) {
-    clearTimeout(turnState.silenceTimer);
-    turnState.silenceTimer = null;
+  const existingSilenceTimer = turnState.silenceTimers.get(speakerId);
+  if (existingSilenceTimer) {
+    clearTimeout(existingSilenceTimer);
+    turnState.silenceTimers.delete(speakerId);
   }
   
-  const isNewSpeaker = !turnState.currentSpeaker || 
-                       turnState.currentSpeaker.speakerId !== speakerId;
-  
-  if (isNewSpeaker && turnState.currentSpeaker) {
-    console.log(`🔄 [VAD] Speaker change detected: ${turnState.currentSpeaker.speakerName} → ${speakerName}`);
-    turnState.previousSpeaker = turnState.currentSpeaker;
-    turnState.currentSpeaker = createSpeakerBuffer(speakerId!, speakerName, session);
-    scheduleAnalysis(ws, session, turnState);
-  } else if (!turnState.currentSpeaker) {
-    turnState.currentSpeaker = createSpeakerBuffer(speakerId!, speakerName, session);
+  let buffer = turnState.speakerBuffers.get(speakerId);
+  if (!buffer) {
+    buffer = createSpeakerBuffer(speakerId, speakerName, session);
+    turnState.speakerBuffers.set(speakerId, buffer);
+    console.log(`🆕 [VAD-SPEECH-START] Created new buffer for ${speakerName} (${speakerId})`);
+  } else {
+    console.log(`♻️ [VAD-SPEECH-START] Reusing existing buffer for ${speakerName} (${buffer.chunks.length} chunks)`);
   }
 }
 
@@ -1013,32 +1016,39 @@ async function handleSpeechEndFromClient(
   const speakerId = message.speakerId;
   const speakerName = message.speakerName || 'Unknown Speaker';
   
-  console.log(`🔇 [VAD-SPEECH-END] ${speakerName} stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!`);
-  
-  const turnState = turnStates.get(meetingId);
-  if (!turnState || !turnState.currentSpeaker) {
-    console.log(`⚠️ [VAD-SPEECH-END] No turn state or speaker buffer for ${speakerName}`);
+  if (!speakerId) {
+    console.log(`⚠️ [VAD-SPEECH-END] Missing speakerId, ignoring`);
     return;
   }
   
-  if (turnState.silenceTimer) {
-    clearTimeout(turnState.silenceTimer);
-    turnState.silenceTimer = null;
+  console.log(`🔇 [VAD-SPEECH-END] ${speakerName} stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!`);
+  
+  const turnState = turnStates.get(meetingId);
+  if (!turnState) {
+    console.log(`⚠️ [VAD-SPEECH-END] No turn state for meeting ${meetingId}`);
+    return;
   }
   
-  const buffer = turnState.currentSpeaker;
+  const silenceTimer = turnState.silenceTimers.get(speakerId);
+  if (silenceTimer) {
+    clearTimeout(silenceTimer);
+    turnState.silenceTimers.delete(speakerId);
+  }
   
-  if (buffer.speakerId !== speakerId) {
-    console.log(`⚠️ [VAD-SPEECH-END] Speaker mismatch: buffer=${buffer.speakerName}, message=${speakerName}`);
+  const buffer = turnState.speakerBuffers.get(speakerId);
+  
+  if (!buffer) {
+    console.log(`⚠️ [VAD-SPEECH-END] No buffer found for speaker ${speakerName} (${speakerId})`);
     return;
   }
   
   if (buffer.chunks.length < TURN_TAKING_CONFIG.MIN_AUDIO_CHUNKS) {
-    console.log(`⏭️ [VAD-SPEECH-END] Too little audio (${buffer.chunks.length} chunks), skipping`);
+    console.log(`⏭️ [VAD-SPEECH-END] Too little audio (${buffer.chunks.length} chunks) for ${speakerName}, skipping`);
+    turnState.speakerBuffers.delete(speakerId);
     return;
   }
   
-  console.log(`⚡ [TRUST-THE-CLIENT] Transcribing ${buffer.chunks.length} chunks immediately (no server-side delay)`);
+  console.log(`⚡ [TRUST-THE-CLIENT] Transcribing ${buffer.chunks.length} chunks for ${speakerName} immediately`);
   
   const transcript = await transcribeBufferedAudio(ws, session, buffer, false);
   
@@ -1074,17 +1084,18 @@ async function handleSpeechEndFromClient(
   }
   
   turnState.previousSpeaker = buffer;
-  turnState.currentSpeaker = null;
+  turnState.speakerBuffers.delete(speakerId);
   
   scheduleAnalysis(ws, session, turnState);
 }
 
-async function finalizeTurn(
+async function finalizeTurnForSpeaker(
   ws: WebSocket,
   session: SessionState,
-  turnState: TurnState
+  turnState: TurnState,
+  speakerId: string
 ) {
-  const buffer = turnState.currentSpeaker;
+  const buffer = turnState.speakerBuffers.get(speakerId);
   if (!buffer) return;
   
   console.log(`🏁 [TurnTaking] Finalizing turn for ${buffer.speakerName}`);
@@ -1115,6 +1126,9 @@ async function finalizeTurn(
     
     console.log(`✅ [TurnTaking] Turn complete: ${buffer.speakerName} - "${buffer.fullTranscript.substring(0, 80)}..."`);
   }
+  
+  turnState.previousSpeaker = buffer;
+  turnState.speakerBuffers.delete(speakerId);
 }
 
 function scheduleAnalysis(
@@ -1132,9 +1146,11 @@ function scheduleAnalysis(
     if (!turnState.pendingAnalysis) return;
     
     const hasPreviousTurn = turnState.previousSpeaker?.fullTranscript && turnState.previousSpeaker.fullTranscript.length > 10;
-    const hasCurrentTurn = turnState.currentSpeaker?.fullTranscript && turnState.currentSpeaker.fullTranscript.length > 10;
+    const hasActiveBuffers = Array.from(turnState.speakerBuffers.values()).some(
+      b => b.fullTranscript && b.fullTranscript.length > 10
+    );
     
-    if (!hasPreviousTurn && !hasCurrentTurn) {
+    if (!hasPreviousTurn && !hasActiveBuffers) {
       console.log(`⏭️ [TurnTaking] No complete turns for analysis, skipping`);
       return;
     }
@@ -1146,9 +1162,13 @@ function scheduleAnalysis(
       console.log(`   Previous: ${turnState.previousSpeaker.speakerName}`);
       console.log(`   → "${turnState.previousSpeaker.fullTranscript.substring(0, 80)}..."`);
     }
-    if (turnState.currentSpeaker?.fullTranscript) {
-      console.log(`   Current: ${turnState.currentSpeaker.speakerName}`);
-      console.log(`   → "${turnState.currentSpeaker.fullTranscript.substring(0, 80)}..."`);
+    if (hasActiveBuffers) {
+      const activeBuffers = Array.from(turnState.speakerBuffers.values())
+        .filter(b => b.fullTranscript && b.fullTranscript.length > 10);
+      for (const buffer of activeBuffers) {
+        console.log(`   Active: ${buffer.speakerName}`);
+        console.log(`   → "${buffer.fullTranscript.substring(0, 80)}..."`);
+      }
     }
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
     
@@ -1216,63 +1236,30 @@ async function handleAudioChunk(
     console.log(`🆕 [TurnTaking] Created turn state for meeting ${meetingId}`);
   }
 
-  if (turnState.silenceTimer) {
-    clearTimeout(turnState.silenceTimer);
-    turnState.silenceTimer = null;
+  const existingSilenceTimer = turnState.silenceTimers.get(speakerId);
+  if (existingSilenceTimer) {
+    clearTimeout(existingSilenceTimer);
+    turnState.silenceTimers.delete(speakerId);
   }
 
-  const isNewSpeaker = !turnState.currentSpeaker || 
-                       turnState.currentSpeaker.speakerId !== speakerId;
-
-  // DEBOUNCE: Only change speaker if enough time has passed since current speaker's last chunk
-  // This prevents rapid ping-pong between speakers when both mics are sending audio
-  const timeSinceLastChunk = turnState.currentSpeaker 
-    ? Date.now() - turnState.currentSpeaker.lastChunkTime 
-    : Infinity;
-  
-  const shouldChangeSpeaker = isNewSpeaker && 
-                              turnState.currentSpeaker && 
-                              timeSinceLastChunk >= TURN_TAKING_CONFIG.SPEAKER_CHANGE_THRESHOLD_MS;
-
-  if (shouldChangeSpeaker) {
-    console.log(`🔄 [TurnTaking] Speaker change: ${turnState.currentSpeaker!.speakerName} → ${speakerName} (after ${timeSinceLastChunk}ms silence)`);
-    
-    await finalizeTurn(ws, session, turnState);
-    
-    turnState.previousSpeaker = turnState.currentSpeaker;
-    turnState.currentSpeaker = createSpeakerBuffer(speakerId, speakerName, session);
-    
-    scheduleAnalysis(ws, session, turnState);
-  } else if (isNewSpeaker && turnState.currentSpeaker) {
-    // Different speaker but not enough silence - ignore this chunk (keep current speaker)
-    // Don't log every ignored chunk to avoid log spam
-    return;
-  }
-
-  if (!turnState.currentSpeaker) {
-    turnState.currentSpeaker = createSpeakerBuffer(speakerId, speakerName, session);
-    console.log(`🎤 [TurnTaking] Started buffering for ${speakerName}`);
+  let buffer = turnState.speakerBuffers.get(speakerId);
+  if (!buffer) {
+    buffer = createSpeakerBuffer(speakerId, speakerName, session);
+    turnState.speakerBuffers.set(speakerId, buffer);
+    console.log(`🎤 [TurnTaking] Started buffering for ${speakerName} (${speakerId})`);
   }
 
   const chunkSize = message.data?.length || 0;
-  turnState.currentSpeaker.chunks.push({
+  buffer.chunks.push({
     data: message.data,
     timestamp: Date.now(),
     durationMs: estimateChunkDuration(message.data),
   });
-  turnState.currentSpeaker.lastChunkTime = Date.now();
+  buffer.lastChunkTime = Date.now();
   
-  if (turnState.currentSpeaker.chunks.length % 20 === 1) {
-    console.log(`📦 [STEP 3] Received audio chunk from ${speakerName} - Chunks: ${turnState.currentSpeaker.chunks.length}, Size: ${chunkSize} chars`);
+  if (buffer.chunks.length % 20 === 1) {
+    console.log(`📦 [STEP 3] Received audio chunk from ${speakerName} - Chunks: ${buffer.chunks.length}, Size: ${chunkSize} chars`);
   }
-
-  // ✅ FIX: Timer disabilitato. Ci fidiamo ciecamenete del segnale 'speech_end' del Client.
-  // Il server accumula solo i dati. Se proviamo a indovinare il silenzio qui,
-  // rompiamo la logica "redemptionFrames" del VAD client.
-
-  // turnState.silenceTimer = setTimeout(async () => {
-  //   await handleSilenceDetected(ws, session, turnState!);
-  // }, TURN_TAKING_CONFIG.SILENCE_THRESHOLD_MS);
 
   const timeSinceLastAnalysis = Date.now() - turnState.lastAnalysisTime;
   if (timeSinceLastAnalysis > TURN_TAKING_CONFIG.MAX_TIME_WITHOUT_ANALYSIS_MS && !turnState.pendingAnalysis) {
@@ -2319,9 +2306,10 @@ async function handleEndSession(
   
   const turnState = turnStates.get(session.meetingId);
   if (turnState) {
-    if (turnState.silenceTimer) {
-      clearTimeout(turnState.silenceTimer);
+    for (const timer of turnState.silenceTimers.values()) {
+      clearTimeout(timer);
     }
+    turnState.silenceTimers.clear();
     if (turnState.analysisDebounceTimer) {
       clearTimeout(turnState.analysisDebounceTimer);
     }
