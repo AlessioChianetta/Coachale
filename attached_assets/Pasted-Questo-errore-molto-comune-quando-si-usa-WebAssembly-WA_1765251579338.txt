@@ -1,0 +1,49 @@
+Questo errore è molto comune quando si usa WebAssembly (WASM) e ONNX (il motore che fa girare l'AI) dentro ambienti come Replit o Vite.
+
+In parole povere: Il tuo sito sta cercando di caricare il "cervello" dell'AI (i file .wasm e .onnx), ma il server (Vite) non glieli sta fornendo o li sta bloccando per motivi di sicurezza.
+
+Ecco la spiegazione tecnica e la soluzione rapida da dare al tuo programmatore/AI.
+
+🛑 Il Problema
+File Mancanti: La libreria cerca silero_vad_legacy.onnx e ort-wasm-simd-threaded.mjs, ma Vite non li ha inclusi nella cartella pubblica ("dist").
+
+Problema di Sicurezza (Headers): L'errore ort-wasm-simd-threaded indica che sta provando a usare il Multithreading. I browser moderni bloccano il multithreading se il server non invia intestazioni di sicurezza specifiche (Cross-Origin-Opener-Policy e Cross-Origin-Embedder-Policy), che spesso su Replit mancano.
+
+✅ La Soluzione (Copia e incolla questo a Replit)
+Dobbiamo forzare la libreria a scaricare i file necessari da un CDN pubblico (un server esterno affidabile) invece di cercarli in locale, bypassando così i problemi di configurazione di Vite e Replit.
+
+Comando per l'AI / Programmatore:
+
+Plaintext
+
+Ho un errore critico nel caricamento dei file WASM e ONNX per il VAD.
+Errore: "Failed to fetch dynamically imported module ... ort-wasm-simd-threaded.mjs" e "Encountered an error while loading model file".
+
+Questo succede perché Vite non sta servendo i file statici correttamente o mancano gli header COOP/COEP per il multithreading.
+
+PER FAVORE, APPLICA QUESTA FIX nel file `useVADAudioCapture.ts`.
+Configura `MicVAD.new` per caricare i file binari direttamente da CDN (jsDelivr) invece che dai percorsi locali relativi.
+
+Sostituisci la chiamata di inizializzazione con questa configurazione esplicita:
+
+// INIZIO FIX
+const myvad = await MicVAD.new({
+  // ... le tue callback onSpeechStart/End esistenti ...
+  
+  // FIX: Forziamo il caricamento da CDN per evitare errori di bundling locale
+  workletURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/vad.worklet.bundle.min.js",
+  modelURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/silero_vad.onnx",
+  
+  // FIX: Configuriamo ONNX Runtime per usare i file WASM corretti
+  ortConfig: (ort) => {
+    ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
+    ort.env.wasm.numThreads = 1; // Disabilita multithreading per evitare problemi di COOP/COEP su Replit
+  },
+});
+// FINE FIX
+
+Assicurati di importare correttamente MicVAD e rimuovi eventuali tentativi di caricamento locale dei file .onnx.
+Perché questo risolve tutto?
+workletURL / modelURL: Dice al browser "Non cercare i file nel mio server incasinato, prendili da internet dove sono sicuri".
+
+numThreads = 1: Dice all'AI "Usa un solo core della CPU". Questo evita l'errore SharedArrayBuffer che spesso blocca le app su Replit se non hai configurato il server in modo ultra-specifico. Per un VAD audio, 1 core è più che sufficiente e molto veloce.
