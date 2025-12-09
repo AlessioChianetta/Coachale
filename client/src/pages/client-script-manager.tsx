@@ -23,7 +23,8 @@ import {
   Code,
   Users,
   Bot,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1053,202 +1054,395 @@ export default function ClientScriptManager() {
                     setAgentDialogTab('agents');
                   }
                 }}>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <Users className="h-5 w-5 text-primary" />
-                        Seleziona Destinatario
-                      </DialogTitle>
-                      <DialogDescription>
-                        Scegli a chi vuoi assegnare questo script.
-                      </DialogDescription>
-                    </DialogHeader>
+                  <DialogContent className="max-w-lg">
+                    {(() => {
+                      const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
+                      const scriptTypeName = scriptToActivateData ? scriptTypeLabels[scriptToActivateData.scriptType] : '';
+                      
+                      const agentsWithThisScript = agents.filter(agent => {
+                        const assignments = agent.scriptAssignments || { discovery: null, demo: null, objections: null };
+                        const currentAssignment = scriptToActivateData 
+                          ? assignments[scriptToActivateData.scriptType as keyof typeof assignments]
+                          : null;
+                        return currentAssignment?.scriptId === scriptToActivate;
+                      });
+                      
+                      const sellersWithThisScript = humanSellers.filter(seller => {
+                        if (!scriptToActivateData) return false;
+                        const currentAssignment = seller.assignments?.find(
+                          a => a.scriptType === scriptToActivateData.scriptType
+                        );
+                        return currentAssignment?.scriptId === scriptToActivate;
+                      });
+                      
+                      const totalActiveCount = agentsWithThisScript.length + sellersWithThisScript.length;
+                      
+                      return (
+                        <>
+                          <DialogHeader className="pb-2">
+                            <DialogTitle className="flex items-center gap-2 text-lg">
+                              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                                <Zap className="h-5 w-5 text-primary" />
+                              </div>
+                              Assegna Script
+                            </DialogTitle>
+                            <DialogDescription className="sr-only">
+                              Seleziona a chi assegnare lo script
+                            </DialogDescription>
+                          </DialogHeader>
+                          
+                          {scriptToActivateData && (
+                            <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 rounded-xl p-4 border border-primary/20">
+                              <div className="flex items-start gap-3">
+                                <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                  <FileText className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm truncate">{scriptToActivateData.name}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Badge variant="secondary" className="text-xs">
+                                      {scriptTypeName}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">v{scriptToActivateData.version}</span>
+                                  </div>
+                                </div>
+                                {totalActiveCount > 0 && (
+                                  <Badge variant="default" className="text-xs flex-shrink-0">
+                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                    {totalActiveCount} attivo
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          )}
                     
-                    {/* Tabs per AI Agents / Venditori Umani */}
-                    <Tabs value={agentDialogTab} onValueChange={(v) => setAgentDialogTab(v as 'agents' | 'sellers')} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="agents" className="flex items-center gap-2">
-                          <Bot className="h-4 w-4" />
-                          AI Agents
-                        </TabsTrigger>
-                        <TabsTrigger value="sellers" className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          Venditori Umani
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
+                          <Tabs value={agentDialogTab} onValueChange={(v) => setAgentDialogTab(v as 'agents' | 'sellers')} className="w-full">
+                            <TabsList className="grid w-full grid-cols-2 h-11">
+                              <TabsTrigger value="agents" className="flex items-center gap-2 data-[state=active]:bg-violet-500/10 data-[state=active]:text-violet-700">
+                                <Bot className="h-4 w-4" />
+                                <span>AI Agents</span>
+                                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                                  {agents.length}
+                                </Badge>
+                              </TabsTrigger>
+                              <TabsTrigger value="sellers" className="flex items-center gap-2 data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-700">
+                                <Users className="h-4 w-4" />
+                                <span>Venditori</span>
+                                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                                  {humanSellers.length}
+                                </Badge>
+                              </TabsTrigger>
+                            </TabsList>
+                          </Tabs>
 
-                    <div className="space-y-2 py-2 max-h-[300px] overflow-y-auto">
-                      {/* AI Agents Tab */}
-                      {agentDialogTab === 'agents' && (
-                        <>
-                          {agents.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                              <p>Nessun agente configurato.</p>
-                              <p className="text-sm">Crea prima un AI Sales Agent.</p>
-                            </div>
-                          ) : (
-                            agents.map((agent) => {
-                              const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
-                              const assignments = agent.scriptAssignments || { discovery: null, demo: null, objections: null };
-                              const currentAssignment = scriptToActivateData 
-                                ? assignments[scriptToActivateData.scriptType as keyof typeof assignments]
-                                : null;
-                              const isCurrentlyAssigned = currentAssignment?.scriptId === scriptToActivate;
-                              const hasActiveScriptOfSameType = currentAssignment && !isCurrentlyAssigned;
-                              
-                              return (
-                                <button
-                                  key={agent.id}
-                                  className={cn(
-                                    "w-full text-left p-4 rounded-lg border transition-all hover:bg-muted/50",
-                                    isCurrentlyAssigned && "border-primary bg-primary/5",
-                                    hasActiveScriptOfSameType && "border-amber-500/50"
-                                  )}
-                                  onClick={() => {
-                                    if (scriptToActivate) {
-                                      if (hasActiveScriptOfSameType && currentAssignment) {
-                                        setPendingActivation({
-                                          scriptId: scriptToActivate,
-                                          agentId: agent.id,
-                                          currentScriptName: currentAssignment.scriptName
-                                        });
-                                        setShowReplaceConfirmDialog(true);
-                                        setShowAgentSelectDialog(false);
-                                      } else {
-                                        activateScriptMutation.mutate({ 
-                                          scriptId: scriptToActivate, 
-                                          agentId: agent.id 
-                                        });
-                                      }
-                                    }
-                                  }}
-                                  disabled={activateScriptMutation.isPending}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <Bot className="h-5 w-5 text-primary" />
+                          <ScrollArea className="max-h-[340px] -mx-1 px-1">
+                            <div className="space-y-2 py-1">
+                              {agentDialogTab === 'agents' && (
+                                <>
+                                  {agents.length === 0 ? (
+                                    <div className="text-center py-10 text-muted-foreground">
+                                      <div className="h-16 w-16 mx-auto mb-3 rounded-full bg-muted/50 flex items-center justify-center">
+                                        <Bot className="h-8 w-8 opacity-40" />
                                       </div>
-                                      <div>
-                                        <p className="font-medium">{agent.agentName}</p>
-                                        <p className="text-sm text-muted-foreground">{agent.businessName}</p>
-                                      </div>
+                                      <p className="font-medium">Nessun AI Agent</p>
+                                      <p className="text-sm mt-1">Crea prima un AI Sales Agent.</p>
                                     </div>
-                                    {isCurrentlyAssigned && (
-                                      <Badge variant="default" className="text-xs">
-                                        <CheckCircle className="h-3 w-3 mr-1" /> Attivo
-                                      </Badge>
-                                    )}
-                                    {hasActiveScriptOfSameType && (
-                                      <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">
-                                        <AlertTriangle className="h-3 w-3 mr-1" /> Attivo altro
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {hasActiveScriptOfSameType && currentAssignment && (
-                                    <p className="text-xs text-amber-600 mt-2 pl-13 flex items-center gap-1">
-                                      <AlertTriangle className="h-3 w-3" />
-                                      Attualmente usa: {currentAssignment.scriptName}
-                                    </p>
+                                  ) : (
+                                    <>
+                                      {(() => {
+                                        const activeAgents = agents.filter(agent => {
+                                          const assignments = agent.scriptAssignments || { discovery: null, demo: null, objections: null };
+                                          const currentAssignment = scriptToActivateData 
+                                            ? assignments[scriptToActivateData.scriptType as keyof typeof assignments]
+                                            : null;
+                                          return currentAssignment?.scriptId === scriptToActivate;
+                                        });
+                                        
+                                        const otherAgents = agents.filter(agent => {
+                                          const assignments = agent.scriptAssignments || { discovery: null, demo: null, objections: null };
+                                          const currentAssignment = scriptToActivateData 
+                                            ? assignments[scriptToActivateData.scriptType as keyof typeof assignments]
+                                            : null;
+                                          return currentAssignment?.scriptId !== scriptToActivate;
+                                        });
+                                        
+                                        return (
+                                          <>
+                                            {activeAgents.length > 0 && (
+                                              <div className="mb-3">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center">
+                                                    <CheckCircle className="h-3 w-3 text-primary" />
+                                                  </div>
+                                                  <span className="text-xs font-medium text-primary uppercase tracking-wide">Attivo su</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                  {activeAgents.map((agent) => (
+                                                    <div
+                                                      key={agent.id}
+                                                      className="flex items-center gap-3 p-3 rounded-lg border-2 border-primary bg-primary/5"
+                                                    >
+                                                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+                                                        <Bot className="h-5 w-5 text-white" />
+                                                      </div>
+                                                      <div className="flex-1 min-w-0">
+                                                        <p className="font-medium text-sm truncate">{agent.agentName}</p>
+                                                        <p className="text-xs text-muted-foreground truncate">{agent.businessName}</p>
+                                                      </div>
+                                                      <Badge variant="default" className="text-xs bg-primary">
+                                                        <CheckCircle className="h-3 w-3 mr-1" /> Attivo
+                                                      </Badge>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {otherAgents.length > 0 && (
+                                              <div>
+                                                {activeAgents.length > 0 && (
+                                                  <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Altri agenti</span>
+                                                    <div className="flex-1 h-px bg-border" />
+                                                  </div>
+                                                )}
+                                                <div className="space-y-2">
+                                                  {otherAgents.map((agent) => {
+                                                    const assignments = agent.scriptAssignments || { discovery: null, demo: null, objections: null };
+                                                    const currentAssignment = scriptToActivateData 
+                                                      ? assignments[scriptToActivateData.scriptType as keyof typeof assignments]
+                                                      : null;
+                                                    const hasActiveScriptOfSameType = currentAssignment && currentAssignment.scriptId !== scriptToActivate;
+                                                    
+                                                    return (
+                                                      <button
+                                                        key={agent.id}
+                                                        className={cn(
+                                                          "w-full text-left p-3 rounded-lg border-2 transition-all",
+                                                          "hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm",
+                                                          hasActiveScriptOfSameType 
+                                                            ? "border-amber-400/50 bg-amber-50/50 dark:bg-amber-950/20" 
+                                                            : "border-border bg-card"
+                                                        )}
+                                                        onClick={() => {
+                                                          if (scriptToActivate) {
+                                                            if (hasActiveScriptOfSameType && currentAssignment) {
+                                                              setPendingActivation({
+                                                                scriptId: scriptToActivate,
+                                                                agentId: agent.id,
+                                                                currentScriptName: currentAssignment.scriptName
+                                                              });
+                                                              setShowReplaceConfirmDialog(true);
+                                                              setShowAgentSelectDialog(false);
+                                                            } else {
+                                                              activateScriptMutation.mutate({ 
+                                                                scriptId: scriptToActivate, 
+                                                                agentId: agent.id 
+                                                              });
+                                                            }
+                                                          }
+                                                        }}
+                                                        disabled={activateScriptMutation.isPending}
+                                                      >
+                                                        <div className="flex items-center gap-3">
+                                                          <div className={cn(
+                                                            "h-10 w-10 rounded-full flex items-center justify-center shadow-sm",
+                                                            hasActiveScriptOfSameType 
+                                                              ? "bg-gradient-to-br from-amber-400 to-orange-500" 
+                                                              : "bg-gradient-to-br from-slate-400 to-slate-500"
+                                                          )}>
+                                                            <Bot className="h-5 w-5 text-white" />
+                                                          </div>
+                                                          <div className="flex-1 min-w-0">
+                                                            <p className="font-medium text-sm truncate">{agent.agentName}</p>
+                                                            <p className="text-xs text-muted-foreground truncate">{agent.businessName}</p>
+                                                          </div>
+                                                          {hasActiveScriptOfSameType && (
+                                                            <div className="flex flex-col items-end gap-1">
+                                                              <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-600 bg-amber-50">
+                                                                <ArrowRightLeft className="h-2.5 w-2.5 mr-1" /> Sostituisci
+                                                              </Badge>
+                                                              <span className="text-[10px] text-amber-600 truncate max-w-[100px]">
+                                                                {currentAssignment?.scriptName}
+                                                              </span>
+                                                            </div>
+                                                          )}
+                                                        </div>
+                                                      </button>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
+                                    </>
                                   )}
-                                </button>
-                              );
-                            })
-                          )}
-                        </>
-                      )}
+                                </>
+                              )}
 
-                      {/* Venditori Umani Tab */}
-                      {agentDialogTab === 'sellers' && (
-                        <>
-                          {isLoadingHumanSellers ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin" />
-                              <p>Caricamento venditori...</p>
-                            </div>
-                          ) : humanSellersError ? (
-                            <div className="text-center py-8 text-destructive">
-                              <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                              <p>Errore nel caricamento</p>
-                              <p className="text-sm">{(humanSellersError as Error).message}</p>
-                            </div>
-                          ) : humanSellers.length === 0 ? (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                              <p>Nessun venditore configurato.</p>
-                              <p className="text-sm">Crea prima un Venditore Umano.</p>
-                              <p className="text-xs mt-2 text-amber-600">Debug: Array length = {humanSellers.length}</p>
-                            </div>
-                          ) : (
-                            humanSellers.map((seller) => {
-                              const scriptToActivateData = scripts.find(s => s.id === scriptToActivate);
-                              if (!scriptToActivateData) return null; // Skip if script not found
-                              
-                              const currentAssignment = seller.assignments?.find(
-                                a => a.scriptType === scriptToActivateData.scriptType
-                              );
-                              const isCurrentlyAssigned = currentAssignment?.scriptId === scriptToActivate;
-                              const hasActiveScriptOfSameType = currentAssignment && !isCurrentlyAssigned;
-                              
-                              return (
-                                <button
-                                  key={seller.id}
-                                  className={cn(
-                                    "w-full text-left p-4 rounded-lg border transition-all hover:bg-muted/50",
-                                    isCurrentlyAssigned && "border-primary bg-primary/5",
-                                    hasActiveScriptOfSameType && "border-amber-500/50"
-                                  )}
-                                  onClick={() => {
-                                    if (scriptToActivate) {
-                                      assignScriptToSellerMutation.mutate({ 
-                                        scriptId: scriptToActivate, 
-                                        sellerId: seller.id 
-                                      });
-                                    }
-                                  }}
-                                  disabled={assignScriptToSellerMutation.isPending}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
-                                        <Users className="h-5 w-5 text-green-600" />
-                                      </div>
-                                      <div>
-                                        <p className="font-medium">{seller.sellerName}</p>
-                                        <p className="text-sm text-muted-foreground">{seller.businessName || seller.displayName}</p>
-                                      </div>
+                              {agentDialogTab === 'sellers' && (
+                                <>
+                                  {isLoadingHumanSellers ? (
+                                    <div className="text-center py-10 text-muted-foreground">
+                                      <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin text-primary" />
+                                      <p className="text-sm">Caricamento venditori...</p>
                                     </div>
-                                    {isCurrentlyAssigned && (
-                                      <Badge variant="default" className="text-xs">
-                                        <CheckCircle className="h-3 w-3 mr-1" /> Attivo
-                                      </Badge>
-                                    )}
-                                    {hasActiveScriptOfSameType && (
-                                      <Badge variant="outline" className="text-xs border-amber-500 text-amber-600">
-                                        <AlertTriangle className="h-3 w-3 mr-1" /> Attivo altro
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {hasActiveScriptOfSameType && currentAssignment && (
-                                    <p className="text-xs text-amber-600 mt-2 pl-13 flex items-center gap-1">
-                                      <AlertTriangle className="h-3 w-3" />
-                                      Attualmente usa: {currentAssignment.scriptName}
-                                    </p>
+                                  ) : humanSellersError ? (
+                                    <div className="text-center py-10">
+                                      <div className="h-16 w-16 mx-auto mb-3 rounded-full bg-destructive/10 flex items-center justify-center">
+                                        <AlertCircle className="h-8 w-8 text-destructive" />
+                                      </div>
+                                      <p className="font-medium text-destructive">Errore nel caricamento</p>
+                                      <p className="text-sm text-muted-foreground mt-1">{(humanSellersError as Error).message}</p>
+                                    </div>
+                                  ) : humanSellers.length === 0 ? (
+                                    <div className="text-center py-10 text-muted-foreground">
+                                      <div className="h-16 w-16 mx-auto mb-3 rounded-full bg-muted/50 flex items-center justify-center">
+                                        <Users className="h-8 w-8 opacity-40" />
+                                      </div>
+                                      <p className="font-medium">Nessun Venditore</p>
+                                      <p className="text-sm mt-1">Crea prima un Venditore Umano.</p>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {(() => {
+                                        const activeSellers = humanSellers.filter(seller => {
+                                          if (!scriptToActivateData) return false;
+                                          const currentAssignment = seller.assignments?.find(
+                                            a => a.scriptType === scriptToActivateData.scriptType
+                                          );
+                                          return currentAssignment?.scriptId === scriptToActivate;
+                                        });
+                                        
+                                        const otherSellers = humanSellers.filter(seller => {
+                                          if (!scriptToActivateData) return true;
+                                          const currentAssignment = seller.assignments?.find(
+                                            a => a.scriptType === scriptToActivateData.scriptType
+                                          );
+                                          return currentAssignment?.scriptId !== scriptToActivate;
+                                        });
+                                        
+                                        return (
+                                          <>
+                                            {activeSellers.length > 0 && (
+                                              <div className="mb-3">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                  <div className="h-5 w-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                                    <CheckCircle className="h-3 w-3 text-emerald-600" />
+                                                  </div>
+                                                  <span className="text-xs font-medium text-emerald-600 uppercase tracking-wide">Attivo su</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                  {activeSellers.map((seller) => (
+                                                    <div
+                                                      key={seller.id}
+                                                      className="flex items-center gap-3 p-3 rounded-lg border-2 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20"
+                                                    >
+                                                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-md">
+                                                        <Users className="h-5 w-5 text-white" />
+                                                      </div>
+                                                      <div className="flex-1 min-w-0">
+                                                        <p className="font-medium text-sm truncate">{seller.sellerName}</p>
+                                                        <p className="text-xs text-muted-foreground truncate">{seller.businessName || seller.displayName}</p>
+                                                      </div>
+                                                      <Badge variant="default" className="text-xs bg-emerald-600">
+                                                        <CheckCircle className="h-3 w-3 mr-1" /> Attivo
+                                                      </Badge>
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {otherSellers.length > 0 && (
+                                              <div>
+                                                {activeSellers.length > 0 && (
+                                                  <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Altri venditori</span>
+                                                    <div className="flex-1 h-px bg-border" />
+                                                  </div>
+                                                )}
+                                                <div className="space-y-2">
+                                                  {otherSellers.map((seller) => {
+                                                    if (!scriptToActivateData) return null;
+                                                    const currentAssignment = seller.assignments?.find(
+                                                      a => a.scriptType === scriptToActivateData.scriptType
+                                                    );
+                                                    const hasActiveScriptOfSameType = currentAssignment && currentAssignment.scriptId !== scriptToActivate;
+                                                    
+                                                    return (
+                                                      <button
+                                                        key={seller.id}
+                                                        className={cn(
+                                                          "w-full text-left p-3 rounded-lg border-2 transition-all",
+                                                          "hover:border-emerald-500/50 hover:bg-emerald-50/50 hover:shadow-sm",
+                                                          hasActiveScriptOfSameType 
+                                                            ? "border-amber-400/50 bg-amber-50/50 dark:bg-amber-950/20" 
+                                                            : "border-border bg-card"
+                                                        )}
+                                                        onClick={() => {
+                                                          if (scriptToActivate) {
+                                                            assignScriptToSellerMutation.mutate({ 
+                                                              scriptId: scriptToActivate, 
+                                                              sellerId: seller.id 
+                                                            });
+                                                          }
+                                                        }}
+                                                        disabled={assignScriptToSellerMutation.isPending}
+                                                      >
+                                                        <div className="flex items-center gap-3">
+                                                          <div className={cn(
+                                                            "h-10 w-10 rounded-full flex items-center justify-center shadow-sm",
+                                                            hasActiveScriptOfSameType 
+                                                              ? "bg-gradient-to-br from-amber-400 to-orange-500" 
+                                                              : "bg-gradient-to-br from-slate-400 to-slate-500"
+                                                          )}>
+                                                            <Users className="h-5 w-5 text-white" />
+                                                          </div>
+                                                          <div className="flex-1 min-w-0">
+                                                            <p className="font-medium text-sm truncate">{seller.sellerName}</p>
+                                                            <p className="text-xs text-muted-foreground truncate">{seller.businessName || seller.displayName}</p>
+                                                          </div>
+                                                          {hasActiveScriptOfSameType && (
+                                                            <div className="flex flex-col items-end gap-1">
+                                                              <Badge variant="outline" className="text-[10px] border-amber-500 text-amber-600 bg-amber-50">
+                                                                <ArrowRightLeft className="h-2.5 w-2.5 mr-1" /> Sostituisci
+                                                              </Badge>
+                                                              <span className="text-[10px] text-amber-600 truncate max-w-[100px]">
+                                                                {currentAssignment?.scriptName}
+                                                              </span>
+                                                            </div>
+                                                          )}
+                                                        </div>
+                                                      </button>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
+                                    </>
                                   )}
-                                </button>
-                              );
-                            })
-                          )}
+                                </>
+                              )}
+                            </div>
+                          </ScrollArea>
+                          
+                          <div className="flex items-center justify-between pt-2 border-t">
+                            <p className="text-xs text-muted-foreground">
+                              Solo 1 script attivo per tipo
+                            </p>
+                            <Button variant="outline" size="sm" onClick={() => setShowAgentSelectDialog(false)}>
+                              Chiudi
+                            </Button>
+                          </div>
                         </>
-                      )}
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowAgentSelectDialog(false)}>
-                        Annulla
-                      </Button>
-                    </DialogFooter>
+                      );
+                    })()}
                   </DialogContent>
                 </Dialog>
 
