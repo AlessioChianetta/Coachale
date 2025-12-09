@@ -217,7 +217,7 @@ export default function ClientScriptManager() {
     queryKey: ['human-sellers-with-assignments'],
     queryFn: async () => {
       console.log('[ScriptManager] 🔍 Fetching human sellers...');
-      const res = await fetch('/api/human-sellers/with-script-assignments', { headers: getAuthHeaders() });
+      const res = await fetch('/api/client/human-sellers/with-script-assignments', { headers: getAuthHeaders() });
       console.log('[ScriptManager] 📡 Response status:', res.status);
       
       if (!res.ok) {
