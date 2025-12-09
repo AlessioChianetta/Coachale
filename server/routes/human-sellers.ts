@@ -133,9 +133,10 @@ router.get('/', authenticateToken, requireClient, async (req: AuthRequest, res: 
 router.get('/with-script-assignments', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
   try {
     const clientId = req.user!.id;
-    console.log('[HumanSellers] GET with-script-assignments - clientId:', clientId);
+    console.log('[HumanSellers] GET with-script-assignments - START - clientId:', clientId);
     
     // Get all sellers for this client
+    console.log('[HumanSellers] Querying sellers...');
     const sellers = await db
       .select({
         id: humanSellers.id,
@@ -147,7 +148,10 @@ router.get('/with-script-assignments', authenticateToken, requireClient, async (
       .from(humanSellers)
       .where(eq(humanSellers.clientId, clientId));
     
-    console.log('[HumanSellers] Found sellers:', sellers.length, sellers.map(s => s.sellerName));
+    console.log('[HumanSellers] Found sellers:', sellers.length);
+    if (sellers.length > 0) {
+      console.log('[HumanSellers] Seller details:', sellers.map(s => ({ id: s.id, name: s.sellerName })));
+    }
     
     const sellerIds = sellers.map(s => s.id);
     
@@ -159,6 +163,7 @@ router.get('/with-script-assignments', authenticateToken, requireClient, async (
     }> = [];
     
     if (sellerIds.length > 0) {
+      console.log('[HumanSellers] Querying assignments for seller IDs:', sellerIds);
       const dbAssignments = await db
         .select({
           sellerId: humanSellerScriptAssignments.sellerId,
@@ -169,7 +174,9 @@ router.get('/with-script-assignments', authenticateToken, requireClient, async (
         .from(humanSellerScriptAssignments)
         .leftJoin(salesScripts, eq(humanSellerScriptAssignments.scriptId, salesScripts.id));
       
+      console.log('[HumanSellers] Raw assignments from DB:', dbAssignments.length);
       rawAssignments = dbAssignments.filter(a => sellerIds.includes(a.sellerId));
+      console.log('[HumanSellers] Filtered assignments:', rawAssignments.length);
     }
     
     // Combine sellers with their assignments
@@ -188,10 +195,12 @@ router.get('/with-script-assignments', authenticateToken, requireClient, async (
       };
     });
     
+    console.log('[HumanSellers] Sending response with', sellersWithAssignments.length, 'sellers');
     res.json(sellersWithAssignments);
   } catch (error: any) {
-    console.error('[HumanSellers] GET with-script-assignments error:', error);
-    res.status(500).json({ error: 'Errore nel recupero dei venditori con assegnazioni' });
+    console.error('[HumanSellers] GET with-script-assignments ERROR:', error);
+    console.error('[HumanSellers] Error stack:', error.stack);
+    res.status(500).json({ error: 'Errore nel recupero dei venditori con assegnazioni', details: error.message });
   }
 });
 

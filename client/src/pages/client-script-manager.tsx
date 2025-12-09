@@ -219,16 +219,31 @@ export default function ClientScriptManager() {
       console.log('[ScriptManager] 🔍 Fetching human sellers...');
       const res = await fetch('/api/human-sellers/with-script-assignments', { headers: getAuthHeaders() });
       console.log('[ScriptManager] 📡 Response status:', res.status);
+      
       if (!res.ok) {
         const errorText = await res.text();
         console.error('[ScriptManager] ❌ Error response:', errorText);
         throw new Error('Failed to fetch human sellers');
       }
-      const data = await res.json();
-      console.log('[ScriptManager] ✅ Human sellers loaded:', {
-        count: data.length,
-        sellers: data.map((s: any) => ({ id: s.id, name: s.sellerName, assignments: s.assignments?.length || 0 }))
-      });
+      
+      // Get the raw text first to debug
+      const rawText = await res.text();
+      console.log('[ScriptManager] 📄 Raw response (first 500 chars):', rawText.substring(0, 500));
+      
+      // Try to parse JSON
+      let data;
+      try {
+        data = JSON.parse(rawText);
+        console.log('[ScriptManager] ✅ Human sellers loaded:', {
+          count: data.length,
+          sellers: data.map((s: any) => ({ id: s.id, name: s.sellerName, assignments: s.assignments?.length || 0 }))
+        });
+      } catch (parseError) {
+        console.error('[ScriptManager] ❌ JSON parse error:', parseError);
+        console.error('[ScriptManager] ❌ Response was:', rawText);
+        throw new Error('Invalid JSON response from server');
+      }
+      
       return data;
     },
   });
