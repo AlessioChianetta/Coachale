@@ -1717,15 +1717,29 @@ async function handleSetPlaybook(
         console.log(`   📊 Format Detected: ${formatDetected.toUpperCase()}`);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         
+        // ✅ MAPPING INTELLIGENTE: Gestisce sia formato JSON che formato TEXT parser
         session.playbook = {
           id: script.id,
           name: script.name,
-          phases: content?.phases?.map((phase: any) => ({
-            name: phase.name || phase.title || 'Unnamed Phase',
-            objectives: phase.objectives || phase.goals || [],
-            keyPoints: phase.keyPoints || phase.key_points || phase.points || [],
-            questions: phase.questions || phase.suggestedQuestions || [],
-          })) || [],
+          phases: content?.phases?.map((phase: any) => {
+            // Estrae questions da tutti gli step se formato text parser
+            const questionsFromSteps = phase.steps?.flatMap((step: any) => 
+              step.questions?.map((q: any) => typeof q === 'string' ? q : q.text) || []
+            ) || [];
+            
+            // Estrae objectives dagli step se formato text parser
+            const objectivesFromSteps = phase.steps?.map((step: any) => step.objective).filter(Boolean) || [];
+            
+            // Estrae keyPoints (usa step names come keyPoints per formato text)
+            const keyPointsFromSteps = phase.steps?.map((step: any) => step.name).filter(Boolean) || [];
+            
+            return {
+              name: phase.name || phase.title || 'Unnamed Phase',
+              objectives: phase.objectives || phase.goals || (phase.description ? [phase.description] : objectivesFromSteps),
+              keyPoints: phase.keyPoints || phase.key_points || phase.points || keyPointsFromSteps,
+              questions: phase.questions || phase.suggestedQuestions || questionsFromSteps,
+            };
+          }) || [],
           objections: content?.objections?.map((obj: any) => ({
             trigger: obj.trigger || obj.objection || obj.text || '',
             response: obj.response || obj.answer || obj.rebuttal || '',
@@ -2052,15 +2066,31 @@ async function autoLoadPlaybook(
       console.log(`✅ [VideoCopilot] scriptStructure loaded with ${session.scriptStructure.phases.length} phases`);
     }
     
+    // ✅ MAPPING INTELLIGENTE: Gestisce sia formato JSON che formato TEXT parser
+    // Il text parser produce { phases: [{ name, description, steps: [{ objective, questions }] }] }
+    // Il JSON produce { phases: [{ name, objectives, keyPoints, questions }] }
     const playbook: Playbook = {
       id: script.id,
       name: script.name,
-      phases: content?.phases?.map((phase: any) => ({
-        name: phase.name || phase.title || 'Unnamed Phase',
-        objectives: phase.objectives || phase.goals || [],
-        keyPoints: phase.keyPoints || phase.key_points || phase.points || [],
-        questions: phase.questions || phase.suggestedQuestions || [],
-      })) || [],
+      phases: content?.phases?.map((phase: any) => {
+        // Estrae questions da tutti gli step se formato text parser
+        const questionsFromSteps = phase.steps?.flatMap((step: any) => 
+          step.questions?.map((q: any) => typeof q === 'string' ? q : q.text) || []
+        ) || [];
+        
+        // Estrae objectives dagli step se formato text parser
+        const objectivesFromSteps = phase.steps?.map((step: any) => step.objective).filter(Boolean) || [];
+        
+        // Estrae keyPoints (usa step names come keyPoints per formato text)
+        const keyPointsFromSteps = phase.steps?.map((step: any) => step.name).filter(Boolean) || [];
+        
+        return {
+          name: phase.name || phase.title || 'Unnamed Phase',
+          objectives: phase.objectives || phase.goals || (phase.description ? [phase.description] : objectivesFromSteps),
+          keyPoints: phase.keyPoints || phase.key_points || phase.points || keyPointsFromSteps,
+          questions: phase.questions || phase.suggestedQuestions || questionsFromSteps,
+        };
+      }) || [],
       objections: content?.objections?.map((obj: any) => ({
         trigger: obj.trigger || obj.objection || obj.text || '',
         response: obj.response || obj.answer || obj.rebuttal || '',
