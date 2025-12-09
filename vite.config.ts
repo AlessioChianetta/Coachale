@@ -85,7 +85,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'wouter', '@tanstack/react-query'],
-    exclude: ['@shared/schema', 'onnxruntime-web'],
+    exclude: ['@shared/schema', 'onnxruntime-web', '@ricky0123/vad-web'],
   },
   assetsInclude: ['**/*.onnx', '**/*.wasm'],
   server: {

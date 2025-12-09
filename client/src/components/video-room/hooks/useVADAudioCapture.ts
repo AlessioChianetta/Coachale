@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { MicVAD, RealTimeVADOptions } from '@ricky0123/vad-web';
 import { StreamingResampler, float32ToBase64PCM16 } from '@/components/ai-assistant/live-mode/audio-worklet/audio-converter';
+
+// Tipo per MicVAD - lo importiamo dinamicamente per evitare errori con onnxruntime-web
+type MicVADType = any;
+type RealTimeVADOptionsType = any;
 
 interface VADAudioCaptureState {
   isCapturing: boolean;
@@ -41,8 +44,8 @@ export function useVADAudioCapture({
     prospectIsSpeaking: false,
   });
 
-  const hostVadRef = useRef<MicVAD | null>(null);
-  const prospectVadRef = useRef<MicVAD | null>(null);
+  const hostVadRef = useRef<MicVADType | null>(null);
+  const prospectVadRef = useRef<MicVADType | null>(null);
   const hostResamplerRef = useRef<StreamingResampler | null>(null);
   const prospectResamplerRef = useRef<StreamingResampler | null>(null);
 
@@ -211,7 +214,7 @@ export function useVADAudioCapture({
         if (localAudioTrack) {
           console.log('[VAD] Initializing HOST VAD with Silero neural network...');
 
-          const hostVadOptions: Partial<RealTimeVADOptions> = {
+          const hostVadOptions: RealTimeVADOptionsType = {
             getStream: async () => localStream,
             positiveSpeechThreshold: 0.5,
             negativeSpeechThreshold: 0.35,
@@ -223,7 +226,7 @@ export function useVADAudioCapture({
             modelURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/silero_vad.onnx",
 
             // Configura ONNX Runtime per usare WASM senza multithreading
-            ortConfig: (ort) => {
+            ortConfig: (ort: any) => {
               ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
               ort.env.wasm.numThreads = 1; // Disabilita multithreading per evitare problemi COOP/COEP
             },
@@ -261,6 +264,8 @@ export function useVADAudioCapture({
           };
 
           try {
+            // Import dinamico per evitare errori "Dynamic require of onnxruntime-web/wasm is not supported"
+            const { MicVAD } = await import('@ricky0123/vad-web');
             hostVadRef.current = await MicVAD.new(hostVadOptions);
             hostVadRef.current.start();
             console.log('✅ [VAD] HOST Silero VAD started successfully');
