@@ -226,7 +226,7 @@ export function useVADAudioCapture({
         true
       );
       onSpeechEnd(hostParticipantId, hostName);
-    }, 1500);
+    }, 200);
   }, [hostParticipantId, hostName, onSpeechEnd, flushSpeechBuffer]);
 
   const handleProspectSpeechStart = useCallback((prospectId: string, prospectName: string) => {
@@ -290,7 +290,10 @@ export function useVADAudioCapture({
       audioContextRef.current = audioContext;
 
       const sourceSampleRate = audioContext.sampleRate;
-      hostResamplerRef.current = new StreamingResampler(sourceSampleRate, TARGET_SAMPLE_RATE);
+      // FIX CRITICO: Silero VAD restituisce già l'audio a 16kHz. 
+      // Se usiamo il resampler qui, distruggiamo l'audio (lo rendiamo veloce e glitchato).
+      // Impostiamo a null per bypassare il secondo downsampling.
+      hostResamplerRef.current = null;
       prospectResamplerRef.current = new StreamingResampler(sourceSampleRate, TARGET_SAMPLE_RATE);
 
       if (hostParticipantId) {
@@ -300,11 +303,11 @@ export function useVADAudioCapture({
 
           const hostVadOptions: RealTimeVADOptionsType = {
             getStream: async () => localStream,
-            positiveSpeechThreshold: 0.5,
-            negativeSpeechThreshold: 0.25,
-            redemptionFrames: 15,
+            positiveSpeechThreshold: 0.2,
+            negativeSpeechThreshold: 0.05,
+            redemptionFrames: 45,
             minSpeechFrames: 5,
-            preSpeechPadFrames: 15,
+            preSpeechPadFrames: 20,
             // Configura i path per i file WASM e modello dal CDN
             onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
             baseAssetPath: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/",

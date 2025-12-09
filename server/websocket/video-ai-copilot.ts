@@ -493,7 +493,7 @@ async function transcribeAudio(
     const pcmBuffer = base64ToBuffer(audioBase64);
     
     // Minimum 800ms of audio at 16kHz, 16-bit = 25600 bytes
-    const MIN_AUDIO_BYTES = 25600;
+    const MIN_AUDIO_BYTES = 8000;
     if (pcmBuffer.length < MIN_AUDIO_BYTES) {
       console.log(`⚠️ [VideoCopilot] Audio too short: ${pcmBuffer.length} bytes = ${Math.round(pcmBuffer.length / 32)}ms (min: 800ms), skipping transcription`);
       return null;
@@ -1266,9 +1266,13 @@ async function handleAudioChunk(
     console.log(`📦 [STEP 3] Received audio chunk from ${speakerName} - Chunks: ${turnState.currentSpeaker.chunks.length}, Size: ${chunkSize} chars`);
   }
 
-  turnState.silenceTimer = setTimeout(async () => {
-    await handleSilenceDetected(ws, session, turnState!);
-  }, TURN_TAKING_CONFIG.SILENCE_THRESHOLD_MS);
+  // ✅ FIX: Timer disabilitato. Ci fidiamo ciecamenete del segnale 'speech_end' del Client.
+  // Il server accumula solo i dati. Se proviamo a indovinare il silenzio qui,
+  // rompiamo la logica "redemptionFrames" del VAD client.
+
+  // turnState.silenceTimer = setTimeout(async () => {
+  //   await handleSilenceDetected(ws, session, turnState!);
+  // }, TURN_TAKING_CONFIG.SILENCE_THRESHOLD_MS);
 
   const timeSinceLastAnalysis = Date.now() - turnState.lastAnalysisTime;
   if (timeSinceLastAnalysis > TURN_TAKING_CONFIG.MAX_TIME_WITHOUT_ANALYSIS_MS && !turnState.pendingAnalysis) {
