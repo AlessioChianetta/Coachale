@@ -492,8 +492,10 @@ async function transcribeAudio(
     
     const pcmBuffer = base64ToBuffer(audioBase64);
     
-    if (pcmBuffer.length < 100) {
-      console.log(`⚠️ [VideoCopilot] Audio too short (${pcmBuffer.length} bytes), skipping transcription`);
+    // Minimum 400ms of audio at 16kHz, 16-bit = 12800 bytes
+    const MIN_AUDIO_BYTES = 12800;
+    if (pcmBuffer.length < MIN_AUDIO_BYTES) {
+      console.log(`⚠️ [VideoCopilot] Audio too short: ${pcmBuffer.length} bytes = ${Math.round(pcmBuffer.length / 32)}ms (min: 400ms), skipping transcription`);
       return null;
     }
     

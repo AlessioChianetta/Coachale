@@ -77,6 +77,7 @@ interface UseVADAudioCaptureOptions {
 const TARGET_SAMPLE_RATE = 16000;
 const PRE_ROLL_DURATION_MS = 500;
 const PRE_ROLL_SAMPLES = Math.floor((PRE_ROLL_DURATION_MS / 1000) * TARGET_SAMPLE_RATE);
+const MIN_SAMPLES_FOR_TRANSCRIPTION = 6400; // 400ms minimum at 16kHz
 
 export function useVADAudioCapture({
   onAudioChunk,
@@ -153,6 +154,13 @@ export function useVADAudioCapture({
     if (chunks.length === 0) return;
 
     const totalLength = chunks.reduce((acc, arr) => acc + arr.length, 0);
+    
+    // Check minimum audio duration (400ms = 6400 samples at 16kHz)
+    if (totalLength < MIN_SAMPLES_FOR_TRANSCRIPTION) {
+      console.log(`⏭️ [VAD] Audio too short (${totalLength} samples = ${Math.round(totalLength / 16)}ms), skipping - need at least 400ms`);
+      speechBuffer.current = [];
+      return;
+    }
     const concatenated = new Float32Array(totalLength);
     let offset = 0;
     for (const chunk of chunks) {
@@ -180,11 +188,6 @@ export function useVADAudioCapture({
 
     console.log(`🎤 [VAD] HOST speech started - ${hostName}`);
     onSpeechStart(hostParticipantId, hostName);
-
-    if (hostPreRollBufferRef.current.length > 0) {
-      hostSpeechBufferRef.current = [...hostPreRollBufferRef.current];
-      console.log(`📦 [VAD] Pre-roll buffer added: ${hostPreRollBufferRef.current.length} chunks`);
-    }
   }, [hostParticipantId, hostName, onSpeechStart]);
 
   const handleHostSpeechEnd = useCallback(() => {
@@ -201,7 +204,7 @@ export function useVADAudioCapture({
       hostSpeechBufferRef,
       hostPreRollBufferRef,
       hostResamplerRef.current,
-      false
+      true
     );
 
     onSpeechEnd(hostParticipantId, hostName);
@@ -213,11 +216,6 @@ export function useVADAudioCapture({
 
     console.log(`🎧 [VAD] PROSPECT speech started - ${prospectName}`);
     onSpeechStart(prospectId, prospectName);
-
-    if (prospectPreRollBufferRef.current.length > 0) {
-      prospectSpeechBufferRef.current = [...prospectPreRollBufferRef.current];
-      console.log(`📦 [VAD] Pre-roll buffer added: ${prospectPreRollBufferRef.current.length} chunks`);
-    }
   }, [onSpeechStart]);
 
   const handleProspectSpeechEnd = useCallback((prospectId: string, prospectName: string) => {
@@ -232,7 +230,7 @@ export function useVADAudioCapture({
       prospectSpeechBufferRef,
       prospectPreRollBufferRef,
       prospectResamplerRef.current,
-      false
+      true
     );
 
     onSpeechEnd(prospectId, prospectName);
@@ -268,10 +266,10 @@ export function useVADAudioCapture({
           const hostVadOptions: RealTimeVADOptionsType = {
             getStream: async () => localStream,
             positiveSpeechThreshold: 0.5,
-            negativeSpeechThreshold: 0.35,
-            redemptionFrames: 8,
-            minSpeechFrames: 3,
-            preSpeechPadFrames: 10,
+            negativeSpeechThreshold: 0.25,
+            redemptionFrames: 15,
+            minSpeechFrames: 5,
+            preSpeechPadFrames: 15,
             // Configura i path per i file WASM e modello dal CDN
             onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
             baseAssetPath: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/",
