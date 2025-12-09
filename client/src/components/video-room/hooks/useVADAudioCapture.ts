@@ -109,6 +109,9 @@ export function useVADAudioCapture({
 
   const hostIsSpeakingRef = useRef(false);
   const prospectIsSpeakingRef = useRef(false);
+  
+  const hostFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const prospectFlushTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const hostAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -183,6 +186,13 @@ export function useVADAudioCapture({
   const handleHostSpeechStart = useCallback(() => {
     if (!hostParticipantId) return;
 
+    // Cancel any pending flush - speaker resumed talking
+    if (hostFlushTimerRef.current) {
+      clearTimeout(hostFlushTimerRef.current);
+      hostFlushTimerRef.current = null;
+      console.log(`🔄 [VAD] HOST - Cancelled flush timer, speaker resumed`);
+    }
+
     hostIsSpeakingRef.current = true;
     setState(prev => ({ ...prev, hostIsSpeaking: true }));
 
@@ -196,21 +206,37 @@ export function useVADAudioCapture({
     hostIsSpeakingRef.current = false;
     setState(prev => ({ ...prev, hostIsSpeaking: false }));
 
-    console.log(`🔇 [VAD] HOST speech ended - ${hostName}`);
+    console.log(`🔇 [VAD] HOST speech ended - ${hostName} - scheduling flush after 1.5s silence`);
 
-    flushSpeechBuffer(
-      hostParticipantId,
-      hostName,
-      hostSpeechBufferRef,
-      hostPreRollBufferRef,
-      hostResamplerRef.current,
-      true
-    );
-
-    onSpeechEnd(hostParticipantId, hostName);
+    // Clear any existing flush timer
+    if (hostFlushTimerRef.current) {
+      clearTimeout(hostFlushTimerRef.current);
+    }
+    
+    // Schedule flush after 1.5 seconds of true silence
+    // This allows accumulating speech even with micro-pauses
+    hostFlushTimerRef.current = setTimeout(() => {
+      console.log(`⏰ [VAD] HOST - True silence detected, flushing buffer`);
+      flushSpeechBuffer(
+        hostParticipantId,
+        hostName,
+        hostSpeechBufferRef,
+        hostPreRollBufferRef,
+        hostResamplerRef.current,
+        true
+      );
+      onSpeechEnd(hostParticipantId, hostName);
+    }, 1500);
   }, [hostParticipantId, hostName, onSpeechEnd, flushSpeechBuffer]);
 
   const handleProspectSpeechStart = useCallback((prospectId: string, prospectName: string) => {
+    // Cancel any pending flush - speaker resumed talking
+    if (prospectFlushTimerRef.current) {
+      clearTimeout(prospectFlushTimerRef.current);
+      prospectFlushTimerRef.current = null;
+      console.log(`🔄 [VAD] PROSPECT - Cancelled flush timer, speaker resumed`);
+    }
+
     prospectIsSpeakingRef.current = true;
     setState(prev => ({ ...prev, prospectIsSpeaking: true }));
 
@@ -222,18 +248,27 @@ export function useVADAudioCapture({
     prospectIsSpeakingRef.current = false;
     setState(prev => ({ ...prev, prospectIsSpeaking: false }));
 
-    console.log(`🔇 [VAD] PROSPECT speech ended - ${prospectName}`);
+    console.log(`🔇 [VAD] PROSPECT speech ended - ${prospectName} - scheduling flush after 1.5s silence`);
 
-    flushSpeechBuffer(
-      prospectId,
-      prospectName,
-      prospectSpeechBufferRef,
-      prospectPreRollBufferRef,
-      prospectResamplerRef.current,
-      true
-    );
-
-    onSpeechEnd(prospectId, prospectName);
+    // Clear any existing flush timer
+    if (prospectFlushTimerRef.current) {
+      clearTimeout(prospectFlushTimerRef.current);
+    }
+    
+    // Schedule flush after 1.5 seconds of true silence
+    // This allows accumulating speech even with micro-pauses
+    prospectFlushTimerRef.current = setTimeout(() => {
+      console.log(`⏰ [VAD] PROSPECT - True silence detected, flushing buffer`);
+      flushSpeechBuffer(
+        prospectId,
+        prospectName,
+        prospectSpeechBufferRef,
+        prospectPreRollBufferRef,
+        prospectResamplerRef.current,
+        true
+      );
+      onSpeechEnd(prospectId, prospectName);
+    }, 1500);
   }, [onSpeechEnd, flushSpeechBuffer]);
 
   const startCapture = useCallback(async (
@@ -402,6 +437,16 @@ export function useVADAudioCapture({
 
   const stopCapture = useCallback(() => {
     console.log('[VAD-AudioCapture] Stopping...');
+
+    // Clear flush timers
+    if (hostFlushTimerRef.current) {
+      clearTimeout(hostFlushTimerRef.current);
+      hostFlushTimerRef.current = null;
+    }
+    if (prospectFlushTimerRef.current) {
+      clearTimeout(prospectFlushTimerRef.current);
+      prospectFlushTimerRef.current = null;
+    }
 
     if (hostVadRef.current) {
       hostVadRef.current.pause();
