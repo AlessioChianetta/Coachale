@@ -306,7 +306,7 @@ export default function ClientScriptManager() {
 
   const assignScriptToSellerMutation = useMutation({
     mutationFn: async ({ scriptId, sellerId }: { scriptId: string; sellerId: string }) => {
-      const res = await fetch(`/api/human-sellers/${sellerId}/assign-script`, { 
+      const res = await fetch(`/api/client/human-sellers/${sellerId}/assign-script`, { 
         method: 'POST', 
         headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ scriptId }),
