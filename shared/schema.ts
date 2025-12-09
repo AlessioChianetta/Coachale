@@ -4057,6 +4057,39 @@ export const insertHumanSellerSchema = createInsertSchema(humanSellers).omit({
   updatedAt: true,
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Human Seller Script Assignments - Collega script specifici a venditori umani
+// Un venditore può avere max 1 script per tipo (discovery, demo)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const humanSellerScriptAssignments = pgTable("human_seller_script_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Relazioni
+  sellerId: varchar("seller_id").references(() => humanSellers.id, { onDelete: "cascade" }).notNull(),
+  scriptId: varchar("script_id").references(() => salesScripts.id, { onDelete: "cascade" }).notNull(),
+  
+  // Tipo script per vincolo unicità (1 venditore = max 1 script per tipo)
+  scriptType: text("script_type").notNull().$type<"discovery" | "demo">(),
+  
+  // Metadata
+  assignedAt: timestamp("assigned_at").default(sql`now()`).notNull(),
+  assignedBy: varchar("assigned_by").references(() => users.id),
+}, (table) => {
+  return {
+    // Vincolo unicità: 1 venditore può avere solo 1 script per tipo
+    sellerTypeUnique: index("seller_script_type_unique_idx").on(table.sellerId, table.scriptType),
+  };
+});
+
+export type HumanSellerScriptAssignment = typeof humanSellerScriptAssignments.$inferSelect;
+export type InsertHumanSellerScriptAssignment = typeof humanSellerScriptAssignments.$inferInsert;
+
+export const insertHumanSellerScriptAssignmentSchema = createInsertSchema(humanSellerScriptAssignments).omit({
+  id: true,
+  assignedAt: true,
+});
+
 // Video Meetings - Meeting video programmati
 export const videoMeetings = pgTable("video_meetings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
