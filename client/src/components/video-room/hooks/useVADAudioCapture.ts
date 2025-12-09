@@ -45,16 +45,16 @@ export function useVADAudioCapture({
   const prospectVadRef = useRef<MicVAD | null>(null);
   const hostResamplerRef = useRef<StreamingResampler | null>(null);
   const prospectResamplerRef = useRef<StreamingResampler | null>(null);
-  
+
   const hostPreRollBufferRef = useRef<Float32Array[]>([]);
   const prospectPreRollBufferRef = useRef<Float32Array[]>([]);
-  
+
   const hostSpeechBufferRef = useRef<Float32Array[]>([]);
   const prospectSpeechBufferRef = useRef<Float32Array[]>([]);
-  
+
   const hostIsSpeakingRef = useRef(false);
   const prospectIsSpeakingRef = useRef(false);
-  
+
   const audioContextRef = useRef<AudioContext | null>(null);
   const hostAnalyserRef = useRef<AnalyserNode | null>(null);
   const prospectAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -74,7 +74,7 @@ export function useVADAudioCapture({
     maxSamples: number
   ) => {
     buffer.current.push(new Float32Array(data));
-    
+
     let totalSamples = buffer.current.reduce((acc, arr) => acc + arr.length, 0);
     while (totalSamples > maxSamples && buffer.current.length > 0) {
       const removed = buffer.current.shift();
@@ -95,7 +95,7 @@ export function useVADAudioCapture({
     const chunks = includingPreRoll 
       ? [...preRollBuffer.current, ...speechBuffer.current]
       : speechBuffer.current;
-    
+
     if (chunks.length === 0) return;
 
     const totalLength = chunks.reduce((acc, arr) => acc + arr.length, 0);
@@ -120,13 +120,13 @@ export function useVADAudioCapture({
 
   const handleHostSpeechStart = useCallback(() => {
     if (!hostParticipantId) return;
-    
+
     hostIsSpeakingRef.current = true;
     setState(prev => ({ ...prev, hostIsSpeaking: true }));
-    
+
     console.log(`🎤 [VAD] HOST speech started - ${hostName}`);
     onSpeechStart(hostParticipantId, hostName);
-    
+
     if (hostPreRollBufferRef.current.length > 0) {
       hostSpeechBufferRef.current = [...hostPreRollBufferRef.current];
       console.log(`📦 [VAD] Pre-roll buffer added: ${hostPreRollBufferRef.current.length} chunks`);
@@ -135,12 +135,12 @@ export function useVADAudioCapture({
 
   const handleHostSpeechEnd = useCallback(() => {
     if (!hostParticipantId) return;
-    
+
     hostIsSpeakingRef.current = false;
     setState(prev => ({ ...prev, hostIsSpeaking: false }));
-    
+
     console.log(`🔇 [VAD] HOST speech ended - ${hostName}`);
-    
+
     flushSpeechBuffer(
       hostParticipantId,
       hostName,
@@ -149,17 +149,17 @@ export function useVADAudioCapture({
       hostResamplerRef.current,
       false
     );
-    
+
     onSpeechEnd(hostParticipantId, hostName);
   }, [hostParticipantId, hostName, onSpeechEnd, flushSpeechBuffer]);
 
   const handleProspectSpeechStart = useCallback((prospectId: string, prospectName: string) => {
     prospectIsSpeakingRef.current = true;
     setState(prev => ({ ...prev, prospectIsSpeaking: true }));
-    
+
     console.log(`🎧 [VAD] PROSPECT speech started - ${prospectName}`);
     onSpeechStart(prospectId, prospectName);
-    
+
     if (prospectPreRollBufferRef.current.length > 0) {
       prospectSpeechBufferRef.current = [...prospectPreRollBufferRef.current];
       console.log(`📦 [VAD] Pre-roll buffer added: ${prospectPreRollBufferRef.current.length} chunks`);
@@ -169,9 +169,9 @@ export function useVADAudioCapture({
   const handleProspectSpeechEnd = useCallback((prospectId: string, prospectName: string) => {
     prospectIsSpeakingRef.current = false;
     setState(prev => ({ ...prev, prospectIsSpeaking: false }));
-    
+
     console.log(`🔇 [VAD] PROSPECT speech ended - ${prospectName}`);
-    
+
     flushSpeechBuffer(
       prospectId,
       prospectName,
@@ -180,7 +180,7 @@ export function useVADAudioCapture({
       prospectResamplerRef.current,
       false
     );
-    
+
     onSpeechEnd(prospectId, prospectName);
   }, [onSpeechEnd, flushSpeechBuffer]);
 
@@ -210,7 +210,7 @@ export function useVADAudioCapture({
         const localAudioTrack = localStream.getAudioTracks()[0];
         if (localAudioTrack) {
           console.log('[VAD] Initializing HOST VAD with Silero neural network...');
-          
+
           const hostVadOptions: Partial<RealTimeVADOptions> = {
             getStream: async () => localStream,
             positiveSpeechThreshold: 0.5,
@@ -218,12 +218,16 @@ export function useVADAudioCapture({
             redemptionFrames: 8,
             minSpeechFrames: 3,
             preSpeechPadFrames: 10,
-            baseAssetPath: "/vad-assets/",
-            onnxWASMBasePath: "/vad-assets/",
-            ortConfig: (ort: any) => {
-              ort.env.wasm.numThreads = 1;
-              ort.env.wasm.wasmPaths = "/vad-assets/";
+            // Carica i file WASM da CDN per evitare problemi di bundling
+            workletURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/vad.worklet.bundle.min.js",
+            modelURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/silero_vad.onnx",
+
+            // Configura ONNX Runtime per usare WASM senza multithreading
+            ortConfig: (ort) => {
+              ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
+              ort.env.wasm.numThreads = 1; // Disabilita multithreading per evitare problemi COOP/COEP
             },
+
             onSpeechStart: () => {
               handleHostSpeechStart();
             },
@@ -236,12 +240,12 @@ export function useVADAudioCapture({
             onFrameProcessed: (probs: { isSpeech: number; notSpeech: number }, frame: Float32Array) => {
               const rms = calculateRMS(frame);
               setState(prev => ({ ...prev, hostAudioLevel: rms }));
-              
+
               addToPreRollBuffer(hostPreRollBufferRef, frame, PRE_ROLL_SAMPLES);
-              
+
               if (hostIsSpeakingRef.current) {
                 hostSpeechBufferRef.current.push(new Float32Array(frame));
-                
+
                 if (hostSpeechBufferRef.current.length % 25 === 0) {
                   flushSpeechBuffer(
                     hostParticipantId,
@@ -271,41 +275,41 @@ export function useVADAudioCapture({
         const remoteAudioTrack = remoteStream.getAudioTracks()[0];
         if (remoteAudioTrack) {
           console.log('[VAD] Setting up PROSPECT audio capture with RMS-based VAD fallback...');
-          
+
           const remoteMediaStream = new MediaStream([remoteAudioTrack]);
           const remoteSource = audioContext.createMediaStreamSource(remoteMediaStream);
-          
+
           const analyser = audioContext.createAnalyser();
           analyser.fftSize = 256;
           remoteSource.connect(analyser);
           prospectAnalyserRef.current = analyser;
-          
+
           const scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
           remoteSource.connect(scriptProcessor);
           scriptProcessor.connect(audioContext.destination);
-          
+
           const SPEECH_THRESHOLD = 0.01;
           let silenceFrames = 0;
           const SILENCE_FRAMES_THRESHOLD = 12;
-          
+
           scriptProcessor.onaudioprocess = (event) => {
             const inputData = event.inputBuffer.getChannelData(0);
             const rms = calculateRMS(inputData);
             setState(prev => ({ ...prev, prospectAudioLevel: rms }));
-            
+
             addToPreRollBuffer(prospectPreRollBufferRef, inputData, PRE_ROLL_SAMPLES);
-            
+
             const isSpeech = rms > SPEECH_THRESHOLD;
-            
+
             if (isSpeech) {
               silenceFrames = 0;
-              
+
               if (!prospectIsSpeakingRef.current) {
                 handleProspectSpeechStart(prospectParticipantId, prospectName);
               }
-              
+
               prospectSpeechBufferRef.current.push(new Float32Array(inputData));
-              
+
               if (prospectSpeechBufferRef.current.length % 25 === 0) {
                 flushSpeechBuffer(
                   prospectParticipantId,
@@ -318,13 +322,13 @@ export function useVADAudioCapture({
               }
             } else {
               silenceFrames++;
-              
+
               if (prospectIsSpeakingRef.current && silenceFrames >= SILENCE_FRAMES_THRESHOLD) {
                 handleProspectSpeechEnd(prospectParticipantId, prospectName);
               }
             }
           };
-          
+
           console.log('✅ [VAD] PROSPECT RMS-based VAD started');
         }
       }
@@ -350,29 +354,29 @@ export function useVADAudioCapture({
 
   const stopCapture = useCallback(() => {
     console.log('[VAD-AudioCapture] Stopping...');
-    
+
     if (hostVadRef.current) {
       hostVadRef.current.pause();
       hostVadRef.current.destroy();
       hostVadRef.current = null;
     }
-    
+
     if (prospectVadRef.current) {
       prospectVadRef.current.pause();
       prospectVadRef.current.destroy();
       prospectVadRef.current = null;
     }
-    
+
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
-    
+
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
     }
-    
+
     hostResamplerRef.current = null;
     prospectResamplerRef.current = null;
     hostPreRollBufferRef.current = [];
@@ -381,7 +385,7 @@ export function useVADAudioCapture({
     prospectSpeechBufferRef.current = [];
     hostIsSpeakingRef.current = false;
     prospectIsSpeakingRef.current = false;
-    
+
     setState({
       isCapturing: false,
       error: null,
@@ -390,7 +394,7 @@ export function useVADAudioCapture({
       hostIsSpeaking: false,
       prospectIsSpeaking: false,
     });
-    
+
     console.log('[VAD-AudioCapture] Stopped');
   }, []);
 
