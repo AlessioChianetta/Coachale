@@ -218,6 +218,12 @@ export function useVADAudioCapture({
             redemptionFrames: 8,
             minSpeechFrames: 3,
             preSpeechPadFrames: 10,
+            workletURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/vad.worklet.bundle.min.js",
+            modelURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/silero_vad.onnx",
+            ortConfig: (ort: any) => {
+              ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
+              ort.env.wasm.numThreads = 1;
+            },
             onSpeechStart: () => {
               handleHostSpeechStart();
             },
