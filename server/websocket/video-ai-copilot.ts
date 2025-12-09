@@ -545,17 +545,22 @@ async function performTranscription(
     return null;
   }
 
-  const prompt = `Transcribe the following audio to Italian text.
+  const prompt = `Trascrivi ESATTAMENTE quello che senti in questo audio in italiano.
 
-RULES:
-1. Return the exact words spoken - nothing more, nothing less
-2. Transcribe EVERYTHING you hear, even single words, letters, or short sounds like "sì", "no", "ah", "ok"
-3. If the audio is completely silent with zero speech, return empty string ""
-4. Do NOT repeat words unless the speaker actually repeated them
-5. Do NOT invent words that weren't spoken
+REGOLE FONDAMENTALI:
+1. Scrivi SOLO le parole pronunciate - niente di più, niente di meno
+2. Trascrivi TUTTO ciò che senti, anche singole parole, lettere o suoni brevi come "sì", "no", "ah", "ok", "uno", "due", "tre"
+3. Se l'audio è completamente silenzioso senza parlato, restituisci stringa vuota ""
+4. NON ripetere parole a meno che la persona non le abbia davvero ripetute
+5. NON inventare parole che non sono state pronunciate
+6. IMPORTANTE: Se senti numeri (uno, due, tre, quattro, cinque, ecc.), scrivili ESATTAMENTE come pronunciati
 
-Context: Sales video call. Speaker: ${speakerName}.`;
+Speaker: ${speakerName}
 
+Trascrizione:`;
+
+  console.log(`🎯 [Trascrizione] Inviando richiesta a Gemini con prompt italiano...`);
+  
   const response = await cachedProvider.client.generateContent({
     model: 'gemini-2.5-flash',
     contents: [
@@ -568,10 +573,12 @@ Context: Sales video call. Speaker: ${speakerName}.`;
       }
     ],
     generationConfig: {
-      temperature: 0.1,
-      maxOutputTokens: 500,
+      temperature: 0.0,  // Temperatura 0 per trascrizione precisa
+      maxOutputTokens: 1000,  // Aumentato per evitare troncamenti
     }
   });
+  
+  console.log(`📊 [Trascrizione] Risposta ricevuta, estrazione testo...`);
 
   const rawTranscript = response.response.text().trim();
   
