@@ -15,6 +15,7 @@ interface Participant {
   name: string;
   role: 'host' | 'guest' | 'prospect';
   isSpeaking?: boolean;
+  transcriptions?: Array<{ text: string; timestamp: number }>; // Added for message history
 }
 
 interface Playbook {
@@ -267,14 +268,14 @@ async function authenticateConnection(req: any): Promise<{
 
     let consultantId: string | null = null;
     let businessContext: BusinessContext | null = null;
-    
+
     if (meeting.sellerId) {
       const [seller] = await db
         .select()
         .from(humanSellers)
         .where(eq(humanSellers.id, meeting.sellerId))
         .limit(1);
-      
+
       if (seller) {
         // Build BusinessContext from seller data (COMPLETO - allineato a SalesAgentConfig)
         // Parse servicesOffered safely - mantiene oggetti completi {name, description, price}
@@ -320,14 +321,14 @@ async function authenticateConnection(req: any): Promise<{
           displayName: seller.displayName || seller.sellerName || 'Consulente',
           businessName: seller.businessName || seller.sellerName || 'Azienda',
           businessDescription: seller.businessDescription || null,
-          
+
           // Bio & Credenziali
           consultantBio: seller.consultantBio || null,
           yearsExperience: seller.yearsExperience || 0,
           clientsHelped: seller.clientsHelped || 0,
           resultsGenerated: seller.resultsGenerated || null,
           guarantees: seller.guarantees || null,
-          
+
           // Posizionamento
           vision: seller.vision || null,
           mission: seller.mission || null,
@@ -335,19 +336,19 @@ async function authenticateConnection(req: any): Promise<{
           usp: seller.usp || null,
           targetClient: seller.targetClient || null,
           nonTargetClient: seller.nonTargetClient || null,
-          
+
           // Operativo
           whatWeDo: seller.whatWeDo || null,
           howWeDoIt: seller.howWeDoIt || null,
-          
+
           // Servizi completi
           servicesOffered: parsedServices,
-          
+
           // Fasi
           enableDiscovery: seller.enableDiscovery ?? true,
           enableDemo: seller.enableDemo ?? false,
         };
-        
+
         // 📊 LOG DETTAGLIATO CONTESTO VENDITORE
         console.log(`\n👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         console.log(`👤 [VideoCopilot] SELLER CONTEXT LOADED`);
@@ -363,7 +364,7 @@ async function authenticateConnection(req: any): Promise<{
         console.log(`   👤 Enable Discovery: ${businessContext.enableDiscovery}`);
         console.log(`   👤 Enable Demo: ${businessContext.enableDemo}`);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-        
+
         // CRITICAL: Consultant hierarchy traversal for Vertex AI credentials
         // Priority: seller.consultantId → client.consultantId → clientId (self-managed)
         if (seller.consultantId) {
@@ -375,14 +376,14 @@ async function authenticateConnection(req: any): Promise<{
             .from(users)
             .where(eq(users.id, seller.clientId))
             .limit(1);
-          
+
           consultantId = client?.consultantId || seller.clientId;
         }
       }
     }
 
     let playbookId = meeting.playbookId || null;
-    
+
     if (!playbookId && consultantId) {
       const [activeScript] = await db
         .select({ id: salesScripts.id })
@@ -393,7 +394,7 @@ async function authenticateConnection(req: any): Promise<{
           eq(salesScripts.isActive, true)
         ))
         .limit(1);
-      
+
       if (activeScript) {
         playbookId = activeScript.id;
         console.log(`📘 [VideoCopilot] Using active discovery script as fallback: ${playbookId}`);
@@ -429,33 +430,33 @@ async function withRetry<T>(
   operationName: string = 'API call'
 ): Promise<T> {
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error: any) {
       lastError = error;
-      
+
       const is429 = error.status === 429 || 
                     error.message?.includes('429') ||
                     error.message?.includes('Too Many Requests') ||
                     error.message?.includes('RESOURCE_EXHAUSTED');
-      
+
       if (!is429 || attempt === config.maxRetries) {
         throw error;
       }
-      
+
       const delay = Math.min(
         config.baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000,
         config.maxDelayMs
       );
-      
+
       console.log(`⚠️ [RETRY] ${operationName} - 429 error, attempt ${attempt + 1}/${config.maxRetries}, waiting ${Math.round(delay)}ms`);
-      
+
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
+
   throw lastError;
 }
 
@@ -532,7 +533,7 @@ async function getOrCreateCachedAiProvider(session: SessionState): Promise<Cache
       session.clientId,
       session.consultantId || undefined
     );
-    
+
     session.cachedAiProvider = {
       client: aiProvider.client,
       metadata: aiProvider.metadata,
@@ -540,7 +541,7 @@ async function getOrCreateCachedAiProvider(session: SessionState): Promise<Cache
       cleanup: aiProvider.cleanup,
       cachedAt: Date.now(),
     };
-    
+
     console.log(`✅ [VideoCopilot] AI provider cached (source: ${aiProvider.source})`);
     return session.cachedAiProvider;
   } catch (error: any) {
@@ -565,16 +566,16 @@ async function transcribeAudio(
     }
 
     console.log(`🎤 [VideoCopilot] Transcribing audio from ${speakerName} (${audioBase64.length} chars base64)`);
-    
+
     const pcmBuffer = base64ToBuffer(audioBase64);
-    
+
     // Minimum 800ms of audio at 16kHz, 16-bit = 25600 bytes
     const MIN_AUDIO_BYTES = 8000;
     if (pcmBuffer.length < MIN_AUDIO_BYTES) {
       console.log(`⚠️ [VideoCopilot] Audio too short: ${pcmBuffer.length} bytes = ${Math.round(pcmBuffer.length / 32)}ms (min: 800ms), skipping transcription`);
       return null;
     }
-    
+
     // GUARD: Limit buffer size to prevent memory issues (max 2MB WAV)
     const MAX_AUDIO_SIZE = 2 * 1024 * 1024;
     if (pcmBuffer.length > MAX_AUDIO_SIZE) {
@@ -583,15 +584,15 @@ async function transcribeAudio(
       const truncatedBuffer = pcmBuffer.slice(-MAX_AUDIO_SIZE);
       const wavBuffer = addWAVHeaders(truncatedBuffer, 16000, 1, 16);
       const wavBase64 = bufferToBase64(wavBuffer);
-      
+
       console.log(`🔄 [VideoCopilot] Truncated PCM ${truncatedBuffer.length} bytes → WAV ${wavBuffer.length} bytes`);
-      
+
       return await performTranscription(session, wavBase64, speakerId, speakerName);
     }
-    
+
     const wavBuffer = addWAVHeaders(pcmBuffer, 16000, 1, 16);
     const wavBase64 = bufferToBase64(wavBuffer);
-    
+
     console.log(`🔄 [VideoCopilot] PCM ${pcmBuffer.length} bytes → WAV ${wavBuffer.length} bytes`);
 
     // 💾 Salva il file WAV su disco per debug/analisi
@@ -607,13 +608,13 @@ async function transcribeAudio(
     return await performTranscription(session, wavBase64, speakerId, speakerName);
   } catch (error: any) {
     console.error(`❌ [VideoCopilot] Transcription error:`, error.message);
-    
+
     // If this is a provider error, mark it as failed to prevent loop
     if (error.message.includes('API key') || error.message.includes('credentials') || error.message.includes('provider')) {
       session.aiProviderFailed = true;
       session.aiProviderErrorMessage = error.message;
     }
-    
+
     return null;
   }
 }
@@ -625,7 +626,7 @@ async function performTranscription(
   speakerName: string
 ): Promise<string | null> {
   const cachedProvider = await getOrCreateCachedAiProvider(session);
-  
+
   if (!cachedProvider) {
     console.log(`⚠️ [VideoCopilot] No AI provider available, skipping transcription`);
     return null;
@@ -634,7 +635,7 @@ async function performTranscription(
   const prompt = `Trascrivi questo audio in italiano. Scrivi SOLO le parole pronunciate, senza aggiungere nulla.`;
 
   console.log(`🎯 [Trascrizione] Inviando richiesta a Gemini con prompt italiano...`);
-  
+
   const response = await cachedProvider.client.generateContent({
     model: 'gemini-2.5-flash',
     contents: [
@@ -653,23 +654,23 @@ async function performTranscription(
       topK: 1,  // Forza il modello a scegliere sempre la parola più probabile
     }
   });
-  
+
   console.log(`📊 [Trascrizione] Risposta ricevuta, estrazione testo...`);
 
   const rawTranscript = response.response.text().trim();
-  
+
   console.log(`📝 [VideoCopilot] Raw transcription: "${rawTranscript.substring(0, 100)}${rawTranscript.length > 100 ? '...' : ''}"`);
-  
+
   // Detect hallucinated/repetitive output
   const transcript = detectAndFilterHallucination(rawTranscript);
-  
+
   if (transcript === null) {
     console.log(`⚠️ [VideoCopilot] Hallucination detected, discarding transcript`);
     return null;
   }
-  
+
   console.log(`📝 [VideoCopilot] Final transcription: "${transcript.substring(0, 100)}${transcript.length > 100 ? '...' : ''}"`);
-  
+
   if (transcript && transcript.length > 0) {
     await db.insert(videoMeetingTranscripts).values({
       meetingId: session.meetingId,
@@ -688,9 +689,9 @@ function detectAndFilterHallucination(text: string): string | null {
   if (!text || text.length === 0) {
     return null;
   }
-  
+
   const lowerText = text.toLowerCase();
-  
+
   // Check if model echoed back the prompt (prompt leakage hallucination)
   const promptKeywords = [
     'trascrivi questo audio',
@@ -699,21 +700,21 @@ function detectAndFilterHallucination(text: string): string | null {
     'transcribe this audio',
     'write only the spoken words',
   ];
-  
+
   for (const keyword of promptKeywords) {
     if (lowerText.includes(keyword)) {
       console.log(`⚠️ [Hallucination] Prompt leakage detected: "${keyword}"`);
       return null;
     }
   }
-  
+
   // Split into words
   const words = lowerText.split(/\s+/).filter(w => w.length > 0);
-  
+
   if (words.length === 0) {
     return null;
   }
-  
+
   // Check for excessive repetition (same word repeated 4+ times in a row)
   let consecutiveCount = 1;
   for (let i = 1; i < words.length; i++) {
@@ -727,13 +728,13 @@ function detectAndFilterHallucination(text: string): string | null {
       consecutiveCount = 1;
     }
   }
-  
+
   // Check if more than 50% of words are the same (e.g., "allora allora allora allora allora")
   const wordCounts = new Map<string, number>();
   for (const word of words) {
     wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
   }
-  
+
   for (const [word, count] of wordCounts) {
     const ratio = count / words.length;
     if (ratio > 0.5 && count >= 4) {
@@ -741,7 +742,7 @@ function detectAndFilterHallucination(text: string): string | null {
       return null;
     }
   }
-  
+
   return text;
 }
 
@@ -929,7 +930,7 @@ function calculateScriptProgress(session: SessionState): {
 } {
   // BUG #4 FIX: Use scriptStructure (parsed script) instead of playbook
   const phases = session.scriptStructure?.phases || session.playbook?.phases;
-  
+
   if (!phases || phases.length === 0) {
     return {
       currentPhase: 0,
@@ -945,14 +946,14 @@ function calculateScriptProgress(session: SessionState): {
   const currentPhaseData = phases[session.currentPhaseIndex];
   const phaseName = currentPhaseData?.name || currentPhaseData?.title || 'Unknown';
   const phaseNames = phases.map((p: any) => p.name || p.title || 'Fase');
-  
+
   // Add step information
   const steps = currentPhaseData?.steps || [];
   const totalSteps = steps.length;
   const currentStep = session.currentStepIndex + 1;
   const currentStepData = steps[session.currentStepIndex];
   const stepName = currentStepData?.name || currentStepData?.title || '';
-  
+
   const completionPercentage = Math.round((currentPhase / totalPhases) * 100);
 
   return {
@@ -1000,21 +1001,21 @@ async function transcribeBufferedAudio(
     buffer.chunks = [];
     return null;
   }
-  
+
   const combinedAudio = combineAudioChunks(buffer.chunks);
-  
+
   // Don't use retry if we know the provider might fail - try once directly
   const transcript = await transcribeAudio(session, combinedAudio, buffer.speakerId, buffer.speakerName);
-  
+
   // Always clear buffer after attempting transcription (prevents infinite accumulation)
   buffer.chunks = [];
-  
+
   if (transcript) {
     buffer.transcriptParts.push(transcript);
     buffer.fullTranscript = buffer.transcriptParts.join(' ');
-    
+
     session.totalTranscriptText += ` ${transcript}`;
-    
+
     console.log(`📤 [STEP 5] Sending transcript to client - Speaker: ${buffer.speakerName}, Text: "${transcript.substring(0, 60)}..."`);
     sendMessage(ws, {
       type: 'transcript',
@@ -1027,7 +1028,7 @@ async function transcribeBufferedAudio(
       },
       timestamp: Date.now(),
     });
-    
+
     session.transcriptBuffer.push({
       speakerId: buffer.speakerId,
       speakerName: buffer.speakerName,
@@ -1035,7 +1036,7 @@ async function transcribeBufferedAudio(
       timestamp: Date.now(),
       sentiment: 'neutral',
     });
-    
+
     console.log(`📝 [STEP 5 DONE] Transcribed ${buffer.speakerName}: "${transcript.substring(0, 60)}..." (partial: ${isPartial})`);
   } else if (session.aiProviderFailed) {
     // Provider failed during this call - notify client
@@ -1049,7 +1050,7 @@ async function transcribeBufferedAudio(
       timestamp: Date.now(),
     });
   }
-  
+
   return transcript;
 }
 
@@ -1061,11 +1062,11 @@ async function handleSilenceDetectedForSpeaker(
 ) {
   const buffer = turnState.speakerBuffers.get(speakerId);
   if (!buffer) return;
-  
+
   console.log(`🔇 [STEP 4] Silence detected for ${buffer.speakerName} (${buffer.chunks.length} chunks buffered) - Starting transcription...`);
-  
+
   const transcript = await transcribeBufferedAudio(ws, session, buffer, true);
-  
+
   if (transcript) {
     const participant = session.participants.get(buffer.speakerId);
     if (participant?.role === 'prospect') {
@@ -1097,26 +1098,26 @@ function handleSpeechStart(
   const { meetingId } = session;
   const speakerId = message.speakerId;
   const speakerName = message.speakerName || 'Unknown Speaker';
-  
+
   if (!speakerId) {
     console.log(`⚠️ [VAD-SPEECH-START] Missing speakerId, ignoring`);
     return;
   }
-  
+
   console.log(`🎤 [VAD-SPEECH-START] ${speakerName} started speaking (client VAD)`);
-  
+
   let turnState = turnStates.get(meetingId);
   if (!turnState) {
     turnState = createTurnState(meetingId);
     turnStates.set(meetingId, turnState);
   }
-  
+
   const existingSilenceTimer = turnState.silenceTimers.get(speakerId);
   if (existingSilenceTimer) {
     clearTimeout(existingSilenceTimer);
     turnState.silenceTimers.delete(speakerId);
   }
-  
+
   let buffer = turnState.speakerBuffers.get(speakerId);
   if (!buffer) {
     buffer = createSpeakerBuffer(speakerId, speakerName, session);
@@ -1135,43 +1136,43 @@ async function handleSpeechEndFromClient(
   const { meetingId } = session;
   const speakerId = message.speakerId;
   const speakerName = message.speakerName || 'Unknown Speaker';
-  
+
   if (!speakerId) {
     console.log(`⚠️ [VAD-SPEECH-END] Missing speakerId, ignoring`);
     return;
   }
-  
+
   console.log(`🔇 [VAD-SPEECH-END] ${speakerName} stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!`);
-  
+
   const turnState = turnStates.get(meetingId);
   if (!turnState) {
     console.log(`⚠️ [VAD-SPEECH-END] No turn state for meeting ${meetingId}`);
     return;
   }
-  
+
   const silenceTimer = turnState.silenceTimers.get(speakerId);
   if (silenceTimer) {
     clearTimeout(silenceTimer);
     turnState.silenceTimers.delete(speakerId);
   }
-  
+
   const buffer = turnState.speakerBuffers.get(speakerId);
-  
+
   if (!buffer) {
     console.log(`⚠️ [VAD-SPEECH-END] No buffer found for speaker ${speakerName} (${speakerId})`);
     return;
   }
-  
+
   if (buffer.chunks.length < TURN_TAKING_CONFIG.MIN_AUDIO_CHUNKS) {
     console.log(`⏭️ [VAD-SPEECH-END] Too little audio (${buffer.chunks.length} chunks) for ${speakerName}, skipping`);
     turnState.speakerBuffers.delete(speakerId);
     return;
   }
-  
+
   console.log(`⚡ [TRUST-THE-CLIENT] Transcribing ${buffer.chunks.length} chunks for ${speakerName} immediately`);
-  
+
   const transcript = await transcribeBufferedAudio(ws, session, buffer, false);
-  
+
   if (transcript) {
     const speakerRole = buffer.role === 'host' ? 'assistant' : 'user';
     session.conversationMessages.push({
@@ -1179,9 +1180,9 @@ async function handleSpeechEndFromClient(
       content: buffer.fullTranscript || transcript,
       timestamp: new Date().toISOString(),
     });
-    
+
     console.log(`✅ [VAD-SPEECH-END] Turn finalized: ${buffer.speakerName} - "${(buffer.fullTranscript || transcript).substring(0, 80)}..."`);
-    
+
     const participant = session.participants.get(buffer.speakerId);
     if (participant?.role === 'prospect') {
       try {
@@ -1202,10 +1203,10 @@ async function handleSpeechEndFromClient(
       }
     }
   }
-  
+
   turnState.previousSpeaker = buffer;
   turnState.speakerBuffers.delete(speakerId);
-  
+
   scheduleAnalysis(ws, session, turnState);
 }
 
@@ -1217,13 +1218,13 @@ async function finalizeTurnForSpeaker(
 ) {
   const buffer = turnState.speakerBuffers.get(speakerId);
   if (!buffer) return;
-  
+
   console.log(`🏁 [TurnTaking] Finalizing turn for ${buffer.speakerName}`);
-  
+
   if (buffer.chunks.length >= TURN_TAKING_CONFIG.MIN_AUDIO_CHUNKS) {
     await transcribeBufferedAudio(ws, session, buffer, false);
   }
-  
+
   if (buffer.fullTranscript) {
     sendMessage(ws, {
       type: 'transcript',
@@ -1236,17 +1237,17 @@ async function finalizeTurnForSpeaker(
       },
       timestamp: Date.now(),
     });
-    
+
     const speakerRole = buffer.role === 'host' ? 'assistant' : 'user';
     session.conversationMessages.push({
       role: speakerRole,
       content: buffer.fullTranscript,
       timestamp: new Date().toISOString(),
     });
-    
+
     console.log(`✅ [TurnTaking] Turn complete: ${buffer.speakerName} - "${buffer.fullTranscript.substring(0, 80)}..."`);
   }
-  
+
   turnState.previousSpeaker = buffer;
   turnState.speakerBuffers.delete(speakerId);
 }
@@ -1259,22 +1260,22 @@ function scheduleAnalysis(
   if (turnState.analysisDebounceTimer) {
     clearTimeout(turnState.analysisDebounceTimer);
   }
-  
+
   turnState.pendingAnalysis = true;
-  
+
   turnState.analysisDebounceTimer = setTimeout(async () => {
     if (!turnState.pendingAnalysis) return;
-    
+
     const hasPreviousTurn = turnState.previousSpeaker?.fullTranscript && turnState.previousSpeaker.fullTranscript.length > 10;
     const hasActiveBuffers = Array.from(turnState.speakerBuffers.values()).some(
       b => b.fullTranscript && b.fullTranscript.length > 10
     );
-    
+
     if (!hasPreviousTurn && !hasActiveBuffers) {
       console.log(`⏭️ [TurnTaking] No complete turns for analysis, skipping`);
       return;
     }
-    
+
     console.log(`\n🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`🎯 [TURN-EXCHANGE] Analysis after turn exchange`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -1291,21 +1292,21 @@ function scheduleAnalysis(
       }
     }
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-    
+
     try {
       await runSalesManagerAnalysis(ws, session);
-      
+
       const recentTranscripts = session.transcriptBuffer
         .slice(-10)
         .map(t => `${t.speakerName}: ${t.text}`)
         .join('\n');
-      
+
       const suggestion = await withRetry(
         () => generateSuggestion(session, recentTranscripts),
         DEFAULT_RETRY_CONFIG,
         'Suggestion generation'
       );
-      
+
       if (suggestion) {
         sendMessage(ws, {
           type: 'suggestion',
@@ -1313,7 +1314,7 @@ function scheduleAnalysis(
           timestamp: Date.now(),
         });
       }
-      
+
       sendMessage(ws, {
         type: 'script_progress',
         data: calculateScriptProgress(session),
@@ -1322,10 +1323,10 @@ function scheduleAnalysis(
     } catch (error) {
       console.error(`❌ [TurnTaking] Analysis error:`, error);
     }
-    
+
     turnState.lastAnalysisTime = Date.now();
     turnState.pendingAnalysis = false;
-    
+
   }, TURN_TAKING_CONFIG.ANALYSIS_DEBOUNCE_MS);
 }
 
@@ -1376,14 +1377,23 @@ async function handleAudioChunk(
     durationMs: estimateChunkDuration(message.data),
   });
   buffer.lastChunkTime = Date.now();
-  
+
+  // Store transcription timestamp for sorting later
+  const participant = session.participants.get(speakerId);
+  if (participant) {
+    if (!participant.transcriptions) {
+      participant.transcriptions = [];
+    }
+    participant.transcriptions.push({ text: '', timestamp: buffer.lastChunkTime }); // Placeholder text, actual text added after transcription
+  }
+
   if (buffer.chunks.length % 20 === 1) {
     console.log(`📦 [STEP 3] Received audio chunk from ${speakerName} - Chunks: ${buffer.chunks.length}, Size: ${chunkSize} chars`);
   }
 
   const timeSinceLastAnalysis = Date.now() - turnState.lastAnalysisTime;
   if (timeSinceLastAnalysis > TURN_TAKING_CONFIG.MAX_TIME_WITHOUT_ANALYSIS_MS && !turnState.pendingAnalysis) {
-    console.log(`⏰ [TurnTaking] Forcing analysis after ${Math.round(timeSinceLastAnalysis)}ms (${Math.round(timeSinceLastAnalysis / 1000)}s inactivity)`);
+    console.log(`⏰ [TurnTaking] Forcing analysis after ${Math.round(timeSinceLastAnalysis)}ms (${Math.round(timeSinceLastAnalysis / 1000)}s) inactivity)`);
     scheduleAnalysis(ws, session, turnState);
   }
 }
@@ -1405,26 +1415,71 @@ async function runSalesManagerAnalysis(
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 📥 SALES MANAGER INPUT LOG
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const recentMessages = session.conversationMessages.slice(-20);
-    const phasesCount = session.scriptStructure?.phases?.length || 0;
-    const stepsCount = currentPhase?.steps?.length || 0;
+    // Build messages for Sales Manager (ALL messages, with role mapping)
+    // CRITICAL: Include ALL messages, not just turns, to capture every host question
+    const messagesForManager: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+
+    // Add all transcriptions in chronological order
+    // Need to get the host participant to correctly map 'assistant' role
+    const hostParticipant = Array.from(session.participants.values()).find(p => p.role === 'host');
+
+    for (const participant of session.participants.values()) {
+      if (participant.transcriptions) {
+        for (const transcript of participant.transcriptions) {
+          messagesForManager.push({
+            role: participant.role === 'host' ? 'assistant' : 'user',
+            content: transcript.text
+          });
+        }
+      }
+    }
+
+    // Sort by timestamp to maintain conversation order
+    messagesForManager.sort((a, b) => {
+      // Find the original transcription objects to get timestamps
+      let transcriptA, transcriptB;
+
+      // Find participant for 'a'
+      let participantA = session.participants.get(a.role === 'assistant' ? hostParticipant?.id || '' : '');
+      if (!participantA) {
+         // Fallback if host not found or role mapping is tricky
+         participantA = Array.from(session.participants.values()).find(p => p.role !== 'assistant' && p.transcriptions?.some(t => t.text === a.content));
+      }
+      if(participantA) {
+        transcriptA = participantA.transcriptions?.find(t => t.text === a.content);
+      }
+      
+      // Find participant for 'b'
+      let participantB = session.participants.get(b.role === 'assistant' ? hostParticipant?.id || '' : '');
+       if (!participantB) {
+         // Fallback if host not found or role mapping is tricky
+         participantB = Array.from(session.participants.values()).find(p => p.role !== 'assistant' && p.transcriptions?.some(t => t.text === b.content));
+       }
+      if(participantB) {
+        transcriptB = participantB.transcriptions?.find(t => t.text === b.content);
+      }
+
+      return (transcriptA?.timestamp || 0) - (transcriptB?.timestamp || 0);
+    });
+
+
     const scriptJson = JSON.stringify(session.scriptStructure || {});
-    const transcriptText = recentMessages.map(m => `${m.role}: ${m.content}`).join('\n');
-    
+    const transcriptText = messagesForManager.map(m => `${m.role}: ${m.content}`).join('\n');
+
     console.log(`\n📥 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`📥 [SALES-MANAGER] INPUT ANALYSIS`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`   📜 SCRIPT INPUT: ${scriptJson.length} chars (~${Math.round(scriptJson.length / 4)} tokens)`);
-    console.log(`      └─ Phases: ${phasesCount}`);
-    console.log(`      └─ Current Phase: ${currentPhase?.name || 'N/A'} (${session.currentPhaseIndex + 1}/${phasesCount})`);
-    console.log(`      └─ Current Step: ${currentStep?.name || 'N/A'} (${session.currentStepIndex + 1}/${stepsCount})`);
+    console.log(`      └─ Phases: ${session.scriptStructure?.phases?.length || 0}`);
+    console.log(`      └─ Current Phase: ${currentPhase?.name || 'N/A'} (${session.currentPhaseIndex + 1}/${session.scriptStructure?.phases?.length || 0})`);
+    console.log(`      └─ Current Step: ${currentStep?.name || 'N/A'} (${session.currentStepIndex + 1}/${currentPhase?.steps?.length || 0})`);
     console.log(`      └─ Phase ID: ${currentPhase?.id || 'N/A'}`);
     console.log(`      └─ Step ID: ${currentStep?.id || 'N/A'}`);
-    console.log(`   💬 FRESH TEXT (Recent Transcript): ${transcriptText.length} chars (~${Math.round(transcriptText.length / 4)} tokens)`);
-    console.log(`      └─ Messages: ${recentMessages.length}`);
-    if (recentMessages.length > 0) {
+    console.log(`   💬 FRESH TEXT (Full Conversation History): ${transcriptText.length} chars (~${Math.round(transcriptText.length / 4)} tokens)`);
+    console.log(`      └─ Messages: ${messagesForManager.length}`);
+    if (messagesForManager.length > 0) {
       console.log(`      └─ Last 3 messages:`);
-      recentMessages.slice(-3).forEach((m, i) => {
+      messagesForManager.slice(-3).forEach((m, i) => {
         const preview = m.content.length > 60 ? m.content.substring(0, 60) + '...' : m.content;
         console.log(`         ${i + 1}. [${m.role.toUpperCase()}] "${preview}"`);
       });
@@ -1443,7 +1498,7 @@ async function runSalesManagerAnalysis(
     const scriptForAgent = {
       phases: session.scriptStructure.phases?.map((p: any) => {
         const firstCheckpoint = p.checkpoints?.[0] || null;
-        
+
         const allVerifications: string[] = [];
         if (p.checkpoints) {
           p.checkpoints.forEach((cp: any) => {
@@ -1452,7 +1507,7 @@ async function runSalesManagerAnalysis(
             }
           });
         }
-        
+
         return {
           id: p.id,
           number: p.number,
@@ -1486,7 +1541,7 @@ async function runSalesManagerAnalysis(
     }
 
     const analysis = await SalesManagerAgent.analyze({
-      recentMessages: session.conversationMessages.slice(-20),
+      recentMessages: messagesForManager,
       script: scriptForAgent,
       currentPhaseId: currentPhase?.id || 'phase_1',
       currentStepId: currentStep?.id,
@@ -1509,7 +1564,7 @@ async function runSalesManagerAnalysis(
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`   ⏱️ TOTAL TIME: ${analysis.analysisTimeMs}ms`);
     console.log(`   📊 MODEL: ${analysis.modelUsed || 'gemini-2.0-flash'}`);
-    
+
     console.log(`\n   📊 STEP ADVANCEMENT:`);
     console.log(`      └─ Should Advance: ${analysis.stepAdvancement.shouldAdvance ? '✅ YES' : '❌ NO'}`);
     console.log(`      └─ Next Phase: ${analysis.stepAdvancement.nextPhaseId || 'same'}`);
@@ -1657,7 +1712,7 @@ async function runSalesManagerAnalysis(
       const progressUpdate = calculateScriptProgress(session);
       const currentPhaseData = session.scriptStructure?.phases?.[session.currentPhaseIndex];
       const currentStepData = currentPhaseData?.steps?.[session.currentStepIndex];
-      
+
       sendMessage(ws, {
         type: 'script_progress_update',
         data: {
@@ -1820,13 +1875,13 @@ async function handleSetPlaybook(
   if (message.playbook) {
     session.playbook = message.playbook;
     session.currentPhaseIndex = 0;
-    
+
     sendMessage(ws, {
       type: 'script_progress',
       data: calculateScriptProgress(session),
       timestamp: Date.now(),
     });
-    
+
     console.log(`📘 [VideoCopilot] Playbook set: ${message.playbook.name}`);
   } else if (message.playbookId) {
     try {
@@ -1840,7 +1895,7 @@ async function handleSetPlaybook(
         // ✅ LOGICA IBRIDA: Prima JSON, poi TEXT parser (come Sales Agent AI)
         let content: any;
         let formatDetected: 'json' | 'text' = 'json';
-        
+
         // 📊 LOG DETTAGLIATO SCRIPT
         const scriptPreview = script.content?.substring(0, 200) || '';
         console.log(`\n📘 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -1850,7 +1905,7 @@ async function handleSetPlaybook(
         console.log(`   📋 Script Name: ${script.name}`);
         console.log(`   📋 Content Length: ${script.content?.length || 0} chars`);
         console.log(`   📋 Content Preview: "${scriptPreview}..."`);
-        
+
         try {
           // Tentativo 1: JSON parsing
           content = typeof script.content === 'string' 
@@ -1861,7 +1916,7 @@ async function handleSetPlaybook(
         } catch (jsonError: any) {
           console.log(`   ⚠️ JSON parse failed: ${jsonError.message}`);
           console.log(`   🔄 Trying TEXT parser (parseScriptContentToStructure)...`);
-          
+
           try {
             // Tentativo 2: Text parsing (come Sales Agent AI)
             const scriptType = script.scriptType || 'discovery';
@@ -1883,10 +1938,10 @@ async function handleSetPlaybook(
             return;
           }
         }
-        
+
         console.log(`   📊 Format Detected: ${formatDetected.toUpperCase()}`);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-        
+
         // ✅ MAPPING INTELLIGENTE: Gestisce sia formato JSON che formato TEXT parser
         session.playbook = {
           id: script.id,
@@ -1896,13 +1951,13 @@ async function handleSetPlaybook(
             const questionsFromSteps = phase.steps?.flatMap((step: any) => 
               step.questions?.map((q: any) => typeof q === 'string' ? q : q.text) || []
             ) || [];
-            
+
             // Estrae objectives dagli step se formato text parser
             const objectivesFromSteps = phase.steps?.map((step: any) => step.objective).filter(Boolean) || [];
-            
+
             // Estrae keyPoints (usa step names come keyPoints per formato text)
             const keyPointsFromSteps = phase.steps?.map((step: any) => step.name).filter(Boolean) || [];
-            
+
             return {
               name: phase.name || phase.title || 'Unnamed Phase',
               objectives: phase.objectives || phase.goals || (phase.description ? [phase.description] : objectivesFromSteps),
@@ -1919,13 +1974,13 @@ async function handleSetPlaybook(
         session.scriptStructure = content;
         session.currentPhaseIndex = 0;
         session.currentStepIndex = 0;
-        
+
         sendMessage(ws, {
           type: 'script_progress',
           data: calculateScriptProgress(session),
           timestamp: Date.now(),
         });
-        
+
         console.log(`📘 [VideoCopilot] Playbook loaded from DB: ${script.name}, scriptStructure phases: ${content?.phases?.length || 0}, format: ${formatDetected}`);
       } else {
         sendMessage(ws, {
@@ -1975,7 +2030,7 @@ async function handleParticipantJoin(
   }
 
   const { name, role } = message.participant;
-  
+
   try {
     // Check if participant with same name AND role already left this meeting (can be recycled)
     // Only reuse participants who have leftAt set (not currently active)
@@ -1989,14 +2044,14 @@ async function handleParticipantJoin(
       ))
       .orderBy(desc(videoMeetingParticipants.leftAt)) // Get the most recently left
       .limit(1);
-    
+
     let participantRecord;
-    
+
     if (inactiveExisting) {
       // Clean up any stale socket bound to this participant ID (shouldn't exist but just in case)
       unregisterParticipantSocket(session.meetingId, inactiveExisting.id);
       session.participants.delete(inactiveExisting.id);
-      
+
       // Reuse inactive participant - update joinedAt and clear leftAt
       await db.update(videoMeetingParticipants)
         .set({ joinedAt: new Date(), leftAt: null })
@@ -2019,10 +2074,11 @@ async function handleParticipantJoin(
       id: participantRecord.id,
       name: participantRecord.name,
       role: participantRecord.role as 'host' | 'guest' | 'prospect',
+      transcriptions: [] // Initialize transcriptions array for the new participant
     };
-    
+
     session.participants.set(participantRecord.id, participant);
-    
+
     registerParticipantSocket(session.meetingId, participantRecord.id, ws);
 
     // Send confirmation directly to the requesting client with their ID
@@ -2048,9 +2104,9 @@ async function handleParticipantJoin(
       },
       timestamp: Date.now(),
     };
-    
+
     broadcast(outMessage);
-    
+
     // Broadcast participant_socket_ready to notify that this participant's socket is now registered
     const socketReadyMessage: OutgoingMessage = {
       type: 'participant_socket_ready',
@@ -2089,7 +2145,7 @@ async function handleParticipantLeave(
   }
 
   const participantId = message.participantId;
-  
+
   try {
     await db.update(videoMeetingParticipants)
       .set({ leftAt: new Date() })
@@ -2097,9 +2153,9 @@ async function handleParticipantLeave(
 
     const participant = session.participants.get(participantId);
     session.participants.delete(participantId);
-    
+
     unregisterParticipantSocket(session.meetingId, participantId);
-    
+
     console.log(`👋 [VideoCopilot] Participant left: ${participant?.name || participantId}`);
 
     const outMessage: OutgoingMessage = {
@@ -2111,7 +2167,7 @@ async function handleParticipantLeave(
       },
       timestamp: Date.now(),
     };
-    
+
     broadcast(outMessage);
   } catch (error: any) {
     console.error(`❌ [VideoCopilot] Error removing participant:`, error.message);
@@ -2143,11 +2199,13 @@ async function loadExistingParticipants(session: SessionState): Promise<Particip
           id: p.id,
           name: p.name,
           role: p.role as 'host' | 'guest' | 'prospect',
+          transcriptions: [] // Initialize transcriptions for existing participants
         });
         activeParticipants.push({
           id: p.id,
           name: p.name,
           role: p.role as 'host' | 'guest' | 'prospect',
+          transcriptions: [] // Initialize transcriptions for existing participants
         });
       } else {
         // Pulisce zombie - marca come left
@@ -2205,7 +2263,7 @@ async function autoLoadPlaybook(
     } catch (jsonError: any) {
       console.log(`   ⚠️ JSON parse failed: ${jsonError.message}`);
       console.log(`   🔄 Trying TEXT parser (parseScriptContentToStructure)...`);
-      
+
       try {
         // Tentativo 2: Text parsing (come Sales Agent AI)
         const scriptType = script.scriptType || 'discovery';
@@ -2222,20 +2280,20 @@ async function autoLoadPlaybook(
         return null;
       }
     }
-    
+
     console.log(`   📊 Format Detected: ${formatDetected.toUpperCase()}`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
-    
+
     // ✅ FIX: Popola scriptStructure per il Sales Manager coaching
     session.scriptStructure = content;
-    
+
     // Validazione: verifica che scriptStructure abbia la struttura attesa
     if (!session.scriptStructure?.phases || !Array.isArray(session.scriptStructure.phases)) {
       console.warn(`⚠️ [VideoCopilot] Script content missing 'phases' array for ${playbookId}`);
     } else {
       console.log(`✅ [VideoCopilot] scriptStructure loaded with ${session.scriptStructure.phases.length} phases`);
     }
-    
+
     // ✅ MAPPING INTELLIGENTE: Gestisce sia formato JSON che formato TEXT parser
     // Il text parser produce { phases: [{ name, description, steps: [{ objective, questions }] }] }
     // Il JSON produce { phases: [{ name, objectives, keyPoints, questions }] }
@@ -2247,13 +2305,13 @@ async function autoLoadPlaybook(
         const questionsFromSteps = phase.steps?.flatMap((step: any) => 
           step.questions?.map((q: any) => typeof q === 'string' ? q : q.text) || []
         ) || [];
-        
+
         // Estrae objectives dagli step se formato text parser
         const objectivesFromSteps = phase.steps?.map((step: any) => step.objective).filter(Boolean) || [];
-        
+
         // Estrae keyPoints (usa step names come keyPoints per formato text)
         const keyPointsFromSteps = phase.steps?.map((step: any) => step.name).filter(Boolean) || [];
-        
+
         return {
           name: phase.name || phase.title || 'Unnamed Phase',
           objectives: phase.objectives || phase.goals || (phase.description ? [phase.description] : objectivesFromSteps),
@@ -2314,7 +2372,7 @@ function handleWebRTCOffer(
 
   const meetingSockets = participantSockets.get(session.meetingId);
   const targetSocket = meetingSockets?.get(message.targetParticipantId);
-  
+
   const messageData = {
     fromParticipantId: message.fromParticipantId,
     sdp: message.sdp,
@@ -2349,7 +2407,7 @@ function handleWebRTCAnswer(
 
   const meetingSockets = participantSockets.get(session.meetingId);
   const targetSocket = meetingSockets?.get(message.targetParticipantId);
-  
+
   const messageData = {
     fromParticipantId: message.fromParticipantId,
     sdp: message.sdp,
@@ -2384,7 +2442,7 @@ function handleICECandidate(
 
   const meetingSockets = participantSockets.get(session.meetingId);
   const targetSocket = meetingSockets?.get(message.targetParticipantId);
-  
+
   const messageData = {
     fromParticipantId: message.fromParticipantId,
     candidate: message.candidate,
@@ -2408,13 +2466,13 @@ function registerParticipantSocket(meetingId: string, participantId: string, ws:
     participantSockets.set(meetingId, new Map());
   }
   participantSockets.get(meetingId)!.set(participantId, ws);
-  
+
   if (!socketToParticipants.has(ws)) {
     socketToParticipants.set(ws, new Set());
   }
   socketToParticipants.get(ws)!.add({ meetingId, participantId });
   console.log(`🔗 [VideoCopilot] Registered socket for participant ${participantId} in meeting ${meetingId}`);
-  
+
   // Consegna messaggi WebRTC bufferizzati
   const key = `${meetingId}:${participantId}`;
   const pending = pendingWebRTCMessages.get(key);
@@ -2464,9 +2522,9 @@ function unregisterParticipantSocket(meetingId: string, participantId: string) {
 async function unregisterParticipantBySocket(ws: WebSocket, broadcast: (msg: OutgoingMessage) => void): Promise<string[]> {
   const participantSet = socketToParticipants.get(ws);
   if (!participantSet || participantSet.size === 0) return [];
-  
+
   const unregisteredIds: string[] = [];
-  
+
   for (const { meetingId, participantId } of participantSet) {
     const meetingSockets = participantSockets.get(meetingId);
     if (meetingSockets) {
@@ -2476,7 +2534,7 @@ async function unregisterParticipantBySocket(ws: WebSocket, broadcast: (msg: Out
         participantSockets.delete(meetingId);
       }
     }
-    
+
     // Update database with leftAt
     try {
       await db.update(videoMeetingParticipants)
@@ -2486,14 +2544,14 @@ async function unregisterParticipantBySocket(ws: WebSocket, broadcast: (msg: Out
     } catch (error: any) {
       console.error(`❌ [VideoCopilot] Failed to update leftAt for ${participantId}:`, error.message);
     }
-    
+
     // Remove from session.participants
     const session = activeSessions.get(meetingId);
     if (session) {
       session.participants.delete(participantId);
       console.log(`🗑️ [VideoCopilot] Removed participant ${participantId} from session`);
     }
-    
+
     broadcast({
       type: 'participant_left',
       data: {
@@ -2503,12 +2561,12 @@ async function unregisterParticipantBySocket(ws: WebSocket, broadcast: (msg: Out
       },
       timestamp: Date.now(),
     });
-    
+
     unregisteredIds.push(participantId);
   }
-  
+
   socketToParticipants.delete(ws);
-  
+
   return unregisteredIds;
 }
 
@@ -2588,7 +2646,7 @@ function handleLobbyLeave(
 
   const { lobbyId } = lobbyInfo;
   const meetingLobby = lobbyParticipants.get(meetingId);
-  
+
   if (meetingLobby) {
     const participant = meetingLobby.get(lobbyId);
     if (participant) {
@@ -2693,7 +2751,7 @@ async function handleEndSession(
   session: SessionState
 ) {
   console.log(`🔚 [VideoCopilot] Session ending for meeting ${session.meetingId}`);
-  
+
   const turnState = turnStates.get(session.meetingId);
   if (turnState) {
     for (const timer of turnState.silenceTimers.values()) {
@@ -2706,7 +2764,7 @@ async function handleEndSession(
     turnStates.delete(session.meetingId);
     console.log(`🧹 [TurnTaking] Cleaned up turn state for meeting ${session.meetingId}`);
   }
-  
+
   await db
     .update(videoMeetings)
     .set({
@@ -2742,7 +2800,7 @@ async function handleEndSession(
   }
 
   activeSessions.delete(session.meetingId);
-  
+
   sendMessage(ws, {
     type: 'session_ended',
     data: {
@@ -2755,7 +2813,7 @@ async function handleEndSession(
 
 export function setupVideoCopilotWebSocket(): WebSocketServer {
   console.log('🎥 Setting up Video AI Copilot WebSocket server...');
-  
+
   const wss = new WebSocketServer({ noServer: true });
 
   wss.on('error', (error) => {
@@ -2827,7 +2885,7 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
           eq(humanSellerScriptAssignments.scriptType, 'discovery')
         ))
         .limit(1);
-      
+
       if (!sellerAssignment) {
         [sellerAssignment] = await db.select()
           .from(humanSellerScriptAssignments)
@@ -2837,7 +2895,7 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
           ))
           .limit(1);
       }
-      
+
       if (sellerAssignment) {
         console.log(`📘 [VideoCopilot] Loading script from seller assignment (${sellerAssignment.scriptType}): ${sellerAssignment.scriptId}`);
         const loadedPlaybook = await autoLoadPlaybook(session, sellerAssignment.scriptId);
@@ -2984,10 +3042,10 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
           meetingClients.delete(meetingId);
         }
       }
-      
+
       // Clean up lobby participant on disconnect
       unregisterLobbyParticipantBySocket(ws, broadcast);
-      
+
       // Clean up participant socket on disconnect using reverse map
       unregisterParticipantBySocket(ws, broadcast);
     });
@@ -2998,6 +3056,6 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
   });
 
   console.log('✅ Video AI Copilot WebSocket server ready on /ws/video-copilot');
-  
+
   return wss;
 }
