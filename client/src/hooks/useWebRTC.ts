@@ -282,10 +282,13 @@ export function useWebRTC({
     };
 
     if (localStreamRef.current) {
+      console.log(`📹 [WebRTC] localStreamRef.current EXISTS - adding ${localStreamRef.current.getTracks().length} tracks to peer connection`);
       localStreamRef.current.getTracks().forEach(track => {
         console.log(`➕ [WebRTC] Adding local track ${track.kind} to connection with ${remoteParticipantId}`);
         pc.addTrack(track, localStreamRef.current!);
       });
+    } else {
+      console.warn(`⚠️ [WebRTC] localStreamRef.current is NULL in createPeerConnection for ${remoteParticipantId} - tracks will NOT be added!`);
     }
 
     peerConnectionsRef.current.set(remoteParticipantId, pc);
@@ -418,6 +421,38 @@ export function useWebRTC({
       pc = createPeerConnection(fromParticipantId);
     }
     
+    // FIX CRITICO: Assicurarsi che le tracce locali siano aggiunte alla peer connection
+    // Questo risolve il problema unidirezionale dove l'host non invia le sue tracce all'utente
+    
+    // Defensive sync: Se il ref è null ma lo state esiste, sincronizzalo
+    let streamToUse = localStreamRef.current;
+    if (!streamToUse && localStream) {
+      console.warn(`🔄 [WebRTC] localStreamRef.current was NULL but localStream state exists - syncing ref!`);
+      localStreamRef.current = localStream;
+      streamToUse = localStream;
+    }
+    
+    if (streamToUse) {
+      const existingSenders = pc.getSenders();
+      const hasAudioSender = existingSenders.some(s => s.track?.kind === 'audio');
+      const hasVideoSender = existingSenders.some(s => s.track?.kind === 'video');
+      
+      if (!hasAudioSender || !hasVideoSender) {
+        console.log(`🔧 [WebRTC] Adding missing local tracks to peer connection for ${fromParticipantId}`);
+        console.log(`   - Current senders: ${existingSenders.length} (audio: ${hasAudioSender}, video: ${hasVideoSender})`);
+        
+        streamToUse.getTracks().forEach(track => {
+          const alreadyAdded = existingSenders.some(s => s.track?.id === track.id);
+          if (!alreadyAdded) {
+            console.log(`➕ [WebRTC] Adding local ${track.kind} track to connection with ${fromParticipantId}`);
+            pc!.addTrack(track, streamToUse!);
+          }
+        });
+      }
+    } else {
+      console.warn(`⚠️ [WebRTC] Both localStreamRef.current AND localStream state are NULL when handling offer from ${fromParticipantId} - tracks cannot be added!`);
+    }
+    
     // MDN Perfect Negotiation Pattern
     // Polite peer: lower participant ID - will rollback on collision
     // Impolite peer: higher participant ID - ignores incoming offers during collision
@@ -466,7 +501,7 @@ export function useWebRTC({
     } catch (error) {
       console.error(`❌ [WebRTC] Error handling offer from ${fromParticipantId}:`, error);
     }
-  }, [createPeerConnection, myParticipantId, sendWebRTCMessage, iceConfigLoaded]);
+  }, [createPeerConnection, myParticipantId, sendWebRTCMessage, iceConfigLoaded, localStream]);
 
   const handleWebRTCAnswer = useCallback(async (fromParticipantId: string, sdp: RTCSessionDescriptionInit) => {
     console.log(`📥 [WebRTC] Received answer from ${fromParticipantId}`);
