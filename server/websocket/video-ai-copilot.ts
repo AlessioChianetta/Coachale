@@ -6,6 +6,7 @@ import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
 import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
 import { SalesManagerAgent, type SalesManagerAnalysis, type ArchetypeState, type ConversationMessage, type BusinessContext } from '../ai/sales-manager-agent';
+import { parseScriptContentToStructure } from '../ai/sales-script-structure-parser';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 

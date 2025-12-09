@@ -253,13 +253,42 @@ export interface ScriptStructureForManager {
   objections?: ScriptObjection[];
 }
 
-// 🆕 Business Context per rilevamento fuori scope
+// 🆕 Business Context per rilevamento fuori scope (ESTESO per allineamento con SalesAgentConfig)
 export interface BusinessContext {
+  // Base
+  displayName: string;
   businessName: string;
-  whatWeDo: string;
-  servicesOffered: string[];
-  targetClient: string;
-  nonTargetClient: string;
+  businessDescription: string | null;
+  
+  // Bio & Credenziali
+  consultantBio: string | null;
+  yearsExperience: number;
+  clientsHelped: number;
+  resultsGenerated: string | null;
+  guarantees: string | null;
+  
+  // Posizionamento
+  vision: string | null;
+  mission: string | null;
+  values: string[];
+  usp: string | null;
+  targetClient: string | null;
+  nonTargetClient: string | null;
+  
+  // Operativo
+  whatWeDo: string | null;
+  howWeDoIt: string | null;
+  
+  // Servizi (oggetti completi con descrizione e prezzo)
+  servicesOffered: Array<{
+    name: string;
+    description: string;
+    price: string;
+  }>;
+  
+  // Fasi abilitate
+  enableDiscovery: boolean;
+  enableDemo: boolean;
 }
 
 export interface SalesManagerParams {
