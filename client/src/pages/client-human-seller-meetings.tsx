@@ -273,6 +273,9 @@ export default function ClientHumanSellerMeetings() {
     // Usa il primo venditore disponibile
     const defaultSeller = humanSellers[0];
     
+    // 🔧 FIX: Usa lo script assegnato al venditore (se presente)
+    const assignedScript = defaultSeller.assignments?.[0];
+    
     // Crea un meeting con data/ora corrente e nome generico
     const now = new Date();
     
@@ -280,7 +283,8 @@ export default function ClientHumanSellerMeetings() {
       prospectName: `Quick Meeting ${now.toLocaleTimeString('it-IT')}`,
       prospectEmail: undefined,
       scheduledAt: now.toISOString(),
-      sellerId: defaultSeller.id
+      sellerId: defaultSeller.id,
+      playbookId: assignedScript?.scriptId || undefined // 🆕 Associa script se disponibile
     });
   };
 
