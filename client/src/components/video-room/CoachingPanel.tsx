@@ -37,7 +37,6 @@ interface CoachingPanelProps {
   onDismissBuySignal: (index: number) => void;
   onDismissObjection: (index: number) => void;
   onClose: () => void;
-  isFloating?: boolean;
 }
 
 const ARCHETYPE_LABELS: Record<ArchetypeId, { label: string; emoji: string; color: string }> = {
@@ -67,11 +66,10 @@ export default function CoachingPanel({
   onDismissBuySignal,
   onDismissObjection,
   onClose,
-  isFloating: initialFloating = false,
 }: CoachingPanelProps) {
   const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(false);
-  const [isFloating, setIsFloating] = useState(initialFloating);
-  const [position, setPosition] = useState({ x: 20, y: 100 });
+  const [isFloating, setIsFloating] = useState(false);
+  const [position, setPosition] = useState({ x: window.innerWidth - 340, y: 80 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const transcriptEndRef = useRef<HTMLDivElement>(null);
@@ -129,16 +127,16 @@ export default function CoachingPanel({
 
   return (
     <motion.div
-      initial={isFloating ? { opacity: 0, scale: 0.9 } : { x: 320, opacity: 0 }}
-      animate={isFloating ? { opacity: 1, scale: 1 } : { x: 0, opacity: 1 }}
-      exit={isFloating ? { opacity: 0, scale: 0.9 } : { x: 320, opacity: 0 }}
+      initial={{ opacity: 0, x: isFloating ? 50 : 320 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: isFloating ? 50 : 320 }}
       style={isFloating ? { left: position.x, top: position.y } : undefined}
       onMouseDown={handleMouseDown}
       className={cn(
-        "w-80 bg-gray-900/95 backdrop-blur-md border border-gray-700/50 z-40 overflow-y-auto",
+        "w-80 bg-gray-900/95 backdrop-blur-md border border-gray-700/50 overflow-y-auto",
         isFloating 
-          ? "fixed rounded-2xl shadow-2xl max-h-[80vh]" + (isDragging ? " cursor-grabbing" : " cursor-grab")
-          : "fixed right-0 top-0 h-full border-l"
+          ? "fixed rounded-2xl shadow-2xl max-h-[80vh] z-50" + (isDragging ? " cursor-grabbing" : " cursor-grab")
+          : "fixed right-0 top-0 h-full border-l z-30"
       )}
     >
       <div className="sticky top-0 bg-gray-900/95 backdrop-blur-md z-10 p-3 border-b border-gray-700/50">

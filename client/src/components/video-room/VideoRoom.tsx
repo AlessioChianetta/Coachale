@@ -564,30 +564,28 @@ export default function VideoRoom({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isHost && showCoachingPanel && (
-          <CoachingPanel
-            coaching={{
-              isActive: isCoachingActive,
-              scriptProgress: coachingScriptProgress,
-              buySignals,
-              objections,
-              checkpointStatus,
-              prospectProfile,
-              currentFeedback,
-              feedbackHistory,
-              toneWarnings,
-            }}
-            transcript={transcripts}
-            myParticipantId={myParticipantId}
-            onDismissFeedback={dismissFeedback}
-            onDismissBuySignal={dismissBuySignal}
-            onDismissObjection={dismissObjection}
-            onClose={() => setShowCoachingPanel(false)}
-            isFloating={false}
-          />
-        )}
-      </AnimatePresence>
+      {/* CoachingPanel - laterale, NON in overlay */}
+      {isHost && showCoachingPanel && (
+        <CoachingPanel
+          coaching={{
+            isActive: isCoachingActive,
+            scriptProgress: coachingScriptProgress,
+            buySignals,
+            objections,
+            checkpointStatus,
+            prospectProfile,
+            currentFeedback,
+            feedbackHistory,
+            toneWarnings,
+          }}
+          transcript={transcripts}
+          myParticipantId={myParticipantId}
+          onDismissFeedback={dismissFeedback}
+          onDismissBuySignal={dismissBuySignal}
+          onDismissObjection={dismissObjection}
+          onClose={() => setShowCoachingPanel(false)}
+        />
+      )}
 
       {copilotError && (
         <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 z-20">
