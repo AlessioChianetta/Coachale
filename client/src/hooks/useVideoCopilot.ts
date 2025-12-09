@@ -25,6 +25,7 @@ interface ScriptProgress {
   currentPhase: number;
   totalPhases: number;
   phaseName: string;
+  phaseNames?: string[];
   completionPercentage: number;
 }
 
@@ -204,10 +205,11 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           const progress = message.data as ScriptProgress;
           setState(prev => {
             const items: ScriptItem[] = [];
+            const phaseNames = progress.phaseNames || [];
             for (let i = 1; i <= progress.totalPhases; i++) {
               items.push({
                 id: String(i),
-                text: i === progress.currentPhase ? progress.phaseName : `Fase ${i}`,
+                text: phaseNames[i - 1] || `Fase ${i}`,
                 completed: i < progress.currentPhase,
               });
             }

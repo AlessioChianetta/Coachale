@@ -50,6 +50,19 @@ interface CachedAiProvider {
   cachedAt: number;
 }
 
+interface CompletedCheckpoint {
+  checkpointId: string;
+  status: 'completed';
+  completedAt: string;
+}
+
+interface ValidatedCheckpointItem {
+  check: string;
+  status: 'validated';
+  infoCollected: string;
+  evidenceQuote: string;
+}
+
 interface SessionState {
   meetingId: string;
   clientId: string;
@@ -77,6 +90,8 @@ interface SessionState {
   cachedAiProvider: CachedAiProvider | null;
   aiProviderFailed: boolean;
   aiProviderErrorMessage: string | null;
+  completedCheckpoints: CompletedCheckpoint[];
+  validatedCheckpointItems: Record<string, ValidatedCheckpointItem[]>;
 }
 
 interface IncomingMessage {
@@ -904,6 +919,7 @@ function calculateScriptProgress(session: SessionState): {
   currentPhase: number;
   totalPhases: number;
   phaseName: string;
+  phaseNames: string[];
   completionPercentage: number;
 } {
   if (!session.playbook) {
@@ -911,6 +927,7 @@ function calculateScriptProgress(session: SessionState): {
       currentPhase: 0,
       totalPhases: 0,
       phaseName: 'No playbook loaded',
+      phaseNames: [],
       completionPercentage: 0,
     };
   }
@@ -918,12 +935,14 @@ function calculateScriptProgress(session: SessionState): {
   const totalPhases = session.playbook.phases.length;
   const currentPhase = session.currentPhaseIndex + 1;
   const phaseName = session.playbook.phases[session.currentPhaseIndex]?.name || 'Unknown';
+  const phaseNames = session.playbook.phases.map(p => p.name);
   const completionPercentage = Math.round((currentPhase / totalPhases) * 100);
 
   return {
     currentPhase,
     totalPhases,
     phaseName,
+    phaseNames,
     completionPercentage,
   };
 }
@@ -1395,9 +1414,58 @@ async function runSalesManagerAnalysis(
     console.log(`      └─ Archetype State: ${session.archetypeState?.current || 'neutral'} (${Math.round((session.archetypeState?.confidence || 0) * 100)}%)`);
     console.log(`📥 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🆕 CHECKPOINT MAPPING: Da checkpoints[] (parser) a checkpoint (singolo)
+    // Stesso processo usato in gemini-live-ws-service.ts (linee 4133-4172)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const scriptForAgent = {
+      phases: session.scriptStructure.phases?.map((p: any) => {
+        const firstCheckpoint = p.checkpoints?.[0] || null;
+        
+        const allVerifications: string[] = [];
+        if (p.checkpoints) {
+          p.checkpoints.forEach((cp: any) => {
+            if (cp.verifications && Array.isArray(cp.verifications)) {
+              allVerifications.push(...cp.verifications);
+            }
+          });
+        }
+        
+        return {
+          id: p.id,
+          number: p.number,
+          name: p.name,
+          description: p.description,
+          steps: p.steps?.map((s: any) => ({
+            id: s.id,
+            number: s.number,
+            name: s.name,
+            objective: s.objective,
+            questions: s.questions || []
+          })) || [],
+          checkpoint: firstCheckpoint ? {
+            id: firstCheckpoint.id || `checkpoint_${p.id}`,
+            title: firstCheckpoint.description || `Checkpoint Fase ${p.number}`,
+            checks: allVerifications.length > 0 ? allVerifications : (firstCheckpoint.verifications || [])
+          } : undefined
+        };
+      }) || []
+    };
+
+    // 🆕 DEBUG: Log checkpoint trovati dopo mapping
+    const phasesWithCheckpoints = scriptForAgent.phases.filter((p: any) => p.checkpoint);
+    if (phasesWithCheckpoints.length > 0) {
+      console.log(`   ⛔ Checkpoints trovati: ${phasesWithCheckpoints.length} fasi con checkpoint`);
+      phasesWithCheckpoints.forEach((p: any) => {
+        console.log(`      - Fase ${p.number}: "${p.checkpoint?.title?.substring(0, 50)}..." (${p.checkpoint?.checks?.length || 0} checks)`);
+      });
+    } else {
+      console.log(`   ⚠️ ATTENZIONE: Nessun checkpoint definito nello script (checkpoints[] vuoto)`);
+    }
+
     const analysis = await SalesManagerAgent.analyze({
       recentMessages: session.conversationMessages.slice(-20),
-      script: session.scriptStructure,
+      script: scriptForAgent,
       currentPhaseId: currentPhase?.id || 'phase_1',
       currentStepId: currentStep?.id,
       currentPhaseIndex: session.currentPhaseIndex,
@@ -1407,6 +1475,8 @@ async function runSalesManagerAnalysis(
       archetypeState: session.archetypeState || undefined,
       currentTurn: session.conversationMessages.length,
       businessContext: session.businessContext || undefined,
+      completedCheckpoints: session.completedCheckpoints,
+      validatedCheckpointItems: session.validatedCheckpointItems,
     });
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1480,6 +1550,50 @@ async function runSalesManagerAnalysis(
 
     if (analysis.archetypeState) {
       session.archetypeState = analysis.archetypeState;
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🆕 CHECKPOINT PERSISTENCE: Salva validated items (verde = resta verde)
+    // Stesso processo usato in gemini-live-ws-service.ts (linee 4288-4310)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (analysis.checkpointStatus?.itemDetails && analysis.checkpointStatus?.checkpointId) {
+      const checkpointId = analysis.checkpointStatus.checkpointId;
+      const newValidatedItems = analysis.checkpointStatus.itemDetails.filter(
+        (item: any) => item.status === 'validated'
+      );
+
+      if (!session.validatedCheckpointItems[checkpointId]) {
+        session.validatedCheckpointItems[checkpointId] = [];
+      }
+
+      newValidatedItems.forEach((item: any) => {
+        const exists = session.validatedCheckpointItems[checkpointId].some(
+          (v) => v.check === item.check
+        );
+        if (!exists) {
+          session.validatedCheckpointItems[checkpointId].push({
+            check: item.check,
+            status: 'validated',
+            infoCollected: item.infoCollected || '',
+            evidenceQuote: item.evidenceQuote || ''
+          });
+          console.log(`   🔒 [STICKY] Saved validated item: "${item.check.substring(0, 40)}..."`);
+        }
+      });
+
+      if (analysis.checkpointStatus.canAdvance) {
+        const alreadyCompleted = session.completedCheckpoints.find(
+          cp => cp.checkpointId === checkpointId
+        );
+        if (!alreadyCompleted) {
+          session.completedCheckpoints.push({
+            checkpointId,
+            status: 'completed',
+            completedAt: new Date().toISOString()
+          });
+          console.log(`   ✅ [CHECKPOINT] Marked as completed: ${checkpointId}`);
+        }
+      }
     }
 
     if (analysis.stepAdvancement.shouldAdvance) {
@@ -2635,6 +2749,8 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
         cachedAiProvider: null,
         aiProviderFailed: false,
         aiProviderErrorMessage: null,
+        completedCheckpoints: [],
+        validatedCheckpointItems: {},
       };
       activeSessions.set(meetingId, session);
     }
