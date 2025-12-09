@@ -518,6 +518,16 @@ async function transcribeAudio(
     
     console.log(`🔄 [VideoCopilot] PCM ${pcmBuffer.length} bytes → WAV ${wavBuffer.length} bytes`);
 
+    // 💾 Salva il file WAV su disco per debug/analisi
+    try {
+      const { uploadAudio } = await import('../storage/audio-storage');
+      const messageId = `meeting-${session.meetingId}-speaker-${speakerId}-${Date.now()}`;
+      const result = await uploadAudio(wavBuffer, session.clientId, session.meetingId, messageId);
+      console.log(`💾 [VideoCopilot] WAV saved: ${result.publicUrl}`);
+    } catch (saveError: any) {
+      console.warn(`⚠️ [VideoCopilot] Failed to save WAV file: ${saveError.message}`);
+    }
+
     return await performTranscription(session, wavBase64, speakerId, speakerName);
   } catch (error: any) {
     console.error(`❌ [VideoCopilot] Transcription error:`, error.message);
