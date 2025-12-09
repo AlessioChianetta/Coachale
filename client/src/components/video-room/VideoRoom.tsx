@@ -220,10 +220,15 @@ export default function VideoRoom({
   }, [leaveParticipant]);
 
   // Start audio capture for AI transcription when streams are ready (host only)
-  // Note: We keep copilotParticipants and remoteStreams in deps so capture restarts when prospects change
-  const remoteStreamsSize = remoteStreams.size;
+  // Only start ONCE when all conditions are met
+  const hasStartedCaptureRef = useRef(false);
   useEffect(() => {
-    if (!isHost || !isConnected || !localStream || !myParticipantId) {
+    if (!isHost || !isConnected || !localStream || !myParticipantId || !isJoinConfirmed) {
+      return;
+    }
+
+    // Start capture only once
+    if (hasStartedCaptureRef.current) {
       return;
     }
 
@@ -231,8 +236,9 @@ export default function VideoRoom({
       .filter(p => p.role === 'prospect' && !p.leftAt)
       .map(p => ({ id: p.id, name: p.name }));
 
-    console.log(`[AudioCapture] Starting capture - Host: ${participantName}, Prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}, ParticipantId: ${myParticipantId}`);
+    console.log(`[AudioCapture] Starting capture ONCE - Host: ${participantName}, Prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}, ParticipantId: ${myParticipantId}`);
     
+    hasStartedCaptureRef.current = true;
     startCapture(
       localStream,
       remoteStreams,
@@ -240,15 +246,27 @@ export default function VideoRoom({
     );
 
     return () => {
-      console.log('[AudioCapture] Stopping capture on cleanup');
+      console.log('[AudioCapture] Component unmounting - stopping capture');
+      hasStartedCaptureRef.current = false;
       stopCapture();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, isConnected, localStream, myParticipantId, copilotParticipants, remoteStreamsSize, participantName, startCapture, stopCapture]);
+  }, [isHost, isConnected, localStream, myParticipantId, isJoinConfirmed]);
 
   // Update prospect audio capture when participants or remote streams change (for dynamic updates)
+  // This only updates the prospect list without restarting the entire capture
+  const remoteStreamsSize = remoteStreams.size;
+  const prospectIds = useMemo(() => 
+    copilotParticipants
+      .filter(p => p.role === 'prospect' && !p.leftAt)
+      .map(p => p.id)
+      .sort()
+      .join(','),
+    [copilotParticipants]
+  );
+
   useEffect(() => {
-    if (!isHost || !isCapturing) {
+    if (!isHost || !isCapturing || !hasStartedCaptureRef.current) {
       return;
     }
 
@@ -256,10 +274,10 @@ export default function VideoRoom({
       .filter(p => p.role === 'prospect' && !p.leftAt)
       .map(p => ({ id: p.id, name: p.name }));
 
-    console.log(`[AudioCapture] Updating prospects: ${activeProspects.map(p => p.name).join(', ') || 'none'}`);
+    console.log(`[AudioCapture] Updating prospects dynamically: ${activeProspects.map(p => p.name).join(', ') || 'none'}`);
     updateProspects(remoteStreams, activeProspects);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, isCapturing, copilotParticipants, remoteStreamsSize, updateProspects]);
+  }, [isHost, isCapturing, prospectIds, remoteStreamsSize]);
 
   useEffect(() => {
     if (isConnected && meetingParticipants.length > 0) {
