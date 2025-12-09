@@ -260,6 +260,30 @@ export default function ClientHumanSellerMeetings() {
     setCreateDialogOpen(true);
   };
 
+  const handleQuickMeeting = () => {
+    if (humanSellers.length === 0) {
+      toast({
+        title: '❌ Errore',
+        description: 'Nessun venditore disponibile',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Usa il primo venditore disponibile
+    const defaultSeller = humanSellers[0];
+    
+    // Crea un meeting con data/ora corrente e nome generico
+    const now = new Date();
+    
+    createMeetingMutation.mutate({
+      prospectName: `Quick Meeting ${now.toLocaleTimeString('it-IT')}`,
+      prospectEmail: undefined,
+      scheduledAt: now.toISOString(),
+      sellerId: defaultSeller.id
+    });
+  };
+
   const getStatusBadge = (status: VideoMeeting['status']) => {
     switch (status) {
       case 'scheduled':
@@ -415,6 +439,16 @@ export default function ClientHumanSellerMeetings() {
                       Calendario
                     </Button>
                   </div>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="border-2 border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                    onClick={handleQuickMeeting}
+                    disabled={createMeetingMutation.isPending || humanSellers.length === 0}
+                  >
+                    <Video className="h-5 w-5 mr-2" />
+                    Meeting Veloce
+                  </Button>
                   <Button
                     size="lg"
                     className="bg-gradient-to-br from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg"
