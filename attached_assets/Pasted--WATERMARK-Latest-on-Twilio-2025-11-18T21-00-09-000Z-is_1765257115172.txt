@@ -1,0 +1,69 @@
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [TURN-EXCHANGE] Analysis after turn exchange
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Previous: Dz HyperLoop
+   → "Mi senti, mi senti, vero?..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤖 [STEP 7] Starting Sales Manager Analysis...
+⚠️ [STEP 7] Skipping Sales Manager: missing script structure or consultantId
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+5:10:34 AM [express] POST /api/activity/session/heartbeat 200 in 205ms :: {"success":true,"lastActiv…
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+📦 [STEP 3] Received audio chunk from Dz HyperLoop - Chunks: 1, Size: 21848 chars
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⏭️ [VAD-SPEECH-END] Too little audio (1 chunks), skipping
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+⏰ [TurnTaking] Forcing analysis after 33605ms (34s inactivity)
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⏭️ [VAD-SPEECH-END] Too little audio (2 chunks), skipping
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [TURN-EXCHANGE] Analysis after turn exchange
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Previous: Dz HyperLoop
+   → "Mi senti, mi senti, vero?..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤖 [STEP 7] Starting Sales Manager Analysis...
+⚠️ [STEP 7] Skipping Sales Manager: missing script structure or consultantId
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⚡ [TRUST-THE-CLIENT] Transcribing 3 chunks immediately (no server-side delay)
+🎤 [VideoCopilot] Transcribing audio from Dz HyperLoop (36408 chars base64)
+🔄 [VideoCopilot] PCM 27306 bytes → WAV 27350 bytes
+📝 [VideoCopilot] Transcription result: "un'altra cosa che volevo chiedere"
+📤 [STEP 5] Sending transcript to client - Speaker: Dz HyperLoop, Text: "un'altra cosa che volevo chiedere..."
+📝 [STEP 5 DONE] Transcribed Dz HyperLoop: "un'altra cosa che volevo chiedere..." (partial: false)
+✅ [VAD-SPEECH-END] Turn finalized: Dz HyperLoop - "un'altra cosa che volevo chiedere..."
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [TURN-EXCHANGE] Analysis after turn exchange
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Previous: Dz HyperLoop
+   → "un'altra cosa che volevo chiedere..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤖 [STEP 7] Starting Sales Manager Analysis...
+⚠️ [STEP 7] Skipping Sales Manager: missing script structure or consultantId
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc

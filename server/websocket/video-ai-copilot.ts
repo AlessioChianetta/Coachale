@@ -163,8 +163,8 @@ const TURN_TAKING_CONFIG = {
   SPEAKER_CHANGE_THRESHOLD_MS: 300,
   LONG_PAUSE_THRESHOLD_MS: 2000,
   ANALYSIS_DEBOUNCE_MS: 2000,
-  MIN_AUDIO_CHUNKS: 3,
-  MIN_AUDIO_DURATION_MS: 500,
+  MIN_AUDIO_CHUNKS: 1,
+  MIN_AUDIO_DURATION_MS: 300,
   MAX_TIME_WITHOUT_ANALYSIS_MS: 30000,
 };
 
@@ -543,7 +543,15 @@ async function performTranscription(
     return null;
   }
 
-  const prompt = `Transcribe the following audio to Italian text. Return ONLY the transcribed text, nothing else. If you cannot understand the audio or it's silent, return an empty string.
+  const prompt = `Transcribe the following audio to Italian text.
+
+CRITICAL RULES:
+1. Return ONLY the exact words spoken - nothing more, nothing less
+2. If you cannot understand the audio clearly, return an empty string ""
+3. If the audio is silent or contains only noise, return an empty string ""
+4. NEVER invent, guess, or fill in words that are not clearly audible
+5. NEVER repeat words unless the speaker actually repeated them
+6. If in doubt about what was said, return an empty string ""
 
 Context: This is from a sales video call. The speaker is ${speakerName}.`;
 
@@ -564,9 +572,19 @@ Context: This is from a sales video call. The speaker is ${speakerName}.`;
     }
   });
 
-  const transcript = response.response.text().trim();
+  const rawTranscript = response.response.text().trim();
   
-  console.log(`📝 [VideoCopilot] Transcription result: "${transcript.substring(0, 100)}${transcript.length > 100 ? '...' : ''}"`);
+  console.log(`📝 [VideoCopilot] Raw transcription: "${rawTranscript.substring(0, 100)}${rawTranscript.length > 100 ? '...' : ''}"`);
+  
+  // Detect hallucinated/repetitive output
+  const transcript = detectAndFilterHallucination(rawTranscript);
+  
+  if (transcript === null) {
+    console.log(`⚠️ [VideoCopilot] Hallucination detected, discarding transcript`);
+    return null;
+  }
+  
+  console.log(`📝 [VideoCopilot] Final transcription: "${transcript.substring(0, 100)}${transcript.length > 100 ? '...' : ''}"`);
   
   if (transcript && transcript.length > 0) {
     await db.insert(videoMeetingTranscripts).values({
@@ -580,6 +598,49 @@ Context: This is from a sales video call. The speaker is ${speakerName}.`;
   }
 
   return transcript || null;
+}
+
+function detectAndFilterHallucination(text: string): string | null {
+  if (!text || text.length === 0) {
+    return null;
+  }
+  
+  // Split into words
+  const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+  
+  if (words.length === 0) {
+    return null;
+  }
+  
+  // Check for excessive repetition (same word repeated 4+ times in a row)
+  let consecutiveCount = 1;
+  for (let i = 1; i < words.length; i++) {
+    if (words[i] === words[i - 1]) {
+      consecutiveCount++;
+      if (consecutiveCount >= 4) {
+        console.log(`⚠️ [Hallucination] Detected ${consecutiveCount}x repeated word: "${words[i]}"`);
+        return null;
+      }
+    } else {
+      consecutiveCount = 1;
+    }
+  }
+  
+  // Check if more than 50% of words are the same (e.g., "allora allora allora allora allora")
+  const wordCounts = new Map<string, number>();
+  for (const word of words) {
+    wordCounts.set(word, (wordCounts.get(word) || 0) + 1);
+  }
+  
+  for (const [word, count] of wordCounts) {
+    const ratio = count / words.length;
+    if (ratio > 0.5 && count >= 4) {
+      console.log(`⚠️ [Hallucination] Word "${word}" appears ${count}/${words.length} times (${(ratio * 100).toFixed(0)}%)`);
+      return null;
+    }
+  }
+  
+  return text;
 }
 
 async function analyzeSentiment(
