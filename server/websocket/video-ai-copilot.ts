@@ -261,9 +261,9 @@ async function authenticateConnection(req: any): Promise<{
         .limit(1);
       
       if (seller) {
-        // Build BusinessContext from seller data
-        // Parse servicesOffered safely (could be JSON string or already parsed array)
-        let parsedServices: string[] = [];
+        // Build BusinessContext from seller data (COMPLETO - allineato a SalesAgentConfig)
+        // Parse servicesOffered safely - mantiene oggetti completi {name, description, price}
+        let parsedServices: Array<{name: string; description: string; price: string}> = [];
         try {
           const rawServices = seller.servicesOffered;
           if (rawServices) {
@@ -271,23 +271,83 @@ async function authenticateConnection(req: any): Promise<{
               ? JSON.parse(rawServices) 
               : rawServices;
             if (Array.isArray(servicesArray)) {
-              parsedServices = servicesArray.map((s: any) => 
-                typeof s === 'string' ? s : (s?.name || String(s))
-              ).filter(Boolean);
+              parsedServices = servicesArray.map((s: any) => {
+                if (typeof s === 'string') {
+                  return { name: s, description: '', price: '' };
+                }
+                return {
+                  name: s?.name || String(s),
+                  description: s?.description || '',
+                  price: s?.price || ''
+                };
+              }).filter((s: any) => s.name);
             }
           }
         } catch (parseError) {
           console.warn(`⚠️ [VideoCopilot] Failed to parse servicesOffered:`, parseError);
         }
 
+        // Parse values safely (could be JSON string or already parsed array)
+        let parsedValues: string[] = [];
+        try {
+          const rawValues = (seller as any).values;
+          if (rawValues) {
+            parsedValues = typeof rawValues === 'string' 
+              ? JSON.parse(rawValues) 
+              : (Array.isArray(rawValues) ? rawValues : []);
+          }
+        } catch (parseError) {
+          console.warn(`⚠️ [VideoCopilot] Failed to parse values:`, parseError);
+        }
+
         businessContext = {
+          // Base
+          displayName: seller.displayName || seller.sellerName || 'Consulente',
           businessName: seller.businessName || seller.sellerName || 'Azienda',
-          whatWeDo: seller.whatWeDo || seller.businessDescription || '',
+          businessDescription: seller.businessDescription || null,
+          
+          // Bio & Credenziali
+          consultantBio: seller.consultantBio || null,
+          yearsExperience: seller.yearsExperience || 0,
+          clientsHelped: seller.clientsHelped || 0,
+          resultsGenerated: seller.resultsGenerated || null,
+          guarantees: seller.guarantees || null,
+          
+          // Posizionamento
+          vision: seller.vision || null,
+          mission: seller.mission || null,
+          values: parsedValues,
+          usp: seller.usp || null,
+          targetClient: seller.targetClient || null,
+          nonTargetClient: seller.nonTargetClient || null,
+          
+          // Operativo
+          whatWeDo: seller.whatWeDo || null,
+          howWeDoIt: seller.howWeDoIt || null,
+          
+          // Servizi completi
           servicesOffered: parsedServices,
-          targetClient: seller.targetClient || '',
-          nonTargetClient: seller.nonTargetClient || '',
+          
+          // Fasi
+          enableDiscovery: seller.enableDiscovery ?? true,
+          enableDemo: seller.enableDemo ?? false,
         };
-        console.log(`📦 [VideoCopilot] Loaded business context for seller: ${businessContext.businessName} (${parsedServices.length} services)`);
+        
+        // 📊 LOG DETTAGLIATO CONTESTO VENDITORE
+        console.log(`\n👤 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`👤 [VideoCopilot] SELLER CONTEXT LOADED`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   👤 Seller ID: ${seller.id}`);
+        console.log(`   👤 Display Name: ${businessContext.displayName}`);
+        console.log(`   👤 Business Name: ${businessContext.businessName}`);
+        console.log(`   👤 USP: ${businessContext.usp ? 'SET' : 'NULL'}`);
+        console.log(`   👤 Target Client: ${businessContext.targetClient ? 'SET' : 'NULL'}`);
+        console.log(`   👤 Services: ${parsedServices.length} (with details)`);
+        console.log(`   👤 Years Experience: ${businessContext.yearsExperience}`);
+        console.log(`   👤 Clients Helped: ${businessContext.clientsHelped}`);
+        console.log(`   👤 Enable Discovery: ${businessContext.enableDiscovery}`);
+        console.log(`   👤 Enable Demo: ${businessContext.enableDemo}`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         
         // CRITICAL: Consultant hierarchy traversal for Vertex AI credentials
         // Priority: seller.consultantId → client.consultantId → clientId (self-managed)
@@ -1607,27 +1667,70 @@ async function handleSetPlaybook(
         .limit(1);
 
       if (script) {
-        // Parse content se è una stringa JSON
+        // ✅ LOGICA IBRIDA: Prima JSON, poi TEXT parser (come Sales Agent AI)
         let content: any;
+        let formatDetected: 'json' | 'text' = 'json';
+        
+        // 📊 LOG DETTAGLIATO SCRIPT
+        const scriptPreview = script.content?.substring(0, 200) || '';
+        console.log(`\n📘 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`📘 [VideoCopilot] handleSetPlaybook - SCRIPT LOADING DEBUG`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        console.log(`   📋 Script ID: ${script.id}`);
+        console.log(`   📋 Script Name: ${script.name}`);
+        console.log(`   📋 Content Length: ${script.content?.length || 0} chars`);
+        console.log(`   📋 Content Preview: "${scriptPreview}..."`);
+        
         try {
+          // Tentativo 1: JSON parsing
           content = typeof script.content === 'string' 
             ? JSON.parse(script.content) 
             : script.content;
-        } catch (parseError: any) {
-          console.error(`❌ [VideoCopilot] Failed to parse script content:`, parseError.message);
-          sendMessage(ws, {
-            type: 'error',
-            data: { message: 'Failed to parse script content' },
-            timestamp: Date.now(),
-          });
-          return;
+          formatDetected = 'json';
+          console.log(`   ✅ Format: JSON (parsed successfully)`);
+        } catch (jsonError: any) {
+          console.log(`   ⚠️ JSON parse failed: ${jsonError.message}`);
+          console.log(`   🔄 Trying TEXT parser (parseScriptContentToStructure)...`);
+          
+          try {
+            // Tentativo 2: Text parsing (come Sales Agent AI)
+            const scriptType = script.scriptType || 'discovery';
+            const structure = parseScriptContentToStructure(script.content || '', scriptType);
+            content = structure;
+            formatDetected = 'text';
+            console.log(`   ✅ Format: TEXT (parsed with parseScriptContentToStructure)`);
+            console.log(`   📊 Parsed: ${structure.metadata.totalPhases} phases, ${structure.metadata.totalSteps} steps`);
+          } catch (textError: any) {
+            console.error(`   ❌ Both parsers failed!`);
+            console.error(`      JSON error: ${jsonError.message}`);
+            console.error(`      TEXT error: ${textError.message}`);
+            console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+            sendMessage(ws, {
+              type: 'error',
+              data: { message: 'Failed to parse script content (both JSON and TEXT parsers failed)' },
+              timestamp: Date.now(),
+            });
+            return;
+          }
         }
+        
+        console.log(`   📊 Format Detected: ${formatDetected.toUpperCase()}`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
         
         session.playbook = {
           id: script.id,
           name: script.name,
-          phases: content?.phases || [],
-          objections: content?.objections || [],
+          phases: content?.phases?.map((phase: any) => ({
+            name: phase.name || phase.title || 'Unnamed Phase',
+            objectives: phase.objectives || phase.goals || [],
+            keyPoints: phase.keyPoints || phase.key_points || phase.points || [],
+            questions: phase.questions || phase.suggestedQuestions || [],
+          })) || [],
+          objections: content?.objections?.map((obj: any) => ({
+            trigger: obj.trigger || obj.objection || obj.text || '',
+            response: obj.response || obj.answer || obj.rebuttal || '',
+            category: obj.category || obj.type || 'general',
+          })) || [],
         };
         session.scriptStructure = content;
         session.currentPhaseIndex = 0;
@@ -1639,7 +1742,7 @@ async function handleSetPlaybook(
           timestamp: Date.now(),
         });
         
-        console.log(`📘 [VideoCopilot] Playbook loaded from DB: ${script.name}, scriptStructure phases: ${content?.phases?.length || 0}`);
+        console.log(`📘 [VideoCopilot] Playbook loaded from DB: ${script.name}, scriptStructure phases: ${content?.phases?.length || 0}, format: ${formatDetected}`);
       } else {
         sendMessage(ws, {
           type: 'error',
@@ -1894,19 +1997,52 @@ async function autoLoadPlaybook(
       return null;
     }
 
-    // ✅ FIX: Parse content se è una stringa JSON, altrimenti usa l'oggetto direttamente
+    // 📊 LOG DETTAGLIATO SCRIPT
+    const scriptPreview = script.content?.substring(0, 200) || '';
+    console.log(`\n📘 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`📘 [VideoCopilot] SCRIPT LOADING DEBUG`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`   📋 Script ID: ${playbookId}`);
+    console.log(`   📋 Script Name: ${script.name}`);
+    console.log(`   📋 Content Length: ${script.content?.length || 0} chars`);
+    console.log(`   📋 Content Preview: "${scriptPreview}..."`);
+
+    // ✅ LOGICA IBRIDA: Prima JSON, poi TEXT parser (come Sales Agent AI)
     let content: any;
+    let formatDetected: 'json' | 'text' = 'json';
+
     try {
+      // Tentativo 1: JSON parsing
       content = typeof script.content === 'string' 
         ? JSON.parse(script.content) 
         : script.content;
-    } catch (parseError: any) {
-      console.error(`❌ [VideoCopilot] Failed to parse script content for ${playbookId}:`, parseError.message);
-      return null;
+      formatDetected = 'json';
+      console.log(`   ✅ Format: JSON (parsed successfully)`);
+    } catch (jsonError: any) {
+      console.log(`   ⚠️ JSON parse failed: ${jsonError.message}`);
+      console.log(`   🔄 Trying TEXT parser (parseScriptContentToStructure)...`);
+      
+      try {
+        // Tentativo 2: Text parsing (come Sales Agent AI)
+        const scriptType = script.scriptType || 'discovery';
+        const structure = parseScriptContentToStructure(script.content || '', scriptType);
+        content = structure;
+        formatDetected = 'text';
+        console.log(`   ✅ Format: TEXT (parsed with parseScriptContentToStructure)`);
+        console.log(`   📊 Parsed: ${structure.metadata.totalPhases} phases, ${structure.metadata.totalSteps} steps`);
+      } catch (textError: any) {
+        console.error(`   ❌ Both parsers failed!`);
+        console.error(`      JSON error: ${jsonError.message}`);
+        console.error(`      TEXT error: ${textError.message}`);
+        console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+        return null;
+      }
     }
     
+    console.log(`   📊 Format Detected: ${formatDetected.toUpperCase()}`);
+    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+    
     // ✅ FIX: Popola scriptStructure per il Sales Manager coaching
-    // Questo permette a runSalesManagerAnalysis di funzionare
     session.scriptStructure = content;
     
     // Validazione: verifica che scriptStructure abbia la struttura attesa
@@ -1936,7 +2072,7 @@ async function autoLoadPlaybook(
       })) || [],
     };
 
-    console.log(`📘 [VideoCopilot] Auto-loaded playbook: ${script.name} (${playbook.phases.length} phases, ${playbook.objections.length} objections), scriptStructure: ${session.scriptStructure ? 'LOADED' : 'NULL'}`);
+    console.log(`📘 [VideoCopilot] Auto-loaded playbook: ${script.name} (${playbook.phases.length} phases, ${playbook.objections.length} objections), scriptStructure: ${session.scriptStructure ? 'LOADED' : 'NULL'}, format: ${formatDetected}`);
     return playbook;
   } catch (error: any) {
     console.error(`❌ [VideoCopilot] Error auto-loading playbook:`, error.message);
