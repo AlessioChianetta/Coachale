@@ -1,0 +1,208 @@
+ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+[PublicMeet] Participant Alessio Chianetta joined meeting a8f2b597-43cd-4d28-911d-460669c79bf5
+4:55:04 AM [express] POST /api/meet/MbyjDvl3GzWLWbvV/join 201 in 232ms :: {"participantId":"e0702f52…
+✅ [WHATSAPP POLLING] Poll cycle complete
+4:55:05 AM [express] GET /api/meet/MbyjDvl3GzWLWbvV 304 in 304ms :: {"id":"a8f2b597-43cd-4d28-911d-4…
+[PublicMeeting] Fetching meeting for token: MbyjDvl3GzWLWbvV
+🔗 [ICE] Owner 7e40b56c-2cc8-4515-b843-dc105e478f38 is a client, looking for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's TURN config
+✅ [ICE] Using TURN config from consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔑 [ICE-DEBUG] TURN username: cac83f96...
+🔑 [ICE-DEBUG] TURN password: AATl1bJo...
+4:55:06 AM [express] GET /api/video-meeting/ice-servers/MbyjDvl3GzWLWbvV 200 in 743ms :: {"iceServer…
+[PublicMeeting] Meeting found: a8f2b597-43cd-4d28-911d-460669c79bf5 - hhh
+4:55:06 AM [express] GET /api/public/meeting/MbyjDvl3GzWLWbvV 200 in 749ms :: {"meeting":{"id":"a8f2…
+🎥 [y5o38s] Client connected to Video AI Copilot
+📦 [VideoCopilot] Loaded business context for seller: Alessio (3 services)
+✅ [VideoCopilot] Connection authenticated - Meeting: a8f2b597-43cd-4d28-911d-460669c79bf5, Guest: true, BusinessContext: loaded
+📘 [VideoCopilot] Auto-loaded playbook: Script più leggero (0 phases, 0 objections)
+🧹 [VideoCopilot] Cleaned zombie participant: Alessio Chianetta (e0702f52-c092-4dec-9615-df05713597f4)
+👥 [VideoCopilot] Participants updated: 1 participants
+🔄 [VideoCopilot] Recycling inactive participant: Alessio Chianetta (host) - ID: e0702f52-c092-4dec-9615-df05713597f4
+🔗 [VideoCopilot] Registered socket for participant e0702f52-c092-4dec-9615-df05713597f4 in meeting a8f2b597-43cd-4d28-911d-460669c79bf5
+📡 [VideoCopilot] Broadcast participant_socket_ready for Alessio Chianetta (e0702f52-c092-4dec-9615-df05713597f4)
+[PublicMeet] Participant franco Ulisse joined meeting a8f2b597-43cd-4d28-911d-460669c79bf5
+4:55:12 AM [express] POST /api/meet/MbyjDvl3GzWLWbvV/join 201 in 212ms :: {"participantId":"a12c4efd…
+4:55:14 AM [express] GET /api/meet/MbyjDvl3GzWLWbvV 200 in 303ms :: {"id":"a8f2b597-43cd-4d28-911d-4…
+[PublicMeeting] Fetching meeting for token: MbyjDvl3GzWLWbvV
+🔗 [ICE] Owner 7e40b56c-2cc8-4515-b843-dc105e478f38 is a client, looking for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's TURN config
+✅ [ICE] Using TURN config from consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+[PublicMeeting] Meeting found: a8f2b597-43cd-4d28-911d-460669c79bf5 - hhh
+4:55:15 AM [express] GET /api/public/meeting/MbyjDvl3GzWLWbvV 200 in 603ms :: {"meeting":{"id":"a8f2…
+🔑 [ICE-DEBUG] TURN username: cac83f96...
+🔑 [ICE-DEBUG] TURN password: AATl1bJo...
+4:55:15 AM [express] GET /api/video-meeting/ice-servers/MbyjDvl3GzWLWbvV 200 in 699ms :: {"iceServer…
+🎥 [9x4w2s] Client connected to Video AI Copilot
+📦 [VideoCopilot] Loaded business context for seller: Alessio (3 services)
+✅ [VideoCopilot] Connection authenticated - Meeting: a8f2b597-43cd-4d28-911d-460669c79bf5, Guest: true, BusinessContext: loaded
+🧹 [VideoCopilot] Cleaned zombie participant: franco Ulisse (a12c4efd-c727-416d-877f-e61e6d1d7c56)
+👥 [VideoCopilot] Participants updated: 2 participants
+✅ [VideoCopilot] New participant joined: franco Ulisse (prospect) - ID: fcd21080-e0a6-4cf2-8733-982ec577578a
+🔗 [VideoCopilot] Registered socket for participant fcd21080-e0a6-4cf2-8733-982ec577578a in meeting a8f2b597-43cd-4d28-911d-460669c79bf5
+📡 [VideoCopilot] Broadcast participant_socket_ready for franco Ulisse (fcd21080-e0a6-4cf2-8733-982ec577578a)
+📤 [VideoCopilot] Forwarded WebRTC offer from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded WebRTC answer from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from e0702f52-c092-4dec-9615-df05713597f4 to fcd21080-e0a6-4cf2-8733-982ec577578a
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+📤 [VideoCopilot] Forwarded ICE candidate from fcd21080-e0a6-4cf2-8733-982ec577578a to e0702f52-c092-4dec-9615-df05713597f4
+🎤 [VAD-SPEECH-START] franco Ulisse started speaking (client VAD)
+📦 [STEP 3] Received audio chunk from franco Ulisse - Chunks: 1, Size: 29128 chars
+⏰ [TurnTaking] Forcing analysis after 1765256125948ms (1765256126s inactivity)
+🔇 [VAD-SPEECH-END] franco Ulisse stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⏭️ [VAD-SPEECH-END] Too little audio (1 chunks), skipping
+⏭️ [TurnTaking] No complete turns for analysis, skipping
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+🎤 [VAD-SPEECH-START] franco Ulisse started speaking (client VAD)
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+🔇 [VAD-SPEECH-END] franco Ulisse stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⏭️ [VAD-SPEECH-END] Too little audio (2 chunks), skipping
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🎤 [VAD-SPEECH-START] franco Ulisse started speaking (client VAD)
+🔇 [VAD-SPEECH-END] franco Ulisse stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⚡ [TRUST-THE-CLIENT] Transcribing 3 chunks immediately (no server-side delay)
+🎤 [VideoCopilot] Transcribing audio from franco Ulisse (94664 chars base64)
+🔄 [VideoCopilot] PCM 70996 bytes → WAV 71040 bytes
+🔍 [VideoCopilot] Getting AI provider (first time or cache expired)...
+🔍 Finding AI provider for client guest (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: guest)...
+⚠️ TIER 1: No client-managed Vertex AI settings found
+🔍 TIER 2: Finding Vertex AI settings for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b (isConsultantUsingOwnAI: false)
+📋 TIER 2: Found 1 Vertex AI setting(s) for consultant
+🔍 Checking Vertex AI setting: managedBy=self, usageScope=both
+✅ usageScope is 'both' - access granted
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 2: Successfully created Vertex AI client (managedBy: self, usageScope: both)
+✅ [VideoCopilot] AI provider cached (source: admin)
+4:55:53 AM [express] POST /api/activity/session/heartbeat 200 in 818ms :: {"success":true,"lastActiv…
+📝 [VideoCopilot] Transcription result: "Ciao, mi senti? Prova microfono. Mi senti?"
+📤 [STEP 5] Sending transcript to client - Speaker: franco Ulisse, Text: "Ciao, mi senti? Prova microfono. Mi senti?..."
+📝 [STEP 5 DONE] Transcribed franco Ulisse: "Ciao, mi senti? Prova microfono. Mi senti?..." (partial: false)
+✅ [VAD-SPEECH-END] Turn finalized: franco Ulisse - "Ciao, mi senti? Prova microfono. Mi senti?..."
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [TURN-EXCHANGE] Analysis after turn exchange
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Previous: franco Ulisse
+   → "Ciao, mi senti? Prova microfono. Mi senti?..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤖 [STEP 7] Starting Sales Manager Analysis...
+⚠️ [STEP 7] Skipping Sales Manager: missing script structure or consultantId
+⚠️ [VertexAI Adapter] Response truncated due to MAX_TOKENS. Increase maxOutputTokens.
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+🎤 [VAD-SPEECH-START] franco Ulisse started speaking (client VAD)
+📦 [STEP 3] Received audio chunk from franco Ulisse - Chunks: 1, Size: 50976 chars
+⏰ [TurnTaking] Forcing analysis after 85469ms (85s inactivity)
+🔇 [VAD-SPEECH-END] franco Ulisse stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+⏭️ [VAD-SPEECH-END] Too little audio (1 chunks), skipping
+
+🎯 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 [TURN-EXCHANGE] Analysis after turn exchange
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Previous: franco Ulisse
+   → "Ciao, mi senti? Prova microfono. Mi senti?..."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🤖 [STEP 7] Starting Sales Manager Analysis...
+⚠️ [STEP 7] Skipping Sales Manager: missing script structure or consultantId
+⚠️ [VertexAI Adapter] Response truncated due to MAX_TOKENS. Increase maxOutputTokens.
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete

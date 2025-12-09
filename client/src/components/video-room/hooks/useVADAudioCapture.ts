@@ -3,7 +3,7 @@ import { StreamingResampler, float32ToBase64PCM16 } from '@/components/ai-assist
 
 // Caricamento dinamico della libreria VAD dal CDN per evitare problemi di bundling
 let vadModule: any = null;
-const ONNX_CDN_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js';
+const ONNX_CDN_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.js';
 const VAD_CDN_URL = 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js';
 
 function loadScript(src: string): Promise<void> {
@@ -43,6 +43,7 @@ async function loadVADFromCDN(): Promise<any> {
   // Attendi che il modulo sia disponibile
   await new Promise(resolve => setTimeout(resolve, 100));
   
+  console.log('🔍 [VAD] window.ort available:', !!(window as any).ort);
   vadModule = (window as any).vad;
   if (vadModule) {
     console.log('✅ [VAD] Library loaded from CDN successfully');
@@ -293,7 +294,7 @@ export function useVADAudioCapture({
               if (hostIsSpeakingRef.current) {
                 hostSpeechBufferRef.current.push(new Float32Array(frame));
 
-                if (hostSpeechBufferRef.current.length % 25 === 0) {
+                if (hostSpeechBufferRef.current.length % 75 === 0) {
                   flushSpeechBuffer(
                     hostParticipantId,
                     hostName,
@@ -359,7 +360,7 @@ export function useVADAudioCapture({
 
               prospectSpeechBufferRef.current.push(new Float32Array(inputData));
 
-              if (prospectSpeechBufferRef.current.length % 25 === 0) {
+              if (prospectSpeechBufferRef.current.length % 75 === 0) {
                 flushSpeechBuffer(
                   prospectParticipantId,
                   prospectName,

@@ -219,7 +219,7 @@ export default function VideoRoom({
 
   // Start audio capture for AI transcription when streams are ready (host only)
   useEffect(() => {
-    if (!isHost || !isConnected || !localStream) {
+    if (!isHost || !isConnected || !localStream || !myParticipantId) {
       return;
     }
 
