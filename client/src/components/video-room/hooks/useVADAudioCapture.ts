@@ -3,39 +3,53 @@ import { StreamingResampler, float32ToBase64PCM16 } from '@/components/ai-assist
 
 // Caricamento dinamico della libreria VAD dal CDN per evitare problemi di bundling
 let vadModule: any = null;
-const VAD_CDN_URL = 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.18/dist/bundle.min.js';
+const ONNX_CDN_URL = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.wasm.min.js';
+const VAD_CDN_URL = 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js';
 
-async function loadVADFromCDN(): Promise<any> {
-  if (vadModule) return vadModule;
-  
+function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Controlla se è già stato caricato
-    if ((window as any).vad) {
-      vadModule = (window as any).vad;
-      resolve(vadModule);
+    // Verifica se lo script è già caricato
+    const existingScript = document.querySelector(`script[src="${src}"]`);
+    if (existingScript) {
+      resolve();
       return;
     }
     
     const script = document.createElement('script');
-    script.src = VAD_CDN_URL;
+    script.src = src;
     script.async = true;
-    
-    script.onload = () => {
-      vadModule = (window as any).vad;
-      if (vadModule) {
-        console.log('✅ [VAD] Library loaded from CDN');
-        resolve(vadModule);
-      } else {
-        reject(new Error('VAD library not found after loading script'));
-      }
-    };
-    
-    script.onerror = () => {
-      reject(new Error('Failed to load VAD library from CDN'));
-    };
-    
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
     document.head.appendChild(script);
   });
+}
+
+async function loadVADFromCDN(): Promise<any> {
+  if (vadModule) return vadModule;
+  
+  // Controlla se è già stato caricato
+  if ((window as any).vad) {
+    vadModule = (window as any).vad;
+    return vadModule;
+  }
+  
+  // Carica prima ONNX Runtime, poi VAD bundle
+  console.log('📦 [VAD] Loading ONNX Runtime from CDN...');
+  await loadScript(ONNX_CDN_URL);
+  
+  console.log('📦 [VAD] Loading VAD bundle from CDN...');
+  await loadScript(VAD_CDN_URL);
+  
+  // Attendi che il modulo sia disponibile
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  vadModule = (window as any).vad;
+  if (vadModule) {
+    console.log('✅ [VAD] Library loaded from CDN successfully');
+    return vadModule;
+  } else {
+    throw new Error('VAD library not found after loading scripts');
+  }
 }
 
 // Tipo per MicVAD
@@ -257,15 +271,9 @@ export function useVADAudioCapture({
             redemptionFrames: 8,
             minSpeechFrames: 3,
             preSpeechPadFrames: 10,
-            // Carica i file WASM da CDN per evitare problemi di bundling
-            workletURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/vad.worklet.bundle.min.js",
-            modelURL: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.13/dist/silero_vad.onnx",
-
-            // Configura ONNX Runtime per usare WASM senza multithreading
-            ortConfig: (ort: any) => {
-              ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/";
-              ort.env.wasm.numThreads = 1; // Disabilita multithreading per evitare problemi COOP/COEP
-            },
+            // Configura i path per i file WASM e modello dal CDN
+            onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
+            baseAssetPath: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/",
 
             onSpeechStart: () => {
               handleHostSpeechStart();
