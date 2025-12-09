@@ -1,0 +1,334 @@
+[MeetGreenRoom] Joining call with: {token: 'NGTxJIdM06C0Hxf8', guestName: 'Alessio Chianetta', videoDevice: '89d8c82b9302e085794fbb05c80846bf37f9d6b2185bc0a29aa4522f9149b37a', audioDevice: '2c1081908cd09b32508410f0c0fd286635a2f28dfc9def9a133ca73a07348865'}
+useWebRTC.ts:82 🌐 [WebRTC] Loading ICE servers for meeting NGTxJIdM06C0Hxf8...
+useWebRTC.ts:847 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=false
+useWebRTC.ts:93 ✅ [WebRTC] Loaded 11 ICE servers (TURN: YES)
+useWebRTC.ts:847 ⏳ [WebRTC] Participants effect waiting: connected=false, myId=false, stream=false, joined=false, ice=true
+ParticipantVideo.tsx:90 📭 [ParticipantVideo] No stream available for Alessio Chianetta
+ParticipantVideo.tsx:90 📭 [ParticipantVideo] No stream available for Alessio Chianetta
+useVideoCopilot.ts:351 🎥 WebSocket connected to Video Copilot
+useVideoCopilot.ts:128 ✅ Video Copilot connected: {meetingId: '3c3c6f38-4040-4a47-a171-59b304b274d3', message: 'Video AI Copilot connected successfully', playbookLoaded: 'Script più leggero'}
+useWebRTC.ts:847 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=false, stream=false, joined=false, ice=true
+useWebRTC.ts:300 📹 [WebRTC] Starting local stream (video: true, audio: true)
+useVideoCopilot.ts:244 ✅ Join confirmed, my participant ID: d505a3c2-dd38-43c4-9bdc-d577a4d582ac
+useWebRTC.ts:847 ⏳ [WebRTC] Participants effect waiting: connected=true, myId=true, stream=false, joined=true, ice=true
+useVideoCopilot.ts:290 📡 Participant socket ready: Alessio Chianetta (d505a3c2-dd38-43c4-9bdc-d577a4d582ac)
+useWebRTC.ts:671 📡 [WebRTC] Received own socket_ready, ignoring
+useWebRTC.ts:320 📹 [WebRTC] Camera native resolution: 640x480 @ 30fps
+useWebRTC.ts:321 📹 [WebRTC] Camera device: Asus Webcam
+useWebRTC.ts:332 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:333 🎤 [WebRTC-AUDIO-DEBUG] STREAM LOCALE CREATO
+useWebRTC.ts:334 🎤 [WebRTC-AUDIO-DEBUG] Tracce audio: 1
+useWebRTC.ts:335 🎤 [WebRTC-AUDIO-DEBUG] Tracce video: 1
+useWebRTC.ts:337 🎤 [WebRTC-AUDIO-DEBUG] Audio track 0:
+useWebRTC.ts:338    - ID: 5726a7ec-5320-45f6-8cb8-ed60b078678b
+useWebRTC.ts:339    - Label: Microphone (GameDAC Chat) (1038:1282)
+useWebRTC.ts:340    - Enabled: true
+useWebRTC.ts:341    - Muted: false
+useWebRTC.ts:342    - ReadyState: live
+useWebRTC.ts:344 🎤 [WebRTC-AUDIO-DEBUG] ========================================
+useWebRTC.ts:369 ✅ [WebRTC] Local stream started with 2 tracks
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Alessio Chianetta
+ParticipantVideo.tsx:48    - Stream ID: b13bcfcd-fda5-486b-bd25-de0d2525d482
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:852 👥 [WebRTC] Checking 0 other participants for connections (my ID: d505a3c2-dd38-43c4-9bdc-d577a4d582ac)
+useAudioLevelMonitor.ts:121 [AudioLevelMonitor] Started monitoring audio level
+VideoRoom.tsx:243 [AudioCapture] Starting capture ONCE - Host: Alessio Chianetta, Prospects: none, ParticipantId: d505a3c2-dd38-43c4-9bdc-d577a4d582ac
+useVADAudioCapture.ts:330 [VAD-AudioCapture] Starting with Silero VAD neural network...
+useVADAudioCapture.ts:338 [VAD] Initializing HOST VAD with Silero neural network...
+useVADAudioCapture.ts:344 [VAD] Created CLONED audio stream for VAD (original WebRTC stream protected)
+useVADAudioCapture.ts:33 📦 [VAD] Loading ONNX Runtime from CDN...
+VideoRoom.tsx:272 [AudioCapture] Updating prospects (no restart): none
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Alessio Chianetta
+useVADAudioCapture.ts:36 📦 [VAD] Loading VAD bundle from CDN...
+useVADAudioCapture.ts:41 🔍 [VAD] window.ort available: true
+useVADAudioCapture.ts:44 ✅ [VAD] Library loaded from CDN successfully
+bundle.min.js:2 VAD | debug > initializing vad
+bundle.min.js:2 VAD | debug > vad is initialized
+bundle.min.js:2 VAD | debug > initializing micVAD
+bundle.min.js:2 VAD | debug > started micVAD
+useVADAudioCapture.ts:372 ✅ [VAD] HOST Silero VAD started successfully
+useVADAudioCapture.ts:393 [VAD-AudioCapture] Capture started successfully (HOST + 0 prospects)
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 43008, Base64: 114688 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 44544, Base64: 118784 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 49152, Base64: 131072 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 61440, Base64: 163840 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Mi senti oppure non mi senti?', isPartial: false, turnComplete: true}
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > VAD misfire
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 87552, Base64: 233472 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Ottimo che mi senti sono super contento ovviamente adesso sto parlando a me stesso', isPartial: false, turnComplete: true}
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 133632, Base64: 356352 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Bene bene bene 43 1 57 E vai', isPartial: false, turnComplete: true}
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 41472, Base64: 110592 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 30720, Base64: 81920 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Ah', isPartial: false, turnComplete: true}
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > VAD misfire
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 38400, Base64: 102400 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 41472, Base64: 110592 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 59904, Base64: 159744 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 66048, Base64: 176128 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'e vai e vai e vai e vai', isPartial: false, turnComplete: true}
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > VAD misfire
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > VAD misfire
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > VAD misfire
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > VAD misfire
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 38400, Base64: 102400 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Ciao', isPartial: false, turnComplete: true}
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 47616, Base64: 126976 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Ah', isPartial: false, turnComplete: true}
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 43008, Base64: 114688 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 39936, Base64: 106496 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Prova.', isPartial: false, turnComplete: true}
+useWebRTC.ts:397 🎤 [WebRTC-AUDIO-DEBUG] Toggle audio: MUTO - track.enabled=false
+ParticipantVideo.tsx:47 🎬 [ParticipantVideo] Assigning stream to video element for Alessio Chianetta
+ParticipantVideo.tsx:48    - Stream ID: b13bcfcd-fda5-486b-bd25-de0d2525d482
+ParticipantVideo.tsx:49    - Video tracks: 1
+ParticipantVideo.tsx:50    - Audio tracks: 1
+useWebRTC.ts:852 👥 [WebRTC] Checking 1 other participants for connections (my ID: d505a3c2-dd38-43c4-9bdc-d577a4d582ac)
+useWebRTC.ts:856 🔗 [WebRTC] No existing connection to 337a88ef-d6be-411d-bc30-9573779b5cc8, attempting to initiate...
+useWebRTC.ts:576 🔍 [WebRTC] Connection decision: myId=d505a3c2... vs remoteId=337a88ef... → I INITIATE (higher ID)
+useWebRTC.ts:590 🚀 [WebRTC] Initiating connection to 337a88ef-d6be-411d-bc30-9573779b5cc8 (attempt 1/3)
+useWebRTC.ts:137 🔗 [WebRTC] Creating peer connection for 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:138 🔗 [WebRTC] Using ICE config with 11 servers
+useWebRTC.ts:285 📹 [WebRTC] localStreamRef.current EXISTS - adding 2 tracks to peer connection
+useWebRTC.ts:287 ➕ [WebRTC] Adding local track audio to connection with 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:287 ➕ [WebRTC] Adding local track video to connection with 337a88ef-d6be-411d-bc30-9573779b5cc8
+VideoRoom.tsx:272 [AudioCapture] Updating prospects (no restart): Dz HyperLoop
+useVideoCopilot.ts:290 📡 Participant socket ready: Dz HyperLoop (337a88ef-d6be-411d-bc30-9573779b5cc8)
+useWebRTC.ts:711 📡 [WebRTC] Participant socket ready: 337a88ef..., initiating connection (attempt 1)...
+useWebRTC.ts:576 🔍 [WebRTC] Connection decision: myId=d505a3c2... vs remoteId=337a88ef... → I INITIATE (higher ID)
+useWebRTC.ts:590 🚀 [WebRTC] Initiating connection to 337a88ef-d6be-411d-bc30-9573779b5cc8 (attempt 1/3)
+useWebRTC.ts:750 ⏰ [WebRTC] Setting up both-try fallback for 337a88ef... in 8000ms
+useWebRTC.ts:281 🔄 [WebRTC] Negotiation needed for 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:618 📤 [WebRTC] Sending offer to 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:645 ❌ [WebRTC] Error creating offer for 337a88ef-d6be-411d-bc30-9573779b5cc8: InvalidAccessError: Failed to execute 'setLocalDescription' on 'RTCPeerConnection': Failed to set local offer sdp: The order of m-lines in subsequent offer doesn't match order from previous offer/answer.
+(anonymous) @ useWebRTC.ts:645
+await in (anonymous)
+(anonymous) @ useWebRTC.ts:720
+(anonymous) @ useWebRTC.ts:798
+(anonymous) @ useVideoCopilot.ts:292Understand this error
+ParticipantVideo.tsx:57 ▶️ [ParticipantVideo] Play successful for Alessio Chianetta
+24useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 337a88ef-d6be-411d-bc30-9573779b5cc8
+ParticipantVideo.tsx:90 📭 [ParticipantVideo] No stream available for Dz HyperLoop
+2useWebRTC.ts:144 🧊 [WebRTC] Sending ICE candidate to 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:737 🔄 [WebRTC] Connection not established with 337a88ef..., retrying (1/5)...
+useWebRTC.ts:705 📡 [WebRTC] Participant socket ready: 337a88ef..., but negotiation in progress or already connected, skipping
+useWebRTC.ts:507 📥 [WebRTC] Received answer from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:513 ✅ [WebRTC] Cleared offer retry timeout for 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:537 🧊 [WebRTC] Received ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:215 🔌 [WebRTC-AUDIO-DEBUG] ICE state per 337a88ef-d6be-411d-bc30-9573779b5cc8: checking
+15useWebRTC.ts:537 🧊 [WebRTC] Received ICE candidate from 337a88ef-d6be-411d-bc30-9573779b5cc8
+useWebRTC.ts:215 🔌 [WebRTC-AUDIO-DEBUG] ICE state per 337a88ef-d6be-411d-bc30-9573779b5cc8: connected
+useWebRTC.ts:229 ✅ [WebRTC] Connection established with 337a88ef..., cleaning up retry timers
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 47616, Base64: 126976 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Ciao mi senti', isPartial: false, turnComplete: true}
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 67584, Base64: 180224 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: "No, l'ha inviato tramite Alessio Chianetta, no?", isPartial: false, turnComplete: true}
+useWebRTC.ts:397 🎤 [WebRTC-AUDIO-DEBUG] Toggle audio: ATTIVO - track.enabled=true
+useAudioLevelMonitor.ts:121 [AudioLevelMonitor] Started monitoring audio level
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > VAD misfire
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 46080, Base64: 122880 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Mi senti bene?', isPartial: false, turnComplete: true}
+useWebRTC.ts:397 🎤 [WebRTC-AUDIO-DEBUG] Toggle audio: MUTO - track.enabled=false
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useWebRTC.ts:397 🎤 [WebRTC-AUDIO-DEBUG] Toggle audio: ATTIVO - track.enabled=true
+useAudioLevelMonitor.ts:121 [AudioLevelMonitor] Started monitoring audio level
+useVADAudioCapture.ts:147 🔄 [VAD] HOST - Cancelled flush timer, speaker resumed
+useVADAudioCapture.ts:153 🎤 [VAD] HOST speech started - Alessio Chianetta
+useVideoCopilot.ts:427 🎤 [WS] Sending speech_start for Alessio Chianetta
+bundle.min.js:2 VAD | debug > Detected real speech start
+useVADAudioCapture.ts:165 🔇 [VAD] HOST speech ended - Alessio Chianetta - scheduling flush after 1200ms silence
+useVADAudioCapture.ts:172 ⏰ [VAD] HOST - True silence detected, flushing audio
+useVADAudioCapture.ts:137 📤 [VAD] Sending audio - Speaker: Alessio Chianetta, Samples: 49152, Base64: 131072 chars
+useVideoCopilot.ts:436 🔇 [WS] Sending speech_end for Alessio Chianetta
+useVideoCopilot.ts:138 📥 [STEP 6] Received transcript from server: {speakerId: 'd505a3c2-dd38-43c4-9bdc-d577a4d582ac', speakerName: 'Alessio Chianetta', text: 'Ottimo, fantastico.', isPartial: false, turnComplete: true}
