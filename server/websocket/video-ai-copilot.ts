@@ -1183,14 +1183,8 @@ async function handleSpeechEndFromClient(
   const transcript = await transcribeBufferedAudio(ws, session, buffer, false);
 
   if (transcript) {
-    // 🔧 FIX: Aggiungi messaggio a conversationMessages PRIMA dell'analisi Sales Manager
-    const speakerRole = buffer.role === 'host' ? 'assistant' : 'user';
-    session.conversationMessages.push({
-      role: speakerRole,
-      content: transcript,
-      timestamp: new Date().toISOString(),
-    });
-    console.log(`📋 [VAD-SPEECH-END] Added to conversationMessages (${speakerRole}): "${transcript.substring(0, 60)}..."`);
+    // ✅ conversationMessages già aggiornato in transcribeBufferedAudio (linea 1023)
+    // NON aggiungere qui per evitare duplicati
 
     const participant = session.participants.get(buffer.speakerId);
     if (participant?.role === 'prospect') {
@@ -1247,12 +1241,8 @@ async function finalizeTurnForSpeaker(
       timestamp: Date.now(),
     });
 
-    const speakerRole = buffer.role === 'host' ? 'assistant' : 'user';
-    session.conversationMessages.push({
-      role: speakerRole,
-      content: buffer.fullTranscript,
-      timestamp: new Date().toISOString(),
-    });
+    // ✅ conversationMessages già aggiornato in transcribeBufferedAudio (linea 1023)
+    // NON aggiungere qui per evitare duplicati
 
     console.log(`✅ [TurnTaking] Turn complete: ${buffer.speakerName} - "${buffer.fullTranscript.substring(0, 80)}..."`);
   }
