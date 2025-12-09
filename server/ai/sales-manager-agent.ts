@@ -1785,7 +1785,7 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
               contents: [{ role: 'user', parts: [{ text: prompt }] }],
               generationConfig: {
                 temperature: 0,
-                maxOutputTokens: 800,
+                maxOutputTokens: 4000,
               }
             }),
             this.timeout(this.TIMEOUT_MS)

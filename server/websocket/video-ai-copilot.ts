@@ -1292,7 +1292,7 @@ async function runSalesManagerAnalysis(
 ) {
   console.log(`🤖 [STEP 7] Starting Sales Manager Analysis...`);
   if (!session.scriptStructure || !session.consultantId) {
-    console.log(`⚠️ [STEP 7] Skipping Sales Manager: missing script structure or consultantId`);
+    console.log(`⚠️ [STEP 7] Skipping Sales Manager: missing script structure (${session.scriptStructure ? 'OK' : 'NULL'}) or consultantId (${session.consultantId || 'NULL'})`);
     return;
   }
 
@@ -1606,7 +1606,22 @@ async function handleSetPlaybook(
         .limit(1);
 
       if (script) {
-        const content = script.content as any;
+        // Parse content se è una stringa JSON
+        let content: any;
+        try {
+          content = typeof script.content === 'string' 
+            ? JSON.parse(script.content) 
+            : script.content;
+        } catch (parseError: any) {
+          console.error(`❌ [VideoCopilot] Failed to parse script content:`, parseError.message);
+          sendMessage(ws, {
+            type: 'error',
+            data: { message: 'Failed to parse script content' },
+            timestamp: Date.now(),
+          });
+          return;
+        }
+        
         session.playbook = {
           id: script.id,
           name: script.name,
@@ -1623,7 +1638,7 @@ async function handleSetPlaybook(
           timestamp: Date.now(),
         });
         
-        console.log(`📘 [VideoCopilot] Playbook loaded from DB: ${script.name}`);
+        console.log(`📘 [VideoCopilot] Playbook loaded from DB: ${script.name}, scriptStructure phases: ${content?.phases?.length || 0}`);
       } else {
         sendMessage(ws, {
           type: 'error',
@@ -1878,7 +1893,27 @@ async function autoLoadPlaybook(
       return null;
     }
 
-    const content = script.content as any;
+    // ✅ FIX: Parse content se è una stringa JSON, altrimenti usa l'oggetto direttamente
+    let content: any;
+    try {
+      content = typeof script.content === 'string' 
+        ? JSON.parse(script.content) 
+        : script.content;
+    } catch (parseError: any) {
+      console.error(`❌ [VideoCopilot] Failed to parse script content for ${playbookId}:`, parseError.message);
+      return null;
+    }
+    
+    // ✅ FIX: Popola scriptStructure per il Sales Manager coaching
+    // Questo permette a runSalesManagerAnalysis di funzionare
+    session.scriptStructure = content;
+    
+    // Validazione: verifica che scriptStructure abbia la struttura attesa
+    if (!session.scriptStructure?.phases || !Array.isArray(session.scriptStructure.phases)) {
+      console.warn(`⚠️ [VideoCopilot] Script content missing 'phases' array for ${playbookId}`);
+    } else {
+      console.log(`✅ [VideoCopilot] scriptStructure loaded with ${session.scriptStructure.phases.length} phases`);
+    }
     
     const playbook: Playbook = {
       id: script.id,
@@ -1900,7 +1935,7 @@ async function autoLoadPlaybook(
       })) || [],
     };
 
-    console.log(`📘 [VideoCopilot] Auto-loaded playbook: ${script.name} (${playbook.phases.length} phases, ${playbook.objections.length} objections)`);
+    console.log(`📘 [VideoCopilot] Auto-loaded playbook: ${script.name} (${playbook.phases.length} phases, ${playbook.objections.length} objections), scriptStructure: ${session.scriptStructure ? 'LOADED' : 'NULL'}`);
     return playbook;
   } catch (error: any) {
     console.error(`❌ [VideoCopilot] Error auto-loading playbook:`, error.message);
