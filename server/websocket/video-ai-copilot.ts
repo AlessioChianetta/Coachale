@@ -1387,14 +1387,8 @@ async function handleAudioChunk(
   });
   buffer.lastChunkTime = Date.now();
 
-  // Store transcription timestamp for sorting later
-  const participant = session.participants.get(speakerId);
-  if (participant) {
-    if (!participant.transcriptions) {
-      participant.transcriptions = [];
-    }
-    participant.transcriptions.push({ text: '', timestamp: buffer.lastChunkTime }); // Placeholder text, actual text added after transcription
-  }
+  // NOTE: participant.transcriptions is no longer used for Sales Manager
+  // session.conversationMessages is now the source of truth (populated in transcribeBufferedAudio)
 
   if (buffer.chunks.length % 20 === 1) {
     console.log(`📦 [STEP 3] Received audio chunk from ${speakerName} - Chunks: ${buffer.chunks.length}, Size: ${chunkSize} chars`);
@@ -1425,52 +1419,21 @@ async function runSalesManagerAnalysis(
     // 📥 SALES MANAGER INPUT LOG
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // Build messages for Sales Manager (ALL messages, with role mapping)
-    // CRITICAL: Include ALL messages, not just turns, to capture every host question
-    const messagesForManager: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    // CRITICAL: Use session.conversationMessages which contains REAL transcription text
+    // FIX: participant.transcriptions had empty text '' - was never populated after transcription
+    const messagesForManager: Array<{ role: 'user' | 'assistant'; content: string }> = 
+      session.conversationMessages
+        .filter(m => m.content && m.content.trim().length > 0)
+        .map(m => ({
+          role: m.role,
+          content: m.content
+        }));
 
-    // Add all transcriptions in chronological order
-    // Need to get the host participant to correctly map 'assistant' role
-    const hostParticipant = Array.from(session.participants.values()).find(p => p.role === 'host');
-
-    for (const participant of session.participants.values()) {
-      if (participant.transcriptions) {
-        for (const transcript of participant.transcriptions) {
-          messagesForManager.push({
-            role: participant.role === 'host' ? 'assistant' : 'user',
-            content: transcript.text
-          });
-        }
-      }
+    // GUARD: Skip analysis if no transcriptions available yet
+    if (messagesForManager.length === 0) {
+      console.log(`⏭️ [STEP 7] Skipping Sales Manager: no transcribed messages yet (waiting for first transcription)`);
+      return;
     }
-
-    // Sort by timestamp to maintain conversation order
-    messagesForManager.sort((a, b) => {
-      // Find the original transcription objects to get timestamps
-      let transcriptA, transcriptB;
-
-      // Find participant for 'a'
-      let participantA = session.participants.get(a.role === 'assistant' ? hostParticipant?.id || '' : '');
-      if (!participantA) {
-         // Fallback if host not found or role mapping is tricky
-         participantA = Array.from(session.participants.values()).find(p => p.role !== 'assistant' && p.transcriptions?.some(t => t.text === a.content));
-      }
-      if(participantA) {
-        transcriptA = participantA.transcriptions?.find(t => t.text === a.content);
-      }
-
-      // Find participant for 'b'
-      let participantB = session.participants.get(b.role === 'assistant' ? hostParticipant?.id || '' : '');
-       if (!participantB) {
-         // Fallback if host not found or role mapping is tricky
-         participantB = Array.from(session.participants.values()).find(p => p.role !== 'assistant' && p.transcriptions?.some(t => t.text === b.content));
-       }
-      if(participantB) {
-        transcriptB = participantB.transcriptions?.find(t => t.text === b.content);
-      }
-
-      return (transcriptA?.timestamp || 0) - (transcriptB?.timestamp || 0);
-    });
-
 
     const scriptJson = JSON.stringify(session.scriptStructure || {});
     const transcriptText = messagesForManager.map(m => `${m.role}: ${m.content}`).join('\n');
