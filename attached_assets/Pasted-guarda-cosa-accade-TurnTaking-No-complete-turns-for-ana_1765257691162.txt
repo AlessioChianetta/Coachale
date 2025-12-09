@@ -1,0 +1,137 @@
+guarda cosa accade ⏭️ [TurnTaking] No complete turns for analysis, skipping
+
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+
+📦 [STEP 3] Received audio chunk from Dz HyperLoop - Chunks: 1, Size: 7280 chars
+
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+
+⚡ [TRUST-THE-CLIENT] Transcribing 1 chunks immediately (no server-side delay)
+
+🎤 [VideoCopilot] Transcribing audio from Dz HyperLoop (7280 chars base64)
+
+🔄 [VideoCopilot] PCM 5460 bytes → WAV 5504 bytes
+
+📝 [VideoCopilot] Raw transcription: "Allora"
+
+📝 [VideoCopilot] Final transcription: "Allora"
+
+📤 [STEP 5] Sending transcript to client - Speaker: Dz HyperLoop, Text: "Allora..."
+
+📝 [STEP 5 DONE] Transcribed Dz HyperLoop: "Allora..." (partial: false)
+
+✅ [VAD-SPEECH-END] Turn finalized: Dz HyperLoop - "Allora..."
+
+⏭️ [TurnTaking] No complete turns for analysis, skipping
+
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+
+📦 [STEP 3] Received audio chunk from Dz HyperLoop - Chunks: 1, Size: 7284 chars
+
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+
+⚡ [TRUST-THE-CLIENT] Transcribing 1 chunks immediately (no server-side delay)
+
+🎤 [VideoCopilot] Transcribing audio from Dz HyperLoop (7284 chars base64)
+
+🔄 [VideoCopilot] PCM 5462 bytes → WAV 5506 bytes
+
+📝 [VideoCopilot] Raw transcription: "HyperLoop"
+
+📝 [VideoCopilot] Final transcription: "HyperLoop"
+
+📤 [STEP 5] Sending transcript to client - Speaker: Dz HyperLoop, Text: "HyperLoop..."
+
+📝 [STEP 5 DONE] Transcribed Dz HyperLoop: "HyperLoop..." (partial: false)
+
+✅ [VAD-SPEECH-END] Turn finalized: Dz HyperLoop - "HyperLoop..."
+
+⏭️ [TurnTaking] No complete turns for analysis, skipping
+
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-06T10:23:41.000Z
+
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+
+📌 [WATERMARK] Latest on Twilio (2025-12-06T10:23:41.000Z) is older than watermark - keeping current
+
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+
+📦 [STEP 3] Received audio chunk from Dz HyperLoop - Chunks: 1, Size: 25488 chars
+
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+
+⚡ [TRUST-THE-CLIENT] Transcribing 1 chunks immediately (no server-side delay)
+
+🎤 [VideoCopilot] Transcribing audio from Dz HyperLoop (25488 chars base64)
+
+🔄 [VideoCopilot] PCM 19114 bytes → WAV 19158 bytes
+
+🎤 [VAD-SPEECH-START] Dz HyperLoop started speaking (client VAD)
+
+🔇 [VAD-SPEECH-END] Dz HyperLoop stopped speaking (client VAD) - TRANSCRIBING IMMEDIATELY!
+
+⚡ [TRUST-THE-CLIENT] Transcribing 2 chunks immediately (no server-side delay)
+
+🎤 [VideoCopilot] Transcribing audio from Dz HyperLoop (40052 chars base64)
+
+🔄 [VideoCopilot] PCM 30038 bytes → WAV 30082 bytes
+
+📝 [VideoCopilot] Raw transcription: "pronto"
+
+📝 [VideoCopilot] Final transcription: "pronto"
+
+📤 [STEP 5] Sending transcript to client - Speaker: Dz HyperLoop, Text: "pronto..."
+
+📝 [STEP 5 DONE] Transcribed Dz HyperLoop: "pronto..." (partial: false)
+
+✅ [VAD-SPEECH-END] Turn finalized: Dz HyperLoop - "pronto..."
+
+⏭️ [TurnTaking] No complete turns for analysis, skipping
+
+⚠️ [VertexAI Adapter] Response truncated due to MAX_TOKENS. Increase maxOutputTokens.
+
+📝 [VideoCopilot] Raw transcription: ""
+
+⚠️ [VideoCopilot] Hallucination detected, discarding transcript
+
+⏭️ [TurnTaking] No complete turns for analysis, skipping
