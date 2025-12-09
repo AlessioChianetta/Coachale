@@ -492,10 +492,10 @@ async function transcribeAudio(
     
     const pcmBuffer = base64ToBuffer(audioBase64);
     
-    // Minimum 400ms of audio at 16kHz, 16-bit = 12800 bytes
-    const MIN_AUDIO_BYTES = 12800;
+    // Minimum 800ms of audio at 16kHz, 16-bit = 25600 bytes
+    const MIN_AUDIO_BYTES = 25600;
     if (pcmBuffer.length < MIN_AUDIO_BYTES) {
-      console.log(`⚠️ [VideoCopilot] Audio too short: ${pcmBuffer.length} bytes = ${Math.round(pcmBuffer.length / 32)}ms (min: 400ms), skipping transcription`);
+      console.log(`⚠️ [VideoCopilot] Audio too short: ${pcmBuffer.length} bytes = ${Math.round(pcmBuffer.length / 32)}ms (min: 800ms), skipping transcription`);
       return null;
     }
     
@@ -545,19 +545,9 @@ async function performTranscription(
     return null;
   }
 
-  const prompt = `Trascrivi ESATTAMENTE quello che senti in questo audio in italiano.
+  const prompt = `Trascrivi questo audio in italiano. Scrivi SOLO le parole pronunciate, senza aggiungere nulla.
 
-REGOLE FONDAMENTALI:
-1. Scrivi SOLO le parole pronunciate - niente di più, niente di meno
-2. Trascrivi TUTTO ciò che senti, anche singole parole, lettere o suoni brevi come "sì", "no", "ah", "ok", "uno", "due", "tre"
-3. Se l'audio è completamente silenzioso senza parlato, restituisci stringa vuota ""
-4. NON ripetere parole a meno che la persona non le abbia davvero ripetute
-5. NON inventare parole che non sono state pronunciate
-6. IMPORTANTE: Se senti numeri (uno, due, tre, quattro, cinque, ecc.), scrivili ESATTAMENTE come pronunciati
-
-Speaker: ${speakerName}
-
-Trascrizione:`;
+Speaker: ${speakerName}`;
 
   console.log(`🎯 [Trascrizione] Inviando richiesta a Gemini con prompt italiano...`);
   
@@ -573,8 +563,10 @@ Trascrizione:`;
       }
     ],
     generationConfig: {
-      temperature: 0.0,  // Temperatura 0 per trascrizione precisa
-      maxOutputTokens: 1000,  // Aumentato per evitare troncamenti
+      temperature: 0,  // Temperatura 0 per trascrizione precisa
+      maxOutputTokens: 1000,
+      topP: 1,
+      topK: 1,  // Forza il modello a scegliere sempre la parola più probabile
     }
   });
   
