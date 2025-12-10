@@ -58,9 +58,13 @@ interface ConsultationInvite {
 
 interface InvitesListTableProps {
   agentId: string;
+  entityType?: 'ai_agent' | 'human_seller';
 }
 
-export function InvitesListTable({ agentId }: InvitesListTableProps) {
+export function InvitesListTable({ agentId, entityType = 'ai_agent' }: InvitesListTableProps) {
+  const baseUrl = entityType === 'human_seller' 
+    ? `/api/human-sellers/${agentId}` 
+    : `/api/client/sales-agent/config/${agentId}`;
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -71,9 +75,9 @@ export function InvitesListTable({ agentId }: InvitesListTableProps) {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
   const { data: invites = [], isLoading, refetch } = useQuery<ConsultationInvite[]>({
-    queryKey: [`/api/client/sales-agent/config/${agentId}/invites`],
+    queryKey: [`${baseUrl}/invites`],
     queryFn: async () => {
-      const response = await fetch(`/api/client/sales-agent/config/${agentId}/invites`, {
+      const response = await fetch(`${baseUrl}/invites`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to fetch invites');
@@ -85,7 +89,7 @@ export function InvitesListTable({ agentId }: InvitesListTableProps) {
   const deleteMutation = useMutation({
     mutationFn: async (inviteToken: string) => {
       const response = await fetch(
-        `/api/client/sales-agent/config/${agentId}/invites/${inviteToken}`,
+        `${baseUrl}/invites/${inviteToken}`,
         {
           method: 'DELETE',
           headers: getAuthHeaders(),
@@ -98,7 +102,7 @@ export function InvitesListTable({ agentId }: InvitesListTableProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/client/sales-agent/config/${agentId}/invites`] });
+      queryClient.invalidateQueries({ queryKey: [`${baseUrl}/invites`] });
       toast({
         title: '✅ Eliminato!',
         description: 'Invito e conversazione eliminati con successo',
@@ -119,7 +123,7 @@ export function InvitesListTable({ agentId }: InvitesListTableProps) {
   const deleteAllMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch(
-        `/api/client/sales-agent/config/${agentId}/invites`,
+        `${baseUrl}/invites`,
         {
           method: 'DELETE',
           headers: getAuthHeaders(),
@@ -132,7 +136,7 @@ export function InvitesListTable({ agentId }: InvitesListTableProps) {
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/client/sales-agent/config/${agentId}/invites`] });
+      queryClient.invalidateQueries({ queryKey: [`${baseUrl}/invites`] });
       toast({
         title: '✅ Eliminato!',
         description: `Eliminati ${data.deletedCount} inviti e conversazioni`,

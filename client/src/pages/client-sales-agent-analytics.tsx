@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
@@ -26,6 +26,7 @@ import {
   RefreshCw,
   Sparkles,
   Map,
+  User,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -157,9 +158,18 @@ interface TrainingConversationDetail {
   scriptVersion?: string;
 }
 
+type EntityType = 'ai_agent' | 'human_seller';
+
+interface HumanSeller {
+  id: string;
+  name: string;
+  email: string;
+  isActive: boolean;
+}
+
 export default function ClientSalesAgentAnalytics() {
-  const { agentId } = useParams<{ agentId: string }>();
-  const [, setLocation] = useLocation();
+  const { agentId, id: sellerId } = useParams<{ agentId?: string; id?: string }>();
+  const [location, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -170,27 +180,77 @@ export default function ClientSalesAgentAnalytics() {
   const [scriptTypeFilter, setScriptTypeFilter] = useState<'all' | 'discovery' | 'demo' | 'objections'>('all');
   const queryClient = useQueryClient();
   
+  // Detect entity type from URL path
+  const entityConfig = useMemo(() => {
+    const isHumanSeller = location.includes('/human-sellers/');
+    const entityId = isHumanSeller ? sellerId : agentId;
+    const entityType: EntityType = isHumanSeller ? 'human_seller' : 'ai_agent';
+    const baseUrl = isHumanSeller 
+      ? `/api/human-sellers/${entityId}` 
+      : `/api/client/sales-agent/config/${entityId}`;
+    
+    return {
+      entityType,
+      entityId,
+      baseUrl,
+      isHumanSeller,
+      labels: {
+        entityName: isHumanSeller ? 'Venditore' : 'Agente',
+        backLink: isHumanSeller ? '/client/human-sellers' : '/client/sales-agents',
+        backLabel: isHumanSeller ? 'Venditori' : 'Sales Agents',
+      }
+    };
+  }, [location, agentId, sellerId]);
+  
   // Determine if we should enable real-time polling (only in training tab)
   const enablePolling = activeTab === 'training';
 
-  const { data: agent, isLoading } = useQuery<SalesAgent>({
-    queryKey: [`/api/client/sales-agent/config/${agentId}`],
+  // Fetch AI Agent data (only for AI agents)
+  const { data: agent, isLoading: agentLoading } = useQuery<SalesAgent>({
+    queryKey: [`/api/client/sales-agent/config/${entityConfig.entityId}`],
     queryFn: async () => {
-      const response = await fetch(`/api/client/sales-agent/config/${agentId}`, {
+      const response = await fetch(`/api/client/sales-agent/config/${entityConfig.entityId}`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to fetch agent');
       return response.json();
     },
-    enabled: !!agentId,
+    enabled: !!entityConfig.entityId && !entityConfig.isHumanSeller,
   });
 
-  const { data: trainingStats, isLoading: statsLoading } = useQuery<TrainingStats>({
-    queryKey: [`/api/client/sales-agent/config/${agentId}/training/stats`],
+  // Fetch Human Seller data (only for human sellers)
+  const { data: humanSeller, isLoading: sellerLoading } = useQuery<HumanSeller>({
+    queryKey: [`/api/human-sellers/${entityConfig.entityId}`],
     queryFn: async () => {
-      console.log(`[FRONTEND] Fetching training stats for agent ${agentId}...`);
+      const response = await fetch(`/api/human-sellers/${entityConfig.entityId}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error('Failed to fetch seller');
+      return response.json();
+    },
+    enabled: !!entityConfig.entityId && entityConfig.isHumanSeller,
+  });
+
+  // Unified loading and entity data
+  const isLoading = entityConfig.isHumanSeller ? sellerLoading : agentLoading;
+  const entityData = entityConfig.isHumanSeller 
+    ? (humanSeller ? { 
+        id: humanSeller.id, 
+        name: humanSeller.name, 
+        isActive: humanSeller.isActive 
+      } : null)
+    : (agent ? { 
+        id: agent.id, 
+        name: agent.agentName, 
+        isActive: agent.isActive 
+      } : null);
+
+  const { data: trainingStats, isLoading: statsLoading } = useQuery<TrainingStats>({
+    queryKey: [`${entityConfig.baseUrl}/training/stats`],
+    queryFn: async () => {
+      console.log(`[FRONTEND] Fetching training stats for ${entityConfig.entityType} ${entityConfig.entityId}...`);
       const response = await fetch(
-        `/api/client/sales-agent/config/${agentId}/training/stats`,
+        `${entityConfig.baseUrl}/training/stats`,
         { headers: getAuthHeaders() }
       );
       if (!response.ok) {
@@ -201,16 +261,16 @@ export default function ClientSalesAgentAnalytics() {
       console.log(`[FRONTEND] Received training stats:`, data);
       return data;
     },
-    enabled: !!agentId,
-    refetchInterval: enablePolling ? 5000 : false, // Poll every 5 seconds when in training tab
+    enabled: !!entityConfig.entityId,
+    refetchInterval: enablePolling ? 5000 : false,
   });
 
   const { data: trainingSummary } = useQuery<TrainingSummary>({
-    queryKey: [`/api/client/sales-agent/config/${agentId}/training/summary`],
+    queryKey: [`${entityConfig.baseUrl}/training/summary`],
     queryFn: async () => {
-      console.log(`[FRONTEND] Fetching training summary for agent ${agentId}...`);
+      console.log(`[FRONTEND] Fetching training summary for ${entityConfig.entityType} ${entityConfig.entityId}...`);
       const response = await fetch(
-        `/api/client/sales-agent/config/${agentId}/training/summary`,
+        `${entityConfig.baseUrl}/training/summary`,
         { headers: getAuthHeaders() }
       );
       if (!response.ok) {
@@ -221,17 +281,17 @@ export default function ClientSalesAgentAnalytics() {
       console.log(`[FRONTEND] Received training summary:`, data);
       return data;
     },
-    enabled: !!agentId,
+    enabled: !!entityConfig.entityId,
   });
 
   const { data: trainingConversations = [], isLoading: conversationsLoading } = useQuery<
     TrainingConversation[]
   >({
-    queryKey: [`/api/client/sales-agent/config/${agentId}/training/conversations`],
+    queryKey: [`${entityConfig.baseUrl}/training/conversations`],
     queryFn: async () => {
-      console.log(`[FRONTEND] Fetching training conversations for agent ${agentId}...`);
+      console.log(`[FRONTEND] Fetching training conversations for ${entityConfig.entityType} ${entityConfig.entityId}...`);
       const response = await fetch(
-        `/api/client/sales-agent/config/${agentId}/training/conversations`,
+        `${entityConfig.baseUrl}/training/conversations`,
         { headers: getAuthHeaders() }
       );
       if (!response.ok) {
@@ -242,23 +302,23 @@ export default function ClientSalesAgentAnalytics() {
       console.log(`[FRONTEND] Received ${data.length} conversations:`, data);
       return data;
     },
-    enabled: !!agentId,
-    refetchInterval: enablePolling ? 5000 : false, // Poll every 5 seconds when in training tab
+    enabled: !!entityConfig.entityId,
+    refetchInterval: enablePolling ? 5000 : false,
   });
 
   const { data: conversationDetail, isLoading: detailLoading } = useQuery<TrainingConversationDetail | null>({
-    queryKey: [`/api/client/sales-agent/config/${agentId}/training/conversation/${selectedConversationId}`],
+    queryKey: [`${entityConfig.baseUrl}/training/conversation/${selectedConversationId}`],
     queryFn: async () => {
       if (!selectedConversationId) return null;
       const response = await fetch(
-        `/api/client/sales-agent/config/${agentId}/training/conversation/${selectedConversationId}`,
+        `${entityConfig.baseUrl}/training/conversation/${selectedConversationId}`,
         { headers: getAuthHeaders() }
       );
       if (!response.ok) throw new Error('Failed to fetch conversation detail');
       return response.json();
     },
-    enabled: !!agentId && !!selectedConversationId,
-    refetchInterval: selectedConversationId && enablePolling ? 3000 : false, // Poll every 3 seconds for detail modal
+    enabled: !!entityConfig.entityId && !!selectedConversationId,
+    refetchInterval: selectedConversationId && enablePolling ? 3000 : false,
   });
 
   const { data: scriptStructure, isLoading: scriptLoading, error: scriptError } = useQuery({
@@ -291,9 +351,9 @@ export default function ClientSalesAgentAnalytics() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: [`/api/client/sales-agent/config/${agentId}/training/stats`] }),
-      queryClient.invalidateQueries({ queryKey: [`/api/client/sales-agent/config/${agentId}/training/conversations`] }),
-      queryClient.invalidateQueries({ queryKey: [`/api/client/sales-agent/config/${agentId}/training/summary`] }),
+      queryClient.invalidateQueries({ queryKey: [`${entityConfig.baseUrl}/training/stats`] }),
+      queryClient.invalidateQueries({ queryKey: [`${entityConfig.baseUrl}/training/conversations`] }),
+      queryClient.invalidateQueries({ queryKey: [`${entityConfig.baseUrl}/training/summary`] }),
     ]);
     setTimeout(() => setIsRefreshing(false), 500);
   };
@@ -312,18 +372,22 @@ export default function ClientSalesAgentAnalytics() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black flex items-center justify-center">
         <div className="text-center">
-          <Bot className="h-12 w-12 mx-auto mb-4 text-blue-600 animate-pulse" />
+          {entityConfig.isHumanSeller ? (
+            <User className="h-12 w-12 mx-auto mb-4 text-blue-600 animate-pulse" />
+          ) : (
+            <Bot className="h-12 w-12 mx-auto mb-4 text-blue-600 animate-pulse" />
+          )}
           <p className="text-gray-600 dark:text-gray-400">Caricamento analytics...</p>
         </div>
       </div>
     );
   }
 
-  if (!agent) {
+  if (!entityData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600">Agente non trovato</p>
+          <p className="text-red-600">{entityConfig.labels.entityName} non trovato</p>
         </div>
       </div>
     );
@@ -413,30 +477,32 @@ export default function ClientSalesAgentAnalytics() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setLocation('/client/sales-agents')}
+                onClick={() => setLocation(entityConfig.labels.backLink)}
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Sales Agents
+                {entityConfig.labels.backLabel}
               </Button>
               <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-blue-600" />
-                Analytics - {agent.agentName}
+                Analytics - {entityData.name}
               </h1>
               <div className="ml-auto flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLocation(`/client/sales-agents/${agentId}/scripts`)}
-                className="hidden sm:flex"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                Script Manager
-              </Button>
+              {!entityConfig.isHumanSeller && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLocation(`/client/sales-agents/${entityConfig.entityId}/scripts`)}
+                  className="hidden sm:flex"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Script Manager
+                </Button>
+              )}
               <Badge
-                variant={agent.isActive ? 'default' : 'secondary'}
-                className={agent.isActive ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'}
+                variant={entityData.isActive ? 'default' : 'secondary'}
+                className={entityData.isActive ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400'}
               >
-                {agent.isActive ? 'Attivo' : 'Spento'}
+                {entityData.isActive ? 'Attivo' : 'Spento'}
               </Badge>
               </div>
             </div>
@@ -475,14 +541,18 @@ export default function ClientSalesAgentAnalytics() {
                     <span className="ml-2 h-2 w-2 bg-green-500 rounded-full animate-pulse" title="Aggiornamento automatico attivo" />
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="ai-training">
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  AI Training Assistant
-                </TabsTrigger>
-                <TabsTrigger value="ai-trainer">
-                  <Bot className="h-4 w-4 mr-2" />
-                  AI Trainer
-                </TabsTrigger>
+                {!entityConfig.isHumanSeller && (
+                  <>
+                    <TabsTrigger value="ai-training">
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      AI Training Assistant
+                    </TabsTrigger>
+                    <TabsTrigger value="ai-trainer">
+                      <Bot className="h-4 w-4 mr-2" />
+                      AI Trainer
+                    </TabsTrigger>
+                  </>
+                )}
                 <TabsTrigger value="guide">
                   <BookOpen className="h-4 w-4 mr-2" />
                   Guida
@@ -567,7 +637,7 @@ export default function ClientSalesAgentAnalytics() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <InvitesListTable agentId={agentId!} />
+                      <InvitesListTable agentId={entityConfig.entityId!} entityType={entityConfig.isHumanSeller ? 'human_seller' : 'ai_agent'} />
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -600,7 +670,7 @@ export default function ClientSalesAgentAnalytics() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="grid grid-cols-1 md:grid-cols-4 gap-6"
+                  className={`grid grid-cols-1 gap-6 ${entityConfig.isHumanSeller ? 'md:grid-cols-3' : 'md:grid-cols-4'}`}
                 >
                   <Card className="bg-white dark:bg-gray-800">
                     <CardContent className="p-6">
@@ -640,23 +710,25 @@ export default function ClientSalesAgentAnalytics() {
                     </CardContent>
                   </Card>
 
-                  <Card className="bg-white dark:bg-gray-800">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                            Attivazioni Ladder
-                          </p>
-                          <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                            {statsLoading ? '...' : trainingStats?.totalLadderActivations || 0}
-                          </p>
+                  {!entityConfig.isHumanSeller && (
+                    <Card className="bg-white dark:bg-gray-800">
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                              Attivazioni Ladder
+                            </p>
+                            <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                              {statsLoading ? '...' : trainingStats?.totalLadderActivations || 0}
+                            </p>
+                          </div>
+                          <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
+                            <Activity className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                          </div>
                         </div>
-                        <div className="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
-                          <Activity className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   <Card className="bg-white dark:bg-gray-800">
                     <CardContent className="p-6">
@@ -759,9 +831,11 @@ export default function ClientSalesAgentAnalytics() {
                                 <th className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
                                   Completamento
                                 </th>
-                                <th className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                  Ladder
-                                </th>
+                                {!entityConfig.isHumanSeller && (
+                                  <th className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                    Ladder
+                                  </th>
+                                )}
                                 <th className="text-left p-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
                                   Durata
                                 </th>
@@ -813,9 +887,11 @@ export default function ClientSalesAgentAnalytics() {
                                       </span>
                                     </div>
                                   </td>
-                                  <td className="p-3 text-sm text-gray-900 dark:text-white">
-                                    {conv.ladderActivationCount}x
-                                  </td>
+                                  {!entityConfig.isHumanSeller && (
+                                    <td className="p-3 text-sm text-gray-900 dark:text-white">
+                                      {conv.ladderActivationCount}x
+                                    </td>
+                                  )}
                                   <td className="p-3 text-sm text-gray-600 dark:text-gray-400">
                                     {Math.floor(conv.totalDuration / 60)}m
                                   </td>
@@ -893,28 +969,36 @@ export default function ClientSalesAgentAnalytics() {
                     </CardHeader>
                     <CardContent>
                       <Tabs defaultValue="phase-flow" className="w-full">
-                        <TabsList className="grid w-full grid-cols-4">
+                        <TabsList className={`grid w-full ${entityConfig.isHumanSeller ? 'grid-cols-2' : 'grid-cols-4'}`}>
                           <TabsTrigger value="phase-flow">Phase Flow</TabsTrigger>
-                          <TabsTrigger value="ladder">Ladder Analytics</TabsTrigger>
+                          {!entityConfig.isHumanSeller && (
+                            <TabsTrigger value="ladder">Ladder Analytics</TabsTrigger>
+                          )}
                           <TabsTrigger value="objections">Objection Handling</TabsTrigger>
-                          <TabsTrigger value="ai-reasoning">AI Reasoning</TabsTrigger>
+                          {!entityConfig.isHumanSeller && (
+                            <TabsTrigger value="ai-reasoning">AI Reasoning</TabsTrigger>
+                          )}
                         </TabsList>
 
                         <TabsContent value="phase-flow" className="mt-6">
-                          <PhaseFlowTab agentId={agentId!} />
+                          <PhaseFlowTab agentId={entityConfig.entityId!} />
                         </TabsContent>
 
-                        <TabsContent value="ladder" className="mt-6">
-                          <LadderAnalyticsTab agentId={agentId!} />
-                        </TabsContent>
+                        {!entityConfig.isHumanSeller && (
+                          <TabsContent value="ladder" className="mt-6">
+                            <LadderAnalyticsTab agentId={entityConfig.entityId!} />
+                          </TabsContent>
+                        )}
 
                         <TabsContent value="objections" className="mt-6">
-                          <ObjectionHandlingTab agentId={agentId!} />
+                          <ObjectionHandlingTab agentId={entityConfig.entityId!} />
                         </TabsContent>
 
-                        <TabsContent value="ai-reasoning" className="mt-6">
-                          <AIReasoningTab agentId={agentId!} />
-                        </TabsContent>
+                        {!entityConfig.isHumanSeller && (
+                          <TabsContent value="ai-reasoning" className="mt-6">
+                            <AIReasoningTab agentId={entityConfig.entityId!} />
+                          </TabsContent>
+                        )}
                       </Tabs>
                     </CardContent>
                   </Card>
@@ -922,25 +1006,29 @@ export default function ClientSalesAgentAnalytics() {
               </TabsContent>
 
               {/* Tab 3: Guida (COMPLETE GUIDE) */}
-              {/* Tab 4: AI Training Assistant */}
-              <TabsContent value="ai-training" className="space-y-6">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
-                >
-                  <TrainingFileUpload 
-                    agentId={agentId!} 
-                    preselectedConversationId={preselectedConversationId}
-                    onConversationPreselected={() => setPreselectedConversationId('')}
-                  />
-                </motion.div>
-              </TabsContent>
+              {/* Tab 4: AI Training Assistant (AI Agents only) */}
+              {!entityConfig.isHumanSeller && (
+                <TabsContent value="ai-training" className="space-y-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-6"
+                  >
+                    <TrainingFileUpload 
+                      agentId={entityConfig.entityId!} 
+                      preselectedConversationId={preselectedConversationId}
+                      onConversationPreselected={() => setPreselectedConversationId('')}
+                    />
+                  </motion.div>
+                </TabsContent>
+              )}
 
-              {/* Tab 5: AI Trainer - Campo di Battaglia */}
-              <TabsContent value="ai-trainer" className="space-y-6">
-                <AITrainerTab agentId={agentId!} />
-              </TabsContent>
+              {/* Tab 5: AI Trainer - Campo di Battaglia (AI Agents only) */}
+              {!entityConfig.isHumanSeller && (
+                <TabsContent value="ai-trainer" className="space-y-6">
+                  <AITrainerTab agentId={entityConfig.entityId!} />
+                </TabsContent>
+              )}
 
               {/* Tab 6: Guida */}
               <TabsContent value="guide" className="space-y-6">

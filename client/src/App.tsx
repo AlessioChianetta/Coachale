@@ -496,7 +496,7 @@ function Router() {
 
       <Route path="/client/human-sellers/:id/analytics">
         <AuthGuard requiredRole="client">
-          <ClientHumanSellerAnalytics />
+          <ClientSalesAgentAnalytics />
         </AuthGuard>
       </Route>
 
