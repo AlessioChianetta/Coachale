@@ -88,6 +88,13 @@ interface UseVideoCopilotResult extends CopilotState {
   sendSpeakingState: (isSpeaking: boolean) => void;
 }
 
+const HEARTBEAT_INTERVAL_MS = 25000;
+const HEARTBEAT_TIMEOUT_MS = 5000;
+const MAX_RECONNECT_ATTEMPTS = 10;
+const BASE_RECONNECT_DELAY_MS = 1000;
+const MAX_RECONNECT_DELAY_MS = 30000;
+const JITTER_FACTOR = 0.2;
+
 function getWebSocketUrl(meetingToken: string): string {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const host = window.location.host;
@@ -98,9 +105,22 @@ function getWebSocketUrl(meetingToken: string): string {
   return `${protocol}//${host}/ws/video-copilot?meetingToken=${meetingToken}`;
 }
 
+function calculateBackoff(attempt: number): number {
+  const exponentialDelay = Math.min(
+    BASE_RECONNECT_DELAY_MS * Math.pow(2, attempt),
+    MAX_RECONNECT_DELAY_MS
+  );
+  const jitter = exponentialDelay * JITTER_FACTOR * (Math.random() * 2 - 1);
+  return Math.round(exponentialDelay + jitter);
+}
+
 export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotResult {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptRef = useRef<number>(0);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isNetworkOfflineRef = useRef<boolean>(false);
   const webrtcMessageHandlerRef = useRef<WebRTCMessageHandler | null>(null);
   const coachingMessageHandlerRef = useRef<((message: any) => void) | null>(null);
   const latestSpeakingRef = useRef<boolean | null>(null);
@@ -120,21 +140,39 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     isJoinConfirmed: false,
   });
 
+  const clearHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+    if (heartbeatTimeoutRef.current) {
+      clearTimeout(heartbeatTimeoutRef.current);
+      heartbeatTimeoutRef.current = null;
+    }
+  }, []);
+
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const message = JSON.parse(event.data);
       
+      if (message.type === 'pong') {
+        if (heartbeatTimeoutRef.current) {
+          clearTimeout(heartbeatTimeoutRef.current);
+          heartbeatTimeoutRef.current = null;
+        }
+        return;
+      }
+      
       switch (message.type) {
         case 'connected':
           console.log('✅ Video Copilot connected:', message.data);
+          reconnectAttemptRef.current = 0;
           setState(prev => ({
             ...prev,
             isConnected: true,
             isConnecting: false,
             error: null,
           }));
-          // 🔄 STATE REHYDRATION: Request current state from server after reconnection
-          // This fixes the bug where transcripts and checkpoints disappear on page refresh
           console.log('🔄 [STATE-SYNC] Requesting state sync from server...');
           if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: 'request_state_sync' }));
@@ -208,7 +246,7 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
           break;
 
         case 'script_progress':
-        case 'script_progress_update': // BUG #3 FIX: Handle both event names
+        case 'script_progress_update':
           const progress = message.data as ScriptProgress;
           console.log(`📊 [SCRIPT_PROGRESS] Received ${message.type}:`, progress);
           setState(prev => {
@@ -345,8 +383,40 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     }
   }, []);
 
+  const startHeartbeat = useCallback(() => {
+    clearHeartbeat();
+    
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'ping' }));
+        
+        heartbeatTimeoutRef.current = setTimeout(() => {
+          console.warn('💔 [Heartbeat] No pong received, connection considered dead');
+          if (wsRef.current) {
+            wsRef.current.close(4000, 'Heartbeat timeout');
+          }
+        }, HEARTBEAT_TIMEOUT_MS);
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+  }, [clearHeartbeat]);
+
   const connect = useCallback(() => {
     if (!meetingToken || wsRef.current?.readyState === WebSocket.OPEN) {
+      return;
+    }
+
+    if (isNetworkOfflineRef.current) {
+      console.log('📵 [WebSocket] Network offline, skipping connection attempt');
+      return;
+    }
+
+    if (reconnectAttemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.error(`❌ [WebSocket] Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached`);
+      setState(prev => ({
+        ...prev,
+        error: `Impossibile connettersi dopo ${MAX_RECONNECT_ATTEMPTS} tentativi. Ricarica la pagina.`,
+        isConnecting: false,
+      }));
       return;
     }
 
@@ -358,23 +428,45 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
 
       ws.onopen = () => {
         console.log('🎥 WebSocket connected to Video Copilot');
+        startHeartbeat();
       };
 
       ws.onmessage = handleMessage;
 
       ws.onclose = (event) => {
         console.log('🔌 WebSocket closed:', event.code, event.reason);
+        clearHeartbeat();
+        
         setState(prev => ({
           ...prev,
           isConnected: false,
           isConnecting: false,
         }));
 
-        if (event.code !== 1000 && event.code !== 4401) {
+        const shouldReconnect = 
+          event.code !== 1000 && 
+          event.code !== 4401 &&
+          !isNetworkOfflineRef.current &&
+          reconnectAttemptRef.current < MAX_RECONNECT_ATTEMPTS;
+
+        if (shouldReconnect) {
+          const delay = calculateBackoff(reconnectAttemptRef.current);
+          reconnectAttemptRef.current += 1;
+          console.log(`🔄 Attempting reconnection in ${delay}ms (attempt ${reconnectAttemptRef.current}/${MAX_RECONNECT_ATTEMPTS})`);
+          
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('🔄 Attempting reconnection...');
             connect();
-          }, 3000);
+          }, delay);
+        } else if (event.code === 1006) {
+          console.warn('⚠️ [WebSocket] Abnormal closure (1006)');
+          const delay = calculateBackoff(reconnectAttemptRef.current);
+          reconnectAttemptRef.current += 1;
+          
+          if (reconnectAttemptRef.current < MAX_RECONNECT_ATTEMPTS) {
+            reconnectTimeoutRef.current = setTimeout(() => {
+              connect();
+            }, delay);
+          }
         }
       };
 
@@ -396,9 +488,11 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
         isConnecting: false,
       }));
     }
-  }, [meetingToken, handleMessage]);
+  }, [meetingToken, handleMessage, startHeartbeat, clearHeartbeat]);
 
   const disconnect = useCallback(() => {
+    clearHeartbeat();
+    
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -409,13 +503,15 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
       wsRef.current = null;
     }
 
+    reconnectAttemptRef.current = 0;
+
     setState(prev => ({
       ...prev,
       isConnected: false,
       isConnecting: false,
       isJoinConfirmed: false,
     }));
-  }, []);
+  }, [clearHeartbeat]);
 
   const sendMessage = useCallback((message: any) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -520,7 +616,6 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     emitSpeakingState(isSpeaking);
   }, [emitSpeakingState]);
 
-  // 🆕 Invia validazione manuale di un checkpoint item al backend
   const sendManualValidateCheckpoint = useCallback((checkpointId: string, checkText: string) => {
     console.log(`📤 [WS] Sending manual_validate_checkpoint: "${checkText.substring(0, 40)}..."`);
     sendMessage({
@@ -535,6 +630,32 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
       emitSpeakingState(latestSpeakingRef.current);
     }
   }, [state.isConnected, state.isJoinConfirmed, state.myParticipantId, emitSpeakingState]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('🌐 [Network] Online event detected');
+      isNetworkOfflineRef.current = false;
+      
+      if (!state.isConnected && !state.isConnecting && meetingToken) {
+        console.log('🔄 [Network] Attempting immediate reconnection...');
+        reconnectAttemptRef.current = 0;
+        connect();
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('📵 [Network] Offline event detected');
+      isNetworkOfflineRef.current = true;
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [state.isConnected, state.isConnecting, meetingToken, connect]);
 
   useEffect(() => {
     if (meetingToken) {

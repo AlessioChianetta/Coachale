@@ -77,6 +77,7 @@ export default function VideoRoom({
     sendSpeechStart,
     sendSpeechEnd,
     sendManualValidateCheckpoint,
+    connect: connectCopilot,
   } = useVideoCopilot(meeting?.meetingToken ?? null);
 
   const {
@@ -114,6 +115,7 @@ export default function VideoRoom({
     toggleVideo: toggleWebRTCVideo,
     toggleAudio: toggleWebRTCAudio,
     audioDiagnostics,
+    peerConnectionsRef,
   } = useWebRTC({
     meetingId,
     myParticipantId,
@@ -239,6 +241,29 @@ export default function VideoRoom({
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [meetingId, meeting?.meetingToken]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('👁️ [Visibility] Page became visible');
+        
+        if (!isConnected && !isConnecting && meeting?.meetingToken) {
+          console.log('🔄 [Visibility] WebSocket not connected, attempting reconnection...');
+          connectCopilot();
+        }
+        
+        peerConnectionsRef.current.forEach((pc, participantId) => {
+          if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+            console.log(`🔄 [Visibility] Restarting ICE for ${participantId} (state: ${pc.iceConnectionState})`);
+            pc.restartIce();
+          }
+        });
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isConnected, isConnecting, meeting?.meetingToken, connectCopilot, peerConnectionsRef]);
 
   // Track if audio capture has been started (to avoid restart loops)
   const audioCaptureStartedRef = useRef(false);

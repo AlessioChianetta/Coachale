@@ -20,12 +20,24 @@ interface UseWebRTCProps {
   onWebRTCMessage?: (message: any) => void;
 }
 
+export type ConnectionQuality = 'good' | 'fair' | 'poor';
+
+export interface ConnectionStats {
+  bytesReceived: number;
+  packetsLost: number;
+  jitter: number;
+  roundTripTime: number;
+  packetLossPercent: number;
+}
+
 export interface AudioDiagnostics {
   localAudioTrackExists: boolean;
   localAudioEnabled: boolean;
   remoteAudioTracks: number;
   iceConnectionStates: Map<string, string>;
   lastAudioEvent: string;
+  connectionQuality: ConnectionQuality;
+  connectionStats: ConnectionStats | null;
 }
 
 interface UseWebRTCResult {
@@ -38,6 +50,7 @@ interface UseWebRTCResult {
   toggleVideo: (enabled: boolean) => void;
   toggleAudio: (enabled: boolean) => void;
   audioDiagnostics: AudioDiagnostics;
+  peerConnectionsRef: React.RefObject<Map<string, RTCPeerConnection>>;
 }
 
 const DEFAULT_ICE_SERVERS: RTCConfiguration = {
@@ -69,6 +82,8 @@ export function useWebRTC({
     remoteAudioTracks: 0,
     iceConnectionStates: new Map(),
     lastAudioEvent: 'Nessun evento',
+    connectionQuality: 'good',
+    connectionStats: null,
   });
 
   useEffect(() => {
@@ -907,6 +922,119 @@ export function useWebRTC({
     }
   }, [isConnected, myParticipantId, participants, isLocalStreamReady, isJoinConfirmed, iceConfigLoaded, initiateConnection]);
 
+  const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [peerConnectionCount, setPeerConnectionCount] = useState(0);
+
+  const updatePeerConnectionCount = useCallback(() => {
+    setPeerConnectionCount(peerConnectionsRef.current.size);
+  }, []);
+
+  useEffect(() => {
+    const originalSet = peerConnectionsRef.current.set.bind(peerConnectionsRef.current);
+    const originalDelete = peerConnectionsRef.current.delete.bind(peerConnectionsRef.current);
+    const originalClear = peerConnectionsRef.current.clear.bind(peerConnectionsRef.current);
+
+    peerConnectionsRef.current.set = (key, value) => {
+      const result = originalSet(key, value);
+      updatePeerConnectionCount();
+      return result;
+    };
+
+    peerConnectionsRef.current.delete = (key) => {
+      const result = originalDelete(key);
+      updatePeerConnectionCount();
+      return result;
+    };
+
+    peerConnectionsRef.current.clear = () => {
+      originalClear();
+      updatePeerConnectionCount();
+    };
+
+    return () => {
+      peerConnectionsRef.current.set = originalSet;
+      peerConnectionsRef.current.delete = originalDelete;
+      peerConnectionsRef.current.clear = originalClear;
+    };
+  }, [updatePeerConnectionCount]);
+
+  useEffect(() => {
+    if (peerConnectionCount === 0) {
+      if (statsIntervalRef.current) {
+        clearInterval(statsIntervalRef.current);
+        statsIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const collectStats = async () => {
+      if (peerConnectionsRef.current.size === 0) return;
+
+      let totalBytesReceived = 0;
+      let totalPacketsLost = 0;
+      let totalPacketsReceived = 0;
+      let totalJitter = 0;
+      let totalRoundTripTime = 0;
+      let statsCount = 0;
+
+      for (const [, pc] of peerConnectionsRef.current) {
+        try {
+          const stats = await pc.getStats();
+          stats.forEach((report) => {
+            if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+              totalBytesReceived += report.bytesReceived || 0;
+              totalPacketsLost += report.packetsLost || 0;
+              totalPacketsReceived += report.packetsReceived || 0;
+              totalJitter += (report.jitter || 0) * 1000;
+              statsCount++;
+            }
+            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+              totalRoundTripTime += (report.currentRoundTripTime || 0) * 1000;
+            }
+          });
+        } catch (e) {
+        }
+      }
+
+      if (statsCount === 0) return;
+
+      const avgJitter = totalJitter / statsCount;
+      const avgRtt = totalRoundTripTime / statsCount || 0;
+      const packetLossPercent = totalPacketsReceived > 0 
+        ? (totalPacketsLost / (totalPacketsReceived + totalPacketsLost)) * 100 
+        : 0;
+
+      let quality: ConnectionQuality = 'poor';
+      if (packetLossPercent < 2 && avgJitter < 30) {
+        quality = 'good';
+      } else if (packetLossPercent < 5 && avgJitter < 100) {
+        quality = 'fair';
+      }
+
+      setAudioDiagnostics(prev => ({
+        ...prev,
+        connectionQuality: quality,
+        connectionStats: {
+          bytesReceived: totalBytesReceived,
+          packetsLost: totalPacketsLost,
+          jitter: avgJitter,
+          roundTripTime: avgRtt,
+          packetLossPercent,
+        },
+      }));
+    };
+
+    statsIntervalRef.current = setInterval(collectStats, 5000);
+    collectStats();
+
+    return () => {
+      if (statsIntervalRef.current) {
+        clearInterval(statsIntervalRef.current);
+        statsIntervalRef.current = null;
+      }
+    };
+  }, [peerConnectionCount]);
+
   useEffect(() => {
     return () => {
       retryTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
@@ -994,5 +1122,6 @@ export function useWebRTC({
     toggleVideo,
     toggleAudio,
     audioDiagnostics,
+    peerConnectionsRef,
   };
 }

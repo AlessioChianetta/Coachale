@@ -96,7 +96,7 @@ interface SessionState {
 }
 
 interface IncomingMessage {
-  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'lobby_join' | 'lobby_leave' | 'speaking_state' | 'speech_start' | 'speech_end' | 'request_state_sync';
+  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'lobby_join' | 'lobby_leave' | 'speaking_state' | 'speech_start' | 'speech_end' | 'request_state_sync' | 'ping';
   data?: string;
   speakerId?: string;
   speakerName?: string;
@@ -136,7 +136,7 @@ interface RTCIceCandidateInit {
 }
 
 interface OutgoingMessage {
-  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready' | 'lobby_participant_joined' | 'lobby_participant_left' | 'lobby_participants_list' | 'speaking_state' | 'sales_coaching' | 'buy_signal' | 'objection_detected' | 'checkpoint_status' | 'prospect_profile' | 'tone_warning' | 'script_progress_update' | 'state_sync';
+  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready' | 'lobby_participant_joined' | 'lobby_participant_left' | 'lobby_participants_list' | 'speaking_state' | 'sales_coaching' | 'buy_signal' | 'objection_detected' | 'checkpoint_status' | 'prospect_profile' | 'tone_warning' | 'script_progress_update' | 'state_sync' | 'pong';
   data: any;
   timestamp: number;
 }
@@ -3472,6 +3472,13 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
             break;
           case 'manual_validate_checkpoint':
             await handleManualValidateCheckpoint(ws, session!, message);
+            break;
+          case 'ping':
+            sendMessage(ws, {
+              type: 'pong',
+              data: { received: true },
+              timestamp: Date.now(),
+            });
             break;
           default:
             console.warn(`⚠️ [VideoCopilot] Unknown message type: ${(message as any).type}`);
