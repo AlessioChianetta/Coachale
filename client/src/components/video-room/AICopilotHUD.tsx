@@ -56,10 +56,13 @@ export default function AICopilotHUD({
   const hudRef = useRef<HTMLDivElement>(null);
   
   // Calculate total checkpoints for navigation
-  const totalCheckpoints = previousCheckpoints.length + (currentCheckpoint ? 1 : 0);
-  const displayedCheckpoint = navigationIndex < previousCheckpoints.length 
-    ? previousCheckpoints[navigationIndex]
-    : currentCheckpoint;
+  const safeCurrentCheckpoint = currentCheckpoint || null;
+  const safePreviousCheckpoints = previousCheckpoints || [];
+  
+  const totalCheckpoints = safePreviousCheckpoints.length + (safeCurrentCheckpoint ? 1 : 0);
+  const displayedCheckpoint = navigationIndex < safePreviousCheckpoints.length 
+    ? safePreviousCheckpoints[navigationIndex]
+    : safeCurrentCheckpoint;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-no-drag]')) return;
@@ -94,7 +97,7 @@ export default function AICopilotHUD({
   }, [isDragging, dragOffset]);
 
   // Calculate progress based on completed checkpoints
-  const completedCheckpoints = previousCheckpoints.filter(cp => cp.isCompleted).length;
+  const completedCheckpoints = safePreviousCheckpoints.filter(cp => cp.isCompleted).length;
   const progress = totalCheckpoints > 0 
     ? (completedCheckpoints / totalCheckpoints) * 100 
     : 0;
@@ -171,7 +174,7 @@ export default function AICopilotHUD({
         </div>
 
         {/* Previous Checkpoints Section */}
-        {previousCheckpoints.length > 0 && (
+        {safePreviousCheckpoints.length > 0 && (
           <div className="bg-green-900/20 rounded-xl p-3 border border-green-500/30">
             <button
               data-no-drag
@@ -182,7 +185,7 @@ export default function AICopilotHUD({
                 <CheckCircle2 className="w-4 h-4 text-green-400" />
                 <span className="text-green-300 font-medium text-sm">Completati</span>
                 <span className="text-xs text-green-400/60">
-                  {previousCheckpoints.length}
+                  {safePreviousCheckpoints.length}
                 </span>
               </div>
               {isPreviousExpanded ? (
@@ -200,7 +203,7 @@ export default function AICopilotHUD({
                   exit={{ height: 0, opacity: 0 }}
                   className="space-y-2 overflow-hidden"
                 >
-                  {previousCheckpoints.map((checkpoint) => (
+                  {safePreviousCheckpoints.map((checkpoint) => (
                     <div key={checkpoint.id} className="bg-green-950/30 rounded p-2">
                       <div className="text-xs font-medium text-green-300 mb-1">
                         {checkpoint.title}
@@ -222,7 +225,7 @@ export default function AICopilotHUD({
         )}
 
         {/* Current Checkpoint Section */}
-        {currentCheckpoint && (
+        {safeCurrentCheckpoint && (
           <div className="bg-gray-800/50 rounded-xl p-3">
             <button
               data-no-drag
@@ -233,7 +236,7 @@ export default function AICopilotHUD({
                 <Circle className="w-4 h-4 text-blue-400" />
                 <span className="text-white font-medium text-sm">Corrente</span>
                 <span className="text-xs text-gray-400">
-                  {currentCheckpoint.items.filter(i => i.completed).length}/{currentCheckpoint.items.length}
+                  {safeCurrentCheckpoint.items.filter(i => i.completed).length}/{safeCurrentCheckpoint.items.length}
                 </span>
               </div>
               {isCurrentExpanded ? (
@@ -244,7 +247,7 @@ export default function AICopilotHUD({
             </button>
 
             <div className="text-xs font-medium text-blue-300 mb-2">
-              {currentCheckpoint.title}
+              {safeCurrentCheckpoint.title}
             </div>
 
             <AnimatePresence>
@@ -255,7 +258,7 @@ export default function AICopilotHUD({
                   exit={{ height: 0, opacity: 0 }}
                   className="space-y-2 overflow-hidden"
                 >
-                  {currentCheckpoint.items.map((item) => (
+                  {safeCurrentCheckpoint.items.map((item) => (
                     <motion.div
                       key={item.id}
                       initial={{ x: -10, opacity: 0 }}
@@ -265,7 +268,7 @@ export default function AICopilotHUD({
                       <div data-no-drag>
                         <Checkbox
                           checked={item.completed}
-                          onCheckedChange={() => onToggleItem(currentCheckpoint.id, item.id)}
+                          onCheckedChange={() => onToggleItem(safeCurrentCheckpoint.id, item.id)}
                           className="border-gray-600 data-[state=checked]:bg-green-500 data-[state=checked]:border-green-500"
                         />
                       </div>
