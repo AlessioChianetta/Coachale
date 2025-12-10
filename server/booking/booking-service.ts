@@ -2,7 +2,7 @@ import { db } from "../db";
 import { appointmentBookings, consultantAvailabilitySettings, users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
 import { createGoogleCalendarEvent } from "../google-calendar-service";
-import { GoogleGenAI } from "@google/genai";
+import { GeminiClient } from "../ai/provider-factory";
 import { sendEmail } from "../services/email-scheduler";
 
 export interface BookingExtractionResult {
@@ -307,7 +307,7 @@ function parseJsonResponse<T>(responseText: string): T | null {
 export async function extractBookingDataFromConversation(
   messages: ConversationMessage[],
   existingBooking: ExistingBooking | null,
-  aiClient: GoogleGenAI,
+  aiClient: GeminiClient,
   timezone: string = "Europe/Rome"
 ): Promise<BookingExtractionResult | BookingModificationResult | null> {
   const conversationContext = buildConversationContext(messages);
@@ -321,12 +321,29 @@ export async function extractBookingDataFromConversation(
   console.log(`   Timezone: ${timezone}`);
 
   try {
-    const response = await aiClient.models.generateContent({
-      model: "gemini-2.0-flash",
+    const response = await aiClient.generateContent({
+      model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    const responseText = response.text || "";
+    let responseText = "";
+    try {
+      if (response && response.response && typeof response.response.text === 'function') {
+        responseText = response.response.text() || "";
+      } else if (response && typeof (response as any).text === 'function') {
+        responseText = (response as any).text() || "";
+      } else if (response && typeof (response as any).text === 'string') {
+        responseText = (response as any).text || "";
+      }
+    } catch (textError: any) {
+      console.warn(`⚠️ [BOOKING SERVICE] Could not extract text from AI response: ${textError.message}`);
+      responseText = "";
+    }
+    
+    if (!responseText) {
+      console.log(`   ⚠️ No text in AI response - returning null`);
+      return null;
+    }
     console.log(`   AI Response length: ${responseText.length} chars`);
 
     if (existingBooking) {
