@@ -657,25 +657,48 @@ export class SalesScriptTracker {
   
   /**
    * Update validated items for a specific checkpoint (merge logic)
+   * 🆕 VAGUE STICKY: Ora salva anche gli item 'vague' come sticky (non solo 'validated')
+   * Una volta che un check raggiunge 'vague', non può più tornare a 'missing'
+   * Può solo migliorare: VAGUE → VALIDATED
    */
   updateValidatedItemsForCheckpoint(checkpointId: string, newItems: ValidatedCheckpointItem[]): void {
     const existing = this.state.validatedCheckpointItems[checkpointId] || [];
     const merged = [...existing];
     
     newItems.forEach(newItem => {
-      // Aggiungi solo se non esiste già e se è validato
-      if (newItem.status === 'validated' && !merged.some(m => m.check === newItem.check)) {
-        merged.push({
-          ...newItem,
-          validatedAt: newItem.validatedAt || new Date().toISOString()
-        });
+      const existingIdx = merged.findIndex(m => m.check === newItem.check);
+      
+      if (existingIdx >= 0) {
+        // Item già esistente - applica logica di upgrade (mai downgrade)
+        const existingItem = merged[existingIdx];
+        
+        // Upgrade permesso: vague → validated
+        if (existingItem.status === 'vague' && newItem.status === 'validated') {
+          console.log(`   ⬆️ [STICKY] Upgrading "${newItem.check.substring(0, 30)}..." from VAGUE → VALIDATED`);
+          merged[existingIdx] = {
+            ...newItem,
+            validatedAt: new Date().toISOString()
+          };
+        }
+        // Se già validated, non fare nulla (resta validated)
+        // Se nuovo è vague/missing ma esistente è validated/vague, non fare nulla (no downgrade)
+      } else {
+        // Nuovo item - aggiungi se 'validated' o 'vague' (entrambi sticky)
+        if (newItem.status === 'validated' || newItem.status === 'vague') {
+          const statusIcon = newItem.status === 'validated' ? '🟢' : '🟡';
+          console.log(`   ${statusIcon} [STICKY] Saving ${newItem.status.toUpperCase()}: "${newItem.check.substring(0, 40)}..."`);
+          merged.push({
+            ...newItem,
+            validatedAt: newItem.validatedAt || new Date().toISOString()
+          });
+        }
       }
     });
     
     this.state.validatedCheckpointItems[checkpointId] = merged;
     
     if (merged.length > existing.length) {
-      console.log(`🔒 [TRACKER] Checkpoint ${checkpointId}: ${merged.length - existing.length} new validated items (total: ${merged.length})`);
+      console.log(`🔒 [TRACKER] Checkpoint ${checkpointId}: ${merged.length - existing.length} new sticky items (total: ${merged.length})`);
     }
   }
   

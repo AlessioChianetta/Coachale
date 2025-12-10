@@ -96,7 +96,7 @@ interface SessionState {
 }
 
 interface IncomingMessage {
-  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'lobby_join' | 'lobby_leave' | 'speaking_state' | 'speech_start' | 'speech_end';
+  type: 'audio_chunk' | 'set_playbook' | 'participant_update' | 'participant_join' | 'participant_leave' | 'end_session' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'lobby_join' | 'lobby_leave' | 'speaking_state' | 'speech_start' | 'speech_end' | 'request_state_sync';
   data?: string;
   speakerId?: string;
   speakerName?: string;
@@ -136,7 +136,7 @@ interface RTCIceCandidateInit {
 }
 
 interface OutgoingMessage {
-  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready' | 'lobby_participant_joined' | 'lobby_participant_left' | 'lobby_participants_list' | 'speaking_state' | 'sales_coaching' | 'buy_signal' | 'objection_detected' | 'checkpoint_status' | 'prospect_profile' | 'tone_warning';
+  type: 'transcript' | 'sentiment' | 'suggestion' | 'battle_card' | 'script_progress' | 'error' | 'connected' | 'session_ended' | 'participant_joined' | 'participant_left' | 'participants_list' | 'join_confirmed' | 'webrtc_offer' | 'webrtc_answer' | 'ice_candidate' | 'participant_socket_ready' | 'lobby_participant_joined' | 'lobby_participant_left' | 'lobby_participants_list' | 'speaking_state' | 'sales_coaching' | 'buy_signal' | 'objection_detected' | 'checkpoint_status' | 'prospect_profile' | 'tone_warning' | 'script_progress_update' | 'state_sync';
   data: any;
   timestamp: number;
 }
@@ -1328,6 +1328,127 @@ async function handleSpeechEndFromClient(
   scheduleAnalysis(ws, session, turnState);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE SYNC - Invia stato corrente al frontend dopo riconnessione/refresh
+// Risolve il bug dove i transcript e checkpoint sparivano al reload
+// ═══════════════════════════════════════════════════════════════════════════
+function handleStateSyncRequest(ws: WebSocket, session: SessionState) {
+  console.log(`\n🔄 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`🔄 [STATE-SYNC] Client requested state sync for meeting ${session.meetingId}`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+  // 1. Invia transcript history salvati
+  if (session.transcriptBuffer && session.transcriptBuffer.length > 0) {
+    console.log(`   📜 Sending ${session.transcriptBuffer.length} saved transcripts`);
+    session.transcriptBuffer.forEach((t: any) => {
+      sendMessage(ws, {
+        type: 'transcript',
+        data: {
+          speakerId: t.speakerId || 'unknown',
+          speakerName: t.speakerName || 'Unknown',
+          text: t.text,
+          isPartial: false,
+          turnComplete: true,
+        },
+        timestamp: t.timestamp || Date.now(),
+      });
+    });
+  }
+
+  // 2. Invia script progress corrente
+  if (session.playbook) {
+    const progressUpdate = calculateScriptProgress(session);
+    const currentPhaseData = session.scriptStructure?.phases?.[session.currentPhaseIndex];
+    const currentStepData = currentPhaseData?.steps?.[session.currentStepIndex];
+    
+    console.log(`   📊 Sending script progress: phase=${session.currentPhaseIndex + 1}, step=${session.currentStepIndex + 1}`);
+    sendMessage(ws, {
+      type: 'script_progress_update',
+      data: {
+        ...progressUpdate,
+        currentPhaseId: currentPhaseData?.id || `phase_${session.currentPhaseIndex + 1}`,
+        currentStepId: currentStepData?.id || `step_${session.currentStepIndex + 1}`,
+        currentPhaseIndex: session.currentPhaseIndex,
+        currentStepIndex: session.currentStepIndex,
+      },
+      timestamp: Date.now(),
+    });
+  }
+
+  // 3. Invia checkpoint status con tutti gli item validati (sticky)
+  if (session.validatedCheckpointItems && Object.keys(session.validatedCheckpointItems).length > 0) {
+    const currentPhase = session.scriptStructure?.phases?.[session.currentPhaseIndex];
+    const currentCheckpoint = currentPhase?.checkpoints?.[0];
+    
+    if (currentCheckpoint) {
+      const checkpointId = currentCheckpoint.id || `checkpoint_phase_${session.currentPhaseIndex + 1}`;
+      const savedItems = session.validatedCheckpointItems[checkpointId] || [];
+      
+      // Ricostruisci itemDetails mescolando saved (sticky) con gli altri
+      const allChecks = currentCheckpoint.checks || [];
+      const itemDetails = allChecks.map((check: string) => {
+        const savedItem = savedItems.find((s: any) => s.check === check);
+        if (savedItem) {
+          return {
+            check: savedItem.check,
+            status: savedItem.status, // 'validated' o 'vague' (sticky)
+            infoCollected: savedItem.infoCollected,
+            evidenceQuote: savedItem.evidenceQuote,
+          };
+        }
+        return { check, status: 'missing', reason: 'Non ancora verificato' };
+      });
+
+      const validatedCount = itemDetails.filter((i: any) => i.status === 'validated').length;
+      const isComplete = validatedCount === allChecks.length;
+
+      console.log(`   ✅ Sending checkpoint status: ${validatedCount}/${allChecks.length} validated`);
+      sendMessage(ws, {
+        type: 'checkpoint_status',
+        data: {
+          checkpointId,
+          checkpointName: currentCheckpoint.title || `Checkpoint Fase ${session.currentPhaseIndex + 1}`,
+          isComplete,
+          missingItems: itemDetails.filter((i: any) => i.status !== 'validated').map((i: any) => i.check),
+          completedItems: itemDetails.filter((i: any) => i.status === 'validated').map((i: any) => i.check),
+          canAdvance: isComplete,
+          itemDetails,
+          phaseNumber: String(session.currentPhaseIndex + 1),
+          totalChecks: allChecks.length,
+          validatedCount,
+          missingCount: allChecks.length - validatedCount,
+        },
+        timestamp: Date.now(),
+      });
+    }
+  }
+
+  // 4. Invia profilo archetipo se presente
+  if (session.archetypeState) {
+    console.log(`   🎭 Sending archetype: ${session.archetypeState.current}`);
+    sendMessage(ws, {
+      type: 'prospect_profile',
+      data: {
+        archetype: session.archetypeState.current,
+        confidence: session.archetypeState.confidence,
+        filler: '',
+        instruction: '',
+      },
+      timestamp: Date.now(),
+    });
+  }
+
+  // 5. Invia coaching session start per riattivare il panel
+  sendMessage(ws, {
+    type: 'coaching_session_start' as any, // Type workaround
+    data: { meetingId: session.meetingId },
+    timestamp: Date.now(),
+  });
+
+  console.log(`✅ [STATE-SYNC] State sync complete for meeting ${session.meetingId}`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+}
+
 async function finalizeTurnForSpeaker(
   ws: WebSocket,
   session: SessionState,
@@ -1707,31 +1828,52 @@ async function runSalesManagerAnalysis(
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 🆕 CHECKPOINT PERSISTENCE: Salva validated items (verde = resta verde)
-    // Stesso processo usato in gemini-live-ws-service.ts (linee 4288-4310)
+    // 🆕 CHECKPOINT PERSISTENCE: Salva VALIDATED e VAGUE items (sticky)
+    // VALIDATED = verde, VAGUE = giallo - entrambi non possono regredire a rosso
+    // VAGUE può solo migliorare a VALIDATED
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (analysis.checkpointStatus?.itemDetails && analysis.checkpointStatus.checkpointId) {
       const checkpointId = analysis.checkpointStatus.checkpointId;
-      const newValidatedItems = analysis.checkpointStatus.itemDetails.filter(
-        (item: any) => item.status === 'validated'
+      // 🆕 Ora salva sia validated che vague come sticky
+      const newStickyItems = analysis.checkpointStatus.itemDetails.filter(
+        (item: any) => item.status === 'validated' || item.status === 'vague'
       );
 
       if (!session.validatedCheckpointItems[checkpointId]) {
         session.validatedCheckpointItems[checkpointId] = [];
       }
 
-      newValidatedItems.forEach((item: any) => {
-        const exists = session.validatedCheckpointItems[checkpointId].some(
+      newStickyItems.forEach((item: any) => {
+        const existingIdx = session.validatedCheckpointItems[checkpointId].findIndex(
           (v) => v.check === item.check
         );
-        if (!exists) {
+        
+        if (existingIdx >= 0) {
+          // Item già esistente - applica logica di upgrade (mai downgrade)
+          const existing = session.validatedCheckpointItems[checkpointId][existingIdx];
+          
+          // Upgrade permesso: vague → validated
+          if (existing.status === 'vague' && item.status === 'validated') {
+            session.validatedCheckpointItems[checkpointId][existingIdx] = {
+              check: item.check,
+              status: 'validated',
+              infoCollected: item.infoCollected || existing.infoCollected || '',
+              evidenceQuote: item.evidenceQuote || existing.evidenceQuote || ''
+            };
+            console.log(`   ⬆️ [STICKY] Upgraded: "${item.check.substring(0, 40)}..." VAGUE → VALIDATED`);
+          }
+          // Se già validated, ignora (non può regredire)
+          // Se vague → vague o vague → missing, ignora (non può regredire)
+        } else {
+          // Nuovo item - aggiungi se validated o vague
           session.validatedCheckpointItems[checkpointId].push({
             check: item.check,
-            status: 'validated',
+            status: item.status, // 'validated' o 'vague'
             infoCollected: item.infoCollected || '',
             evidenceQuote: item.evidenceQuote || ''
           });
-          console.log(`   🔒 [STICKY] Saved validated item: "${item.check.substring(0, 40)}..."`);
+          const icon = item.status === 'validated' ? '🟢' : '🟡';
+          console.log(`   ${icon} [STICKY] Saved ${item.status.toUpperCase()}: "${item.check.substring(0, 40)}..."`);
         }
       });
       
@@ -3139,6 +3281,9 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
             break;
           case 'speech_end':
             await handleSpeechEndFromClient(ws, session!, message);
+            break;
+          case 'request_state_sync':
+            handleStateSyncRequest(ws, session!);
             break;
           default:
             console.warn(`⚠️ [VideoCopilot] Unknown message type: ${(message as any).type}`);

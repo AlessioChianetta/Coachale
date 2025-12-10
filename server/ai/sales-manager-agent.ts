@@ -1646,28 +1646,41 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 🔒 STICKY VALIDATION: Recupera item già validati per questo checkpoint
-    // Una volta verde, resta verde - non viene più ri-analizzato dall'AI
+    // 🔒 STICKY VALIDATION: Recupera item già validati/vague per questo checkpoint
+    // 🟢 VALIDATED: resta verde per sempre
+    // 🟡 VAGUE: resta giallo (può solo migliorare a verde, MAI tornare rosso)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const alreadyValidatedItems = params.validatedCheckpointItems?.[checkpoint.id] || [];
+    const allStickyItems = params.validatedCheckpointItems?.[checkpoint.id] || [];
+    const alreadyValidatedItems = allStickyItems.filter(v => v.status === 'validated');
+    const alreadyVagueItems = allStickyItems.filter(v => v.status === 'vague');
     
-    // Filtra: passa all'AI SOLO i check NON ancora validati (verde)
+    // Filtra: passa all'AI i check che:
+    // 1. Non sono validati (può migliorare VAGUE → VALIDATED)
+    // 2. Sono ancora MISSING (può diventare VAGUE o VALIDATED)
+    // NON passa all'AI i check già VALIDATED (sono finali)
     const checksToAnalyze = checkpoint.checks.filter(check => 
-      !alreadyValidatedItems.some(v => v.check === check && v.status === 'validated')
+      !alreadyValidatedItems.some(v => v.check === check)
     );
 
     console.log(`\n🔄 [SALES-MANAGER] Delegating checkpoint validation to AI semantic analysis...`);
     console.log(`   📍 Phase: ${currentPhase.name} (${currentPhase.id})`);
     console.log(`   🎯 Checkpoint: ${checkpoint.title}`);
     console.log(`   📋 Total checks: ${checkpoint.checks.length}`);
-    console.log(`   🔒 Already validated (sticky): ${alreadyValidatedItems.length}`);
+    console.log(`   🟢 Already VALIDATED (sticky, final): ${alreadyValidatedItems.length}`);
+    console.log(`   🟡 Already VAGUE (sticky, upgradable): ${alreadyVagueItems.length}`);
     console.log(`   🔍 Remaining to analyze: ${checksToAnalyze.length}`);
     
     // Log dettagliato degli item sticky
     if (alreadyValidatedItems.length > 0) {
-      console.log(`   🔒 STICKY ITEMS (skipped):`);
+      console.log(`   🟢 VALIDATED ITEMS (skipped, final):`);
       alreadyValidatedItems.forEach((item, idx) => {
         console.log(`      ${idx + 1}. ✅ "${item.check.substring(0, 50)}${item.check.length > 50 ? '...' : ''}"`);
+      });
+    }
+    if (alreadyVagueItems.length > 0) {
+      console.log(`   🟡 VAGUE ITEMS (re-analyzing for possible upgrade):`);
+      alreadyVagueItems.forEach((item, idx) => {
+        console.log(`      ${idx + 1}. 🟡 "${item.check.substring(0, 50)}${item.check.length > 50 ? '...' : ''}"`);
       });
     }
 
@@ -1707,23 +1720,48 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       });
 
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-      // 🔒 MERGE: Combina item già validati (sticky) + nuovi risultati AI
+      // 🔒 MERGE: Combina item sticky + nuovi risultati AI con logica anti-downgrade
+      // 🟢 VALIDATED = finale, non cambia mai
+      // 🟡 VAGUE = sticky, può solo migliorare a VALIDATED, MAI tornare MISSING
       // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       const mergedItemDetails: CheckpointItemDetail[] = [
-        ...alreadyValidatedItems,  // Prima gli item già verdi (sticky)
-        ...aiResult.itemDetails    // Poi i nuovi risultati dall'AI
+        ...alreadyValidatedItems,  // Prima gli item già verdi (sticky, finali)
       ];
+      
+      // Applica logica anti-downgrade per ogni risultato AI
+      aiResult.itemDetails.forEach(aiItem => {
+        const wasVague = alreadyVagueItems.find(v => v.check === aiItem.check);
+        
+        if (wasVague) {
+          // Item era VAGUE - può solo migliorare o restare VAGUE
+          if (aiItem.status === 'validated') {
+            // UPGRADE: VAGUE → VALIDATED
+            console.log(`   ⬆️ [MERGE] Upgraded: "${aiItem.check.substring(0, 40)}..." VAGUE → VALIDATED`);
+            mergedItemDetails.push(aiItem);
+          } else {
+            // BLOCKED: AI dice MISSING o VAGUE di nuovo, ma noi preserviamo VAGUE (no downgrade)
+            console.log(`   🔒 [MERGE] Preserved VAGUE (blocked ${aiItem.status}): "${aiItem.check.substring(0, 40)}..."`);
+            mergedItemDetails.push(wasVague); // Preserva lo stato VAGUE originale
+          }
+        } else {
+          // Item nuovo dall'AI (era MISSING), accetta qualsiasi stato
+          mergedItemDetails.push(aiItem);
+        }
+      });
       
       // Ricalcola contatori dopo il merge
       const totalValidated = mergedItemDetails.filter(i => i.status === 'validated').length;
-      const totalMissing = mergedItemDetails.filter(i => i.status === 'missing' || i.status === 'vague').length;
+      const totalVague = mergedItemDetails.filter(i => i.status === 'vague').length;
+      const totalMissing = mergedItemDetails.filter(i => i.status === 'missing').length;
       const isComplete = totalValidated === checkpoint.checks.length;
 
       console.log(`✅ [SALES-MANAGER] AI checkpoint analysis complete (with sticky merge)`);
-      console.log(`   🔒 Sticky (preserved): ${alreadyValidatedItems.length}`);
+      console.log(`   🟢 Sticky validated (preserved): ${alreadyValidatedItems.length}`);
+      console.log(`   🟡 Sticky vague (protected from downgrade): ${alreadyVagueItems.length}`);
       console.log(`   🆕 New from AI: ${aiResult.itemDetails.length}`);
       console.log(`   🟢 Total validated: ${totalValidated}/${checkpoint.checks.length}`);
-      console.log(`   🔴 Missing/Vague: ${totalMissing}`);
+      console.log(`   🟡 Total vague: ${totalVague}`);
+      console.log(`   🔴 Total missing: ${totalMissing}`);
       console.log(`   📊 Confidence: ${(aiResult.confidence * 100).toFixed(0)}%`);
       console.log(`   📈 Quality Score: ${aiResult.qualityScore?.overall || 0}/10`);
 
@@ -1747,26 +1785,46 @@ Tu: "Dipende dalla situazione specifica, ma posso dirti che è un investimento m
       console.error(`❌ [SALES-MANAGER] AI checkpoint validation failed:`, error.message);
 
       // 🚫 NESSUN FALLBACK KEYWORD - Se AI fallisce, blocchiamo per sicurezza
-      console.log(`🚫 [SALES-MANAGER] NO FALLBACK - Blocking advancement due to AI failure`);
+      // 🔒 MA preserviamo gli item sticky già acquisiti (validated e vague)
+      console.log(`🚫 [SALES-MANAGER] NO FALLBACK - Preserving sticky items, blocking advancement`);
 
       const phaseNumber = currentPhase.id.replace('phase_', '').replace(/_/g, '-');
+      
+      // 🔒 PRESERVE STICKY: Mantieni validated e vague, marca solo il resto come missing
+      const itemDetails: CheckpointItemDetail[] = checkpoint.checks.map(check => {
+        const validated = alreadyValidatedItems.find(v => v.check === check);
+        if (validated) return validated; // Preserva validated
+        
+        const vague = alreadyVagueItems.find(v => v.check === check);
+        if (vague) return vague; // Preserva vague
+        
+        return {
+          check,
+          status: 'missing' as const,
+          reason: `Validazione AI fallita: ${error.message}`
+        };
+      });
+      
+      const validatedCount = itemDetails.filter(i => i.status === 'validated').length;
+      const vagueCount = itemDetails.filter(i => i.status === 'vague').length;
+      const missingCount = itemDetails.filter(i => i.status === 'missing').length;
+      
+      console.log(`   🔒 Preserved sticky: ${validatedCount} validated, ${vagueCount} vague`);
+      console.log(`   🔴 Marked missing: ${missingCount}`);
+      
       return {
         checkpointId: checkpoint.id,
         checkpointName: checkpoint.title,
         isComplete: false,
-        missingItems: checkpoint.checks,
-        completedItems: [],
+        missingItems: itemDetails.filter(i => i.status === 'missing').map(i => i.check),
+        completedItems: itemDetails.filter(i => i.status === 'validated').map(i => i.check),
         canAdvance: false, // BLOCCO per sicurezza
-        itemDetails: checkpoint.checks.map(check => ({
-          check,
-          status: 'missing' as const,
-          reason: `Validazione AI fallita: ${error.message}`
-        })),
+        itemDetails,
         qualityScore: { specificity: 0, completeness: 0, actionability: 0, overall: 0 },
         phaseNumber,
         totalChecks: checkpoint.checks.length,
-        validatedCount: 0,
-        missingCount: checkpoint.checks.length
+        validatedCount,
+        missingCount: missingCount + vagueCount // vague + missing
       };
     }
   }

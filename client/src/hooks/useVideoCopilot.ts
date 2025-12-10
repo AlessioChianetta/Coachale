@@ -133,6 +133,12 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
             isConnecting: false,
             error: null,
           }));
+          // 🔄 STATE REHYDRATION: Request current state from server after reconnection
+          // This fixes the bug where transcripts and checkpoints disappear on page refresh
+          console.log('🔄 [STATE-SYNC] Requesting state sync from server...');
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'request_state_sync' }));
+          }
           break;
 
         case 'transcript':
