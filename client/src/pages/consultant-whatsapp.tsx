@@ -62,7 +62,14 @@ import {
   ChevronRight,
   Info,
   Mail,
-  ClipboardCheck
+  ClipboardCheck,
+  Upload,
+  Link,
+  MessageCircle,
+  Wand2,
+  Check,
+  Calendar,
+  BookOpen
 } from "lucide-react";
 import WhatsAppLayout from "@/components/whatsapp/WhatsAppLayout";
 import { getAuthHeaders } from "@/lib/auth";
@@ -169,6 +176,16 @@ export default function ConsultantWhatsAppPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [configToDelete, setConfigToDelete] = useState<WhatsAppConfig | null>(null);
   const [newApiKey, setNewApiKey] = useState("");
+
+  // Stati per tab Idee
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [urlInputs, setUrlInputs] = useState<string[]>([""]);
+  const [textInput, setTextInput] = useState("");
+  const [selectedIntegrations, setSelectedIntegrations] = useState<string[]>([]);
+  const [numberOfIdeas, setNumberOfIdeas] = useState(3);
+  const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
+  const [savedIdeas, setSavedIdeas] = useState<any[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const searchParams = new URLSearchParams(useSearch());
   const tabParam = searchParams.get("tab");
@@ -425,7 +442,7 @@ export default function ConsultantWhatsAppPage() {
     >
       <div className="max-w-7xl mx-auto space-y-8">
         <Tabs defaultValue={initialTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 gap-2">
+          <TabsList className="grid w-full grid-cols-3 gap-2">
             <TabsTrigger value="custom" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
               <Bot className="h-4 w-4 mr-2" />
               Agenti Personalizzati
@@ -433,6 +450,10 @@ export default function ConsultantWhatsAppPage() {
             <TabsTrigger value="system" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
               <Users className="h-4 w-4 mr-2" />
               Agenti di Sistema
+            </TabsTrigger>
+            <TabsTrigger value="ideas" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
+              <Lightbulb className="h-4 w-4 mr-2" />
+              Idee AI
             </TabsTrigger>
           </TabsList>
 
@@ -1208,6 +1229,423 @@ export default function ConsultantWhatsAppPage() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="ideas" className="space-y-6">
+            <Alert className="bg-purple-50 border-purple-200 dark:bg-purple-950/20 dark:border-purple-800">
+              <Wand2 className="h-5 w-5 text-purple-600" />
+              <AlertDescription>
+                <strong>Generatore di Idee AI</strong><br />
+                Carica documenti, siti web o descrizioni testuali e lascia che l'AI generi idee personalizzate per i tuoi agenti WhatsApp.
+              </AlertDescription>
+            </Alert>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Pannello Sinistra - Input */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Upload Documenti */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Upload className="h-5 w-5 text-purple-600" />
+                      Carica Documenti
+                    </CardTitle>
+                    <CardDescription>
+                      Carica file PDF, DOC, TXT o immagini che descrivono il tuo business
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center hover:border-purple-400 dark:hover:border-purple-600 transition-colors cursor-pointer">
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                        className="hidden"
+                        id="file-upload"
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            setUploadedFiles([...uploadedFiles, ...Array.from(e.target.files)]);
+                          }
+                        }}
+                      />
+                      <label htmlFor="file-upload" className="cursor-pointer">
+                        <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Clicca per caricare o trascina i file qui
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          PDF, DOC, TXT, PNG, JPG (max 10MB per file)
+                        </p>
+                      </label>
+                    </div>
+                    
+                    {uploadedFiles.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {uploadedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between bg-purple-50 dark:bg-purple-950/20 p-3 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-purple-600" />
+                              <span className="text-sm font-medium">{file.name}</span>
+                              <span className="text-xs text-gray-500">
+                                ({(file.size / 1024).toFixed(1)} KB)
+                              </span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setUploadedFiles(uploadedFiles.filter((_, i) => i !== index))}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* URL Siti Web */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Link className="h-5 w-5 text-purple-600" />
+                      Siti Web o Pagine
+                    </CardTitle>
+                    <CardDescription>
+                      Aggiungi URL di siti, landing page o risorse online
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {urlInputs.map((url, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          placeholder="https://esempio.com"
+                          value={url}
+                          onChange={(e) => {
+                            const newUrls = [...urlInputs];
+                            newUrls[index] = e.target.value;
+                            setUrlInputs(newUrls);
+                          }}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setUrlInputs(urlInputs.filter((_, i) => i !== index))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setUrlInputs([...urlInputs, ""])}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Aggiungi URL
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Testo Libero */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageCircle className="h-5 w-5 text-purple-600" />
+                      Descrizione Testuale
+                    </CardTitle>
+                    <CardDescription>
+                      Descrivi il tuo business, servizi, clienti tipo, etc.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Textarea
+                      placeholder="Es: Siamo un'agenzia immobiliare che gestisce vendite e affitti di immobili residenziali e commerciali. I nostri clienti principali sono privati e aziende che cercano soluzioni personalizzate..."
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value)}
+                      rows={8}
+                      className="resize-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      {textInput.length} caratteri
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Pannello Destra - Configurazione */}
+              <div className="space-y-6">
+                {/* Integrazioni Disponibili */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-purple-600" />
+                      Integrazioni
+                    </CardTitle>
+                    <CardDescription>
+                      Seleziona le funzionalità da includere
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="integration-booking"
+                        checked={selectedIntegrations.includes("booking")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedIntegrations([...selectedIntegrations, "booking"]);
+                          } else {
+                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "booking"));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="integration-booking"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                      >
+                        <Calendar className="h-4 w-4 text-blue-600" />
+                        Presa Appuntamento
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="integration-consultation"
+                        checked={selectedIntegrations.includes("consultation")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedIntegrations([...selectedIntegrations, "consultation"]);
+                          } else {
+                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "consultation"));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="integration-consultation"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                      >
+                        <BookOpen className="h-4 w-4 text-green-600" />
+                        Supporto Consulenziale
+                      </label>
+                    </div>
+
+                    <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 mt-4">
+                      <Info className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-xs">
+                        Seleziona almeno un'integrazione per generare idee mirate
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                </Card>
+
+                {/* Numero di Idee */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Wand2 className="h-5 w-5 text-purple-600" />
+                      Quante Idee?
+                    </CardTitle>
+                    <CardDescription>
+                      Numero di proposte da generare
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-4">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={10}
+                          value={numberOfIdeas}
+                          onChange={(e) => setNumberOfIdeas(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                          className="w-20"
+                        />
+                        <span className="text-sm text-gray-600">idee (1-10)</span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Più idee generi, più tempo ci vorrà per l'elaborazione
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Genera Idee */}
+                <Button
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-6"
+                  disabled={isGenerating || (uploadedFiles.length === 0 && urlInputs.filter(u => u).length === 0 && !textInput) || selectedIntegrations.length === 0}
+                  onClick={() => {
+                    setIsGenerating(true);
+                    // TODO: Chiamata API Gemini
+                    setTimeout(() => {
+                      setGeneratedIdeas([
+                        {
+                          id: '1',
+                          name: 'Receptionist Immobiliare',
+                          description: 'Agente che gestisce le prime richieste di informazioni su immobili, filtra lead qualificati e prenota appuntamenti per visite',
+                          personality: 'professionale',
+                          integrations: ['booking'],
+                          useCases: ['Screening iniziale clienti', 'Prenotazione visite immobili', 'Invio brochure proprietà']
+                        },
+                        {
+                          id: '2',
+                          name: 'Consulente Post-Vendita',
+                          description: 'Supporta i clienti dopo l\'acquisto con informazioni su ristrutturazioni, documentazione e servizi accessori',
+                          personality: 'empatico',
+                          integrations: ['consultation'],
+                          useCases: ['Assistenza post-vendita', 'Raccolta feedback', 'Upselling servizi']
+                        }
+                      ]);
+                      setIsGenerating(false);
+                    }, 2000);
+                  }}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Generazione in corso...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5 mr-2" />
+                      Genera Idee AI
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Idee Generate */}
+            {generatedIdeas.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold">Idee Generate</h3>
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700">
+                    {generatedIdeas.length} proposte
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {generatedIdeas.map((idea) => (
+                    <Card key={idea.id} className="border-2 border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-lg">
+                              <Bot className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-base">{idea.name}</CardTitle>
+                              <Badge variant="outline" className="text-xs mt-1 capitalize">
+                                {idea.personality}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {idea.description}
+                        </p>
+
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                            Integrazioni:
+                          </p>
+                          <div className="flex flex-wrap gap-1">
+                            {idea.integrations.map((int: string) => (
+                              <Badge key={int} variant="secondary" className="text-xs">
+                                {int === 'booking' ? (
+                                  <><Calendar className="h-3 w-3 mr-1" /> Appuntamenti</>
+                                ) : (
+                                  <><BookOpen className="h-3 w-3 mr-1" /> Consulenza</>
+                                )}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                            Casi d'uso:
+                          </p>
+                          <ul className="space-y-1">
+                            {idea.useCases.map((useCase: string, idx: number) => (
+                              <li key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1">
+                                <ChevronRight className="h-3 w-3 mt-0.5 text-purple-500 flex-shrink-0" />
+                                <span>{useCase}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <Button
+                          className="w-full bg-purple-600 hover:bg-purple-700"
+                          onClick={() => {
+                            setSavedIdeas([...savedIdeas, idea]);
+                            toast({
+                              title: "💡 Idea salvata",
+                              description: `"${idea.name}" è stata salvata nelle tue idee.`,
+                            });
+                          }}
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          Salva Idea
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Idee Salvate */}
+            {savedIdeas.length > 0 && (
+              <Card className="border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/10">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Check className="h-5 w-5 text-green-600" />
+                    Idee Salvate ({savedIdeas.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Idee che hai salvato per usare in futuro
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {savedIdeas.map((idea, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Bot className="h-4 w-4 text-purple-600" />
+                          <div>
+                            <p className="font-medium text-sm">{idea.name}</p>
+                            <p className="text-xs text-gray-500">{idea.description}</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // TODO: Pre-compilare wizard con l'idea
+                              navigate("/consultant/whatsapp/agent/new");
+                            }}
+                          >
+                            Crea Agente
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSavedIdeas(savedIdeas.filter((_, i) => i !== index))}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>
