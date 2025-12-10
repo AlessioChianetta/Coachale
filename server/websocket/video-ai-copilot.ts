@@ -1157,6 +1157,9 @@ async function transcribeBufferedAudio(
       timestamp: Date.now(),
       sentiment: 'neutral',
     });
+    
+    // Salva stato dopo aggiunta transcript
+    saveSessionState(session);
 
     console.log(`📝 [STEP 5 DONE] Transcribed ${buffer.speakerName}: "${transcript.substring(0, 60)}..." (partial: ${isPartial})`);
   } else if (session.aiProviderFailed) {
@@ -1731,6 +1734,9 @@ async function runSalesManagerAnalysis(
           console.log(`   🔒 [STICKY] Saved validated item: "${item.check.substring(0, 40)}..."`);
         }
       });
+      
+      // Salva stato dopo aggiornamento validated items
+      saveSessionState(session);
 
       if (analysis.checkpointStatus.canAdvance) {
         const alreadyCompleted = session.completedCheckpoints.find(
@@ -1743,6 +1749,9 @@ async function runSalesManagerAnalysis(
             completedAt: new Date().toISOString()
           });
           console.log(`   ✅ [CHECKPOINT] Marked as completed: ${checkpointId}`);
+          
+          // Salva stato dopo checkpoint completato
+          saveSessionState(session);
         }
 
         // BUG #1 FIX: Force phase advancement when canAdvance=true but stepAdvancement didn't trigger
@@ -1782,6 +1791,9 @@ async function runSalesManagerAnalysis(
             console.log(`   🚀 [PHASE-CHANGE] Advancing from phase ${session.currentPhaseIndex + 1} to ${nextPhaseIdx + 1}`);
             session.currentPhaseIndex = nextPhaseIdx;
             session.currentStepIndex = 0;
+            
+            // Salva stato dopo cambio fase
+            saveSessionState(session);
           }
           // Se siamo nella stessa fase, NON resettare currentStepIndex
           // perché è già stato impostato correttamente dal blocco nextStepId sopra
