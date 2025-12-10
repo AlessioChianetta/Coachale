@@ -1,0 +1,38 @@
+🐛 Bug Report: Disallineamento Stato Frontend al Reload & Analytics Mancanti
+1. Riepilogo del Problema
+A seguito del reload della pagina della Room Meet, l'interfaccia utente (UI) perde la sincronizzazione con lo stato reale della conversazione mantenuto dal Sales Manager. Nonostante il backend conservi correttamente la cronologia e l'avanzamento degli step, il frontend resetta visivamente i progressi e non mostra le trascrizioni. Inoltre, mancano i dati nella sezione Analytics.
+
+2. Dettagli Anomalie UI (Frontend)
+Perdita Trascrizioni: Dopo il refresh, il box delle trascrizioni appare vuoto, nonostante la conversazione esista lato server.
+
+Stato Checkpoint Incoerente:
+
+La Fase 1 risulta correttamente "checkata".
+
+La Fase 2 mostra un comportamento erratico: i checkpoint sono diventati gialli (loading/warning?) per poi tornare rossi (non completati), nonostante il backend confermi che siamo allo Step 5.
+
+Mancanza Indicatore Coaching: Non è visibile "dove eravamo rimasti" con i suggerimenti del coach.
+
+3. Analisi Tecnica e Log (Backend)
+Il backend funziona correttamente. Il Sales Agent ha mantenuto la persistenza dei dati anche dopo il riavvio della pagina.
+
+Dati dal Log [SALES-MANAGER]:
+
+Stato Conversazione: Attiva e persistente.
+
+Fase Corrente: PAIN POINT DISCOVERY (2/7) - Correttamente identificata.
+
+Step Corrente: PERSISTENZA (3/4) (ID: phase_2_step_5).
+
+Cronologia Messaggi: 12 messaggi totali salvati (inclusi gli ultimi scambi su "aumentare i carichi").
+
+Connessione: Meeting ID e Consultant ID correttamente associati.
+
+Conclusione: Il problema è puramente di State Rehydration (idratazione dello stato) sul Frontend. L'applicazione client non sta leggendo o mappando correttamente la risposta dello stato attuale quando il componente viene montato (mount) dopo il refresh.
+
+4. Problema Analytics
+URL: /client/sales-agents/11cd9e7b-f181-4052-9541-e8d0bb91c956/analytics
+
+Errore: Le analytics dell'ultima meet umana non vengono visualizzate.
+
+Ipotesi: Possibile mancata chiamata API al caricamento della view o errore 404/500 sulla fetch dei dati storici per quel preciso meeting_id.
