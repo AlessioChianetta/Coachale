@@ -1022,13 +1022,26 @@ export default function ConsultantWhatsAppPage() {
                   </Button>
                   
                   {/* Chi sono section */}
-                  <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-800">
-                    <p className="text-center text-sm font-medium text-purple-900 dark:text-purple-100">
-                      Sono <span className="font-bold">Millie</span>
+                  <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/50 to-pink-50/50 dark:from-purple-900/10 dark:to-pink-900/10 rounded-lg p-4">
+                    <p className="text-center text-base font-bold text-purple-900 dark:text-purple-100 mb-2">
+                      🙋‍♀️ Chi sono
                     </p>
-                    <p className="text-center text-xs text-purple-700 dark:text-purple-300 mt-1">
-                      Aiuto <span className="font-semibold">consulenti e coach</span>, a <span className="font-semibold">mantenere relazioni costanti con i clienti</span>, attraverso <span className="font-semibold">email personalizzate giornaliere generate da AI</span>
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-purple-800 dark:text-purple-200">
+                        Sono <span className="font-bold text-purple-600 dark:text-purple-400">Millie</span>, la tua assistente AI per le email giornaliere.
+                      </p>
+                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1.5">
+                        <p className="text-xs text-purple-700 dark:text-purple-300">
+                          <span className="font-semibold">👥 A chi mi rivolgo:</span> Consulenti, coach e professionisti che vogliono mantenere un contatto costante con i loro clienti
+                        </p>
+                        <p className="text-xs text-purple-700 dark:text-purple-300">
+                          <span className="font-semibold">🎯 Cosa faccio:</span> Creo e invio email personalizzate automaticamente ogni giorno, mantenendo viva la relazione con ogni cliente senza che tu debba pensarci
+                        </p>
+                        <p className="text-xs text-purple-700 dark:text-purple-300">
+                          <span className="font-semibold">✨ Come lo faccio:</span> Usando l'intelligenza artificiale, analizzo il percorso di ogni cliente e genero contenuti su misura che arrivano al momento giusto, con il tono giusto
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1090,13 +1103,26 @@ export default function ConsultantWhatsAppPage() {
                   </Button>
                   
                   {/* Chi sono section */}
-                  <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-800">
-                    <p className="text-center text-sm font-medium text-orange-900 dark:text-orange-100">
-                      Sono <span className="font-bold">Echo</span>
+                  <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-800 bg-gradient-to-br from-orange-50/50 to-amber-50/50 dark:from-orange-900/10 dark:to-amber-900/10 rounded-lg p-4">
+                    <p className="text-center text-base font-bold text-orange-900 dark:text-orange-100 mb-2">
+                      🙋‍♂️ Chi sono
                     </p>
-                    <p className="text-center text-xs text-orange-700 dark:text-orange-300 mt-1">
-                      Aiuto <span className="font-semibold">consulenti</span>, a <span className="font-semibold">documentare e condividere i progressi delle consulenze</span>, attraverso <span className="font-semibold">riepiloghi AI da trascrizioni Fathom inviati via email</span>
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-orange-800 dark:text-orange-200">
+                        Sono <span className="font-bold text-orange-600 dark:text-orange-400">Echo</span>, il tuo assistente AI per le consulenze.
+                      </p>
+                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1.5">
+                        <p className="text-xs text-orange-700 dark:text-orange-300">
+                          <span className="font-semibold">👥 A chi mi rivolgo:</span> Consulenti e professionisti che tengono sessioni one-to-one con i clienti e vogliono documentare ogni incontro
+                        </p>
+                        <p className="text-xs text-orange-700 dark:text-orange-300">
+                          <span className="font-semibold">🎯 Cosa faccio:</span> Trasformo le tue consulenze in riepiloghi strutturati e personalizzati, evidenziando progressi, insight chiave e prossimi passi da seguire
+                        </p>
+                        <p className="text-xs text-orange-700 dark:text-orange-300">
+                          <span className="font-semibold">✨ Come lo faccio:</span> Analizzo le trascrizioni delle tue chiamate Fathom con l'AI, estraggo i punti salienti e creo email professionali che invio automaticamente al cliente dopo ogni sessione
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1158,13 +1184,26 @@ export default function ConsultantWhatsAppPage() {
                   </Button>
                   
                   {/* Chi sono section */}
-                  <div className="mt-4 pt-4 border-t border-cyan-200 dark:border-cyan-800">
-                    <p className="text-center text-sm font-medium text-cyan-900 dark:text-cyan-100">
-                      Sono <span className="font-bold">Spec</span>
+                  <div className="mt-4 pt-4 border-t border-cyan-200 dark:border-cyan-800 bg-gradient-to-br from-cyan-50/50 to-blue-50/50 dark:from-cyan-900/10 dark:to-blue-900/10 rounded-lg p-4">
+                    <p className="text-center text-base font-bold text-cyan-900 dark:text-cyan-100 mb-2">
+                      🙋‍♂️ Chi sono
                     </p>
-                    <p className="text-center text-xs text-cyan-700 dark:text-cyan-300 mt-1">
-                      Aiuto <span className="font-semibold">i clienti in percorso</span>, a <span className="font-semibold">trovare risposte immediate su esercizi e materiali</span>, attraverso <span className="font-semibold">chat AI 24/7 con accesso alla biblioteca e università</span>
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-cyan-800 dark:text-cyan-200">
+                        Sono <span className="font-bold text-cyan-600 dark:text-cyan-400">Spec</span>, il tuo assistente AI sempre disponibile.
+                      </p>
+                      <div className="bg-white/50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1.5">
+                        <p className="text-xs text-cyan-700 dark:text-cyan-300">
+                          <span className="font-semibold">👥 A chi mi rivolgo:</span> Clienti attivi in un percorso di formazione o coaching che hanno bisogno di supporto continuo tra una sessione e l'altra
+                        </p>
+                        <p className="text-xs text-cyan-700 dark:text-cyan-300">
+                          <span className="font-semibold">🎯 Cosa faccio:</span> Fornisco risposte immediate su esercizi, dubbi e domande, guidando i clienti attraverso i materiali formativi senza che debbano aspettare la prossima consulenza
+                        </p>
+                        <p className="text-xs text-cyan-700 dark:text-cyan-300">
+                          <span className="font-semibold">✨ Come lo faccio:</span> Sono attivo 24/7 via chat, ho accesso completo alla biblioteca di documenti e ai corsi dell'università, e uso l'AI per dare risposte precise e contestualizzate al percorso di ogni cliente
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
