@@ -4250,6 +4250,84 @@ export const humanSellerSessionMetrics = pgTable("human_seller_session_metrics",
 export type HumanSellerSessionMetric = typeof humanSellerSessionMetrics.$inferSelect;
 export type InsertHumanSellerSessionMetric = typeof humanSellerSessionMetrics.$inferInsert;
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Human Seller Meeting Training - Stato sessione completo per persistenza
+// Equivalente a sales_conversation_training per AI agents
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const humanSellerMeetingTraining = pgTable("human_seller_meeting_training", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  meetingId: varchar("meeting_id").references(() => videoMeetings.id, { onDelete: "cascade" }).notNull().unique(),
+  sellerId: varchar("seller_id").references(() => humanSellers.id, { onDelete: "cascade" }).notNull(),
+  
+  // Phase tracking
+  currentPhase: text("current_phase"),
+  currentPhaseIndex: integer("current_phase_index").default(0),
+  phasesReached: jsonb("phases_reached").$type<string[]>().default(sql`'[]'::jsonb`),
+  
+  // Checkpoint tracking
+  checkpointsCompleted: jsonb("checkpoints_completed").$type<Array<{
+    checkpointId: string;
+    status: "completed" | "pending";
+    completedAt: string;
+  }>>().default(sql`'[]'::jsonb`),
+  
+  // Validated items per checkpoint
+  validatedCheckpointItems: jsonb("validated_checkpoint_items").$type<Record<string, Array<{
+    check: string;
+    status: "validated";
+    infoCollected: string;
+    evidenceQuote: string;
+  }>>>().default(sql`'{}'::jsonb`),
+  
+  // Conversation messages
+  conversationMessages: jsonb("conversation_messages").$type<Array<{
+    role: "seller" | "prospect";
+    content: string;
+    timestamp: number;
+    phase?: string;
+  }>>().default(sql`'[]'::jsonb`),
+  
+  // Archetype state
+  archetypeState: jsonb("archetype_state").$type<{
+    detectedArchetype: string;
+    confidence: number;
+    traits: string[];
+  } | null>(),
+  
+  // Full transcript (per replay)
+  fullTranscript: jsonb("full_transcript").$type<Array<{
+    speakerId: string;
+    speakerName: string;
+    text: string;
+    timestamp: number;
+    sentiment: "positive" | "neutral" | "negative";
+  }>>().default(sql`'[]'::jsonb`),
+  
+  // Script snapshot
+  scriptSnapshot: jsonb("script_snapshot"),
+  scriptVersion: text("script_version"),
+  
+  // Coaching metrics
+  coachingMetrics: jsonb("coaching_metrics").$type<{
+    totalBuySignals: number;
+    totalObjections: number;
+    objectionsHandled: number;
+    scriptAdherenceScores: number[];
+  }>(),
+  
+  // Calculated metrics
+  completionRate: real("completion_rate").default(0),
+  totalDuration: integer("total_duration").default(0),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type HumanSellerMeetingTraining = typeof humanSellerMeetingTraining.$inferSelect;
+export type InsertHumanSellerMeetingTraining = typeof humanSellerMeetingTraining.$inferInsert;
+
 // Performance Summary - Metriche aggregate per periodo (giornaliera, settimanale, mensile)
 export const humanSellerPerformanceSummary = pgTable("human_seller_performance_summary", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
