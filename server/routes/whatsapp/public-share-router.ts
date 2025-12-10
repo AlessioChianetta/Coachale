@@ -8,7 +8,7 @@ import * as shareService from '../../whatsapp/share-service';
 import * as agentService from '../../whatsapp/agent-consultant-chat-service';
 import { db } from '../../db';
 import * as schema from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import multer from 'multer';
 import { generateSpeech } from '../../ai/tts-service';
@@ -17,6 +17,15 @@ import { getAIProvider } from '../../ai/provider-factory';
 import { getAudioDurationInSeconds } from 'get-audio-duration';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  extractBookingDataFromConversation,
+  validateBookingData,
+  createBookingRecord,
+  createGoogleCalendarBooking,
+  sendBookingConfirmationEmail,
+  BookingExtractionResult,
+  ConversationMessage,
+} from '../../booking/booking-service';
 
 const router = express.Router();
 
@@ -549,6 +558,148 @@ router.post(
         if (responseDecision.sendAudio && audioUrl) sentTypes.push('audio');
         console.log(`✅ Agent message saved: ${sentTypes.join(' + ') || 'empty'}`);
         
+        // ═══════════════════════════════════════════════════════════════════════
+        // BOOKING AUTOMATICO PER LINK PUBBLICI
+        // Analizza la conversazione per estrarre dati appuntamento e creare booking
+        // ═══════════════════════════════════════════════════════════════════════
+        let bookingResult: { created: boolean; booking?: any; googleMeetLink?: string } = { created: false };
+        
+        if (agentConfig.bookingEnabled !== false) {
+          try {
+            console.log(`\n📅 [PUBLIC-BOOKING] Checking conversation for booking data...`);
+            
+            // Recupera cronologia conversazione (ultimi 15 messaggi)
+            const recentMessages = await db
+              .select()
+              .from(schema.whatsappAgentConsultantMessages)
+              .where(eq(schema.whatsappAgentConsultantMessages.conversationId, conversation.id))
+              .orderBy(desc(schema.whatsappAgentConsultantMessages.createdAt))
+              .limit(15);
+            
+            // Converti in formato richiesto dal booking service
+            const conversationMessages: ConversationMessage[] = recentMessages
+              .reverse()
+              .map(m => ({
+                sender: m.role === 'user' ? 'client' as const : 'ai' as const,
+                messageText: m.content || ''
+              }));
+            
+            console.log(`   📚 Analyzing ${conversationMessages.length} messages...`);
+            
+            // Verifica se esiste già un booking confermato per questa conversazione
+            const [existingBooking] = await db
+              .select()
+              .from(schema.appointmentBookings)
+              .where(
+                and(
+                  eq(schema.appointmentBookings.publicConversationId, conversation.id),
+                  eq(schema.appointmentBookings.status, 'confirmed')
+                )
+              )
+              .limit(1);
+            
+            if (existingBooking) {
+              console.log(`   ℹ️ Booking già esistente per questa conversazione (ID: ${existingBooking.id})`);
+            } else {
+              // Ottieni AI provider per estrazione dati
+              const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+              
+              // Estrai dati booking dalla conversazione
+              const extracted = await extractBookingDataFromConversation(
+                conversationMessages,
+                undefined, // Nessun booking esistente
+                aiProvider.client,
+                'Europe/Rome'
+              );
+              
+              if (extracted && 'isConfirming' in extracted) {
+                const extractionResult = extracted as BookingExtractionResult;
+                console.log(`   📊 Extraction: hasAllData=${extractionResult.hasAllData}, isConfirming=${extractionResult.isConfirming}`);
+                console.log(`   📋 Data: date=${extractionResult.date}, time=${extractionResult.time}, email=${extractionResult.email}, phone=${extractionResult.phone}`);
+                
+                // Per link pubblici: richiedi solo date, time, email (phone è opzionale)
+                // hasAllData potrebbe essere false se manca phone, ma per public_link è ok
+                const hasRequiredWebData = extractionResult.date && extractionResult.time && extractionResult.email;
+                
+                if (extractionResult.isConfirming && hasRequiredWebData) {
+                  
+                  // Valida i dati (phone is optional for public_link)
+                  const validation = await validateBookingData(extractionResult, agentConfig.consultantId, 'Europe/Rome', 'public_link');
+                  
+                  if (validation.valid) {
+                    console.log(`   ✅ Validation passed - creating booking...`);
+                    
+                    // Crea record booking con source e publicConversationId
+                    const booking = await createBookingRecord(
+                      agentConfig.consultantId,
+                      null, // conversationId nullo per public links
+                      {
+                        date: extractionResult.date,
+                        time: extractionResult.time,
+                        phone: extractionResult.phone || '', // Will be normalized to null in createBookingRecord
+                        email: extractionResult.email,
+                        name: extractionResult.name || `Visitor ${visitorId.slice(0, 8)}`
+                      },
+                      'public_link',
+                      conversation.id // publicConversationId
+                    );
+                    
+                    if (booking) {
+                      // Crea evento Google Calendar
+                      const calendarResult = await createGoogleCalendarBooking(
+                        agentConfig.consultantId,
+                        booking,
+                        extractionResult.email
+                      );
+                      
+                      bookingResult = {
+                        created: true,
+                        booking: booking,
+                        googleMeetLink: calendarResult.googleMeetLink || undefined
+                      };
+                      
+                      console.log(`   🎉 [PUBLIC-BOOKING] Booking created successfully!`);
+                      console.log(`   🆔 Booking ID: ${booking.id}`);
+                      console.log(`   📅 Date: ${booking.appointmentDate} ${booking.appointmentTime}`);
+                      console.log(`   📧 Email: ${extractionResult.email}`);
+                      if (calendarResult.googleEventId) {
+                        console.log(`   📆 Google Event: ${calendarResult.googleEventId}`);
+                      }
+                      if (calendarResult.googleMeetLink) {
+                        console.log(`   🎥 Meet Link: ${calendarResult.googleMeetLink}`);
+                      }
+                      
+                      // Invia email di conferma al cliente
+                      const emailResult = await sendBookingConfirmationEmail(
+                        agentConfig.consultantId,
+                        booking,
+                        calendarResult.googleMeetLink
+                      );
+                      if (emailResult.success) {
+                        console.log(`   📧 Confirmation email sent!`);
+                      } else {
+                        console.log(`   ⚠️ Email not sent: ${emailResult.errorMessage || 'SMTP not configured'}`);
+                      }
+                    }
+                  } else {
+                    console.log(`   ❌ Validation failed: ${validation.reason}`);
+                  }
+                } else {
+                  console.log(`   ℹ️ Not all data available or user not confirming yet`);
+                }
+              } else {
+                console.log(`   ℹ️ No booking data extracted from conversation`);
+              }
+            }
+          } catch (bookingError: any) {
+            console.error(`   ❌ [PUBLIC-BOOKING] Error: ${bookingError.message}`);
+            // Non bloccare la risposta - il booking è un'operazione secondaria
+          }
+        } else {
+          console.log(`\n📅 [PUBLIC-BOOKING] Booking disabled for this agent`);
+        }
+        // ═══════════════════════════════════════════════════════════════════════
+        
         // Track message sent
         await shareService.trackMessage(share.id);
         
@@ -558,11 +709,14 @@ router.post(
           .set({ lastMessageAt: new Date() })
           .where(eq(schema.whatsappAgentConsultantConversations.id, conversation.id));
         
-        // Send completion signal with audio metadata
+        // Send completion signal with audio metadata and booking info
         res.write(`data: ${JSON.stringify({ 
           type: 'done', 
           audioUrl: audioUrl || undefined,
-          audioDuration: agentAudioDuration || undefined 
+          audioDuration: agentAudioDuration || undefined,
+          bookingCreated: bookingResult.created || undefined,
+          bookingId: bookingResult.booking?.id || undefined,
+          googleMeetLink: bookingResult.googleMeetLink || undefined
         })}\n\n`);
         res.end();
         

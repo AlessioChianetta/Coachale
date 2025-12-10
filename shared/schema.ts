@@ -2483,7 +2483,9 @@ export const appointmentBookings = pgTable("appointment_bookings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }),
-  clientPhone: text("client_phone").notNull(),
+  publicConversationId: varchar("public_conversation_id"), // For public link bookings (references whatsappAgentConsultantConversations)
+  source: text("source").$type<"whatsapp" | "public_link">().default("whatsapp").notNull(), // Booking source
+  clientPhone: text("client_phone"), // Nullable for public link bookings
   clientName: text("client_name"),
   clientSurname: text("client_surname"),
   clientEmail: text("client_email"),
