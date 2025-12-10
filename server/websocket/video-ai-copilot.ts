@@ -2960,6 +2960,33 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
         completedCheckpoints: [],
         validatedCheckpointItems: {},
       };
+      
+      // ═══════════════════════════════════════════════════════════════════════
+      // SESSION STATE RECOVERY: Carica stato salvato dal database se esiste
+      // ═══════════════════════════════════════════════════════════════════════
+      if (sellerId) {
+        const savedState = await loadSessionState(meetingId);
+        if (savedState) {
+          console.log(`🔄 [VideoCopilot] Restoring saved session state for meeting ${meetingId}...`);
+          
+          // Ripristina progresso
+          session.currentPhaseIndex = savedState.currentPhaseIndex ?? 0;
+          session.completedCheckpoints = (savedState.checkpointsCompleted as any[]) || [];
+          session.validatedCheckpointItems = (savedState.validatedCheckpointItems as Record<string, any>) || {};
+          session.conversationMessages = (savedState.conversationMessages as any[]) || [];
+          session.archetypeState = savedState.archetypeState as any || null;
+          session.transcriptBuffer = (savedState.fullTranscript as any[]) || [];
+          session.scriptStructure = savedState.scriptSnapshot as any || null;
+          session.coachingMetrics = (savedState.coachingMetrics as any) || session.coachingMetrics;
+          
+          // Ricostruisci totalTranscriptText dai transcript salvati
+          session.totalTranscriptText = session.transcriptBuffer.map((t: any) => t.text).join(' ');
+          
+          console.log(`✅ [VideoCopilot] Session restored - Phase: ${session.currentPhaseIndex}, Checkpoints: ${session.completedCheckpoints.length}, Transcripts: ${session.transcriptBuffer.length}`);
+        }
+      }
+      // ═══════════════════════════════════════════════════════════════════════
+      
       activeSessions.set(meetingId, session);
     }
 
