@@ -1,0 +1,205 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 Total prompt length: 30437 characters
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 17 historical messages
+🧠 [STEP 8] Calling Gemini AI (model: gemini-2.5-flash)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~7,610 tokens (30,437 chars)
+   💬 User Message: ~7 tokens (26 chars)
+   📜 History: ~606 tokens (2,421 chars)
+   🔢 TOTALE INPUT: ~8,223 tokens
+
+🔄 [RETRY] Attempt 1/3
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 1039ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [ 'response' ]
+📦 response.response keys: [ 'text' ]
+📊 response.response.candidates: 0
+✅ response.response.text is a function - calling it...
+📝 Extracted text length: 79
+📝 Extracted text preview: Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~20 tokens (79 chars)
+   🔢 TOTALE (input + output): ~8,243 tokens
+   ⏱️  Tempo di risposta: 1040ms
+   💰 Costo stimato: $0.016486 (input + output)
+
+✅ [STEP 8] Gemini response received: "Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: 34c80539-6fe8-473f-a292-ffe7ecf80371 (timing: 1040ms Gemini, 5242ms total)
+🎛️ [AUDIO DECISION] Mode: mirror, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=true, mode=mirror, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393519272875
+✅ Using agent from existing conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+📤 Sending WhatsApp message as plain text
+✅ Sent WhatsApp message chunk 1/1: SMfdd7402bb9f235561726ae649e7506b5 (79 chars)
+✅ [STEP 10] WhatsApp message sent: text
+💾 [APPOINTMENT BOOKING] Retrieved 10 proposed slots from database
+📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message
+📊 [EXTRACTION] Retrieved 10 messages for extraction
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [STEP 2] Extracting Appointment Data from Conversation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 Analyzing last 10 messages for appointment details...
+🤖 Using AI model: gemini-2.5-flash
+🔄 [EXTRACTION] Attempt 1/3 with provider: vertex
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+6:24:42 PM [express] GET /api/whatsapp/conversations 200 in 333ms :: {"conversations":[{"id":"747f05…
+6:24:48 PM [express] GET /api/whatsapp/conversations 304 in 439ms :: {"conversations":[{"id":"747f05…
+✅ [EXTRACTION] Success on attempt 1!
+
+💬 AI Raw Response:
+```json
+{
+  "isConfirming": true,
+  "date": "2025-12-12",
+  "time": "10:00",
+  "phone": "3890566422",
+  "email": "chianettaalessio@gmail.com",
+  "confidence": "high",
+  "hasAllData": true
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 [STEP 3] Data Extraction Results
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 Confirmation Status: ✅ YES
+📅 Date:     ✅ 2025-12-12
+🕐 Time:     ✅ 10:00
+📞 Phone:    ✅ 3890566422
+📧 Email:    ✅ chianettaalessio@gmail.com
+💯 Confidence: HIGH
+✔️ Complete Data: ✅ YES - Ready to book!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [STEP 4] Validating Appointment Date
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Appointment date: 2025-12-12 (12/12/2025)
+📅 Today's date: 2025-12-10 (10/12/2025)
+
+✅ VALIDATION PASSED: Date is valid!
+   📆 In 2 days
+   🎯 Proceeding to create appointment...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 [STEP 5] Creating Appointment Booking
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Date: 2025-12-12
+🕐 Time: 10:00
+📞 Phone: 3890566422
+📧 Email: chianettaalessio@gmail.com
+
+📊 [APPOINTMENT DURATION] Configurazione durata appuntamento:
+   ⚙️ appointmentDuration dal DB: 60 minuti
+   ✅ Durata finale utilizzata: 60 minuti
+   🌍 Timezone: Europe/Rome
+
+⏰ [TIME CALCULATION] Calcolo orari appuntamento:
+   📅 Data appuntamento: 2025-12-12
+   🕐 Ora inizio: 10:00
+   ⏱️ Durata: 60 minuti
+   🌍 Timezone: Europe/Rome
+   📍 DateTime String: 2025-12-12T10:00:00
+   ⏰ Formatted in Europe/Rome: 12/12/2025, 11:00:00
+
+✅ Database booking created successfully!
+   🆔 Booking ID: 96778009-e5cd-4be5-9637-44a5488f12af
+   📅 Date: 2025-12-12
+   🕐 Time: 10:00 - 11:00
+   📞 Phone: 3890566422
+   📧 Email: chianettaalessio@gmail.com
+   ✅ Status: confirmed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 [GOOGLE CALENDAR] Creating Calendar Event
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Consultant ID: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📝 Event title: Consulenza - chianettaalessio@gmail.com
+📅 Start: 2025-12-12T10:00:00 (Europe/Rome)
+📅 End: 2025-12-12T11:00:00 (Europe/Rome)
+⏱️ Duration: 60 minutes
+👥 Attendees (1):
+   - chianettaalessio@gmail.com
+
+🔐 Authenticating with Google Calendar API...
+🔗 [OAUTH] Redirect URI for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: https://400c4263-6c02-4a3e-ab9e-adda3318ace9-00-32tjxbdho4cl1.picard.replit.dev/api/calendar-settings/oauth/callback
+📋 Getting primary calendar ID...
+✅ Using saved calendar ID from settings: primary
+✅ Using calendar: primary
+
+🎥 Requesting Google Meet link creation...
+🌐 Calling Google Calendar API...
+
+✅ Event created successfully!
+   🆔 Google Event ID: j0d54bol0tn4rngtg9b00rcmq4
+   🎥 Google Meet Link: https://meet.google.com/uvm-jsgz-qvc
+   📧 Calendar invites sent to: chianettaalessio@gmail.com
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+💾 Database updated with Google Calendar Event ID
+   🆔 Google Event ID: j0d54bol0tn4rngtg9b00rcmq4
+✅ Using agent from existing conversation: Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a)
+📤 Sending WhatsApp message as plain text
+✅ Sent WhatsApp message chunk 1/1: SM28951b3e4bcd0549fcc727a38bbb41e3 (425 chars)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ [STEP 6] Appointment Confirmation Complete!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎉 APPOINTMENT SUCCESSFULLY BOOKED!
+
+📋 Summary:
+   👤 Lead: chianettaalessio@gmail.com (3890566422)
+   📅 Date: venerdì 12 dicembre 2025
+   🕐 Time: 10:00 (60 min)
+   💾 Booking ID: 96778009-e5cd-4be5-9637-44a5488f12af
+   📅 Google Event: j0d54bol0tn4rngtg9b00rcmq4
+   🎥 Meet Link: ✅ Generated
+   📧 Calendar Invite: ✅ Sent to chianettaalessio@gmail.com
+   📱 WhatsApp Confirmation: ✅ Sent to +393519272875
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 [APPOINTMENT BOOKING] Marked proposed slots as used
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393519272875
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 Objection Detection:      2509ms  (16.1%)
+🤖 Gemini API Call:          1039ms  (6.7%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:              15566ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
