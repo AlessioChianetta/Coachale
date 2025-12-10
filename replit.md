@@ -53,6 +53,14 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Sales Agent AI token usage is optimized through dynamic script loading based on the current phase.
 - **Prospect Profiling System**: Intelligent prospect personality profiling during voice calls with dynamic sales strategy adaptation using a hybrid regex and AI intuition approach. Includes sticky archetype logic and 8 behavioral archetypes with specific playbooks. Integrates with TTS for archetype-specific voice parameters.
 - AI sales agent follows scripts in strict sequential order, programmatically enforced with validation.
+## Human Seller Analytics & Session Persistence
+- **Unified Analytics Component**: Single reusable `client-sales-agent-analytics.tsx` serves both AI agents and human sellers
+- **Entity Type Detection**: URL path determines entity type (`/client/sales-agents/` → AI, `/client/human-sellers/` → human)
+- **Session State Persistence**: `humanSellerMeetingTraining` table stores full session state (transcripts, checkpoints, phases)
+- **Debounced Saves**: 5-second debounce prevents excessive database writes during active sessions
+- **Recovery on Reconnect**: Sessions automatically restore from database when human seller reconnects
+- **API Parity**: Human seller training endpoints match AI agent format for consistent frontend consumption
+
 ## Video Copilot Turn-Taking System
 - **Purpose**: Prevent API bombardment (429 errors) during human-to-human video meetings by implementing Fathom-style intelligent turn-taking.
 - **Architecture**: State machine with per-meeting TurnState tracking audio buffers per speaker.
