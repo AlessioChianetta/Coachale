@@ -79,6 +79,24 @@ export default function PublicAgentShare() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Variabile unica per bloccare l'input durante qualsiasi elaborazione
+  const isBusy = isStreaming || isRecording || isUploadingAudio;
+  
+  // Pattern per identificare messaggi di sistema da nascondere
+  const isSystemMessage = (content: string): boolean => {
+    const systemPatterns = [
+      /^extracting data/i,
+      /^sto elaborando/i,
+      /^processing/i,
+      /^elaborazione in corso/i,
+      /^analizzando/i,
+      /^⏳/,
+      /^\[sistema\]/i,
+      /^\[system\]/i,
+    ];
+    return systemPatterns.some(pattern => pattern.test(content.trim()));
+  };
+  
   // Load visitorId from localStorage on mount
   useEffect(() => {
     if (!slug) return;
@@ -231,6 +249,10 @@ export default function PublicAgentShare() {
               const data = JSON.parse(line.slice(6));
               
               if (data.type === 'chunk') {
+                // FIX DOPPI MESSAGGI: Rimuovi subito l'optimistic message al primo chunk
+                // Questo previene la duplicazione visiva del messaggio utente
+                setOptimisticMessage(null);
+                
                 accumulatedContent += data.content;
                 setStreamingMessage(prev => prev ? {
                   ...prev,
@@ -303,7 +325,8 @@ export default function PublicAgentShare() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!messageInput.trim() || isStreaming) {
+    // Blocca invio se input è occupato o vuoto
+    if (!messageInput.trim() || isBusy || sendMessageMutation.isPending) {
       return;
     }
     
@@ -476,21 +499,41 @@ export default function PublicAgentShare() {
     }
   };
   
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom - migliorato per essere sempre fluido
   useEffect(() => {
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (viewport) {
-        const isUserScrolledToBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 50;
+        // Scroll sempre in basso quando:
+        // - C'è un messaggio ottimistico (utente ha appena inviato)
+        // - C'è contenuto streaming in arrivo
+        // - È in corso lo streaming
+        // - Arrivano nuovi messaggi
+        const shouldAutoScroll = 
+          optimisticMessage || 
+          streamingMessage?.content || 
+          isStreaming ||
+          sendMessageMutation.isPending;
         
-        if (optimisticMessage) {
-          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-        } else if (isUserScrolledToBottom) {
-          viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'instant' });
+        if (shouldAutoScroll) {
+          // Scroll fluido per nuovi messaggi
+          viewport.scrollTo({ 
+            top: viewport.scrollHeight, 
+            behavior: 'smooth' 
+          });
+        } else {
+          // Check se l'utente è già in fondo (con tolleranza di 100px)
+          const isNearBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 100;
+          if (isNearBottom) {
+            viewport.scrollTo({ 
+              top: viewport.scrollHeight, 
+              behavior: 'instant' 
+            });
+          }
         }
       }
     }
-  }, [messages, streamingMessage, optimisticMessage]);
+  }, [messages, streamingMessage?.content, optimisticMessage, isStreaming, sendMessageMutation.isPending]);
   
   // Auto-trigger public access if no password required
   useEffect(() => {
@@ -667,10 +710,10 @@ export default function PublicAgentShare() {
         </div>
       )}
       
-      {/* Chat area */}
+      {/* Chat area - struttura migliorata per input sempre visibile */}
       <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-        {/* Messages */}
-        <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4">
+        {/* Messages - solo questa area scorre */}
+        <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4 pb-2">
           <div className="max-w-4xl mx-auto space-y-4">
             {/* Welcome message */}
             {messages.length === 0 && !optimisticMessage && !streamingMessage && (
@@ -685,36 +728,38 @@ export default function PublicAgentShare() {
               </div>
             )}
             
-            {/* Message list */}
-            {messages.map((message) => {
-              const direction = message.role === 'user' ? 'outbound' : 'inbound';
-              
-              return (
-                <div key={message.id} className="flex flex-col gap-1">
-                  <WhatsAppMessageBubble
-                    message={{
-                      id: message.id,
-                      text: message.content,
-                      sender: message.role === 'user' ? 'client' : 'ai',
-                      direction,
-                      createdAt: new Date(message.createdAt),
-                    }}
-                  />
-                  {message.audioUrl && (
-                    <div className={direction === 'inbound' ? 'flex justify-start ml-12' : 'flex justify-end mr-12'}>
-                      <audio
-                        controls
-                        className="w-64 h-10"
-                        preload="metadata"
-                      >
-                        <source src={message.audioUrl} type={message.role === 'user' ? 'audio/webm' : 'audio/wav'} />
-                        Il tuo browser non supporta l'elemento audio.
-                      </audio>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {/* Message list - filtra messaggi di sistema */}
+            {messages
+              .filter(msg => !isSystemMessage(msg.content))
+              .map((message) => {
+                const direction = message.role === 'user' ? 'outbound' : 'inbound';
+                
+                return (
+                  <div key={message.id} className="flex flex-col gap-1">
+                    <WhatsAppMessageBubble
+                      message={{
+                        id: message.id,
+                        text: message.content,
+                        sender: message.role === 'user' ? 'client' : 'ai',
+                        direction,
+                        createdAt: new Date(message.createdAt),
+                      }}
+                    />
+                    {message.audioUrl && (
+                      <div className={direction === 'inbound' ? 'flex justify-start ml-12' : 'flex justify-end mr-12'}>
+                        <audio
+                          controls
+                          className="w-64 h-10"
+                          preload="metadata"
+                        >
+                          <source src={message.audioUrl} type={message.role === 'user' ? 'audio/webm' : 'audio/wav'} />
+                          Il tuo browser non supporta l'elemento audio.
+                        </audio>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             
             {/* Optimistic message */}
             {optimisticMessage && (
@@ -761,8 +806,8 @@ export default function PublicAgentShare() {
           </div>
         </ScrollArea>
         
-        {/* Input area - WhatsApp style */}
-        <div className="border-t bg-card p-3 shadow-lg">
+        {/* Input area - SEMPRE FISSO in basso, stile WhatsApp */}
+        <div className="flex-shrink-0 border-t bg-card p-3 shadow-lg">
           {isRecording ? (
             // Recording UI
             <div className="flex items-center gap-3 bg-red-50 rounded-3xl px-4 py-3 max-w-4xl mx-auto">
@@ -803,21 +848,26 @@ export default function PublicAgentShare() {
                 onClick={handlePhotoCapture}
                 size="icon"
                 variant="ghost"
-                disabled={isStreaming}
-                className="h-10 w-10 rounded-full text-gray-600 hover:bg-gray-100"
+                disabled={isBusy || sendMessageMutation.isPending}
+                className="h-10 w-10 rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-50"
               >
                 <Camera className="h-5 w-5" />
               </Button>
               
-              <div className="flex-1 bg-gray-100 rounded-3xl px-4 py-2 flex items-center gap-2">
+              <div className={cn(
+                "flex-1 rounded-3xl px-4 py-2 flex items-center gap-2 transition-colors",
+                isBusy || sendMessageMutation.isPending 
+                  ? "bg-gray-200" 
+                  : "bg-gray-100"
+              )}>
                 <Input
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder="Messaggio..."
-                  disabled={isStreaming || isRecording}
-                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-gray-500 p-0 h-auto min-h-[28px]"
+                  placeholder={isBusy || sendMessageMutation.isPending ? "Attendere..." : "Messaggio..."}
+                  disabled={isBusy || sendMessageMutation.isPending}
+                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-gray-500 p-0 h-auto min-h-[28px] disabled:cursor-not-allowed"
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey && !isRecording) {
+                    if (e.key === 'Enter' && !e.shiftKey && !isBusy && !sendMessageMutation.isPending) {
                       e.preventDefault();
                       handleSendMessage(e);
                     }
@@ -828,11 +878,11 @@ export default function PublicAgentShare() {
               {messageInput.trim() ? (
                 <Button
                   onClick={handleSendMessage}
-                  disabled={isStreaming || isRecording}
+                  disabled={isBusy || sendMessageMutation.isPending}
                   size="icon"
-                  className="rounded-full h-12 w-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                  className="rounded-full h-12 w-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70"
                 >
-                  {isStreaming ? (
+                  {isBusy || sendMessageMutation.isPending ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <Send className="h-5 w-5" />
@@ -841,9 +891,9 @@ export default function PublicAgentShare() {
               ) : (
                 <Button
                   onClick={startRecording}
-                  disabled={isStreaming}
+                  disabled={isBusy || sendMessageMutation.isPending}
                   size="icon"
-                  className="rounded-full h-12 w-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg transition-all duration-200 hover:scale-105 active:scale-95"
+                  className="rounded-full h-12 w-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70"
                 >
                   <Mic className="h-5 w-5" />
                 </Button>
