@@ -162,8 +162,9 @@ type EntityType = 'ai_agent' | 'human_seller';
 
 interface HumanSeller {
   id: string;
-  name: string;
-  email: string;
+  sellerName: string;
+  displayName: string;
+  ownerEmail: string | null;
   isActive: boolean;
 }
 
@@ -236,7 +237,7 @@ export default function ClientSalesAgentAnalytics() {
   const entityData = entityConfig.isHumanSeller 
     ? (humanSeller ? { 
         id: humanSeller.id, 
-        name: humanSeller.name, 
+        name: humanSeller.displayName || humanSeller.sellerName, 
         isActive: humanSeller.isActive 
       } : null)
     : (agent ? { 
@@ -281,7 +282,7 @@ export default function ClientSalesAgentAnalytics() {
       console.log(`[FRONTEND] Received training summary:`, data);
       return data;
     },
-    enabled: !!entityConfig.entityId,
+    enabled: !!entityConfig.entityId && !entityConfig.isHumanSeller,
   });
 
   const { data: trainingConversations = [], isLoading: conversationsLoading } = useQuery<
@@ -623,24 +624,26 @@ export default function ClientSalesAgentAnalytics() {
                   </Card>
                 </motion.div>
 
-                {/* Inviti Generati Section */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <Card className="bg-white dark:bg-gray-800 shadow-xl">
-                    <CardHeader>
-                      <CardTitle className="text-2xl flex items-center gap-2">
-                        <Link2 className="h-6 w-6 text-purple-600" />
-                        Link Inviti Generati
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <InvitesListTable agentId={entityConfig.entityId!} entityType={entityConfig.isHumanSeller ? 'human_seller' : 'ai_agent'} />
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                {/* Inviti Generati Section - Only for AI agents */}
+                {!entityConfig.isHumanSeller && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <Card className="bg-white dark:bg-gray-800 shadow-xl">
+                      <CardHeader>
+                        <CardTitle className="text-2xl flex items-center gap-2">
+                          <Link2 className="h-6 w-6 text-purple-600" />
+                          Link Inviti Generati
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <InvitesListTable agentId={entityConfig.entityId!} entityType="ai_agent" />
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
 
                 {/* More Analytics - Coming Soon */}
                 <motion.div
