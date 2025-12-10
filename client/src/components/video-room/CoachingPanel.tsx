@@ -397,7 +397,42 @@ export default function CoachingPanel({
           )}
         </AnimatePresence>
 
-        
+        {checkpointStatus && (
+          <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-4 h-4 text-blue-400" />
+              <span className="text-xs text-gray-400">
+                Checkpoint: {checkpointStatus.checkpointName}
+              </span>
+            </div>
+            <div className="space-y-1.5">
+              {checkpointStatus.itemDetails?.map((item, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  {item.status === 'validated' ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
+                  ) : item.status === 'vague' ? (
+                    <Clock className="w-3.5 h-3.5 text-yellow-400 mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5 text-gray-500 mt-0.5 shrink-0" />
+                  )}
+                  <span className={cn(
+                    "text-xs",
+                    item.status === 'validated' ? 'text-green-300' :
+                    item.status === 'vague' ? 'text-yellow-300' : 'text-gray-500'
+                  )}>
+                    {item.check}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {checkpointStatus.canAdvance && (
+              <div className="mt-2 flex items-center gap-1 text-green-400 text-xs">
+                <ChevronRight className="w-3 h-3" />
+                Puoi avanzare alla fase successiva
+              </div>
+            )}
+          </div>
+        )}
 
         {toneWarnings.length > 0 && (
           <div className="bg-yellow-500/10 rounded-lg p-3 border border-yellow-500/30">

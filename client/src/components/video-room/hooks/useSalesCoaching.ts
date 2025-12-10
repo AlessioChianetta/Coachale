@@ -38,22 +38,6 @@ export interface CheckpointStatus {
   phaseNumber?: string;
 }
 
-export interface HierarchicalCheckpoint {
-  id: string;
-  title: string;
-  items: Array<{
-    id: string;
-    text: string;
-    completed: boolean;
-  }>;
-  isCompleted: boolean;
-}
-
-export interface CheckpointNavigationData {
-  currentCheckpoint: HierarchicalCheckpoint | null;
-  previousCheckpoints: HierarchicalCheckpoint[];
-}
-
 export interface ProspectProfile {
   archetype: ArchetypeId;
   confidence: number;
@@ -90,7 +74,6 @@ export interface SalesCoachingState {
   currentFeedback: CoachingFeedback | null;
   feedbackHistory: CoachingFeedback[];
   toneWarnings: string[];
-  checkpointNavigation: CheckpointNavigationData;
 }
 
 interface UseSalesCoachingOptions {
@@ -108,10 +91,6 @@ const initialState: SalesCoachingState = {
   currentFeedback: null,
   feedbackHistory: [],
   toneWarnings: [],
-  checkpointNavigation: {
-    currentCheckpoint: null,
-    previousCheckpoints: [],
-  },
 };
 
 export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoachingOptions) {
@@ -191,13 +170,6 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
         setState(prev => ({
           ...prev,
           isActive: true,
-        }));
-        break;
-
-      case 'checkpoint_navigation_update':
-        setState(prev => ({
-          ...prev,
-          checkpointNavigation: message.data,
         }));
         break;
 
