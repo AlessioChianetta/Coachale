@@ -61,6 +61,19 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Recovery on Reconnect**: Sessions automatically restore from database when human seller reconnects
 - **API Parity**: Human seller training endpoints match AI agent format for consistent frontend consumption
 
+## Checkpoint Validation System (Sales Coaching)
+- **3-Tier Status System**: VALIDATED (green), VAGUE (yellow), MISSING (red)
+- **Sticky Validation Logic**: Both VALIDATED and VAGUE statuses are sticky - they NEVER downgrade to a lower status
+  - VALIDATED → stays VALIDATED forever (cannot become VAGUE or MISSING)
+  - VAGUE → can only upgrade to VALIDATED (cannot become MISSING)
+- **State Rehydration**: Frontend sends `request_state_sync` on WebSocket connect; backend broadcasts saved transcripts, checkpoints, script progress, archetype data
+- **Manual Checkpoint Validation**: Users can manually validate checkpoint items via UI checkboxes
+  - Frontend: `useSalesCoaching.manualValidateCheckpoint` + `useVideoCopilot.sendManualValidateCheckpoint`
+  - Backend: `handleManualValidateCheckpoint` with immediate persistence (no debounce)
+  - Uses same sticky storage mechanism as AI pipeline (`session.validatedCheckpointItems`)
+- **Persistence Flow**: `session.validatedCheckpointItems` → `saveSessionStateImmediate` → `humanSellerMeetingTraining.validatedCheckpointItems`
+- **AI Integration**: AI skips already-validated items (line 1661-1663 in sales-manager-agent.ts) and respects sticky validations
+
 ## Video Copilot Turn-Taking System
 - **Purpose**: Prevent API bombardment (429 errors) during human-to-human video meetings by implementing Fathom-style intelligent turn-taking.
 - **Architecture**: State machine with per-meeting TurnState tracking audio buffers per speaker.
