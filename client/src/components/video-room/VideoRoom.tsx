@@ -221,6 +221,25 @@ export default function VideoRoom({
     };
   }, [leaveParticipant]);
 
+  // beforeunload handler for cleanup on page reload (uses sendBeacon for guaranteed delivery)
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (myParticipantIdRef.current && meetingId && meeting?.meetingToken) {
+        const payload = JSON.stringify({
+          participantId: myParticipantIdRef.current,
+          meetingId: meetingId,
+          meetingToken: meeting.meetingToken,
+        });
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/video-meeting/force-leave', blob);
+        console.log(`🚪 [VideoRoom] Sent force-leave beacon for ${myParticipantIdRef.current}`);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [meetingId, meeting?.meetingToken]);
+
   // Track if audio capture has been started (to avoid restart loops)
   const audioCaptureStartedRef = useRef(false);
   const remoteStreamsSize = remoteStreams.size;

@@ -249,6 +249,38 @@ export function useWebRTC({
           bothTryTimeoutRef.current.delete(remoteParticipantId);
         }
         bothTryActiveRef.current.delete(remoteParticipantId);
+      } else if (pc.iceConnectionState === 'disconnected') {
+        console.warn(`⚠️ [WebRTC] ICE disconnected with ${remoteParticipantId}, attempting ICE restart...`);
+        
+        const performIceRestart = async () => {
+          try {
+            if (pc.signalingState === 'closed') {
+              console.log(`🔌 [WebRTC] PeerConnection already closed, skipping ICE restart`);
+              return;
+            }
+            
+            const offer = await pc.createOffer({ iceRestart: true });
+            await pc.setLocalDescription(offer);
+            
+            if (myParticipantId) {
+              console.log(`🔄 [WebRTC] Sending ICE restart offer to ${remoteParticipantId}`);
+              sendWebRTCMessage({
+                type: 'webrtc_offer',
+                targetParticipantId: remoteParticipantId,
+                fromParticipantId: myParticipantId,
+                sdp: { type: 'offer', sdp: offer.sdp },
+              });
+            }
+          } catch (err) {
+            console.error(`❌ [WebRTC] ICE restart failed for ${remoteParticipantId}:`, err);
+          }
+        };
+        
+        setTimeout(() => {
+          if (pc.iceConnectionState === 'disconnected') {
+            performIceRestart();
+          }
+        }, 1000);
       } else if (pc.iceConnectionState === 'failed') {
         console.warn(`⚠️ [WebRTC] Connection failed with ${remoteParticipantId}, will retry`);
         const retries = connectionRetryRef.current.get(remoteParticipantId) || 0;

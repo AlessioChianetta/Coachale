@@ -2415,7 +2415,45 @@ async function handleParticipantJoin(
   const { name, role } = message.participant;
 
   try {
-    // Check if participant with same name AND role already left this meeting (can be recycled)
+    // STEP 1: Clean up any ACTIVE zombie (same name+role, leftAt IS NULL, but NO socket)
+    // This fixes the race condition when user reloads the page
+    const [activeZombie] = await db.select()
+      .from(videoMeetingParticipants)
+      .where(and(
+        eq(videoMeetingParticipants.meetingId, session.meetingId),
+        eq(videoMeetingParticipants.name, name),
+        eq(videoMeetingParticipants.role, role),
+        isNull(videoMeetingParticipants.leftAt) // Active in DB
+      ))
+      .limit(1);
+    
+    if (activeZombie) {
+      const meetingSockets = participantSockets.get(session.meetingId);
+      const hasSocket = meetingSockets?.has(activeZombie.id);
+      
+      if (!hasSocket) {
+        // This is a zombie! Its socket is dead but leftAt wasn't set
+        console.log(`🧹 [VideoCopilot] Cleaning active zombie: ${name} (${activeZombie.id}) - no socket registered`);
+        await db.update(videoMeetingParticipants)
+          .set({ leftAt: new Date() })
+          .where(eq(videoMeetingParticipants.id, activeZombie.id));
+        session.participants.delete(activeZombie.id);
+        
+        // Broadcast that the zombie left
+        broadcast({
+          type: 'participant_left',
+          data: {
+            id: activeZombie.id,
+            name: activeZombie.name,
+            leftAt: new Date().toISOString(),
+            reason: 'zombie_cleanup',
+          },
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    // STEP 2: Check if participant with same name AND role already left this meeting (can be recycled)
     // Only reuse participants who have leftAt set (not currently active)
     const [inactiveExisting] = await db.select()
       .from(videoMeetingParticipants)

@@ -7858,6 +7858,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Force leave endpoint for cleanup via sendBeacon on page reload
+  app.post("/api/video-meeting/force-leave", async (req, res) => {
+    try {
+      const { participantId, meetingId, meetingToken } = req.body;
+      
+      if (!participantId || !meetingId || !meetingToken) {
+        console.warn(`⚠️ [ForceLeave] Missing required fields: participantId=${!!participantId}, meetingId=${!!meetingId}, meetingToken=${!!meetingToken}`);
+        return res.status(400).json({ error: 'Missing participantId, meetingId, or meetingToken' });
+      }
+      
+      // Verify meeting token matches the meeting
+      const [meeting] = await db.select()
+        .from(schema.videoMeetings)
+        .where(and(
+          eq(schema.videoMeetings.id, meetingId),
+          eq(schema.videoMeetings.meetingToken, meetingToken)
+        ))
+        .limit(1);
+      
+      if (!meeting) {
+        console.warn(`⚠️ [ForceLeave] Invalid meeting token for meeting ${meetingId}`);
+        return res.status(403).json({ error: 'Invalid meeting token' });
+      }
+      
+      // Verify participant belongs to this meeting
+      const [participant] = await db.select()
+        .from(schema.videoMeetingParticipants)
+        .where(and(
+          eq(schema.videoMeetingParticipants.id, participantId),
+          eq(schema.videoMeetingParticipants.meetingId, meetingId)
+        ))
+        .limit(1);
+      
+      if (!participant) {
+        console.warn(`⚠️ [ForceLeave] Participant ${participantId} not found in meeting ${meetingId}`);
+        return res.status(404).json({ error: 'Participant not found' });
+      }
+      
+      console.log(`🔥 [ForceLeave] Received force-leave request for participant ${participantId} (${participant.name}) in meeting ${meetingId}`);
+      
+      // Mark participant as left in database
+      await db.update(schema.videoMeetingParticipants)
+        .set({ leftAt: new Date() })
+        .where(eq(schema.videoMeetingParticipants.id, participantId));
+      
+      console.log(`✅ [ForceLeave] Marked participant ${participantId} as left in database`);
+      
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("❌ [ForceLeave] Error:", error.message);
+      res.status(500).json({ error: 'Cleanup failed' });
+    }
+  });
+
   // WhatsApp configuration endpoints for consultants
   app.get("/api/whatsapp/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
