@@ -188,7 +188,7 @@ export class StepAdvancementAgent {
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0, // Deterministico
-              maxOutputTokens: 500,
+              maxOutputTokens: 1000, // 🔧 FIX: Aumentato da 500 a 1000 per evitare troncamento JSON
             }
           }),
           this.timeout(this.TIMEOUT_MS)
@@ -311,130 +311,110 @@ Per decidere, considera:
 2. Il prospect ha risposto in modo che permette di andare avanti?
 3. L'obiettivo dello step è stato raggiunto?
 
-⚠️ REGOLA FONDAMENTALE - VERIFICA DOMANDE OBBLIGATORIE:
+✅ VALUTAZIONE CONTESTUALE - APPROCCIO COACH INTELLIGENTE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-L'agente DEVE fare le DOMANDE previste per questo step (vedi "DOMANDE DA FARE IN QUESTO STEP").
+Valuta la risposta in base al TIPO di step e all'OBIETTIVO, non in modo rigido.
 
-PRIMA di dire shouldAdvance=true, VERIFICA:
-1. L'agente ha fatto le domande elencate sopra? (anche in forma diversa ma stesso significato)
-2. Il prospect ha risposto a CIASCUNA domanda in modo ESAUSTIVO? (non "ok", "sì", "va bene")
-3. Le risposte contengono le INFORMAZIONI CONCRETE che il venditore cerca?
-4. Se MANCANO domande O risposte insufficienti → shouldAdvance = FALSE + feedback correttivo
+🎯 TIPOLOGIE DI STEP E CRITERI DI AVANZAMENTO:
 
-🚨 REGOLA CRITICA - IGNORA LE EMOZIONI PER L'AVANZAMENTO:
+1. STEP DI APERTURA/RAPPORT (saluti, "come stai", rompere il ghiaccio):
+   → Obiettivo: creare connessione, mettere a suo agio il prospect
+   → Risposte VALIDE per avanzare:
+      ✅ "Bene, grazie!" - risposta amichevole = rapport creato
+      ✅ "Tutto ok!" - risposta positiva = connessione stabilita  
+      ✅ "Ciao!" - saluto reciproco = ghiaccio rotto
+      ✅ Qualsiasi risposta che mostri apertura e disponibilità
+   → L'emozione positiva QUI È il segnale di successo!
+   → NON serve "informazione concreta" per un saluto
+
+2. STEP INFORMATIVI (raccolta dati: provenienza, motivo call, situazione):
+   → Obiettivo: raccogliere informazione UTILE per la vendita
+   → Risposte VALIDE per avanzare:
+      ✅ "Milano" - info precisa, perfetto
+      ✅ "Nord Italia" - info sufficiente per ora
+      ✅ "Ho visto il tuo video su X e mi ha incuriosito" - spiega il motivo
+   → Risposte INSUFFICIENTI (suggerisci di approfondire):
+      ⚠️ "Curiosità!" - troppo vaga, chiedi COSA lo ha incuriosito
+      ⚠️ "Boh, non so" - vago, cerca di capire meglio
+   → Se risposta vaga → avanza ma con suggerimento: "Approfondisci cosa lo ha incuriosito"
+
+3. STEP DI QUALIFICA/CRITICI (problema principale, budget, decision maker, urgenza):
+   → Obiettivo: capire se il prospect è qualificato - INFO ESSENZIALE
+   → QUI serve dettaglio, NON avanzare senza info
+   → Se la risposta è vaga o mancante → shouldAdvance = FALSE
+   → Feedback amichevole per guidare l'approfondimento
+   
+   🔴 IL PROBLEMA PRINCIPALE È LA COSA PIÙ IMPORTANTE:
+   → Devi capire ESATTAMENTE quale problema vuole risolvere il prospect
+   → Non basta "ho vari problemi" - serve IL problema specifico
+   → Non basta "voglio migliorare" - serve COSA vuole migliorare e PERCHÉ
+   → Senza capire il problema, non puoi proporre la soluzione giusta!
+   
+   → ESEMPI di info critica mancante che BLOCCA l'avanzamento:
+      ❌ "Qual è il problema?" → "Vari problemi" → NON avanzare, approfondisci
+      ❌ "Qual è il problema?" → "Voglio migliorare" → NON avanzare, chiedi COSA
+      ❌ "Qual è il problema?" → "Curiosità" → NON avanzare, non è un problema
+      ❌ "Qual è il budget?" → "Vedremo" → NON avanzare
+      ❌ "Chi decide?" → nessuna risposta → NON avanzare
+   
+   → ESEMPI di risposta SUFFICIENTE per avanzare:
+      ✅ "Il mio problema è che non riesco a chiudere abbastanza clienti"
+      ✅ "Faccio fatica a trovare nuovi lead qualificati"
+      ✅ "Ho un budget di circa 2000€ al mese"
+
+📝 FILOSOFIA: COACH AMICHEVOLE, NON POLIZIOTTO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-L'EMOZIONE del prospect (entusiasmo, interesse, positività) NON È MAI un criterio valido per avanzare!
+- GUIDA invece di punire
+- SUGGERISCI invece di bloccare
+- SUPPORTA il flusso naturale della conversazione
+- Il venditore è un professionista, aiutalo non ostacolarlo
 
-ESEMPI DI ERRORE DA EVITARE:
-❌ "Il prospect è entusiasta, possiamo avanzare" → SBAGLIATO! L'entusiasmo non è una risposta
-❌ "Il prospect mostra interesse, obiettivo raggiunto" → SBAGLIATO! L'interesse non è un'informazione
-❌ "Il prospect sembra convinto, passiamo oltre" → SBAGLIATO! La convinzione non risponde alle domande
-
-ESEMPI CORRETTI:
-✅ "Il prospect ha risposto 'Milano' alla domanda 'da dove chiami?' - info raccolta, possiamo avanzare"
-✅ "Il prospect ha spiegato il suo problema principale nel dettaglio - obiettivo raggiunto"
-✅ "Il prospect ha detto il suo budget approssimativo - checkpoint completato"
-
-SCENARIO TIPICO DA GESTIRE:
-Domanda: "Qual è la sfida principale che stai affrontando?"
-Risposta: "Wow, fantastico! Questa tecnica mi piace molto!"
-→ Il prospect ha espresso ENTUSIASMO ma NON ha risposto alla domanda!
-→ shouldAdvance = FALSE
-→ Feedback: "Il prospect non ha risposto alla domanda. Riformula: 'Sono contento che ti piaccia! Ma tornando a te, qual è il problema principale che vuoi risolvere?'"
-
-⛔ NON AVANZARE SE:
-- L'agente ha saltato domande fondamentali dello step
-- L'agente è passato avanti senza fare le domande previste
-- Il prospect ha risposto con EMOZIONE ma SENZA INFORMAZIONI CONCRETE
-- Il prospect ha risposto ma l'agente NON ha fatto TUTTE le domande
-
-✅ AVANZA SOLO SE:
-- L'agente ha fatto TUTTE le domande dello step corrente
-- Il prospect ha dato una risposta ESAUSTIVA CON INFORMAZIONI CONCRETE (non emozioni!)
-- La risposta contiene i DATI/FATTI che il venditore cerca (luoghi, numeri, problemi specifici, nomi)
-- L'obiettivo dello step è stato raggiunto con INFORMAZIONI VERIFICABILI
-
-🚦 CHECKPOINT DI FASE (CONTROLLO INTERNO):
+🚦 REGOLA DI AVANZAMENTO BILANCIATA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Se lo step corrente è l'ULTIMO della fase, PRIMA di avanzare alla fase successiva
-devi verificare INTERNAMENTE che tutti i checkpoint della fase siano stati completati.
+L'avanzamento dipende dal TIPO DI STEP e dalla QUALITÀ della risposta:
 
-I checkpoint sono elencati nello script (es. "⛔ CHECKPOINT FASE #1").
-Scorri la conversazione e verifica che OGNI punto del checkpoint sia stato coperto.
+📗 STEP APERTURA/RAPPORT → AVANZA FACILMENTE
+   - "Bene grazie!" è sufficiente per avanzare
+   - L'obiettivo è creare connessione, non raccogliere dati
 
-SE UN CHECKPOINT NON È SODDISFATTO:
-→ shouldAdvance = FALSE
-→ Genera feedback NATURALE (NON dire "manca checkpoint"!)
+📙 STEP INFORMATIVI → AVANZA CON CONTENUTO
+   - Se la risposta ha contenuto utile (anche parziale) → AVANZA
+   - Se la risposta è troppo vaga ("Curiosità!", "Boh") → AVANZA ma con suggerimento coaching
+   - Esempio: "Potresti approfondire cosa lo ha incuriosito"
 
-ESEMPI DI FEEDBACK NATURALE:
-❌ SBAGLIATO: "Manca checkpoint: non hai chiesto da dove chiama"
-✅ GIUSTO: "Prima di proseguire, chiedi al prospect da dove ti sta chiamando"
+📕 STEP CRITICI (budget, decision maker, problema principale) → RICHIEDI INFO
+   - Se manca informazione ESSENZIALE → shouldAdvance = FALSE
+   - Ma feedback AMICHEVOLE, non punitivo
+   - Esempio: "Prima di proseguire, cerca di capire il suo budget approssimativo"
 
-❌ SBAGLIATO: "Checkpoint fase 2 incompleto"  
-✅ GIUSTO: "Approfondisci il problema principale prima di passare alla soluzione"
-
-❌ SBAGLIATO: "Non hai completato il checkpoint sul budget"
-✅ GIUSTO: "Cerca di capire meglio la sua situazione economica prima di presentare il prezzo"
+⚠️ QUANDO NON AVANZARE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Il prospect NON ha risposto (solo messaggi AGENTE)
+2. Step CRITICO e manca informazione essenziale (budget, decision maker, problema)
+3. Il prospect ha chiaramente evitato la domanda su info critica
 
-⚠️ RISPOSTA INSUFFICIENTE O EMOTIVA:
-Se il prospect risponde troppo brevemente O con sole emozioni senza informazioni:
-→ shouldAdvance = FALSE
-→ Genera feedback con istruzione di RIFORMULARE la domanda
-
-TIPI DI RISPOSTE NON ESAUSTIVE:
-1. Troppo breve: "ok", "sì", "bene", "capito"
-2. Solo emozione: "Fantastico!", "Wow!", "Interessante!", "Mi piace molto!"
-3. Vaga: "Eh, vari problemi", "Dipende", "Forse"
-4. Cambio argomento: Il prospect parla di altro invece di rispondere
-
-ESEMPIO 1 - Risposta vaga:
-Domanda: "Qual è la sfida principale che stai affrontando?"
-Risposta: "Eh, vari problemi" ← INSUFFICIENTE! Non sappiamo QUALE problema
-→ Feedback: "Approfondisci: 'Capisco, ma quale di questi problemi ti preoccupa di più?'"
-
-ESEMPIO 2 - Risposta emotiva senza informazione:
-Domanda: "Qual è il problema che vuoi risolvere?"
-Risposta: "Wow, fantastico! Questa tecnica è incredibile!" ← SOLO EMOZIONE! Nessuna info
-→ Feedback: "Il prospect non ha risposto alla domanda. Riformula: 'Sono contento che ti piaccia! Ma tornando a te, qual è il problema principale che vuoi risolvere?'"
-
-ESEMPIO 3 - Cambio argomento:
-Domanda: "Da dove chiami?"
-Risposta: "Sai, stavo pensando che questo metodo potrebbe funzionare..." ← NON HA RISPOSTO!
-→ Feedback: "Il prospect ha cambiato argomento. Riportalo: 'Interessante! Ma prima, da dove mi stai chiamando?'"
-
-ESEMPIO DI BLOCCO:
-Step richiede: "Da dove chiami?" + "Cosa ti ha spinto a prenotare?"
-Agente dice: "Ciao! Come stai? Parliamo del nostro metodo..."
-→ L'agente ha SALTATO le domande! → shouldAdvance = FALSE
-→ Feedback: "STOP! Devi prima chiedere: 'Da dove chiami?' e 'Cosa ti ha spinto a prenotare?'"
+⚠️ QUANDO AVANZARE CON SUGGERIMENTO:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Risposta parziale su step informativo → AVANZA + suggerisci approfondimento
+2. Checkpoint mancanti ma non critici → AVANZA + ricorda al venditore
+3. Risposta vaga ma conversazione fluida → AVANZA + suggerimento amichevole
 
-IMPORTANTE:
-- NON avanzare troppo presto. Meglio rimanere uno step in più che saltare.
-- Se l'agente salta domande → genera SEMPRE feedback correttivo con le domande mancanti.
-- Se siamo all'ultimo step dell'ultima fase, NON si può avanzare.
-- Il reasoning deve essere SPECIFICO: quali domande fatte, quali mancano, perché avanzare o no.
-
-⛔ REGOLA FONDAMENTALE - MAI ASSUMERE RISPOSTE DEL PROSPECT:
+📝 TONO DEL FEEDBACK: COACH AMICHEVOLE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DEVI vedere ESPLICITAMENTE un messaggio "PROSPECT: ..." nella conversazione.
+❌ MAI dire: "STOP!", "BLOCCO!", "NON puoi avanzare!"
+✅ Usa: "Suggerimento:", "Potresti...", "Prima di proseguire..."
 
-❌ VIETATO DIRE: "assumiamo che il prospect abbia risposto"
-❌ VIETATO DIRE: "anche se non lo vediamo, il prospect deve aver risposto"
-❌ VIETATO ASSUMERE risposte che non sono presenti nei messaggi
+✅ REGOLA: DEVI VEDERE UNA RISPOSTA DEL PROSPECT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Se vedi SOLO messaggi AGENTE senza risposta PROSPECT → shouldAdvance = FALSE
+Devi vedere almeno un messaggio PROSPECT dopo la domanda dell'agente.
 
-✅ Se vedi SOLO messaggi AGENTE → shouldAdvance = FALSE
-✅ Devi vedere ALMENO UN messaggio PROSPECT dopo la domanda dell'agente
-✅ Se non c'è risposta del prospect → "NON avanzare - manca risposta del prospect"
+ESEMPIO:
+Messaggi: [AGENTE] "Ciao! Come stai?" [PROSPECT] "Bene grazie!"
+→ Prospect ha risposto → AVANZA (è un saluto, "Bene grazie" è perfetto!)
 
-ESEMPIO DI ERRORE DA EVITARE:
-Messaggi: [AGENTE] "Ciao! Come stai?" [AGENTE] "Benvenuto!" [AGENTE] "Da dove chiami?"
-→ Qui ci sono SOLO messaggi AGENTE = il prospect NON ha parlato = NON AVANZARE!
-
-ESEMPIO CORRETTO:
-Messaggi: [AGENTE] "Ciao! Come stai?" [PROSPECT] "Bene grazie" [AGENTE] "Perfetto!"
-→ Qui c'è un messaggio PROSPECT = il prospect HA risposto = puoi valutare se avanzare
+Messaggi: [AGENTE] "Ciao!" [AGENTE] "Come stai?" [AGENTE] "Da dove chiami?"
+→ Solo messaggi AGENTE → NON avanzare, manca risposta prospect
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ═══════════════════════════════════════════════════════════════
@@ -484,8 +464,11 @@ Schema JSON richiesto:
 Esempio se si deve avanzare (tutto ok):
 {"shouldAdvance":true,"nextPhaseId":"${nextPhase?.id || 'phase_1'}","nextStepId":"${nextStep?.id || 'step_1'}","reasoning":"Obiettivo completato","confidence":0.8,"feedbackForAgent":{"shouldInject":false,"correctionMessage":"","toneReminder":"","priority":"low"}}
 
-Esempio se NON avanzare + feedback correttivo:
-{"shouldAdvance":false,"nextPhaseId":null,"nextStepId":null,"reasoning":"Agente non risponde alla domanda del prospect","confidence":0.9,"feedbackForAgent":{"shouldInject":true,"correctionMessage":"STOP! Il prospect ha fatto una domanda. Rispondi PRIMA di continuare lo script.","toneReminder":"Ricorda: tono EMPATICO, energia MEDIA","priority":"high"}}`;
+Esempio se avanzare con suggerimento coaching:
+{"shouldAdvance":true,"nextPhaseId":"${nextPhase?.id || 'phase_1'}","nextStepId":"${nextStep?.id || 'step_1'}","reasoning":"Prospect ha risposto, possiamo avanzare","confidence":0.8,"feedbackForAgent":{"shouldInject":true,"correctionMessage":"Suggerimento: approfondisci cosa lo ha incuriosito prima di proseguire","toneReminder":"","priority":"low"}}
+
+Esempio se NON avanzare (manca risposta prospect):
+{"shouldAdvance":false,"nextPhaseId":null,"nextStepId":null,"reasoning":"Il prospect non ha ancora risposto alla domanda dell'agente","confidence":0.9,"feedbackForAgent":{"shouldInject":false,"correctionMessage":"","toneReminder":"","priority":"low"}}`;
   }
   
   /**

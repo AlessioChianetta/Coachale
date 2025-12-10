@@ -1663,8 +1663,16 @@ async function runSalesManagerAnalysis(
           (p: any) => p.id === analysis.stepAdvancement.nextPhaseId
         );
         if (nextPhaseIdx !== undefined && nextPhaseIdx >= 0) {
-          session.currentPhaseIndex = nextPhaseIdx;
-          session.currentStepIndex = 0;
+          // 🔧 FIX: Resetta currentStepIndex a 0 SOLO se cambia fase davvero
+          // Prima il bug: se nextPhaseId era la stessa fase, resettava lo step a 0
+          // sovrascrivendo l'avanzamento dello step appena impostato sopra
+          if (nextPhaseIdx !== session.currentPhaseIndex) {
+            console.log(`   🚀 [PHASE-CHANGE] Advancing from phase ${session.currentPhaseIndex + 1} to ${nextPhaseIdx + 1}`);
+            session.currentPhaseIndex = nextPhaseIdx;
+            session.currentStepIndex = 0;
+          }
+          // Se siamo nella stessa fase, NON resettare currentStepIndex
+          // perché è già stato impostato correttamente dal blocco nextStepId sopra
         }
       }
     }
