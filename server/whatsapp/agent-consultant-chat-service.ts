@@ -196,7 +196,30 @@ Esempio: "Secondo il documento 'Listino Prezzi 2024'..."
 `;
   }
   
+  const today = new Date();
+  const todayFormatter = new Intl.DateTimeFormat('it-IT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Europe/Rome'
+  });
+  const parts = todayFormatter.formatToParts(today);
+  const todayWeekday = parts.find(p => p.type === 'weekday')?.value || '';
+  const todayDay = parts.find(p => p.type === 'day')?.value || '';
+  const todayMonth = parts.find(p => p.type === 'month')?.value || '';
+  const todayYear = parts.find(p => p.type === 'year')?.value || '';
+  const formattedToday = `${todayWeekday} ${todayDay} ${todayMonth} ${todayYear}`;
+  
   const prompt = `Sei ${agentName}, l'assistente WhatsApp AI di ${businessName}.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 DATA E ORA CORRENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🗓️ OGGI È: ${formattedToday}
+⏰ ORA: ${today.toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit' })}
+⚠️ USA SEMPRE QUESTA DATA COME RIFERIMENTO PER QUALSIASI APPUNTAMENTO O EVENTO!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 IL TUO RUOLO E IDENTITÀ
