@@ -57,7 +57,7 @@ export default function AICopilotHUD({
   
   // Calculate total checkpoints for navigation
   const safeCurrentCheckpoint = currentCheckpoint || null;
-  const safePreviousCheckpoints = previousCheckpoints || [];
+  const safePreviousCheckpoints = Array.isArray(previousCheckpoints) ? previousCheckpoints : [];
   
   const totalCheckpoints = safePreviousCheckpoints.length + (safeCurrentCheckpoint ? 1 : 0);
   const displayedCheckpoint = navigationIndex < safePreviousCheckpoints.length 
