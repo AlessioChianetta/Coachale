@@ -1,7 +1,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, users, humanSellerScriptAssignments } from '@shared/schema';
+import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, users, humanSellerScriptAssignments, humanSellerMeetingTraining, type HumanSellerMeetingTraining } from '@shared/schema';
 import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
 import { getAIProvider } from '../ai/provider-factory';
 import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
@@ -215,6 +215,118 @@ interface PendingWebRTCMessage {
 }
 const pendingWebRTCMessages = new Map<string, PendingWebRTCMessage[]>();
 const MESSAGE_BUFFER_TIMEOUT_MS = 30000; // 30 secondi
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Session State Persistence - Salva/Carica stato sessione dal DB
+// ═══════════════════════════════════════════════════════════════════════════
+
+const saveDebounceTimers = new Map<string, NodeJS.Timeout>();
+const SAVE_DEBOUNCE_MS = 5000; // Max 1 salvataggio ogni 5 secondi
+
+function calculateCompletionRate(session: SessionState): number {
+  if (!session.playbook?.phases?.length) return 0;
+  const totalPhases = session.playbook.phases.length;
+  const completedPhases = session.currentPhaseIndex + 1;
+  return Math.round((completedPhases / totalPhases) * 100);
+}
+
+async function saveSessionStateImmediate(session: SessionState): Promise<void> {
+  if (!session.sellerId) {
+    console.log(`⏭️ [VideoCopilot] Skipping save - no sellerId for meeting ${session.meetingId}`);
+    return;
+  }
+
+  try {
+    console.log(`💾 [VideoCopilot] Saving session state for meeting ${session.meetingId}...`);
+    
+    const phasesReached = session.playbook?.phases?.slice(0, session.currentPhaseIndex + 1).map(p => p.name) || [];
+    const currentPhaseName = session.playbook?.phases?.[session.currentPhaseIndex]?.name || 'unknown';
+    
+    await db
+      .insert(humanSellerMeetingTraining)
+      .values({
+        meetingId: session.meetingId,
+        sellerId: session.sellerId,
+        currentPhase: currentPhaseName,
+        currentPhaseIndex: session.currentPhaseIndex,
+        phasesReached: phasesReached,
+        checkpointsCompleted: session.completedCheckpoints,
+        validatedCheckpointItems: session.validatedCheckpointItems,
+        conversationMessages: session.conversationMessages,
+        archetypeState: session.archetypeState,
+        fullTranscript: session.transcriptBuffer,
+        scriptSnapshot: session.scriptStructure,
+        coachingMetrics: session.coachingMetrics,
+        completionRate: calculateCompletionRate(session),
+        totalDuration: Math.floor((Date.now() - session.coachingMetrics.sessionStartTime) / 1000),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: humanSellerMeetingTraining.meetingId,
+        set: {
+          currentPhase: currentPhaseName,
+          currentPhaseIndex: session.currentPhaseIndex,
+          phasesReached: phasesReached,
+          checkpointsCompleted: session.completedCheckpoints,
+          validatedCheckpointItems: session.validatedCheckpointItems,
+          conversationMessages: session.conversationMessages,
+          archetypeState: session.archetypeState,
+          fullTranscript: session.transcriptBuffer,
+          coachingMetrics: session.coachingMetrics,
+          completionRate: calculateCompletionRate(session),
+          totalDuration: Math.floor((Date.now() - session.coachingMetrics.sessionStartTime) / 1000),
+          updatedAt: new Date(),
+        },
+      });
+    
+    console.log(`✅ [VideoCopilot] Session state saved for meeting ${session.meetingId}`);
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Failed to save session state:`, error.message);
+  }
+}
+
+async function saveSessionState(session: SessionState): Promise<void> {
+  const meetingId = session.meetingId;
+  
+  // Debounce: cancella timer precedente
+  const existingTimer = saveDebounceTimers.get(meetingId);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+  
+  // Imposta nuovo timer
+  const timer = setTimeout(async () => {
+    await saveSessionStateImmediate(session);
+    saveDebounceTimers.delete(meetingId);
+  }, SAVE_DEBOUNCE_MS);
+  
+  saveDebounceTimers.set(meetingId, timer);
+}
+
+async function loadSessionState(meetingId: string): Promise<HumanSellerMeetingTraining | null> {
+  try {
+    console.log(`📂 [VideoCopilot] Loading existing session state for meeting ${meetingId}...`);
+    
+    const [saved] = await db
+      .select()
+      .from(humanSellerMeetingTraining)
+      .where(eq(humanSellerMeetingTraining.meetingId, meetingId))
+      .limit(1);
+    
+    if (saved) {
+      console.log(`✅ [VideoCopilot] Found saved state: phase ${saved.currentPhaseIndex}, ${(saved.checkpointsCompleted as any[])?.length || 0} checkpoints`);
+      return saved;
+    }
+    
+    console.log(`📭 [VideoCopilot] No saved state found for meeting ${meetingId}`);
+    return null;
+  } catch (error: any) {
+    console.error(`❌ [VideoCopilot] Error loading session state:`, error.message);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function authenticateConnection(req: any): Promise<{
   meetingId: string;
