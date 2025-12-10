@@ -94,7 +94,7 @@ e sarò chirurgico nella proposta. Concordi?"
 💬 REAGISCI: "Perfetto! Allora..." → CONTINUA CON FASE #2 (NON saltare!)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✅ SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE #2
+
 
 ---
 

@@ -1297,7 +1297,6 @@ function formatCheckpoint(checkpoint: Checkpoint): string {
   }
   
   lines.push('');
-  lines.push('✅ SOLO DOPO QUESTO CHECKPOINT → PASSA ALLA FASE SUCCESSIVA');
   
   return lines.join('\n');
 }
