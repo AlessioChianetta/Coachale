@@ -4,6 +4,8 @@ import ParticipantVideo, { SentimentType } from './ParticipantVideo';
 import VideoControls from './VideoControls';
 import AICopilotHUD from './AICopilotHUD';
 import CoachingPanel from './CoachingPanel';
+import SettingsPanel from './SettingsPanel';
+import BackgroundEffectsPanel from './BackgroundEffectsPanel';
 import { useVideoMeeting } from '@/hooks/useVideoMeeting';
 import { useVideoCopilot } from '@/hooks/useVideoCopilot';
 import { useWebRTC } from '@/hooks/useWebRTC';
@@ -11,6 +13,7 @@ import { useAudioLevelMonitor } from '@/hooks/useAudioLevelMonitor';
 import { useSalesCoaching } from './hooks/useSalesCoaching';
 import { useVADAudioCapture } from './hooks/useVADAudioCapture';
 import { Loader2 } from 'lucide-react';
+import { type BackgroundOption, type FilterOption, BLUR_BACKGROUNDS, VIDEO_FILTERS } from '@/lib/backgrounds';
 
 export interface VideoRoomProps {
   meetingId: string;
@@ -40,6 +43,11 @@ export default function VideoRoom({
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [showHUD, setShowHUD] = useState(isHost);
   const [showCoachingPanel, setShowCoachingPanel] = useState(isHost);
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [showEffectsPanel, setShowEffectsPanel] = useState(false);
+  const [selectedBackground, setSelectedBackground] = useState<string>('none');
+  const [selectedFilter, setSelectedFilter] = useState<string>('none');
+  const [appearanceSettings, setAppearanceSettings] = useState<Record<string, boolean>>({});
 
   const {
     meeting,
@@ -594,8 +602,28 @@ export default function VideoRoom({
         onToggleScreenShare={() => setIsScreenSharing(!isScreenSharing)}
         onToggleHUD={() => setShowHUD(!showHUD)}
         onEndCall={handleEndCall}
+        onOpenSettings={() => setShowSettingsPanel(true)}
+        onOpenEffects={() => setShowEffectsPanel(true)}
       />
 
+      <SettingsPanel
+        isOpen={showSettingsPanel}
+        onClose={() => setShowSettingsPanel(false)}
+      />
+
+      <BackgroundEffectsPanel
+        isOpen={showEffectsPanel}
+        onClose={() => setShowEffectsPanel(false)}
+        selectedBackground={selectedBackground}
+        selectedFilter={selectedFilter}
+        appearanceSettings={appearanceSettings}
+        onBackgroundChange={(bg: BackgroundOption) => setSelectedBackground(bg.id)}
+        onFilterChange={(filter: FilterOption) => setSelectedFilter(filter.id)}
+        onAppearanceChange={(settingId: string, enabled: boolean) => {
+          setAppearanceSettings(prev => ({ ...prev, [settingId]: enabled }));
+        }}
+        previewStream={localStream}
+      />
 
       <AnimatePresence>
         {isHost && showHUD && (

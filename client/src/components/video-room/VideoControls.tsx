@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Bot, BotOff } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Bot, BotOff, Settings, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface VideoControlsProps {
@@ -13,6 +13,8 @@ interface VideoControlsProps {
   onToggleScreenShare: () => void;
   onToggleHUD: () => void;
   onEndCall: () => void;
+  onOpenSettings?: () => void;
+  onOpenEffects?: () => void;
 }
 
 export default function VideoControls({
@@ -26,6 +28,8 @@ export default function VideoControls({
   onToggleScreenShare,
   onToggleHUD,
   onEndCall,
+  onOpenSettings,
+  onOpenEffects,
 }: VideoControlsProps) {
   return (
     <motion.footer
@@ -93,6 +97,36 @@ export default function VideoControls({
               }`}
             >
               {showHUD ? <Bot className="w-5 h-5 sm:w-6 sm:h-6" /> : <BotOff className="w-5 h-5 sm:w-6 sm:h-6" />}
+            </Button>
+          </motion.div>
+        )}
+
+        <div className="w-px h-8 bg-gray-700/50 mx-1 hidden sm:block" />
+
+        {onOpenEffects && (
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={onOpenEffects}
+              className="rounded-full w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-200 bg-gray-800/90 hover:bg-gray-700 border-gray-600/50 text-white hover:border-gray-500"
+              title="Sfondi ed effetti"
+            >
+              <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+            </Button>
+          </motion.div>
+        )}
+
+        {onOpenSettings && (
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={onOpenSettings}
+              className="rounded-full w-11 h-11 sm:w-12 sm:h-12 md:w-14 md:h-14 transition-all duration-200 bg-gray-800/90 hover:bg-gray-700 border-gray-600/50 text-white hover:border-gray-500"
+              title="Impostazioni audio/video"
+            >
+              <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
             </Button>
           </motion.div>
         )}

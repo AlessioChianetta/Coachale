@@ -353,11 +353,17 @@ export function useWebRTC({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: video ? { 
           facingMode: 'user',
+          width: { min: 640, ideal: 1280, max: 1920 },
+          height: { min: 480, ideal: 720, max: 1080 },
+          aspectRatio: { ideal: 16/9 },
+          frameRate: { ideal: 30, max: 60 },
         } : false,
         audio: audio ? {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1,
         } : false,
       });
       

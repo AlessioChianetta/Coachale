@@ -187,7 +187,7 @@ export default function ClientSalesAgentAnalytics() {
     const entityId = isHumanSeller ? sellerId : agentId;
     const entityType: EntityType = isHumanSeller ? 'human_seller' : 'ai_agent';
     const baseUrl = isHumanSeller 
-      ? `/api/human-sellers/${entityId}` 
+      ? `/api/client/human-sellers/${entityId}` 
       : `/api/client/sales-agent/config/${entityId}`;
     
     return {
@@ -221,9 +221,9 @@ export default function ClientSalesAgentAnalytics() {
 
   // Fetch Human Seller data (only for human sellers)
   const { data: humanSeller, isLoading: sellerLoading } = useQuery<HumanSeller>({
-    queryKey: [`/api/human-sellers/${entityConfig.entityId}`],
+    queryKey: [`/api/client/human-sellers/${entityConfig.entityId}`],
     queryFn: async () => {
-      const response = await fetch(`/api/human-sellers/${entityConfig.entityId}`, {
+      const response = await fetch(`/api/client/human-sellers/${entityConfig.entityId}`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to fetch seller');

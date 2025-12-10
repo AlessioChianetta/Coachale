@@ -185,14 +185,14 @@ export default function ParticipantVideo({
         initial={{ opacity: 0, scale: 0.8, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.8, y: 20 }}
-        className={`absolute bottom-24 right-4 z-30 w-32 h-24 sm:w-44 sm:h-32 rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700 ${speakingRingClass}`}
+        className={`absolute bottom-24 right-4 z-30 w-40 h-30 sm:w-56 sm:h-42 md:w-72 md:h-54 lg:w-80 lg:h-60 rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700 ${speakingRingClass}`}
       >
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={isLocalUser}
-          className={`w-full h-full object-cover absolute inset-0 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
+          className={`w-full h-full object-contain bg-gray-950 absolute inset-0 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
           style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
         />
         
@@ -239,7 +239,7 @@ export default function ParticipantVideo({
         autoPlay
         playsInline
         muted={isLocalUser}
-        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
+        className={`absolute inset-0 w-full h-full object-contain bg-gray-950 transition-opacity duration-300 ${showVideoElement ? 'opacity-100' : 'opacity-0'}`}
         style={{ transform: isLocalUser ? 'scaleX(-1)' : 'none' }}
       />
       
