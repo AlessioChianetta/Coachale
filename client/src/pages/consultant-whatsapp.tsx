@@ -1020,6 +1020,16 @@ export default function ConsultantWhatsAppPage() {
                   >
                     Gestisci Email Journey
                   </Button>
+                  
+                  {/* Chi sono section */}
+                  <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-800">
+                    <p className="text-center text-sm font-medium text-purple-900 dark:text-purple-100">
+                      Sono <span className="font-bold">Millie</span>
+                    </p>
+                    <p className="text-center text-xs text-purple-700 dark:text-purple-300 mt-1">
+                      Aiuto <span className="font-semibold">consulenti e coach</span>, a <span className="font-semibold">mantenere relazioni costanti con i clienti</span>, attraverso <span className="font-semibold">email personalizzate giornaliere generate da AI</span>
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1078,6 +1088,16 @@ export default function ConsultantWhatsAppPage() {
                   >
                     Gestisci Consulenze
                   </Button>
+                  
+                  {/* Chi sono section */}
+                  <div className="mt-4 pt-4 border-t border-orange-200 dark:border-orange-800">
+                    <p className="text-center text-sm font-medium text-orange-900 dark:text-orange-100">
+                      Sono <span className="font-bold">Echo</span>
+                    </p>
+                    <p className="text-center text-xs text-orange-700 dark:text-orange-300 mt-1">
+                      Aiuto <span className="font-semibold">consulenti</span>, a <span className="font-semibold">documentare e condividere i progressi delle consulenze</span>, attraverso <span className="font-semibold">riepiloghi AI da trascrizioni Fathom inviati via email</span>
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1136,6 +1156,16 @@ export default function ConsultantWhatsAppPage() {
                   >
                     Area Clienti
                   </Button>
+                  
+                  {/* Chi sono section */}
+                  <div className="mt-4 pt-4 border-t border-cyan-200 dark:border-cyan-800">
+                    <p className="text-center text-sm font-medium text-cyan-900 dark:text-cyan-100">
+                      Sono <span className="font-bold">Spec</span>
+                    </p>
+                    <p className="text-center text-xs text-cyan-700 dark:text-cyan-300 mt-1">
+                      Aiuto <span className="font-semibold">i clienti in percorso</span>, a <span className="font-semibold">trovare risposte immediate su esercizi e materiali</span>, attraverso <span className="font-semibold">chat AI 24/7 con accesso alla biblioteca e università</span>
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </div>
