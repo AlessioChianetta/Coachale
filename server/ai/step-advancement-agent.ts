@@ -779,18 +779,30 @@ Esempi di risposte VALIDE:
 - Cambio argomento completo senza rispondere
 - Silenzio o "non so" secco
 
-🟢 ESEMPI DI RISPOSTE VALIDE:
-- "Ho diversi problemi con i clienti" → VALIDATED (indica area problematica)
-- "Vorrei fatturare il doppio" → VALIDATED (obiettivo quantificabile)
-- "Il mio problema principale è il tempo" → VALIDATED (problema specifico)
-- "Ne devo parlare con mia moglie" → VALIDATED (info sul decision maker)
+🟢 ESEMPI DI RISPOSTE VALIDE per il PROBLEMA PRINCIPALE:
+- "Non riesco a chiudere più di 2 clienti al mese" → VALIDATED (problema SPECIFICO)
+- "Perdo troppo tempo a cercare lead che non comprano" → VALIDATED (problema SPECIFICO)
+- "I miei commerciali non sanno gestire le obiezioni" → VALIDATED (problema SPECIFICO)
+- "Vorrei fatturare il doppio ma non so come scalare" → VALIDATED (obiettivo + ostacolo)
+- "Il mio problema è che non ho abbastanza tempo per le vendite" → VALIDATED (problema specifico)
 
-⚠️ ESEMPI DI RISPOSTE VAGUE (richiedono approfondimento):
+🟢 ESEMPI DI RISPOSTE VALIDE per altri check:
+- "Ne devo parlare con mia moglie" → VALIDATED (info sul decision maker)
+- "Ho un budget di 2000-3000€ al mese" → VALIDATED (budget specifico)
+- "Decido io insieme al mio socio" → VALIDATED (decision maker chiaro)
+
+⚠️ ESEMPI DI RISPOSTE VAGUE per il PROBLEMA (richiedono approfondimento):
+- "Ho diversi problemi con i clienti" → VAGUE (quali problemi esattamente?)
+- "Voglio migliorare le vendite" → VAGUE (migliorare come? cosa non funziona ora?)
+- "Il mio problema principale è il tempo" → VAGUE (tempo per cosa? cosa vorresti fare?)
+- "Curiosità" → VAGUE (non è un problema, approfondisci)
+- "Vorrei crescere" → VAGUE (crescere come? cosa ti blocca?)
+
+⚠️ ESEMPI DI RISPOSTE VAGUE GENERALI:
 - "Boh" / "Non so" → VAGUE
 - "Dipende" (senza spiegazione) → VAGUE
 - "Vedremo" / "Poi ne parliamo" → VAGUE (evasivo)
 - Solo "Sì" / "Ok" / "Va bene" per domande informative → VAGUE
-- "Vorrei migliorare" (senza dire cosa/come) → VAGUE
 
 💡 CRITERIO: La risposta deve contenere INFORMAZIONE CONCRETA, non solo conferma o vaghezza.
 
