@@ -76,6 +76,7 @@ export default function VideoRoom({
     sendAudioChunk,
     sendSpeechStart,
     sendSpeechEnd,
+    sendManualValidateCheckpoint,
   } = useVideoCopilot(meeting?.meetingToken ?? null);
 
   const {
@@ -92,6 +93,7 @@ export default function VideoRoom({
     dismissFeedback,
     dismissBuySignal,
     dismissObjection,
+    manualValidateCheckpoint,
   } = useSalesCoaching({ isHost });
 
   const activeParticipantsForWebRTC = useMemo(() => {
@@ -583,6 +585,12 @@ export default function VideoRoom({
           onDismissFeedback={dismissFeedback}
           onDismissBuySignal={dismissBuySignal}
           onDismissObjection={dismissObjection}
+          onManualValidateCheckpoint={(checkpointId, checkText) => {
+            // Aggiorna UI locale immediatamente
+            manualValidateCheckpoint(checkpointId, checkText);
+            // Invia al backend per persistenza
+            sendManualValidateCheckpoint(checkpointId, checkText);
+          }}
           onClose={() => setShowCoachingPanel(false)}
         />
       )}

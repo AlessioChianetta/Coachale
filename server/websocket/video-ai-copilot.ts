@@ -1449,6 +1449,153 @@ function handleStateSyncRequest(ws: WebSocket, session: SessionState) {
   console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MANUAL CHECKPOINT VALIDATION - Permette al venditore di validare manualmente
+// un checkpoint item senza aspettare l'AI
+// ═══════════════════════════════════════════════════════════════════════════
+async function handleManualValidateCheckpoint(ws: WebSocket, session: SessionState, message: any) {
+  const { checkpointId, checkText } = message;
+  
+  console.log(`\n✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+  console.log(`✅ [MANUAL-VALIDATE] User manually validated checkpoint item`);
+  console.log(`   📍 Checkpoint ID: ${checkpointId}`);
+  console.log(`   ✓ Check: "${checkText.substring(0, 60)}${checkText.length > 60 ? '...' : ''}"`);
+  console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+  // 🔧 FIX: Trova il checkpoint corretto per ID, non usare sempre il primo
+  let targetCheckpoint: any = null;
+  let targetPhaseIndex = -1;
+  
+  // Cerca il checkpoint per ID in tutte le fasi
+  if (session.scriptStructure?.phases) {
+    for (let phaseIdx = 0; phaseIdx < session.scriptStructure.phases.length; phaseIdx++) {
+      const phase = session.scriptStructure.phases[phaseIdx];
+      if (phase.checkpoints) {
+        for (const cp of phase.checkpoints) {
+          const cpId = cp.id || `checkpoint_${phase.id}`;
+          if (cpId === checkpointId) {
+            targetCheckpoint = cp;
+            targetPhaseIndex = phaseIdx;
+            break;
+          }
+        }
+      }
+      if (targetCheckpoint) break;
+    }
+  }
+  
+  // 🔧 FIX: Se checkpoint non trovato, rifiuta la richiesta invece di usare fallback
+  if (!targetCheckpoint) {
+    console.log(`   ❌ Checkpoint ID "${checkpointId}" not found in script structure`);
+    console.log(`   ❌ Aborting manual validation - no fallback to prevent wrong checkpoint validation`);
+    sendMessage(ws, {
+      type: 'error',
+      error: `Checkpoint "${checkpointId}" non trovato`,
+      timestamp: Date.now(),
+    });
+    return;
+  }
+
+  // Usa l'ID effettivo del checkpoint trovato
+  const effectiveCheckpointId = targetCheckpoint.id || checkpointId;
+  console.log(`   📍 Using checkpoint: "${targetCheckpoint.title || effectiveCheckpointId}" (phase ${targetPhaseIndex + 1})`);
+
+  // Aggiorna validatedCheckpointItems con l'item manualmente validato
+  if (!session.validatedCheckpointItems[effectiveCheckpointId]) {
+    session.validatedCheckpointItems[effectiveCheckpointId] = [];
+  }
+
+  // Controlla se l'item esiste già
+  const existingIdx = session.validatedCheckpointItems[effectiveCheckpointId].findIndex(
+    (v) => v.check === checkText
+  );
+
+  if (existingIdx >= 0) {
+    // Item già esistente - aggiorna a validated
+    session.validatedCheckpointItems[effectiveCheckpointId][existingIdx] = {
+      check: checkText,
+      status: 'validated',
+      infoCollected: 'Validato manualmente dal venditore',
+      evidenceQuote: `Validazione manuale - ${new Date().toISOString()}`
+    };
+    console.log(`   ⬆️ Upgraded existing item to VALIDATED`);
+  } else {
+    // Nuovo item - aggiungi come validated
+    session.validatedCheckpointItems[effectiveCheckpointId].push({
+      check: checkText,
+      status: 'validated',
+      infoCollected: 'Validato manualmente dal venditore',
+      evidenceQuote: `Validazione manuale - ${new Date().toISOString()}`
+    });
+    console.log(`   🆕 Added new VALIDATED item`);
+  }
+
+  // 🔧 FIX: Salva stato IMMEDIATAMENTE (no debounce) per garantire persistenza
+  // Usiamo saveSessionStateImmediate invece di saveSessionState per evitare che il debounce
+  // ritardi il salvataggio e la validazione venga persa in caso di refresh rapido
+  await saveSessionStateImmediate(session);
+
+  // Ricostruisci e invia checkpoint status aggiornato
+  const allChecks = targetCheckpoint.checks || targetCheckpoint.verifications || [];
+  const savedItems = session.validatedCheckpointItems[effectiveCheckpointId] || [];
+  
+  const itemDetails = allChecks.map((check: string) => {
+    const savedItem = savedItems.find((s: any) => s.check === check);
+    if (savedItem) {
+      return {
+        check: savedItem.check,
+        status: savedItem.status,
+        infoCollected: savedItem.infoCollected,
+        evidenceQuote: savedItem.evidenceQuote,
+      };
+    }
+    return { check, status: 'missing', reason: 'Non ancora verificato' };
+  });
+
+  const validatedCount = itemDetails.filter((i: any) => i.status === 'validated').length;
+  const isComplete = validatedCount === allChecks.length;
+
+  console.log(`   📊 Checkpoint status: ${validatedCount}/${allChecks.length} validated`);
+  console.log(`   ${isComplete ? '✅ CHECKPOINT COMPLETE!' : '⏳ Still in progress'}`);
+
+  // Se il checkpoint è completato, aggiungi a completedCheckpoints
+  if (isComplete) {
+    const alreadyCompleted = session.completedCheckpoints.find(
+      cp => cp.checkpointId === effectiveCheckpointId
+    );
+    if (!alreadyCompleted) {
+      session.completedCheckpoints.push({
+        checkpointId: effectiveCheckpointId,
+        status: 'completed',
+        completedAt: new Date().toISOString()
+      });
+      console.log(`   ✅ [CHECKPOINT] Marked as completed: ${effectiveCheckpointId}`);
+      // Salva di nuovo IMMEDIATAMENTE dopo aver aggiunto il completedCheckpoint
+      await saveSessionStateImmediate(session);
+    }
+  }
+
+  sendMessage(ws, {
+    type: 'checkpoint_status',
+    data: {
+      checkpointId: effectiveCheckpointId,
+      checkpointName: targetCheckpoint.title || targetCheckpoint.description || `Checkpoint Fase ${targetPhaseIndex + 1}`,
+      isComplete,
+      missingItems: itemDetails.filter((i: any) => i.status !== 'validated').map((i: any) => i.check),
+      completedItems: itemDetails.filter((i: any) => i.status === 'validated').map((i: any) => i.check),
+      canAdvance: isComplete,
+      itemDetails,
+      phaseNumber: String(targetPhaseIndex + 1),
+      totalChecks: allChecks.length,
+      validatedCount,
+      missingCount: allChecks.length - validatedCount,
+    },
+    timestamp: Date.now(),
+  });
+
+  console.log(`✅ [MANUAL-VALIDATE] Complete\n`);
+}
+
 async function finalizeTurnForSpeaker(
   ws: WebSocket,
   session: SessionState,
@@ -3284,6 +3431,9 @@ export function setupVideoCopilotWebSocket(): WebSocketServer {
             break;
           case 'request_state_sync':
             handleStateSyncRequest(ws, session!);
+            break;
+          case 'manual_validate_checkpoint':
+            await handleManualValidateCheckpoint(ws, session!, message);
             break;
           default:
             console.warn(`⚠️ [VideoCopilot] Unknown message type: ${(message as any).type}`);

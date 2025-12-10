@@ -211,6 +211,40 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
     }));
   }, []);
 
+  // 🆕 Validazione manuale di un checkpoint item
+  // Aggiorna immediatamente lo stato locale e notifica il chiamante per inviare al backend
+  const manualValidateCheckpoint = useCallback((checkpointId: string, checkText: string) => {
+    console.log(`✅ [MANUAL] Validating checkpoint item: "${checkText.substring(0, 40)}..."`);
+    
+    setState(prev => {
+      if (!prev.checkpointStatus) return prev;
+      
+      const updatedItemDetails = prev.checkpointStatus.itemDetails?.map(item => 
+        item.check === checkText 
+          ? { ...item, status: 'validated' as const, infoCollected: 'Validato manualmente' }
+          : item
+      ) || [];
+      
+      const validatedCount = updatedItemDetails.filter(i => i.status === 'validated').length;
+      const totalChecks = updatedItemDetails.length;
+      const isComplete = validatedCount === totalChecks;
+      
+      return {
+        ...prev,
+        checkpointStatus: {
+          ...prev.checkpointStatus,
+          itemDetails: updatedItemDetails,
+          validatedCount,
+          missingCount: totalChecks - validatedCount,
+          isComplete,
+          canAdvance: isComplete,
+        },
+      };
+    });
+    
+    return { checkpointId, checkText };
+  }, []);
+
   const reset = useCallback(() => {
     setState(initialState);
   }, []);
@@ -222,6 +256,7 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
     dismissBuySignal,
     dismissObjection,
     clearToneWarnings,
+    manualValidateCheckpoint,
     reset,
   };
 }

@@ -520,6 +520,16 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     emitSpeakingState(isSpeaking);
   }, [emitSpeakingState]);
 
+  // 🆕 Invia validazione manuale di un checkpoint item al backend
+  const sendManualValidateCheckpoint = useCallback((checkpointId: string, checkText: string) => {
+    console.log(`📤 [WS] Sending manual_validate_checkpoint: "${checkText.substring(0, 40)}..."`);
+    sendMessage({
+      type: 'manual_validate_checkpoint',
+      checkpointId,
+      checkText,
+    });
+  }, [sendMessage]);
+
   useEffect(() => {
     if (state.isConnected && state.isJoinConfirmed && state.myParticipantId && latestSpeakingRef.current !== null) {
       emitSpeakingState(latestSpeakingRef.current);
@@ -553,5 +563,6 @@ export function useVideoCopilot(meetingToken: string | null): UseVideoCopilotRes
     setWebRTCMessageHandler,
     setCoachingMessageHandler,
     sendSpeakingState,
+    sendManualValidateCheckpoint,
   };
 }

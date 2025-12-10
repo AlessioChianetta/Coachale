@@ -36,6 +36,7 @@ interface CoachingPanelProps {
   onDismissFeedback: () => void;
   onDismissBuySignal: (index: number) => void;
   onDismissObjection: (index: number) => void;
+  onManualValidateCheckpoint?: (checkpointId: string, checkText: string) => void;
   onClose: () => void;
 }
 
@@ -65,6 +66,7 @@ export default function CoachingPanel({
   onDismissFeedback,
   onDismissBuySignal,
   onDismissObjection,
+  onManualValidateCheckpoint,
   onClose,
 }: CoachingPanelProps) {
   const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(false);
@@ -407,19 +409,35 @@ export default function CoachingPanel({
             </div>
             <div className="space-y-1.5">
               {checkpointStatus.itemDetails?.map((item, i) => (
-                <div key={i} className="flex items-start gap-2">
+                <div key={i} className="flex items-start gap-2 group">
                   {item.status === 'validated' ? (
                     <CheckCircle className="w-3.5 h-3.5 text-green-400 mt-0.5 shrink-0" />
                   ) : item.status === 'vague' ? (
-                    <Clock className="w-3.5 h-3.5 text-yellow-400 mt-0.5 shrink-0" />
+                    <button
+                      onClick={() => onManualValidateCheckpoint?.(checkpointStatus.checkpointId || '', item.check)}
+                      className="hover:scale-110 transition-transform"
+                      title="Clicca per validare manualmente"
+                    >
+                      <Clock className="w-3.5 h-3.5 text-yellow-400 mt-0.5 shrink-0 hover:text-green-400 cursor-pointer" />
+                    </button>
                   ) : (
-                    <XCircle className="w-3.5 h-3.5 text-gray-500 mt-0.5 shrink-0" />
+                    <button
+                      onClick={() => onManualValidateCheckpoint?.(checkpointStatus.checkpointId || '', item.check)}
+                      className="hover:scale-110 transition-transform"
+                      title="Clicca per validare manualmente"
+                    >
+                      <XCircle className="w-3.5 h-3.5 text-gray-500 mt-0.5 shrink-0 hover:text-green-400 cursor-pointer" />
+                    </button>
                   )}
-                  <span className={cn(
-                    "text-xs",
-                    item.status === 'validated' ? 'text-green-300' :
-                    item.status === 'vague' ? 'text-yellow-300' : 'text-gray-500'
-                  )}>
+                  <span 
+                    className={cn(
+                      "text-xs",
+                      item.status === 'validated' ? 'text-green-300' :
+                      item.status === 'vague' ? 'text-yellow-300 cursor-pointer hover:text-green-300' : 
+                      'text-gray-500 cursor-pointer hover:text-green-300'
+                    )}
+                    onClick={() => item.status !== 'validated' && onManualValidateCheckpoint?.(checkpointStatus.checkpointId || '', item.check)}
+                  >
                     {item.check}
                   </span>
                 </div>
