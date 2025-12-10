@@ -64,6 +64,18 @@ export interface ScriptProgress {
   completionPercentage: number;
 }
 
+export interface ManagerAnalysis {
+  analysisTimeMs: number;
+  modelUsed: string;
+  stepAdvancement: {
+    shouldAdvance: boolean;
+    nextPhaseId: string | null;
+    nextStepId: string | null;
+    confidence: number;
+    reasoning: string;
+  };
+}
+
 export interface SalesCoachingState {
   isActive: boolean;
   scriptProgress: ScriptProgress | null;
@@ -74,6 +86,7 @@ export interface SalesCoachingState {
   currentFeedback: CoachingFeedback | null;
   feedbackHistory: CoachingFeedback[];
   toneWarnings: string[];
+  managerAnalysis: ManagerAnalysis | null;
 }
 
 interface UseSalesCoachingOptions {
@@ -91,6 +104,7 @@ const initialState: SalesCoachingState = {
   currentFeedback: null,
   feedbackHistory: [],
   toneWarnings: [],
+  managerAnalysis: null,
 };
 
 export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoachingOptions) {
@@ -98,6 +112,7 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
 
   const handleCoachingMessage = useCallback((message: any) => {
     const timestamp = Date.now();
+    const data = message.data;
 
     switch (message.type) {
       case 'sales_coaching':
@@ -105,11 +120,11 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
           ...prev,
           isActive: true,
           currentFeedback: {
-            ...message.data,
+            ...data,
             timestamp,
           },
           feedbackHistory: [
-            { ...message.data, timestamp },
+            { ...data, timestamp },
             ...prev.feedbackHistory.slice(0, 19),
           ],
         }));
@@ -119,7 +134,7 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
         setState(prev => ({
           ...prev,
           buySignals: [
-            { ...message.data, timestamp },
+            { ...data, timestamp },
             ...prev.buySignals.slice(0, 9),
           ],
         }));
@@ -129,7 +144,7 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
         setState(prev => ({
           ...prev,
           objections: [
-            { ...message.data, timestamp },
+            { ...data, timestamp },
             ...prev.objections.slice(0, 9),
           ],
         }));
@@ -138,14 +153,14 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
       case 'checkpoint_status':
         setState(prev => ({
           ...prev,
-          checkpointStatus: message.data,
+          checkpointStatus: data,
         }));
         break;
 
       case 'prospect_profile':
         setState(prev => ({
           ...prev,
-          prospectProfile: message.data,
+          prospectProfile: data,
         }));
         break;
 
@@ -153,7 +168,7 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
         setState(prev => ({
           ...prev,
           toneWarnings: [
-            message.data.message,
+            data.message,
             ...prev.toneWarnings.slice(0, 4),
           ],
         }));
@@ -162,7 +177,7 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
       case 'script_progress_update':
         setState(prev => ({
           ...prev,
-          scriptProgress: message.data,
+          scriptProgress: data,
         }));
         break;
 
@@ -177,6 +192,37 @@ export function useSalesCoaching({ isHost, onCoachingMessage }: UseSalesCoaching
         setState(initialState);
         break;
     }
+
+    // Handle prospect profile
+    if (data.prospectProfile) {
+      setState(prev => ({
+        ...prev,
+        prospectProfile: {
+          archetype: data.prospectProfile.archetype,
+          confidence: data.prospectProfile.confidence,
+          instruction: data.prospectProfile.instruction || null,
+        },
+      }));
+    }
+
+    // Handle manager analysis (step advancement + reasoning)
+    if (data.stepAdvancement || data.analysisTimeMs) {
+      setState(prev => ({
+        ...prev,
+        managerAnalysis: {
+          analysisTimeMs: data.analysisTimeMs || 0,
+          modelUsed: data.modelUsed || 'unknown',
+          stepAdvancement: {
+            shouldAdvance: data.stepAdvancement?.shouldAdvance || false,
+            nextPhaseId: data.stepAdvancement?.nextPhaseId || null,
+            nextStepId: data.stepAdvancement?.nextStepId || null,
+            confidence: data.stepAdvancement?.confidence || 0,
+            reasoning: data.stepAdvancement?.reasoning || '',
+          },
+        },
+      }));
+    }
+
 
     if (onCoachingMessage) {
       onCoachingMessage(message);

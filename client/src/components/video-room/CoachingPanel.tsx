@@ -217,6 +217,68 @@ export default function CoachingPanel({
           </div>
         )}
 
+        {/* Sezione Sales Manager Analysis */}
+        {coaching.managerAnalysis && (
+          <div className="bg-gradient-to-br from-purple-900/20 to-blue-900/20 rounded-lg p-3 border border-purple-500/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Brain className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-semibold text-purple-300">Sales Manager Analysis</span>
+              <span className="text-xs text-gray-500 ml-auto">
+                ⏱️ {coaching.managerAnalysis.analysisTimeMs}ms
+              </span>
+            </div>
+
+            {/* Model Info */}
+            <div className="mb-3 text-xs">
+              <span className="text-gray-400">Model: </span>
+              <span className="text-purple-300">{coaching.managerAnalysis.modelUsed}</span>
+            </div>
+
+            {/* Step Advancement */}
+            <div className="bg-gray-800/50 rounded p-2 mb-2">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="text-xs font-medium text-gray-300">📊 Step Advancement:</div>
+              </div>
+              <div className="space-y-1 text-xs pl-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">Should Advance:</span>
+                  <span className={coaching.managerAnalysis.stepAdvancement.shouldAdvance ? "text-green-400" : "text-red-400"}>
+                    {coaching.managerAnalysis.stepAdvancement.shouldAdvance ? "✅ YES" : "❌ NO"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">Next Phase:</span>
+                  <span className="text-blue-300">
+                    {coaching.managerAnalysis.stepAdvancement.nextPhaseId || "same"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">Next Step:</span>
+                  <span className="text-blue-300">
+                    {coaching.managerAnalysis.stepAdvancement.nextStepId || "same"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400">Confidence:</span>
+                  <span className="text-yellow-300">
+                    {Math.round(coaching.managerAnalysis.stepAdvancement.confidence * 100)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Reasoning */}
+            {coaching.managerAnalysis.stepAdvancement.reasoning && (
+              <div className="bg-gray-800/50 rounded p-2">
+                <div className="text-xs font-medium text-gray-300 mb-1">💡 Reasoning:</div>
+                <p className="text-xs text-gray-400 italic pl-4 leading-relaxed">
+                  "{coaching.managerAnalysis.stepAdvancement.reasoning}"
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Sezione Trascrizione Collapsible */}
         <div className="bg-gray-800/50 rounded-lg border border-gray-700/50 overflow-hidden">
           <button
