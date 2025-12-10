@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { db } from '../db';
-import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics, users, humanSellerCoachingEvents, humanSellerSessionMetrics, humanSellerPerformanceSummary, humanSellerScriptAssignments } from '@shared/schema';
+import { humanSellers, videoMeetings, videoMeetingParticipants, insertHumanSellerSchema, insertVideoMeetingSchema, salesScripts, videoMeetingAnalytics, users, humanSellerCoachingEvents, humanSellerSessionMetrics, humanSellerPerformanceSummary, humanSellerScriptAssignments, humanSellerMeetingTraining } from '@shared/schema';
 import { eq, and, desc, asc, gte, lte, sql, count, inArray } from 'drizzle-orm';
 import { AuthRequest, authenticateToken, requireRole } from '../middleware/auth';
 import { nanoid } from 'nanoid';
@@ -1333,6 +1333,261 @@ router.delete('/:sellerId/unassign-script/:scriptType', authenticateToken, requi
   } catch (error: any) {
     console.error('[HumanSellers] DELETE unassign-script error:', error);
     res.status(500).json({ error: 'Errore nella rimozione dell\'assegnazione' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TRAINING SYSTEM ENDPOINTS (same format as AI Sales Agents)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// GET /:sellerId/training/conversations - Lista meeting con dati training
+router.get('/:sellerId/training/conversations', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { sellerId } = req.params;
+
+    console.log(`[TrainingAPI-Human] GET training conversations for seller ${sellerId}, client ${clientId}`);
+
+    // Verify seller ownership
+    const [seller] = await db
+      .select()
+      .from(humanSellers)
+      .where(and(
+        eq(humanSellers.id, sellerId),
+        eq(humanSellers.clientId, clientId)
+      ));
+
+    if (!seller) {
+      return res.status(404).json({ message: "Venditore non trovato" });
+    }
+
+    // Query training data with JOIN to get prospect names from meetings
+    const trainingData = await db
+      .select({
+        meetingId: humanSellerMeetingTraining.meetingId,
+        currentPhase: humanSellerMeetingTraining.currentPhase,
+        currentPhaseIndex: humanSellerMeetingTraining.currentPhaseIndex,
+        phasesReached: humanSellerMeetingTraining.phasesReached,
+        completionRate: humanSellerMeetingTraining.completionRate,
+        totalDuration: humanSellerMeetingTraining.totalDuration,
+        checkpointsCompleted: humanSellerMeetingTraining.checkpointsCompleted,
+        aiAnalysisResult: humanSellerMeetingTraining.aiAnalysisResult,
+        createdAt: humanSellerMeetingTraining.createdAt,
+        updatedAt: humanSellerMeetingTraining.updatedAt,
+        prospectName: videoMeetings.prospectName,
+        prospectEmail: videoMeetings.prospectEmail,
+        scriptId: videoMeetings.playbookId,
+        scriptName: salesScripts.name,
+        scriptType: salesScripts.scriptType,
+      })
+      .from(humanSellerMeetingTraining)
+      .innerJoin(videoMeetings, eq(humanSellerMeetingTraining.meetingId, videoMeetings.id))
+      .leftJoin(salesScripts, eq(videoMeetings.playbookId, salesScripts.id))
+      .where(eq(humanSellerMeetingTraining.sellerId, sellerId))
+      .orderBy(desc(humanSellerMeetingTraining.updatedAt));
+
+    // Format response to match AI agent format
+    const enrichedData = trainingData.map((training) => ({
+      id: training.meetingId,
+      prospectName: training.prospectName || 'Unknown',
+      prospectEmail: training.prospectEmail || null,
+      currentPhase: training.currentPhase,
+      phasesReached: training.phasesReached,
+      completionRate: training.completionRate,
+      ladderActivationCount: 0, // Human sellers don't have ladder activations
+      checkpointsCompletedCount: Array.isArray(training.checkpointsCompleted) ? training.checkpointsCompleted.length : 0,
+      totalDuration: training.totalDuration,
+      aiAnalysisResult: training.aiAnalysisResult,
+      usedScriptId: training.scriptId,
+      usedScriptName: training.scriptName,
+      usedScriptType: training.scriptType,
+      usedScriptSource: 'assigned',
+      createdAt: training.createdAt,
+      updatedAt: training.updatedAt,
+    }));
+
+    console.log(`[TrainingAPI-Human] Returning ${enrichedData.length} enriched meetings for seller ${sellerId}`);
+
+    res.json(enrichedData);
+  } catch (error: any) {
+    console.error(`[TrainingAPI-Human] GET conversations error:`, error);
+    res.status(500).json({
+      message: "Errore durante il recupero dei dati training",
+      error: error.message
+    });
+  }
+});
+
+// GET /:sellerId/training/conversation/:meetingId - Dettagli completi meeting
+router.get('/:sellerId/training/conversation/:meetingId', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { sellerId, meetingId } = req.params;
+
+    console.log(`[TrainingAPI-Human] GET training details for meeting ${meetingId}, seller ${sellerId}, client ${clientId}`);
+
+    // Verify seller ownership
+    const [seller] = await db
+      .select()
+      .from(humanSellers)
+      .where(and(
+        eq(humanSellers.id, sellerId),
+        eq(humanSellers.clientId, clientId)
+      ));
+
+    if (!seller) {
+      return res.status(404).json({ message: "Venditore non trovato" });
+    }
+
+    // Verify meeting belongs to this seller
+    const [meeting] = await db
+      .select()
+      .from(videoMeetings)
+      .where(and(
+        eq(videoMeetings.id, meetingId),
+        eq(videoMeetings.sellerId, sellerId)
+      ));
+
+    if (!meeting) {
+      return res.status(404).json({ message: "Meeting non trovato" });
+    }
+
+    // Get training data
+    const [training] = await db
+      .select()
+      .from(humanSellerMeetingTraining)
+      .where(eq(humanSellerMeetingTraining.meetingId, meetingId));
+
+    if (!training) {
+      return res.status(404).json({ message: "Dati training non trovati per questo meeting" });
+    }
+
+    // Get script info if available
+    let scriptInfo = null;
+    if (meeting.playbookId) {
+      const [script] = await db
+        .select()
+        .from(salesScripts)
+        .where(eq(salesScripts.id, meeting.playbookId));
+      scriptInfo = script;
+    }
+
+    // Return complete training details (same format as AI agents)
+    const response = {
+      conversationId: training.meetingId,
+      agentId: training.sellerId, // sellerId maps to agentId for compatibility
+      prospectName: meeting.prospectName,
+      prospectEmail: meeting.prospectEmail,
+      prospectPhone: null, // Human seller meetings don't have phone
+      currentPhase: training.currentPhase,
+      phasesReached: training.phasesReached,
+      phaseActivations: [], // Not tracked for human sellers
+      checkpointsCompleted: training.checkpointsCompleted,
+      validatedCheckpointItems: training.validatedCheckpointItems,
+      semanticTypes: [], // Not tracked for human sellers
+      ladderActivations: [], // Not tracked for human sellers
+      contextualResponses: [], // Not tracked for human sellers
+      questionsAsked: [], // Not tracked for human sellers
+      fullTranscript: training.fullTranscript,
+      conversationMessages: training.conversationMessages,
+      archetypeState: training.archetypeState,
+      coachingMetrics: training.coachingMetrics,
+      aiReasoning: null, // Not tracked for human sellers
+      objectionsEncountered: [], // Not tracked for human sellers
+      dropOffPoint: null,
+      dropOffReason: null,
+      completionRate: training.completionRate,
+      totalDuration: training.totalDuration,
+      scriptSnapshot: training.scriptSnapshot,
+      scriptVersion: null,
+      aiAnalysisResult: training.aiAnalysisResult,
+      usedScriptId: scriptInfo?.id || null,
+      usedScriptName: scriptInfo?.name || null,
+      usedScriptType: scriptInfo?.scriptType || null,
+      usedScriptSource: 'assigned',
+      createdAt: training.createdAt,
+      updatedAt: training.updatedAt,
+      discoveryRec: null,
+      canGenerateRec: false,
+    };
+
+    console.log(`[TrainingAPI-Human] Returning complete training data for meeting ${meetingId}`);
+
+    res.json(response);
+  } catch (error: any) {
+    console.error(`[TrainingAPI-Human] GET conversation details error:`, error);
+    res.status(500).json({
+      message: "Errore durante il recupero dei dettagli training",
+      error: error.message
+    });
+  }
+});
+
+// GET /:sellerId/training/stats - Statistiche aggregate per il seller
+router.get('/:sellerId/training/stats', authenticateToken, requireClient, async (req: AuthRequest, res: Response) => {
+  try {
+    const clientId = req.user!.id;
+    const { sellerId } = req.params;
+
+    console.log(`[TrainingAPI-Human] GET training stats for seller ${sellerId}, client ${clientId}`);
+
+    // Verify seller ownership
+    const [seller] = await db
+      .select()
+      .from(humanSellers)
+      .where(and(
+        eq(humanSellers.id, sellerId),
+        eq(humanSellers.clientId, clientId)
+      ));
+
+    if (!seller) {
+      return res.status(404).json({ message: "Venditore non trovato" });
+    }
+
+    // Get all training data for this seller
+    const trainingData = await db
+      .select()
+      .from(humanSellerMeetingTraining)
+      .where(eq(humanSellerMeetingTraining.sellerId, sellerId));
+
+    console.log(`[TrainingAPI-Human] Found ${trainingData.length} training records for seller ${sellerId}`);
+
+    if (trainingData.length === 0) {
+      return res.json({
+        totalConversations: 0,
+        avgCompletionRate: 0,
+        totalLadderActivations: 0,
+        avgDurationSeconds: 0,
+        lastConversationDate: null
+      });
+    }
+
+    // Calculate stats
+    const totalConversations = trainingData.length;
+    const avgCompletionRate = Math.round(
+      (trainingData.reduce((sum, t) => sum + (t.completionRate || 0), 0) / totalConversations) * 100
+    );
+    const avgDurationSeconds = Math.round(
+      trainingData.reduce((sum, t) => sum + (t.totalDuration || 0), 0) / totalConversations
+    );
+    const lastConversationDate = trainingData
+      .map(t => t.updatedAt)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0] || null;
+
+    res.json({
+      totalConversations,
+      avgCompletionRate,
+      totalLadderActivations: 0, // Not tracked for human sellers
+      avgDurationSeconds,
+      lastConversationDate
+    });
+  } catch (error: any) {
+    console.error(`[TrainingAPI-Human] GET stats error:`, error);
+    res.status(500).json({
+      message: "Errore durante il recupero delle statistiche",
+      error: error.message
+    });
   }
 });
 
