@@ -97,6 +97,16 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **WebSocket Events**: `speech_start` / `speech_end` messages with speakerId and speakerName metadata.
   - **Server Handlers**: `handleSpeechStart` (buffer management), `handleSpeechEndFromClient` (immediate transcription with isPartial=false).
 
+## WebRTC/WebSocket Resilience System (Google Meet-level)
+- **WebSocket Heartbeat**: Client sends ping every 25s, expects pong within 5s. Server responds with `{ type: 'pong', timestamp }`. Dead connections trigger automatic reconnection.
+- **Exponential Backoff Reconnection**: 1s → 2s → 4s → 8s → 16s → max 30s with ±20% jitter. Maximum 10 attempts before showing user-friendly error.
+- **Network Change Detection**: Listens for browser `online`/`offline` events. Immediate reconnection attempt when network returns.
+- **Visibility Change Handler**: When tab regains focus, checks WebSocket connection and triggers ICE restart on stale peer connections via `restartIce()`.
+- **Connection Quality Stats**: Polls `pc.getStats()` every 5s when peer connections exist. Exposes `connectionQuality: 'good' | 'fair' | 'poor'` based on packet loss (<2%/<5%) and jitter (<30ms/<100ms).
+- **ICE Restart on Disconnected**: Automatic ICE restart with `createOffer({ iceRestart: true })` after 1s delay when ICE state becomes `disconnected`.
+- **Force-Leave Cleanup**: `sendBeacon` on `beforeunload` ensures participant cleanup even on page reload.
+- **Zombie Cleanup**: Server cleans active zombies (leftAt=NULL but no socket) when participant rejoins.
+
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
 - **Recharts**: Data visualization.
