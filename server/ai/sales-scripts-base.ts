@@ -78,8 +78,7 @@ OK?"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRIMA DI PASSARE ALLA FASE #2 VERIFICA:
 
-✓ Hai salutato e chiesto "come stai"?
-✓ Hai chiesto "da dove mi chiami"?
+✓ Hai salutato?
 ✓ Hai spiegato il processo della call?
 
 ❌ SE ANCHE SOLO UNA RISPOSTA È "NO" → NON PUOI PROCEDERE!

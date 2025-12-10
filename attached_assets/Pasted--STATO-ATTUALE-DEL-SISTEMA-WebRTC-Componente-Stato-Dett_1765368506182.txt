@@ -1,0 +1,31 @@
+📊 STATO ATTUALE DEL SISTEMA WebRTC
+Componente	Stato	Dettagli
+Caricamento credenziali Metered	✅ Funziona	Le credenziali TURN vengono caricate da /api/video-meeting/ice-servers/{meetingId} e inserite nella RTCPeerConnection
+Configurazione iceServers	✅ Funziona	Array con STUN Google + TURN Metered (UDP, TCP, TLS) configurato correttamente
+Creazione PeerConnection	✅ Funziona	createPeerConnection() usa correttamente iceConfig con le credenziali caricate
+Gestione ICE "connected"	✅ Funziona	Pulisce timer, resetta retry counter
+Gestione ICE "failed"	✅ Funziona	Chiude connessione e ricrea con retry esponenziale (max 3 tentativi)
+Gestione ICE "disconnected"	❌ NON FUNZIONA	Nessuna logica implementata - resta bloccato finché non diventa "failed"
+ICE Restart	❌ NON IMPLEMENTATO	Manca createOffer({ iceRestart: true }) per recupero connessione
+Cleanup su unmount React	⚠️ Parziale	leaveParticipant() chiamato ma potrebbe non arrivare al server in tempo
+beforeunload handler	❌ NON IMPLEMENTATO	Nessun handler per inviare cleanup prima del reload pagina
+sendBeacon per cleanup	❌ NON IMPLEMENTATO	Nessun meccanismo di delivery garantita al reload
+Endpoint force-leave	❌ NON ESISTE	Nessun endpoint server per ricevere cleanup via beacon
+Riciclo participant inattivi	✅ Funziona	Cerca participant con leftAt IS NOT NULL e riusa l'ID
+Pulizia zombie attivi	❌ NON FUNZIONA	Non cerca participant con leftAt IS NULL ma senza socket (zombie)
+Race condition al reload	❌ BUG PRESENTE	Nuovo participant creato prima che il vecchio sia marcato come uscito
+WebSocket reconnection	✅ Funziona	Retry automatico dopo 3 secondi se la connessione cade
+State sync dopo reconnect	✅ Funziona	Richiede request_state_sync per reidratare transcripts/checkpoints
+Perfect Negotiation Pattern	✅ Funziona	Gestisce glare/collision con rollback per polite peer
+Socket cleanup su disconnect	✅ Funziona	unregisterParticipantBySocket() chiamato su close WebSocket
+🔴 PROBLEMI CRITICI (Causano "Remote streams: 0")
+#	Problema	Impatto	File
+1	ICE disconnected ignorato	Connessione resta morta 30+ sec	useWebRTC.ts:214-277
+2	Nessun beforeunload	Zombie al reload	VideoRoom.tsx
+3	Race condition join	Participant duplicati	video-ai-copilot.ts:2400-2513
+🟢 COSA FUNZIONA BENE
+Componente	Note
+Metered TURN config	Credenziali caricate, decrittate, usate correttamente
+WebRTC signaling	Offer/Answer/ICE candidate passano via WebSocket
+Retry su "failed"	Ricrea connessione con backoff esponenziale
+State sync	Transcripts e checkpoints recuperati dopo reconnect
