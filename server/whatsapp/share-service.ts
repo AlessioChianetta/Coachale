@@ -57,11 +57,16 @@ export async function createShare(params: {
 }) {
   const { consultantId, agentConfigId, agentName, accessType, password, allowedDomains, expireAt, createdBy } = params;
   
-  // Check if share already exists for this agent
+  // Check if an active (non-revoked) share already exists for this agent
   const existing = await db
     .select()
     .from(schema.whatsappAgentShares)
-    .where(eq(schema.whatsappAgentShares.agentConfigId, agentConfigId))
+    .where(
+      and(
+        eq(schema.whatsappAgentShares.agentConfigId, agentConfigId),
+        sql`${schema.whatsappAgentShares.revokedAt} IS NULL`
+      )
+    )
     .limit(1);
   
   if (existing.length > 0) {

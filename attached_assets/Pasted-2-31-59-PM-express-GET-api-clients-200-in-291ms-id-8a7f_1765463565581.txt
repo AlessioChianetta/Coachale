@@ -1,0 +1,41 @@
+2:31:59 PM [express] GET /api/clients 200 in 291ms :: [{"id":"8a7f6b63-b41e-4071-bf44-28d71df1f4d8",…
+Getting activity logs for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+2:32:00 PM [express] GET /api/proactive-leads 200 in 1165ms :: {"success":true,"leads":[{"id":"59e41…
+Getting active sessions for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+Found activity logs: 500
+📊 [WHATSAPP POLLING] Polling 2 consultant(s) sequentially...
+2:32:01 PM [express] GET /api/exercise-assignments/consultant 200 in 2263ms :: [{"id":"63c7f092-f938…
+Returning logs with users: 500
+2:32:05 PM [express] GET /api/activity/clients 200 in 5392ms :: [{"id":"4308d5a5-a620-4821-be76-7029…
+Found active sessions: 0
+Returning sessions with users: 0
+2:32:05 PM [express] GET /api/activity/sessions/active 200 in 5651ms :: []
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-11T11:44:14.000Z
+2:32:05 PM [express] GET /api/email-journey-progress 200 in 6168ms :: [{"id":"f34799f5-de35-447f-9f4…
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-11T11:44:14.000Z) is older than watermark - keeping current
+2:32:05 PM [express] GET /api/stats/consultant 200 in 6315ms :: {"activeClients":18,"completedExerci…
+2:32:05 PM [express] GET /api/whatsapp/conversations 200 in 573ms :: {"conversations":[{"id":"36a507…
+2:32:05 PM [express] GET /api/sessions/active 200 in 24ms
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+2:32:06 PM [express] GET /api/exercises 200 in 1018ms :: [{"id":"5718c758-63f5-4b73-aeae-7f386899df4…
+✅ [WHATSAPP POLLING] Poll cycle complete
+2:32:07 PM [express] GET /api/university/stats/overview 200 in 6659ms :: [{"clientId":"8a7f6b63-b41e…
+2:32:07 PM [express] GET /api/whatsapp/agent-chat/agents 200 in 290ms :: {"data":[{"id":"fe95f393-b8…
+
+🧹 [CLEANUP] Starting cleanup of empty consultant-agent conversations older than 24 hours...
+🔒 [SECURITY] Scoped to consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, agent: fe95f393-b8c9-4fc0-80d7-2035dcba305a
+ℹ️  [CLEANUP] No empty conversations to clean up for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+2:32:10 PM [express] GET /api/whatsapp/agent-chat/conversations 200 in 292ms :: {"data":[{"id":"e751…
+2:32:11 PM [express] GET /api/whatsapp/agent-share 200 in 434ms :: {"success":true,"shares":[{"id":"…
+2:32:15 PM [express] GET /api/whatsapp/agent-share 304 in 434ms :: {"success":true,"shares":[{"id":"…
+Error creating share: Error: Share già esistente per questo agente. Revoca la condivisione esistente prima di crearne una nuova.
+    at Module.createShare (/home/runner/workspace/server/whatsapp/share-service.ts:68:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/whatsapp/agent-share-router.ts:53:19)
+2:32:17 PM [express] POST /api/whatsapp/agent-share 400 in 580ms :: {"error":"Share già esistente pe…
+2:32:25 PM [express] POST /api/activity/session/heartbeat 200 in 296ms :: {"success":true,"lastActiv…
+2:32:29 PM [express] GET /api/whatsapp/agent-share 304 in 434ms :: {"success":true,"shares":[{"id":"…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 2 consultant(s) seque
