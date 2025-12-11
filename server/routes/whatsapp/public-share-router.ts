@@ -619,119 +619,119 @@ router.post(
               
               console.log(`   📚 Analyzing ${conversationMessages.length} messages...`);
             
-            if (existingBooking) {
-              console.log(`   ℹ️ Booking già esistente per questa conversazione (ID: ${existingBooking.id})`);
-              
-              // ══════════════════════════════════════════════════════════════════════
-              // GESTIONE MODIFICA / CANCELLAZIONE / AGGIUNTA INVITATI
-              // ══════════════════════════════════════════════════════════════════════
-              console.log(`   🔄 Checking for modification/cancellation/add attendees intent...`);
-              
-              // Cast lastCompletedAction per type-safety
-              const lastCompletedAction = existingBooking.lastCompletedAction as LastCompletedAction | null;
-              
-              const existingBookingForModification = {
-                id: existingBooking.id,
-                appointmentDate: existingBooking.appointmentDate!,
-                appointmentTime: existingBooking.appointmentTime!,
-                clientEmail: existingBooking.clientEmail,
-                clientPhone: existingBooking.clientPhone,
-                googleEventId: existingBooking.googleEventId
-              };
-              
-              const modificationResult = await extractBookingDataFromConversation(
-                conversationMessages,
-                existingBookingForModification,
-                aiProvider.client,
-                'Europe/Rome'
-              );
-              
-              if (modificationResult && 'intent' in modificationResult) {
-                console.log(`   🎯 Intent detected: ${modificationResult.intent}, confirmedTimes: ${modificationResult.confirmedTimes}`);
+              if (existingBooking) {
+                console.log(`   ℹ️ Booking già esistente per questa conversazione (ID: ${existingBooking.id})`);
                 
-                // Import Google Calendar functions
-                const { updateGoogleCalendarEvent, deleteGoogleCalendarEvent, addAttendeesToGoogleCalendarEvent } = await import('../../google-calendar-service');
-                const { consultantAvailabilitySettings } = await import('../../../shared/schema');
+                // ══════════════════════════════════════════════════════════════════════
+                // GESTIONE MODIFICA / CANCELLAZIONE / AGGIUNTA INVITATI
+                // ══════════════════════════════════════════════════════════════════════
+                console.log(`   🔄 Checking for modification/cancellation/add attendees intent...`);
                 
-                // Get settings for timezone and duration
-                const [settings] = await db
-                  .select()
-                  .from(consultantAvailabilitySettings)
-                  .where(eq(consultantAvailabilitySettings.consultantId, agentConfig.consultantId))
-                  .limit(1);
+                // Cast lastCompletedAction per type-safety
+                const lastCompletedAction = existingBooking.lastCompletedAction as LastCompletedAction | null;
+                
+                const existingBookingForModification = {
+                  id: existingBooking.id,
+                  appointmentDate: existingBooking.appointmentDate!,
+                  appointmentTime: existingBooking.appointmentTime!,
+                  clientEmail: existingBooking.clientEmail,
+                  clientPhone: existingBooking.clientPhone,
+                  googleEventId: existingBooking.googleEventId
+                };
+                
+                const modificationResult = await extractBookingDataFromConversation(
+                  conversationMessages,
+                  existingBookingForModification,
+                  aiProvider.client,
+                  'Europe/Rome'
+                );
+                
+                if (modificationResult && 'intent' in modificationResult) {
+                  console.log(`   🎯 Intent detected: ${modificationResult.intent}, confirmedTimes: ${modificationResult.confirmedTimes}`);
                   
-                const timezone = settings?.timezone || "Europe/Rome";
-                const duration = settings?.appointmentDuration || 60;
-                
-                if (modificationResult.intent === 'MODIFY' && modificationResult.newDate && modificationResult.newTime) {
-                  // ══════════════════════════════════════════════════════════════════════
-                  // MODIFICA APPUNTAMENTO - RICHIEDE 1 CONFERMA
-                  // ══════════════════════════════════════════════════════════════════════
-                  console.log(`   🔄 [MODIFY] Processing modification request...`);
+                  // Import Google Calendar functions
+                  const { updateGoogleCalendarEvent, deleteGoogleCalendarEvent, addAttendeesToGoogleCalendarEvent } = await import('../../google-calendar-service');
+                  const { consultantAvailabilitySettings } = await import('../../../shared/schema');
                   
-                  // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-                  if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY')) {
-                    console.log(`   ⏭️ [MODIFY] Skipping - action already completed recently`);
-                  } else if (modificationResult.confirmedTimes >= 1) {
-                    console.log(`   ✅ [MODIFY] Confirmed - proceeding with modification`);
+                  // Get settings for timezone and duration
+                  const [settings] = await db
+                    .select()
+                    .from(consultantAvailabilitySettings)
+                    .where(eq(consultantAvailabilitySettings.consultantId, agentConfig.consultantId))
+                    .limit(1);
                     
-                    // Verifica disponibilità slot (TODO: implementare check disponibilità reale)
-                    // Per ora procediamo con la modifica
+                  const timezone = settings?.timezone || "Europe/Rome";
+                  const duration = settings?.appointmentDuration || 60;
+                  
+                  if (modificationResult.intent === 'MODIFY' && modificationResult.newDate && modificationResult.newTime) {
+                    // ══════════════════════════════════════════════════════════════════════
+                    // MODIFICA APPUNTAMENTO - RICHIEDE 1 CONFERMA
+                    // ══════════════════════════════════════════════════════════════════════
+                    console.log(`   🔄 [MODIFY] Processing modification request...`);
                     
-                    // Update Google Calendar event if exists
-                    if (existingBooking.googleEventId) {
-                      try {
-                        const success = await updateGoogleCalendarEvent(
-                          agentConfig.consultantId,
-                          existingBooking.googleEventId,
-                          {
-                            startDate: modificationResult.newDate,
-                            startTime: modificationResult.newTime,
-                            duration: duration,
-                            timezone: timezone
+                    // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                    if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY')) {
+                      console.log(`   ⏭️ [MODIFY] Skipping - action already completed recently`);
+                    } else if (modificationResult.confirmedTimes >= 1) {
+                      console.log(`   ✅ [MODIFY] Confirmed - proceeding with modification`);
+                      
+                      // Verifica disponibilità slot (TODO: implementare check disponibilità reale)
+                      // Per ora procediamo con la modifica
+                      
+                      // Update Google Calendar event if exists
+                      if (existingBooking.googleEventId) {
+                        try {
+                          const success = await updateGoogleCalendarEvent(
+                            agentConfig.consultantId,
+                            existingBooking.googleEventId,
+                            {
+                              startDate: modificationResult.newDate,
+                              startTime: modificationResult.newTime,
+                              duration: duration,
+                              timezone: timezone
+                            }
+                          );
+                          
+                          if (success) {
+                            console.log(`   ✅ [MODIFY] Google Calendar event updated successfully`);
                           }
-                        );
-                        
-                        if (success) {
-                          console.log(`   ✅ [MODIFY] Google Calendar event updated successfully`);
+                        } catch (gcalError: any) {
+                          console.error(`   ⚠️ [MODIFY] Failed to update Google Calendar: ${gcalError.message}`);
                         }
-                      } catch (gcalError: any) {
-                        console.error(`   ⚠️ [MODIFY] Failed to update Google Calendar: ${gcalError.message}`);
                       }
-                    }
-                    
-                    // Calculate new end time
-                    const [startHour, startMinute] = modificationResult.newTime.split(':').map(Number);
-                    const totalMinutes = startHour * 60 + startMinute + duration;
-                    const endHour = Math.floor(totalMinutes / 60) % 24;
-                    const endMinute = totalMinutes % 60;
-                    const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
-                    
-                    // Update database con lastCompletedAction per prevenire duplicati
-                    await db
-                      .update(schema.appointmentBookings)
-                      .set({
-                        appointmentDate: modificationResult.newDate,
-                        appointmentTime: modificationResult.newTime,
-                        appointmentEndTime: formattedEndTime,
-                        lastCompletedAction: {
-                          type: 'MODIFY' as const,
-                          completedAt: new Date().toISOString(),
-                          triggerMessageId: conversation.id,
-                          details: {
-                            oldDate: existingBooking.appointmentDate,
-                            oldTime: existingBooking.appointmentTime,
-                            newDate: modificationResult.newDate,
-                            newTime: modificationResult.newTime
+                      
+                      // Calculate new end time
+                      const [startHour, startMinute] = modificationResult.newTime.split(':').map(Number);
+                      const totalMinutes = startHour * 60 + startMinute + duration;
+                      const endHour = Math.floor(totalMinutes / 60) % 24;
+                      const endMinute = totalMinutes % 60;
+                      const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+                      
+                      // Update database con lastCompletedAction per prevenire duplicati
+                      await db
+                        .update(schema.appointmentBookings)
+                        .set({
+                          appointmentDate: modificationResult.newDate,
+                          appointmentTime: modificationResult.newTime,
+                          appointmentEndTime: formattedEndTime,
+                          lastCompletedAction: {
+                            type: 'MODIFY' as const,
+                            completedAt: new Date().toISOString(),
+                            triggerMessageId: conversation.id,
+                            details: {
+                              oldDate: existingBooking.appointmentDate,
+                              oldTime: existingBooking.appointmentTime,
+                              newDate: modificationResult.newDate,
+                              newTime: modificationResult.newTime
+                            }
                           }
-                        }
-                      })
-                      .where(eq(schema.appointmentBookings.id, existingBooking.id));
-                    
-                    console.log(`   💾 [MODIFY] Database updated with lastCompletedAction`);
-                    
-                    // Costruisci messaggio di conferma modifica
-                    const modifyConfirmationMessage = `✅ APPUNTAMENTO MODIFICATO!
+                        })
+                        .where(eq(schema.appointmentBookings.id, existingBooking.id));
+                      
+                      console.log(`   💾 [MODIFY] Database updated with lastCompletedAction`);
+                      
+                      // Costruisci messaggio di conferma modifica
+                      const modifyConfirmationMessage = `✅ APPUNTAMENTO MODIFICATO!
 
 📅 Nuovo appuntamento:
 🗓️ Data: ${modificationResult.newDate.split('-').reverse().join('/')}
@@ -740,273 +740,273 @@ router.post(
 Ti ho aggiornato l'invito al calendario all'indirizzo ${existingBooking.clientEmail}. Controlla la tua inbox! 📬
 
 Ci vediamo alla nuova data! 🚀`;
-                    
-                    // Salva messaggio nel database
-                    await db.insert(schema.whatsappAgentConsultantMessages).values({
-                      conversationId: conversation.id,
-                      role: 'agent',
-                      content: modifyConfirmationMessage,
-                      messageType: 'text',
-                    });
-                    
-                    // Invia via SSE
-                    res.write(`data: ${JSON.stringify({ type: 'chunk', content: modifyConfirmationMessage })}\n\n`);
-                    
-                    bookingResult.modified = true;
-                    bookingResult.confirmationMessage = modifyConfirmationMessage;
-                    console.log(`   ✅ [MODIFY] Modification complete and confirmation sent!`);
-                  } else {
-                    console.log(`   ⏳ [MODIFY] Waiting for confirmation (${modificationResult.confirmedTimes}/1)`);
-                  }
-                  
-                } else if (modificationResult.intent === 'CANCEL') {
-                  // ══════════════════════════════════════════════════════════════════════
-                  // CANCELLAZIONE APPUNTAMENTO - RICHIEDE 2 CONFERME
-                  // ══════════════════════════════════════════════════════════════════════
-                  console.log(`   🗑️ [CANCEL] Processing cancellation request...`);
-                  
-                  // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-                  if (isActionAlreadyCompleted(lastCompletedAction, 'CANCEL')) {
-                    console.log(`   ⏭️ [CANCEL] Skipping - action already completed recently`);
-                  } else if (modificationResult.confirmedTimes >= 2) {
-                    console.log(`   ✅ [CANCEL] Confirmed 2 times - proceeding with cancellation`);
-                    
-                    // Delete from Google Calendar if exists
-                    let calendarDeleteSuccess = true;
-                    if (existingBooking.googleEventId) {
-                      try {
-                        const success = await deleteGoogleCalendarEvent(
-                          agentConfig.consultantId,
-                          existingBooking.googleEventId
-                        );
-                        
-                        if (success) {
-                          console.log(`   ✅ [CANCEL] Google Calendar event deleted successfully`);
-                        } else {
-                          console.log(`   ⚠️ [CANCEL] Failed to delete from Google Calendar`);
-                          calendarDeleteSuccess = false;
-                        }
-                      } catch (gcalError: any) {
-                        console.error(`   ⚠️ [CANCEL] Failed to delete from Google Calendar: ${gcalError.message}`);
-                        calendarDeleteSuccess = false;
-                      }
+                      
+                      // Salva messaggio nel database
+                      await db.insert(schema.whatsappAgentConsultantMessages).values({
+                        conversationId: conversation.id,
+                        role: 'agent',
+                        content: modifyConfirmationMessage,
+                        messageType: 'text',
+                      });
+                      
+                      // Invia via SSE
+                      res.write(`data: ${JSON.stringify({ type: 'chunk', content: modifyConfirmationMessage })}\n\n`);
+                      
+                      bookingResult.modified = true;
+                      bookingResult.confirmationMessage = modifyConfirmationMessage;
+                      console.log(`   ✅ [MODIFY] Modification complete and confirmation sent!`);
+                    } else {
+                      console.log(`   ⏳ [MODIFY] Waiting for confirmation (${modificationResult.confirmedTimes}/1)`);
                     }
                     
-                    // Update database status to cancelled con lastCompletedAction
-                    await db
-                      .update(schema.appointmentBookings)
-                      .set({ 
-                        status: 'cancelled',
-                        lastCompletedAction: {
-                          type: 'CANCEL' as const,
-                          completedAt: new Date().toISOString(),
-                          triggerMessageId: conversation.id,
-                          details: {
-                            oldDate: existingBooking.appointmentDate,
-                            oldTime: existingBooking.appointmentTime
+                  } else if (modificationResult.intent === 'CANCEL') {
+                    // ══════════════════════════════════════════════════════════════════════
+                    // CANCELLAZIONE APPUNTAMENTO - RICHIEDE 2 CONFERME
+                    // ══════════════════════════════════════════════════════════════════════
+                    console.log(`   🗑️ [CANCEL] Processing cancellation request...`);
+                    
+                    // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                    if (isActionAlreadyCompleted(lastCompletedAction, 'CANCEL')) {
+                      console.log(`   ⏭️ [CANCEL] Skipping - action already completed recently`);
+                    } else if (modificationResult.confirmedTimes >= 2) {
+                      console.log(`   ✅ [CANCEL] Confirmed 2 times - proceeding with cancellation`);
+                      
+                      // Delete from Google Calendar if exists
+                      let calendarDeleteSuccess = true;
+                      if (existingBooking.googleEventId) {
+                        try {
+                          const success = await deleteGoogleCalendarEvent(
+                            agentConfig.consultantId,
+                            existingBooking.googleEventId
+                          );
+                          
+                          if (success) {
+                            console.log(`   ✅ [CANCEL] Google Calendar event deleted successfully`);
+                          } else {
+                            console.log(`   ⚠️ [CANCEL] Failed to delete from Google Calendar`);
+                            calendarDeleteSuccess = false;
                           }
+                        } catch (gcalError: any) {
+                          console.error(`   ⚠️ [CANCEL] Failed to delete from Google Calendar: ${gcalError.message}`);
+                          calendarDeleteSuccess = false;
                         }
-                      })
-                      .where(eq(schema.appointmentBookings.id, existingBooking.id));
-                    
-                    console.log(`   💾 [CANCEL] Database updated with lastCompletedAction`);
-                    
-                    // Costruisci messaggio di conferma cancellazione
-                    const cancelConfirmationMessage = calendarDeleteSuccess 
-                      ? `✅ APPUNTAMENTO CANCELLATO
+                      }
+                      
+                      // Update database status to cancelled con lastCompletedAction
+                      await db
+                        .update(schema.appointmentBookings)
+                        .set({ 
+                          status: 'cancelled',
+                          lastCompletedAction: {
+                            type: 'CANCEL' as const,
+                            completedAt: new Date().toISOString(),
+                            triggerMessageId: conversation.id,
+                            details: {
+                              oldDate: existingBooking.appointmentDate,
+                              oldTime: existingBooking.appointmentTime
+                            }
+                          }
+                        })
+                        .where(eq(schema.appointmentBookings.id, existingBooking.id));
+                      
+                      console.log(`   💾 [CANCEL] Database updated with lastCompletedAction`);
+                      
+                      // Costruisci messaggio di conferma cancellazione
+                      const cancelConfirmationMessage = calendarDeleteSuccess 
+                        ? `✅ APPUNTAMENTO CANCELLATO
 
 Ho cancellato il tuo appuntamento del ${existingBooking.appointmentDate!.split('-').reverse().join('/')} alle ${existingBooking.appointmentTime}.
 
 Se in futuro vorrai riprogrammare, sarò qui per aiutarti! 😊`
-                      : `⚠️ APPUNTAMENTO CANCELLATO (verifica calendario)
+                        : `⚠️ APPUNTAMENTO CANCELLATO (verifica calendario)
 
 Ho cancellato il tuo appuntamento del ${existingBooking.appointmentDate!.split('-').reverse().join('/')} alle ${existingBooking.appointmentTime} dal sistema.
 
 ⚠️ Nota: C'è stato un problema nell'aggiornamento del tuo Google Calendar. Per favore, verifica manualmente che l'evento sia stato rimosso.
 
 Se vuoi riprogrammare in futuro, scrivimi! 😊`;
-                    
-                    // Salva messaggio nel database
-                    await db.insert(schema.whatsappAgentConsultantMessages).values({
-                      conversationId: conversation.id,
-                      role: 'agent',
-                      content: cancelConfirmationMessage,
-                      messageType: 'text',
-                    });
-                    
-                    // Invia via SSE
-                    res.write(`data: ${JSON.stringify({ type: 'chunk', content: cancelConfirmationMessage })}\n\n`);
-                    
-                    bookingResult.cancelled = true;
-                    bookingResult.confirmationMessage = cancelConfirmationMessage;
-                    console.log(`   ✅ [CANCEL] Cancellation complete and confirmation sent!`);
-                  } else {
-                    console.log(`   ⏳ [CANCEL] Waiting for more confirmations (${modificationResult.confirmedTimes}/2)`);
-                  }
-                  
-                } else if (modificationResult.intent === 'ADD_ATTENDEES' && modificationResult.attendees && modificationResult.attendees.length > 0) {
-                  // ══════════════════════════════════════════════════════════════════════
-                  // AGGIUNTA INVITATI - NESSUNA CONFERMA NECESSARIA
-                  // ══════════════════════════════════════════════════════════════════════
-                  console.log(`   👥 [ADD_ATTENDEES] Processing add attendees request...`);
-                  console.log(`   📧 Attendees to add: ${modificationResult.attendees.join(', ')}`);
-                  
-                  // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-                  if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES')) {
-                    console.log(`   ⏭️ [ADD_ATTENDEES] Skipping - action already completed recently`);
-                  } else if (existingBooking.googleEventId) {
-                    try {
-                      const result = await addAttendeesToGoogleCalendarEvent(
-                        agentConfig.consultantId,
-                        existingBooking.googleEventId,
-                        modificationResult.attendees
-                      );
-                      
-                      console.log(`   ✅ [ADD_ATTENDEES] Google Calendar updated - ${result.added} added, ${result.skipped} already invited`);
-                      
-                      // Costruisci messaggio di conferma
-                      const addAttendeesMessage = result.added > 0
-                        ? `✅ INVITATI AGGIUNTI!
-
-Ho aggiunto ${result.added} ${result.added === 1 ? 'invitato' : 'invitati'} all'appuntamento del ${existingBooking.appointmentDate!.split('-').reverse().join('/')} alle ${existingBooking.appointmentTime}.
-
-${result.skipped > 0 ? `ℹ️ ${result.skipped} ${result.skipped === 1 ? 'era già invitato' : 'erano già invitati'}.\n\n` : ''}📧 Gli inviti Google Calendar sono stati inviati automaticamente! 📬`
-                        : `ℹ️ Tutti gli invitati sono già stati aggiunti all'appuntamento del ${existingBooking.appointmentDate!.split('-').reverse().join('/')} alle ${existingBooking.appointmentTime}. 
-
-Nessuna modifica necessaria! ✅`;
                       
                       // Salva messaggio nel database
                       await db.insert(schema.whatsappAgentConsultantMessages).values({
                         conversationId: conversation.id,
                         role: 'agent',
-                        content: addAttendeesMessage,
+                        content: cancelConfirmationMessage,
                         messageType: 'text',
                       });
                       
                       // Invia via SSE
-                      res.write(`data: ${JSON.stringify({ type: 'chunk', content: addAttendeesMessage })}\n\n`);
+                      res.write(`data: ${JSON.stringify({ type: 'chunk', content: cancelConfirmationMessage })}\n\n`);
                       
-                      // Salva lastCompletedAction per prevenire duplicati
-                      await db
-                        .update(schema.appointmentBookings)
-                        .set({
-                          lastCompletedAction: {
-                            type: 'ADD_ATTENDEES' as const,
-                            completedAt: new Date().toISOString(),
-                            triggerMessageId: conversation.id,
-                            details: {
-                              attendeesAdded: modificationResult.attendees
+                      bookingResult.cancelled = true;
+                      bookingResult.confirmationMessage = cancelConfirmationMessage;
+                      console.log(`   ✅ [CANCEL] Cancellation complete and confirmation sent!`);
+                    } else {
+                      console.log(`   ⏳ [CANCEL] Waiting for more confirmations (${modificationResult.confirmedTimes}/2)`);
+                    }
+                    
+                  } else if (modificationResult.intent === 'ADD_ATTENDEES' && modificationResult.attendees && modificationResult.attendees.length > 0) {
+                    // ══════════════════════════════════════════════════════════════════════
+                    // AGGIUNTA INVITATI - NESSUNA CONFERMA NECESSARIA
+                    // ══════════════════════════════════════════════════════════════════════
+                    console.log(`   👥 [ADD_ATTENDEES] Processing add attendees request...`);
+                    console.log(`   📧 Attendees to add: ${modificationResult.attendees.join(', ')}`);
+                    
+                    // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                    if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES')) {
+                      console.log(`   ⏭️ [ADD_ATTENDEES] Skipping - action already completed recently`);
+                    } else if (existingBooking.googleEventId) {
+                      try {
+                        const result = await addAttendeesToGoogleCalendarEvent(
+                          agentConfig.consultantId,
+                          existingBooking.googleEventId,
+                          modificationResult.attendees
+                        );
+                        
+                        console.log(`   ✅ [ADD_ATTENDEES] Google Calendar updated - ${result.added} added, ${result.skipped} already invited`);
+                        
+                        // Costruisci messaggio di conferma
+                        const addAttendeesMessage = result.added > 0
+                          ? `✅ INVITATI AGGIUNTI!
+
+Ho aggiunto ${result.added} ${result.added === 1 ? 'invitato' : 'invitati'} all'appuntamento del ${existingBooking.appointmentDate!.split('-').reverse().join('/')} alle ${existingBooking.appointmentTime}.
+
+${result.skipped > 0 ? `ℹ️ ${result.skipped} ${result.skipped === 1 ? 'era già invitato' : 'erano già invitati'}.\n\n` : ''}📧 Gli inviti Google Calendar sono stati inviati automaticamente! 📬`
+                          : `ℹ️ Tutti gli invitati sono già stati aggiunti all'appuntamento del ${existingBooking.appointmentDate!.split('-').reverse().join('/')} alle ${existingBooking.appointmentTime}. 
+
+Nessuna modifica necessaria! ✅`;
+                        
+                        // Salva messaggio nel database
+                        await db.insert(schema.whatsappAgentConsultantMessages).values({
+                          conversationId: conversation.id,
+                          role: 'agent',
+                          content: addAttendeesMessage,
+                          messageType: 'text',
+                        });
+                        
+                        // Invia via SSE
+                        res.write(`data: ${JSON.stringify({ type: 'chunk', content: addAttendeesMessage })}\n\n`);
+                        
+                        // Salva lastCompletedAction per prevenire duplicati
+                        await db
+                          .update(schema.appointmentBookings)
+                          .set({
+                            lastCompletedAction: {
+                              type: 'ADD_ATTENDEES' as const,
+                              completedAt: new Date().toISOString(),
+                              triggerMessageId: conversation.id,
+                              details: {
+                                attendeesAdded: modificationResult.attendees
+                              }
                             }
-                          }
-                        })
-                        .where(eq(schema.appointmentBookings.id, existingBooking.id));
-                      
-                      bookingResult.attendeesAdded = true;
-                      bookingResult.confirmationMessage = addAttendeesMessage;
-                      console.log(`   ✅ [ADD_ATTENDEES] Confirmation with lastCompletedAction saved!`);
-                      
-                    } catch (gcalError: any) {
-                      console.error(`   ⚠️ [ADD_ATTENDEES] Failed to add attendees: ${gcalError.message}`);
-                      
-                      const errorMessage = `⚠️ Mi dispiace, ho riscontrato un errore nell'aggiungere gli invitati al calendario.
+                          })
+                          .where(eq(schema.appointmentBookings.id, existingBooking.id));
+                        
+                        bookingResult.attendeesAdded = true;
+                        bookingResult.confirmationMessage = addAttendeesMessage;
+                        console.log(`   ✅ [ADD_ATTENDEES] Confirmation with lastCompletedAction saved!`);
+                        
+                      } catch (gcalError: any) {
+                        console.error(`   ⚠️ [ADD_ATTENDEES] Failed to add attendees: ${gcalError.message}`);
+                        
+                        const errorMessage = `⚠️ Mi dispiace, ho riscontrato un errore nell'aggiungere gli invitati al calendario.
 
 Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
-                      
-                      await db.insert(schema.whatsappAgentConsultantMessages).values({
-                        conversationId: conversation.id,
-                        role: 'agent',
-                        content: errorMessage,
-                        messageType: 'text',
-                      });
-                      
-                      res.write(`data: ${JSON.stringify({ type: 'chunk', content: errorMessage })}\n\n`);
+                        
+                        await db.insert(schema.whatsappAgentConsultantMessages).values({
+                          conversationId: conversation.id,
+                          role: 'agent',
+                          content: errorMessage,
+                          messageType: 'text',
+                        });
+                        
+                        res.write(`data: ${JSON.stringify({ type: 'chunk', content: errorMessage })}\n\n`);
+                      }
+                    } else {
+                      console.log(`   ⚠️ [ADD_ATTENDEES] No Google Event ID found - cannot add attendees`);
                     }
+                    
                   } else {
-                    console.log(`   ⚠️ [ADD_ATTENDEES] No Google Event ID found - cannot add attendees`);
+                    console.log(`   💬 [NONE] No modification/cancellation/add attendees intent - continuing normal conversation`);
                   }
-                  
-                } else {
-                  console.log(`   💬 [NONE] No modification/cancellation/add attendees intent - continuing normal conversation`);
                 }
-              }
-            } else {
-              // Estrai dati booking dalla conversazione (aiProvider già ottenuto sopra)
-              const extracted = await extractBookingDataFromConversation(
-                conversationMessages,
-                undefined, // Nessun booking esistente
-                aiProvider.client,
-                'Europe/Rome'
-              );
-              
-              if (extracted && 'isConfirming' in extracted) {
-                const extractionResult = extracted as BookingExtractionResult;
-                console.log(`   📊 Extraction: hasAllData=${extractionResult.hasAllData}, isConfirming=${extractionResult.isConfirming}`);
-                console.log(`   📋 Data: date=${extractionResult.date}, time=${extractionResult.time}, email=${extractionResult.email}, phone=${extractionResult.phone}`);
+              } else {
+                // Estrai dati booking dalla conversazione (aiProvider già ottenuto sopra)
+                const extracted = await extractBookingDataFromConversation(
+                  conversationMessages,
+                  undefined, // Nessun booking esistente
+                  aiProvider.client,
+                  'Europe/Rome'
+                );
                 
-                // Per link pubblici: richiedi solo date, time, email (phone è opzionale)
-                // hasAllData potrebbe essere false se manca phone, ma per public_link è ok
-                const hasRequiredWebData = extractionResult.date && extractionResult.time && extractionResult.email;
-                
-                if (extractionResult.isConfirming && hasRequiredWebData) {
+                if (extracted && 'isConfirming' in extracted) {
+                  const extractionResult = extracted as BookingExtractionResult;
+                  console.log(`   📊 Extraction: hasAllData=${extractionResult.hasAllData}, isConfirming=${extractionResult.isConfirming}`);
+                  console.log(`   📋 Data: date=${extractionResult.date}, time=${extractionResult.time}, email=${extractionResult.email}, phone=${extractionResult.phone}`);
                   
-                  // Valida i dati (phone is optional for public_link)
-                  const validation = await validateBookingData(extractionResult, agentConfig.consultantId, 'Europe/Rome', 'public_link');
+                  // Per link pubblici: richiedi solo date, time, email (phone è opzionale)
+                  // hasAllData potrebbe essere false se manca phone, ma per public_link è ok
+                  const hasRequiredWebData = extractionResult.date && extractionResult.time && extractionResult.email;
                   
-                  if (validation.valid) {
-                    console.log(`   ✅ Validation passed - creating booking...`);
+                  if (extractionResult.isConfirming && hasRequiredWebData) {
                     
-                    // Crea record booking con source e publicConversationId
-                    const booking = await createBookingRecord(
-                      agentConfig.consultantId,
-                      null, // conversationId nullo per public links
-                      {
-                        date: extractionResult.date,
-                        time: extractionResult.time,
-                        phone: extractionResult.phone || '', // Will be normalized to null in createBookingRecord
-                        email: extractionResult.email,
-                        name: extractionResult.name || `Visitor ${visitorId.slice(0, 8)}`
-                      },
-                      'public_link',
-                      conversation.id // publicConversationId
-                    );
+                    // Valida i dati (phone is optional for public_link)
+                    const validation = await validateBookingData(extractionResult, agentConfig.consultantId, 'Europe/Rome', 'public_link');
                     
-                    if (booking) {
-                      // Crea evento Google Calendar
-                      const calendarResult = await createGoogleCalendarBooking(
+                    if (validation.valid) {
+                      console.log(`   ✅ Validation passed - creating booking...`);
+                      
+                      // Crea record booking con source e publicConversationId
+                      const booking = await createBookingRecord(
                         agentConfig.consultantId,
-                        booking,
-                        extractionResult.email
+                        null, // conversationId nullo per public links
+                        {
+                          date: extractionResult.date,
+                          time: extractionResult.time,
+                          phone: extractionResult.phone || '', // Will be normalized to null in createBookingRecord
+                          email: extractionResult.email,
+                          name: extractionResult.name || `Visitor ${visitorId.slice(0, 8)}`
+                        },
+                        'public_link',
+                        conversation.id // publicConversationId
                       );
                       
-                      console.log(`   🎉 [PUBLIC-BOOKING] Booking created successfully!`);
-                      console.log(`   🆔 Booking ID: ${booking.id}`);
-                      console.log(`   📅 Date: ${booking.appointmentDate} ${booking.appointmentTime}`);
-                      console.log(`   📧 Email: ${extractionResult.email}`);
-                      if (calendarResult.googleEventId) {
-                        console.log(`   📆 Google Event: ${calendarResult.googleEventId}`);
-                      }
-                      if (calendarResult.googleMeetLink) {
-                        console.log(`   🎥 Meet Link: ${calendarResult.googleMeetLink}`);
-                      }
-                      
-                      // Invia email di conferma al cliente
-                      const emailResult = await sendBookingConfirmationEmail(
-                        agentConfig.consultantId,
-                        booking,
-                        calendarResult.googleMeetLink
-                      );
-                      if (emailResult.success) {
-                        console.log(`   📧 Confirmation email sent!`);
-                      } else {
-                        console.log(`   ⚠️ Email not sent: ${emailResult.errorMessage || 'SMTP not configured'}`);
-                      }
-                      
-                      // ══════════════════════════════════════════════════════════════════════
-                      // NUOVO: MESSAGGIO DI CONFERMA NELLA CHAT (come WhatsApp)
-                      // ══════════════════════════════════════════════════════════════════════
-                      const formattedDate = booking.appointmentDate!.split('-').reverse().join('/');
-                      const bookingConfirmationMessage = calendarResult.googleMeetLink 
-                        ? `🎉 APPUNTAMENTO CONFERMATO!
+                      if (booking) {
+                        // Crea evento Google Calendar
+                        const calendarResult = await createGoogleCalendarBooking(
+                          agentConfig.consultantId,
+                          booking,
+                          extractionResult.email
+                        );
+                        
+                        console.log(`   🎉 [PUBLIC-BOOKING] Booking created successfully!`);
+                        console.log(`   🆔 Booking ID: ${booking.id}`);
+                        console.log(`   📅 Date: ${booking.appointmentDate} ${booking.appointmentTime}`);
+                        console.log(`   📧 Email: ${extractionResult.email}`);
+                        if (calendarResult.googleEventId) {
+                          console.log(`   📆 Google Event: ${calendarResult.googleEventId}`);
+                        }
+                        if (calendarResult.googleMeetLink) {
+                          console.log(`   🎥 Meet Link: ${calendarResult.googleMeetLink}`);
+                        }
+                        
+                        // Invia email di conferma al cliente
+                        const emailResult = await sendBookingConfirmationEmail(
+                          agentConfig.consultantId,
+                          booking,
+                          calendarResult.googleMeetLink
+                        );
+                        if (emailResult.success) {
+                          console.log(`   📧 Confirmation email sent!`);
+                        } else {
+                          console.log(`   ⚠️ Email not sent: ${emailResult.errorMessage || 'SMTP not configured'}`);
+                        }
+                        
+                        // ══════════════════════════════════════════════════════════════════════
+                        // NUOVO: MESSAGGIO DI CONFERMA NELLA CHAT (come WhatsApp)
+                        // ══════════════════════════════════════════════════════════════════════
+                        const formattedDate = booking.appointmentDate!.split('-').reverse().join('/');
+                        const bookingConfirmationMessage = calendarResult.googleMeetLink 
+                          ? `🎉 APPUNTAMENTO CONFERMATO!
 
 📅 Data: ${formattedDate}
 🕐 Orario: ${booking.appointmentTime}
@@ -1017,7 +1017,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
 📧 Ti ho inviato l'invito calendario a ${extractionResult.email}
 
 Ti consiglio di collegarti 2-3 minuti prima! 📱`
-                        : `🎉 APPUNTAMENTO CONFERMATO!
+                          : `🎉 APPUNTAMENTO CONFERMATO!
 
 📅 Data: ${formattedDate}
 🕐 Orario: ${booking.appointmentTime}
@@ -1026,41 +1026,41 @@ Ti consiglio di collegarti 2-3 minuti prima! 📱`
 📧 Ti ho inviato l'invito calendario a ${extractionResult.email}
 
 Ti aspettiamo! 🚀`;
-                      
-                      // Salva messaggio nel database
-                      await db.insert(schema.whatsappAgentConsultantMessages).values({
-                        conversationId: conversation.id,
-                        role: 'agent',
-                        content: bookingConfirmationMessage,
-                        messageType: 'text',
-                      });
-                      
-                      // Invia via SSE al client
-                      res.write(`data: ${JSON.stringify({ type: 'chunk', content: bookingConfirmationMessage })}\n\n`);
-                      
-                      console.log(`   ✅ [PUBLIC-BOOKING] Confirmation message sent to chat!`);
-                      
-                      bookingResult = {
-                        created: true,
-                        modified: false,
-                        cancelled: false,
-                        attendeesAdded: false,
-                        booking: booking,
-                        googleMeetLink: calendarResult.googleMeetLink || undefined,
-                        confirmationMessage: bookingConfirmationMessage
-                      };
+                        
+                        // Salva messaggio nel database
+                        await db.insert(schema.whatsappAgentConsultantMessages).values({
+                          conversationId: conversation.id,
+                          role: 'agent',
+                          content: bookingConfirmationMessage,
+                          messageType: 'text',
+                        });
+                        
+                        // Invia via SSE al client
+                        res.write(`data: ${JSON.stringify({ type: 'chunk', content: bookingConfirmationMessage })}\n\n`);
+                        
+                        console.log(`   ✅ [PUBLIC-BOOKING] Confirmation message sent to chat!`);
+                        
+                        bookingResult = {
+                          created: true,
+                          modified: false,
+                          cancelled: false,
+                          attendeesAdded: false,
+                          booking: booking,
+                          googleMeetLink: calendarResult.googleMeetLink || undefined,
+                          confirmationMessage: bookingConfirmationMessage
+                        };
+                      }
+                    } else {
+                      console.log(`   ❌ Validation failed: ${validation.reason}`);
                     }
                   } else {
-                    console.log(`   ❌ Validation failed: ${validation.reason}`);
+                    console.log(`   ℹ️ Not all data available or user not confirming yet`);
                   }
                 } else {
-                  console.log(`   ℹ️ Not all data available or user not confirming yet`);
+                  console.log(`   ℹ️ No booking data extracted from conversation`);
                 }
-              } else {
-                console.log(`   ℹ️ No booking data extracted from conversation`);
               }
             }
-            } // Chiude blocco else (hasBookingPatterns)
           } catch (bookingError: any) {
             console.error(`   ❌ [PUBLIC-BOOKING] Error: ${bookingError.message}`);
             // Non bloccare la risposta - il booking è un'operazione secondaria

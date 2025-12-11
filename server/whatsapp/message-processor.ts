@@ -1998,38 +1998,38 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
       } else {
         console.log(`   ✅ [AI PRE-CHECK] Proceeding with booking analysis`);
         
-      if (alreadyConfirmed) {
-        console.log('📅 [APPOINTMENT MANAGEMENT] Existing appointment detected - checking for MODIFY/CANCEL intent');
-      } else {
-        console.log('📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message');
-      }
-      try {
-        // Get last 10 messages to have full context (not just current batch)
-        // CRITICAL: Filter by lastResetAt to prevent AI from seeing pre-reset data
-        const recentMessagesConditions = [eq(whatsappMessages.conversationId, conversation.id)];
-
-        if (conversation.lastResetAt) {
-          console.log(`🔄 [EXTRACTION] Filtering messages after reset: ${conversation.lastResetAt}`);
-          recentMessagesConditions.push(sql`${whatsappMessages.createdAt} > ${conversation.lastResetAt}`);
+        if (alreadyConfirmed) {
+          console.log('📅 [APPOINTMENT MANAGEMENT] Existing appointment detected - checking for MODIFY/CANCEL intent');
+        } else {
+          console.log('📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message');
         }
+        try {
+          // Get last 10 messages to have full context (not just current batch)
+          // CRITICAL: Filter by lastResetAt to prevent AI from seeing pre-reset data
+          const recentMessagesConditions = [eq(whatsappMessages.conversationId, conversation.id)];
 
-        const recentMessages = await db
-          .select()
-          .from(whatsappMessages)
-          .where(and(...recentMessagesConditions))
-          .orderBy(desc(whatsappMessages.createdAt))
-          .limit(10);
+          if (conversation.lastResetAt) {
+            console.log(`🔄 [EXTRACTION] Filtering messages after reset: ${conversation.lastResetAt}`);
+            recentMessagesConditions.push(sql`${whatsappMessages.createdAt} > ${conversation.lastResetAt}`);
+          }
 
-        console.log(`📊 [EXTRACTION] Retrieved ${recentMessages.length} messages for extraction${conversation.lastResetAt ? ' (after reset)' : ''}`);
+          const recentMessages = await db
+            .select()
+            .from(whatsappMessages)
+            .where(and(...recentMessagesConditions))
+            .orderBy(desc(whatsappMessages.createdAt))
+            .limit(10);
 
-        // Build conversation context for extraction
-        const conversationContext = recentMessages
-          .reverse()
-          .map(m => `${m.sender === 'client' ? 'LEAD' : 'AI'}: ${m.messageText}`)
-          .join('\n');
+          console.log(`📊 [EXTRACTION] Retrieved ${recentMessages.length} messages for extraction${conversation.lastResetAt ? ' (after reset)' : ''}`);
 
-        // Use AI to extract appointment intent and data from ENTIRE recent conversation
-        const extractionPrompt = alreadyConfirmed ? `
+          // Build conversation context for extraction
+          const conversationContext = recentMessages
+            .reverse()
+            .map(m => `${m.sender === 'client' ? 'LEAD' : 'AI'}: ${m.messageText}`)
+            .join('\n');
+
+          // Use AI to extract appointment intent and data from ENTIRE recent conversation
+          const extractionPrompt = alreadyConfirmed ? `
 Analizza questa conversazione recente di un lead che ha GIÀ un appuntamento confermato:
 
 APPUNTAMENTO ESISTENTE:
@@ -2238,149 +2238,149 @@ REGOLE VALIDAZIONE hasAllData:
 - hasAllData = true SOLO se tutti e 4 sono presenti e non-null
 `;
 
-        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🔍 [STEP 2] Extracting Appointment Data from Conversation');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`📚 Analyzing last ${recentMessages.length} messages for appointment details...`);
-        console.log(`🤖 Using AI model: gemini-2.5-flash`);
+          console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('🔍 [STEP 2] Extracting Appointment Data from Conversation');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log(`📚 Analyzing last ${recentMessages.length} messages for appointment details...`);
+          console.log(`🤖 Using AI model: gemini-2.5-flash`);
 
-        // Retry with key rotation for appointment extraction
-        const maxExtractionRetries = 3;
-        let extractionKeyId = keyInfo.keyId;
-        let extractionResponse: any;
+          // Retry with key rotation for appointment extraction
+          const maxExtractionRetries = 3;
+          let extractionKeyId = keyInfo.keyId;
+          let extractionResponse: any;
 
-        for (let attempt = 1; attempt <= maxExtractionRetries; attempt++) {
-          try {
-            // Validate Vertex AI credentials
-            const hasVertexCredentials = aiProvider.type === 'vertex' && 
-                                        aiProvider.projectId && 
-                                        aiProvider.location && 
-                                        aiProvider.credentials;
+          for (let attempt = 1; attempt <= maxExtractionRetries; attempt++) {
+            try {
+              // Validate Vertex AI credentials
+              const hasVertexCredentials = aiProvider.type === 'vertex' && 
+                                          aiProvider.projectId && 
+                                          aiProvider.location && 
+                                          aiProvider.credentials;
 
-            // Determine effective provider for this attempt
-            const useVertex = aiProvider.type === 'vertex' && hasVertexCredentials;
-            console.log(`🔄 [EXTRACTION] Attempt ${attempt}/${maxExtractionRetries} with provider: ${useVertex ? 'vertex' : 'studio'}`);
+              // Determine effective provider for this attempt
+              const useVertex = aiProvider.type === 'vertex' && hasVertexCredentials;
+              console.log(`🔄 [EXTRACTION] Attempt ${attempt}/${maxExtractionRetries} with provider: ${useVertex ? 'vertex' : 'studio'}`);
 
-            if (useVertex) {
-              // Use Vertex AI
-              const vertexClient = createVertexGeminiClient(
-                aiProvider.projectId!,
-                aiProvider.location!,
-                aiProvider.credentials!
-              );
+              if (useVertex) {
+                // Use Vertex AI
+                const vertexClient = createVertexGeminiClient(
+                  aiProvider.projectId!,
+                  aiProvider.location!,
+                  aiProvider.credentials!
+                );
 
-              extractionResponse = await vertexClient.generateContent({
-                contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
-              });
-            } else {
-              // Use Google AI Studio (fallback)
-              if (aiProvider.type === 'vertex' && !hasVertexCredentials) {
-                console.warn(`⚠️ [EXTRACTION] Vertex AI requested but credentials missing - using Google AI Studio fallback`);
+                extractionResponse = await vertexClient.generateContent({
+                  contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
+                });
+              } else {
+                // Use Google AI Studio (fallback)
+                if (aiProvider.type === 'vertex' && !hasVertexCredentials) {
+                  console.warn(`⚠️ [EXTRACTION] Vertex AI requested but credentials missing - using Google AI Studio fallback`);
+                }
+
+                // Rotate API key on retry attempts
+                let extractionApiKey = apiKey;
+                if (attempt > 1) {
+                  const newKeyInfo = await selectApiKey(conversation, extractionKeyId);
+                  extractionApiKey = newKeyInfo.apiKey;
+                  extractionKeyId = newKeyInfo.keyId;
+                  console.log(`🔑 [EXTRACTION] Rotated to new API key: ${extractionKeyId.substring(0, 8)}...`);
+                }
+
+                const extractionAi = new GoogleGenAI({ apiKey: extractionApiKey });
+                extractionResponse = await extractionAi.models.generateContent({
+                  model: "gemini-2.5-flash",
+                  contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
+                });
               }
 
-              // Rotate API key on retry attempts
-              let extractionApiKey = apiKey;
-              if (attempt > 1) {
-                const newKeyInfo = await selectApiKey(conversation, extractionKeyId);
-                extractionApiKey = newKeyInfo.apiKey;
-                extractionKeyId = newKeyInfo.keyId;
-                console.log(`🔑 [EXTRACTION] Rotated to new API key: ${extractionKeyId.substring(0, 8)}...`);
+              console.log(`✅ [EXTRACTION] Success on attempt ${attempt}!`);
+              break; // Success - exit retry loop
+
+            } catch (extractionError: any) {
+              const is503 = extractionError.status === 503 || 
+                            extractionError.message?.includes('overloaded') ||
+                            extractionError.message?.includes('UNAVAILABLE');
+
+              if (is503 && attempt < maxExtractionRetries) {
+                console.log(`⚠️ [EXTRACTION] API overloaded (503) on attempt ${attempt}`);
+                await markKeyAsFailed(extractionKeyId);
+
+                const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                console.log(`⏱️ [EXTRACTION] Waiting ${backoffMs}ms before rotating...`);
+                await new Promise(resolve => setTimeout(resolve, backoffMs));
+              } else {
+                // Final attempt or non-503 error - throw to outer catch
+                console.error(`❌ [EXTRACTION] Failed after ${attempt} attempt(s): ${extractionError.message}`);
+                throw extractionError;
               }
-
-              const extractionAi = new GoogleGenAI({ apiKey: extractionApiKey });
-              extractionResponse = await extractionAi.models.generateContent({
-                model: "gemini-2.5-flash",
-                contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
-              });
-            }
-
-            console.log(`✅ [EXTRACTION] Success on attempt ${attempt}!`);
-            break; // Success - exit retry loop
-
-          } catch (extractionError: any) {
-            const is503 = extractionError.status === 503 || 
-                          extractionError.message?.includes('overloaded') ||
-                          extractionError.message?.includes('UNAVAILABLE');
-
-            if (is503 && attempt < maxExtractionRetries) {
-              console.log(`⚠️ [EXTRACTION] API overloaded (503) on attempt ${attempt}`);
-              await markKeyAsFailed(extractionKeyId);
-
-              const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-              console.log(`⏱️ [EXTRACTION] Waiting ${backoffMs}ms before rotating...`);
-              await new Promise(resolve => setTimeout(resolve, backoffMs));
-            } else {
-              // Final attempt or non-503 error - throw to outer catch
-              console.error(`❌ [EXTRACTION] Failed after ${attempt} attempt(s): ${extractionError.message}`);
-              throw extractionError;
             }
           }
-        }
 
-        if (!extractionResponse) {
-          throw new Error('Failed to extract appointment data after all retries');
-        }
+          if (!extractionResponse) {
+            throw new Error('Failed to extract appointment data after all retries');
+          }
 
-        let extractionText: string;
-        try {
-          if (typeof extractionResponse.text === 'function') {
-            extractionText = extractionResponse.text();
-          } else if (typeof extractionResponse.response?.text === 'function') {
-            extractionText = extractionResponse.response.text();
-          } else if (extractionResponse.text) {
-            extractionText = extractionResponse.text;
-          } else if (extractionResponse.response?.text) {
-            extractionText = extractionResponse.response.text;
-          } else if (extractionResponse.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
-            extractionText = extractionResponse.response.candidates[0].content.parts[0].text;
-          } else if (extractionResponse.candidates?.[0]?.content?.parts?.[0]?.text) {
-            extractionText = extractionResponse.candidates[0].content.parts[0].text;
-          } else {
+          let extractionText: string;
+          try {
+            if (typeof extractionResponse.text === 'function') {
+              extractionText = extractionResponse.text();
+            } else if (typeof extractionResponse.response?.text === 'function') {
+              extractionText = extractionResponse.response.text();
+            } else if (extractionResponse.text) {
+              extractionText = extractionResponse.text;
+            } else if (extractionResponse.response?.text) {
+              extractionText = extractionResponse.response.text;
+            } else if (extractionResponse.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+              extractionText = extractionResponse.response.candidates[0].content.parts[0].text;
+            } else if (extractionResponse.candidates?.[0]?.content?.parts?.[0]?.text) {
+              extractionText = extractionResponse.candidates[0].content.parts[0].text;
+            } else {
+              extractionText = "";
+            }
+          } catch (textError: any) {
+            console.error('❌ [EXTRACTION ERROR] Failed to extract text from response:', textError.message);
             extractionText = "";
           }
-        } catch (textError: any) {
-          console.error('❌ [EXTRACTION ERROR] Failed to extract text from response:', textError.message);
-          extractionText = "";
-        }
-        console.log(`\n💬 AI Raw Response:\n${extractionText.substring(0, 200)}${extractionText.length > 200 ? '...' : ''}\n`);
+          console.log(`\n💬 AI Raw Response:\n${extractionText.substring(0, 200)}${extractionText.length > 200 ? '...' : ''}\n`);
 
-        // Parse JSON from AI response
-        const jsonMatch = extractionText.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
+          // Parse JSON from AI response
+          const jsonMatch = extractionText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
             const extracted = JSON.parse(jsonMatch[0]);
 
-          // Check if this is MODIFY/CANCEL intent (for existing appointments) or booking confirmation
-          if (alreadyConfirmed && extracted.intent) {
-            // GESTIONE MODIFICA/CANCELLAZIONE APPUNTAMENTO ESISTENTE
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('📊 [APPOINTMENT MANAGEMENT] Intent Detection Results');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log(`🎯 Intent: ${extracted.intent}`);
-            console.log(`📅 New Date: ${extracted.newDate || 'N/A'}`);
-            console.log(`🕐 New Time: ${extracted.newTime || 'N/A'}`);
-            console.log(`💯 Confidence: ${extracted.confidence.toUpperCase()}`);
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            // Check if this is MODIFY/CANCEL intent (for existing appointments) or booking confirmation
+            if (alreadyConfirmed && extracted.intent) {
+              // GESTIONE MODIFICA/CANCELLAZIONE APPUNTAMENTO ESISTENTE
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log('📊 [APPOINTMENT MANAGEMENT] Intent Detection Results');
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+              console.log(`🎯 Intent: ${extracted.intent}`);
+              console.log(`📅 New Date: ${extracted.newDate || 'N/A'}`);
+              console.log(`🕐 New Time: ${extracted.newTime || 'N/A'}`);
+              console.log(`💯 Confidence: ${extracted.confidence.toUpperCase()}`);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-            if (extracted.intent === 'MODIFY' && extracted.newDate && extracted.newTime) {
-              // MODIFICA APPUNTAMENTO - RICHIEDE 1 CONFERMA
-              console.log('\n🔄 [MODIFY APPOINTMENT] Starting modification process...');
+              if (extracted.intent === 'MODIFY' && extracted.newDate && extracted.newTime) {
+                // MODIFICA APPUNTAMENTO - RICHIEDE 1 CONFERMA
+                console.log('\n🔄 [MODIFY APPOINTMENT] Starting modification process...');
 
-              // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-              if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY')) {
-                console.log(`   ⏭️ [MODIFY APPOINTMENT] Skipping - action already completed recently`);
-                return;
-              }
+                // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY')) {
+                  console.log(`   ⏭️ [MODIFY APPOINTMENT] Skipping - action already completed recently`);
+                  return;
+                }
 
-              // ✅ CHECK CONFERMA: Esegui SOLO se ha confermato almeno 1 volta
-              if (!extracted.confirmedTimes || extracted.confirmedTimes < 1) {
-                console.log(`⚠️ [MODIFY APPOINTMENT] Insufficient confirmations (${extracted.confirmedTimes || 0}/1)`);
-                console.log('   AI should ask for confirmation via prompt');
-                console.log('   Skipping modification - waiting for confirmation\n');
-                // NON eseguire - lascia che AI continui il flusso di conferma via prompt
-                return;
-              }
+                // ✅ CHECK CONFERMA: Esegui SOLO se ha confermato almeno 1 volta
+                if (!extracted.confirmedTimes || extracted.confirmedTimes < 1) {
+                  console.log(`⚠️ [MODIFY APPOINTMENT] Insufficient confirmations (${extracted.confirmedTimes || 0}/1)`);
+                  console.log('   AI should ask for confirmation via prompt');
+                  console.log('   Skipping modification - waiting for confirmation\n');
+                  // NON eseguire - lascia che AI continui il flusso di conferma via prompt
+                  return;
+                }
 
-              console.log(`✅ [MODIFY APPOINTMENT] Confirmed ${extracted.confirmedTimes} time(s) - proceeding with modification`);
+                console.log(`✅ [MODIFY APPOINTMENT] Confirmed ${extracted.confirmedTimes} time(s) - proceeding with modification`);
 
               // Get settings for timezone and duration
               const [settings] = await db
