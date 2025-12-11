@@ -83,39 +83,52 @@ export async function shouldAnalyzeForBooking(
   hasExistingBooking: boolean,
   aiClient: GoogleGenAI
 ): Promise<boolean> {
-  const trimmedMessage = message.trim().toLowerCase();
+  const trimmedMessage = message.trim();
   
-  if (trimmedMessage.length < 3) {
+  if (trimmedMessage.length < 2) {
     console.log(`   ⏭️ [PRE-CHECK] Skip - message too short (${trimmedMessage.length} chars)`);
     return false;
   }
   
-  const explicitBookingKeywords = /\b(modifica|modificare|cancella|cancellare|disdici|disdire|sposta|spostare|elimina|eliminare|annulla|annullare)\s*(l['']?appuntamento|la\s+data|l['']?orario|alle|al|per|a\s+domani|a\s+lunedì|a\s+martedì|a\s+mercoledì|a\s+giovedì|a\s+venerdì|a\s+sabato)/i;
-  if (explicitBookingKeywords.test(message)) {
-    console.log(`   ✅ [PRE-CHECK] Explicit booking action keyword detected`);
-    return true;
+  if (hasExistingBooking) {
+    console.log(`   🤖 [AI INTUITION] Booking exists - using AI to determine if message is booking-related...`);
+    
+    try {
+      const prompt = `Analizza questo messaggio e rispondi SOLO con "SÌ" o "NO".
+
+Il messaggio è una CONFERMA, MODIFICA, CANCELLAZIONE di appuntamento, o AGGIUNTA INVITATI?
+
+Messaggio: "${message}"
+
+REGOLE IMPORTANTI:
+- "si", "sì", "ok", "va bene", "perfetto", "certo", "confermo", "esatto" → SÌ
+- "si va bene", "sì va bene", "ok va bene" → SÌ
+- "cancellalo", "cancellarlo", "eliminalo", "disdici", "puoi cancellarlo?" → SÌ
+- "modificalo", "spostalo", "cambialo", "puoi modificarlo?" → SÌ
+- qualsiasi email (xxx@yyy.com) menzionata → SÌ
+- richieste con orari o date → SÌ
+- saluti semplici (ciao, grazie, arrivederci) SENZA altro contenuto → NO
+- domande generiche (come funziona?, cosa fate?, dimmi di più) → NO
+- insulti o spam → NO
+
+Rispondi SOLO: SÌ oppure NO`;
+
+      const response = await aiClient.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+      });
+      
+      const answer = response.text?.trim().toUpperCase() || '';
+      const shouldAnalyze = answer.includes('SÌ') || answer.includes('SI') || answer === 'YES';
+      
+      console.log(`   🤖 [AI INTUITION] Response: "${answer}" → shouldAnalyze: ${shouldAnalyze}`);
+      return shouldAnalyze;
+      
+    } catch (error: any) {
+      console.error(`   ⚠️ [AI INTUITION] Error: ${error.message} - defaulting to TRUE (analyze anyway)`);
+      return true;
+    }
   }
-  
-  const modifyTimePattern = /\b(modifica|sposta|cambia)\s*(alle?\s*\d{1,2}[:\.]?\d{0,2}|\d{1,2}[:\.]?\d{0,2})/i;
-  if (modifyTimePattern.test(message)) {
-    console.log(`   ✅ [PRE-CHECK] Modify time pattern detected`);
-    return true;
-  }
-  
-  const explicitConfirmation = /^(confermo|sì,?\s*confermo|ok,?\s*confermo|sì\s+va\s+bene|confermato|conferma)$/i;
-  if (explicitConfirmation.test(trimmedMessage)) {
-    console.log(`   ✅ [PRE-CHECK] Explicit confirmation word detected`);
-    return true;
-  }
-  
-  const addAttendeesPattern = /\b(aggiungi|invita|inserisci|metti)\s+(anche\s+)?([\w.+-]+@[\w.-]+\.[a-zA-Z]{2,})/i;
-  if (addAttendeesPattern.test(message)) {
-    console.log(`   ✅ [PRE-CHECK] Add attendees pattern detected`);
-    return true;
-  }
-  
-  const dateTimePattern = /\b(\d{1,2}[\/\-\.]\d{1,2}|\d{1,2}[:\.]?\d{2}|lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica|domani|dopodomani)\b/i;
-  const hasDateTime = dateTimePattern.test(message);
   
   const emailPattern = /@[\w.-]+\.[a-zA-Z]{2,}/;
   const hasEmail = emailPattern.test(message);
@@ -123,8 +136,11 @@ export async function shouldAnalyzeForBooking(
   const phonePattern = /\+?\d[\d\s\-\.]{8,}/;
   const hasPhone = phonePattern.test(message);
   
-  if (hasDateTime || hasEmail || hasPhone) {
-    console.log(`   ✅ [PRE-CHECK] Booking data pattern detected (date/time: ${hasDateTime}, email: ${hasEmail}, phone: ${hasPhone})`);
+  const dateTimePattern = /\b(\d{1,2}[\/\-\.]\d{1,2}|\d{1,2}[:\.]?\d{2}|lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica|domani|dopodomani)\b/i;
+  const hasDateTime = dateTimePattern.test(message);
+  
+  if (hasEmail || hasPhone || hasDateTime) {
+    console.log(`   ✅ [PRE-CHECK] Booking data detected (email: ${hasEmail}, phone: ${hasPhone}, date/time: ${hasDateTime})`);
     return true;
   }
   
@@ -132,62 +148,22 @@ export async function shouldAnalyzeForBooking(
     /^(dimmi|raccontami|spiegami|parlami)\s+(di\s+più|altro|meglio)/i,
     /^(cosa|che\s+cosa|quali?)\s+(puoi|sai|fai|sono|offri)/i,
     /^(come|perché|quando|dove|chi)\s+(funziona|lavori|operi)/i,
-    /^(grazie|ok|capito|interessante|bello|fantastico|perfetto)\s*$/i,
     /^(ciao|salve|buongiorno|buonasera|arrivederci|a\s+presto)\s*$/i,
-    /^(sì|si|no|forse|magari|vedremo)\s*$/i,
-    /^(ho\s+capito|chiaro|va\s+bene)\s*$/i,
   ];
   
+  const lowerMessage = trimmedMessage.toLowerCase();
   for (const pattern of nonBookingPhrases) {
-    if (pattern.test(trimmedMessage)) {
-      console.log(`   ⏭️ [PRE-CHECK] Non-booking phrase detected - skipping analysis`);
+    if (pattern.test(lowerMessage)) {
+      console.log(`   ⏭️ [PRE-CHECK] Non-booking phrase detected - skipping`);
       return false;
     }
   }
   
-  if (!hasExistingBooking && trimmedMessage.length < 15) {
+  if (trimmedMessage.length < 10) {
     console.log(`   ⏭️ [PRE-CHECK] Short message without booking context - skipping`);
     return false;
   }
   
-  if (hasExistingBooking && trimmedMessage.length > 10 && trimmedMessage.length < 100) {
-    try {
-      console.log(`   🤖 [PRE-CHECK] Using AI to determine booking intent...`);
-      
-      const prompt = `Analizza questo messaggio e rispondi SOLO con "SÌ" o "NO".
-
-Il messaggio riguarda MODIFICARE, CANCELLARE, CONFERMARE un appuntamento, o AGGIUNGERE INVITATI?
-
-Messaggio: "${message}"
-
-IMPORTANTE:
-- Se parla di cambiare data/ora → SÌ
-- Se parla di cancellare/disdire → SÌ
-- Se dice "confermo" in risposta a una proposta → SÌ
-- Se vuole aggiungere email/invitati → SÌ
-- Se chiede informazioni generiche → NO
-- Se saluta o ringrazia → NO
-- Se chiede "dimmi di più" o simili → NO
-
-Rispondi SOLO: SÌ oppure NO`;
-
-      const response = await aiClient.models.generateContent({
-        model: "gemini-2.0-flash-lite",
-        contents: prompt,
-      });
-      
-      const answer = response.text?.trim().toUpperCase() || '';
-      const shouldAnalyze = answer.includes('SÌ') || answer.includes('SI') || answer === 'YES';
-      
-      console.log(`   🤖 [PRE-CHECK] AI response: "${answer}" → shouldAnalyze: ${shouldAnalyze}`);
-      return shouldAnalyze;
-      
-    } catch (error: any) {
-      console.error(`   ⚠️ [PRE-CHECK] AI check failed: ${error.message} - defaulting to analyze`);
-      return true;
-    }
-  }
-  
-  console.log(`   ⏭️ [PRE-CHECK] No booking indicators - skipping analysis`);
+  console.log(`   ⏭️ [PRE-CHECK] No clear booking indicators - skipping`);
   return false;
 }

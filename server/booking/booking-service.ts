@@ -322,7 +322,7 @@ export async function extractBookingDataFromConversation(
 
   try {
     const response = await aiClient.generateContent({
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 

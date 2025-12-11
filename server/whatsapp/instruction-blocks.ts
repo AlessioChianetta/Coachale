@@ -202,7 +202,8 @@ AI: {"intent": "MODIFY", "newDate": "2025-11-04", "newTime": "16:00"}
 
 Esempio CORRETTO ✅:
 Lead: "Si confermo"
-AI: "Perfetto! Sto aggiornando il tuo appuntamento alle 16:00. Un attimo... ⏳"
+AI: "Perfetto, procedo!"
+(Il sistema invierà automaticamente il messaggio di conferma completo con tutti i dettagli)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔄 COMANDO RESET CONVERSAZIONE
