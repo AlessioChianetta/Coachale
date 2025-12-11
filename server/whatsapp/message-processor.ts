@@ -38,6 +38,7 @@ import {
 } from "./instruction-blocks";
 import { generateSpeech } from "../ai/tts-service";
 import { shouldRespondWithAudio } from "./audio-response-utils";
+import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction } from "../booking/booking-intent-detector";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as path from "path";
@@ -1953,9 +1954,13 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         )
         .limit(1);
 
+      // Cast lastCompletedAction for type-safety
+      let lastCompletedAction: LastCompletedAction | null = null;
+      
       if (existingBooking) {
         alreadyConfirmed = true;
         existingBookingForModification = existingBooking;
+        lastCompletedAction = existingBooking.lastCompletedAction as LastCompletedAction | null;
         console.log(`✅ [APPOINTMENT MANAGEMENT] Appointment already confirmed for this conversation`);
         console.log(`   🆔 Booking ID: ${existingBooking.id}`);
         console.log(`   📅 Date: ${existingBooking.appointmentDate} ${existingBooking.appointmentTime}`);
@@ -1983,6 +1988,16 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
 
       // Proceed with extraction for NEW bookings OR MODIFICATIONS/CANCELLATIONS
       if (((!alreadyConfirmed && retrievedSlots && retrievedSlots.length > 0) || alreadyConfirmed)) {
+      
+      // AI PRE-CHECK: Skip heavy extraction if message is not booking-related
+      const preCheckAi = new GoogleGenAI({ apiKey });
+      const shouldAnalyze = await shouldAnalyzeForBooking(userMessage, alreadyConfirmed, preCheckAi);
+      
+      if (!shouldAnalyze) {
+        console.log(`   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "${userMessage.substring(0, 40)}..."`);
+      } else {
+        console.log(`   ✅ [AI PRE-CHECK] Proceeding with booking analysis`);
+        
       if (alreadyConfirmed) {
         console.log('📅 [APPOINTMENT MANAGEMENT] Existing appointment detected - checking for MODIFY/CANCEL intent');
       } else {
@@ -2350,6 +2365,12 @@ REGOLE VALIDAZIONE hasAllData:
               // MODIFICA APPUNTAMENTO - RICHIEDE 1 CONFERMA
               console.log('\n🔄 [MODIFY APPOINTMENT] Starting modification process...');
 
+              // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+              if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY')) {
+                console.log(`   ⏭️ [MODIFY APPOINTMENT] Skipping - action already completed recently`);
+                return;
+              }
+
               // ✅ CHECK CONFERMA: Esegui SOLO se ha confermato almeno 1 volta
               if (!extracted.confirmedTimes || extracted.confirmedTimes < 1) {
                 console.log(`⚠️ [MODIFY APPOINTMENT] Insufficient confirmations (${extracted.confirmedTimes || 0}/1)`);
@@ -2400,17 +2421,28 @@ REGOLE VALIDAZIONE hasAllData:
               const endMinute = totalMinutes % 60;
               const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
 
-              // Update database
+              // Update database with lastCompletedAction to prevent duplicates
               await db
                 .update(appointmentBookings)
                 .set({
                   appointmentDate: extracted.newDate,
                   appointmentTime: extracted.newTime,
                   appointmentEndTime: formattedEndTime,
+                  lastCompletedAction: {
+                    type: 'MODIFY' as const,
+                    completedAt: new Date().toISOString(),
+                    triggerMessageId: conversation.id,
+                    details: {
+                      oldDate: existingBookingForModification.appointmentDate,
+                      oldTime: existingBookingForModification.appointmentTime,
+                      newDate: extracted.newDate,
+                      newTime: extracted.newTime
+                    }
+                  }
                 })
                 .where(eq(appointmentBookings.id, existingBookingForModification.id));
 
-              console.log('💾 [MODIFY APPOINTMENT] Database updated successfully');
+              console.log('💾 [MODIFY APPOINTMENT] Database updated with lastCompletedAction');
 
               // Send confirmation message
               const modifyMessage = `✅ APPUNTAMENTO MODIFICATO!
@@ -2447,6 +2479,12 @@ Ci vediamo alla nuova data! 🚀`;
               // CANCELLAZIONE APPUNTAMENTO - RICHIEDE 2 CONFERME
               console.log('\n🗑️ [CANCEL APPOINTMENT] Starting cancellation process...');
 
+              // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+              if (isActionAlreadyCompleted(lastCompletedAction, 'CANCEL')) {
+                console.log(`   ⏭️ [CANCEL APPOINTMENT] Skipping - action already completed recently`);
+                return;
+              }
+
               // ✅ CHECK CONFERME: Esegui SOLO se ha confermato 2 volte
               if (!extracted.confirmedTimes || extracted.confirmedTimes < 2) {
                 console.log(`⚠️ [CANCEL APPOINTMENT] Insufficient confirmations (${extracted.confirmedTimes || 0}/2)`);
@@ -2479,15 +2517,24 @@ Ci vediamo alla nuova data! 🚀`;
                 }
               }
 
-              // Update database status to cancelled
+              // Update database status to cancelled with lastCompletedAction
               await db
                 .update(appointmentBookings)
                 .set({
                   status: 'cancelled',
+                  lastCompletedAction: {
+                    type: 'CANCEL' as const,
+                    completedAt: new Date().toISOString(),
+                    triggerMessageId: conversation.id,
+                    details: {
+                      oldDate: existingBookingForModification.appointmentDate,
+                      oldTime: existingBookingForModification.appointmentTime
+                    }
+                  }
                 })
                 .where(eq(appointmentBookings.id, existingBookingForModification.id));
 
-              console.log('💾 [CANCEL APPOINTMENT] Database updated - status set to cancelled');
+              console.log('💾 [CANCEL APPOINTMENT] Database updated with lastCompletedAction');
 
               // Send confirmation message
               const cancelMessage = calendarDeleteSuccess 
@@ -2527,6 +2574,13 @@ Se vuoi riprogrammare in futuro, scrivimi! 😊`;
             } else if (extracted.intent === 'ADD_ATTENDEES' && extracted.attendees && extracted.attendees.length > 0) {
               // AGGIUNTA INVITATI - NESSUNA CONFERMA NECESSARIA
               console.log('\n👥 [ADD ATTENDEES] Starting add attendees process...');
+
+              // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+              if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES')) {
+                console.log(`   ⏭️ [ADD ATTENDEES] Skipping - action already completed recently`);
+                return;
+              }
+
               console.log('   ✅ No confirmation required for adding attendees - proceeding directly');
               console.log(`   📧 Attendees to add: ${extracted.attendees.join(', ')}`);
 
@@ -2569,7 +2623,22 @@ Nessuna modifica necessaria! ✅`;
                     { conversationId: conversation.id }
                   );
 
-                  console.log('✅ [ADD ATTENDEES] Confirmation message sent!');
+                  // Save lastCompletedAction to prevent duplicates
+                  await db
+                    .update(appointmentBookings)
+                    .set({
+                      lastCompletedAction: {
+                        type: 'ADD_ATTENDEES' as const,
+                        completedAt: new Date().toISOString(),
+                        triggerMessageId: conversation.id,
+                        details: {
+                          attendeesAdded: extracted.attendees
+                        }
+                      }
+                    })
+                    .where(eq(appointmentBookings.id, existingBookingForModification.id));
+
+                  console.log('✅ [ADD ATTENDEES] Confirmation message sent with lastCompletedAction saved!');
 
                 } catch (gcalError: any) {
                   console.error('⚠️ [ADD ATTENDEES] Failed to add attendees to Google Calendar');
@@ -2962,6 +3031,7 @@ Il tuo appuntamento è stato registrato. Ti contatteremo presto con i dettagli d
       }
       // Continue processing - this is not a critical error
     }
+      } // Close else block for shouldAnalyze pre-check
       } // Close if ((!alreadyConfirmed && retrievedSlots && retrievedSlots.length > 0) || alreadyConfirmed)
     } // Close if (consultantConfig?.bookingEnabled !== false && !effectiveUserId)
     else if (consultantConfig?.bookingEnabled === false) {

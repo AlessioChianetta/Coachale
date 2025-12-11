@@ -807,7 +807,7 @@ export default function PublicAgentShare() {
         </ScrollArea>
         
         {/* Input area - SEMPRE FISSO in basso, stile WhatsApp */}
-        <div className="flex-shrink-0 border-t bg-card p-3 shadow-lg">
+        <div className="flex-shrink-0 border-t bg-card p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-lg sticky bottom-0">
           {isRecording ? (
             // Recording UI
             <div className="flex items-center gap-3 bg-red-50 rounded-3xl px-4 py-3 max-w-4xl mx-auto">
