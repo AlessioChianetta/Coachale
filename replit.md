@@ -26,12 +26,14 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Employs L1/L2 caching and a Singleton pattern for API client instance.
 - Designed for graceful degradation if the Percorso Capitale API is unavailable.
 ## AI Knowledge Base System
-- Enables consultants to upload internal documents (PDF, DOCX, TXT) and configure external API integrations for AI context.
+- Enables both consultants AND clients to upload internal documents (PDF, DOCX, TXT) and configure external API integrations for AI context.
 - AI assistant has full, unfiltered access to all uploaded documents and API data.
 - Features automatic text extraction, indexing, priority-based ranking, document preview, optional AI summaries, custom tags, and usage tracking.
 - Supports various API authentication types and per-consultant API key encryption.
-- Multi-tenant isolation ensures consultants only access their own knowledge base.
+- Multi-tenant isolation ensures each user only accesses their own knowledge base.
 - Integrates knowledge context into AI system prompts without filtering.
+- **Focused Document Feature**: Users can click "Chiedimi qualcosa" on a document to open AI Assistant with auto-message and document focus. The `focusedDocument` is passed through the entire pipeline (frontend → API → context builder → AI prompts) to provide context-aware responses.
+- **Full CLIENT Parity**: Client Knowledge Base mirrors consultant implementation with identical features: document upload, API integrations, AI prompt injection, usage tracking, priority display, and summary badges.
 ## Advanced Consultation Management System
 - **AI-powered Email Automation**: Generates personalized motivational emails via Google Gemini, requiring consultant approval, with per-consultant SMTP and Gemini API key rotation.
 - **AI-Powered Client State Tracking**: Analyzes system context to generate current and ideal client states.
