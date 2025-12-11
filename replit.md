@@ -29,34 +29,43 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Caching**: L1 (User Context) 5-minute TTL, L2 (API Response) endpoint-specific TTLs.
 - **Singleton Pattern**: Ensures a single client instance per user email.
 - **Graceful Degradation**: AI assistant remains functional if Percorso Capitale API is unavailable.
-## AI Knowledge Base System
-- **Purpose**: Enables consultants to upload internal documents and configure external API integrations that the AI assistant uses for context-aware responses.
+## AI Knowledge Base System (Updated December 2024)
+- **Purpose**: Enables consultants to upload internal documents and configure external API integrations that the AI assistant ALWAYS has access to for context-aware responses.
+- **Critical Design**: AI assistant has ALWAYS access to ALL uploaded documents and API data - no keyword filtering, full context available.
 - **Document Management**: 
   - Supports PDF, DOCX, TXT files up to 10MB
   - Categories: Normative, Case Studies, Manuals, Internal Procedures, Other
   - Automatic text extraction and indexing (status: pending → processing → indexed)
   - Priority-based ranking (1-10) for search relevance
+  - **Document Preview**: Full content preview with metadata, tags, and usage statistics
+  - **Summary Toggle**: Optional AI-generated summaries (ON/OFF switch per document)
+  - **Custom Tags**: User-defined tags for organization
+  - **Ask About Document**: "Chiedimi qualcosa" feature focuses AI on specific document
+  - **Usage Tracking**: Counts how many times each document is referenced in AI responses
 - **External API Integration**:
   - Categories: Market Data, Regulations, Research, Client Systems, Other
   - Auth types: API Key, Bearer Token, Basic Auth, None
   - Per-consultant API key encryption using `encryptForConsultant()`
   - Configurable cache duration and data mapping
 - **Knowledge Searcher Service** (`server/services/knowledge-searcher.ts`):
-  - Sanitized search queries prevent SQL injection
-  - Searches across document content and titles with ILIKE
-  - Automatic API data sync with cache validation
-  - Returns prioritized results for AI context building
+  - `getKnowledgeContext()` loads ALL documents and APIs without filtering
+  - `trackDocumentUsage()` / `trackApiUsage()` increment usage counters
+  - Multi-tenant isolation: each consultant only sees their own documents
 - **AI Context Integration** (`server/consultant-context-builder.ts`):
-  - `searchKnowledgeBase()` searches documents based on user query
-  - `getActiveKnowledgeApis()` fetches cached API data
-  - Knowledge context injected into AI system prompt via `buildSystemPrompt()`
+  - `getKnowledgeContext()` loads complete knowledge base into context
+  - `focusedDocument` propagated for "Ask about this document" feature
+  - Knowledge base section added to `buildConsultantSystemPrompt()` in `ai-service.ts`
 - **Database Tables**:
-  - `consultant_knowledge_documents`: Document metadata and extracted content
+  - `consultant_knowledge_documents`: Document metadata, extractedContent, contentSummary, summaryEnabled, usageCount, tags
   - `consultant_knowledge_apis`: API configurations with encrypted credentials
   - `consultant_knowledge_api_cache`: Cached API responses with expiration
 - **Frontend Routes**:
-  - `/consultant/knowledge-documents`: Drag-drop upload, document list with filters
+  - `/consultant/knowledge-documents`: Drag-drop upload, document list with filters, preview modal
   - `/consultant/knowledge-apis`: API configuration with test connection feature
+- **Document Focus Hook** (`client/src/hooks/use-document-focus.ts`):
+  - Custom hook for "Ask me about this document" feature
+  - Uses sessionStorage and custom events to communicate between pages
+  - Clears focus after first use to prevent stale context
 ## Advanced Consultation Management System
 - **AI-powered Email Automation**: Generates personalized motivational emails using Google Gemini, requiring consultant approval. Features per-consultant SMTP and Gemini API key rotation.
 - **AI-Powered Client State Tracking**: Generates client current and ideal states from AI analysis of system context.
