@@ -180,6 +180,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
       });
 
+      // Initialize email journey records for new clients
+      if (user.role === 'client' && user.consultantId) {
+        console.log(`🔄 [NEW CLIENT] Initializing email journey for ${user.firstName} ${user.lastName}`);
+        
+        try {
+          // 1. Create client_email_automation record (disabled by default - drafts mode)
+          await storage.upsertClientEmailAutomation({
+            consultantId: user.consultantId,
+            clientId: user.id,
+            enabled: false, // Drafts mode by default - consultant can enable auto-send later
+          });
+          console.log(`✅ [NEW CLIENT] Email automation record created (drafts mode)`);
+          
+          // 2. Create client_state_tracking with placeholder values
+          // These should be updated by the consultant during onboarding
+          await storage.upsertClientState({
+            clientId: user.id,
+            consultantId: user.consultantId,
+            currentState: `Nuovo cliente - ${user.firstName} sta iniziando il percorso`,
+            idealState: `Da definire durante la prima consulenza`,
+            internalBenefit: null,
+            externalBenefit: null,
+            mainObstacle: null,
+            pastAttempts: null,
+            currentActions: null,
+            futureVision: null,
+            motivationDrivers: null,
+          });
+          console.log(`✅ [NEW CLIENT] Client state tracking record created (placeholder)`);
+        } catch (initError: any) {
+          // Log but don't fail registration if initialization fails
+          console.error(`⚠️  [NEW CLIENT] Failed to initialize email journey records:`, initError.message);
+        }
+      }
+
       // Generate JWT token
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
