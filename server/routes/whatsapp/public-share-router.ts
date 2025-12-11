@@ -964,6 +964,28 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                 .limit(1);
               
               if (!existingBookingPost) {
+                // ══════════════════════════════════════════════════════════════════════
+                // CHECK: Cerca booking cancellato recentemente per riutilizzare i dati
+                // Solo booking cancellati nelle ultime 24 ore per evitare dati stantii
+                // ══════════════════════════════════════════════════════════════════════
+                const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                const [recentlyCancelledBooking] = await db
+                  .select()
+                  .from(schema.appointmentBookings)
+                  .where(
+                    and(
+                      eq(schema.appointmentBookings.publicConversationId, conversation.id),
+                      eq(schema.appointmentBookings.status, 'cancelled'),
+                      sql`${schema.appointmentBookings.updatedAt} > ${twentyFourHoursAgo.toISOString()}`
+                    )
+                  )
+                  .orderBy(desc(schema.appointmentBookings.updatedAt))
+                  .limit(1);
+                
+                if (recentlyCancelledBooking) {
+                  console.log(`   📋 [CANCELLED BOOKING FOUND] Found recently cancelled booking (within 24h) with email: ${recentlyCancelledBooking.clientEmail}, phone: ${recentlyCancelledBooking.clientPhone}`);
+                }
+                
                 // AI PRE-CHECK: Determina se analizzare per nuovo booking
                 const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
                 const shouldAnalyze = await shouldAnalyzeForBooking(message, false, aiProvider.client);
@@ -1001,6 +1023,27 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                     const extractionResult = extracted as BookingExtractionResult;
                     console.log(`   📊 Extraction: hasAllData=${extractionResult.hasAllData}, isConfirming=${extractionResult.isConfirming}`);
                     console.log(`   📋 Data: date=${extractionResult.date}, time=${extractionResult.time}, email=${extractionResult.email}, phone=${extractionResult.phone}`);
+                    
+                    // ══════════════════════════════════════════════════════════════════════
+                    // FILL MISSING DATA: Se mancano email/phone, usa i dati del booking cancellato
+                    // ══════════════════════════════════════════════════════════════════════
+                    if (recentlyCancelledBooking) {
+                      if (!extractionResult.email && recentlyCancelledBooking.clientEmail) {
+                        extractionResult.email = recentlyCancelledBooking.clientEmail;
+                        console.log(`   🔄 [REUSE] Filled email from cancelled booking: ${extractionResult.email}`);
+                      }
+                      if (!extractionResult.phone && recentlyCancelledBooking.clientPhone) {
+                        extractionResult.phone = recentlyCancelledBooking.clientPhone;
+                        console.log(`   🔄 [REUSE] Filled phone from cancelled booking: ${extractionResult.phone}`);
+                      }
+                      if (!extractionResult.name && recentlyCancelledBooking.clientName) {
+                        extractionResult.name = recentlyCancelledBooking.clientName;
+                        console.log(`   🔄 [REUSE] Filled name from cancelled booking: ${extractionResult.name}`);
+                      }
+                      // Ricalcola hasAllData dopo aver riempito i dati mancanti
+                      extractionResult.hasAllData = !!(extractionResult.date && extractionResult.time && extractionResult.phone && extractionResult.email);
+                      console.log(`   📊 [AFTER REUSE] hasAllData=${extractionResult.hasAllData}`);
+                    }
                     
                     // Per link pubblici: richiedi solo date, time, email (phone è opzionale)
                     const hasRequiredWebData = extractionResult.date && extractionResult.time && extractionResult.email;

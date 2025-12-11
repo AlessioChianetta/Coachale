@@ -1,6 +1,26 @@
-import { GoogleGenAI } from "@google/genai";
+import { GeminiClient } from "../ai/provider-factory";
 
 const DUPLICATE_ACTION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minuti
+
+function extractResponseText(response: any): string {
+  try {
+    if (response && response.response && typeof response.response.text === 'function') {
+      return response.response.text() || '';
+    }
+    if (response && typeof response.text === 'function') {
+      return response.text() || '';
+    }
+    if (response && typeof response.text === 'string') {
+      return response.text || '';
+    }
+    if (response?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      return response.response.candidates[0].content.parts[0].text;
+    }
+  } catch (error: any) {
+    console.warn(`   ⚠️ [extractResponseText] Error: ${error.message}`);
+  }
+  return '';
+}
 
 export interface LastCompletedAction {
   type: 'MODIFY' | 'CANCEL' | 'ADD_ATTENDEES';
@@ -81,7 +101,7 @@ export function isActionAlreadyCompleted(
 export async function shouldAnalyzeForBooking(
   message: string,
   hasExistingBooking: boolean,
-  aiClient: GoogleGenAI
+  aiClient: GeminiClient
 ): Promise<boolean> {
   const trimmedMessage = message.trim();
   
@@ -113,12 +133,12 @@ REGOLE IMPORTANTI:
 
 Rispondi SOLO: SÌ oppure NO`;
 
-      const response = await aiClient.models.generateContent({
+      const response = await aiClient.generateContent({
         model: "gemini-2.5-flash",
-        contents: prompt,
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
       });
       
-      const answer = response.text?.trim().toUpperCase() || '';
+      const answer = extractResponseText(response).trim().toUpperCase();
       const shouldAnalyze = answer.includes('SÌ') || answer.includes('SI') || answer === 'YES';
       
       console.log(`   🤖 [AI INTUITION] Response: "${answer}" → shouldAnalyze: ${shouldAnalyze}`);
