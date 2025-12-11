@@ -56,7 +56,15 @@ import {
   BarChart3,
   X,
   Sparkles,
+  Cloud,
+  ChevronDown,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import GoogleDriveBrowser from "@/components/google-drive/GoogleDriveBrowser";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -191,6 +199,7 @@ export default function ConsultantKnowledgeDocuments() {
   const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [showAskConfirmDialog, setShowAskConfirmDialog] = useState(false);
+  const [isGoogleDriveOpen, setIsGoogleDriveOpen] = useState(false);
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -573,6 +582,44 @@ export default function ConsultantKnowledgeDocuments() {
               </div>
             </div>
           </div>
+
+          <Card className="mb-6">
+            <Collapsible open={isGoogleDriveOpen} onOpenChange={setIsGoogleDriveOpen}>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <Cloud className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Importa da Google Drive</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          Importa documenti direttamente dal tuo Google Drive
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronDown
+                      className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+                        isGoogleDriveOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  <GoogleDriveBrowser
+                    apiPrefix="/api/consultant"
+                    onImportSuccess={(count) => {
+                      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/stats"] });
+                    }}
+                  />
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
             <Card className="lg:col-span-1 border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-amber-400 transition-colors">

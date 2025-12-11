@@ -3,6 +3,7 @@
  * Extracts text from various file types for Knowledge Base
  * Supports: PDF, DOCX, TXT, MD, RTF, CSV, XLSX, XLS, PPTX, ODT
  * Audio transcription: MP3, WAV, M4A, OGG, WEBM
+ * Uses Vertex AI as priority for audio transcription when credentials are available
  */
 
 import fs from 'fs/promises';
@@ -12,6 +13,17 @@ import { PDFParse } from 'pdf-parse';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import officeparser from 'officeparser';
+import { VertexAI } from '@google-cloud/vertexai';
+
+export interface VertexAICredentials {
+  projectId: string;
+  location: string;
+  credentials: {
+    client_email: string;
+    private_key: string;
+    [key: string]: any;
+  };
+}
 
 /**
  * Extract text from PDF file
@@ -270,60 +282,129 @@ export async function extractTextFromODT(filePath: string): Promise<string> {
 }
 
 /**
- * Transcribe audio file using Gemini API
+ * Transcribe audio file using Vertex AI (priority) or Google AI Studio (fallback)
  * Supports: MP3, WAV, M4A, OGG, WEBM
+ * Uses Vertex AI when credentials are provided, falls back to GEMINI_API_KEY otherwise
  */
-export async function transcribeAudioWithGemini(filePath: string, mimeType: string): Promise<string> {
+export async function transcribeAudioWithGemini(
+  filePath: string, 
+  mimeType: string,
+  vertexCredentials?: VertexAICredentials
+): Promise<string> {
   console.log(`🎵 [AUDIO] Transcribing audio file: ${filePath}`);
   
+  const MAX_RETRIES = 3;
+  const BASE_DELAY_MS = 1000;
+  
   try {
-    const { GoogleGenAI } = await import('@google/genai');
-    
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error('GEMINI_API_KEY is not configured');
-    }
-    
-    const genAI = new GoogleGenAI({ apiKey });
-    
-    // Read the audio file
     const audioBuffer = await fs.readFile(filePath);
     const base64Audio = audioBuffer.toString('base64');
     
-    // Get file stats for logging
     const stats = await fs.stat(filePath);
     const fileSizeMB = (stats.size / (1024 * 1024)).toFixed(2);
     console.log(`📊 [AUDIO] File size: ${fileSizeMB} MB`);
     
-    // Use Gemini to transcribe
-    const model = genAI.models.get('gemini-2.0-flash');
-    
-    const response = await model.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: base64Audio,
-            },
-          },
-          {
-            text: 'Please transcribe this audio file completely and accurately. Provide only the transcription text without any additional commentary or formatting. If there are multiple speakers, indicate speaker changes. If you cannot understand parts of the audio, indicate [inaudible]. Transcribe in the original language of the audio.',
-          },
-        ],
-      }],
-    });
-    
-    const transcription = response.text?.trim() || '';
-    
-    console.log(`✅ [AUDIO] Transcribed ${transcription.length} characters`);
-    
-    if (!transcription || transcription.length === 0) {
-      throw new Error('Audio transcription returned empty result');
+    let finalMimeType = mimeType;
+    if (mimeType.includes("opus") || mimeType === "audio/ogg; codecs=opus") {
+      finalMimeType = "audio/ogg";
+    } else if (mimeType === "audio/webm") {
+      finalMimeType = "audio/ogg";
+    } else if (!["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/mp4"].includes(mimeType)) {
+      console.warn(`⚠️ [AUDIO] Unsupported audio format: ${mimeType}, trying as audio/ogg`);
+      finalMimeType = "audio/ogg";
     }
     
-    return `[Audio Transcription]\n\n${transcription}`;
+    const useVertexAI = !!vertexCredentials;
+    console.log(`🎵 [AUDIO] Using ${useVertexAI ? 'Vertex AI' : 'Google AI Studio'} for transcription (MIME: ${finalMimeType})`);
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        let transcription: string;
+        
+        if (useVertexAI && vertexCredentials) {
+          const vertexAI = new VertexAI({
+            project: vertexCredentials.projectId,
+            location: vertexCredentials.location,
+            googleAuthOptions: {
+              credentials: vertexCredentials.credentials,
+            },
+          });
+          
+          const model = vertexAI.preview.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+          
+          const result = await model.generateContent({
+            contents: [{
+              role: 'user',
+              parts: [
+                {
+                  text: 'Please transcribe this audio file completely and accurately. Provide only the transcription text without any additional commentary or formatting. If there are multiple speakers, indicate speaker changes. If you cannot understand parts of the audio, indicate [inaudible]. Transcribe in the original language of the audio.',
+                },
+                {
+                  inlineData: {
+                    mimeType: finalMimeType,
+                    data: base64Audio,
+                  },
+                },
+              ],
+            }],
+          });
+          
+          const candidate = result.response?.candidates?.[0];
+          transcription = candidate?.content?.parts?.[0]?.text?.trim() || '';
+        } else {
+          const apiKey = process.env.GEMINI_API_KEY;
+          if (!apiKey) {
+            throw new Error('GEMINI_API_KEY is not configured and no Vertex AI credentials provided');
+          }
+          
+          const { GoogleGenAI } = await import('@google/genai');
+          const genAI = new GoogleGenAI({ apiKey });
+          
+          const response = await genAI.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{
+              role: 'user',
+              parts: [
+                {
+                  text: 'Please transcribe this audio file completely and accurately. Provide only the transcription text without any additional commentary or formatting. If there are multiple speakers, indicate speaker changes. If you cannot understand parts of the audio, indicate [inaudible]. Transcribe in the original language of the audio.',
+                },
+                {
+                  inlineData: {
+                    mimeType: finalMimeType,
+                    data: base64Audio,
+                  },
+                },
+              ],
+            }],
+          });
+          
+          transcription = response.text?.trim() || '';
+        }
+        
+        console.log(`✅ [AUDIO] Transcribed ${transcription.length} characters via ${useVertexAI ? 'Vertex AI' : 'Google AI Studio'}`);
+        
+        if (!transcription || transcription.length === 0) {
+          throw new Error('Audio transcription returned empty result');
+        }
+        
+        return `[Audio Transcription]\n\n${transcription}`;
+        
+      } catch (error: any) {
+        const status = error?.status || error?.response?.status || error?.code;
+        const isRetryable = status === 503 || status === 429 || status === 500 || status === 'UNAVAILABLE';
+        
+        if (isRetryable && attempt < MAX_RETRIES) {
+          const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+          console.warn(`⚠️ [AUDIO] Transcription attempt ${attempt}/${MAX_RETRIES} failed (status: ${status}), retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+    
+    throw new Error('Max retries exceeded for audio transcription');
   } catch (error: any) {
     console.error(`❌ [AUDIO] Transcription failed:`, error.message);
     throw new Error(`Failed to transcribe audio: ${error.message}`);
@@ -341,10 +422,12 @@ export type KnowledgeFileType =
 
 /**
  * Extract text from file based on MIME type
+ * Supports optional Vertex AI credentials for audio transcription
  */
 export async function extractTextFromFile(
   filePath: string,
-  mimeType: string
+  mimeType: string,
+  vertexCredentials?: VertexAICredentials
 ): Promise<string> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('📚 [DOCUMENT PROCESSOR] Starting text extraction');
@@ -413,31 +496,31 @@ export async function extractTextFromFile(
         extractedText = await extractTextFromODT(filePath);
         break;
       
-      // Audio files for transcription
+      // Audio files for transcription (uses Vertex AI when credentials provided)
       case 'audio/mpeg':
       case 'audio/mp3':
-        extractedText = await transcribeAudioWithGemini(filePath, 'audio/mpeg');
+        extractedText = await transcribeAudioWithGemini(filePath, 'audio/mpeg', vertexCredentials);
         break;
       
       case 'audio/wav':
       case 'audio/wave':
       case 'audio/x-wav':
-        extractedText = await transcribeAudioWithGemini(filePath, 'audio/wav');
+        extractedText = await transcribeAudioWithGemini(filePath, 'audio/wav', vertexCredentials);
         break;
       
       case 'audio/mp4':
       case 'audio/m4a':
       case 'audio/x-m4a':
-        extractedText = await transcribeAudioWithGemini(filePath, 'audio/mp4');
+        extractedText = await transcribeAudioWithGemini(filePath, 'audio/mp4', vertexCredentials);
         break;
       
       case 'audio/ogg':
       case 'audio/vorbis':
-        extractedText = await transcribeAudioWithGemini(filePath, 'audio/ogg');
+        extractedText = await transcribeAudioWithGemini(filePath, 'audio/ogg', vertexCredentials);
         break;
       
       case 'audio/webm':
-        extractedText = await transcribeAudioWithGemini(filePath, 'audio/webm');
+        extractedText = await transcribeAudioWithGemini(filePath, 'audio/webm', vertexCredentials);
         break;
       
       default:
@@ -463,15 +546,15 @@ export async function extractTextFromFile(
         } else if (ext === '.odt') {
           extractedText = await extractTextFromODT(filePath);
         } else if (ext === '.mp3') {
-          extractedText = await transcribeAudioWithGemini(filePath, 'audio/mpeg');
+          extractedText = await transcribeAudioWithGemini(filePath, 'audio/mpeg', vertexCredentials);
         } else if (ext === '.wav') {
-          extractedText = await transcribeAudioWithGemini(filePath, 'audio/wav');
+          extractedText = await transcribeAudioWithGemini(filePath, 'audio/wav', vertexCredentials);
         } else if (ext === '.m4a') {
-          extractedText = await transcribeAudioWithGemini(filePath, 'audio/mp4');
+          extractedText = await transcribeAudioWithGemini(filePath, 'audio/mp4', vertexCredentials);
         } else if (ext === '.ogg') {
-          extractedText = await transcribeAudioWithGemini(filePath, 'audio/ogg');
+          extractedText = await transcribeAudioWithGemini(filePath, 'audio/ogg', vertexCredentials);
         } else if (ext === '.webm') {
-          extractedText = await transcribeAudioWithGemini(filePath, 'audio/webm');
+          extractedText = await transcribeAudioWithGemini(filePath, 'audio/webm', vertexCredentials);
         } else {
           throw new Error(`Unsupported file type: ${mimeType} (extension: ${ext})`);
         }

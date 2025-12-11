@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { authenticateToken, requireRole, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { consultantAvailabilitySettings, consultantKnowledgeDocuments } from "../../shared/schema";
+import { consultantAvailabilitySettings, consultantKnowledgeDocuments, vertexAiSettings } from "../../shared/schema";
 import { eq } from "drizzle-orm";
-import { extractTextFromFile } from "../services/document-processor";
+import { extractTextFromFile, type VertexAICredentials } from "../services/document-processor";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -255,17 +255,16 @@ router.post(
   authenticateToken,
   requireRole("consultant"),
   async (req: AuthRequest, res) => {
-    let tempFilePath: string | null = null;
-    let finalFilePath: string | null = null;
-    
     try {
       const consultantId = req.user!.id;
-      const { fileId, title, description, category, priority } = req.body;
+      const { fileIds, fileId, title, description, category, priority } = req.body;
       
-      if (!fileId) {
+      const idsToImport: string[] = fileIds || (fileId ? [fileId] : []);
+      
+      if (idsToImport.length === 0) {
         return res.status(400).json({
           success: false,
-          error: "File ID is required"
+          error: "At least one file ID is required"
         });
       }
       
@@ -277,114 +276,172 @@ router.post(
         });
       }
       
-      console.log(`📥 [GOOGLE DRIVE] Importing file ${fileId} for consultant ${consultantId}`);
+      console.log(`📥 [GOOGLE DRIVE] Importing ${idsToImport.length} file(s) for consultant ${consultantId}`);
       
-      const { filePath, fileName, mimeType } = await downloadDriveFile(consultantId, fileId);
-      tempFilePath = filePath;
-      
-      const ALLOWED_MIME_TYPES: Record<string, "pdf" | "docx" | "txt"> = {
+      const ALLOWED_MIME_TYPES: Record<string, "pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "ppt" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio"> = {
         "application/pdf": "pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
         "application/msword": "docx",
         "text/plain": "txt",
-        "text/markdown": "txt",
-        "text/csv": "txt",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "docx",
-        "application/vnd.ms-excel": "docx"
+        "text/markdown": "md",
+        "text/x-markdown": "md",
+        "text/rtf": "rtf",
+        "application/rtf": "rtf",
+        "application/vnd.oasis.opendocument.text": "odt",
+        "text/csv": "csv",
+        "application/csv": "csv",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+        "application/vnd.ms-excel": "xls",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+        "application/vnd.ms-powerpoint": "ppt",
+        "audio/mpeg": "mp3",
+        "audio/mp3": "mp3",
+        "audio/wav": "wav",
+        "audio/wave": "wav",
+        "audio/x-wav": "wav",
+        "audio/mp4": "m4a",
+        "audio/x-m4a": "m4a",
+        "audio/m4a": "m4a",
+        "audio/ogg": "ogg",
+        "audio/webm": "webm_audio"
       };
       
-      const fileType = ALLOWED_MIME_TYPES[mimeType];
-      if (!fileType) {
-        await fs.unlink(tempFilePath).catch(() => {});
-        return res.status(400).json({
-          success: false,
-          error: `Unsupported file type: ${mimeType}`
-        });
-      }
+      const results: { imported: number; failed: number; errors: string[] } = {
+        imported: 0,
+        failed: 0,
+        errors: []
+      };
       
-      const fileStats = await fs.stat(tempFilePath);
-      const fileSize = fileStats.size;
-      
-      const uploadDir = await ensureUploadDir();
-      const uniqueFileName = `${crypto.randomUUID()}${path.extname(fileName)}`;
-      finalFilePath = path.join(uploadDir, uniqueFileName);
-      
-      await fs.copyFile(tempFilePath, finalFilePath);
-      await fs.unlink(tempFilePath).catch(() => {});
-      tempFilePath = null;
-      
-      const documentId = crypto.randomUUID();
-      const documentTitle = title?.trim() || fileName.replace(/\.[^/.]+$/, '');
-      
-      const [newDocument] = await db
-        .insert(consultantKnowledgeDocuments)
-        .values({
-          id: documentId,
-          consultantId,
-          title: documentTitle,
-          description: description?.trim() || `Imported from Google Drive: ${fileName}`,
-          category: category || "other",
-          fileName,
-          fileType,
-          fileSize,
-          filePath: finalFilePath,
-          priority: priority ? parseInt(priority, 10) : 5,
-          status: "processing"
-        })
-        .returning();
-      
-      console.log(`📄 [GOOGLE DRIVE] Created document: "${documentTitle}" (status: processing)`);
-      
-      (async () => {
+      for (const currentFileId of idsToImport) {
+        let tempFilePath: string | null = null;
+        let finalFilePath: string | null = null;
+        
         try {
-          console.log(`🔄 [GOOGLE DRIVE] Extracting text from: ${fileName}`);
-          const extractedContent = await extractTextFromFile(finalFilePath!, mimeType);
+          const { filePath, fileName, mimeType } = await downloadDriveFile(consultantId, currentFileId);
+          tempFilePath = filePath;
           
-          await db
-            .update(consultantKnowledgeDocuments)
-            .set({
-              extractedContent,
-              status: "indexed",
-              updatedAt: new Date()
-            })
-            .where(eq(consultantKnowledgeDocuments.id, documentId));
+          const fileType = ALLOWED_MIME_TYPES[mimeType];
+          if (!fileType) {
+            await fs.unlink(tempFilePath).catch(() => {});
+            results.failed++;
+            results.errors.push(`${fileName}: Unsupported file type (${mimeType})`);
+            continue;
+          }
           
-          console.log(`✅ [GOOGLE DRIVE] Document indexed: "${documentTitle}"`);
-        } catch (extractError: any) {
-          console.error(`❌ [GOOGLE DRIVE] Text extraction failed for ${fileName}:`, extractError);
-          await db
-            .update(consultantKnowledgeDocuments)
-            .set({
-              status: "failed",
-              updatedAt: new Date()
+          const fileStats = await fs.stat(tempFilePath);
+          const fileSize = fileStats.size;
+          
+          const uploadDir = await ensureUploadDir();
+          const uniqueFileName = `${crypto.randomUUID()}${path.extname(fileName)}`;
+          finalFilePath = path.join(uploadDir, uniqueFileName);
+          
+          await fs.copyFile(tempFilePath, finalFilePath);
+          await fs.unlink(tempFilePath).catch(() => {});
+          tempFilePath = null;
+          
+          const documentId = crypto.randomUUID();
+          const documentTitle = (idsToImport.length === 1 && title?.trim()) 
+            ? title.trim() 
+            : fileName.replace(/\.[^/.]+$/, '');
+          
+          const [newDocument] = await db
+            .insert(consultantKnowledgeDocuments)
+            .values({
+              id: documentId,
+              consultantId,
+              title: documentTitle,
+              description: (idsToImport.length === 1 && description?.trim()) 
+                ? description.trim() 
+                : `Imported from Google Drive: ${fileName}`,
+              category: category || "other",
+              fileName,
+              fileType,
+              fileSize,
+              filePath: finalFilePath,
+              priority: priority ? parseInt(priority, 10) : 5,
+              status: "processing"
             })
-            .where(eq(consultantKnowledgeDocuments.id, documentId));
+            .returning();
+          
+          console.log(`📄 [GOOGLE DRIVE] Created document: "${documentTitle}" (status: processing)`);
+          
+          const storedFilePath = finalFilePath;
+          const storedMimeType = mimeType;
+          const storedFileName = fileName;
+          (async () => {
+            try {
+              console.log(`🔄 [GOOGLE DRIVE] Extracting text from: ${storedFileName}`);
+              
+              let vertexCredentials: VertexAICredentials | undefined;
+              if (storedMimeType.startsWith('audio/')) {
+                const [aiSettings] = await db
+                  .select()
+                  .from(vertexAiSettings)
+                  .where(eq(vertexAiSettings.userId, consultantId))
+                  .limit(1);
+                
+                if (aiSettings?.serviceAccountJson) {
+                  const serviceAccount = JSON.parse(aiSettings.serviceAccountJson);
+                  vertexCredentials = {
+                    projectId: serviceAccount.project_id,
+                    location: 'us-central1',
+                    credentials: serviceAccount
+                  };
+                  console.log(`🔑 [GOOGLE DRIVE] Using Vertex AI credentials for audio transcription`);
+                }
+              }
+              
+              const extractedContent = await extractTextFromFile(storedFilePath, storedMimeType, vertexCredentials);
+              
+              await db
+                .update(consultantKnowledgeDocuments)
+                .set({
+                  extractedContent,
+                  status: "indexed",
+                  updatedAt: new Date()
+                })
+                .where(eq(consultantKnowledgeDocuments.id, documentId));
+              
+              console.log(`✅ [GOOGLE DRIVE] Document indexed: "${documentTitle}"`);
+            } catch (extractError: any) {
+              console.error(`❌ [GOOGLE DRIVE] Text extraction failed for ${fileName}:`, extractError);
+              await db
+                .update(consultantKnowledgeDocuments)
+                .set({
+                  status: "failed",
+                  updatedAt: new Date()
+                })
+                .where(eq(consultantKnowledgeDocuments.id, documentId));
+            }
+          })();
+          
+          results.imported++;
+        } catch (fileError: any) {
+          console.error(`❌ [GOOGLE DRIVE] Error importing file ${currentFileId}:`, fileError);
+          results.failed++;
+          results.errors.push(fileError.message || `Failed to import file ${currentFileId}`);
+          
+          if (tempFilePath) {
+            await fs.unlink(tempFilePath).catch(() => {});
+          }
+          if (finalFilePath) {
+            await fs.unlink(finalFilePath).catch(() => {});
+          }
         }
-      })();
+      }
       
       res.json({
-        success: true,
-        data: {
-          id: newDocument.id,
-          title: newDocument.title,
-          fileName: newDocument.fileName,
-          status: newDocument.status
-        },
-        message: "Document imported successfully. Text extraction in progress."
+        success: results.imported > 0,
+        imported: results.imported,
+        failed: results.failed,
+        errors: results.errors.length > 0 ? results.errors : undefined,
+        message: `${results.imported} file(s) imported successfully${results.failed > 0 ? `, ${results.failed} failed` : ''}. Text extraction in progress.`
       });
     } catch (error: any) {
-      console.error("❌ [GOOGLE DRIVE] Error importing file:", error);
-      
-      if (tempFilePath) {
-        await fs.unlink(tempFilePath).catch(() => {});
-      }
-      if (finalFilePath) {
-        await fs.unlink(finalFilePath).catch(() => {});
-      }
-      
+      console.error("❌ [GOOGLE DRIVE] Error in import:", error);
       res.status(500).json({
         success: false,
-        error: error.message || "Failed to import file from Google Drive"
+        error: error.message || "Failed to import files from Google Drive"
       });
     }
   }

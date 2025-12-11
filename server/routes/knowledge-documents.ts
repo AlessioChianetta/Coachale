@@ -6,9 +6,11 @@ import {
   consultantKnowledgeDocuments,
   consultantKnowledgeApis,
   updateConsultantKnowledgeDocumentSchema,
+  vertexAiSettings,
 } from "../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { extractTextFromFile } from "../services/document-processor";
+import { extractTextFromFile, type VertexAICredentials } from "../services/document-processor";
+import { parseServiceAccountJson } from "../ai/provider-factory";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -203,7 +205,32 @@ router.post(
       (async () => {
         try {
           console.log(`🔄 [KNOWLEDGE DOCUMENTS] Extracting text from: ${file.originalname}`);
-          const extractedContent = await extractTextFromFile(finalFilePath!, file.mimetype);
+          
+          // Get Vertex AI credentials for audio transcription
+          let vertexCredentials: VertexAICredentials | undefined;
+          try {
+            const [aiSettings] = await db
+              .select()
+              .from(vertexAiSettings)
+              .where(eq(vertexAiSettings.userId, consultantId))
+              .limit(1);
+            
+            if (aiSettings?.serviceAccountJson && aiSettings.enabled) {
+              const parsedCredentials = await parseServiceAccountJson(aiSettings.serviceAccountJson);
+              if (parsedCredentials) {
+                vertexCredentials = {
+                  projectId: aiSettings.projectId,
+                  location: aiSettings.location || 'us-central1',
+                  credentials: parsedCredentials,
+                };
+                console.log(`🔑 [KNOWLEDGE DOCUMENTS] Using Vertex AI credentials for audio transcription`);
+              }
+            }
+          } catch (credError: any) {
+            console.warn(`⚠️ [KNOWLEDGE DOCUMENTS] Could not load Vertex AI credentials, will use fallback:`, credError.message);
+          }
+          
+          const extractedContent = await extractTextFromFile(finalFilePath!, file.mimetype, vertexCredentials);
 
           await db
             .update(consultantKnowledgeDocuments)

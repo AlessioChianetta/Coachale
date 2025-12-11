@@ -6,9 +6,12 @@ import {
   clientKnowledgeDocuments,
   clientKnowledgeApis,
   updateClientKnowledgeDocumentSchema,
+  vertexAiSettings,
+  users,
 } from "../../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { extractTextFromFile } from "../../services/document-processor";
+import { extractTextFromFile, type VertexAICredentials } from "../../services/document-processor";
+import { parseServiceAccountJson } from "../../ai/provider-factory";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -203,7 +206,41 @@ router.post(
       (async () => {
         try {
           console.log(`🔄 [CLIENT KNOWLEDGE DOCUMENTS] Extracting text from: ${file.originalname}`);
-          const extractedContent = await extractTextFromFile(finalFilePath!, file.mimetype);
+          
+          // Get Vertex AI credentials from the client's consultant for audio transcription
+          let vertexCredentials: VertexAICredentials | undefined;
+          try {
+            // Get the client's consultantId
+            const [client] = await db
+              .select({ consultantId: users.consultantId })
+              .from(users)
+              .where(eq(users.id, clientId))
+              .limit(1);
+            
+            if (client?.consultantId) {
+              const [aiSettings] = await db
+                .select()
+                .from(vertexAiSettings)
+                .where(eq(vertexAiSettings.userId, client.consultantId))
+                .limit(1);
+              
+              if (aiSettings?.serviceAccountJson && aiSettings.enabled) {
+                const parsedCredentials = await parseServiceAccountJson(aiSettings.serviceAccountJson);
+                if (parsedCredentials) {
+                  vertexCredentials = {
+                    projectId: aiSettings.projectId,
+                    location: aiSettings.location || 'us-central1',
+                    credentials: parsedCredentials,
+                  };
+                  console.log(`🔑 [CLIENT KNOWLEDGE DOCUMENTS] Using Vertex AI credentials for audio transcription`);
+                }
+              }
+            }
+          } catch (credError: any) {
+            console.warn(`⚠️ [CLIENT KNOWLEDGE DOCUMENTS] Could not load Vertex AI credentials, will use fallback:`, credError.message);
+          }
+          
+          const extractedContent = await extractTextFromFile(finalFilePath!, file.mimetype, vertexCredentials);
 
           await db
             .update(clientKnowledgeDocuments)
