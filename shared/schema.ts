@@ -4598,3 +4598,225 @@ export type UpdateConsultantKnowledgeApi = z.infer<typeof updateConsultantKnowle
 
 export type ConsultantKnowledgeApiCache = typeof consultantKnowledgeApiCache.$inferSelect;
 export type InsertConsultantKnowledgeApiCache = typeof consultantKnowledgeApiCache.$inferInsert;
+
+// ============================================
+// CLIENT KNOWLEDGE BASE TABLES
+// ============================================
+// Replica dell'infrastruttura Knowledge Base per i client (AI Assistant /client/ai-assistant)
+
+// Documenti della Knowledge Base Client - documenti caricati dal client per arricchire l'AI
+export const clientKnowledgeDocuments = pgTable("client_knowledge_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Document metadata
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category").$type<
+    "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other"
+  >().default("other").notNull(),
+  
+  // File information
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").$type<"pdf" | "docx" | "txt">().notNull(),
+  fileSize: integer("file_size").notNull(),
+  filePath: text("file_path").notNull(),
+  
+  // Extracted content for AI search
+  extractedContent: text("extracted_content"),
+  contentSummary: text("content_summary"),
+  summaryEnabled: boolean("summary_enabled").default(false).notNull(),
+  keywords: jsonb("keywords").$type<string[]>().default(sql`'[]'::jsonb`),
+  tags: jsonb("tags").$type<string[]>().default(sql`'[]'::jsonb`),
+  
+  // Versioning
+  version: integer("version").default(1).notNull(),
+  previousVersionId: varchar("previous_version_id"),
+  
+  // Search optimization
+  priority: integer("priority").default(5).notNull(),
+  
+  // Processing status
+  status: text("status").$type<"uploading" | "processing" | "indexed" | "error">().default("uploading").notNull(),
+  errorMessage: text("error_message"),
+  
+  // Usage tracking
+  usageCount: integer("usage_count").default(0).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  clientIdx: index("client_knowledge_doc_client_idx").on(table.clientId),
+  categoryIdx: index("client_knowledge_doc_category_idx").on(table.category),
+  statusIdx: index("client_knowledge_doc_status_idx").on(table.status),
+}));
+
+// API esterne per Knowledge Base Client - configurazioni per interrogare servizi esterni
+export const clientKnowledgeApis = pgTable("client_knowledge_apis", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // API identification
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").$type<
+    "market_data" | "regulatory" | "benchmarking" | "news" | "analytics" | "custom"
+  >().default("custom").notNull(),
+  
+  // Connection settings
+  baseUrl: text("base_url").notNull(),
+  apiKey: text("api_key"), // Encrypted API key (uses same encryption as consultant)
+  authType: text("auth_type").$type<"none" | "api_key" | "bearer" | "basic" | "oauth">().default("api_key").notNull(),
+  authConfig: jsonb("auth_config").$type<{
+    headerName?: string;
+    prefix?: string;
+    username?: string;
+    oauthTokenUrl?: string;
+    oauthClientId?: string;
+  }>(),
+  
+  // Request configuration
+  defaultEndpoint: text("default_endpoint"),
+  endpoint: text("endpoint"),
+  requestMethod: text("request_method").$type<"GET" | "POST">().default("GET").notNull(),
+  requestHeaders: jsonb("request_headers").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
+  customHeaders: jsonb("custom_headers").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
+  requestParams: jsonb("request_params").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
+  
+  // Data extraction configuration
+  dataMapping: jsonb("data_mapping").$type<{
+    responsePath?: string;
+    fields?: Array<{
+      sourceField: string;
+      targetName: string;
+      transform?: "string" | "number" | "date" | "array";
+    }>;
+  }>(),
+  
+  // Caching & refresh settings
+  cacheDurationMinutes: integer("cache_duration_minutes").default(60).notNull(),
+  autoRefresh: boolean("auto_refresh").default(false).notNull(),
+  refreshIntervalMinutes: integer("refresh_interval_minutes").default(60),
+  
+  // Status & tracking
+  isActive: boolean("is_active").default(true).notNull(),
+  lastSyncAt: timestamp("last_sync_at"),
+  lastSyncStatus: text("last_sync_status").$type<"success" | "error" | "never">().default("never"),
+  lastSyncError: text("last_sync_error"),
+  
+  // Summary settings
+  summaryEnabled: boolean("summary_enabled").default(false).notNull(),
+  dataSummary: text("data_summary"),
+  
+  // Template info
+  templateId: text("template_id"),
+  templateName: text("template_name"),
+  
+  // Usage tracking
+  usageCount: integer("usage_count").default(0).notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  
+  // Priority for AI Controller
+  priority: integer("priority").default(5).notNull(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  clientIdx: index("client_knowledge_api_client_idx").on(table.clientId),
+  categoryIdx: index("client_knowledge_api_category_idx").on(table.category),
+  activeIdx: index("client_knowledge_api_active_idx").on(table.isActive),
+}));
+
+// Cache per dati API Client - evita chiamate ripetute
+export const clientKnowledgeApiCache = pgTable("client_knowledge_api_cache", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiConfigId: varchar("api_config_id").references(() => clientKnowledgeApis.id, { onDelete: "cascade" }).notNull(),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Cache key
+  cacheKey: text("cache_key").default("default").notNull(),
+  
+  // Cached data
+  cachedData: jsonb("cached_data").notNull(),
+  dataSummary: text("data_summary"),
+  
+  // Cache validity
+  expiresAt: timestamp("expires_at").notNull(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  apiConfigIdx: index("client_knowledge_cache_api_idx").on(table.apiConfigId),
+  expiresIdx: index("client_knowledge_cache_expires_idx").on(table.expiresAt),
+  cacheKeyIdx: index("client_knowledge_cache_key_idx").on(table.apiConfigId, table.cacheKey),
+}));
+
+// Validation schemas for Client Knowledge Documents
+export const insertClientKnowledgeDocumentSchema = createInsertSchema(clientKnowledgeDocuments).omit({
+  id: true,
+  extractedContent: true,
+  contentSummary: true,
+  summaryEnabled: true,
+  keywords: true,
+  tags: true,
+  version: true,
+  previousVersionId: true,
+  status: true,
+  errorMessage: true,
+  usageCount: true,
+  lastUsedAt: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  title: z.string().min(1, "Il titolo è obbligatorio"),
+  category: z.enum(["white_paper", "case_study", "manual", "normative", "research", "article", "other"]).default("other"),
+  priority: z.number().min(1).max(10).default(5),
+});
+
+export const updateClientKnowledgeDocumentSchema = insertClientKnowledgeDocumentSchema.partial().omit({
+  clientId: true,
+  fileName: true,
+  fileType: true,
+  fileSize: true,
+  filePath: true,
+});
+
+// Validation schemas for Client Knowledge APIs
+export const insertClientKnowledgeApiSchema = createInsertSchema(clientKnowledgeApis).omit({
+  id: true,
+  lastSyncAt: true,
+  lastSyncStatus: true,
+  lastSyncError: true,
+  usageCount: true,
+  lastUsedAt: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  name: z.string().min(1, "Il nome dell'API è obbligatorio"),
+  baseUrl: z.string().url("URL base non valido"),
+  category: z.enum(["market_data", "regulatory", "benchmarking", "news", "analytics", "custom"]).default("custom"),
+  authType: z.enum(["none", "api_key", "bearer", "basic", "oauth"]).default("api_key"),
+  requestMethod: z.enum(["GET", "POST"]).default("GET"),
+  cacheDurationMinutes: z.number().min(1).max(1440).default(60),
+  priority: z.number().min(1).max(10).default(5),
+});
+
+export const updateClientKnowledgeApiSchema = insertClientKnowledgeApiSchema.partial().omit({
+  clientId: true,
+});
+
+// Types for Client Knowledge Base
+export type ClientKnowledgeDocument = typeof clientKnowledgeDocuments.$inferSelect;
+export type InsertClientKnowledgeDocument = z.infer<typeof insertClientKnowledgeDocumentSchema>;
+export type UpdateClientKnowledgeDocument = z.infer<typeof updateClientKnowledgeDocumentSchema>;
+
+export type ClientKnowledgeApi = typeof clientKnowledgeApis.$inferSelect;
+export type InsertClientKnowledgeApi = z.infer<typeof insertClientKnowledgeApiSchema>;
+export type UpdateClientKnowledgeApi = z.infer<typeof updateClientKnowledgeApiSchema>;
+
+export type ClientKnowledgeApiCache = typeof clientKnowledgeApiCache.$inferSelect;
+export type InsertClientKnowledgeApiCache = typeof clientKnowledgeApiCache.$inferInsert;
