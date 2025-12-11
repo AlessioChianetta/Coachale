@@ -15,9 +15,25 @@ export interface LastCompletedAction {
   };
 }
 
+export interface ActionDetails {
+  newDate?: string;
+  newTime?: string;
+  attendees?: string[];
+}
+
+function arraysEqual(a: string[] | undefined, b: string[] | undefined): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((val, idx) => val === sortedB[idx]);
+}
+
 export function isActionAlreadyCompleted(
   lastCompletedAction: LastCompletedAction | null | undefined,
-  intent: string
+  intent: string,
+  newDetails?: ActionDetails
 ): boolean {
   if (!lastCompletedAction) return false;
   
@@ -27,12 +43,39 @@ export function isActionAlreadyCompleted(
   const now = Date.now();
   const timeSinceCompletion = now - completedAt;
   
-  if (timeSinceCompletion < DUPLICATE_ACTION_COOLDOWN_MS) {
-    console.log(`   ⏭️ [DUPLICATE] Action ${intent} already completed ${Math.round(timeSinceCompletion / 1000)}s ago - skipping`);
-    return true;
+  if (timeSinceCompletion >= DUPLICATE_ACTION_COOLDOWN_MS) {
+    return false;
   }
   
-  return false;
+  if (intent === 'MODIFY' && newDetails) {
+    const sameDateTime = 
+      lastCompletedAction.details?.newDate === newDetails.newDate &&
+      lastCompletedAction.details?.newTime === newDetails.newTime;
+    
+    if (!sameDateTime) {
+      console.log(`   ✅ [DEDUPE] MODIFY with different date/time - allowing action`);
+      console.log(`      Previous: ${lastCompletedAction.details?.newDate} ${lastCompletedAction.details?.newTime}`);
+      console.log(`      New: ${newDetails.newDate} ${newDetails.newTime}`);
+      return false;
+    }
+  }
+  
+  if (intent === 'ADD_ATTENDEES' && newDetails?.attendees) {
+    const sameAttendees = arraysEqual(
+      lastCompletedAction.details?.attendeesAdded,
+      newDetails.attendees
+    );
+    
+    if (!sameAttendees) {
+      console.log(`   ✅ [DEDUPE] ADD_ATTENDEES with different attendees - allowing action`);
+      console.log(`      Previous: ${lastCompletedAction.details?.attendeesAdded?.join(', ')}`);
+      console.log(`      New: ${newDetails.attendees.join(', ')}`);
+      return false;
+    }
+  }
+  
+  console.log(`   ⏭️ [DUPLICATE] Action ${intent} already completed ${Math.round(timeSinceCompletion / 1000)}s ago with same details - skipping`);
+  return true;
 }
 
 export async function shouldAnalyzeForBooking(

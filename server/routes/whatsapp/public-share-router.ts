@@ -26,7 +26,7 @@ import {
   BookingExtractionResult,
   ConversationMessage,
 } from '../../booking/booking-service';
-import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction } from '../../booking/booking-intent-detector';
+import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction, ActionDetails } from '../../booking/booking-intent-detector';
 
 const router = express.Router();
 
@@ -670,8 +670,12 @@ router.post(
                     console.log(`   🔄 [MODIFY] Processing modification request...`);
                     
                     // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-                    if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY')) {
-                      console.log(`   ⏭️ [MODIFY] Skipping - action already completed recently`);
+                    const modifyDetails: ActionDetails = {
+                      newDate: modificationResult.newDate,
+                      newTime: modificationResult.newTime
+                    };
+                    if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY', modifyDetails)) {
+                      console.log(`   ⏭️ [MODIFY] Skipping - same modification already completed recently`);
                     } else if (modificationResult.confirmedTimes >= 1) {
                       console.log(`   ✅ [MODIFY] Confirmed - proceeding with modification`);
                       
@@ -852,8 +856,11 @@ Se vuoi riprogrammare in futuro, scrivimi! 😊`;
                     console.log(`   📧 Attendees to add: ${modificationResult.attendees.join(', ')}`);
                     
                     // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-                    if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES')) {
-                      console.log(`   ⏭️ [ADD_ATTENDEES] Skipping - action already completed recently`);
+                    const addAttendeesDetails: ActionDetails = {
+                      attendees: modificationResult.attendees
+                    };
+                    if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES', addAttendeesDetails)) {
+                      console.log(`   ⏭️ [ADD_ATTENDEES] Skipping - same attendees already added recently`);
                     } else if (existingBooking.googleEventId) {
                       try {
                         const result = await addAttendeesToGoogleCalendarEvent(

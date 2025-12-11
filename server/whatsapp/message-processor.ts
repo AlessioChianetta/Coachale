@@ -38,7 +38,7 @@ import {
 } from "./instruction-blocks";
 import { generateSpeech } from "../ai/tts-service";
 import { shouldRespondWithAudio } from "./audio-response-utils";
-import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction } from "../booking/booking-intent-detector";
+import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction, ActionDetails } from "../booking/booking-intent-detector";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
 import * as path from "path";
@@ -2366,8 +2366,12 @@ REGOLE VALIDAZIONE hasAllData:
                 console.log('\n🔄 [MODIFY APPOINTMENT] Starting modification process...');
 
                 // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-                if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY')) {
-                  console.log(`   ⏭️ [MODIFY APPOINTMENT] Skipping - action already completed recently`);
+                const modifyDetails: ActionDetails = {
+                  newDate: extracted.newDate,
+                  newTime: extracted.newTime
+                };
+                if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY', modifyDetails)) {
+                  console.log(`   ⏭️ [MODIFY APPOINTMENT] Skipping - same modification already completed recently`);
                   return;
                 }
 
@@ -2576,8 +2580,11 @@ Se vuoi riprogrammare in futuro, scrivimi! 😊`;
               console.log('\n👥 [ADD ATTENDEES] Starting add attendees process...');
 
               // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-              if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES')) {
-                console.log(`   ⏭️ [ADD ATTENDEES] Skipping - action already completed recently`);
+              const addAttendeesDetails: ActionDetails = {
+                attendees: extracted.attendees
+              };
+              if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES', addAttendeesDetails)) {
+                console.log(`   ⏭️ [ADD ATTENDEES] Skipping - same attendees already added recently`);
                 return;
               }
 
