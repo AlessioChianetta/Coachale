@@ -428,18 +428,21 @@ export interface UserContext {
       id: string;
       title: string;
       category: string;
-      description: string | null;
-      extractedContent: string;
-      contentSummary: string | null;
+      description: string;
+      content: string; // Uniformato con consultant - contenuto completo
+      summary: string | null; // Riassunto opzionale
       priority: number;
+      usageCount: number;
+      lastUsedAt: string | null;
     }>;
     apiData: Array<{
       id: string;
       apiName: string;
       category: string;
-      description: string | null;
+      description: string;
       data: any;
-      lastSync: Date | null;
+      lastSync: string; // Uniformato con consultant - stringa ISO
+      usageCount: number;
     }>;
     summary: string;
     totalDocuments: number;
@@ -1918,37 +1921,55 @@ export async function buildUserContext(
 
   // ========================================
   // KNOWLEDGE BASE: Load client documents and APIs for AI context
+  // ALWAYS load (even if empty) so AI knows the feature exists
   // ========================================
   if (shouldLoadKnowledgeBase) {
     try {
+      console.log(`📚 [Knowledge Base] Loading ALL knowledge content for client (no filtering)...`);
       const knowledgeContext = await getClientKnowledgeContext(clientId);
-      if (knowledgeContext.totalDocuments > 0 || knowledgeContext.totalApis > 0) {
-        context.knowledgeBase = {
-          documents: knowledgeContext.documents.map(doc => ({
-            id: doc.id,
-            title: doc.title,
-            category: doc.category,
-            description: doc.description,
-            extractedContent: doc.extractedContent,
-            contentSummary: doc.contentSummary,
-            priority: doc.priority,
-          })),
-          apiData: knowledgeContext.apiData.map(api => ({
-            id: api.id,
-            apiName: api.apiName,
-            category: api.category,
-            description: api.description,
-            data: api.data,
-            lastSync: api.lastSync,
-          })),
-          summary: knowledgeContext.summary,
-          totalDocuments: knowledgeContext.totalDocuments,
-          totalApis: knowledgeContext.totalApis,
-        };
-        console.log(`📚 [AI Context] Added Knowledge Base: ${knowledgeContext.totalDocuments} docs, ${knowledgeContext.totalApis} APIs`);
+      
+      // SEMPRE carica la knowledge base, anche se vuota (così l'AI sa che esiste)
+      context.knowledgeBase = {
+        documents: knowledgeContext.documents.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          category: doc.category,
+          description: doc.description || '',
+          content: doc.extractedContent, // TUTTO il contenuto, non troncato (uniformato con consultant)
+          summary: doc.contentSummary || null, // Riassunto solo se abilitato dall'utente
+          priority: doc.priority,
+          usageCount: doc.usageCount,
+          lastUsedAt: doc.lastUsedAt?.toISOString() || null,
+        })),
+        apiData: knowledgeContext.apiData.map(api => ({
+          id: api.id,
+          apiName: api.apiName,
+          category: api.category,
+          description: api.description || '',
+          data: api.data, // TUTTI i dati API
+          lastSync: api.lastSync?.toISOString() || '',
+          usageCount: api.usageCount,
+        })),
+        summary: knowledgeContext.summary,
+        totalDocuments: knowledgeContext.totalDocuments,
+        totalApis: knowledgeContext.totalApis,
+      };
+      
+      if (knowledgeContext.documents.length > 0 || knowledgeContext.apiData.length > 0) {
+        console.log(`✅ [Knowledge Base] Loaded ALL content: ${knowledgeContext.documents.length} documents, ${knowledgeContext.apiData.length} API sources`);
+      } else {
+        console.log(`ℹ️ [Knowledge Base] No documents or API data uploaded yet`);
       }
     } catch (error: any) {
       console.error(`❌ [AI Context] Failed to load Knowledge Base:`, error.message);
+      // Imposta un contesto vuoto così l'AI sa che la funzionalità esiste
+      context.knowledgeBase = {
+        documents: [],
+        apiData: [],
+        summary: 'Knowledge Base non ancora configurata',
+        totalDocuments: 0,
+        totalApis: 0,
+      };
     }
   }
 

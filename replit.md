@@ -1,5 +1,5 @@
 # Overview
-This full-stack web application is a consultation platform connecting consultants with clients. It facilitates exercise assignment, progress tracking, and performance analytics. The platform aims to provide personalized financial insights via an integrated AI assistant, leveraging real-time financial data for context-aware advice, alongside advanced client management and communication tools.
+This full-stack web application is a consultation platform connecting consultants with clients, facilitating exercise assignment, progress tracking, and performance analytics. It provides personalized financial insights via an integrated AI assistant, leveraging real-time financial data for context-aware advice, alongside advanced client management and communication tools. The platform aims to enhance consultant-client interactions and streamline financial guidance.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -10,139 +10,65 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Frontend**: React 18, TypeScript, Vite, TanStack React Query, Wouter, shadcn/ui, Tailwind CSS, React Hook Form, Zod.
 - **Backend**: Express.js, TypeScript, JWT, bcrypt, PostgreSQL (Drizzle ORM), Multer.
 ## Data Management
-- **Database**: PostgreSQL (Supabase) with Drizzle ORM (node-postgres adapter) and pgBouncer for connection pooling.
+- **Database**: PostgreSQL (Supabase) with Drizzle ORM and pgBouncer.
 - **Alternative Storage**: CSV and Excel.
-- **File Storage**: Dedicated system for exercise attachments and user uploads.
 - **Schema**: Supports users, exercises, assignments, submissions, consultations, goals, and analytics.
 ## Authentication & Authorization
 - **JWT tokens** for client-side authentication.
 - **Role-based access control** (consultant/client) via middleware.
 - **Secure password handling** using bcrypt.
-- **Protected API endpoints** with token validation.
 ## UI/UX Decisions
-- Uses `shadcn/ui` and `Tailwind CSS` for a modern, accessible, and responsive design.
-- Interactive guided tours via `Driver.js` for onboarding and feature explanation, with Italian localization and custom styling.
-- **Categorized Sidebar Navigation** (consultant view): Organizes features into 6 semantic categories with collapsible sections. Sidebar state persists in localStorage.
+- Uses `shadcn/ui` and `Tailwind CSS` for modern, accessible, and responsive design.
+- Interactive guided tours via `Driver.js` for onboarding.
+- Categorized Sidebar Navigation for consultants with state persistence.
 ## AI Integration - Percorso Capitale
-- **Purpose**: Provides personalized financial insights by accessing real-time financial data.
-- **Data Flow**: AI assistant uses `buildUserContext()` to fetch data via `PercorsoCapitaleClient.getInstance()`.
-- **Caching**: L1 (User Context) 5-minute TTL, L2 (API Response) endpoint-specific TTLs.
-- **Singleton Pattern**: Ensures a single client instance per user email.
-- **Graceful Degradation**: AI assistant remains functional if Percorso Capitale API is unavailable.
-## AI Knowledge Base System (Updated December 2024)
-- **Purpose**: Enables consultants to upload internal documents and configure external API integrations that the AI assistant ALWAYS has access to for context-aware responses.
-- **Critical Design**: AI assistant has ALWAYS access to ALL uploaded documents and API data - no keyword filtering, full context available.
-- **Document Management**: 
-  - Supports PDF, DOCX, TXT files up to 10MB
-  - Categories: Normative, Case Studies, Manuals, Internal Procedures, Other
-  - Automatic text extraction and indexing (status: pending → processing → indexed)
-  - Priority-based ranking (1-10) for search relevance
-  - **Document Preview**: Full content preview with metadata, tags, and usage statistics
-  - **Summary Toggle**: Optional AI-generated summaries (ON/OFF switch per document)
-  - **Custom Tags**: User-defined tags for organization
-  - **Ask About Document**: "Chiedimi qualcosa" feature focuses AI on specific document
-  - **Usage Tracking**: Counts how many times each document is referenced in AI responses
-- **External API Integration**:
-  - Categories: Market Data, Regulations, Research, Client Systems, Other
-  - Auth types: API Key, Bearer Token, Basic Auth, None
-  - Per-consultant API key encryption using `encryptForConsultant()`
-  - Configurable cache duration and data mapping
-- **Knowledge Searcher Service** (`server/services/knowledge-searcher.ts`):
-  - `getKnowledgeContext()` loads ALL documents and APIs without filtering
-  - `trackDocumentUsage()` / `trackApiUsage()` increment usage counters
-  - Multi-tenant isolation: each consultant only sees their own documents
-- **AI Context Integration** (`server/consultant-context-builder.ts`):
-  - `getKnowledgeContext()` loads complete knowledge base into context
-  - `focusedDocument` propagated for "Ask about this document" feature
-  - Knowledge base section added to `buildConsultantSystemPrompt()` in `ai-service.ts`
-- **Database Tables**:
-  - `consultant_knowledge_documents`: Document metadata, extractedContent, contentSummary, summaryEnabled, usageCount, tags
-  - `consultant_knowledge_apis`: API configurations with encrypted credentials
-  - `consultant_knowledge_api_cache`: Cached API responses with expiration
-- **Frontend Routes**:
-  - `/consultant/knowledge-documents`: Drag-drop upload, document list with filters, preview modal
-  - `/consultant/knowledge-apis`: API configuration with test connection feature
-- **Document Focus Hook** (`client/src/hooks/use-document-focus.ts`):
-  - Custom hook for "Ask me about this document" feature
-  - Uses sessionStorage and custom events to communicate between pages
-  - Clears focus after first use to prevent stale context
+- Provides personalized financial insights using real-time financial data.
+- Employs L1/L2 caching and a Singleton pattern for API client instance.
+- Designed for graceful degradation if the Percorso Capitale API is unavailable.
+## AI Knowledge Base System
+- Enables consultants to upload internal documents (PDF, DOCX, TXT) and configure external API integrations for AI context.
+- AI assistant has full, unfiltered access to all uploaded documents and API data.
+- Features automatic text extraction, indexing, priority-based ranking, document preview, optional AI summaries, custom tags, and usage tracking.
+- Supports various API authentication types and per-consultant API key encryption.
+- Multi-tenant isolation ensures consultants only access their own knowledge base.
+- Integrates knowledge context into AI system prompts without filtering.
 ## Advanced Consultation Management System
-- **AI-powered Email Automation**: Generates personalized motivational emails using Google Gemini, requiring consultant approval. Features per-consultant SMTP and Gemini API key rotation.
-- **AI-Powered Client State Tracking**: Generates client current and ideal states from AI analysis of system context.
-- **Fathom Integration**: Links for consultation recordings stored in the consultations table.
+- **AI-powered Email Automation**: Generates personalized motivational emails via Google Gemini, requiring consultant approval, with per-consultant SMTP and Gemini API key rotation.
+- **AI-Powered Client State Tracking**: Analyzes system context to generate current and ideal client states.
 ## AI System Prompt Architecture
-- **Critical Rule**: All AI endpoints **MUST** use `buildSystemPrompt()` from `server/ai-prompts.ts` as `systemInstruction` for Gemini, ensuring comprehensive context.
-- **Consultation Summary Emails**: `consultations.summaryEmail` must be included in all AI features to maintain context continuity.
-## Token Optimization Strategy (Hybrid Approach)
-- **Goal**: Reduce AI token consumption by 70-85%.
-- **Methodology**: Intent detection, conditional database queries, intent-scoped caching, dynamic exercise scraping limits.
-- **Future Scaling (RAG)**: Planned for high document counts/token usage, involving query embedding, vector search, context assembly, and focused AI response generation using Google Gemini Embedding API.
-## WhatsApp Business Integration (Via Twilio)
-- **Overview**: Full-featured WhatsApp messaging via Twilio API for client/lead conversations with AI-powered responses, rich media, and automatic API key rotation.
-- **Key Features**: Multi-tenant config, dual message delivery (webhook + polling fallback), message debouncing, Gemini AI responses with user context, client/lead recognition, API key rotation, rich media processing, real-time dashboard, manual messaging, AI toggle.
-- **Objection Detection & Client Profiling**: AI system detects and classifies client objections, maintains dynamic client difficulty profiles, and adapts AI response strategies.
-- **Calendar Configuration System**: `ai_availability` and `appointment_availability` settings in `consultant_availability_settings` JSONB field.
-- **Proactive Lead Management System**: Automated outreach to cold leads using pre-approved WhatsApp templates.
-- **Knowledge Base System**: Dynamic document/knowledge management for WhatsApp AI agents.
-- **Database Schema**: 9 tables for WhatsApp config, conversations, messages, API keys, media, stats, and follow-ups. Additional tables for objection tracking, client profiling, availability, calendar sync, appointments, proactive leads, and knowledge items.
+- All AI endpoints **MUST** use `buildSystemPrompt()` from `server/ai-prompts.ts` as `systemInstruction` for Gemini to ensure comprehensive context.
+- `consultations.summaryEmail` is consistently included in AI features for context continuity.
+## Token Optimization Strategy
+- Hybrid approach focusing on intent detection, conditional database queries, intent-scoped caching, and dynamic exercise scraping limits to reduce AI token consumption.
+- Future plans include RAG for high document/token usage.
+## WhatsApp Business Integration
+- Full-featured WhatsApp messaging via Twilio API for client/lead conversations with AI-powered responses, rich media, and automatic API key rotation.
+- Features multi-tenant config, dual message delivery, message debouncing, Gemini AI responses with user context, client/lead recognition, and a real-time dashboard.
+- Includes AI-powered objection detection, dynamic client profiling, and proactive lead management.
+- Supports dynamic document/knowledge management for WhatsApp AI agents.
 ## Sales Agent Configuration
-- Users can configure which sales phases the AI agent executes (Discovery, Demo).
-- Sales Agent AI token usage is optimized through dynamic script loading based on the current phase.
-- **Prospect Profiling System**: Intelligent prospect personality profiling during voice calls with dynamic sales strategy adaptation using a hybrid regex and AI intuition approach. Includes sticky archetype logic and 8 behavioral archetypes with specific playbooks. Integrates with TTS for archetype-specific voice parameters.
-- AI sales agent follows scripts in strict sequential order, programmatically enforced with validation.
+- Users can configure AI agent execution for sales phases (Discovery, Demo).
+- Token usage optimized through dynamic script loading based on the current phase.
+- **Prospect Profiling System**: Intelligent personality profiling during voice calls with dynamic sales strategy adaptation using a hybrid regex and AI intuition approach, including sticky archetype logic and specific playbooks.
+- AI sales agents follow scripts in strict sequential order with programmatic validation.
 ## Human Seller Analytics & Session Persistence
-- **Unified Analytics Component**: Single reusable `client-sales-agent-analytics.tsx` serves both AI agents and human sellers
-- **Entity Type Detection**: URL path determines entity type (`/client/sales-agents/` → AI, `/client/human-sellers/` → human)
-- **Session State Persistence**: `humanSellerMeetingTraining` table stores full session state (transcripts, checkpoints, phases)
-- **Debounced Saves**: 5-second debounce prevents excessive database writes during active sessions
-- **Recovery on Reconnect**: Sessions automatically restore from database when human seller reconnects
-- **API Parity**: Human seller training endpoints match AI agent format for consistent frontend consumption
-
+- Unified analytics component (`client-sales-agent-analytics.tsx`) for both AI agents and human sellers.
+- Session state (transcripts, checkpoints, phases) is stored in `humanSellerMeetingTraining` table with debounced saves.
+- Sessions automatically restore from the database upon reconnection.
 ## Checkpoint Validation System (Sales Coaching)
-- **3-Tier Status System**: VALIDATED (green), VAGUE (yellow), MISSING (red)
-- **Sticky Validation Logic**: Both VALIDATED and VAGUE statuses are sticky - they NEVER downgrade to a lower status
-  - VALIDATED → stays VALIDATED forever (cannot become VAGUE or MISSING)
-  - VAGUE → can only upgrade to VALIDATED (cannot become MISSING)
-- **State Rehydration**: Frontend sends `request_state_sync` on WebSocket connect; backend broadcasts saved transcripts, checkpoints, script progress, archetype data
-- **Manual Checkpoint Validation**: Users can manually validate checkpoint items via UI checkboxes
-  - Frontend: `useSalesCoaching.manualValidateCheckpoint` + `useVideoCopilot.sendManualValidateCheckpoint`
-  - Backend: `handleManualValidateCheckpoint` with immediate persistence (no debounce)
-  - Uses same sticky storage mechanism as AI pipeline (`session.validatedCheckpointItems`)
-- **Persistence Flow**: `session.validatedCheckpointItems` → `saveSessionStateImmediate` → `humanSellerMeetingTraining.validatedCheckpointItems`
-- **AI Integration**: AI skips already-validated items (line 1661-1663 in sales-manager-agent.ts) and respects sticky validations
-
+- 3-tier status system (VALIDATED, VAGUE, MISSING) with sticky validation logic (statuses never downgrade).
+- Supports manual checkpoint validation via UI and persistence of validated items.
+- AI skips already-validated items during its processing.
 ## Video Copilot Turn-Taking System
-- **Purpose**: Prevent API bombardment (429 errors) during human-to-human video meetings by implementing Fathom-style intelligent turn-taking.
-- **Architecture**: State machine with per-meeting TurnState tracking audio buffers per speaker.
-- **Key Components**:
-  - `SpeakerTurnBuffer`: Accumulates audio chunks, transcript parts, and speaker metadata.
-  - `TurnState`: Tracks current/previous speakers, silence timers, and analysis debounce timers.
-  - `handleAudioChunk`: Buffers audio instead of immediate transcription.
-  - `handleSilenceDetected`: Triggers transcription after 700ms silence.
-  - `finalizeTurn`: Completes speaker turn on speaker change.
-  - `scheduleAnalysis`: Triggers Sales Manager analysis with 2s debounce after turn exchange.
-- **Configuration**: `TURN_TAKING_CONFIG` with tunable thresholds (SILENCE_THRESHOLD_MS=700, ANALYSIS_DEBOUNCE_MS=2000, MAX_TIME_WITHOUT_ANALYSIS_MS=30000).
-- **Error Handling**: `withRetry` wrapper with exponential backoff for all Gemini API calls (max 5 retries, 1s-30s delays).
-- **Cleanup**: Proper timer and state cleanup in `handleEndSession` prevents memory leaks.
-- **Result**: Reduces API calls from ~50/second to 2-3 per conversation turn.
-- **Client-Side VAD (Voice Activity Detection)**:
-  - **Hook**: `useVADAudioCapture.ts` with Silero VAD neural network via `@ricky0123/vad-web`.
-  - **Host Detection**: Silero MicVAD directly on local microphone stream with 500ms pre-roll buffer.
-  - **Prospect Detection**: RMS-based VAD fallback using ScriptProcessor (SPEECH_THRESHOLD=0.01, SILENCE_FRAMES=12).
-  - **Audio Processing**: 16kHz downsampling for Gemini compatibility, echo cancellation enabled.
-  - **Trust-the-Client Pattern**: Server transcribes immediately on `speech_end` event from client VAD (eliminates 1.2s double-wait latency).
-  - **WebSocket Events**: `speech_start` / `speech_end` messages with speakerId and speakerName metadata.
-  - **Server Handlers**: `handleSpeechStart` (buffer management), `handleSpeechEndFromClient` (immediate transcription with isPartial=false).
-
-## WebRTC/WebSocket Resilience System (Google Meet-level)
-- **WebSocket Heartbeat**: Client sends ping every 25s, expects pong within 5s. Server responds with `{ type: 'pong', timestamp }`. Dead connections trigger automatic reconnection.
-- **Exponential Backoff Reconnection**: 1s → 2s → 4s → 8s → 16s → max 30s with ±20% jitter. Maximum 10 attempts before showing user-friendly error.
-- **Network Change Detection**: Listens for browser `online`/`offline` events. Immediate reconnection attempt when network returns.
-- **Visibility Change Handler**: When tab regains focus, checks WebSocket connection and triggers ICE restart on stale peer connections via `restartIce()`.
-- **Connection Quality Stats**: Polls `pc.getStats()` every 5s when peer connections exist. Exposes `connectionQuality: 'good' | 'fair' | 'poor'` based on packet loss (<2%/<5%) and jitter (<30ms/<100ms).
-- **ICE Restart on Disconnected**: Automatic ICE restart with `createOffer({ iceRestart: true })` after 1s delay when ICE state becomes `disconnected`.
-- **Force-Leave Cleanup**: `sendBeacon` on `beforeunload` ensures participant cleanup even on page reload.
-- **Zombie Cleanup**: Server cleans active zombies (leftAt=NULL but no socket) when participant rejoins.
+- Prevents API bombardment during video meetings via intelligent turn-taking using a state machine and `SpeakerTurnBuffer`.
+- Triggers transcription on silence detection and finalizes turns on speaker change.
+- Implements debounced analysis triggers and `withRetry` wrapper for Gemini API calls.
+- Reduces API calls significantly through client-side VAD (Voice Activity Detection) using Silero VAD neural network and RMS-based fallback, with immediate server transcription on `speech_end` events.
+## WebRTC/WebSocket Resilience System
+- Implements WebSocket heartbeat, exponential backoff reconnection with jitter, and network change detection.
+- Handles visibility changes by checking WebSocket connections and triggering ICE restarts.
+- Monitors connection quality using `pc.getStats()` and automatically restarts ICE on disconnected states.
+- Ensures participant cleanup on page unload and server-side zombie cleanup.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
@@ -151,7 +77,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Radix UI**: Accessible UI primitives.
 - **Google Fonts**: Inter, Poppins, DM Sans, Fira Code.
 - **Lucide React**: Iconography.
-- **Google Gemini API**: AI-powered features (email generation, client state tracking, general AI assistant, objection detection).
+- **Google Gemini API**: AI-powered features.
 - **Percorso Capitale API**: Financial management system integration.
 - **Fathom**: AI-powered consultation recording and transcription.
 - **Driver.js**: Interactive guided tours and onboarding.
