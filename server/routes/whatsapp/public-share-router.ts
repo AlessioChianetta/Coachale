@@ -8,7 +8,7 @@ import * as shareService from '../../whatsapp/share-service';
 import * as agentService from '../../whatsapp/agent-consultant-chat-service';
 import { db } from '../../db';
 import * as schema from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import multer from 'multer';
 import { generateSpeech } from '../../ai/tts-service';
