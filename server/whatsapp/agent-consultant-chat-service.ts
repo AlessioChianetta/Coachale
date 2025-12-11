@@ -345,26 +345,87 @@ export async function* processConsultantAgentMessage(
       console.log(`   New Time: ${pendingModification.newTime || 'N/A'}`);
       console.log(`   Confirmations: ${pendingModification.confirmedTimes}/${pendingModification.requiredConfirmations}`);
       
-      const pendingModificationPrompt = `
+      // Build different prompts for MODIFY vs CANCEL
+      let pendingModificationPrompt: string;
+      
+      if (pendingModification.intent === 'MODIFY') {
+        pendingModificationPrompt = `
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ AZIONE PENDENTE - RICHIEDI CONFERMA ESPLICITA
+⚠️ AZIONE PENDENTE - RICHIEDI CONFERMA MODIFICA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Il lead ha richiesto una ${pendingModification.intent === 'MODIFY' ? 'MODIFICA' : 'CANCELLAZIONE'} dell'appuntamento.
-${pendingModification.intent === 'MODIFY' ? `Nuova data/ora richiesta: ${pendingModification.newDate} alle ${pendingModification.newTime}` : ''}
+Il lead ha richiesto una MODIFICA dell'appuntamento.
+Nuova data/ora richiesta: ${pendingModification.newDate} alle ${pendingModification.newTime}
+
+📊 STATO CONFERME: ${pendingModification.confirmedTimes}/${pendingModification.requiredConfirmations}
 
 ⚠️ ISTRUZIONE CRITICA:
 Devi CHIEDERE CONFERMA ESPLICITA al lead prima che il sistema possa procedere.
 
 Esempio di risposta CORRETTA:
-"Perfetto! Allora confermi che vuoi spostare l'appuntamento a ${pendingModification.intent === 'MODIFY' ? `${pendingModification.newDate?.split('-').reverse().join('/')} alle ${pendingModification.newTime}` : 'cancellare'}? 📅"
+"Perfetto! Allora confermi che vuoi spostare l'appuntamento a ${pendingModification.newDate?.split('-').reverse().join('/')} alle ${pendingModification.newTime}? 📅"
 
 ❌ NON dire "Sto modificando" o "Ho modificato" - devi SOLO chiedere conferma!
 ❌ NON procedere senza una risposta esplicita del lead ("sì", "confermo", "va bene")
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
+      } else {
+        // CANCEL - requires 2 confirmations
+        const isFirstConfirmation = pendingModification.confirmedTimes === 0;
+        const isSecondConfirmation = pendingModification.confirmedTimes === 1;
+        
+        pendingModificationPrompt = `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ AZIONE PENDENTE - CANCELLAZIONE APPUNTAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il lead ha richiesto la CANCELLAZIONE dell'appuntamento.
+
+📊 STATO CONFERME: ${pendingModification.confirmedTimes}/${pendingModification.requiredConfirmations}
+🔒 LA CANCELLAZIONE RICHIEDE 2 CONFERME ESPLICITE
+
+${isFirstConfirmation ? `
+🔴 MANCA LA PRIMA CONFERMA
+Il lead ha solo RICHIESTO di cancellare, ma NON ha ancora confermato.
+
+✅ COSA DEVI FARE:
+Chiedi la PRIMA conferma con un messaggio persuasivo che includa frizione:
+
+"[NOME], capisco che possano esserci imprevisti.
+Prima di procedere, lascia che ti ricordi qualcosa di importante 💭
+- Da dove sei partito/a: [situazione]
+- Dove vuoi arrivare: [obiettivo]
+- Perché è importante: [motivazione]
+
+Questo appuntamento è la tua opportunità per fare il primo passo concreto.
+Quindi, mi confermi che vuoi davvero cancellare l'appuntamento?"
+` : ''}
+
+${isSecondConfirmation ? `
+🟡 HAI RICEVUTO 1 CONFERMA - MANCA LA SECONDA
+Il lead ha già confermato UNA volta. Ora devi chiedere la SECONDA conferma finale.
+
+✅ COSA DEVI FARE:
+Chiedi la SECONDA conferma finale:
+
+"Sei sicuro? Una volta cancellato, potrebbe volerci tempo per trovare un altro slot disponibile.
+Confermi definitivamente la cancellazione?"
+
+⚠️ NON procedere finché il lead non conferma esplicitamente questa seconda richiesta!
+` : ''}
+
+🚨 REGOLE CRITICHE CANCELLAZIONE:
+❌ NON dire MAI "ho cancellato" o "appuntamento cancellato" - il sistema lo farà AUTOMATICAMENTE dopo 2 conferme
+❌ NON dire "procedo con la cancellazione" - devi SOLO chiedere conferma
+❌ NON assumere che la richiesta iniziale sia una conferma
+✅ DEVI ricevere 2 risposte esplicite ("sì", "confermo", "ok") DOPO che hai chiesto conferma
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+      }
       systemPrompt += pendingModificationPrompt;
     }
     
