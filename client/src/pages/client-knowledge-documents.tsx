@@ -66,7 +66,7 @@ import { openAIAndAskAboutDocument } from "@/hooks/use-document-focus";
 
 type DocumentCategory = "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other";
 type DocumentStatus = "uploading" | "processing" | "indexed" | "error";
-type FileType = "pdf" | "docx" | "txt";
+type FileType = "pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio";
 
 interface KnowledgeDocument {
   id: string;
@@ -144,6 +144,18 @@ const FILE_TYPE_ICONS: Record<FileType, { color: string; label: string }> = {
   pdf: { color: "text-red-500", label: "PDF" },
   docx: { color: "text-blue-500", label: "DOCX" },
   txt: { color: "text-gray-500", label: "TXT" },
+  md: { color: "text-purple-500", label: "Markdown" },
+  rtf: { color: "text-orange-500", label: "RTF" },
+  odt: { color: "text-teal-500", label: "ODT" },
+  csv: { color: "text-green-500", label: "CSV" },
+  xlsx: { color: "text-emerald-600", label: "Excel" },
+  xls: { color: "text-emerald-600", label: "Excel" },
+  pptx: { color: "text-orange-600", label: "PowerPoint" },
+  mp3: { color: "text-pink-500", label: "MP3" },
+  wav: { color: "text-pink-500", label: "WAV" },
+  m4a: { color: "text-pink-500", label: "M4A" },
+  ogg: { color: "text-pink-500", label: "OGG" },
+  webm_audio: { color: "text-pink-500", label: "WebM" },
 };
 
 function formatFileSize(bytes: number): string {
@@ -446,6 +458,21 @@ export default function ClientKnowledgeDocuments() {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
       "application/msword": [".doc"],
       "text/plain": [".txt"],
+      "text/markdown": [".md", ".markdown"],
+      "text/rtf": [".rtf"],
+      "application/rtf": [".rtf"],
+      "application/vnd.oasis.opendocument.text": [".odt"],
+      "text/csv": [".csv"],
+      "application/csv": [".csv"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+      "application/vnd.ms-powerpoint": [".ppt"],
+      "audio/mpeg": [".mp3"],
+      "audio/wav": [".wav"],
+      "audio/mp4": [".m4a"],
+      "audio/ogg": [".ogg"],
+      "audio/webm": [".webm"],
     },
     maxFiles: 1,
   });
@@ -607,7 +634,7 @@ export default function ClientKnowledgeDocuments() {
                       <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
                         oppure clicca per selezionare
                       </p>
-                      <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT (max 10MB)</p>
+                      <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT, MD, CSV, XLSX, PPTX, Audio (max 10MB)</p>
                     </>
                   )}
                 </div>

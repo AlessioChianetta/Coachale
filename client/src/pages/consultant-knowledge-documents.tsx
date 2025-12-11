@@ -63,11 +63,11 @@ import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAss
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { focusOnDocument } from "@/hooks/use-document-focus";
+import { openAIAndAskAboutDocument } from "@/hooks/use-document-focus";
 
 type DocumentCategory = "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other";
 type DocumentStatus = "uploading" | "processing" | "indexed" | "error";
-type FileType = "pdf" | "docx" | "txt";
+type FileType = "pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio";
 
 interface KnowledgeDocument {
   id: string;
@@ -145,6 +145,18 @@ const FILE_TYPE_ICONS: Record<FileType, { color: string; label: string }> = {
   pdf: { color: "text-red-500", label: "PDF" },
   docx: { color: "text-blue-500", label: "DOCX" },
   txt: { color: "text-gray-500", label: "TXT" },
+  md: { color: "text-purple-500", label: "Markdown" },
+  rtf: { color: "text-orange-500", label: "RTF" },
+  odt: { color: "text-teal-500", label: "ODT" },
+  csv: { color: "text-green-500", label: "CSV" },
+  xlsx: { color: "text-emerald-600", label: "Excel" },
+  xls: { color: "text-emerald-600", label: "Excel" },
+  pptx: { color: "text-orange-600", label: "PowerPoint" },
+  mp3: { color: "text-pink-500", label: "MP3" },
+  wav: { color: "text-pink-500", label: "WAV" },
+  m4a: { color: "text-pink-500", label: "M4A" },
+  ogg: { color: "text-pink-500", label: "OGG" },
+  webm_audio: { color: "text-pink-500", label: "WebM" },
 };
 
 function formatFileSize(bytes: number): string {
@@ -178,6 +190,7 @@ export default function ConsultantKnowledgeDocuments() {
   const [previewDocument, setPreviewDocument] = useState<KnowledgeDocument | null>(null);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [showAskConfirmDialog, setShowAskConfirmDialog] = useState(false);
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -451,6 +464,21 @@ export default function ConsultantKnowledgeDocuments() {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
       "application/msword": [".doc"],
       "text/plain": [".txt"],
+      "text/markdown": [".md", ".markdown"],
+      "text/rtf": [".rtf"],
+      "application/rtf": [".rtf"],
+      "application/vnd.oasis.opendocument.text": [".odt"],
+      "text/csv": [".csv"],
+      "application/csv": [".csv"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation": [".pptx"],
+      "application/vnd.ms-powerpoint": [".ppt"],
+      "audio/mpeg": [".mp3"],
+      "audio/wav": [".wav"],
+      "audio/mp4": [".m4a"],
+      "audio/ogg": [".ogg"],
+      "audio/webm": [".webm"],
     },
     maxFiles: 1,
   });
@@ -579,7 +607,7 @@ export default function ConsultantKnowledgeDocuments() {
                       <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
                         oppure clicca per selezionare
                       </p>
-                      <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT (max 10MB)</p>
+                      <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT, MD, CSV, XLSX, PPTX, Audio (max 10MB)</p>
                     </>
                   )}
                 </div>
@@ -1118,21 +1146,7 @@ export default function ConsultantKnowledgeDocuments() {
               Chiudi
             </Button>
             <Button
-              onClick={() => {
-                if (previewDocument) {
-                  focusOnDocument({
-                    id: previewDocument.id,
-                    title: previewDocument.title,
-                    category: previewDocument.category,
-                    fileName: previewDocument.fileName,
-                  });
-                  setShowPreviewDialog(false);
-                  toast({
-                    title: "Documento in focus",
-                    description: "Clicca sull'assistente AI per fare domande su questo documento",
-                  });
-                }
-              }}
+              onClick={() => setShowAskConfirmDialog(true)}
               className="bg-amber-500 hover:bg-amber-600"
             >
               <MessageCircle className="w-4 h-4 mr-2" />
@@ -1141,6 +1155,43 @@ export default function ConsultantKnowledgeDocuments() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showAskConfirmDialog} onOpenChange={setShowAskConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Chiedi all'AI su questo documento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vuoi aprire l'AI Assistant e chiedere informazioni sul documento "{previewDocument?.title}"?
+              L'assistente AI analizzerà il contenuto del documento e risponderà alle tue domande.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (previewDocument) {
+                  openAIAndAskAboutDocument({
+                    id: previewDocument.id,
+                    title: previewDocument.title,
+                    category: previewDocument.category,
+                    fileName: previewDocument.fileName,
+                  });
+                  setShowAskConfirmDialog(false);
+                  setShowPreviewDialog(false);
+                  toast({
+                    title: "AI Assistant aperto",
+                    description: "Sto analizzando il documento per te...",
+                  });
+                }
+              }}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Chiedi all'AI
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ConsultantAIAssistant />
     </div>

@@ -14,8 +14,8 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Allow common file types
-  const allowedExtensions = /\.(jpeg|jpg|png|gif|bmp|webp|pdf|doc|docx|txt|rtf|odt|xls|xlsx|ppt|pptx|mp4|mov|avi|mkv|webm|mp3|wav)$/i;
+  // Allow common file types including new knowledge base formats
+  const allowedExtensions = /\.(jpeg|jpg|png|gif|bmp|webp|pdf|doc|docx|txt|md|markdown|rtf|odt|csv|xls|xlsx|ppt|pptx|mp4|mov|avi|mkv|webm|mp3|wav|m4a|ogg)$/i;
   const allowedMimeTypes = [
     // Images
     'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp',
@@ -24,9 +24,14 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'text/plain',
+    'text/markdown',
+    'text/x-markdown',
     'text/rtf',
     'application/rtf',
     'application/vnd.oasis.opendocument.text',
+    // Data files
+    'text/csv',
+    'application/csv',
     // Spreadsheets
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -35,8 +40,10 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     // Videos
     'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska', 'video/webm',
-    // Audio
-    'audio/mpeg', 'audio/wav', 'audio/wave', 'audio/x-wav', 'audio/webm', 'audio/ogg'
+    // Audio (for transcription)
+    'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave', 'audio/x-wav', 
+    'audio/webm', 'audio/ogg', 'audio/vorbis',
+    'audio/mp4', 'audio/m4a', 'audio/x-m4a'
   ];
 
   const extname = allowedExtensions.test(file.originalname);
@@ -45,7 +52,7 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
   if (mimetype && extname) {
     return cb(null, true);
   } else {
-    cb(new Error(`File type not supported. Allowed types: images (jpg, png, gif), documents (pdf, doc, docx, txt, rtf), spreadsheets (xls, xlsx), presentations (ppt, pptx), videos (mp4, mov, avi), and audio files (mp3, wav). Received: ${file.mimetype}`));
+    cb(new Error(`File type not supported. Allowed types: documents (pdf, doc, docx, txt, md, rtf, odt), data (csv, xls, xlsx), presentations (ppt, pptx), audio (mp3, wav, m4a, ogg). Received: ${file.mimetype}`));
   }
 };
 
