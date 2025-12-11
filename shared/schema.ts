@@ -2504,6 +2504,18 @@ export const appointmentBookings = pgTable("appointment_bookings", {
   confirmedAt: timestamp("confirmed_at"),
   cancelledAt: timestamp("cancelled_at"),
   completedAt: timestamp("completed_at"),
+  lastCompletedAction: jsonb("last_completed_action").$type<{
+    type: 'MODIFY' | 'CANCEL' | 'ADD_ATTENDEES';
+    completedAt: string;
+    triggerMessageId: string;
+    details?: {
+      oldDate?: string;
+      oldTime?: string;
+      newDate?: string;
+      newTime?: string;
+      attendeesAdded?: string[];
+    };
+  }>(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });

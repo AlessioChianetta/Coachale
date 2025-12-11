@@ -26,6 +26,7 @@ import {
   BookingExtractionResult,
   ConversationMessage,
 } from '../../booking/booking-service';
+import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction } from '../../booking/booking-intent-detector';
 
 const router = express.Router();
 
@@ -570,16 +571,36 @@ router.post(
             console.log(`\n📅 [PUBLIC-BOOKING] Checking conversation for booking data...`);
             
             // ══════════════════════════════════════════════════════════════════════
-            // OTTIMIZZAZIONE: Quick pattern check per evitare analisi inutili
-            // Pattern riconosciuti: date (dd/mm o dd-mm), email (@dominio), telefoni (+393xxx, 3xxx),
-            // conferme (ok, sì, confermo, perfetto, va bene), modifiche (modifica, cancella, sposta, ecc.)
+            // STEP 1: Verifica se esiste già un booking confermato
             // ══════════════════════════════════════════════════════════════════════
-            const bookingPatterns = /\d{2}[\/\-]\d{2}|@[\w.-]+\.[a-zA-Z]{2,}|\+?\d[\d\s\-\.]{8,}|\b(confermo|ok|va bene|perfetto|sì|si|yes|conferma)\b|\b(modifica|cancella|disdici|sposta|elimina|aggiungi|invita)\b/i;
-            const hasBookingPatterns = bookingPatterns.test(message);
+            const [existingBooking] = await db
+              .select()
+              .from(schema.appointmentBookings)
+              .where(
+                and(
+                  eq(schema.appointmentBookings.publicConversationId, conversation.id),
+                  eq(schema.appointmentBookings.status, 'confirmed')
+                )
+              )
+              .limit(1);
             
-            if (!hasBookingPatterns && message.length < 12) {
-              console.log(`   ⏭️ Skip extraction - no booking patterns in short message: "${message.substring(0, 30)}"`);
+            const hasExistingBooking = !!existingBooking;
+            if (hasExistingBooking) {
+              console.log(`   ℹ️ Booking già esistente (ID: ${existingBooking.id}) - date: ${existingBooking.appointmentDate} ${existingBooking.appointmentTime}`);
+            }
+            
+            // ══════════════════════════════════════════════════════════════════════
+            // STEP 2: AI PRE-CHECK - Determina se analizzare per booking
+            // Sostituisce il vecchio regex con intelligenza artificiale
+            // ══════════════════════════════════════════════════════════════════════
+            const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+            const shouldAnalyze = await shouldAnalyzeForBooking(message, hasExistingBooking, aiProvider.client);
+            
+            if (!shouldAnalyze) {
+              console.log(`   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "${message.substring(0, 40)}..."`);
             } else {
+              console.log(`   ✅ [AI PRE-CHECK] Proceeding with booking analysis`);
+              
               // Recupera cronologia conversazione (ultimi 15 messaggi)
               const recentMessages = await db
                 .select()
@@ -598,18 +619,6 @@ router.post(
               
               console.log(`   📚 Analyzing ${conversationMessages.length} messages...`);
             
-            // Verifica se esiste già un booking confermato per questa conversazione
-            const [existingBooking] = await db
-              .select()
-              .from(schema.appointmentBookings)
-              .where(
-                and(
-                  eq(schema.appointmentBookings.publicConversationId, conversation.id),
-                  eq(schema.appointmentBookings.status, 'confirmed')
-                )
-              )
-              .limit(1);
-            
             if (existingBooking) {
               console.log(`   ℹ️ Booking già esistente per questa conversazione (ID: ${existingBooking.id})`);
               
@@ -618,7 +627,8 @@ router.post(
               // ══════════════════════════════════════════════════════════════════════
               console.log(`   🔄 Checking for modification/cancellation/add attendees intent...`);
               
-              const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
+              // Cast lastCompletedAction per type-safety
+              const lastCompletedAction = existingBooking.lastCompletedAction as LastCompletedAction | null;
               
               const existingBookingForModification = {
                 id: existingBooking.id,
@@ -659,7 +669,10 @@ router.post(
                   // ══════════════════════════════════════════════════════════════════════
                   console.log(`   🔄 [MODIFY] Processing modification request...`);
                   
-                  if (modificationResult.confirmedTimes >= 1) {
+                  // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                  if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY')) {
+                    console.log(`   ⏭️ [MODIFY] Skipping - action already completed recently`);
+                  } else if (modificationResult.confirmedTimes >= 1) {
                     console.log(`   ✅ [MODIFY] Confirmed - proceeding with modification`);
                     
                     // Verifica disponibilità slot (TODO: implementare check disponibilità reale)
@@ -694,17 +707,28 @@ router.post(
                     const endMinute = totalMinutes % 60;
                     const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
                     
-                    // Update database
+                    // Update database con lastCompletedAction per prevenire duplicati
                     await db
                       .update(schema.appointmentBookings)
                       .set({
                         appointmentDate: modificationResult.newDate,
                         appointmentTime: modificationResult.newTime,
                         appointmentEndTime: formattedEndTime,
+                        lastCompletedAction: {
+                          type: 'MODIFY' as const,
+                          completedAt: new Date().toISOString(),
+                          triggerMessageId: conversation.id,
+                          details: {
+                            oldDate: existingBooking.appointmentDate,
+                            oldTime: existingBooking.appointmentTime,
+                            newDate: modificationResult.newDate,
+                            newTime: modificationResult.newTime
+                          }
+                        }
                       })
                       .where(eq(schema.appointmentBookings.id, existingBooking.id));
                     
-                    console.log(`   💾 [MODIFY] Database updated successfully`);
+                    console.log(`   💾 [MODIFY] Database updated with lastCompletedAction`);
                     
                     // Costruisci messaggio di conferma modifica
                     const modifyConfirmationMessage = `✅ APPUNTAMENTO MODIFICATO!
@@ -741,7 +765,10 @@ Ci vediamo alla nuova data! 🚀`;
                   // ══════════════════════════════════════════════════════════════════════
                   console.log(`   🗑️ [CANCEL] Processing cancellation request...`);
                   
-                  if (modificationResult.confirmedTimes >= 2) {
+                  // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                  if (isActionAlreadyCompleted(lastCompletedAction, 'CANCEL')) {
+                    console.log(`   ⏭️ [CANCEL] Skipping - action already completed recently`);
+                  } else if (modificationResult.confirmedTimes >= 2) {
                     console.log(`   ✅ [CANCEL] Confirmed 2 times - proceeding with cancellation`);
                     
                     // Delete from Google Calendar if exists
@@ -765,13 +792,24 @@ Ci vediamo alla nuova data! 🚀`;
                       }
                     }
                     
-                    // Update database status to cancelled
+                    // Update database status to cancelled con lastCompletedAction
                     await db
                       .update(schema.appointmentBookings)
-                      .set({ status: 'cancelled' })
+                      .set({ 
+                        status: 'cancelled',
+                        lastCompletedAction: {
+                          type: 'CANCEL' as const,
+                          completedAt: new Date().toISOString(),
+                          triggerMessageId: conversation.id,
+                          details: {
+                            oldDate: existingBooking.appointmentDate,
+                            oldTime: existingBooking.appointmentTime
+                          }
+                        }
+                      })
                       .where(eq(schema.appointmentBookings.id, existingBooking.id));
                     
-                    console.log(`   💾 [CANCEL] Database updated - status set to cancelled`);
+                    console.log(`   💾 [CANCEL] Database updated with lastCompletedAction`);
                     
                     // Costruisci messaggio di conferma cancellazione
                     const cancelConfirmationMessage = calendarDeleteSuccess 
@@ -813,7 +851,10 @@ Se vuoi riprogrammare in futuro, scrivimi! 😊`;
                   console.log(`   👥 [ADD_ATTENDEES] Processing add attendees request...`);
                   console.log(`   📧 Attendees to add: ${modificationResult.attendees.join(', ')}`);
                   
-                  if (existingBooking.googleEventId) {
+                  // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                  if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES')) {
+                    console.log(`   ⏭️ [ADD_ATTENDEES] Skipping - action already completed recently`);
+                  } else if (existingBooking.googleEventId) {
                     try {
                       const result = await addAttendeesToGoogleCalendarEvent(
                         agentConfig.consultantId,
@@ -845,9 +886,24 @@ Nessuna modifica necessaria! ✅`;
                       // Invia via SSE
                       res.write(`data: ${JSON.stringify({ type: 'chunk', content: addAttendeesMessage })}\n\n`);
                       
+                      // Salva lastCompletedAction per prevenire duplicati
+                      await db
+                        .update(schema.appointmentBookings)
+                        .set({
+                          lastCompletedAction: {
+                            type: 'ADD_ATTENDEES' as const,
+                            completedAt: new Date().toISOString(),
+                            triggerMessageId: conversation.id,
+                            details: {
+                              attendeesAdded: modificationResult.attendees
+                            }
+                          }
+                        })
+                        .where(eq(schema.appointmentBookings.id, existingBooking.id));
+                      
                       bookingResult.attendeesAdded = true;
                       bookingResult.confirmationMessage = addAttendeesMessage;
-                      console.log(`   ✅ [ADD_ATTENDEES] Confirmation message sent!`);
+                      console.log(`   ✅ [ADD_ATTENDEES] Confirmation with lastCompletedAction saved!`);
                       
                     } catch (gcalError: any) {
                       console.error(`   ⚠️ [ADD_ATTENDEES] Failed to add attendees: ${gcalError.message}`);
@@ -874,10 +930,7 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
                 }
               }
             } else {
-              // Ottieni AI provider per estrazione dati
-              const aiProvider = await getAIProvider(agentConfig.consultantId, agentConfig.consultantId);
-              
-              // Estrai dati booking dalla conversazione
+              // Estrai dati booking dalla conversazione (aiProvider già ottenuto sopra)
               const extracted = await extractBookingDataFromConversation(
                 conversationMessages,
                 undefined, // Nessun booking esistente
