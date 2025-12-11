@@ -237,6 +237,7 @@ export function AgentShareManager({ agentConfigId, agentName }: AgentShareManage
   }
 
   const activeShare = shares.find(s => s.isActive && !s.revokedAt);
+  const nonRevokedShares = shares.filter(s => !s.revokedAt);
 
   return (
     <div className="space-y-4">
@@ -248,7 +249,7 @@ export function AgentShareManager({ agentConfigId, agentName }: AgentShareManage
           </p>
         </div>
 
-        {!activeShare && (
+        {!activeShare && nonRevokedShares.length === 0 && (
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -339,7 +340,7 @@ export function AgentShareManager({ agentConfigId, agentName }: AgentShareManage
         )}
       </div>
 
-      {shares.length === 0 ? (
+      {nonRevokedShares.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center">
             <Share2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -350,7 +351,7 @@ export function AgentShareManager({ agentConfigId, agentName }: AgentShareManage
         </Card>
       ) : (
         <div className="space-y-4">
-          {shares.map((share) => (
+          {nonRevokedShares.map((share) => (
             <Card key={share.id}>
               <CardHeader>
                 <div className="flex items-start justify-between">
