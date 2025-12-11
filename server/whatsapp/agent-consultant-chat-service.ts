@@ -257,10 +257,19 @@ ${customInstructions}
  * @param messageContent - Content of the message from consultant
  * @returns AsyncGenerator yielding text chunks from AI
  */
+export interface PendingModificationContext {
+  intent: 'MODIFY' | 'CANCEL';
+  newDate?: string;
+  newTime?: string;
+  confirmedTimes: number;
+  requiredConfirmations: number;
+}
+
 export async function* processConsultantAgentMessage(
   consultantId: string,
   conversationId: string,
-  messageContent: string
+  messageContent: string,
+  pendingModification?: PendingModificationContext
 ): AsyncGenerator<string, void, unknown> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🤖 [CONSULTANT-AGENT CHAT] Processing message');
@@ -326,7 +335,39 @@ export async function* processConsultantAgentMessage(
 
     // Step 5: Build system prompt
     console.log('\n📝 [STEP 5] Building system prompt (loading knowledge base)...');
-    const systemPrompt = await buildWhatsAppAgentPrompt(agentConfig);
+    let systemPrompt = await buildWhatsAppAgentPrompt(agentConfig);
+    
+    // Add pending modification context if present
+    if (pendingModification) {
+      console.log(`\n📅 [PENDING MODIFICATION] Adding context to prompt...`);
+      console.log(`   Intent: ${pendingModification.intent}`);
+      console.log(`   New Date: ${pendingModification.newDate || 'N/A'}`);
+      console.log(`   New Time: ${pendingModification.newTime || 'N/A'}`);
+      console.log(`   Confirmations: ${pendingModification.confirmedTimes}/${pendingModification.requiredConfirmations}`);
+      
+      const pendingModificationPrompt = `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ AZIONE PENDENTE - RICHIEDI CONFERMA ESPLICITA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Il lead ha richiesto una ${pendingModification.intent === 'MODIFY' ? 'MODIFICA' : 'CANCELLAZIONE'} dell'appuntamento.
+${pendingModification.intent === 'MODIFY' ? `Nuova data/ora richiesta: ${pendingModification.newDate} alle ${pendingModification.newTime}` : ''}
+
+⚠️ ISTRUZIONE CRITICA:
+Devi CHIEDERE CONFERMA ESPLICITA al lead prima che il sistema possa procedere.
+
+Esempio di risposta CORRETTA:
+"Perfetto! Allora confermi che vuoi spostare l'appuntamento a ${pendingModification.intent === 'MODIFY' ? `${pendingModification.newDate?.split('-').reverse().join('/')} alle ${pendingModification.newTime}` : 'cancellare'}? 📅"
+
+❌ NON dire "Sto modificando" o "Ho modificato" - devi SOLO chiedere conferma!
+❌ NON procedere senza una risposta esplicita del lead ("sì", "confermo", "va bene")
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+      systemPrompt += pendingModificationPrompt;
+    }
+    
     const promptLength = systemPrompt.length;
     console.log(`✅ System prompt built: ${promptLength} characters (~${Math.ceil(promptLength / 4)} tokens)`);
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

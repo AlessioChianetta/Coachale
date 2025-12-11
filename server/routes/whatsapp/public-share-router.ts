@@ -6,6 +6,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import * as shareService from '../../whatsapp/share-service';
 import * as agentService from '../../whatsapp/agent-consultant-chat-service';
+import type { PendingModificationContext } from '../../whatsapp/agent-consultant-chat-service';
 import { db } from '../../db';
 import * as schema from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
@@ -471,6 +472,7 @@ router.post(
       // ═══════════════════════════════════════════════════════════════════════
       let bookingResult: { created: boolean; modified: boolean; cancelled: boolean; attendeesAdded: boolean; booking?: any; googleMeetLink?: string; confirmationMessage?: string } = { created: false, modified: false, cancelled: false, attendeesAdded: false };
       let bookingActionCompleted = false;
+      let pendingModification: PendingModificationContext | undefined = undefined;
       
       try {
         if (agentConfig.bookingEnabled !== false) {
@@ -651,6 +653,14 @@ Ci vediamo alla nuova data! 🚀`;
                     console.log(`   ✅ [MODIFY] Modification complete and confirmation sent! (AI streaming will be skipped)`);
                   } else {
                     console.log(`   ⏳ [MODIFY] Waiting for confirmation (${modificationResult.confirmedTimes}/1) - will proceed with AI streaming`);
+                    // Set pending modification context for AI to ask for confirmation
+                    pendingModification = {
+                      intent: 'MODIFY',
+                      newDate: modificationResult.newDate,
+                      newTime: modificationResult.newTime,
+                      confirmedTimes: modificationResult.confirmedTimes,
+                      requiredConfirmations: 1
+                    };
                   }
                   
                 } else if (modificationResult.intent === 'CANCEL') {
@@ -738,6 +748,12 @@ Se vuoi riprogrammare in futuro, scrivimi! 😊`;
                     console.log(`   ✅ [CANCEL] Cancellation complete and confirmation sent! (AI streaming will be skipped)`);
                   } else {
                     console.log(`   ⏳ [CANCEL] Waiting for more confirmations (${modificationResult.confirmedTimes}/2) - will proceed with AI streaming`);
+                    // Set pending modification context for AI to ask for confirmation
+                    pendingModification = {
+                      intent: 'CANCEL',
+                      confirmedTimes: modificationResult.confirmedTimes,
+                      requiredConfirmations: 2
+                    };
                   }
                   
                 } else if (modificationResult.intent === 'ADD_ATTENDEES' && modificationResult.attendees && modificationResult.attendees.length > 0) {
@@ -856,7 +872,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
           for await (const chunk of agentService.processConsultantAgentMessage(
             conversation.consultantId,
             conversation.id,
-            message
+            message,
+            pendingModification
           )) {
             fullResponse += chunk;
             chunkCount++;

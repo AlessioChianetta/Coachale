@@ -2073,26 +2073,24 @@ LEAD: sì va bene
 → {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "18:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Esempio 2b - MODIFICA DIRETTA/IMPERATIVA (conta come CONFERMATA):
+Esempio 2b - MODIFICA DIRETTA/IMPERATIVA (NON è ancora confermata):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Quando il lead usa una forma IMPERATIVA o una richiesta DIRETTA con data/ora specifica, 
-conta come conferma implicita (confirmedTimes=1):
+Quando il lead usa una forma IMPERATIVA o una richiesta DIRETTA, è solo una RICHIESTA.
+L'AI deve SEMPRE chiedere conferma esplicita prima che il sistema esegua la modifica.
 
 LEAD: mettilo alle 10:00
-→ {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "10:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+→ {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "10:00", "attendees": [], "confirmedTimes": 0, "confidence": "high"}
 
 LEAD: me lo puoi mettere alle 10?
-→ {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "10:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+→ {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "10:00", "attendees": [], "confirmedTimes": 0, "confidence": "high"}
 
 LEAD: spostalo a domani alle 14
-→ {"intent": "MODIFY", "newDate": "[data domani]", "newTime": "14:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
-
-LEAD: cambialo alle 16:30
-→ {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "16:30", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+→ {"intent": "MODIFY", "newDate": "[data domani]", "newTime": "14:00", "attendees": [], "confirmedTimes": 0, "confidence": "high"}
 
 ⚠️ NOTA: Le forme imperative ("mettilo", "spostalo", "cambialo") e le richieste dirette 
-("me lo metti", "puoi metterlo") con orario specifico implicano già la volontà del lead, 
-quindi confirmedTimes=1.
+("me lo metti", "puoi metterlo") sono RICHIESTE, non conferme. confirmedTimes=0.
+Solo risposte esplicite come "sì", "confermo", "va bene" dopo che l'AI ha chiesto conferma 
+contano come conferma (confirmedTimes=1).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Esempio 3 - CANCELLAZIONE (prima conferma):
@@ -2163,10 +2161,11 @@ LEAD: grazie per l'appuntamento, a presto!
 11. Per MODIFY e CANCEL: attendees deve essere sempre [] (array vuoto)
 12. Per ADD_ATTENDEES: attendees contiene array di email da aggiungere
 13. confirmedTimes = numero di volte che il lead ha ESPLICITAMENTE confermato (conta "sì", "confermo", "va bene", ecc.)
-14. Per MODIFY: confirmedTimes = 1 quando il lead conferma
-15. Per CANCEL: confirmedTimes = 1 o 2 in base a quante volte ha confermato
+14. Per MODIFY: confirmedTimes = 1 SOLO quando il lead conferma esplicitamente DOPO che l'AI ha chiesto conferma
+15. Per CANCEL: confirmedTimes = 1 o 2 in base a quante volte ha confermato esplicitamente
 16. Per ADD_ATTENDEES: confirmedTimes = 0 (nessuna conferma necessaria)
-17. Se non ha ancora confermato: confirmedTimes = 0
+17. Se non ha ancora confermato esplicitamente: confirmedTimes = 0
+18. IMPORTANTE: Le richieste dirette ("mettilo alle 10", "spostalo alle 14") NON contano come conferma - confirmedTimes=0 finché il lead non conferma esplicitamente
 ` : `
 Analizza questa conversazione recente di un lead che sta prenotando un appuntamento:
 
