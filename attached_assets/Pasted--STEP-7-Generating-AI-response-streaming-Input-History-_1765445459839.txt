@@ -1,0 +1,246 @@
+🤖 [STEP 7] Generating AI response (streaming)...
+📊 Input - History: 26 messages, New message: "dimmi di più..."
+
+🧹 [CLEANUP] Starting cleanup of empty consultant-agent conversations older than 24 hours...
+🔒 [SECURITY] Scoped to consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, agent: fe95f393-b8c9-4fc0-80d7-2035dcba305a
+9:23:26 AM [express] GET /api/whatsapp/agent-chat/conversations 304 in 287ms :: {"data":[{"id":"ef0e…
+ℹ️  [CLEANUP] No empty conversations to clean up for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ Stream initialized, yielding chunks...
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+
+✅ [SUCCESS] Streaming complete
+   Chunks: 3
+   Total characters: 606
+   Estimated tokens: ~152
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ AI response complete - 3 chunks, 606 chars
+
+ℹ️ TTS disabled or not needed for this response mode
+
+💾 Saving agent response...
+✅ Agent message saved: text
+
+📅 [PUBLIC-BOOKING] Checking conversation for booking data...
+   📚 Analyzing 15 messages...
+   ℹ️ Booking già esistente per questa conversazione (ID: 44a806c2-e512-4d21-b4c0-74fa28bd65b9)
+   🔄 Checking for modification/cancellation/add attendees intent...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-10T18:24:31.000Z
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+
+🔍 [BOOKING SERVICE] Extracting data from 15 messages
+   Mode: MODIFICATION
+   Timezone: Europe/Rome
+🔄 Switching model from gemini-2.5-flash to gemini-2.5-flash-lite
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-10T18:24:31.000Z) is older than watermark - keeping current
+   AI Response length: 151 chars
+   Parsed modification result: intent=MODIFY, confirmedTimes=1
+   🎯 Intent detected: MODIFY, confirmedTimes: 1
+   🔄 [MODIFY] Processing modification request...
+   ✅ [MODIFY] Confirmed - proceeding with modification
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [GOOGLE CALENDAR] Updating Calendar Event
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Consultant ID: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🆔 Event ID: qoj1fe4nqs9h6e9407d2f3ms3c
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔗 [OAUTH] Redirect URI for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: https://0dca6061-52d6-4738-9253-bd3afe2c2c2f-00-1tw1drunxt733.kirk.replit.dev/api/calendar-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+📅 New Start: 2025-12-12T17:00:00 (Europe/Rome)
+📅 New End: 2025-12-12T18:00:00 (Europe/Rome)
+⏱️ Duration: 60 minutes
+🌐 Calling Google Calendar API to update event...
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ Event updated successfully!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   ✅ [MODIFY] Google Calendar event updated successfully
+   💾 [MODIFY] Database updated successfully
+   ✅ [MODIFY] Modification complete and confirmation sent!
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ [SUCCESS] Public share message processed successfully
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🧹 [CLEANUP] Starting cleanup of empty consultant-agent conversations older than 24 hours...
+🔒 [SECURITY] Scoped to consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, agent: fe95f393-b8c9-4fc0-80d7-2035dcba305a
+ℹ️  [CLEANUP] No empty conversations to clean up for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+9:23:59 AM [express] GET /api/whatsapp/agent-chat/conversations 304 in 2063ms :: {"data":[{"id":"ef0…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Consulente monitor (8712864d-f42a-45fd-b447-4b28157cc7f5) - last processed: 2025-11-18T21:00:09.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Consulente monitor
+📌 [WATERMARK] Latest on Twilio (2025-11-18T21:00:09.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-10T18:24:31.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-10T18:24:31.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+
+
+
+
+
+Ciao!
+
+7 minuti fa
+Ciao! 👋 Piacere, sono l'assistente di Orbitale. Aiutiamo imprenditori, professionisti e dipendenti a costruire un patrimonio solido. Cosa ti ha spinto a scriverci oggi? 😊
+
+7 minuti fa
+volevo capire come raggiungere 10k al mese di rendita e 100k di patrimonio, problema debiti che mi bloccano
+
+6 minuti fa
+Capito! 👍 Obiettivi molto chiari e ambiziosi, mi piace! E capisco che la situazione dei debiti possa essere un bel blocco.
+
+Per capire meglio come possiamo aiutarti: potresti dirmi qualcosa di più su questi debiti? Qual è il problema principale che ti stanno causando in questo momento?
+
+6 minuti fa
+il fatto di non arrivare a fine mese
+
+6 minuti fa
+Mmm, capisco. Non riuscire ad arrivare a fine mese a causa dei debiti è una situazione che può mettere molta pressione, lo so.
+
+Il tuo obiettivo di 10k al mese di rendita e 100k di patrimonio è molto chiaro e ambizioso 💪
+
+Ora dimmi: cosa ti sta bloccando dal riuscire a gestire questi debiti e iniziare a costruire il tuo patrimonio? Qual è l'ostacolo più grande che senti in questo momento?
+
+6 minuti fa
+l'ostacolo più grande è che non ho ancora soldi per ripagarli
+
+5 minuti fa
+Capito 👍 Quindi l'ostacolo principale è la mancanza di liquidità per affrontare i debiti, che ti impedisce di avanzare verso i tuoi obiettivi di rendita e patrimonio.
+
+Perfetto, chiarissimo 💪 Se potessimo aiutarti ad arrivare anche solo alla metà dei tuoi obiettivi – quindi 5.000€ al mese di rendita e 50.000€ di patrimonio – ci dedicheresti 30 minuti del tuo tempo in una consulenza gratuita per capire insieme se e come possiamo aiutarti concretamente?
+
+5 minuti fa
+va bene
+
+5 minuti fa
+Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze. Ti va meglio mattina o pomeriggio?
+
+5 minuti fa
+pomeriggio
+
+5 minuti fa
+Perfetto! Per il pomeriggio ho questi orari disponibili: • Venerdì 12 dicembre alle 14:30 • Venerdì 12 dicembre alle 16:00
+
+Quale preferisci?
+
+5 minuti fa
+16:00
+
+4 minuti fa
+Perfetto! Venerdì 12 dicembre alle 16:00 📅
+
+Per confermare l'appuntamento, mi confermi il tuo numero di telefono?
+
+4 minuti fa
+3890566422
+
+4 minuti fa
+Grazie! 👍
+
+E mi lasci anche la tua email? Te la aggiungo all'invito del calendario così riceverai l'evento Google Calendar con il link per la call.
+
+4 minuti fa
+chianettaalessio@gmail.com
+
+3 minuti fa
+Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳
+
+3 minuti fa
+🎉 APPUNTAMENTO CONFERMATO!
+
+📅 Data: 12/12/2025 🕐 Orario: 16:00 ⏱️ Durata: 60 minuti
+
+🎥 Link Google Meet: https://meet.google.com/rvz-sqsr-dbd
+
+📧 Ti ho inviato l'invito calendario a chianettaalessio@gmail.com
+
+Ti consiglio di collegarti 2-3 minuti prima! 📱
+
+3 minuti fa
+ME LO puoi modificare alle 17:00
+
+2 minuti fa
+Certo, nessun problema!
+
+Quindi il nuovo orario sarebbe venerdì 12 dicembre alle 17:00, corretto?
+
+2 minuti fa
+✅ APPUNTAMENTO MODIFICATO!
+
+📅 Nuovo appuntamento: 🗓️ Data: 12/12/2025 🕐 Orario: 17:00
+
+Ti ho aggiornato l'invito al calendario all'indirizzo chianettaalessio@gmail.com. Controlla la tua inbox! 📬
+
+Ci vediamo alla nuova data! 🚀
+
+2 minuti fa
+cosa altor puoi fare ora?
+
+un minuto fa
+Ottima domanda! 😊
+
+Ora che l'appuntamento è fissato, posso aiutarti con diverse cose:
+
+Rispondere a qualsiasi altra domanda tu possa avere sul nostro metodo, sui servizi di Orbitale o sulla consulenza.
+Fornirti il link Meet di nuovo, se lo perdi.
+Spostare l'appuntamento se dovesse esserci un altro imprevisto.
+Ricordarti i dettagli della nostra chiacchierata.
+C'è qualcos'altro che ti incuriosisce o di cui hai bisogno prima della nostra call?
+
+meno di un minuto fa
+✅ APPUNTAMENTO MODIFICATO!
+
+📅 Nuovo appuntamento: 🗓️ Data: 12/12/2025 🕐 Orario: 17:00
+
+Ti ho aggiornato l'invito al calendario all'indirizzo chianettaalessio@gmail.com. Controlla la tua inbox! 📬
+
+Ci vediamo alla nuova data! 🚀
+
+meno di un minuto fa
+dimmi di più
+
+meno di un minuto fa
+Certo! 😊
+
+Noi di Orbitale ti aiutiamo a costruire un patrimonio solido, tra i 100.000 e i 500.000€ in 2-4 anni, usando un metodo basato su logica ingegneristica e approccio scientifico.
+
+È un percorso pratico e personalizzato, che unisce finanza, programmazione e coaching. Alessio, il fondatore, ha già aiutato oltre 600 persone a trasformare le proprie finanze, partendo anche da situazioni di debito. 💪
+
+Durante la call potremo vedere come il nostro metodo può aiutarti a gestire i debiti e raggiungere i tuoi obiettivi di rendita e patrimonio.
+
+C'è qualcosa in particolare che ti incuriosisce di più?
+
+meno di un minuto fa
+✅ APPUNTAMENTO MODIFICATO!
+
+📅 Nuovo appuntamento: 🗓️ Data: 12/12/2025 🕐 Orario: 17:00
+
+Ti ho aggiornato l'invito al calendario all'indirizzo chianettaalessio@gmail.com. Controlla la tua inbox! 📬
+
+Ci vediamo alla nuova data! 🚀

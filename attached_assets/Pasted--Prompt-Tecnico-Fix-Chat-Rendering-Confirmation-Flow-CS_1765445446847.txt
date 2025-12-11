@@ -1,0 +1,42 @@
+📋 Prompt Tecnico: Fix Chat Rendering, Confirmation Flow & CSS Sticky
+Ruolo: Senior Frontend Engineer & AI Interaction Designer Contesto: Chatbot App (React Frontend). Obiettivo: Stabilizzare il rendering dei messaggi, correggere il layout CSS e imporre flussi di conferma logici per le azioni.
+
+Per favore risolvi i seguenti 4 punti critici:
+
+1. 🎨 Fix Stabilità Rendering (Doppi Messaggi & "Flickering")
+Problema: L'esperienza di chat non è fluida.
+
+Sintomo A: I messaggi dell'utente appaiono doppi (uno locale ottimistico + uno dal server).
+
+Sintomo B: I messaggi scompaiono temporaneamente mentre l'AI sta generando la risposta, per poi ricomparire tutti insieme alla fine. Soluzione:
+
+Implementa una logica di Riconciliazione Messaggi: Associa un tempId al messaggio ottimistico e sostituiscilo con quello confermato dal server senza un re-render visibile (evita il "flash").
+
+Assicurati che la lista messaggi sia stabile durante lo stato isGenerating. Non ricaricare l'intera lista ad ogni token ricevuto.
+
+2. ⚓ CSS Layout: Sticky Input Bar
+Problema: La barra di inserimento testo (input area) non rimane ancorata in basso quando si scorre la cronologia della chat. Soluzione:
+
+Applica position: sticky; bottom: 0; (o position: fixed con opportuno padding al container della chat) al wrapper dell'input.
+
+Assicurati che lo z-index sia corretto in modo che rimanga sempre sopra il flusso dei messaggi.
+
+3. 🛡️ Logica "Confirmation First" (Human-in-the-loop)
+Problema: L'AI esegue azioni critiche (come modificare date o aggiungere invitati) immediatamente alla richiesta. Requisito: Implementa un Guardrail di Conferma.
+
+Flusso Richiesto: Utente: "Modifica alle 17:00" -> AI: "Vuoi confermare lo spostamento dell'appuntamento alle 17:00?" -> Utente: "Sì" -> SOLO ORA esegui il Tool updateCalendar.
+
+L'AI non deve chiamare la funzione di modifica alla prima richiesta, ma deve prima interporre una domanda di verifica.
+
+4. 🔄 Fix Loop Chiamata Tool (State Reset)
+Problema: Dopo aver completato una modifica (es. data aggiornata), se l'utente scrive ancora, l'AI tende a richiamare nuovamente lo stesso servizio di modifica inutilmente. Soluzione:
+
+Dopo che il tool updateCalendar (o simili) ha restituito "Successo", il sistema deve pulire l'intento o aggiornare lo stato della conversazione per segnare l'azione come "Completata".
+
+Impedisci che il prompt di sistema ri-analizzi la vecchia richiesta di modifica nei turni successivi.
+
+Istruzioni per l'AI
+Analizza il codice attuale del componente Chat e del gestore dei Tool e applica le modifiche sopra indicate per garantire fluidità visiva e sicurezza nelle operazioni di modifica.
+
+
+
