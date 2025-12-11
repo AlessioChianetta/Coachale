@@ -567,6 +567,7 @@ router.post(
                   };
                   if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY', modifyDetails)) {
                     console.log(`   ⏭️ [MODIFY] Skipping - same modification already completed recently`);
+                    bookingActionCompleted = true; // Skip AI streaming for duplicate actions
                   } else if (modificationResult.confirmedTimes >= 1) {
                     console.log(`   ✅ [MODIFY] Confirmed - proceeding with modification`);
                     
@@ -661,6 +662,7 @@ Ci vediamo alla nuova data! 🚀`;
                   // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
                   if (isActionAlreadyCompleted(lastCompletedAction, 'CANCEL')) {
                     console.log(`   ⏭️ [CANCEL] Skipping - action already completed recently`);
+                    bookingActionCompleted = true; // Skip AI streaming for duplicate actions
                   } else if (modificationResult.confirmedTimes >= 2) {
                     console.log(`   ✅ [CANCEL] Confirmed 2 times - proceeding with cancellation`);
                     
@@ -751,6 +753,7 @@ Se vuoi riprogrammare in futuro, scrivimi! 😊`;
                   };
                   if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES', addAttendeesDetails)) {
                     console.log(`   ⏭️ [ADD_ATTENDEES] Skipping - same attendees already added recently`);
+                    bookingActionCompleted = true; // Skip AI streaming for duplicate actions
                   } else if (existingBooking.googleEventId) {
                     try {
                       const result = await addAttendeesToGoogleCalendarEvent(
