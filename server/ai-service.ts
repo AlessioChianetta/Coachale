@@ -11,7 +11,7 @@ import { buildUserContext, UserContext } from "./ai-context-builder";
 import { buildSystemPrompt, AIMode, ConsultantType } from "./ai-prompts";
 import { buildConsultantContext, detectConsultantIntent, ConsultantContext, ConsultantIntent } from "./consultant-context-builder";
 import { consultantGuides, formatGuidesForPrompt } from "./consultant-guides";
-import { trackDocumentUsage, trackApiUsage } from "./services/knowledge-searcher";
+import { trackDocumentUsage, trackApiUsage, trackClientDocumentUsage, trackClientApiUsage } from "./services/knowledge-searcher";
 import { extractUrls, scrapeMultipleUrls, isGoogleSheetsUrl, scrapeGoogleDoc } from "./web-scraper";
 import {
   getCachedExercise,
@@ -133,7 +133,8 @@ function calculateTokenBreakdown(userContext: UserContext, intent: string): {
   goals: number;
   roadmap: number;
   base: number;
-  momentum: number; // Added momentum tokens
+  momentum: number;
+  knowledgeBase: number; // Added Knowledge Base tokens for CLIENT
   universityBreakdown?: { // Added for detailed breakdown
     overallProgress: number;
     years: Array<{
@@ -273,6 +274,11 @@ function calculateTokenBreakdown(userContext: UserContext, intent: string): {
   }
 
 
+  // Knowledge Base tokens (for CLIENT - mirrors consultant implementation)
+  const knowledgeBaseTokens = userContext.knowledgeBase
+    ? estimateTokens(JSON.stringify(userContext.knowledgeBase))
+    : 0;
+
   return {
     financeData: financeTokens,
     exercises: exercisesTokens,
@@ -281,7 +287,8 @@ function calculateTokenBreakdown(userContext: UserContext, intent: string): {
     consultations: consultationsTokens,
     goals: goalsTokens,
     roadmap: roadmapTokens,
-    momentum: momentumTokens, // Include momentum tokens
+    momentum: momentumTokens,
+    knowledgeBase: knowledgeBaseTokens,
     base: baseTokens,
     universityBreakdown
   };
@@ -355,6 +362,7 @@ export interface ChatRequest {
   mode: AIMode;
   consultantType?: ConsultantType;
   pageContext?: PageContext;
+  focusedDocument?: { id: string; title: string; category: string };
 }
 
 export interface ChatResponse {
@@ -420,7 +428,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   // Detect intent from message and build user context with smart filtering
   const { detectIntent } = await import('./ai-context-builder');
   const intent = detectIntent(message);
-  const userContext: UserContext = await buildUserContext(clientId, { message, intent, pageContext });
+  const userContext: UserContext = await buildUserContext(clientId, { message, intent, pageContext, focusedDocument });
 
   let conversation;
   let conversationHistory: ChatMessage[] = [];
@@ -744,6 +752,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     console.log(`🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens (${((breakdown.goals / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens (${((breakdown.momentum / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`🗺️  Roadmap: ${breakdown.roadmap.toLocaleString()} tokens (${((breakdown.roadmap / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`📚 Knowledge Base: ${breakdown.knowledgeBase.toLocaleString()} tokens (${((breakdown.knowledgeBase / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens (${((breakdown.base / systemPromptTokens) * 100).toFixed(1)}%)`);
 
     // University - solo riepilogo per anno/trimestre, NON singole lezioni
@@ -818,6 +827,22 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
         metadata: suggestedActions.length > 0 ? { suggestedActions } : null,
       })
       .returning();
+
+    // Track CLIENT knowledge base usage - increment usage count for all documents and APIs used in context
+    if (userContext.knowledgeBase) {
+      const documentIds = userContext.knowledgeBase.documents.map((d: any) => d.id);
+      const apiIds = userContext.knowledgeBase.apiData
+        .filter((a: any) => a.id)
+        .map((a: any) => a.id as string);
+      
+      // Track usage asynchronously (don't block response)
+      Promise.all([
+        documentIds.length > 0 ? trackClientDocumentUsage(documentIds) : Promise.resolve(),
+        apiIds.length > 0 ? trackClientApiUsage(apiIds) : Promise.resolve(),
+      ]).catch(err => {
+        console.error('❌ [Client Knowledge Tracking] Failed to track usage:', err);
+      });
+    }
 
     // Parallelize conversation and preferences updates
     await Promise.all([
@@ -909,7 +934,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
 }
 
 export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerator<ChatStreamChunk> {
-  const { clientId, message, conversationId, mode, consultantType, pageContext } = request;
+  const { clientId, message, conversationId, mode, consultantType, pageContext, focusedDocument } = request;
 
   // ========================================
   // PERFORMANCE TIMING TRACKING
@@ -967,7 +992,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     timings.contextBuildStart = performance.now();
     const { detectIntent } = await import('./ai-context-builder');
     const intent = detectIntent(message);
-    const userContext: UserContext = await buildUserContext(clientId, { message, intent, pageContext });
+    const userContext: UserContext = await buildUserContext(clientId, { message, intent, pageContext, focusedDocument });
     timings.contextBuildEnd = performance.now();
 
     contextBuildTime = Math.round(timings.contextBuildEnd - timings.contextBuildStart);
@@ -1318,6 +1343,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     console.log(`🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens (${((breakdown.goals / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens (${((breakdown.momentum / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`🗺️  Roadmap: ${breakdown.roadmap.toLocaleString()} tokens (${((breakdown.roadmap / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`📚 Knowledge Base: ${breakdown.knowledgeBase.toLocaleString()} tokens (${((breakdown.knowledgeBase / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens (${((breakdown.base / systemPromptTokens) * 100).toFixed(1)}%)`);
 
     // University - solo riepilogo per anno/trimestre, NON singole lezioni
@@ -1392,6 +1418,22 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
         metadata: suggestedActions.length > 0 ? { suggestedActions } : null,
       })
       .returning();
+
+    // Track CLIENT knowledge base usage - increment usage count for all documents and APIs used in context
+    if (userContext.knowledgeBase) {
+      const documentIds = userContext.knowledgeBase.documents.map((d: any) => d.id);
+      const apiIds = userContext.knowledgeBase.apiData
+        .filter((a: any) => a.id)
+        .map((a: any) => a.id as string);
+      
+      // Track usage asynchronously (don't block response)
+      Promise.all([
+        documentIds.length > 0 ? trackClientDocumentUsage(documentIds) : Promise.resolve(),
+        apiIds.length > 0 ? trackClientApiUsage(apiIds) : Promise.resolve(),
+      ]).catch(err => {
+        console.error('❌ [Client Knowledge Tracking] Failed to track usage:', err);
+      });
+    }
 
     // Parallelize conversation and preferences updates
     await Promise.all([

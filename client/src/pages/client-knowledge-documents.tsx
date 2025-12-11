@@ -53,6 +53,8 @@ import {
   BarChart3,
   X,
   Sparkles,
+  Star,
+  MessageCircle,
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -60,6 +62,7 @@ import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { openAIAndAskAboutDocument } from "@/hooks/use-document-focus";
 
 type DocumentCategory = "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other";
 type DocumentStatus = "uploading" | "processing" | "indexed" | "error";
@@ -173,6 +176,7 @@ export default function ClientKnowledgeDocuments() {
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<KnowledgeDocument | null>(null);
   const [tagInput, setTagInput] = useState("");
+  const [showAskConfirmDialog, setShowAskConfirmDialog] = useState(false);
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -835,14 +839,24 @@ export default function ClientKnowledgeDocuments() {
                                 )}
                                 <div className="flex items-center gap-3 text-xs text-gray-500">
                                   <span className="flex items-center gap-1">
+                                    <Star className="w-3 h-3" />
+                                    {doc.priority}/10
+                                  </span>
+                                  <span className="flex items-center gap-1">
                                     <Calendar className="w-3 h-3" />
                                     {formatDate(doc.createdAt)}
                                   </span>
                                   <span>{formatFileSize(doc.fileSize)}</span>
                                   {doc.usageCount > 0 && (
-                                    <span className="flex items-center gap-1 text-emerald-600">
+                                    <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded-full">
                                       <BarChart3 className="w-3 h-3" />
-                                      {doc.usageCount}
+                                      Usato {doc.usageCount}x
+                                    </span>
+                                  )}
+                                  {doc.summaryEnabled && (
+                                    <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-2 py-0.5 rounded-full">
+                                      <Sparkles className="w-3 h-3" />
+                                      Riassunto
                                     </span>
                                   )}
                                 </div>
@@ -1106,9 +1120,53 @@ export default function ClientKnowledgeDocuments() {
             <Button variant="outline" onClick={() => setShowPreviewDialog(false)}>
               Chiudi
             </Button>
+            <Button
+              onClick={() => setShowAskConfirmDialog(true)}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Chiedimi qualcosa
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showAskConfirmDialog} onOpenChange={setShowAskConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Chiedi all'AI su questo documento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vuoi aprire l'AI Assistant e chiedere informazioni sul documento "{previewDocument?.title}"?
+              L'assistente AI analizzerà il contenuto del documento e risponderà alle tue domande.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (previewDocument) {
+                  openAIAndAskAboutDocument({
+                    id: previewDocument.id,
+                    title: previewDocument.title,
+                    category: previewDocument.category,
+                    fileName: previewDocument.fileName,
+                  });
+                  setShowAskConfirmDialog(false);
+                  setShowPreviewDialog(false);
+                  toast({
+                    title: "AI Assistant aperto",
+                    description: "Sto analizzando il documento per te...",
+                  });
+                }
+              }}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Chiedi all'AI
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AIAssistant />
     </div>

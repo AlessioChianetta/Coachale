@@ -45,6 +45,8 @@ interface ChatPanelProps {
   hasPageContext?: boolean;
   openedFromContext?: boolean;
   isConsultantMode?: boolean; // NEW: Flag for consultant mode
+  autoMessage?: string | null; // Auto-send message when opening from document focus
+  onAutoMessageSent?: () => void; // Callback after auto message is sent
 }
 
 // Funzione placeholder per stimare i token (da implementare o sostituire con una libreria)
@@ -69,7 +71,9 @@ export function ChatPanel({
   pageContext,
   hasPageContext = false,
   openedFromContext = false,
-  isConsultantMode = false
+  isConsultantMode = false,
+  autoMessage = null,
+  onAutoMessageSent
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>();
@@ -114,6 +118,9 @@ export function ChatPanel({
 
   // Document focus for "Ask about this document" feature
   const { focusedDocument, clearFocus } = useDocumentFocus();
+
+  // Ref to track if autoMessage has been processed
+  const autoMessageProcessedRef = useRef(false);
 
   // Load conversations for history tab
   const loadConversations = async () => {
@@ -291,6 +298,11 @@ export function ChatPanel({
                 consultantType: mode === "consulente" ? consultantType : undefined,
                 pageContext: pageContext,
                 hasPageContext: hasPageContext,
+                focusedDocument: focusedDocument ? {
+                  id: focusedDocument.id,
+                  title: focusedDocument.title,
+                  category: focusedDocument.category,
+                } : undefined,
               }
         ),
       });
@@ -598,6 +610,24 @@ export function ChatPanel({
       }
     };
   }, []);
+
+  // Handle automatic message sending when opened from document focus
+  useEffect(() => {
+    if (isOpen && autoMessage && !autoMessageProcessedRef.current && !isTyping) {
+      autoMessageProcessedRef.current = true;
+      const sendAutoMessage = async () => {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        handleSendMessage(autoMessage);
+        if (onAutoMessageSent) {
+          onAutoMessageSent();
+        }
+      };
+      sendAutoMessage();
+    }
+    if (!isOpen) {
+      autoMessageProcessedRef.current = false;
+    }
+  }, [isOpen, autoMessage, isTyping]);
 
   return (
     <AnimatePresence>

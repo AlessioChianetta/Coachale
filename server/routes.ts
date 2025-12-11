@@ -6259,7 +6259,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/ai/chat", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
     try {
-      const { message, conversationId, mode, consultantType, pageContext, hasPageContext } = req.body;
+      const { message, conversationId, mode, consultantType, pageContext, hasPageContext, focusedDocument } = req.body;
       
       if (!message || !mode) {
         return res.status(400).json({ message: "Message and mode are required" });
@@ -6296,6 +6296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mode,
           consultantType,
           pageContext,
+          focusedDocument,
         })) {
           // Send chunk as SSE event and flush immediately
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);

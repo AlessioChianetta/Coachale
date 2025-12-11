@@ -60,3 +60,20 @@ export function clearDocumentFocus() {
   sessionStorage.removeItem(STORAGE_KEY);
   window.dispatchEvent(new CustomEvent('ai:clear-document-focus'));
 }
+
+export interface OpenAndAskPayload {
+  document: FocusedDocument;
+  autoMessage?: string;
+}
+
+export function openAIAndAskAboutDocument(document: FocusedDocument, autoMessage?: string) {
+  // First, focus on the document so it's available in ChatPanel
+  focusOnDocument(document);
+  
+  // Then dispatch the open-and-ask event with the auto-message
+  const payload: OpenAndAskPayload = { 
+    document, 
+    autoMessage: autoMessage || `Parlami del documento "${document.title}". Cosa contiene e come posso utilizzarlo?` 
+  };
+  window.dispatchEvent(new CustomEvent('ai:open-and-ask', { detail: payload }));
+}

@@ -447,6 +447,12 @@ export interface UserContext {
     summary: string;
     totalDocuments: number;
     totalApis: number;
+    focusedDocument?: {
+      id: string;
+      title: string;
+      category: string;
+      content: string;
+    };
   };
   conversation?: {
     isProactiveLead: boolean;
@@ -464,6 +470,7 @@ export async function buildUserContext(
     pageContext?: any; // PageContext from AI assistant
     conversation?: any; // WhatsApp conversation data for proactive/reactive detection
     sessionType?: 'weekly_consultation' | undefined; // NEW: Distinguish session types
+    focusedDocument?: { id: string; title: string; category: string }; // Focused document for Knowledge Base
   }
 ): Promise<UserContext> {
   // ========================================
@@ -1959,6 +1966,24 @@ export async function buildUserContext(
         console.log(`✅ [Knowledge Base] Loaded ALL content: ${knowledgeContext.documents.length} documents, ${knowledgeContext.apiData.length} API sources`);
       } else {
         console.log(`ℹ️ [Knowledge Base] No documents or API data uploaded yet`);
+      }
+      
+      // Handle focusedDocument - make it prominent in the context
+      if (options?.focusedDocument && context.knowledgeBase) {
+        console.log(`🎯 [Document Focus] User wants to focus on document: "${options.focusedDocument.title}" (ID: ${options.focusedDocument.id})`);
+        
+        const focusedDoc = context.knowledgeBase.documents.find(doc => doc.id === options.focusedDocument!.id);
+        if (focusedDoc) {
+          context.knowledgeBase.focusedDocument = {
+            id: focusedDoc.id,
+            title: focusedDoc.title,
+            category: focusedDoc.category,
+            content: focusedDoc.content,
+          };
+          console.log(`✅ [Document Focus] Document found and set as focused: "${focusedDoc.title}"`);
+        } else {
+          console.log(`⚠️ [Document Focus] Document ${options.focusedDocument.id} not found in knowledge base`);
+        }
       }
     } catch (error: any) {
       console.error(`❌ [AI Context] Failed to load Knowledge Base:`, error.message);

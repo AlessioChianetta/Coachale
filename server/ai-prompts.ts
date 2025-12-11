@@ -1216,6 +1216,82 @@ ${userContext.calendar.upcomingEvents.slice(0, 5).map((e: any) => {
     contextSections.push(momentumSection.trim());
   }
 
+  // Knowledge Base Section for CLIENT - Mirror of consultant implementation
+  if (userContext.knowledgeBase && (userContext.knowledgeBase.documents.length > 0 || userContext.knowledgeBase.apiData.length > 0)) {
+    let knowledgeSection = `## 📚 BASE DI CONOSCENZA PERSONALE
+
+⚠️ QUESTA SEZIONE CONTIENE DOCUMENTI E DATI CARICATI DALL'UTENTE.
+USA QUESTE INFORMAZIONI PER FORNIRE RISPOSTE ACCURATE E CONTESTUALI.
+
+`;
+
+    // Focused Document - Priority handling
+    if ((userContext as any).knowledgeBase?.focusedDocument) {
+      const focusedDoc = (userContext as any).knowledgeBase.focusedDocument;
+      knowledgeSection += `🎯🎯🎯 DOCUMENTO FOCALIZZATO - ATTENZIONE MASSIMA RICHIESTA 🎯🎯🎯
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ISTRUZIONI CRITICHE:
+L'utente ha ESPLICITAMENTE richiesto informazioni su QUESTO SPECIFICO documento.
+La tua risposta DEVE:
+1. Basarsi PRINCIPALMENTE sul contenuto di questo documento
+2. Citare direttamente le informazioni presenti nel documento
+3. Rispondere nel contesto di questo documento specifico
+4. Se la domanda non trova risposta nel documento, indicalo chiaramente
+
+📌 DOCUMENTO SELEZIONATO: "${focusedDoc.title}"
+📁 Categoria: ${focusedDoc.category}
+
+📄 CONTENUTO DEL DOCUMENTO (PRIORITÀ MASSIMA):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${focusedDoc.content}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+    }
+
+    // Documents
+    if (userContext.knowledgeBase.documents.length > 0) {
+      const focusedId = (userContext as any).knowledgeBase?.focusedDocument?.id;
+      knowledgeSection += `📄 DOCUMENTI CARICATI (${userContext.knowledgeBase.documents.length}):
+${userContext.knowledgeBase.documents.map((doc: any) => `
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┃ 📄 ${doc.title}${doc.id === focusedId ? ' 🎯 [FOCALIZZATO]' : ''}
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 Categoria: ${doc.category}
+${doc.description ? `📝 Descrizione: ${doc.description}` : ''}
+${doc.summary ? `📋 Riassunto: ${doc.summary}` : ''}
+📊 Priorità: ${doc.priority}, Usato ${doc.usageCount} volte
+
+📖 CONTENUTO:
+${doc.content || 'Contenuto non disponibile'}
+`).join('\n')}
+
+`;
+    }
+
+    // API Data
+    if (userContext.knowledgeBase.apiData.length > 0) {
+      knowledgeSection += `🔗 DATI DA API ESTERNE (${userContext.knowledgeBase.apiData.length}):
+${userContext.knowledgeBase.apiData.map((api: any) => `
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┃ 🔗 ${api.apiName}
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 Categoria: ${api.category}
+${api.description ? `📝 Descrizione: ${api.description}` : ''}
+📅 Ultima sincronizzazione: ${api.lastSync}
+📊 Usato ${api.usageCount} volte
+
+📊 DATI:
+${typeof api.data === 'string' ? api.data : JSON.stringify(api.data, null, 2)}
+`).join('\n')}
+
+`;
+    }
+
+    contextSections.push(knowledgeSection.trim());
+  }
+
   const allContext = [baseContext, ...contextSections].join('\n');
 
   if (mode === "assistenza") {

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FloatingButton } from "./FloatingButton";
 import { ChatPanel } from "./ChatPanel";
 import { ContextButton } from "./ContextButton";
 import { ContextPanel } from "./ContextPanel";
 import { PageContext } from "@/hooks/use-page-context";
+import { OpenAndAskPayload } from "@/hooks/use-document-focus";
 
 export type AIMode = "assistenza" | "consulente";
 export type ConsultantType = "finanziario" | "business" | "vendita";
@@ -18,6 +19,19 @@ export function AIAssistant({ pageContext }: AIAssistantProps) {
   const [mode, setMode] = useState<AIMode>("assistenza");
   const [consultantType, setConsultantType] = useState<ConsultantType>("finanziario");
   const [openedFromContext, setOpenedFromContext] = useState(false);
+  const [autoMessage, setAutoMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleOpenAndAsk = (event: CustomEvent<OpenAndAskPayload>) => {
+      setAutoMessage(event.detail.autoMessage || null);
+      setIsOpen(true);
+    };
+
+    window.addEventListener('ai:open-and-ask', handleOpenAndAsk as EventListener);
+    return () => {
+      window.removeEventListener('ai:open-and-ask', handleOpenAndAsk as EventListener);
+    };
+  }, []);
 
   /*
     CALCOLO HASCONTEXT
@@ -48,6 +62,12 @@ export function AIAssistant({ pageContext }: AIAssistantProps) {
   const handleCloseMainAI = () => {
     setIsOpen(false);
     setOpenedFromContext(false);
+    setAutoMessage(null);
+  };
+
+  // Handler to clear autoMessage after it's been processed
+  const handleAutoMessageSent = () => {
+    setAutoMessage(null);
   };
 
   // Handler for ContextButton click
@@ -91,6 +111,8 @@ export function AIAssistant({ pageContext }: AIAssistantProps) {
         pageContext={pageContext}
         hasPageContext={hasContext}
         openedFromContext={openedFromContext}
+        autoMessage={autoMessage}
+        onAutoMessageSent={handleAutoMessageSent}
       />
     </>
   );
