@@ -80,26 +80,45 @@ interface SidebarCategory {
   defaultExpanded?: boolean;
 }
 
-const consultantCategories: SidebarCategory[] = [
+interface SidebarCategoryExtended extends SidebarCategory {
+  isGridLayout?: boolean;
+  alwaysVisible?: boolean;
+}
+
+const consultantCategories: SidebarCategoryExtended[] = [
   {
     name: "PRINCIPALE",
     icon: Home,
     defaultExpanded: true,
+    alwaysVisible: true,
     items: [
-      { name: "Dashboard", href: "/consultant", icon: Home, color: "text-blue-600" },
-      { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles, color: "text-fuchsia-600" },
+      { name: "Dashboard", href: "/consultant", icon: Home, color: "text-blue-500" },
+      { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles, color: "text-fuchsia-500" },
     ]
   },
   {
-    name: "GESTIONE CLIENTI",
+    name: "LAVORO QUOTIDIANO",
     icon: Users,
     defaultExpanded: true,
     items: [
-      { name: "Lista Clienti", href: "/consultant/clients", icon: Users, badge: "12", color: "text-purple-600" },
-      { name: "Stato & Obiettivi", href: "/consultant/client-state", icon: Target, color: "text-green-600" },
-      { name: "Task & Feedback", href: "/consultant/client-daily", icon: CheckSquare, color: "text-rose-600" },
-      { name: "Appuntamenti", href: "/consultant/appointments", icon: Calendar, color: "text-orange-600" },
-      { name: "Task Consulenze", href: "/consultant/tasks", icon: ListTodo, color: "text-pink-600" },
+      { name: "Clienti", href: "/consultant/clients", icon: Users, badge: "12", color: "text-purple-500" },
+      { name: "Calendario", href: "/consultant/appointments", icon: Calendar, color: "text-orange-500" },
+      { name: "Task", href: "/consultant/tasks", icon: ListTodo, color: "text-pink-500" },
+      { name: "Obiettivi", href: "/consultant/client-state", icon: Target, color: "text-green-500" },
+      { name: "Feedback", href: "/consultant/client-daily", icon: CheckSquare, color: "text-rose-500" },
+    ]
+  },
+  {
+    name: "COMUNICAZIONE",
+    icon: Megaphone,
+    defaultExpanded: true,
+    items: [
+      { name: "Email", href: "/consultant/email-logs", icon: Mail, color: "text-sky-500" },
+      { name: "WhatsApp", href: "/consultant/whatsapp-conversations", icon: MessageSquare, color: "text-green-500" },
+      { name: "Campagne", href: "/consultant/campaigns", icon: Megaphone, color: "text-amber-500" },
+      { name: "Lead", href: "/consultant/proactive-leads", icon: UserPlus, color: "text-emerald-500" },
+      { name: "AI Agents", href: "/consultant/whatsapp-agents-chat", icon: Bot, color: "text-cyan-500", badge: "NEW" },
+      { name: "Template", href: "/consultant/whatsapp-templates", icon: FileText, color: "text-blue-500" },
     ]
   },
   {
@@ -107,55 +126,41 @@ const consultantCategories: SidebarCategory[] = [
     icon: GraduationCap,
     defaultExpanded: false,
     items: [
-      { name: "La Mia Università", href: "/consultant/university", icon: GraduationCap, color: "text-amber-600" },
-      { name: "Esercizi Assegnati", href: "/consultant/exercises", icon: ClipboardList, color: "text-cyan-600" },
-      { name: "Template Esercizi", href: "/consultant/exercise-templates", icon: BookOpen, color: "text-teal-600" },
-      { name: "Libreria Corsi", href: "/consultant/library", icon: BookOpen, color: "text-indigo-600" },
+      { name: "Università", href: "/consultant/university", icon: GraduationCap, color: "text-amber-500" },
+      { name: "Esercizi", href: "/consultant/exercises", icon: ClipboardList, color: "text-cyan-500" },
+      { name: "Template", href: "/consultant/exercise-templates", icon: BookOpen, color: "text-teal-500" },
+      { name: "Corsi", href: "/consultant/library", icon: BookOpen, color: "text-indigo-500" },
     ]
   },
   {
-    name: "COMUNICAZIONE & MARKETING",
-    icon: Megaphone,
-    defaultExpanded: true,
-    items: [
-      { name: "Campagne Marketing", href: "/consultant/campaigns", icon: Megaphone, color: "text-amber-600" },
-      { name: "Lead & Campagne", href: "/consultant/proactive-leads", icon: UserPlus, color: "text-emerald-600" },
-      { name: "Email Automatiche Journey", href: "/consultant/ai-config", icon: Sparkles, color: "text-fuchsia-600" },
-      { name: "Email - Storico Invii", href: "/consultant/email-logs", icon: Inbox, color: "text-violet-600" },
-      { name: "WhatsApp - Conversazioni", href: "/consultant/whatsapp-conversations", icon: MessageSquare, color: "text-green-600" },
-      { name: "Chat con AI Agents", href: "/consultant/whatsapp-agents-chat", icon: Bot, color: "text-cyan-600", badge: "NEW" },
-      { name: "Crea Template", href: "/consultant/whatsapp/custom-templates/list", icon: PenSquare, color: "text-purple-600" },
-      { name: "Visualizza Template", href: "/consultant/whatsapp-templates", icon: FileText, color: "text-blue-600" },
-    ]
-  },
-  {
-    name: "CONFIGURAZIONE",
+    name: "IMPOSTAZIONI",
     icon: Settings,
     defaultExpanded: false,
     items: [
-      { name: "Impostazioni API", href: "/consultant/api-keys-unified", icon: Key, color: "text-purple-600" },  
-      { name: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings, color: "text-gray-600" },
+      { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "text-purple-500" },  
+      { name: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings, color: "text-gray-500" },
+      { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles, color: "text-fuchsia-500" },
+      { name: "Crea Template", href: "/consultant/whatsapp/custom-templates/list", icon: PenSquare, color: "text-purple-500" },
     ]
   },
   {
-    name: "RISORSE",
+    name: "GUIDE",
     icon: BookOpen,
     defaultExpanded: false,
     items: [
-      { name: "Guide WhatsApp", href: "/consultant/guide-whatsapp", icon: MessageSquare, color: "text-green-600", badge: "NEW" },
-      { name: "Guide Email Marketing", href: "/consultant/guide-email", icon: Mail, color: "text-sky-600", badge: "NEW" },
-      { name: "Guide Università", href: "/consultant/guide-university", icon: GraduationCap, color: "text-amber-600", badge: "NEW" },
-      { name: "Guide Gestione Clienti", href: "/consultant/guide-clients", icon: Users, color: "text-purple-600", badge: "NEW" },
-      { name: "Guide Google Calendar", href: "/consultant/guide-calendar", icon: CalendarDays, color: "text-blue-600", badge: "NEW" },
+      { name: "WhatsApp", href: "/consultant/guide-whatsapp", icon: MessageSquare, color: "text-green-500" },
+      { name: "Email", href: "/consultant/guide-email", icon: Mail, color: "text-sky-500" },
+      { name: "Università", href: "/consultant/guide-university", icon: GraduationCap, color: "text-amber-500" },
+      { name: "Clienti", href: "/consultant/guide-clients", icon: Users, color: "text-purple-500" },
+      { name: "Calendar", href: "/consultant/guide-calendar", icon: CalendarDays, color: "text-blue-500" },
     ]
   },
-  // Adding the new AI Consultations link here
   {
-    name: "AI FUNZIONALITÀ",
+    name: "AI AVANZATO",
     icon: Sparkles,
-    defaultExpanded: true,
+    defaultExpanded: false,
     items: [
-      { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles, color: "text-purple-600" },
+      { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles, color: "text-purple-500" },
     ]
   }
 ];
@@ -393,71 +398,70 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      {/* Logo e nome app con pulsante collapse - Design Moderno */}
-      {!isCollapsed && <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-            <BookOpen className="h-5 w-5 text-white" />
+      {/* Logo e nome app - Modern Clean Style */}
+      {!isCollapsed && <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100 dark:border-gray-700/50">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-blue-500 rounded-lg">
+            <BookOpen className="h-4 w-4 text-white" />
           </div>
-          {!isCollapsed && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Consulente Pro
-              </h2>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Platform
-              </p>
-            </div>
-          )}
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white leading-tight">
+              Consulente Pro
+            </h2>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+              Platform
+            </p>
+          </div>
         </div>
-        {!isMobile && !isCollapsed && (
+        {!isMobile && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 bg-gradient-to-br from-blue-500/10 to-purple-500/10 hover:from-blue-500/20 hover:to-purple-500/20 border border-blue-200/50 dark:border-blue-800/50 hover:shadow-md transition-all duration-200"
+            className="h-7 w-7 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
             onClick={() => setIsCollapsed(!isCollapsed)}
             data-tour={role === "client" ? "client-collapse-button" : undefined}
             title="Riduci sidebar"
           >
-            <ChevronLeft size={18} className="text-blue-600 dark:text-blue-400 transition-transform duration-200 group-hover:scale-110" />
+            <ChevronLeft size={16} />
           </Button>
         )}
       </div>}
 
-      {/* Navigation Items - Design Migliorato con Categorie */}
-      {!isCollapsed && <nav ref={navRef} className="space-y-2 flex-1 overflow-y-auto px-2">
+      {/* Navigation Items - Modern SaaS Style */}
+      {!isCollapsed && <nav ref={navRef} className="space-y-1 flex-1 overflow-y-auto">
         {/* Render categorized sidebar for consultant */}
-        {categories && !isCollapsed ? categories.map((category, idx) => {
+        {categories && !isCollapsed ? (categories as SidebarCategoryExtended[]).map((category, idx) => {
           const isCategoryExpanded = expandedCategories.has(category.name);
+          const isAlwaysVisible = category.alwaysVisible;
+          const isGridLayout = category.isGridLayout;
 
           return (
             <div key={category.name}>
               {/* Separator between categories (except first) */}
-              {idx > 0 && (
-                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 dark:via-gray-700 to-transparent my-3" />
+              {idx > 0 && !isAlwaysVisible && (
+                <div className="h-px bg-gray-100 dark:bg-gray-700/50 my-2 mx-2" />
               )}
 
-              <div className="space-y-1">
-                {/* Category Header */}
-                <button
-                  onClick={() => handleCategoryToggle(category.name)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    {category.icon && (
-                      <category.icon className="h-3.5 w-3.5 flex-shrink-0" />
-                    )}
-                    <span className="whitespace-nowrap">{category.name}</span>
-                  </div>
-                  <ChevronRight className={cn(
-                    "h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200",
-                    isCategoryExpanded && "rotate-90"
-                  )} />
-                </button>
+              <div className="space-y-0.5">
+                {/* Category Header - hide for always visible sections */}
+                {!isAlwaysVisible && (
+                  <button
+                    onClick={() => handleCategoryToggle(category.name)}
+                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
+                  >
+                    <span>{category.name}</span>
+                    <ChevronRight className={cn(
+                      "h-3 w-3 transition-transform duration-200",
+                      isCategoryExpanded && "rotate-90"
+                    )} />
+                  </button>
+                )}
 
                 {/* Category Items */}
-                {isCategoryExpanded && (
-                  <div className="space-y-1">
+                {(isCategoryExpanded || isAlwaysVisible) && (
+                  <div className={cn(
+                    isGridLayout ? "grid grid-cols-2 gap-1 px-1" : "space-y-0.5"
+                  )}>
                     {category.items.map((item) => {
                       const Icon = item.icon;
                       const isActive = isRouteActive(item.href, location);
@@ -466,50 +470,49 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
                         <Link key={item.href} href={item.href}>
                           <div
                             className={cn(
-                              "group relative flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer",
+                              "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                               isActive
-                                ? "bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 border border-blue-500/30 dark:border-blue-400/30 text-gray-900 dark:text-white shadow-sm"
-                                : "bg-gray-50/50 dark:bg-gray-800/30 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-md hover:scale-[1.02] border border-transparent"
+                                ? "bg-blue-50/80 dark:bg-blue-950/30 text-gray-900 dark:text-white"
+                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white"
                             )}
                             data-testid={`link-${slugify(item.name)}`}
                             onClick={handleLinkClick}
                           >
-                            <div className={cn(
-                              "p-2 rounded-lg transition-all duration-200",
-                              isActive
-                                ? "bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 shadow-inner"
-                                : "bg-white dark:bg-gray-800 shadow-sm group-hover:shadow-md"
-                            )}>
-                              <Icon className={cn(
-                                "h-5 w-5 transition-transform duration-200 group-hover:scale-110",
-                                isActive
-                                  ? "text-blue-600 dark:text-blue-400"
-                                  : item.color || "text-gray-600 dark:text-gray-400"
-                              )} />
-                            </div>
+                            {/* Active indicator bar */}
+                            {isActive && (
+                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />
+                            )}
 
-                            <div className="flex-1 flex items-center justify-between">
+                            {/* Icon without box */}
+                            <Icon className={cn(
+                              "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
+                              isActive
+                                ? "text-blue-500"
+                                : item.color || "text-gray-400 dark:text-gray-500"
+                            )} />
+
+                            <div className="flex-1 flex items-center justify-between min-w-0">
                               <span className={cn(
-                                "font-semibold",
-                                isActive && "text-gray-900 dark:text-white"
+                                "font-medium truncate",
+                                isActive ? "font-semibold" : ""
                               )}>
                                 {item.name}
                               </span>
-                              <div className="flex items-center gap-2">
-                                {item.badge && (
-                                  <span className={cn(
-                                    "px-2.5 py-0.5 text-xs font-bold rounded-full shadow-sm",
-                                    isActive 
-                                      ? "bg-blue-500 text-white" 
-                                      : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"
-                                  )}>
-                                    {item.badge}
-                                  </span>
-                                )}
-                                {isActive && (
-                                  <ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                                )}
-                              </div>
+                              
+                              {/* Badge with dot style */}
+                              {item.badge && (
+                                <span className={cn(
+                                  "flex items-center gap-1 text-xs font-medium ml-1",
+                                  item.badge === "NEW" 
+                                    ? "text-emerald-500" 
+                                    : "text-gray-500 dark:text-gray-400"
+                                )}>
+                                  {item.badge !== "NEW" && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                  )}
+                                  <span>{item.badge}</span>
+                                </span>
+                              )}
                             </div>
                           </div>
                         </Link>
@@ -522,28 +525,23 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
           );
         }) : null}
 
-        {/* Render old style for clients or when collapsed */}
+        {/* Render Modern SaaS style for clients or when collapsed */}
         {(!categories || isCollapsed) && items.map((item) => {
           const Icon = item.icon;
-      const hasChildren = 'children' in item && item.children && item.children.length > 0;
-
-      // Parent is active if:
-      // 1. Current location matches parent href, OR
-      // 2. Any child route is active (for items with children)
-      const isActive = isRouteActive(item.href, location) || 
-        (hasChildren && item.children!.some(child => isRouteActive(child.href, location)));
-
-      const isExpanded = expandedItems.has(item.name);
+          const hasChildren = 'children' in item && item.children && item.children.length > 0;
+          const isActive = isRouteActive(item.href, location) || 
+            (hasChildren && item.children!.some(child => isRouteActive(child.href, location)));
+          const isExpanded = expandedItems.has(item.name);
 
           return (
             <div key={item.href}>
               <Link href={item.href}>
                 <div
                   className={cn(
-                    "group relative flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer",
+                    "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
                     isActive
-                      ? "bg-gradient-to-r from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 border border-blue-500/30 dark:border-blue-400/30 text-gray-900 dark:text-white shadow-sm"
-                      : "bg-gray-50/50 dark:bg-gray-800/30 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-md hover:scale-[1.02] border border-transparent",
+                      ? "bg-blue-50/80 dark:bg-blue-950/30 text-gray-900 dark:text-white"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white",
                     isCollapsed && "justify-center px-2"
                   )}
                   data-testid={`link-${slugify(item.name)}`}
@@ -566,47 +564,39 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
                   }}
                   title={isCollapsed ? item.name : undefined}
                 >
-                  <div className={cn(
-                    "p-2 rounded-lg transition-all duration-200",
+                  {/* Active indicator bar */}
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />
+                  )}
+
+                  {/* Icon without box */}
+                  <Icon className={cn(
+                    "h-[18px] w-[18px] flex-shrink-0 transition-colors duration-150",
                     isActive
-                      ? "bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/50 dark:to-purple-900/50 shadow-inner"
-                      : "bg-white dark:bg-gray-800 shadow-sm group-hover:shadow-md"
-                  )}>
-                    <Icon className={cn(
-                      "h-5 w-5 transition-transform duration-200 group-hover:scale-110",
-                      isActive
-                        ? "text-blue-600 dark:text-blue-400"
-                        : item.color || "text-gray-600 dark:text-gray-400"
-                    )} />
-                  </div>
+                      ? "text-blue-500"
+                      : item.color || "text-gray-400 dark:text-gray-500"
+                  )} />
 
                   {!isCollapsed && (
-                    <div className="flex-1 flex items-center justify-between">
+                    <div className="flex-1 flex items-center justify-between min-w-0">
                       <span className={cn(
-                        "font-semibold",
-                        isActive && "text-gray-900 dark:text-white"
+                        "font-medium truncate",
+                        isActive ? "font-semibold" : ""
                       )}>
                         {item.name}
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         {item.badge && (
-                          <span className={cn(
-                            "px-2.5 py-0.5 text-xs font-bold rounded-full shadow-sm",
-                            isActive 
-                              ? "bg-blue-500 text-white" 
-                              : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300"
-                          )}>
-                            {item.badge}
+                          <span className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                            <span>{item.badge}</span>
                           </span>
                         )}
-                        {hasChildren ? (
+                        {hasChildren && (
                           <ChevronRight className={cn(
-                            "h-4 w-4 transition-transform duration-200",
-                            isExpanded && "rotate-90",
-                            isActive ? "text-blue-600 dark:text-blue-400" : "text-gray-400"
+                            "h-3.5 w-3.5 transition-transform duration-200 text-gray-400",
+                            isExpanded && "rotate-90"
                           )} />
-                        ) : isActive && (
-                          <ChevronRight className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         )}
                       </div>
                     </div>
@@ -614,10 +604,10 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
                 </div>
               </Link>
 
-              {/* Submenu */}
+              {/* Submenu - Modern style */}
               {hasChildren && isExpanded && !isCollapsed && (
                 <div 
-                  className="ml-4 mt-1.5 space-y-1 border-l-2 border-blue-200 dark:border-blue-800/50 pl-3"
+                  className="ml-6 mt-0.5 space-y-0.5 border-l border-gray-200 dark:border-gray-700 pl-3"
                   data-tour={role === "client" ? `client-${slugify(item.name)}-submenu` : undefined}
                 >
                   {item.children!.map((child) => {
@@ -628,29 +618,34 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
                       <Link key={child.href} href={child.href}>
                         <div
                           className={cn(
-                            "flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer",
+                            "group relative flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-md transition-all duration-150 cursor-pointer",
                             isChildActive
-                              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 shadow-sm border border-blue-200 dark:border-blue-800"
-                              : "bg-gray-50/50 dark:bg-gray-800/20 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/40 hover:shadow-sm hover:scale-[1.02] border border-transparent"
+                              ? "bg-blue-50/80 dark:bg-blue-950/30 text-gray-900 dark:text-white"
+                              : "text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-700 dark:hover:text-gray-300"
                           )}
                           data-testid={`link-${slugify(child.name)}`}
                           data-tour={role === "client" ? `client-submenu-${slugify(child.name)}` : undefined}
                           onClick={handleLinkClick}
                         >
-                          <div className={cn(
-                            "p-1.5 rounded-md transition-colors",
+                          {isChildActive && (
+                            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-blue-500 rounded-r-full" />
+                          )}
+                          <ChildIcon className={cn(
+                            "h-4 w-4 flex-shrink-0",
                             isChildActive
-                              ? "bg-blue-200 dark:bg-blue-800/50"
-                              : "bg-white dark:bg-gray-800/50"
-                          )}>
-                            <ChildIcon className={cn(
-                              "h-4 w-4 transition-transform duration-200 group-hover:scale-110",
-                              isChildActive
-                                ? "text-blue-600 dark:text-blue-400"
-                                : child.color || "text-gray-500 dark:text-gray-500"
-                            )} />
-                          </div>
-                          <span className="font-medium">{child.name}</span>
+                              ? "text-blue-500"
+                              : child.color || "text-gray-400"
+                          )} />
+                          <span className={cn(
+                            "font-medium",
+                            isChildActive && "font-semibold"
+                          )}>{child.name}</span>
+                          {child.badge && (
+                            <span className="flex items-center gap-1 text-xs font-medium text-gray-400 ml-auto">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                              <span>{child.badge}</span>
+                            </span>
+                          )}
                         </div>
                       </Link>
                     );
@@ -663,39 +658,35 @@ export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleS
 
         {/* Financial Management Section - Only for clients */}
         {role === "client" && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/50">
             {!isCollapsed && (
-              <h3 className="px-4 mb-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              <h3 className="px-3 mb-1.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-widest">
                 Servizi Esterni
               </h3>
             )}
             <div
               className={cn(
-                "group relative flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 cursor-pointer mx-2",
-                "bg-gray-50/50 dark:bg-gray-800/30 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-md hover:scale-[1.02] border border-transparent",
-                isLoadingFinancial && "bg-gray-100 dark:bg-gray-800 animate-pulse",
+                "group relative flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-150 cursor-pointer",
+                "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white",
+                isLoadingFinancial && "bg-gray-50 dark:bg-gray-800 animate-pulse",
                 isCollapsed && "justify-center px-2"
               )}
               onClick={handleFinancialClick}
               data-testid="link-gestione-finanziaria"
               title={isCollapsed ? "Gestione Finanziaria" : undefined}
             >
-              <div className="p-2 rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 shadow-sm group-hover:shadow-md transition-all duration-200">
-                <DollarSign 
-                  className={cn(
-                    "h-5 w-5 text-green-600 dark:text-green-400 transition-transform duration-200 group-hover:scale-110",
-                    isLoadingFinancial && "animate-spin"
-                  )} 
-                />
-              </div>
+              <DollarSign 
+                className={cn(
+                  "h-[18px] w-[18px] flex-shrink-0 text-emerald-500",
+                  isLoadingFinancial && "animate-spin"
+                )} 
+              />
               {!isCollapsed && (
-                <div className="flex-1 flex items-center justify-between">
-                  <span className="font-semibold">
-                    Gestione Finanziaria
+                <div className="flex-1 flex items-center justify-between min-w-0">
+                  <span className="font-medium truncate">
+                    Finanziaria
                   </span>
-                  <ExternalLink 
-                    className="h-4 w-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" 
-                  />
+                  <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
                 </div>
               )}
             </div>
