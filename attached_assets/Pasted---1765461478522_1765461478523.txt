@@ -1,0 +1,139 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💼 SERVIZI E GARANZIE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📦 Servizi offerti:
+
+1. Percorso “Metodo ORBITALE”
+   Descrizione: Consulenza finanziaria 1:1 personalizzata  Piano strategico di eliminazione debiti  Piano patrimoniale e d’investimento individuale  Accesso completo a Orbitale + CoachAle + Formazione Premium
+   Per chi: undefined
+   Investimento: undefined
+
+✅ Garanzie:
+💥 Garanzia 30 Giorni “Risultato o Seguito”:
+Se entro 30 giorni dall’analisi iniziale e dall’applicazione del metodo non ottieni risultati concreti o miglioramenti misurabili, continuiamo a seguirti gratuitamente finché non li raggiungi.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 PROFILO CONSULENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📛 Nome da mostrare: Alessio
+
+📝 Bio:
+Alessio Chianetta, creatore del Metodo ORBITALE e del software finanziario Orbitale, ha aiutato oltre 600 imprenditori, professionisti e dipendenti a ristrutturare le proprie finanze, eliminare debiti e costruire un patrimonio reale. Ex programmatore, ha unito la logica matematica dell’ingegneria software alla scienza della finanza personale, creando un sistema unico in Italia per la libertà finanziaria.
+
+“Non ti serve un lavoro in più. Ti serve un patrimonio che lavora al posto tuo.
+Il Metodo ORBITALE ti guida passo dopo passo fino a 500.000€ di patrimonio reale. Niente teorie, niente magie. Solo logica, sistema e risultati.”
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 ISTRUZIONI:
+- Rispondi SEMPRE in italiano
+- Usa messaggi brevi e concisi (stile WhatsApp)
+- Mantieni la personalità: amico_fidato
+- Comportati come tipo: reactive_lead
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔌 [STEP 6] Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-11T11:44:14.000Z
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+✅ AI Provider obtained: client (undefined)
+
+🤖 [STEP 7] Generating AI response (streaming)...
+📊 Input - History: 13 messages, New message: "chianettaalessio@gmail.com..."
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-11T11:44:14.000Z) is older than watermark - keeping current
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ Stream initialized, yielding chunks...
+
+✅ [SUCCESS] Streaming complete
+   Chunks: 1
+   Total characters: 79
+   Estimated tokens: ~20
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ AI response complete - 1 chunks, 79 chars
+
+ℹ️ TTS disabled or not needed for this response mode
+
+💾 Saving agent response...
+✅ Agent message saved: text
+
+📅 [PUBLIC-BOOKING-POST] Checking for new booking creation...
+   ❌ [PUBLIC-BOOKING-POST] Error: sql is not defined
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ [SUCCESS] Public share message processed successfully
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 2 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-11T11:44:14.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-11T11:44:14.000Z) is older than watermark - keeping current
+🔓 [CIRCUIT BREAKER] Reset for agent 760bb513-098f-4722-b02a-a700160c2fc3 after cooldown
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-11-16T01:55:16.000Z
+❌ [WHATSAPP POLLING] Error for agent Marco setter: RestException [Error]: Authentication Error - invalid username
+    at MessagePage.processResponse (/home/runner/workspace/node_modules/twilio/lib/base/Page.js:135:19)
+    at new Page (/home/runner/workspace/node_modules/twilio/lib/base/Page.js:17:28)
+    at new MessagePage (/home/runner/workspace/node_modules/twilio/lib/rest/api/v2010/account/message.js:360:9)
+    at /home/runner/workspace/node_modules/twilio/lib/rest/api/v2010/account/message.js:328:63
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  status: 401,
+  code: 20003,
+  moreInfo: 'https://www.twilio.com/docs/errors/20003',
+  details: undefined
+}
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 2 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-11T11:44:14.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-11T11:44:14.000Z) is older than watermark - keeping current
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📨 [PUBLIC-SHARE-STREAMING] New message from visitor
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔗 Share: receptionist-princip-t7D85lST (Agent)
+👤 Visitor: MBqwFokNM11np_5u
+📝 Message: "me lo aggiungi"
+
+📊 Tracking share access...
+
+📥 Fetching agent configuration...
+✅ Agent: Receptionist Principale (TTS: true, Mode: mirror)
+
+📥 Fetching or creating conversation...
+✅ Existing conversation found: 518bdabc-bdc2-4ca5-bfdd-9ea9dea31c82
+
+💾 Saving visitor message BEFORE streaming...
+✅ Visitor message saved
+🎛️ [AUDIO DECISION] Mode: mirror, ClientSentText → sendAudio=false, sendText=true
+
+🔄 Setting up SSE streaming...
+
+📅 [PUBLIC-BOOKING-PRE] Checking for existing booking actions BEFORE AI streaming...
+   ℹ️ No existing booking for this conversation - will proceed with AI streaming
+
+🤖 Starting AI response stream...
