@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Eye, EyeOff, Loader2, RefreshCw, Clock, Calendar } from "lucide-react";
+import { Eye, EyeOff, Loader2, RefreshCw, Clock, Calendar, Cloud } from "lucide-react";
+import GoogleDriveBrowser from "@/components/google-drive/GoogleDriveBrowser";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -485,6 +486,22 @@ export default function ConsultantApiSettings() {
                       <p className="text-sm mt-1">I lead importati appariranno qui</p>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+
+              {/* Sezione Google Drive */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Cloud className="h-5 w-5 text-blue-500" />
+                    Google Drive
+                  </CardTitle>
+                  <CardDescription>
+                    Connetti il tuo account Google Drive per importare documenti nella Knowledge Base
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GoogleDriveBrowser apiPrefix="/api/consultant" />
                 </CardContent>
               </Card>
 

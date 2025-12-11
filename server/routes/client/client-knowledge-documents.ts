@@ -18,11 +18,33 @@ const router = Router();
 const CLIENT_KNOWLEDGE_UPLOAD_DIR = "uploads/client-knowledge";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-const ALLOWED_MIME_TYPES: Record<string, "pdf" | "docx" | "txt"> = {
+const ALLOWED_MIME_TYPES: Record<string, "pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "ppt" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio"> = {
   "application/pdf": "pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
   "application/msword": "docx",
   "text/plain": "txt",
+  "text/markdown": "md",
+  "text/x-markdown": "md",
+  "text/rtf": "rtf",
+  "application/rtf": "rtf",
+  "application/vnd.oasis.opendocument.text": "odt",
+  "text/csv": "csv",
+  "application/csv": "csv",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+  "application/vnd.ms-excel": "xls",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
+  "application/vnd.ms-powerpoint": "ppt",
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
+  "audio/wav": "wav",
+  "audio/wave": "wav",
+  "audio/x-wav": "wav",
+  "audio/mp4": "m4a",
+  "audio/m4a": "m4a",
+  "audio/x-m4a": "m4a",
+  "audio/ogg": "ogg",
+  "audio/vorbis": "ogg",
+  "audio/webm": "webm_audio",
 };
 
 async function ensureUploadDir() {
@@ -136,7 +158,7 @@ router.post(
         await fs.unlink(uploadedFilePath).catch(() => {});
         return res.status(400).json({
           success: false,
-          error: "Invalid file type. Allowed types: PDF, DOCX, TXT",
+          error: "Invalid file type. Allowed types: PDF, DOCX, TXT, MD, RTF, CSV, XLSX, XLS, PPTX, Audio (MP3, WAV, M4A, OGG)",
         });
       }
 

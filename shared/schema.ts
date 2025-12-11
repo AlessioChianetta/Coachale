@@ -2405,6 +2405,13 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
   googleAccessToken: text("google_access_token"),
   googleTokenExpiresAt: timestamp("google_token_expires_at"),
   
+  // Google Drive Integration
+  googleDriveRefreshToken: text("google_drive_refresh_token"),
+  googleDriveAccessToken: text("google_drive_access_token"),
+  googleDriveTokenExpiresAt: timestamp("google_drive_token_expires_at"),
+  googleDriveConnectedAt: timestamp("google_drive_connected_at"),
+  googleDriveEmail: text("google_drive_email"),
+  
   workingHours: jsonb("working_hours").$type<{
     monday?: { enabled: boolean; start: string; end: string };
     tuesday?: { enabled: boolean; start: string; end: string };
@@ -4398,7 +4405,7 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
   
   // File information
   fileName: text("file_name").notNull(),
-  fileType: text("file_type").$type<"pdf" | "docx" | "txt">().notNull(),
+  fileType: text("file_type").$type<"pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "ppt" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio">().notNull(),
   fileSize: integer("file_size").notNull(), // in bytes
   filePath: text("file_path").notNull(), // path to stored file
   
@@ -4618,7 +4625,7 @@ export const clientKnowledgeDocuments = pgTable("client_knowledge_documents", {
   
   // File information
   fileName: text("file_name").notNull(),
-  fileType: text("file_type").$type<"pdf" | "docx" | "txt">().notNull(),
+  fileType: text("file_type").$type<"pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "ppt" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio">().notNull(),
   fileSize: integer("file_size").notNull(),
   filePath: text("file_path").notNull(),
   
