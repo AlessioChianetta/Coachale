@@ -2073,6 +2073,28 @@ LEAD: sì va bene
 → {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "18:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 2b - MODIFICA DIRETTA/IMPERATIVA (conta come CONFERMATA):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Quando il lead usa una forma IMPERATIVA o una richiesta DIRETTA con data/ora specifica, 
+conta come conferma implicita (confirmedTimes=1):
+
+LEAD: mettilo alle 10:00
+→ {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "10:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+
+LEAD: me lo puoi mettere alle 10?
+→ {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "10:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+
+LEAD: spostalo a domani alle 14
+→ {"intent": "MODIFY", "newDate": "[data domani]", "newTime": "14:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+
+LEAD: cambialo alle 16:30
+→ {"intent": "MODIFY", "newDate": "${existingBookingForModification.appointmentDate}", "newTime": "16:30", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+
+⚠️ NOTA: Le forme imperative ("mettilo", "spostalo", "cambialo") e le richieste dirette 
+("me lo metti", "puoi metterlo") con orario specifico implicano già la volontà del lead, 
+quindi confirmedTimes=1.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Esempio 3 - CANCELLAZIONE (prima conferma):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 LEAD: devo disdire l'appuntamento

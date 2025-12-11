@@ -201,6 +201,28 @@ LEAD: sì va bene
 → {"intent": "MODIFY", "newDate": "${existingBooking.appointmentDate}", "newTime": "18:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Esempio 2b - MODIFICA DIRETTA/IMPERATIVA (conta come CONFERMATA):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Quando il lead usa una forma IMPERATIVA o una richiesta DIRETTA con data/ora specifica, 
+conta come conferma implicita (confirmedTimes=1):
+
+LEAD: mettilo alle 10:00
+→ {"intent": "MODIFY", "newDate": "${existingBooking.appointmentDate}", "newTime": "10:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+
+LEAD: me lo puoi mettere alle 10?
+→ {"intent": "MODIFY", "newDate": "${existingBooking.appointmentDate}", "newTime": "10:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+
+LEAD: spostalo a domani alle 14
+→ {"intent": "MODIFY", "newDate": "[data domani]", "newTime": "14:00", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+
+LEAD: cambialo alle 16:30
+→ {"intent": "MODIFY", "newDate": "${existingBooking.appointmentDate}", "newTime": "16:30", "attendees": [], "confirmedTimes": 1, "confidence": "high"}
+
+⚠️ NOTA: Le forme imperative ("mettilo", "spostalo", "cambialo") e le richieste dirette 
+("me lo metti", "puoi metterlo") con orario specifico implicano già la volontà del lead, 
+quindi confirmedTimes=1.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Esempio 3 - CANCELLAZIONE (prima conferma):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 LEAD: devo disdire l'appuntamento
@@ -269,10 +291,11 @@ LEAD: grazie per l'appuntamento, a presto!
 11. Per MODIFY e CANCEL: attendees deve essere sempre [] (array vuoto)
 12. Per ADD_ATTENDEES: attendees contiene array di email da aggiungere
 13. confirmedTimes = numero di volte che il lead ha ESPLICITAMENTE confermato (conta "sì", "confermo", "va bene", ecc.)
-14. Per MODIFY: confirmedTimes = 1 quando il lead conferma
+14. Per MODIFY: confirmedTimes = 1 quando il lead conferma O quando usa forme IMPERATIVE/DIRETTE con orario specifico (es: "mettilo alle 10", "spostalo alle 14", "me lo metti alle 16?")
 15. Per CANCEL: confirmedTimes = 1 o 2 in base a quante volte ha confermato
-16. Per ADD_ATTENDEES: confirmedTimes = 0 (nessuna conferma necessaria)
-17. Se non ha ancora confermato: confirmedTimes = 0
+16. IMPORTANTE: Forme come "mettilo", "spostalo", "cambialo", "me lo puoi mettere" + orario specifico = confirmedTimes=1 (conferma implicita)
+17. Per ADD_ATTENDEES: confirmedTimes = 0 (nessuna conferma necessaria)
+18. Se non ha ancora confermato: confirmedTimes = 0
 `;
 }
 

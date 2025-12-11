@@ -1,0 +1,50 @@
+
+🔌 [STEP 6] Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+✅ AI Provider obtained: client (undefined)
+
+🤖 [STEP 7] Generating AI response (streaming)...
+📊 Input - History: 26 messages, New message: "me lo puoi mettere alle 10:00?..."
+✅ Stream initialized, yielding chunks...
+
+✅ [SUCCESS] Streaming complete
+   Chunks: 1
+   Total characters: 177
+   Estimated tokens: ~45
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ AI response complete - 1 chunks, 177 chars
+
+ℹ️ TTS disabled or not needed for this response mode
+
+💾 Saving agent response...
+✅ Agent message saved: text
+
+📅 [PUBLIC-BOOKING-POST] Checking for new booking creation...
+   ℹ️ Booking already exists - skipping new booking creation (modifications handled pre-streaming)
+✅ [SUCCESS] Public share message processed successfully
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2:06:27 PM [express] POST /api/activity/session/heartbeat 200 in 1164ms :: {"success":true,"lastActi…
+2:06:28 PM [express] POST /api/activity/session/heartbeat 200 in 295ms :: {"success":true,"lastActiv…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 2 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-11T11:44:14.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-11T11:44:14.000Z) is older than watermark - keeping current
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
