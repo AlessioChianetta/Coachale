@@ -4404,8 +4404,14 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
   
   // Extracted content for AI search
   extractedContent: text("extracted_content"), // Full text extracted from document
-  contentSummary: text("content_summary"), // AI-generated summary
+  contentSummary: text("content_summary"), // AI-generated summary (only when enabled)
+  summaryEnabled: boolean("summary_enabled").default(false).notNull(), // Toggle for enabling summary generation
   keywords: jsonb("keywords").$type<string[]>().default(sql`'[]'::jsonb`), // Extracted keywords
+  tags: jsonb("tags").$type<string[]>().default(sql`'[]'::jsonb`), // Custom user tags
+  
+  // Versioning
+  version: integer("version").default(1).notNull(), // Document version number
+  previousVersionId: varchar("previous_version_id"), // Link to previous version
   
   // Search optimization
   priority: integer("priority").default(5).notNull(), // 1-10, higher = more important
@@ -4478,6 +4484,14 @@ export const consultantKnowledgeApis = pgTable("consultant_knowledge_apis", {
   lastSyncStatus: text("last_sync_status").$type<"success" | "error" | "never">().default("never"),
   lastSyncError: text("last_sync_error"),
   
+  // Summary settings
+  summaryEnabled: boolean("summary_enabled").default(false).notNull(), // Toggle for enabling summary generation
+  dataSummary: text("data_summary"), // AI-generated summary of the API data
+  
+  // Template info (for pre-configured templates)
+  templateId: text("template_id"), // e.g., "hubspot", "salesforce", "istat"
+  templateName: text("template_name"), // Friendly name of the template
+  
   // Usage tracking
   usageCount: integer("usage_count").default(0).notNull(),
   lastUsedAt: timestamp("last_used_at"),
@@ -4524,7 +4538,11 @@ export const insertConsultantKnowledgeDocumentSchema = createInsertSchema(consul
   id: true,
   extractedContent: true,
   contentSummary: true,
+  summaryEnabled: true,
   keywords: true,
+  tags: true,
+  version: true,
+  previousVersionId: true,
   status: true,
   errorMessage: true,
   usageCount: true,

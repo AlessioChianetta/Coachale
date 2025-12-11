@@ -4,6 +4,7 @@ import { upload } from "../middleware/upload";
 import { db } from "../db";
 import {
   consultantKnowledgeDocuments,
+  consultantKnowledgeApis,
   updateConsultantKnowledgeDocumentSchema,
 } from "../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -343,6 +344,295 @@ router.delete(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to delete knowledge document",
+      });
+    }
+  }
+);
+
+// Toggle summary enabled/disabled for a document
+router.post(
+  "/consultant/knowledge/documents/:id/toggle-summary",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const consultantId = req.user!.id;
+      const { enabled } = req.body;
+
+      const [document] = await db
+        .select()
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.id, id),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!document) {
+        return res.status(404).json({
+          success: false,
+          error: "Document not found",
+        });
+      }
+
+      let contentSummary = document.contentSummary;
+
+      // Se abilitiamo il riassunto e non esiste, generiamo un riassunto base
+      if (enabled && !contentSummary && document.extractedContent) {
+        // Genera un riassunto semplice (i primi 500 caratteri + indicazione che è un estratto)
+        const extractedText = document.extractedContent;
+        contentSummary = extractedText.length > 500 
+          ? extractedText.substring(0, 500) + '... [Riassunto estratto automaticamente]'
+          : extractedText;
+      }
+
+      const [updatedDocument] = await db
+        .update(consultantKnowledgeDocuments)
+        .set({
+          summaryEnabled: enabled,
+          contentSummary: enabled ? contentSummary : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(consultantKnowledgeDocuments.id, id))
+        .returning();
+
+      console.log(`📝 [KNOWLEDGE DOCUMENTS] Summary ${enabled ? 'enabled' : 'disabled'} for: "${document.title}"`);
+
+      res.json({
+        success: true,
+        data: updatedDocument,
+        message: enabled ? "Riassunto abilitato" : "Riassunto disabilitato",
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE DOCUMENTS] Error toggling summary:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to toggle summary",
+      });
+    }
+  }
+);
+
+// Update custom tags for a document
+router.put(
+  "/consultant/knowledge/documents/:id/tags",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const consultantId = req.user!.id;
+      const { tags } = req.body;
+
+      if (!Array.isArray(tags)) {
+        return res.status(400).json({
+          success: false,
+          error: "Tags must be an array of strings",
+        });
+      }
+
+      const [document] = await db
+        .select()
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.id, id),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!document) {
+        return res.status(404).json({
+          success: false,
+          error: "Document not found",
+        });
+      }
+
+      const cleanTags = tags.map((t: string) => t.trim().toLowerCase()).filter((t: string) => t.length > 0);
+
+      const [updatedDocument] = await db
+        .update(consultantKnowledgeDocuments)
+        .set({
+          tags: cleanTags,
+          updatedAt: new Date(),
+        })
+        .where(eq(consultantKnowledgeDocuments.id, id))
+        .returning();
+
+      console.log(`🏷️ [KNOWLEDGE DOCUMENTS] Updated tags for: "${document.title}" -> [${cleanTags.join(', ')}]`);
+
+      res.json({
+        success: true,
+        data: updatedDocument,
+        message: "Tags aggiornati",
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE DOCUMENTS] Error updating tags:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to update tags",
+      });
+    }
+  }
+);
+
+// Get document preview (full extracted content)
+router.get(
+  "/consultant/knowledge/documents/:id/preview",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const consultantId = req.user!.id;
+
+      const [document] = await db
+        .select()
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.id, id),
+            eq(consultantKnowledgeDocuments.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!document) {
+        return res.status(404).json({
+          success: false,
+          error: "Document not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          id: document.id,
+          title: document.title,
+          description: document.description,
+          category: document.category,
+          fileName: document.fileName,
+          fileType: document.fileType,
+          fileSize: document.fileSize,
+          extractedContent: document.extractedContent,
+          contentSummary: document.contentSummary,
+          summaryEnabled: document.summaryEnabled,
+          tags: document.tags,
+          priority: document.priority,
+          usageCount: document.usageCount,
+          lastUsedAt: document.lastUsedAt,
+          version: document.version,
+          status: document.status,
+          createdAt: document.createdAt,
+          updatedAt: document.updatedAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE DOCUMENTS] Error fetching preview:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch document preview",
+      });
+    }
+  }
+);
+
+// Get knowledge base statistics
+router.get(
+  "/consultant/knowledge/stats",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      // Get all documents
+      const documents = await db
+        .select()
+        .from(consultantKnowledgeDocuments)
+        .where(eq(consultantKnowledgeDocuments.consultantId, consultantId));
+
+      // Get all APIs
+      const apis = await db
+        .select()
+        .from(consultantKnowledgeApis)
+        .where(eq(consultantKnowledgeApis.consultantId, consultantId));
+
+      // Calculate statistics
+      const totalDocuments = documents.length;
+      const indexedDocuments = documents.filter(d => d.status === 'indexed').length;
+      const processingDocuments = documents.filter(d => d.status === 'processing').length;
+      const errorDocuments = documents.filter(d => d.status === 'error').length;
+      
+      const totalApis = apis.length;
+      const activeApis = apis.filter(a => a.isActive).length;
+      
+      const totalDocUsage = documents.reduce((sum, d) => sum + (d.usageCount || 0), 0);
+      const totalApiUsage = apis.reduce((sum, a) => sum + (a.usageCount || 0), 0);
+      
+      // Most used documents
+      const mostUsedDocs = [...documents]
+        .filter(d => d.usageCount > 0)
+        .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+        .slice(0, 5)
+        .map(d => ({
+          id: d.id,
+          title: d.title,
+          category: d.category,
+          usageCount: d.usageCount,
+          lastUsedAt: d.lastUsedAt,
+        }));
+
+      // Most used APIs
+      const mostUsedApis = [...apis]
+        .filter(a => a.usageCount > 0)
+        .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
+        .slice(0, 5)
+        .map(a => ({
+          id: a.id,
+          name: a.name,
+          category: a.category,
+          usageCount: a.usageCount,
+          lastUsedAt: a.lastUsedAt,
+        }));
+
+      // Documents by category
+      const docsByCategory: Record<string, number> = {};
+      documents.forEach(d => {
+        docsByCategory[d.category] = (docsByCategory[d.category] || 0) + 1;
+      });
+
+      res.json({
+        success: true,
+        data: {
+          documents: {
+            total: totalDocuments,
+            indexed: indexedDocuments,
+            processing: processingDocuments,
+            error: errorDocuments,
+            totalUsage: totalDocUsage,
+            byCategory: docsByCategory,
+            mostUsed: mostUsedDocs,
+          },
+          apis: {
+            total: totalApis,
+            active: activeApis,
+            totalUsage: totalApiUsage,
+            mostUsed: mostUsedApis,
+          },
+          totalKnowledgeItems: totalDocuments + totalApis,
+          totalUsage: totalDocUsage + totalApiUsage,
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [KNOWLEDGE STATS] Error fetching stats:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch knowledge stats",
       });
     }
   }

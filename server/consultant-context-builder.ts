@@ -1026,16 +1026,32 @@ export interface ConsultantContext {
       id: string;
       title: string;
       category: string;
+      description?: string;
       content: string;
+      summary?: string | null;
       priority: number;
+      usageCount?: number;
+      lastUsedAt?: string | null;
     }>;
     apiData: Array<{
+      id?: string;
       apiName: string;
       category: string;
+      description?: string;
       data: any;
       lastSync: string;
+      usageCount?: number;
     }>;
     summary: string;
+    totalDocuments?: number;
+    totalApis?: number;
+    focusedDocument?: {
+      id: string;
+      title: string;
+      category: string;
+      content: string;
+      priority: number;
+    };
   };
   pageContext?: {
     pageType: string;
@@ -1053,6 +1069,11 @@ export async function buildConsultantContext(
     intent?: ConsultantIntent;
     message?: string;
     pageContext?: ConsultantPageContext;
+    focusedDocument?: {
+      id: string;
+      title: string;
+      category?: string;
+    };
   }
 ): Promise<ConsultantContext> {
   let intent: ConsultantIntent = options?.intent || 'general';
@@ -3944,34 +3965,74 @@ export async function buildConsultantContext(
     } : null,
   };
 
-  // Load Knowledge Base context
+  // Load Knowledge Base context - ALWAYS load ALL documents and APIs
   try {
-    console.log(`📚 [Knowledge Base] Loading knowledge context for consultant...`);
-    const knowledgeContext = await getKnowledgeContext(consultantId, options?.message);
+    console.log(`📚 [Knowledge Base] Loading ALL knowledge content for consultant (no filtering)...`);
+    const knowledgeContext = await getKnowledgeContext(consultantId);
+    
+    // SEMPRE carica la knowledge base, anche se vuota (così l'AI sa che esiste)
+    context.knowledgeBase = {
+      documents: knowledgeContext.documents.map(doc => ({
+        id: doc.id,
+        title: doc.title,
+        category: doc.category,
+        description: doc.description || '',
+        content: doc.extractedContent, // TUTTO il contenuto, non troncato
+        summary: doc.contentSummary || null, // Riassunto solo se abilitato dall'utente
+        priority: doc.priority,
+        usageCount: doc.usageCount,
+        lastUsedAt: doc.lastUsedAt?.toISOString() || null,
+      })),
+      apiData: knowledgeContext.apiData.map(api => ({
+        id: api.id,
+        apiName: api.apiName,
+        category: api.category,
+        description: api.description || '',
+        data: api.data, // TUTTI i dati API
+        lastSync: api.lastSync?.toISOString() || '',
+        usageCount: api.usageCount,
+      })),
+      summary: knowledgeContext.summary,
+      totalDocuments: knowledgeContext.totalDocuments,
+      totalApis: knowledgeContext.totalApis,
+    };
     
     if (knowledgeContext.documents.length > 0 || knowledgeContext.apiData.length > 0) {
-      context.knowledgeBase = {
-        documents: knowledgeContext.documents.map(doc => ({
-          id: doc.id,
-          title: doc.title,
-          category: doc.category,
-          content: doc.extractedContent,
-          priority: doc.priority,
-        })),
-        apiData: knowledgeContext.apiData.map(api => ({
-          apiName: api.apiName,
-          category: api.category,
-          data: api.data,
-          lastSync: api.lastSync?.toISOString() || '',
-        })),
-        summary: knowledgeContext.summary,
-      };
-      console.log(`✅ [Knowledge Base] Loaded ${knowledgeContext.documents.length} documents, ${knowledgeContext.apiData.length} API data sources`);
+      console.log(`✅ [Knowledge Base] Loaded ALL content: ${knowledgeContext.documents.length} documents, ${knowledgeContext.apiData.length} API sources`);
     } else {
-      console.log(`ℹ️ [Knowledge Base] No documents or API data found for consultant`);
+      console.log(`ℹ️ [Knowledge Base] No documents or API data uploaded yet`);
     }
   } catch (error) {
     console.error(`❌ [Knowledge Base] Failed to load knowledge context:`, error);
+    // Imposta un contesto vuoto così l'AI sa che la funzionalità esiste
+    context.knowledgeBase = {
+      documents: [],
+      apiData: [],
+      summary: 'Knowledge Base non ancora configurata',
+      totalDocuments: 0,
+      totalApis: 0,
+    };
+  }
+
+  // Add focused document indicator if provided
+  if (options?.focusedDocument && context.knowledgeBase) {
+    console.log(`🎯 [Document Focus] User wants to focus on document: "${options.focusedDocument.title}" (ID: ${options.focusedDocument.id})`);
+    
+    // Mark the focused document in the context so AI knows to prioritize it
+    const focusedDoc = context.knowledgeBase.documents.find(doc => doc.id === options.focusedDocument!.id);
+    if (focusedDoc) {
+      // Add a special focus indicator
+      context.knowledgeBase.focusedDocument = {
+        id: focusedDoc.id,
+        title: focusedDoc.title,
+        category: focusedDoc.category,
+        content: focusedDoc.content,
+        priority: 10, // Maximum priority
+      };
+      console.log(`✅ [Document Focus] Found and marked document for AI focus`);
+    } else {
+      console.log(`⚠️ [Document Focus] Document ${options.focusedDocument.id} not found in knowledge base`);
+    }
   }
 
   // Enrich context with pageContext if provided

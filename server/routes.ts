@@ -6420,7 +6420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/consultant/ai/chat", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const { message, conversationId, pageContext } = req.body;
+      const { message, conversationId, pageContext, focusedDocument } = req.body;
       
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
@@ -6445,6 +6445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message,
           conversationId,
           pageContext,
+          focusedDocument,
         })) {
           res.write(`data: ${JSON.stringify(chunk)}\n\n`);
           

@@ -11,6 +11,7 @@ import { buildUserContext, UserContext } from "./ai-context-builder";
 import { buildSystemPrompt, AIMode, ConsultantType } from "./ai-prompts";
 import { buildConsultantContext, detectConsultantIntent, ConsultantContext, ConsultantIntent } from "./consultant-context-builder";
 import { consultantGuides, formatGuidesForPrompt } from "./consultant-guides";
+import { trackDocumentUsage, trackApiUsage } from "./services/knowledge-searcher";
 import { extractUrls, scrapeMultipleUrls, isGoogleSheetsUrl, scrapeGoogleDoc } from "./web-scraper";
 import {
   getCachedExercise,
@@ -1978,15 +1979,22 @@ function extractSuggestedActions(message: string, userContext: UserContext) {
 // CONSULTANT AI ASSISTANT FUNCTIONS
 // ========================================
 
+export interface FocusedDocument {
+  id: string;
+  title: string;
+  category?: string;
+}
+
 export interface ConsultantChatRequest {
   consultantId: string;
   message: string;
   conversationId?: string;
   pageContext?: import('./consultant-context-builder').ConsultantPageContext;
+  focusedDocument?: FocusedDocument;
 }
 
 export async function* sendConsultantChatMessageStream(request: ConsultantChatRequest) {
-  const { consultantId, message, conversationId, pageContext } = request;
+  const { consultantId, message, conversationId, pageContext, focusedDocument } = request;
 
   const timings = {
     requestStart: performance.now(),
@@ -2036,7 +2044,8 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
     timings.contextBuildStart = performance.now();
     const consultantContext: ConsultantContext = await buildConsultantContext(consultantId, { 
       message, 
-      pageContext 
+      pageContext,
+      focusedDocument
     });
     timings.contextBuildEnd = performance.now();
     contextBuildTime = Math.round(timings.contextBuildEnd - timings.contextBuildStart);
@@ -2172,6 +2181,22 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       .where(eq(aiConversations.id, conversation.id));
 
     console.log(`✅ Consultant AI streaming completed for message ${savedMessage.id}`);
+
+    // Track knowledge base usage - increment usage count for all documents and APIs used in context
+    if (consultantContext.knowledgeBase) {
+      const documentIds = consultantContext.knowledgeBase.documents.map(d => d.id);
+      const apiIds = consultantContext.knowledgeBase.apiData
+        .filter(a => a.id)
+        .map(a => a.id as string);
+      
+      // Track usage asynchronously (don't block response)
+      Promise.all([
+        documentIds.length > 0 ? trackDocumentUsage(documentIds) : Promise.resolve(),
+        apiIds.length > 0 ? trackApiUsage(apiIds) : Promise.resolve(),
+      ]).catch(err => {
+        console.error('❌ [Knowledge Tracking] Failed to track usage:', err);
+      });
+    }
 
     // Calculate total timing
     timings.totalEnd = performance.now();
@@ -2857,6 +2882,67 @@ ${context.aiAgents.dot.avgResponseTime ? '- Tempo risposta medio: ' + context.ai
 - Conversazioni clienti: ${context.aiAgents.spec.clientConversations}
 - Domande risposte: ${context.aiAgents.spec.questionsAnswered}
 - Documenti referenziati: ${context.aiAgents.spec.documentsReferenced}
+` : ''}
+
+${context.knowledgeBase && (context.knowledgeBase.documents.length > 0 || context.knowledgeBase.apiData.length > 0) ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 BASE DI CONOSCENZA DEL CONSULENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ QUESTA SEZIONE CONTIENE CONOSCENZE PERSONALIZZATE DEL CONSULENTE.
+USA QUESTE INFORMAZIONI PER FORNIRE RISPOSTE ACCURATE E CONTESTUALI.
+
+${context.knowledgeBase.focusedDocument ? `
+🎯🎯🎯 DOCUMENTO FOCALIZZATO - ATTENZIONE MASSIMA RICHIESTA 🎯🎯🎯
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ ISTRUZIONI CRITICHE:
+L'utente ha ESPLICITAMENTE richiesto informazioni su QUESTO SPECIFICO documento.
+La tua risposta DEVE:
+1. Basarsi PRINCIPALMENTE sul contenuto di questo documento
+2. Citare direttamente le informazioni presenti nel documento
+3. Rispondere nel contesto di questo documento specifico
+4. Se la domanda non trova risposta nel documento, indicalo chiaramente
+
+📌 DOCUMENTO SELEZIONATO: "${context.knowledgeBase.focusedDocument.title}"
+📁 Categoria: ${context.knowledgeBase.focusedDocument.category}
+
+📄 CONTENUTO DEL DOCUMENTO (PRIORITÀ MASSIMA):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${context.knowledgeBase.focusedDocument.content}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+` : ''}
+
+📄 DOCUMENTI CARICATI (${context.knowledgeBase.documents.length}):
+${context.knowledgeBase.documents.map(doc => `
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┃ 📄 ${doc.title}${doc.id === context.knowledgeBase?.focusedDocument?.id ? ' 🎯 [FOCALIZZATO]' : ''}
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 Categoria: ${doc.category}
+${doc.description ? `📝 Descrizione: ${doc.description}` : ''}
+${doc.summary ? `📋 Riassunto: ${doc.summary}` : ''}
+📊 Priorità: ${doc.priority}, Usato ${doc.usageCount} volte
+
+📖 CONTENUTO:
+${doc.content || 'Contenuto non disponibile'}
+`).join('\n')}
+
+${context.knowledgeBase.apiData.length > 0 ? `
+🔗 DATI DA API ESTERNE (${context.knowledgeBase.apiData.length}):
+${context.knowledgeBase.apiData.map(api => `
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+┃ 🔗 ${api.apiName}
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 Categoria: ${api.category}
+${api.description ? `📝 Descrizione: ${api.description}` : ''}
+📅 Ultima sincronizzazione: ${api.lastSync}
+📊 Usato ${api.usageCount} volte
+
+📊 DATI:
+${typeof api.data === 'string' ? api.data : JSON.stringify(api.data, null, 2)}
+`).join('\n')}
+` : ''}
 ` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

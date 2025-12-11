@@ -19,6 +19,7 @@ import { getAuthHeaders, getAuthUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PageContext } from "@/hooks/use-page-context";
 import { ConsultantPageContext } from "@/hooks/use-consultant-page-context";
+import { useDocumentFocus } from "@/hooks/use-document-focus";
 
 interface Message {
   id: string;
@@ -110,6 +111,9 @@ export function ChatPanel({
     const user = getAuthUser();
     return user?.firstName || "Utente";
   }, []);
+
+  // Document focus for "Ask about this document" feature
+  const { focusedDocument, clearFocus } = useDocumentFocus();
 
   // Load conversations for history tab
   const loadConversations = async () => {
@@ -273,6 +277,11 @@ export function ChatPanel({
                 message,
                 conversationId: currentConversationId,
                 pageContext: pageContext,
+                focusedDocument: focusedDocument ? {
+                  id: focusedDocument.id,
+                  title: focusedDocument.title,
+                  category: focusedDocument.category,
+                } : undefined,
               }
             : {
                 // Client endpoint payload
@@ -705,6 +714,35 @@ export function ChatPanel({
                           </div>
                           <p className="font-medium text-gray-900 dark:text-white text-sm">
                             {pageContext.resourceTitle || "Questo esercizio"}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Focused Document Banner */}
+                      {focusedDocument && (
+                        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              <span className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+                                Documento in focus
+                              </span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={clearFocus}
+                              className="h-6 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Rimuovi
+                            </Button>
+                          </div>
+                          <p className="font-medium text-gray-900 dark:text-white text-sm">
+                            {focusedDocument.title}
+                          </p>
+                          <p className="text-xs text-amber-600 dark:text-amber-300 mt-1">
+                            L'AI risponderà focalizzandosi su questo documento
                           </p>
                         </div>
                       )}
