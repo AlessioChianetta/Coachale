@@ -1,0 +1,39 @@
+Piano d'attacco: Nuova Live e Agente Vendita 🚀
+L'idea è spaccare la modalità "Live" in due parti ben distinte:
+
+1. Gli Intoccabili (Hardcoded) Qui ci vanno gli agenti "classici" che non si toccano: Sessione Normale e Sessione Consulenza. Rimangono così come sono.
+
+2. I Custom Agents (Il nuovo focus) Qui creiamo i nuovi agenti personalizzabili. Partiamo subito con il Venditore.
+
+Il trucco: Anche se dietro le quinte per ora lo lasciamo hardcoded per fare prima, nel frontend facciamo vedere tutto "paro paro". Deve essere WYSIWYG: quello che configuri o scrivi nei parametri, lo vedi aggiornarsi in tempo reale. Sembrerà super dinamico fin da subito.
+
+Cosa deve fare il Venditore?
+Lavoriamo con dei flag per decidere la modalità. L'obiettivo finale è avere:
+
+Solo Discovery.
+
+Discovery + Demo + Pagamento (chiede i soldi, manda il link, controlla se ha pagato).
+
+Su cosa ci concentriamo ORA: Facciamo la modalità Discovery + Demo insieme.
+
+Il pagamento lo integriamo dopo (prima assicuriamoci che venda bene!).
+
+Nota per il futuro: Se un domani separiamo le due fasi, l'AI della Demo dovrà per forza ricordarsi di cosa si sono detti nella Discovery.
+
+Basta spreco di Token (Gestione Dati)
+Non possiamo buttargli dentro 250k token di contesto a caso come facciamo ora. Facciamo una cosa pulita, stile /consultant/whatsapp/agent/new ma lato cliente:
+
+Campi Pre-compilati: Quando entri nella configurazione, i campi sono già pieni con le info base (modificabili a mano).
+
+Il "Pulsante Magico": Mettiamo un tasto che fa fare all'AI uno scraping intelligente dei nostri dati. Si va a leggere endpoint come lo storico delle consulenze e gli esercizi fatti etc chi è realmente l'imprenditore, così diamo una personalità al venditore.
+
+Risultato: L'AI si estrae da sola le info utili sul consulente e sull'offerta e le schiaffa nella configurazione dell'agente. Massimo risultato, minimo consumo di token.
+
+Come lo vede l'utente?
+Attivi "Custom Live" -> Scegli "Crea Venditore".
+
+Selezioni il flag (es. Disco + Demo).
+
+L'interazione non avviene nella dashboard: il cliente finale atterra su una pagina pubblica dedicata con un suo ID specifico per parlare con l'AI.
+
+Scripting: L'AI userà gli script che mi manderai, ma non a pappagallo. Li userà come traccia e si adatterà in modo fluido al business e alle risposte del cliente.
