@@ -1,0 +1,335 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+🔌 [STEP 6] Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+✅ AI Provider obtained: client (undefined)
+
+🤖 [STEP 7] Generating AI response (streaming)...
+📊 Input - History: 20 messages, New message: "alle 16..."
+✅ Stream initialized, yielding chunks...
+
+✅ [SUCCESS] Streaming complete
+   Chunks: 2
+   Total characters: 158
+   Estimated tokens: ~40
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ AI response complete - 2 chunks, 158 chars
+
+ℹ️ TTS disabled or not needed for this response mode
+
+💾 Saving agent response...
+✅ Agent message saved: text
+
+📅 [PUBLIC-BOOKING-POST] Checking for new booking creation...
+   ℹ️ Booking already exists - skipping new booking creation (modifications handled pre-streaming)
+✅ [SUCCESS] Public share message processed successfully
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 2 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-11T11:44:14.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-11T11:44:14.000Z) is older than watermark - keeping current
+
+🧹 [CLEANUP] Starting cleanup of empty consultant-agent conversations older than 24 hours...
+🔒 [SECURITY] Scoped to consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, agent: fe95f393-b8c9-4fc0-80d7-2035dcba305a
+ℹ️  [CLEANUP] No empty conversations to clean up for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+1:16:32 PM [express] GET /api/whatsapp/agent-chat/conversations 304 in 899ms :: {"data":[{"id":"e751…
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+
+
+
+
+
+
+
+
+
+
+
+🔌 [STEP 6] Getting AI provider...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Using cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+✅ AI Provider obtained: client (undefined)
+
+🤖 [STEP 7] Generating AI response (streaming)...
+📊 Input - History: 30 messages, New message: "me lo rimetti alle 16:00..."
+✅ Stream initialized, yielding chunks...
+
+✅ [SUCCESS] Streaming complete
+   Chunks: 2
+   Total characters: 151
+   Estimated tokens: ~38
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ AI response complete - 2 chunks, 151 chars
+
+ℹ️ TTS disabled or not needed for this response mode
+
+💾 Saving agent response...
+✅ Agent message saved: text
+
+📅 [PUBLIC-BOOKING-POST] Checking for new booking creation...
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+   ✅ [PRE-CHECK] Booking data detected (email: false, phone: false, date/time: true)
+   ✅ [AI PRE-CHECK] Proceeding with new booking analysis
+   📚 Analyzing 15 messages for new booking...
+
+🔍 [BOOKING SERVICE] Extracting data from 15 messages
+   Mode: NEW BOOKING
+   Timezone: Europe/Rome
+1:20:12 PM [express] POST /api/activity/session/heartbeat 200 in 227ms :: {"success":true,"lastActiv…
+   AI Response length: 177 chars
+   Parsed extraction result: hasAllData=false, date=2025-12-11, time=16:00
+   📊 Extraction: hasAllData=false, isConfirming=true
+   📋 Data: date=2025-12-11, time=16:00, email=null, phone=null
+   ℹ️ Not all data available or user not confirming yet
+✅ [SUCCESS] Public share message processed successfully
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 2 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-11T11:44:14.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-11T11:44:14.000Z) is older than watermark - keeping current
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+
+
+
+
+
+
+
+
+
+
+🔍 TIER 1: Looking for client-managed Vertex AI (clientId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Found client-managed Vertex AI setting
+✅ Parsed credentials as plaintext JSON
+✅ Parsed and cached credentials for settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created Vertex AI client (Vertex AI (tuo)) from settings 4c4e1eb2-47b8-4649-8a92-c656c2988229
+✅ TIER 1: Successfully created client-managed Vertex AI client
+   🤖 [AI INTUITION] Booking exists - using AI to determine if message is booking-related...
+   ⚠️ [AI INTUITION] Error: Cannot read properties of undefined (reading 'generateContent') - defaulting to TRUE (analyze anyway)
+   ✅ [AI PRE-CHECK] Message is booking-related, proceeding with intent extraction
+   📚 Analyzing 15 messages for intent...
+
+🔍 [BOOKING SERVICE] Extracting data from 15 messages
+   Mode: MODIFICATION
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Ciao! Vorrei capire come avere 10k di rendita passiva, 100k di patrimonio, non so come farlo il mio numero è 3890566422
+
+11 minuti fa
+Ciao! 👋 Piacere, sono l'assistente di Orbitale. Aiutiamo imprenditori, professionisti e dipendenti a creare un patrimonio tra 100.000 e 500.000€ in 2-4 anni.
+
+Capito, vuoi arrivare a 10.000€ di rendita passiva e 100.000€ di patrimonio 💪 Ottimi obiettivi!
+
+Mi dici cosa ti sta bloccando dal raggiungerli adesso? Qual è l'ostacolo più grande che incontri? 🤔
+
+11 minuti fa
+non so come fare
+
+10 minuti fa
+Capito 👍 "Non sapere come fare" è un blocco molto comune, ed è esattamente lì che possiamo darti una mano.
+
+Perfetto, chiarissimo 💪 Se potessimo aiutarti ad arrivare anche solo alla metà di questi obiettivi – quindi a 5.000€ di rendita passiva e 50.000€ di patrimonio – ci dedicheresti 30 minuti del tuo tempo in una consulenza gratuita per capire insieme se e come possiamo aiutarti concretamente?
+
+10 minuti fa
+certo va bene
+
+10 minuti fa
+Fantastico 🔥 Ti dico subito, stiamo fissando le prossime consulenze. Ti va meglio mattina o pomeriggio?
+
+10 minuti fa
+pomeriggio
+
+10 minuti fa
+Perfetto! Per il pomeriggio ho questi orari disponibili: • Giovedì 11 dicembre alle 16:00 • Giovedì 11 dicembre alle 17:30
+
+Quale preferisci?
+
+10 minuti fa
+giovedi 11 dicembre alle 18
+
+10 minuti fa
+Capito! Purtroppo l'orario delle 18:00 di oggi non è disponibile.
+
+Per giovedì 11 dicembre ho ancora disponibili questi orari nel pomeriggio: • alle 16:00 • alle 17:30
+
+Quale preferisci tra questi?
+
+9 minuti fa
+17:30
+
+9 minuti fa
+Perfetto! Giovedì 11 dicembre alle 17:30 📅
+
+Per confermare l'appuntamento, mi confermi il tuo numero di telefono?
+
+9 minuti fa
+3890566422
+
+9 minuti fa
+Grazie! 👍
+
+E mi lasci anche la tua email? Te la aggiungo all'invito del calendario così riceverai l'evento Google Calendar con il link per la call.
+
+9 minuti fa
+chianettaalessio@gmail.com
+
+9 minuti fa
+Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳
+
+9 minuti fa
+🎉 APPUNTAMENTO CONFERMATO!
+
+📅 Data: 11/12/2025 🕐 Orario: 17:30 ⏱️ Durata: 60 minuti
+
+🎥 Link Google Meet: https://meet.google.com/gpp-ossj-nzm
+
+📧 Ti ho inviato l'invito calendario a chianettaalessio@gmail.com
+
+Ti consiglio di collegarti 2-3 minuti prima! 📱
+
+8 minuti fa
+possiamo alle 18:30?
+
+6 minuti fa
+Certo, nessun problema! Capisco che tu voglia spostare l'orario.
+
+Purtroppo l'orario delle 18:30 di oggi non è disponibile.
+
+Ti propongo questi orari alternativi: • Oggi, Giovedì 11 dicembre alle 16:00 • Domani, Venerdì 12 dicembre alle 10:00 • Domani, Venerdì 12 dicembre alle 15:00
+
+Quale preferisci?
+
+5 minuti fa
+alle 16
+
+5 minuti fa
+Perfetto! Ho aggiornato il tuo appuntamento per oggi, Giovedì 11 dicembre alle 16:00 📅
+
+Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳
+
+5 minuti fa
+lo hai modificato?
+
+4 minuti fa
+✅ APPUNTAMENTO MODIFICATO!
+
+📅 Nuovo appuntamento: 🗓️ Data: 11/12/2025 🕐 Orario: 16:00
+
+Ti ho aggiornato l'invito al calendario all'indirizzo chianettaalessio@gmail.com. Controlla la tua inbox! 📬
+
+Ci vediamo alla nuova data! 🚀
+
+4 minuti fa
+me lo cancelli?
+
+3 minuti fa
+[NOME], capisco che possano esserci imprevisti.
+
+Prima di procedere, lascia che ti ricordi qualcosa di importante 💭
+
+Da dove sei partito/a: Non sai come raggiungere i tuoi obiettivi finanziari.
+Dove vuoi arrivare: 10.000€ di rendita passiva e 100.000€ di patrimonio.
+Perché è importante: Vuoi fare il primo passo concreto per la tua libertà finanziaria.
+Questo appuntamento è la tua opportunità per fare il primo passo. Quindi, mi confermi che vuoi davvero cancellare l'appuntamento?
+
+3 minuti fa
+si
+
+3 minuti fa
+Sei sicuro? Una volta cancellato, potrebbe volerci tempo per trovare un altro slot disponibile. Confermi definitivamente la cancellazione?
+
+3 minuti fa
+si
+
+2 minuti fa
+✅ APPUNTAMENTO CANCELLATO
+
+Ho cancellato il tuo appuntamento del 11/12/2025 alle 16:00.
+
+Se in futuro vorrai riprogrammare, sarò qui per aiutarti! 😊
+
+2 minuti fa
+me lo rimetti alle 16:00
+
+un minuto fa
+Certo! Nessun problema, lo rimettiamo alle 16:00 di oggi, Giovedì 11 dicembre.
+
+Sto ricreando a calendario il tuo invito a Meet, aspetta un attimo... ⏳
+
+un minuto fa
+fallo
+
+meno di un minuto fa
+Perfetto! Sto creando a calendario il tuo invito a Meet, aspetta un attimo... ⏳
