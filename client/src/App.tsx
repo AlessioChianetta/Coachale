@@ -97,6 +97,8 @@ const ConsultationLobby = lazy(() => import("@/pages/consultation-lobby"));
 const MeetGreenRoom = lazy(() => import("@/pages/meet-green-room"));
 const MeetVideoRoom = lazy(() => import("@/pages/meet-video-room"));
 const ClientVertexAIAnalytics = lazy(() => import("./pages/client-vertex-ai-analytics"));
+const ClientKnowledgeDocuments = lazy(() => import("./pages/client-knowledge-documents"));
+const ClientKnowledgeApis = lazy(() => import("./pages/client-knowledge-apis"));
 const TrainingMapPage = lazy(() => import("@/pages/training-map"));
 
 function Router() {
@@ -547,6 +549,18 @@ function Router() {
       <Route path="/client/analytics/vertex-ai">
         <AuthGuard requiredRole="client">
           <ClientVertexAIAnalytics />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/client/knowledge-documents">
+        <AuthGuard requiredRole="client">
+          <ClientKnowledgeDocuments />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/client/knowledge-apis">
+        <AuthGuard requiredRole="client">
+          <ClientKnowledgeApis />
         </AuthGuard>
       </Route>
 

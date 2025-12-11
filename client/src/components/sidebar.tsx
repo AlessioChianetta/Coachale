@@ -216,6 +216,16 @@ const clientItems: SidebarItemWithChildren[] = [
     ]
   },
   { 
+    name: "Base di Conoscenza", 
+    href: "/client/knowledge-documents", 
+    icon: BookOpen, 
+    color: "text-teal-600",
+    children: [
+      { name: "Documenti", href: "/client/knowledge-documents", icon: FileText, color: "text-teal-600" },
+      { name: "API Esterne", href: "/client/knowledge-apis", icon: Zap, color: "text-cyan-600" },
+    ]
+  },
+  { 
     name: "Venditori Umani", 
     href: "/client/human-sellers", 
     icon: Video, 

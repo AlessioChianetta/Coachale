@@ -37,6 +37,7 @@ import { scrapeGoogleDoc } from "./web-scraper";
 import type { FinanceData } from "./percorso-capitale-types";
 import { PercorsoCapitaleClient } from "./percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "./percorso-capitale-processor";
+import { getClientKnowledgeContext } from "./services/knowledge-searcher";
 
 // ========================================
 // INTENT DETECTION
@@ -422,6 +423,28 @@ export interface UserContext {
     };
   };
   financeData?: FinanceData;
+  knowledgeBase?: {
+    documents: Array<{
+      id: string;
+      title: string;
+      category: string;
+      description: string | null;
+      extractedContent: string;
+      contentSummary: string | null;
+      priority: number;
+    }>;
+    apiData: Array<{
+      id: string;
+      apiName: string;
+      category: string;
+      description: string | null;
+      data: any;
+      lastSync: Date | null;
+    }>;
+    summary: string;
+    totalDocuments: number;
+    totalApis: number;
+  };
   conversation?: {
     isProactiveLead: boolean;
     proactiveLeadId: string | null;
@@ -470,6 +493,7 @@ export async function buildUserContext(
   const shouldLoadUniversity = intent === 'university' || intent === 'general'; // NO per 'list'
   const shouldLoadFinances = intent === 'finances_current' || intent === 'finances_historical' || intent === 'general'; // NO per 'list'
   const shouldLoadConsultations = intent !== 'list'; // SEMPRE (tranne 'list')
+  const shouldLoadKnowledgeBase = intent !== 'list'; // Knowledge Base client per AI Assistant
 
   // ========================================
   // PHASE 2: Parallelize queries conditionally based on intent
@@ -1891,6 +1915,42 @@ export async function buildUserContext(
     },
     financeData,
   };
+
+  // ========================================
+  // KNOWLEDGE BASE: Load client documents and APIs for AI context
+  // ========================================
+  if (shouldLoadKnowledgeBase) {
+    try {
+      const knowledgeContext = await getClientKnowledgeContext(clientId);
+      if (knowledgeContext.totalDocuments > 0 || knowledgeContext.totalApis > 0) {
+        context.knowledgeBase = {
+          documents: knowledgeContext.documents.map(doc => ({
+            id: doc.id,
+            title: doc.title,
+            category: doc.category,
+            description: doc.description,
+            extractedContent: doc.extractedContent,
+            contentSummary: doc.contentSummary,
+            priority: doc.priority,
+          })),
+          apiData: knowledgeContext.apiData.map(api => ({
+            id: api.id,
+            apiName: api.apiName,
+            category: api.category,
+            description: api.description,
+            data: api.data,
+            lastSync: api.lastSync,
+          })),
+          summary: knowledgeContext.summary,
+          totalDocuments: knowledgeContext.totalDocuments,
+          totalApis: knowledgeContext.totalApis,
+        };
+        console.log(`📚 [AI Context] Added Knowledge Base: ${knowledgeContext.totalDocuments} docs, ${knowledgeContext.totalApis} APIs`);
+      }
+    } catch (error: any) {
+      console.error(`❌ [AI Context] Failed to load Knowledge Base:`, error.message);
+    }
+  }
 
   // ========================================
   // CACHE STRATEGY: Skip caching for specific pageContext

@@ -3,6 +3,9 @@ import {
   consultantKnowledgeDocuments, 
   consultantKnowledgeApis, 
   consultantKnowledgeApiCache,
+  clientKnowledgeDocuments,
+  clientKnowledgeApis,
+  clientKnowledgeApiCache,
   users
 } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
@@ -399,4 +402,309 @@ export async function toggleDocumentSummary(
     );
 
   return true;
+}
+
+// ================================
+// CLIENT KNOWLEDGE BASE FUNCTIONS
+// ================================
+
+async function getClientEncryptionSalt(clientId: string): Promise<string | null> {
+  const [user] = await db
+    .select({ encryptionSalt: users.encryptionSalt })
+    .from(users)
+    .where(eq(users.id, clientId));
+  return user?.encryptionSalt || null;
+}
+
+/**
+ * Carica TUTTI i documenti indicizzati del client.
+ */
+export async function getAllClientKnowledgeDocuments(
+  clientId: string
+): Promise<KnowledgeDocument[]> {
+  const documents = await db
+    .select({
+      id: clientKnowledgeDocuments.id,
+      title: clientKnowledgeDocuments.title,
+      category: clientKnowledgeDocuments.category,
+      description: clientKnowledgeDocuments.description,
+      extractedContent: clientKnowledgeDocuments.extractedContent,
+      contentSummary: clientKnowledgeDocuments.contentSummary,
+      priority: clientKnowledgeDocuments.priority,
+      usageCount: clientKnowledgeDocuments.usageCount,
+      lastUsedAt: clientKnowledgeDocuments.lastUsedAt,
+    })
+    .from(clientKnowledgeDocuments)
+    .where(
+      and(
+        eq(clientKnowledgeDocuments.clientId, clientId),
+        eq(clientKnowledgeDocuments.status, 'indexed')
+      )
+    )
+    .orderBy(
+      desc(clientKnowledgeDocuments.priority),
+      desc(clientKnowledgeDocuments.createdAt)
+    );
+
+  return documents.map(doc => ({
+    id: doc.id,
+    title: doc.title,
+    category: doc.category,
+    description: doc.description,
+    extractedContent: doc.extractedContent || '',
+    contentSummary: doc.contentSummary,
+    priority: doc.priority,
+    usageCount: doc.usageCount,
+    lastUsedAt: doc.lastUsedAt,
+  }));
+}
+
+/**
+ * Incrementa il contatore di utilizzo per i documenti client usati dall'AI
+ */
+export async function trackClientDocumentUsage(documentIds: string[]): Promise<void> {
+  if (documentIds.length === 0) return;
+  
+  const now = new Date();
+  for (const docId of documentIds) {
+    await db
+      .update(clientKnowledgeDocuments)
+      .set({
+        usageCount: sql`${clientKnowledgeDocuments.usageCount} + 1`,
+        lastUsedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(clientKnowledgeDocuments.id, docId));
+  }
+  console.log(`📊 [Client Knowledge Tracking] Updated usage for ${documentIds.length} documents`);
+}
+
+/**
+ * Incrementa il contatore di utilizzo per le API client usate dall'AI
+ */
+export async function trackClientApiUsage(apiIds: string[]): Promise<void> {
+  if (apiIds.length === 0) return;
+  
+  const now = new Date();
+  for (const apiId of apiIds) {
+    await db
+      .update(clientKnowledgeApis)
+      .set({
+        usageCount: sql`${clientKnowledgeApis.usageCount} + 1`,
+        lastUsedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(clientKnowledgeApis.id, apiId));
+  }
+  console.log(`📊 [Client Knowledge Tracking] Updated usage for ${apiIds.length} APIs`);
+}
+
+async function syncClientApiData(
+  apiConfig: typeof clientKnowledgeApis.$inferSelect,
+  encryptionSalt: string
+): Promise<any> {
+  try {
+    let headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(apiConfig.requestHeaders as Record<string, string> || {}),
+    };
+
+    if (apiConfig.apiKey && apiConfig.authType !== 'none') {
+      const decryptedKey = decryptForConsultant(apiConfig.apiKey, encryptionSalt);
+      const authConfig = apiConfig.authConfig as any || {};
+      
+      switch (apiConfig.authType) {
+        case 'api_key':
+          const headerName = authConfig.headerName || 'X-API-Key';
+          headers[headerName] = decryptedKey;
+          break;
+        case 'bearer':
+          headers['Authorization'] = `Bearer ${decryptedKey}`;
+          break;
+        case 'basic':
+          const username = authConfig.username || '';
+          const credentials = Buffer.from(`${username}:${decryptedKey}`).toString('base64');
+          headers['Authorization'] = `Basic ${credentials}`;
+          break;
+      }
+    }
+
+    const url = `${apiConfig.baseUrl}${apiConfig.defaultEndpoint || ''}`;
+    const params = apiConfig.requestParams as Record<string, string> || {};
+
+    const response = apiConfig.requestMethod === 'POST'
+      ? await axios.post(url, params, { headers, timeout: 30000 })
+      : await axios.get(url, { headers, params, timeout: 30000 });
+
+    let data = response.data;
+    
+    const dataMapping = apiConfig.dataMapping as any;
+    if (dataMapping?.responsePath) {
+      const paths = dataMapping.responsePath.split('.');
+      for (const path of paths) {
+        data = data?.[path];
+      }
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + (apiConfig.cacheDurationMinutes * 60 * 1000));
+
+    const existingCache = await db
+      .select()
+      .from(clientKnowledgeApiCache)
+      .where(
+        and(
+          eq(clientKnowledgeApiCache.apiConfigId, apiConfig.id),
+          eq(clientKnowledgeApiCache.cacheKey, 'default')
+        )
+      )
+      .limit(1);
+
+    if (existingCache.length > 0) {
+      await db
+        .update(clientKnowledgeApiCache)
+        .set({
+          cachedData: data,
+          expiresAt,
+          updatedAt: now,
+        })
+        .where(eq(clientKnowledgeApiCache.id, existingCache[0].id));
+    } else {
+      await db
+        .insert(clientKnowledgeApiCache)
+        .values({
+          apiConfigId: apiConfig.id,
+          clientId: apiConfig.clientId,
+          cacheKey: 'default',
+          cachedData: data,
+          expiresAt,
+        });
+    }
+
+    await db
+      .update(clientKnowledgeApis)
+      .set({
+        lastSyncAt: now,
+        lastSyncStatus: 'success',
+        lastSyncError: null,
+        updatedAt: now,
+      })
+      .where(eq(clientKnowledgeApis.id, apiConfig.id));
+
+    return data;
+  } catch (error: any) {
+    console.error(`[KnowledgeSearcher] Client API sync failed for ${apiConfig.name}:`, error.message);
+    
+    await db
+      .update(clientKnowledgeApis)
+      .set({
+        lastSyncAt: new Date(),
+        lastSyncStatus: 'error',
+        lastSyncError: error.message,
+        updatedAt: new Date(),
+      })
+      .where(eq(clientKnowledgeApis.id, apiConfig.id));
+
+    return null;
+  }
+}
+
+/**
+ * Carica TUTTI i dati delle API attive del client.
+ */
+export async function getAllActiveClientApiData(clientId: string): Promise<ApiDataResult[]> {
+  const activeApis = await db
+    .select()
+    .from(clientKnowledgeApis)
+    .where(
+      and(
+        eq(clientKnowledgeApis.clientId, clientId),
+        eq(clientKnowledgeApis.isActive, true)
+      )
+    )
+    .orderBy(desc(clientKnowledgeApis.priority));
+
+  if (activeApis.length === 0) {
+    return [];
+  }
+
+  const encryptionSalt = await getClientEncryptionSalt(clientId);
+  const results: ApiDataResult[] = [];
+  const now = new Date();
+
+  for (const api of activeApis) {
+    const [cache] = await db
+      .select()
+      .from(clientKnowledgeApiCache)
+      .where(
+        and(
+          eq(clientKnowledgeApiCache.apiConfigId, api.id),
+          eq(clientKnowledgeApiCache.cacheKey, 'default')
+        )
+      )
+      .limit(1);
+
+    let data: any = null;
+    let lastSync: Date | null = api.lastSyncAt;
+
+    const isCacheValid = cache && new Date(cache.expiresAt) > now;
+
+    if (isCacheValid) {
+      data = cache.cachedData;
+    } else if (api.autoRefresh && encryptionSalt) {
+      data = await syncClientApiData(api, encryptionSalt);
+      if (data) {
+        lastSync = new Date();
+      }
+    } else if (cache) {
+      data = cache.cachedData;
+    }
+
+    if (data !== null) {
+      results.push({
+        id: api.id,
+        apiName: api.name,
+        category: api.category,
+        description: api.description,
+        data,
+        lastSync,
+        usageCount: api.usageCount,
+      });
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Carica TUTTO il contesto della Knowledge Base per il client AI.
+ */
+export async function getClientKnowledgeContext(
+  clientId: string, 
+  _query?: string
+): Promise<KnowledgeContext> {
+  const [documents, apiData] = await Promise.all([
+    getAllClientKnowledgeDocuments(clientId),
+    getAllActiveClientApiData(clientId),
+  ]);
+
+  const docSummary = documents.length > 0
+    ? `${documents.length} documenti disponibili: ${documents.map(d => `"${d.title}" (${d.category})`).join(', ')}`
+    : 'Nessun documento caricato';
+
+  const apiSummary = apiData.length > 0
+    ? `${apiData.length} API attive: ${apiData.map(a => `"${a.apiName}" (${a.category})`).join(', ')}`
+    : 'Nessuna API configurata';
+
+  const summary = `📚 Knowledge Base del Cliente:\n- ${docSummary}\n- ${apiSummary}`;
+
+  console.log(`📚 [Client Knowledge Base] Loaded ${documents.length} documents and ${apiData.length} APIs for client ${clientId}`);
+
+  return {
+    documents,
+    apiData,
+    summary,
+    totalDocuments: documents.length,
+    totalApis: apiData.length,
+  };
 }

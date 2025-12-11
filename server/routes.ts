@@ -91,6 +91,8 @@ import aiTrainerRouter from "./routes/ai-trainer";
 import humanSellersRouter, { publicMeetRouter } from "./routes/human-sellers";
 import knowledgeDocumentsRouter from "./routes/knowledge-documents";
 import knowledgeApisRouter from "./routes/knowledge-apis";
+import clientKnowledgeDocumentsRouter from "./routes/client/client-knowledge-documents";
+import clientKnowledgeApisRouter from "./routes/client/client-knowledge-apis";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
 import { handleWebhook } from "./whatsapp/webhook-handler";
 import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
@@ -6683,6 +6685,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Consultant Knowledge Base APIs routes
   app.use("/api", knowledgeApisRouter);
+
+  // Client Knowledge Base Documents routes
+  app.use("/api", clientKnowledgeDocumentsRouter);
+
+  // Client Knowledge Base APIs routes
+  app.use("/api", clientKnowledgeApisRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
