@@ -202,6 +202,20 @@ const clientItems: SidebarItemWithChildren[] = [
       { name: "Corsi", href: "/client/library", icon: BookOpen, color: "text-indigo-600" },
     ]
   },
+
+  { 
+    name: "Il Mio Tempo", 
+    href: "/client/calendar", 
+    icon: CalendarDays, 
+    color: "text-emerald-600",
+    children: [
+      { name: "Calendario", href: "/client/calendar", icon: CalendarDays, color: "text-emerald-600" },
+      { name: "Task & Riflessioni", href: "/client/daily-tasks", icon: CheckSquare, color: "text-rose-600" },
+      { name: "Momentum", href: "/client/calendar?tab=momentum", icon: Zap, color: "text-violet-600" },
+      { name: "Consulenze", href: "/client/consultations", icon: Calendar, color: "text-orange-600" },
+    ]
+  },
+  
   { 
     name: "Agenti AI", 
     href: "/client/sales-agents", 
@@ -215,16 +229,7 @@ const clientItems: SidebarItemWithChildren[] = [
       { name: "AI Analytics", href: "/client/analytics/vertex-ai", icon: BarChart3, color: "text-indigo-600" },
     ]
   },
-  { 
-    name: "Base di Conoscenza", 
-    href: "/client/knowledge-documents", 
-    icon: BookOpen, 
-    color: "text-teal-600",
-    children: [
-      { name: "Documenti", href: "/client/knowledge-documents", icon: FileText, color: "text-teal-600" },
-      { name: "API Esterne", href: "/client/knowledge-apis", icon: Zap, color: "text-cyan-600" },
-    ]
-  },
+ 
   { 
     name: "Venditori Umani", 
     href: "/client/human-sellers", 
@@ -237,15 +242,13 @@ const clientItems: SidebarItemWithChildren[] = [
     ]
   },
   { 
-    name: "Il Mio Tempo", 
-    href: "/client/calendar", 
-    icon: CalendarDays, 
-    color: "text-emerald-600",
+    name: "Base di Conoscenza", 
+    href: "/client/knowledge-documents", 
+    icon: BookOpen, 
+    color: "text-teal-600",
     children: [
-      { name: "Calendario", href: "/client/calendar", icon: CalendarDays, color: "text-emerald-600" },
-      { name: "Task & Riflessioni", href: "/client/daily-tasks", icon: CheckSquare, color: "text-rose-600" },
-      { name: "Momentum", href: "/client/calendar?tab=momentum", icon: Zap, color: "text-violet-600" },
-      { name: "Consulenze", href: "/client/consultations", icon: Calendar, color: "text-orange-600" },
+      { name: "Documenti", href: "/client/knowledge-documents", icon: FileText, color: "text-teal-600" },
+      { name: "API Esterne", href: "/client/knowledge-apis", icon: Zap, color: "text-cyan-600" },
     ]
   },
 ];
