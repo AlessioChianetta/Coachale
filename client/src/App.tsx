@@ -57,6 +57,8 @@ const ConsultantApiSettings = lazy(() => import("@/pages/consultant-api-settings
 const ConsultantCalendarSettings = lazy(() => import("@/pages/consultant-calendar-settings"));
 const ConsultantProfileSettings = lazy(() => import("@/pages/consultant-profile-settings"));
 const ConsultantEmailJourney = lazy(() => import("@/pages/consultant-email-journey"));
+const ConsultantKnowledgeDocuments = lazy(() => import("@/pages/consultant-knowledge-documents"));
+const ConsultantKnowledgeApis = lazy(() => import("@/pages/consultant-knowledge-apis"));
 const ClientUniversity = lazy(() => import("@/pages/client-university"));
 const ClientDashboard = lazy(() => import("@/pages/client-dashboard"));
 const ClientExercises = lazy(() => import("@/pages/client-exercises"));
@@ -374,6 +376,18 @@ function Router() {
       <Route path="/consultant/guide-calendar">
         <AuthGuard requiredRole="consultant">
           <GuideCalendar />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/knowledge-documents">
+        <AuthGuard requiredRole="consultant">
+          <ConsultantKnowledgeDocuments />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/knowledge-apis">
+        <AuthGuard requiredRole="consultant">
+          <ConsultantKnowledgeApis />
         </AuthGuard>
       </Route>
 

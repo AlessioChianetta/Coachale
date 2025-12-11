@@ -38,6 +38,8 @@ import {
   Video,
   Sun,
   Moon,
+  Database,
+  Plug,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -130,6 +132,15 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Esercizi", href: "/consultant/exercises", icon: ClipboardList, color: "text-cyan-500" },
       { name: "Template", href: "/consultant/exercise-templates", icon: BookOpen, color: "text-teal-500" },
       { name: "Corsi", href: "/consultant/library", icon: BookOpen, color: "text-indigo-500" },
+    ]
+  },
+  {
+    name: "BASE DI CONOSCENZA",
+    icon: Database,
+    defaultExpanded: false,
+    items: [
+      { name: "Documenti", href: "/consultant/knowledge-documents", icon: FileText, color: "text-amber-500" },
+      { name: "API Esterne", href: "/consultant/knowledge-apis", icon: Plug, color: "text-cyan-500" },
     ]
   },
   {

@@ -48,6 +48,7 @@ import {
 } from "../shared/schema";
 import { eq, and, desc, gte, sql, inArray, count, asc } from "drizzle-orm";
 import twilio from "twilio";
+import { getKnowledgeContext } from "./services/knowledge-searcher";
 
 
 // ========================================
@@ -98,6 +99,7 @@ function calculateConsultantTokenBreakdown(context: ConsultantContext): {
   whatsappTemplateAssignments: number;
   twilioTemplates: number;
   calendarSettings: number;
+  knowledgeBase: number;
   base: number;
   total: number;
 } {
@@ -153,6 +155,9 @@ function calculateConsultantTokenBreakdown(context: ConsultantContext): {
   const calendarSettingsTokens = context.calendarSettings
     ? estimateTokens(JSON.stringify(context.calendarSettings))
     : 0;
+  const knowledgeBaseTokens = context.knowledgeBase
+    ? estimateTokens(JSON.stringify(context.knowledgeBase))
+    : 0;
   
   // Base context (consultant profile + timestamps)
   const baseTokens = estimateTokens(JSON.stringify({
@@ -190,6 +195,7 @@ function calculateConsultantTokenBreakdown(context: ConsultantContext): {
     whatsappTemplateAssignmentsTokens +
     twilioTemplatesTokens +
     calendarSettingsTokens +
+    knowledgeBaseTokens +
     baseTokens;
   
   return {
@@ -221,6 +227,7 @@ function calculateConsultantTokenBreakdown(context: ConsultantContext): {
     whatsappTemplateAssignments: whatsappTemplateAssignmentsTokens,
     twilioTemplates: twilioTemplatesTokens,
     calendarSettings: calendarSettingsTokens,
+    knowledgeBase: knowledgeBaseTokens,
     base: baseTokens,
     total,
   };
@@ -1013,6 +1020,22 @@ export interface ConsultantContext {
     consultantDisplayName: string | null;
     isDryRun: boolean;
     agentName: string;
+  };
+  knowledgeBase?: {
+    documents: Array<{
+      id: string;
+      title: string;
+      category: string;
+      content: string;
+      priority: number;
+    }>;
+    apiData: Array<{
+      apiName: string;
+      category: string;
+      data: any;
+      lastSync: string;
+    }>;
+    summary: string;
   };
   pageContext?: {
     pageType: string;
@@ -3921,6 +3944,36 @@ export async function buildConsultantContext(
     } : null,
   };
 
+  // Load Knowledge Base context
+  try {
+    console.log(`📚 [Knowledge Base] Loading knowledge context for consultant...`);
+    const knowledgeContext = await getKnowledgeContext(consultantId, options?.message);
+    
+    if (knowledgeContext.documents.length > 0 || knowledgeContext.apiData.length > 0) {
+      context.knowledgeBase = {
+        documents: knowledgeContext.documents.map(doc => ({
+          id: doc.id,
+          title: doc.title,
+          category: doc.category,
+          content: doc.extractedContent,
+          priority: doc.priority,
+        })),
+        apiData: knowledgeContext.apiData.map(api => ({
+          apiName: api.apiName,
+          category: api.category,
+          data: api.data,
+          lastSync: api.lastSync?.toISOString() || '',
+        })),
+        summary: knowledgeContext.summary,
+      };
+      console.log(`✅ [Knowledge Base] Loaded ${knowledgeContext.documents.length} documents, ${knowledgeContext.apiData.length} API data sources`);
+    } else {
+      console.log(`ℹ️ [Knowledge Base] No documents or API data found for consultant`);
+    }
+  } catch (error) {
+    console.error(`❌ [Knowledge Base] Failed to load knowledge context:`, error);
+  }
+
   // Enrich context with pageContext if provided
   if (options?.pageContext) {
     const pageType = options.pageContext.pageType;
@@ -4046,6 +4099,9 @@ export async function buildConsultantContext(
   }
   if (tokenBreakdown.calendarSettings > 0) {
     console.log(`   📅 Calendar Settings: ${tokenBreakdown.calendarSettings.toLocaleString()} tokens`);
+  }
+  if (tokenBreakdown.knowledgeBase > 0) {
+    console.log(`   📚 Knowledge Base: ${tokenBreakdown.knowledgeBase.toLocaleString()} tokens`);
   }
   
   console.log(`   Base (prompts + metadata): ${tokenBreakdown.base.toLocaleString()} tokens`);

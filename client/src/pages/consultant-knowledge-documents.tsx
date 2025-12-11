@@ -1,0 +1,817 @@
+import React, { useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDropzone } from "react-dropzone";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import {
+  FileText,
+  Upload,
+  Trash2,
+  Edit3,
+  Search,
+  Filter,
+  FileType,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Clock,
+  Database,
+  Calendar,
+  Star,
+} from "lucide-react";
+import Navbar from "@/components/navbar";
+import Sidebar from "@/components/sidebar";
+import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
+import { getAuthHeaders } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+type DocumentCategory = "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other";
+type DocumentStatus = "uploading" | "processing" | "indexed" | "error";
+type FileType = "pdf" | "docx" | "txt";
+
+interface KnowledgeDocument {
+  id: string;
+  consultantId: string;
+  title: string;
+  description: string | null;
+  category: DocumentCategory;
+  fileName: string;
+  fileType: FileType;
+  fileSize: number;
+  filePath: string;
+  extractedContent: string | null;
+  contentSummary: string | null;
+  keywords: string[] | null;
+  priority: number;
+  status: DocumentStatus;
+  errorMessage: string | null;
+  usageCount: number;
+  lastUsedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const CATEGORY_LABELS: Record<DocumentCategory, string> = {
+  white_paper: "White Paper",
+  case_study: "Case Study",
+  manual: "Manuale",
+  normative: "Normativa",
+  research: "Ricerca",
+  article: "Articolo",
+  other: "Altro",
+};
+
+const CATEGORY_COLORS: Record<DocumentCategory, string> = {
+  white_paper: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+  case_study: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
+  manual: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
+  normative: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
+  research: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
+  article: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300",
+  other: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+};
+
+const STATUS_CONFIG: Record<DocumentStatus, { icon: React.ComponentType<any>; label: string; color: string }> = {
+  uploading: { icon: Loader2, label: "Caricamento...", color: "text-blue-500" },
+  processing: { icon: Clock, label: "Elaborazione...", color: "text-amber-500" },
+  indexed: { icon: CheckCircle2, label: "Indicizzato", color: "text-green-500" },
+  error: { icon: AlertCircle, label: "Errore", color: "text-red-500" },
+};
+
+const FILE_TYPE_ICONS: Record<FileType, { color: string; label: string }> = {
+  pdf: { color: "text-red-500", label: "PDF" },
+  docx: { color: "text-blue-500", label: "DOCX" },
+  txt: { color: "text-gray-500", label: "TXT" },
+};
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString("it-IT", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default function ConsultantKnowledgeDocuments() {
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<KnowledgeDocument | null>(null);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<string | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+
+  const [editForm, setEditForm] = useState({
+    title: "",
+    description: "",
+    category: "other" as DocumentCategory,
+    priority: 5,
+  });
+
+  const [uploadForm, setUploadForm] = useState({
+    title: "",
+    description: "",
+    category: "other" as DocumentCategory,
+    priority: 5,
+  });
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: documentsResponse, isLoading } = useQuery({
+    queryKey: ["/api/consultant/knowledge/documents"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/knowledge/documents", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch documents");
+      return response.json();
+    },
+  });
+
+  const documents: KnowledgeDocument[] = documentsResponse?.data || [];
+
+  const uploadMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await fetch("/api/consultant/knowledge/documents", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to upload document");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+      setUploadingFiles([]);
+      setUploadForm({ title: "", description: "", category: "other", priority: 5 });
+      toast({
+        title: "Documento caricato",
+        description: "Il documento è stato caricato con successo. L'elaborazione è in corso.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore caricamento",
+        description: error.message || "Errore durante il caricamento del documento",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      const response = await fetch(`/api/consultant/knowledge/documents/${id}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update document");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+      setShowEditDialog(false);
+      setEditingDocument(null);
+      toast({
+        title: "Documento aggiornato",
+        description: "Le modifiche sono state salvate con successo",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore aggiornamento",
+        description: error.message || "Errore durante l'aggiornamento del documento",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/consultant/knowledge/documents/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete document");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/knowledge/documents"] });
+      setDeletingDocumentId(null);
+      toast({
+        title: "Documento eliminato",
+        description: "Il documento è stato eliminato con successo",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore eliminazione",
+        description: error.message || "Errore durante l'eliminazione del documento",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const validFiles = acceptedFiles.filter((file) => {
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast({
+          title: "File troppo grande",
+          description: `${file.name} supera il limite di 10MB`,
+          variant: "destructive",
+        });
+        return false;
+      }
+      return true;
+    });
+    setUploadingFiles(validFiles);
+    if (validFiles.length > 0) {
+      setUploadForm((prev) => ({
+        ...prev,
+        title: validFiles[0].name.replace(/\.[^/.]+$/, ""),
+      }));
+    }
+  }, [toast]);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "application/msword": [".doc"],
+      "text/plain": [".txt"],
+    },
+    maxFiles: 1,
+  });
+
+  const handleUpload = () => {
+    if (uploadingFiles.length === 0) return;
+    if (!uploadForm.title.trim()) {
+      toast({
+        title: "Titolo richiesto",
+        description: "Inserisci un titolo per il documento",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", uploadingFiles[0]);
+    formData.append("title", uploadForm.title);
+    formData.append("description", uploadForm.description);
+    formData.append("category", uploadForm.category);
+    formData.append("priority", uploadForm.priority.toString());
+
+    uploadMutation.mutate(formData);
+  };
+
+  const handleEdit = (doc: KnowledgeDocument) => {
+    setEditingDocument(doc);
+    setEditForm({
+      title: doc.title,
+      description: doc.description || "",
+      category: doc.category,
+      priority: doc.priority,
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingDocument) return;
+    updateMutation.mutate({
+      id: editingDocument.id,
+      data: editForm,
+    });
+  };
+
+  const filteredDocuments = documents.filter((doc) => {
+    const matchesSearch =
+      doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.fileName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || doc.category === categoryFilter;
+    const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
+      <div className={`flex ${isMobile ? "h-[calc(100vh-80px)]" : "h-screen"}`}>
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+        <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
+          <div className="mb-4 sm:mb-6 md:mb-8">
+            <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1 sm:space-y-2">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl">
+                      <Database className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">
+                        Base di Conoscenza - Documenti
+                      </h1>
+                      <p className="text-amber-100 text-xs sm:text-sm md:text-base lg:text-lg hidden sm:block">
+                        Carica e gestisci documenti per arricchire le risposte AI
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden lg:flex items-center space-x-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                    <div className="text-3xl font-bold">{documents.length}</div>
+                    <div className="text-sm text-amber-100">Documenti</div>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-center">
+                    <div className="text-3xl font-bold">
+                      {documents.filter((d) => d.status === "indexed").length}
+                    </div>
+                    <div className="text-sm text-amber-100">Indicizzati</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <Card className="lg:col-span-1 border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-amber-400 transition-colors">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-amber-500" />
+                  Carica Documento
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  {...getRootProps()}
+                  className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                    isDragActive
+                      ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+                      : "border-gray-200 dark:border-gray-700 hover:border-amber-300"
+                  }`}
+                >
+                  <input {...getInputProps()} />
+                  <Upload
+                    className={`w-10 h-10 mx-auto mb-3 ${
+                      isDragActive ? "text-amber-500" : "text-gray-400"
+                    }`}
+                  />
+                  {isDragActive ? (
+                    <p className="text-amber-600 font-medium">Rilascia il file qui...</p>
+                  ) : (
+                    <>
+                      <p className="text-gray-600 dark:text-gray-400 font-medium">
+                        Trascina un file qui
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+                        oppure clicca per selezionare
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">PDF, DOCX, TXT (max 10MB)</p>
+                    </>
+                  )}
+                </div>
+
+                {uploadingFiles.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                      <FileText className="w-5 h-5 text-amber-500" />
+                      <span className="text-sm font-medium truncate flex-1">
+                        {uploadingFiles[0].name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {formatFileSize(uploadingFiles[0].size)}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="upload-title">Titolo *</Label>
+                        <Input
+                          id="upload-title"
+                          value={uploadForm.title}
+                          onChange={(e) =>
+                            setUploadForm((prev) => ({ ...prev, title: e.target.value }))
+                          }
+                          placeholder="Titolo del documento"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="upload-description">Descrizione</Label>
+                        <Textarea
+                          id="upload-description"
+                          value={uploadForm.description}
+                          onChange={(e) =>
+                            setUploadForm((prev) => ({ ...prev, description: e.target.value }))
+                          }
+                          placeholder="Descrizione opzionale"
+                          rows={2}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="upload-category">Categoria</Label>
+                        <Select
+                          value={uploadForm.category}
+                          onValueChange={(value: DocumentCategory) =>
+                            setUploadForm((prev) => ({ ...prev, category: value }))
+                          }
+                        >
+                          <SelectTrigger id="upload-category">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                              <SelectItem key={key} value={key}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Priorità: {uploadForm.priority}</Label>
+                        <Slider
+                          value={[uploadForm.priority]}
+                          onValueChange={([value]) =>
+                            setUploadForm((prev) => ({ ...prev, priority: value }))
+                          }
+                          min={1}
+                          max={10}
+                          step={1}
+                          className="mt-2"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>Bassa</span>
+                          <span>Alta</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setUploadingFiles([]);
+                          setUploadForm({
+                            title: "",
+                            description: "",
+                            category: "other",
+                            priority: 5,
+                          });
+                        }}
+                        className="flex-1"
+                      >
+                        Annulla
+                      </Button>
+                      <Button
+                        onClick={handleUpload}
+                        disabled={uploadMutation.isPending}
+                        className="flex-1 bg-amber-500 hover:bg-amber-600"
+                      >
+                        {uploadMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Caricamento...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="w-4 h-4 mr-2" />
+                            Carica
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-amber-500" />
+                    Documenti ({filteredDocuments.length})
+                  </CardTitle>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Cerca..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 w-40 sm:w-48"
+                      />
+                    </div>
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <SelectTrigger className="w-32 sm:w-36">
+                        <Filter className="w-4 h-4 mr-2" />
+                        <SelectValue placeholder="Categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte</SelectItem>
+                        {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                          <SelectItem key={key} value={key}>
+                            {label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-32 sm:w-36">
+                        <SelectValue placeholder="Stato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti</SelectItem>
+                        <SelectItem value="indexed">Indicizzato</SelectItem>
+                        <SelectItem value="processing">In elaborazione</SelectItem>
+                        <SelectItem value="error">Errore</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                  </div>
+                ) : filteredDocuments.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+                    <p className="text-gray-500 dark:text-gray-400">Nessun documento trovato</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                      Carica il tuo primo documento usando l'area di upload
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                    {filteredDocuments.map((doc) => {
+                      const StatusIcon = STATUS_CONFIG[doc.status].icon;
+                      const fileTypeConfig = FILE_TYPE_ICONS[doc.fileType];
+
+                      return (
+                        <div
+                          key={doc.id}
+                          className="flex items-start gap-3 p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow"
+                        >
+                          <div
+                            className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-700 ${fileTypeConfig.color}`}
+                          >
+                            <FileType className="w-5 h-5" />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <h4 className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                                  {doc.title}
+                                </h4>
+                                {doc.description && (
+                                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+                                    {doc.description}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEdit(doc)}
+                                  className="h-8 w-8"
+                                >
+                                  <Edit3 className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setDeletingDocumentId(doc.id)}
+                                  className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <Badge className={CATEGORY_COLORS[doc.category]}>
+                                {CATEGORY_LABELS[doc.category]}
+                              </Badge>
+                              <span
+                                className={`flex items-center gap-1 text-xs ${STATUS_CONFIG[doc.status].color}`}
+                              >
+                                <StatusIcon
+                                  className={`w-3.5 h-3.5 ${doc.status === "uploading" || doc.status === "processing" ? "animate-spin" : ""}`}
+                                />
+                                {STATUS_CONFIG[doc.status].label}
+                              </span>
+                              <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                <Star className="w-3.5 h-3.5" />
+                                {doc.priority}/10
+                              </span>
+                              <span className="text-xs text-gray-400 dark:text-gray-500">
+                                {fileTypeConfig.label} • {formatFileSize(doc.fileSize)}
+                              </span>
+                              <span className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {formatDate(doc.createdAt)}
+                              </span>
+                            </div>
+
+                            {doc.status === "error" && doc.errorMessage && (
+                              <p className="text-xs text-red-500 mt-2 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                                {doc.errorMessage}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifica Documento</DialogTitle>
+            <DialogDescription>
+              Modifica le informazioni del documento. Il file non può essere modificato.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="edit-title">Titolo</Label>
+              <Input
+                id="edit-title"
+                value={editForm.title}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Descrizione</Label>
+              <Textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) =>
+                  setEditForm((prev) => ({ ...prev, description: e.target.value }))
+                }
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-category">Categoria</Label>
+              <Select
+                value={editForm.category}
+                onValueChange={(value: DocumentCategory) =>
+                  setEditForm((prev) => ({ ...prev, category: value }))
+                }
+              >
+                <SelectTrigger id="edit-category">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Priorità: {editForm.priority}</Label>
+              <Slider
+                value={[editForm.priority]}
+                onValueChange={([value]) =>
+                  setEditForm((prev) => ({ ...prev, priority: value }))
+                }
+                min={1}
+                max={10}
+                step={1}
+                className="mt-2"
+              />
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>Bassa</span>
+                <span>Alta</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Annulla
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={updateMutation.isPending}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              {updateMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvataggio...
+                </>
+              ) : (
+                "Salva modifiche"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!deletingDocumentId}
+        onOpenChange={() => setDeletingDocumentId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Conferma eliminazione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sei sicuro di voler eliminare questo documento? Questa azione non può essere annullata
+              e il documento sarà rimosso permanentemente dalla base di conoscenza.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingDocumentId && deleteMutation.mutate(deletingDocumentId)}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Eliminazione...
+                </>
+              ) : (
+                "Elimina"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ConsultantAIAssistant />
+    </div>
+  );
+}
