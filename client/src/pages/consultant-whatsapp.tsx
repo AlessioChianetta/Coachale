@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -69,8 +69,12 @@ import {
   Wand2,
   Check,
   Calendar,
-  BookOpen
+  BookOpen,
+  Database,
+  ArrowRight
 } from "lucide-react";
+import { isToday, isYesterday, isThisWeek, format } from "date-fns";
+import { it } from "date-fns/locale";
 import WhatsAppLayout from "@/components/whatsapp/WhatsAppLayout";
 import { getAuthHeaders } from "@/lib/auth";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -185,9 +189,24 @@ export default function ConsultantWhatsAppPage() {
   const [numberOfIdeas, setNumberOfIdeas] = useState(3);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedKnowledgeDocIds, setSelectedKnowledgeDocIds] = useState<string[]>([]);
+
+  // Query per caricare i documenti dalla knowledge base
+  const knowledgeDocsQuery = useQuery({
+    queryKey: ["/api/consultant/onboarding/knowledge-documents"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/onboarding/knowledge-documents", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch knowledge documents");
+      return res.json();
+    },
+  });
+
+  const knowledgeDocs = knowledgeDocsQuery.data?.documents || [];
 
   // Query per caricare le idee salvate dal backend
-  const { data: savedIdeasData, refetch: refetchSavedIdeas } = useQuery({
+  const savedIdeasQuery = useQuery({
     queryKey: ["/api/consultant/onboarding/ai-ideas"],
     queryFn: async () => {
       const res = await fetch("/api/consultant/onboarding/ai-ideas", {
@@ -198,7 +217,32 @@ export default function ConsultantWhatsAppPage() {
     },
   });
 
-  const savedIdeas = savedIdeasData?.data || [];
+  const savedIdeas = savedIdeasQuery.data?.data || [];
+
+  // Group saved ideas by date
+  const groupedSavedIdeas = useMemo(() => {
+    const groups: { [key: string]: any[] } = {
+      "Oggi": [],
+      "Ieri": [],
+      "Questa Settimana": [],
+      "Precedenti": [],
+    };
+
+    savedIdeas.forEach((idea: any) => {
+      const createdAt = new Date(idea.createdAt);
+      if (isToday(createdAt)) {
+        groups["Oggi"].push(idea);
+      } else if (isYesterday(createdAt)) {
+        groups["Ieri"].push(idea);
+      } else if (isThisWeek(createdAt)) {
+        groups["Questa Settimana"].push(idea);
+      } else {
+        groups["Precedenti"].push(idea);
+      }
+    });
+
+    return groups;
+  }, [savedIdeas]);
 
   // Mutation per salvare un'idea
   const saveIdeaMutation = useMutation({
@@ -214,19 +258,76 @@ export default function ConsultantWhatsAppPage() {
           description: idea.description,
           targetAudience: idea.target || idea.personality,
           agentType: "whatsapp",
-          integrationTypes: idea.integrations || [],
+          integrationTypes: idea.integrations || idea.integrationTypes || [],
           sourceType: "generated",
+          suggestedAgentType: idea.suggestedAgentType,
+          personality: idea.personality,
+          whoWeHelp: idea.whoWeHelp,
+          whoWeDontHelp: idea.whoWeDontHelp,
+          whatWeDo: idea.whatWeDo,
+          howWeDoIt: idea.howWeDoIt,
+          usp: idea.usp,
+          suggestedInstructions: idea.suggestedInstructions,
+          useCases: idea.useCases,
         }),
       });
       if (!res.ok) throw new Error("Failed to save idea");
       return res.json();
     },
     onSuccess: () => {
-      refetchSavedIdeas();
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/onboarding/ai-ideas"] });
       toast({
         title: "💡 Idea salvata",
         description: "L'idea è stata salvata nel database.",
       });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation per salvare e creare agente subito
+  const saveAndCreateAgentMutation = useMutation({
+    mutationFn: async (idea: any) => {
+      const res = await fetch("/api/consultant/onboarding/ai-ideas", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: idea.name,
+          description: idea.description,
+          targetAudience: idea.target || idea.personality,
+          agentType: "whatsapp",
+          integrationTypes: idea.integrations || idea.integrationTypes || [],
+          sourceType: "generated",
+          suggestedAgentType: idea.suggestedAgentType,
+          personality: idea.personality,
+          whoWeHelp: idea.whoWeHelp,
+          whoWeDontHelp: idea.whoWeDontHelp,
+          whatWeDo: idea.whatWeDo,
+          howWeDoIt: idea.howWeDoIt,
+          usp: idea.usp,
+          suggestedInstructions: idea.suggestedInstructions,
+          useCases: idea.useCases,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save idea");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/onboarding/ai-ideas"] });
+      toast({
+        title: "💡 Idea salvata",
+        description: "Reindirizzamento alla creazione dell'agente...",
+      });
+      const savedIdeaId = data.data?.id || data.id;
+      navigate(`/consultant/whatsapp/agent/new?fromIdea=${savedIdeaId}`);
     },
     onError: (error: Error) => {
       toast({
@@ -248,7 +349,7 @@ export default function ConsultantWhatsAppPage() {
       return res.json();
     },
     onSuccess: () => {
-      refetchSavedIdeas();
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/onboarding/ai-ideas"] });
       toast({
         title: "🗑️ Idea rimossa",
         description: "L'idea è stata eliminata.",
@@ -1380,6 +1481,82 @@ export default function ConsultantWhatsAppPage() {
                   </CardContent>
                 </Card>
 
+                {/* Importa da Base di Conoscenza */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Database className="h-5 w-5 text-purple-600" />
+                      Importa da Base di Conoscenza
+                    </CardTitle>
+                    <CardDescription>
+                      Seleziona documenti già caricati nella tua knowledge base
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {knowledgeDocsQuery.isLoading ? (
+                      <div className="flex items-center justify-center p-4">
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                        <span className="ml-2 text-sm text-gray-500">Caricamento documenti...</span>
+                      </div>
+                    ) : knowledgeDocs.length === 0 ? (
+                      <div className="text-center p-4 text-gray-500">
+                        <FileText className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm">Nessun documento nella knowledge base</p>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          onClick={() => navigate("/consultant/knowledge-documents")}
+                          className="mt-2 text-purple-600"
+                        >
+                          Carica documenti
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {knowledgeDocs.map((doc: any) => (
+                          <div key={doc.id} className="flex items-center space-x-3 p-2 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded-lg">
+                            <Checkbox
+                              id={`doc-${doc.id}`}
+                              checked={selectedKnowledgeDocIds.includes(doc.id)}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedKnowledgeDocIds([...selectedKnowledgeDocIds, doc.id]);
+                                } else {
+                                  setSelectedKnowledgeDocIds(selectedKnowledgeDocIds.filter(id => id !== doc.id));
+                                }
+                              }}
+                            />
+                            <label
+                              htmlFor={`doc-${doc.id}`}
+                              className="flex-1 cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-purple-600" />
+                                <span className="text-sm font-medium truncate">{doc.fileName}</span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {doc.fileType?.toUpperCase() || 'DOC'}
+                                </Badge>
+                                <span className="text-xs text-gray-500">
+                                  {doc.fileSize ? `${(doc.fileSize / 1024).toFixed(1)} KB` : ''}
+                                </span>
+                              </div>
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {selectedKnowledgeDocIds.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-xs text-purple-600 font-medium">
+                          {selectedKnowledgeDocIds.length} documento/i selezionato/i
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* URL Siti Web */}
                 <Card>
                   <CardHeader>
@@ -1548,31 +1725,45 @@ export default function ConsultantWhatsAppPage() {
                 {/* Genera Idee */}
                 <Button
                   className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-6"
-                  disabled={isGenerating || (uploadedFiles.length === 0 && urlInputs.filter(u => u).length === 0 && !textInput) || selectedIntegrations.length === 0}
-                  onClick={() => {
+                  disabled={isGenerating || (uploadedFiles.length === 0 && urlInputs.filter(u => u).length === 0 && !textInput && selectedKnowledgeDocIds.length === 0) || selectedIntegrations.length === 0}
+                  onClick={async () => {
                     setIsGenerating(true);
-                    // TODO: Chiamata API Gemini
-                    setTimeout(() => {
-                      setGeneratedIdeas([
-                        {
-                          id: '1',
-                          name: 'Receptionist Immobiliare',
-                          description: 'Agente che gestisce le prime richieste di informazioni su immobili, filtra lead qualificati e prenota appuntamenti per visite',
-                          personality: 'professionale',
-                          integrations: ['booking'],
-                          useCases: ['Screening iniziale clienti', 'Prenotazione visite immobili', 'Invio brochure proprietà']
+                    try {
+                      const res = await fetch("/api/consultant/onboarding/ai-ideas/generate", {
+                        method: "POST",
+                        headers: {
+                          ...getAuthHeaders(),
+                          "Content-Type": "application/json",
                         },
-                        {
-                          id: '2',
-                          name: 'Consulente Post-Vendita',
-                          description: 'Supporta i clienti dopo l\'acquisto con informazioni su ristrutturazioni, documentazione e servizi accessori',
-                          personality: 'empatico',
-                          integrations: ['consultation'],
-                          useCases: ['Assistenza post-vendita', 'Raccolta feedback', 'Upselling servizi']
-                        }
-                      ]);
+                        body: JSON.stringify({
+                          textDescription: textInput,
+                          urls: urlInputs.filter(u => u),
+                          knowledgeDocIds: selectedKnowledgeDocIds,
+                          integrations: selectedIntegrations,
+                          numberOfIdeas: numberOfIdeas,
+                        }),
+                      });
+
+                      if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.message || "Errore nella generazione delle idee");
+                      }
+
+                      const data = await res.json();
+                      setGeneratedIdeas(data.ideas || []);
+                      toast({
+                        title: "✨ Idee generate!",
+                        description: `Sono state generate ${data.ideas?.length || 0} idee per i tuoi agenti.`,
+                      });
+                    } catch (error: any) {
+                      toast({
+                        title: "❌ Errore",
+                        description: error.message || "Impossibile generare le idee. Riprova.",
+                        variant: "destructive",
+                      });
+                    } finally {
                       setIsGenerating(false);
-                    }, 2000);
+                    }
                   }}
                 >
                   {isGenerating ? (
@@ -1601,8 +1792,8 @@ export default function ConsultantWhatsAppPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {generatedIdeas.map((idea) => (
-                    <Card key={idea.id} className="border-2 border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow">
+                  {generatedIdeas.map((idea, idx) => (
+                    <Card key={idea.id || idx} className="border-2 border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow">
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-2">
@@ -1611,9 +1802,30 @@ export default function ConsultantWhatsAppPage() {
                             </div>
                             <div>
                               <CardTitle className="text-base">{idea.name}</CardTitle>
-                              <Badge variant="outline" className="text-xs mt-1 capitalize">
-                                {idea.personality}
-                              </Badge>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {idea.suggestedAgentType && (
+                                  <Badge 
+                                    className={`text-xs ${
+                                      idea.suggestedAgentType === 'reactive_lead' 
+                                        ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300' 
+                                        : idea.suggestedAgentType === 'proactive_setter'
+                                        ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300'
+                                        : 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300'
+                                    }`}
+                                  >
+                                    {idea.suggestedAgentType === 'reactive_lead' 
+                                      ? '📞 Inbound' 
+                                      : idea.suggestedAgentType === 'proactive_setter'
+                                      ? '🎯 Outbound'
+                                      : '💬 Consulenziale'}
+                                  </Badge>
+                                )}
+                                {idea.personality && (
+                                  <Badge variant="outline" className="text-xs capitalize">
+                                    {idea.personality}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1623,12 +1835,23 @@ export default function ConsultantWhatsAppPage() {
                           {idea.description}
                         </p>
 
+                        {idea.whoWeHelp && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                              👥 Chi aiutiamo:
+                            </p>
+                            <p className="text-xs text-gray-600 dark:text-gray-400">
+                              {idea.whoWeHelp}
+                            </p>
+                          </div>
+                        )}
+
                         <div className="space-y-2">
                           <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                             Integrazioni:
                           </p>
                           <div className="flex flex-wrap gap-1">
-                            {idea.integrations.map((int: string) => (
+                            {(idea.integrations || idea.integrationTypes || []).map((int: string) => (
                               <Badge key={int} variant="secondary" className="text-xs">
                                 {int === 'booking' ? (
                                   <><Calendar className="h-3 w-3 mr-1" /> Appuntamenti</>
@@ -1640,32 +1863,49 @@ export default function ConsultantWhatsAppPage() {
                           </div>
                         </div>
 
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                            Casi d'uso:
-                          </p>
-                          <ul className="space-y-1">
-                            {idea.useCases.map((useCase: string, idx: number) => (
-                              <li key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1">
-                                <ChevronRight className="h-3 w-3 mt-0.5 text-purple-500 flex-shrink-0" />
-                                <span>{useCase}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                        {idea.useCases && idea.useCases.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                              Casi d'uso:
+                            </p>
+                            <ul className="space-y-1">
+                              {idea.useCases.slice(0, 3).map((useCase: string, idx: number) => (
+                                <li key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1">
+                                  <ChevronRight className="h-3 w-3 mt-0.5 text-purple-500 flex-shrink-0" />
+                                  <span>{useCase}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
 
-                        <Button
-                          className="w-full bg-purple-600 hover:bg-purple-700"
-                          disabled={saveIdeaMutation.isPending}
-                          onClick={() => saveIdeaMutation.mutate(idea)}
-                        >
-                          {saveIdeaMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Save className="h-4 w-4 mr-2" />
-                          )}
-                          Salva Idea
-                        </Button>
+                        <div className="space-y-2">
+                          <Button
+                            className="w-full bg-purple-600 hover:bg-purple-700"
+                            disabled={saveIdeaMutation.isPending}
+                            onClick={() => saveIdeaMutation.mutate(idea)}
+                          >
+                            {saveIdeaMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            Salva Idea
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="w-full border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
+                            disabled={saveAndCreateAgentMutation.isPending}
+                            onClick={() => saveAndCreateAgentMutation.mutate(idea)}
+                          >
+                            {saveAndCreateAgentMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <ArrowRight className="h-4 w-4 mr-2" />
+                            )}
+                            Crea Agente Subito
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -1685,39 +1925,78 @@ export default function ConsultantWhatsAppPage() {
                     Idee che hai salvato per usare in futuro
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {savedIdeas.map((idea, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <Bot className="h-4 w-4 text-purple-600" />
-                          <div>
-                            <p className="font-medium text-sm">{idea.name}</p>
-                            <p className="text-xs text-gray-500">{idea.description}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              // TODO: Pre-compilare wizard con l'idea
-                              navigate("/consultant/whatsapp/agent/new");
-                            }}
-                          >
-                            Crea Agente
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSavedIdeas(savedIdeas.filter((_, i) => i !== index))}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                <CardContent className="space-y-6">
+                  {Object.entries(groupedSavedIdeas).map(([groupName, ideas]) => (
+                    ideas.length > 0 && (
+                      <div key={groupName} className="space-y-3">
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                          <Clock className="h-4 w-4" />
+                          {groupName}
+                          <Badge variant="outline" className="text-xs">
+                            {ideas.length}
+                          </Badge>
+                        </h4>
+                        <div className="space-y-2">
+                          {ideas.map((idea: any) => (
+                            <div key={idea.id} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg border">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <Bot className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-medium text-sm truncate">{idea.name}</p>
+                                    {idea.suggestedAgentType && (
+                                      <Badge 
+                                        className={`text-xs ${
+                                          idea.suggestedAgentType === 'reactive_lead' 
+                                            ? 'bg-blue-100 text-blue-700 border-blue-300' 
+                                            : idea.suggestedAgentType === 'proactive_setter'
+                                            ? 'bg-green-100 text-green-700 border-green-300'
+                                            : 'bg-purple-100 text-purple-700 border-purple-300'
+                                        }`}
+                                      >
+                                        {idea.suggestedAgentType === 'reactive_lead' 
+                                          ? 'Inbound' 
+                                          : idea.suggestedAgentType === 'proactive_setter'
+                                          ? 'Outbound'
+                                          : 'Consulenziale'}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500 truncate">{idea.description}</p>
+                                  {idea.createdAt && (
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      {format(new Date(idea.createdAt), "d MMM yyyy, HH:mm", { locale: it })}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex gap-2 flex-shrink-0 ml-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/consultant/whatsapp/agent/new?fromIdea=${idea.id}`)}
+                                >
+                                  Crea Agente
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={deleteIdeaMutation.isPending}
+                                  onClick={() => deleteIdeaMutation.mutate(idea.id)}
+                                >
+                                  {deleteIdeaMutation.isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4 text-red-500" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    )
+                  ))}
                 </CardContent>
               </Card>
             )}
