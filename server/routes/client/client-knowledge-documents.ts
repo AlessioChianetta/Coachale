@@ -65,7 +65,29 @@ router.get(
       const clientId = req.user!.id;
 
       const documents = await db
-        .select()
+        .select({
+          id: clientKnowledgeDocuments.id,
+          clientId: clientKnowledgeDocuments.clientId,
+          title: clientKnowledgeDocuments.title,
+          description: clientKnowledgeDocuments.description,
+          category: clientKnowledgeDocuments.category,
+          fileName: clientKnowledgeDocuments.fileName,
+          fileType: clientKnowledgeDocuments.fileType,
+          fileSize: clientKnowledgeDocuments.fileSize,
+          filePath: clientKnowledgeDocuments.filePath,
+          contentSummary: clientKnowledgeDocuments.contentSummary,
+          summaryEnabled: clientKnowledgeDocuments.summaryEnabled,
+          keywords: clientKnowledgeDocuments.keywords,
+          tags: clientKnowledgeDocuments.tags,
+          version: clientKnowledgeDocuments.version,
+          priority: clientKnowledgeDocuments.priority,
+          status: clientKnowledgeDocuments.status,
+          errorMessage: clientKnowledgeDocuments.errorMessage,
+          usageCount: clientKnowledgeDocuments.usageCount,
+          lastUsedAt: clientKnowledgeDocuments.lastUsedAt,
+          createdAt: clientKnowledgeDocuments.createdAt,
+          updatedAt: clientKnowledgeDocuments.updatedAt,
+        })
         .from(clientKnowledgeDocuments)
         .where(eq(clientKnowledgeDocuments.clientId, clientId))
         .orderBy(desc(clientKnowledgeDocuments.createdAt));
@@ -612,12 +634,26 @@ router.get(
       const clientId = req.user!.id;
 
       const documents = await db
-        .select()
+        .select({
+          id: clientKnowledgeDocuments.id,
+          title: clientKnowledgeDocuments.title,
+          category: clientKnowledgeDocuments.category,
+          status: clientKnowledgeDocuments.status,
+          usageCount: clientKnowledgeDocuments.usageCount,
+          lastUsedAt: clientKnowledgeDocuments.lastUsedAt,
+        })
         .from(clientKnowledgeDocuments)
         .where(eq(clientKnowledgeDocuments.clientId, clientId));
 
       const apis = await db
-        .select()
+        .select({
+          id: clientKnowledgeApis.id,
+          name: clientKnowledgeApis.name,
+          category: clientKnowledgeApis.category,
+          isActive: clientKnowledgeApis.isActive,
+          usageCount: clientKnowledgeApis.usageCount,
+          lastUsedAt: clientKnowledgeApis.lastUsedAt,
+        })
         .from(clientKnowledgeApis)
         .where(eq(clientKnowledgeApis.clientId, clientId));
 

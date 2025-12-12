@@ -516,28 +516,36 @@ export default function ConsultantKnowledgeDocuments() {
       "audio/ogg": [".ogg"],
       "audio/webm": [".webm"],
     },
-    maxFiles: 1,
+    multiple: true,
   });
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (uploadingFiles.length === 0) return;
-    if (!uploadForm.title.trim()) {
-      toast({
-        title: "Titolo richiesto",
-        description: "Inserisci un titolo per il documento",
-        variant: "destructive",
-      });
-      return;
+    
+    for (let i = 0; i < uploadingFiles.length; i++) {
+      const file = uploadingFiles[i];
+      const title = uploadingFiles.length === 1 
+        ? uploadForm.title.trim() 
+        : file.name.replace(/\.[^/.]+$/, "");
+      
+      if (!title) {
+        toast({
+          title: "Titolo richiesto",
+          description: `Inserisci un titolo per ${file.name}`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", title);
+      formData.append("description", uploadForm.description);
+      formData.append("category", uploadForm.category);
+      formData.append("priority", uploadForm.priority.toString());
+
+      uploadMutation.mutate(formData);
     }
-
-    const formData = new FormData();
-    formData.append("file", uploadingFiles[0]);
-    formData.append("title", uploadForm.title);
-    formData.append("description", uploadForm.description);
-    formData.append("category", uploadForm.category);
-    formData.append("priority", uploadForm.priority.toString());
-
-    uploadMutation.mutate(formData);
   };
 
   const handleEdit = (doc: KnowledgeDocument) => {

@@ -64,7 +64,29 @@ router.get(
       const consultantId = req.user!.id;
 
       const documents = await db
-        .select()
+        .select({
+          id: consultantKnowledgeDocuments.id,
+          consultantId: consultantKnowledgeDocuments.consultantId,
+          title: consultantKnowledgeDocuments.title,
+          description: consultantKnowledgeDocuments.description,
+          category: consultantKnowledgeDocuments.category,
+          fileName: consultantKnowledgeDocuments.fileName,
+          fileType: consultantKnowledgeDocuments.fileType,
+          fileSize: consultantKnowledgeDocuments.fileSize,
+          filePath: consultantKnowledgeDocuments.filePath,
+          contentSummary: consultantKnowledgeDocuments.contentSummary,
+          summaryEnabled: consultantKnowledgeDocuments.summaryEnabled,
+          keywords: consultantKnowledgeDocuments.keywords,
+          tags: consultantKnowledgeDocuments.tags,
+          version: consultantKnowledgeDocuments.version,
+          priority: consultantKnowledgeDocuments.priority,
+          status: consultantKnowledgeDocuments.status,
+          errorMessage: consultantKnowledgeDocuments.errorMessage,
+          usageCount: consultantKnowledgeDocuments.usageCount,
+          lastUsedAt: consultantKnowledgeDocuments.lastUsedAt,
+          createdAt: consultantKnowledgeDocuments.createdAt,
+          updatedAt: consultantKnowledgeDocuments.updatedAt,
+        })
         .from(consultantKnowledgeDocuments)
         .where(eq(consultantKnowledgeDocuments.consultantId, consultantId))
         .orderBy(desc(consultantKnowledgeDocuments.createdAt));
@@ -600,15 +622,29 @@ router.get(
     try {
       const consultantId = req.user!.id;
 
-      // Get all documents
+      // Get all documents (only fields needed for stats)
       const documents = await db
-        .select()
+        .select({
+          id: consultantKnowledgeDocuments.id,
+          title: consultantKnowledgeDocuments.title,
+          category: consultantKnowledgeDocuments.category,
+          status: consultantKnowledgeDocuments.status,
+          usageCount: consultantKnowledgeDocuments.usageCount,
+          lastUsedAt: consultantKnowledgeDocuments.lastUsedAt,
+        })
         .from(consultantKnowledgeDocuments)
         .where(eq(consultantKnowledgeDocuments.consultantId, consultantId));
 
-      // Get all APIs
+      // Get all APIs (only fields needed for stats)
       const apis = await db
-        .select()
+        .select({
+          id: consultantKnowledgeApis.id,
+          name: consultantKnowledgeApis.name,
+          category: consultantKnowledgeApis.category,
+          isActive: consultantKnowledgeApis.isActive,
+          usageCount: consultantKnowledgeApis.usageCount,
+          lastUsedAt: consultantKnowledgeApis.lastUsedAt,
+        })
         .from(consultantKnowledgeApis)
         .where(eq(consultantKnowledgeApis.consultantId, consultantId));
 

@@ -511,28 +511,44 @@ export default function ClientKnowledgeDocuments() {
       "audio/ogg": [".ogg"],
       "audio/webm": [".webm"],
     },
-    maxFiles: 1,
+    multiple: true,
   });
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (uploadingFiles.length === 0) return;
-    if (!uploadForm.title.trim()) {
-      toast({
-        title: "Titolo richiesto",
-        description: "Inserisci un titolo per il documento",
-        variant: "destructive",
-      });
-      return;
+    
+    const filesToUpload = [...uploadingFiles];
+    setUploadingFiles([]);
+    setUploadForm({ title: "", description: "", category: "other", priority: 5 });
+    
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const file = filesToUpload[i];
+      const title = filesToUpload.length === 1 
+        ? uploadForm.title.trim() 
+        : file.name.replace(/\.[^/.]+$/, "");
+      
+      if (!title) {
+        toast({
+          title: "Titolo richiesto",
+          description: `Inserisci un titolo per ${file.name}`,
+          variant: "destructive",
+        });
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", title);
+      formData.append("description", uploadForm.description);
+      formData.append("category", uploadForm.category);
+      formData.append("priority", uploadForm.priority.toString());
+
+      try {
+        await uploadMutation.mutateAsync(formData);
+      } catch (error) {
+        // Error already handled by mutation onError
+      }
     }
-
-    const formData = new FormData();
-    formData.append("file", uploadingFiles[0]);
-    formData.append("title", uploadForm.title);
-    formData.append("description", uploadForm.description);
-    formData.append("category", uploadForm.category);
-    formData.append("priority", uploadForm.priority.toString());
-
-    uploadMutation.mutate(formData);
   };
 
   const handleEdit = (doc: KnowledgeDocument) => {
