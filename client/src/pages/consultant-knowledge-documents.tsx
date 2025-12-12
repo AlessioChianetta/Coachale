@@ -58,12 +58,18 @@ import {
   Sparkles,
   Cloud,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Table2,
+  Rows3,
+  Columns3,
 } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GoogleDriveBrowser from "@/components/google-drive/GoogleDriveBrowser";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -76,6 +82,21 @@ import { openAIAndAskAboutDocument } from "@/hooks/use-document-focus";
 type DocumentCategory = "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other";
 type DocumentStatus = "uploading" | "processing" | "indexed" | "error";
 type FileType = "pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio";
+
+interface StructuredSheet {
+  name: string;
+  headers: string[];
+  rows: any[][];
+  rowCount: number;
+  columnCount: number;
+}
+
+interface StructuredTableData {
+  sheets: StructuredSheet[];
+  totalRows: number;
+  totalColumns: number;
+  fileType: 'csv' | 'xlsx' | 'xls';
+}
 
 interface KnowledgeDocument {
   id: string;
@@ -92,6 +113,7 @@ interface KnowledgeDocument {
   summaryEnabled: boolean;
   keywords: string[] | null;
   tags: string[] | null;
+  structuredData: StructuredTableData | null;
   version: number;
   priority: number;
   status: DocumentStatus;
@@ -198,6 +220,9 @@ export default function ConsultantKnowledgeDocuments() {
   const [previewDocument, setPreviewDocument] = useState<KnowledgeDocument | null>(null);
   const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [tablePreviewPage, setTablePreviewPage] = useState(0);
+  const [tablePreviewSheet, setTablePreviewSheet] = useState(0);
+  const ROWS_PER_PAGE = 50;
   const [showAskConfirmDialog, setShowAskConfirmDialog] = useState(false);
   const [isGoogleDriveOpen, setIsGoogleDriveOpen] = useState(false);
 
@@ -414,6 +439,8 @@ export default function ConsultantKnowledgeDocuments() {
 
   // Funzione per aprire l'anteprima documento
   const handlePreview = async (doc: KnowledgeDocument) => {
+    setTablePreviewPage(0);
+    setTablePreviewSheet(0);
     try {
       const response = await fetch(`/api/consultant/knowledge/documents/${doc.id}/preview`, {
         headers: getAuthHeaders(),
@@ -1176,14 +1203,122 @@ export default function ConsultantKnowledgeDocuments() {
                 </div>
               )}
 
-              {/* Contenuto Estratto */}
+              {/* Contenuto Estratto o Tabella */}
               <div className="flex-1 min-h-0">
-                <Label className="text-sm mb-2 block">Contenuto Estratto</Label>
-                <ScrollArea className="h-[300px] border rounded-lg p-4 bg-white dark:bg-slate-900">
-                  <pre className="text-sm whitespace-pre-wrap font-sans">
-                    {previewDocument.extractedContent || "Contenuto non disponibile"}
-                  </pre>
-                </ScrollArea>
+                {previewDocument.structuredData ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm flex items-center gap-2">
+                        <Table2 className="w-4 h-4 text-amber-500" />
+                        Anteprima Tabella
+                      </Label>
+                      <div className="flex items-center gap-3 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Rows3 className="w-4 h-4" />
+                          {previewDocument.structuredData.totalRows.toLocaleString()} righe
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Columns3 className="w-4 h-4" />
+                          {previewDocument.structuredData.totalColumns} colonne
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {previewDocument.structuredData.sheets.length > 1 && (
+                      <Tabs 
+                        value={tablePreviewSheet.toString()} 
+                        onValueChange={(v) => { setTablePreviewSheet(parseInt(v)); setTablePreviewPage(0); }}
+                      >
+                        <TabsList className="h-8">
+                          {previewDocument.structuredData.sheets.map((sheet, idx) => (
+                            <TabsTrigger key={idx} value={idx.toString()} className="text-xs">
+                              {sheet.name} ({sheet.rowCount.toLocaleString()})
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+                      </Tabs>
+                    )}
+                    
+                    {(() => {
+                      const sheet = previewDocument.structuredData!.sheets[tablePreviewSheet] || previewDocument.structuredData!.sheets[0];
+                      const totalPages = Math.ceil(sheet.rows.length / ROWS_PER_PAGE);
+                      const startIdx = tablePreviewPage * ROWS_PER_PAGE;
+                      const endIdx = Math.min(startIdx + ROWS_PER_PAGE, sheet.rows.length);
+                      const pageRows = sheet.rows.slice(startIdx, endIdx);
+                      
+                      return (
+                        <>
+                          <ScrollArea className="h-[280px] border rounded-lg bg-white dark:bg-slate-900">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm border-collapse">
+                                <thead className="sticky top-0 bg-gray-100 dark:bg-slate-800">
+                                  <tr>
+                                    <th className="px-2 py-1.5 text-left text-xs font-medium text-gray-500 border-b w-12">#</th>
+                                    {sheet.headers.map((header, idx) => (
+                                      <th key={idx} className="px-2 py-1.5 text-left text-xs font-medium text-gray-600 dark:text-gray-300 border-b whitespace-nowrap">
+                                        {header || `Col ${idx + 1}`}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {pageRows.map((row, rowIdx) => (
+                                    <tr key={rowIdx} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                                      <td className="px-2 py-1 text-xs text-gray-400 border-b">{startIdx + rowIdx + 1}</td>
+                                      {row.map((cell, cellIdx) => (
+                                        <td key={cellIdx} className="px-2 py-1 text-xs border-b whitespace-nowrap max-w-[200px] truncate" title={String(cell ?? '')}>
+                                          {cell === null || cell === undefined ? '' : String(cell)}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </ScrollArea>
+                          
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-500">
+                                Righe {startIdx + 1}-{endIdx} di {sheet.rows.length.toLocaleString()}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setTablePreviewPage(p => Math.max(0, p - 1))}
+                                  disabled={tablePreviewPage === 0}
+                                >
+                                  <ChevronLeft className="w-4 h-4" />
+                                </Button>
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  Pagina {tablePreviewPage + 1} di {totalPages}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setTablePreviewPage(p => Math.min(totalPages - 1, p + 1))}
+                                  disabled={tablePreviewPage >= totalPages - 1}
+                                >
+                                  <ChevronRight className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <>
+                    <Label className="text-sm mb-2 block">Contenuto Estratto</Label>
+                    <ScrollArea className="h-[300px] border rounded-lg p-4 bg-white dark:bg-slate-900">
+                      <pre className="text-sm whitespace-pre-wrap font-sans">
+                        {previewDocument.extractedContent || "Contenuto non disponibile"}
+                      </pre>
+                    </ScrollArea>
+                  </>
+                )}
               </div>
             </div>
           )}

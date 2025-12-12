@@ -570,6 +570,7 @@ router.get(
           extractedContent: document.extractedContent,
           contentSummary: document.contentSummary,
           summaryEnabled: document.summaryEnabled,
+          structuredData: document.structuredData,
           tags: document.tags,
           priority: document.priority,
           usageCount: document.usageCount,
