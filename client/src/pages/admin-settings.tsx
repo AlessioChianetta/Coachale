@@ -18,7 +18,14 @@ import {
   User,
   Calendar,
   Activity,
+  BookOpen,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -50,9 +57,31 @@ export default function AdminSettings() {
   const [showClientSecret, setShowClientSecret] = useState(false);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [copiedUri, setCopiedUri] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const redirectUri = `${window.location.origin}/api/calendar-settings/oauth/callback`;
+
+  const copyRedirectUri = async () => {
+    try {
+      await navigator.clipboard.writeText(redirectUri);
+      setCopiedUri(true);
+      toast({
+        title: "Copiato!",
+        description: "URI di reindirizzamento copiato negli appunti.",
+      });
+      setTimeout(() => setCopiedUri(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Errore",
+        description: "Impossibile copiare negli appunti.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const { data: oauthData, isLoading: oauthLoading } = useQuery({
     queryKey: ["/api/admin/settings/google-oauth"],
@@ -259,6 +288,166 @@ export default function AdminSettings() {
                     Assicurati di configurare correttamente i redirect URI nella Google Cloud Console.
                   </p>
                 </div>
+
+                <Collapsible open={guideOpen} onOpenChange={setGuideOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4" />
+                        Guida: Come ottenere le credenziali OAuth
+                      </span>
+                      {guideOpen ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-4">
+                    <div className="space-y-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
+                          1
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Accedi alla Google Cloud Console
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Vai su Google Cloud Console e accedi con il tuo account Google.
+                          </p>
+                          <a
+                            href="https://console.cloud.google.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                          >
+                            Apri Google Cloud Console
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
+                          2
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Crea o seleziona un progetto
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Clicca sul selettore progetti in alto a sinistra. Puoi creare un nuovo progetto 
+                            (es. "Piattaforma Consulenti") oppure selezionarne uno esistente.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
+                          3
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Abilita le API necessarie
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Vai su <strong>"API e servizi" → "Libreria"</strong> e abilita:
+                          </p>
+                          <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-2">
+                            <li>Google Drive API</li>
+                            <li>Google Calendar API</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
+                          4
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Configura la schermata di consenso OAuth
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Vai su <strong>"API e servizi" → "Schermata di consenso OAuth"</strong>:
+                          </p>
+                          <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-2">
+                            <li>Scegli <strong>"Esterno"</strong> come tipo utente</li>
+                            <li>Compila i campi obbligatori (nome app, email supporto, email sviluppatore)</li>
+                            <li>Aggiungi gli scope: <code className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">.../auth/drive.file</code> e <code className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">.../auth/calendar</code></li>
+                            <li>Nella sezione "Utenti test", aggiungi le email degli utenti che potranno usare l'app</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
+                          5
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Crea le credenziali OAuth
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            Vai su <strong>"API e servizi" → "Credenziali"</strong> e clicca <strong>"+ CREA CREDENZIALI" → "ID client OAuth"</strong>:
+                          </p>
+                          <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-2">
+                            <li>Tipo di applicazione: <strong>Applicazione web</strong></li>
+                            <li>Nome: es. "Piattaforma Consulenti OAuth"</li>
+                            <li>URI di reindirizzamento autorizzati: aggiungi l'URI seguente</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
+                        <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2">
+                          URI di reindirizzamento da aggiungere:
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 text-xs bg-white dark:bg-gray-900 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 break-all">
+                            {redirectUri}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={copyRedirectUri}
+                            className="shrink-0"
+                          >
+                            {copiedUri ? (
+                              <Check className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">
+                          6
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Copia le credenziali
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Dopo aver creato le credenziali, Google ti mostrerà il <strong>Client ID</strong> e il <strong>Client Secret</strong>. 
+                            Copia questi valori e incollali nei campi qui sopra, poi clicca "Salva Credenziali".
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                        <p className="text-sm text-green-800 dark:text-green-200">
+                          <strong>Fatto!</strong> Una volta salvate le credenziali, tutti i consultant potranno 
+                          collegare il proprio Google Drive e Calendar cliccando semplicemente "Connetti" 
+                          nelle rispettive impostazioni.
+                        </p>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </CardContent>
             </Card>
 
