@@ -1,0 +1,49 @@
+📊 File size: 3915.56 KB
+📄 [EXCEL] Reading spreadsheet with structured extraction: /home/runner/workspace/uploads/client-knowledge/06d64ab0-d568-4c3d-87ae-21146c525ac0.xlsx
+❌ [EXCEL] Read failed: XLSX.readFile is not a function
+❌ [DOCUMENT PROCESSOR] Extraction failed
+   Error: Failed to read Excel file: XLSX.readFile is not a function
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ [CLIENT KNOWLEDGE DOCUMENTS] Text extraction failed: Failed to read Excel file: XLSX.readFile is not a function
+7:31:24 PM [express] GET /api/client/knowledge/documents 200 in 833ms :: {"success":true,"data":[{"i…
+7:31:24 PM [express] GET /api/client/knowledge/stats 200 in 919ms :: {"success":true,"data":{"docume…
+🗑️ [CLIENT KNOWLEDGE DOCUMENTS] Deleted file: /home/runner/workspace/uploads/client-knowledge/180c0926-1bb5-4ce1-8558-922ac4fde2aa.csv
+🗑️ [CLIENT KNOWLEDGE DOCUMENTS] Deleted document: "B6F9B583-archivio-estrattoORBITALE"
+7:31:24 PM [express] DELETE /api/client/knowledge/documents/f0ea6b84-79bb-48cd-8122-459893fbc75d 200…
+7:31:24 PM [express] GET /api/client/knowledge/documents 200 in 204ms :: {"success":true,"data":[{"i…
+7:31:25 PM [express] GET /api/client/knowledge/stats 200 in 305ms :: {"success":true,"data":{"docume…
+🗑️ [CLIENT KNOWLEDGE DOCUMENTS] Deleted file: /home/runner/workspace/uploads/client-knowledge/06d64ab0-d568-4c3d-87ae-21146c525ac0.xlsx
+🗑️ [CLIENT KNOWLEDGE DOCUMENTS] Deleted document: "DDTRIGHE"
+7:31:28 PM [express] DELETE /api/client/knowledge/documents/f74dee43-daf8-478b-bf1d-a9f7c77eaa5d 200…
+7:31:28 PM [express] GET /api/client/knowledge/documents 200 in 205ms :: {"success":true,"data":[],"…
+7:31:28 PM [express] GET /api/client/knowledge/stats 200 in 305ms :: {"success":true,"data":{"docume…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 3 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-11T11:44:14.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-11T11:44:14.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+✅ [WHATSAPP POLLING] Poll cycle complete
+📄 [CLIENT KNOWLEDGE DOCUMENTS] Created document: "DDTRIGHE" (status: processing)
+🔄 [CLIENT KNOWLEDGE DOCUMENTS] Extracting text from: DDTRIGHE.xlsx
+7:31:34 PM [express] POST /api/client/knowledge/documents 201 in 2336ms :: {"success":true,"data":{"…
+✅ Parsed credentials as plaintext JSON
+🔑 [CLIENT KNOWLEDGE DOCUMENTS] Using Vertex AI credentials for audio transcription
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 [DOCUMENT PROCESSOR] Starting text extraction with auto-detection
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 File: c4408a42-9f3a-4fa8-9d0a-db761573b478.xlsx
+📋 MIME Type (from browser): application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+📊 File size: 3915.56 KB
+📄 [EXCEL] Reading spreadsheet with structured extraction: /home/runner/workspace/uploads/client-knowledge/c4408a42-9f3a-4fa8-9d0a-db761573b478.xlsx
+❌ [EXCEL] Read failed: XLSX.readFile is not a function
+❌ [DOCUMENT PROCESSOR] Extraction failed
+   Error: Failed to read Excel file: XLSX.readFile is not a function
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ [CLIENT KNOWLEDGE DOCUMENTS] Text extraction failed: Failed to read Excel file: XLSX.readFile is not a function
+7:31:35 PM [express] GET /api/client/knowledge/documents 200 in 207ms :: {"success":true,"data":[{"i…
+7:31:35 PM [express] GET /api/client/knowledge/stats 200 in 915ms :: {"success":true,"data":{"docume…
