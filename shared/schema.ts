@@ -4908,6 +4908,31 @@ export const consultantOnboardingStatus = pgTable("consultant_onboarding_status"
   knowledgeBaseStatus: text("knowledge_base_status").$type<"pending" | "configured" | "verified">().default("pending").notNull(),
   knowledgeBaseDocumentsCount: integer("knowledge_base_documents_count").default(0),
   
+  // WhatsApp Agents (by type)
+  hasInboundAgent: boolean("has_inbound_agent").default(false).notNull(),
+  hasOutboundAgent: boolean("has_outbound_agent").default(false).notNull(),
+  hasConsultativeAgent: boolean("has_consultative_agent").default(false).notNull(),
+  
+  // Public Agent Link
+  hasPublicAgentLink: boolean("has_public_agent_link").default(false).notNull(),
+  publicLinksCount: integer("public_links_count").default(0),
+  
+  // AI Ideas Generated
+  hasGeneratedIdeas: boolean("has_generated_ideas").default(false).notNull(),
+  generatedIdeasCount: integer("generated_ideas_count").default(0),
+  
+  // Courses (University)
+  hasCreatedCourse: boolean("has_created_course").default(false).notNull(),
+  coursesCount: integer("courses_count").default(0),
+  
+  // Exercises
+  hasCreatedExercise: boolean("has_created_exercise").default(false).notNull(),
+  exercisesCount: integer("exercises_count").default(0),
+  
+  // First Summary Email Sent (from appointments)
+  hasFirstSummaryEmail: boolean("has_first_summary_email").default(false).notNull(),
+  summaryEmailsCount: integer("summary_emails_count").default(0),
+  
   // Client AI Decision
   clientAiStrategy: text("client_ai_strategy").$type<"vertex_shared" | "vertex_per_client" | "undecided">().default("undecided").notNull(),
   
@@ -4922,3 +4947,28 @@ export const consultantOnboardingStatus = pgTable("consultant_onboarding_status"
 
 export type ConsultantOnboardingStatus = typeof consultantOnboardingStatus.$inferSelect;
 export type InsertConsultantOnboardingStatus = typeof consultantOnboardingStatus.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Consultant AI Ideas - Persist generated ideas for WhatsApp agents
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const consultantAiIdeas = pgTable("consultant_ai_ideas", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  targetAudience: text("target_audience"),
+  agentType: text("agent_type").$type<"whatsapp" | "public_link" | "both">().default("whatsapp").notNull(),
+  integrationTypes: jsonb("integration_types").$type<string[]>().default([]),
+  sourceType: text("source_type").$type<"generated" | "template" | "custom">().default("generated").notNull(),
+  
+  isImplemented: boolean("is_implemented").default(false),
+  implementedAgentId: varchar("implemented_agent_id"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConsultantAiIdea = typeof consultantAiIdeas.$inferSelect;
+export type InsertConsultantAiIdea = typeof consultantAiIdeas.$inferInsert;
