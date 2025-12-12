@@ -4868,3 +4868,57 @@ export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = typeof systemSettings.$inferInsert;
 export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
 export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Consultant Onboarding Status - Track setup completion for each consultant
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const consultantOnboardingStatus = pgTable("consultant_onboarding_status", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  
+  // Core Infrastructure
+  vertexAiStatus: text("vertex_ai_status").$type<"pending" | "configured" | "verified" | "error">().default("pending").notNull(),
+  vertexAiTestedAt: timestamp("vertex_ai_tested_at"),
+  vertexAiErrorMessage: text("vertex_ai_error_message"),
+  
+  smtpStatus: text("smtp_status").$type<"pending" | "configured" | "verified" | "error">().default("pending").notNull(),
+  smtpTestedAt: timestamp("smtp_tested_at"),
+  smtpErrorMessage: text("smtp_error_message"),
+  
+  googleCalendarStatus: text("google_calendar_status").$type<"pending" | "configured" | "verified" | "error">().default("pending").notNull(),
+  googleCalendarTestedAt: timestamp("google_calendar_tested_at"),
+  googleCalendarErrorMessage: text("google_calendar_error_message"),
+  
+  videoMeetingStatus: text("video_meeting_status").$type<"pending" | "configured" | "verified" | "error" | "skipped">().default("pending").notNull(),
+  videoMeetingTestedAt: timestamp("video_meeting_tested_at"),
+  videoMeetingErrorMessage: text("video_meeting_error_message"),
+  
+  // Optional Integrations
+  leadImportStatus: text("lead_import_status").$type<"pending" | "configured" | "verified" | "error" | "skipped">().default("pending").notNull(),
+  leadImportTestedAt: timestamp("lead_import_tested_at"),
+  leadImportErrorMessage: text("lead_import_error_message"),
+  
+  // WhatsApp AI (Separate from Twilio)
+  whatsappAiStatus: text("whatsapp_ai_status").$type<"pending" | "configured" | "verified" | "error" | "skipped">().default("pending").notNull(),
+  whatsappAiTestedAt: timestamp("whatsapp_ai_tested_at"),
+  whatsappAiErrorMessage: text("whatsapp_ai_error_message"),
+  
+  // Knowledge Base
+  knowledgeBaseStatus: text("knowledge_base_status").$type<"pending" | "configured" | "verified">().default("pending").notNull(),
+  knowledgeBaseDocumentsCount: integer("knowledge_base_documents_count").default(0),
+  
+  // Client AI Decision
+  clientAiStrategy: text("client_ai_strategy").$type<"vertex_shared" | "vertex_per_client" | "undecided">().default("undecided").notNull(),
+  
+  // Overall Status
+  onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
+  onboardingCompletedAt: timestamp("onboarding_completed_at"),
+  lastUpdatedStep: text("last_updated_step"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConsultantOnboardingStatus = typeof consultantOnboardingStatus.$inferSelect;
+export type InsertConsultantOnboardingStatus = typeof consultantOnboardingStatus.$inferInsert;

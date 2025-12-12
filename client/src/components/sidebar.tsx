@@ -148,6 +148,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Settings,
     defaultExpanded: false,
     items: [
+      { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap, color: "text-emerald-500", badge: "NEW" },
       { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "text-purple-500" },  
       { name: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings, color: "text-gray-500" },
       { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles, color: "text-fuchsia-500" },
