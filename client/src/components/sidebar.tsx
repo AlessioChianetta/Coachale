@@ -96,6 +96,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     items: [
       { name: "Dashboard", href: "/consultant", icon: Home, color: "text-blue-500" },
       { name: "AI Assistant", href: "/consultant/ai-assistant", icon: Sparkles, color: "text-fuchsia-500" },
+      { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap, color: "text-emerald-500", badge: "NEW" },
     ]
   },
   {
@@ -106,6 +107,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Clienti", href: "/consultant/clients", icon: Users, badge: "12", color: "text-purple-500" },
       { name: "Calendario", href: "/consultant/appointments", icon: Calendar, color: "text-orange-500" },
       { name: "Task", href: "/consultant/tasks", icon: ListTodo, color: "text-pink-500" },
+      { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles, color: "text-fuchsia-500" },
     ]
   },
   {
@@ -113,6 +115,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Megaphone,
     defaultExpanded: true,
     items: [
+      { name: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings, color: "text-gray-500" },
       { name: "WhatsApp", href: "/consultant/whatsapp-conversations", icon: MessageSquare, color: "text-green-500" },
       { name: "Lead", href: "/consultant/proactive-leads", icon: UserPlus, color: "text-emerald-500" },
       { name: "Template", href: "/consultant/whatsapp-templates", icon: FileText, color: "text-blue-500" },
@@ -143,10 +146,8 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Settings,
     defaultExpanded: false,
     items: [
-      { name: "Setup Iniziale", href: "/consultant/setup-wizard", icon: Zap, color: "text-emerald-500", badge: "NEW" },
+    
       { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "text-purple-500" },  
-      { name: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings, color: "text-gray-500" },
-      { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles, color: "text-fuchsia-500" },
     ]
   },
   {
