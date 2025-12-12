@@ -4424,6 +4424,20 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
   keywords: jsonb("keywords").$type<string[]>().default(sql`'[]'::jsonb`), // Extracted keywords
   tags: jsonb("tags").$type<string[]>().default(sql`'[]'::jsonb`), // Custom user tags
   
+  // Structured data for tabular files (CSV/Excel) - used for preview
+  structuredData: jsonb("structured_data").$type<{
+    sheets: Array<{
+      name: string;
+      headers: string[];
+      rows: any[][];
+      rowCount: number;
+      columnCount: number;
+    }>;
+    totalRows: number;
+    totalColumns: number;
+    fileType: 'csv' | 'xlsx' | 'xls';
+  } | null>(),
+  
   // Versioning
   version: integer("version").default(1).notNull(), // Document version number
   previousVersionId: varchar("previous_version_id"), // Link to previous version

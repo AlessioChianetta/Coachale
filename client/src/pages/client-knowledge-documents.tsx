@@ -511,7 +511,7 @@ export default function ClientKnowledgeDocuments() {
       "audio/ogg": [".ogg"],
       "audio/webm": [".webm"],
     },
-    maxFiles: 1,
+    maxFiles: 10,
   });
 
   const handleUpload = () => {
