@@ -4963,6 +4963,16 @@ export const consultantAiIdeas = pgTable("consultant_ai_ideas", {
   integrationTypes: jsonb("integration_types").$type<string[]>().default([]),
   sourceType: text("source_type").$type<"generated" | "template" | "custom">().default("generated").notNull(),
   
+  suggestedAgentType: text("suggested_agent_type").$type<"reactive_lead" | "proactive_setter" | "informative_advisor">().default("reactive_lead"),
+  personality: text("personality"),
+  whoWeHelp: text("who_we_help"),
+  whoWeDontHelp: text("who_we_dont_help"),
+  whatWeDo: text("what_we_do"),
+  howWeDoIt: text("how_we_do_it"),
+  usp: text("usp"),
+  suggestedInstructions: text("suggested_instructions"),
+  useCases: jsonb("use_cases").$type<string[]>().default([]),
+  
   isImplemented: boolean("is_implemented").default(false),
   implementedAgentId: varchar("implemented_agent_id"),
   
