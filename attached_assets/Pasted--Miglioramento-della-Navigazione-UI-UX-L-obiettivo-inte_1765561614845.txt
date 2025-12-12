@@ -1,0 +1,61 @@
+📝 Miglioramento della Navigazione (UI/UX)
+L'obiettivo è integrare nuove opzioni di navigazione (pulsanti o schede/tab) all'interno delle pagine esistenti, migliorando l'accessibilità e la coerenza dell'interfaccia utente (UI) e l'esperienza utente (UX).
+
+Sezione: /consultant/clients
+
+Azione: Aggiungere un Pulsante/Tab che consenta la navigazione diretta verso:
+
+/consultant/client-state (Stato Cliente)
+
+/consultant/client-daily (Report Giornaliero Cliente)
+
+Obiettivo UI/UX: Assicurare che questi elementi siano visivamente integrati e intuitivi nella gestione complessiva dei clienti.
+
+Sezione: /consultant/ai-config (Configurazione AI)
+
+Azione: Aggiungere un Pulsante/Tab per accedere a:
+
+/consultant/email-logs (Log Email)
+
+Obiettivo UI/UX: Posizionare i log email in modo logico vicino alla configurazione dell'AI per facilitare il debug e il monitoraggio.
+
+Sezione: /consultant/proactive-leads (Lead Proattivi)
+
+Azione: Aggiungere un Pulsante/Tab per accedere a:
+
+/consultant/campaigns (Campagne)
+
+Obiettivo UI/UX: Creare un collegamento chiaro tra la gestione dei lead proattivi e le campagne associate.
+
+Sezione: /consultant/whatsapp-templates (Template WhatsApp)
+
+Azione: Aggiungere un Pulsante/Tab per accedere a:
+
+/consultant/whatsapp/custom-templates/list (Elenco Template Personalizzati)
+
+Obiettivo UI/UX: Offrire un accesso immediato all'elenco completo dei template personalizzati da questa sezione.
+
+Sezione: /consultant/whatsapp (Gestione Generale WhatsApp)
+
+Azione: Aggiungere un Pulsante/Tab per accedere a:
+
+/consultant/whatsapp-agents-chat (Chat Agenti WhatsApp)
+
+Obiettivo UI/UX: Centralizzare l'accesso alla chat degli agenti dalla schermata principale di gestione di WhatsApp.
+
+🤖 Revisione e Aggiornamento delle Guide AI
+L'obiettivo è revisionare e riqualificare il sistema di guida AI affinché fornisca un supporto contestuale, preciso e aggiornato, in linea con le nuove strutture di navigazione e i contenuti di ogni pagina.
+
+Azione 1: Individuazione delle Guide Esistenti
+
+Task: Identificare e catalogare tutte le guide attualmente presenti nel software e conosciute dall'AI.
+
+Azione 2: Rielaborazione e Ristrutturazione delle Guide
+
+Task: Riscrivere in modo completo e dettagliato tutte le guide in base ai nuovi contenuti e alle nuove tab/sezioni create (come specificato nel punto precedente).
+
+Obiettivo per l'AI: L'AI deve essere in grado di riconoscere la pagina esatta in cui si trova l'utente (es. /consultant/client-state vs /consultant/client-daily) e fornire un supporto iper-contestuale e specifico per quella singola pagina.
+
+Azione 3: Implementazione e Test
+
+Task: Integrare le guide AI aggiornate nel software e testare la sua capacità di guidare l'utente attraverso le nuove interfacce.
