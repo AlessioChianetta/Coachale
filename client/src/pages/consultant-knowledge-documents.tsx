@@ -522,9 +522,13 @@ export default function ConsultantKnowledgeDocuments() {
   const handleUpload = async () => {
     if (uploadingFiles.length === 0) return;
     
-    for (let i = 0; i < uploadingFiles.length; i++) {
-      const file = uploadingFiles[i];
-      const title = uploadingFiles.length === 1 
+      const filesToUpload = [...uploadingFiles];
+    setUploadingFiles([]);
+    setUploadForm({ title: "", description: "", category: "other", priority: 5 });
+    
+    for (let i = 0; i < filesToUpload.length; i++) {
+      const file = filesToUpload[i];
+      const title = filesToUpload.length === 1 
         ? uploadForm.title.trim() 
         : file.name.replace(/\.[^/.]+$/, "");
       
