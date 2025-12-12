@@ -56,6 +56,14 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Features multi-tenant config, dual message delivery, message debouncing, Gemini AI responses with user context, client/lead recognition, and a real-time dashboard.
 - Includes AI-powered objection detection, dynamic client profiling, and proactive lead management.
 - Supports dynamic document/knowledge management for WhatsApp AI agents.
+- **AI Idea Generation System**: Vertex AI-powered idea generator that creates WhatsApp agent concepts from uploaded documents, URLs, text descriptions, or existing knowledge base documents.
+  - Three agent types: `reactive_lead` (inbound), `proactive_setter` (outbound), `informative_advisor` (consultative)
+  - Two integration types: `booking` (appointment scheduling), `consultation` (advisory support)
+  - Ideas include personality, whoWeHelp, whoWeDontHelp, whatWeDo, howWeDoIt, usp, suggestedInstructions, useCases
+  - Saved ideas grouped by date (Today, Yesterday, This Week, Earlier) using date-fns
+  - "Create Agent Now" button pre-populates wizard with idea data via `?fromIdea={id}` query param
+  - Supports `ai_only` mode to create agents without Twilio configuration
+  - Ideas marked as implemented after agent creation with `implementedAgentId` reference
 ## Sales Agent Configuration
 - Users can configure AI agent execution for sales phases (Discovery, Demo).
 - Token usage optimized through dynamic script loading based on the current phase.
