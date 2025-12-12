@@ -59,24 +59,48 @@ export default function AdminSettings() {
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
-  const [copiedUri, setCopiedUri] = useState(false);
+  const [copiedUri, setCopiedUri] = useState<string | null>(null);
   const [videoMeetingClientId, setVideoMeetingClientId] = useState("");
   const [videoMeetingGuideOpen, setVideoMeetingGuideOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const redirectUri = `${window.location.origin}/api/calendar-settings/oauth/callback`;
+  const baseUrl = window.location.origin;
+  
+  const allRedirectUris = {
+    consultantDrive: `${baseUrl}/api/consultant/google-drive/callback`,
+    clientDrive: `${baseUrl}/api/client/google-drive/callback`,
+  };
 
-  const copyRedirectUri = async () => {
+  const copyToClipboard = async (text: string, uriKey: string) => {
     try {
-      await navigator.clipboard.writeText(redirectUri);
-      setCopiedUri(true);
+      await navigator.clipboard.writeText(text);
+      setCopiedUri(uriKey);
       toast({
         title: "Copiato!",
-        description: "URI di reindirizzamento copiato negli appunti.",
+        description: "URI copiato negli appunti.",
       });
-      setTimeout(() => setCopiedUri(false), 2000);
+      setTimeout(() => setCopiedUri(null), 2000);
+    } catch (err) {
+      toast({
+        title: "Errore",
+        description: "Impossibile copiare negli appunti.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const copyAllUris = async () => {
+    const allUris = Object.values(allRedirectUris).join('\n');
+    try {
+      await navigator.clipboard.writeText(allUris);
+      setCopiedUri('all');
+      toast({
+        title: "Copiati tutti!",
+        description: "Tutti gli URI sono stati copiati negli appunti.",
+      });
+      setTimeout(() => setCopiedUri(null), 2000);
     } catch (err) {
       toast({
         title: "Errore",
@@ -348,11 +372,33 @@ export default function AdminSettings() {
                   </Button>
                 </div>
 
-                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 space-y-3">
                   <p className="text-sm text-amber-800 dark:text-amber-200">
-                    <strong>Nota:</strong> Le credenziali vengono utilizzate per l'autenticazione OAuth di tutti i consultant. 
-                    Assicurati di configurare correttamente i redirect URI nella Google Cloud Console.
+                    <strong>Importante:</strong> Aggiungi questi URI nella Google Cloud Console prima di salvare:
                   </p>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Drive Consulenti:</span>
+                      <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{allRedirectUris.consultantDrive}</code>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(allRedirectUris.consultantDrive, 'consultantDrive2')}>
+                        {copiedUri === 'consultantDrive2' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Drive Clienti:</span>
+                      <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{allRedirectUris.clientDrive}</code>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(allRedirectUris.clientDrive, 'clientDrive2')}>
+                        {copiedUri === 'clientDrive2' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Origine JS:</span>
+                      <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{baseUrl}</code>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(baseUrl, 'origin2')}>
+                        {copiedUri === 'origin2' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 <Collapsible open={guideOpen} onOpenChange={setGuideOpen}>
@@ -466,26 +512,94 @@ export default function AdminSettings() {
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
-                        <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2">
-                          URI di reindirizzamento da aggiungere:
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <code className="flex-1 text-xs bg-white dark:bg-gray-900 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 break-all">
-                            {redirectUri}
-                          </code>
+                      <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                            URI di reindirizzamento da aggiungere:
+                          </p>
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={copyRedirectUri}
+                            onClick={copyAllUris}
                             className="shrink-0"
                           >
-                            {copiedUri ? (
-                              <Check className="w-4 h-4 text-green-500" />
+                            {copiedUri === 'all' ? (
+                              <><Check className="w-4 h-4 text-green-500 mr-1" /> Copiati!</>
                             ) : (
-                              <Copy className="w-4 h-4" />
+                              <><Copy className="w-4 h-4 mr-1" /> Copia tutti</>
                             )}
                           </Button>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">
+                              Google Drive - Consulenti:
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <code className="flex-1 text-xs bg-white dark:bg-gray-900 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 break-all">
+                                {allRedirectUris.consultantDrive}
+                              </code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyToClipboard(allRedirectUris.consultantDrive, 'consultantDrive')}
+                                className="shrink-0 h-8 w-8 p-0"
+                              >
+                                {copiedUri === 'consultantDrive' ? (
+                                  <Check className="w-4 h-4 text-green-500" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">
+                              Google Drive - Clienti:
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <code className="flex-1 text-xs bg-white dark:bg-gray-900 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 break-all">
+                                {allRedirectUris.clientDrive}
+                              </code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyToClipboard(allRedirectUris.clientDrive, 'clientDrive')}
+                                className="shrink-0 h-8 w-8 p-0"
+                              >
+                                {copiedUri === 'clientDrive' ? (
+                                  <Check className="w-4 h-4 text-green-500" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-blue-200 dark:border-blue-700">
+                          <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">
+                            Origine JavaScript autorizzata:
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 text-xs bg-white dark:bg-gray-900 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 break-all">
+                              {baseUrl}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => copyToClipboard(baseUrl, 'origin')}
+                              className="shrink-0 h-8 w-8 p-0"
+                            >
+                              {copiedUri === 'origin' ? (
+                                <Check className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <Copy className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       </div>
 
