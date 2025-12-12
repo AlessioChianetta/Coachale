@@ -21,8 +21,10 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - Super Admin credentials: `alessioadmin@gmail.com` / `aaa1aaa2`
   - Routes: `/admin`, `/admin/hierarchy`, `/admin/users`, `/admin/settings`
   - APIs: `/api/admin/*` (stats, hierarchy, users, settings, audit-log)
-  - Global Google Drive OAuth configuration stored in `systemSettings` table
+  - Global Google Drive/Calendar OAuth configuration stored in `systemSettings` table
+  - Global Video Meeting OAuth configuration stored in `systemSettings` table (centralized for scalability)
   - All admin actions logged in `adminAuditLog` table
+  - Consultants receive read-only access to global OAuth settings via `/api/consultant/google-oauth`
 ## UI/UX Decisions
 - Uses `shadcn/ui` and `Tailwind CSS` for modern, accessible, and responsive design.
 - Interactive guided tours via `Driver.js` for onboarding.
