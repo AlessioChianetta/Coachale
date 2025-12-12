@@ -388,9 +388,6 @@ export default function ConsultantApiKeysUnified() {
     connectedEmail: "",
   });
 
-  // Google OAuth for Video Meetings state
-  const [googleOAuthClientId, setGoogleOAuthClientId] = useState("");
-
   // TURN Config for Video Meetings state
   const [turnConfigFormData, setTurnConfigFormData] = useState({
     username: "",
@@ -503,21 +500,6 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
-  // Google OAuth for Video Meetings query
-  const { data: googleOAuthSettings, isLoading: isLoadingGoogleOAuth } = useQuery({
-    queryKey: ["/api/consultant/google-oauth"],
-    queryFn: async () => {
-      const response = await fetch("/api/consultant/google-oauth", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok && response.status !== 404) {
-        throw new Error("Failed to fetch Google OAuth settings");
-      }
-      if (response.status === 404) return { googleClientId: "" };
-      return response.json();
-    },
-  });
-
   // TURN Config for Video Meetings query
   const { data: turnConfigData, isLoading: isLoadingTurnConfig } = useQuery({
     queryKey: ["/api/consultant/turn-config"],
@@ -615,13 +597,6 @@ export default function ConsultantApiKeysUnified() {
       });
     }
   }, [whatsappConfigs]);
-
-  // Sync Google OAuth settings
-  useEffect(() => {
-    if (googleOAuthSettings?.googleClientId) {
-      setGoogleOAuthClientId(googleOAuthSettings.googleClientId);
-    }
-  }, [googleOAuthSettings]);
 
   // Sync TURN config settings
   useEffect(() => {
@@ -1055,37 +1030,6 @@ export default function ConsultantApiKeysUnified() {
     }
   };
 
-  const handleGoogleOAuthSave = async () => {
-    try {
-      const response = await fetch("/api/consultant/google-oauth", {
-        method: "PUT",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ googleClientId: googleOAuthClientId }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Errore durante il salvataggio");
-      }
-
-      toast({
-        title: "Successo",
-        description: "Google Client ID salvato con successo",
-      });
-
-      queryClient.invalidateQueries({ queryKey: ["/api/consultant/google-oauth"] });
-    } catch (error: any) {
-      toast({
-        title: "Errore",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleSaveTurnConfig = async () => {
     if (!turnConfigFormData.username || !turnConfigFormData.password) {
       toast({
@@ -1383,7 +1327,7 @@ export default function ConsultantApiKeysUnified() {
           {/* Tabs Container */}
           <div className="max-w-6xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-8 gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg">
                 <TabsTrigger value="ai" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
                   <Bot className="h-4 w-4 mr-2" />
                   AI (Gemini)
@@ -1407,10 +1351,6 @@ export default function ConsultantApiKeysUnified() {
                 <TabsTrigger value="lead-import" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700">
                   <Server className="h-4 w-4 mr-2" />
                   Lead Import
-                </TabsTrigger>
-                <TabsTrigger value="google-oauth" className="data-[state=active]:bg-red-100 data-[state=active]:text-red-700">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Google OAuth
                 </TabsTrigger>
                 <TabsTrigger value="video-meeting" className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700">
                   <Video className="h-4 w-4 mr-2" />
@@ -3265,150 +3205,6 @@ export default function ConsultantApiKeysUnified() {
                     </CardContent>
                   </Card>
                 </div>
-              </TabsContent>
-
-              {/* Google OAuth Tab Content */}
-              <TabsContent value="google-oauth" className="space-y-6">
-                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-gradient-to-br from-red-100 to-orange-100 rounded-xl">
-                        <ExternalLink className="h-6 w-6 text-red-600" />
-                      </div>
-                      <div>
-                        <CardTitle>Google OAuth per Video Meeting</CardTitle>
-                        <CardDescription>
-                          Configura l'autenticazione Google Sign-In per i video meeting
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <Alert className="bg-blue-50 border-blue-200">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-sm text-blue-800">
-                        <strong>A cosa serve?</strong> Il Google Client ID permette ai partecipanti dei video meeting 
-                        di autenticarsi con il loro account Google. Questo consente di identificare automaticamente 
-                        chi è il proprietario/venditore durante la chiamata.
-                      </AlertDescription>
-                    </Alert>
-
-                    <div className="space-y-4 pl-4 border-l-4 border-red-300">
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            1
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-red-900">Accedi a Google Cloud Console</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Vai su <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" className="text-red-600 hover:text-red-800 underline font-medium">console.cloud.google.com</a> e seleziona il tuo progetto
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            2
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-red-900">Crea credenziali OAuth 2.0</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              • Vai su "API e servizi" → "Credenziali"<br/>
-                              • Clicca "Crea credenziali" → "ID client OAuth"<br/>
-                              • Seleziona "Applicazione web"<br/>
-                              • Aggiungi le origini JavaScript autorizzate (es: il tuo dominio)
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            3
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-red-900">Configura la schermata di consenso OAuth</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              • Vai su "API e servizi" → "Schermata di consenso OAuth"<br/>
-                              • Seleziona <strong>"Esterno"</strong> come tipo di utente (permette a chiunque con Google di accedere)<br/>
-                              • Configura il nome dell'app e i domini autorizzati<br/>
-                              • Aggiungi gli scope necessari: email, profile, openid<br/>
-                              • In "Utenti di test" aggiungi le email delle persone autorizzate (max 100 in modalità test)
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            4
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-green-900">Copia il Client ID</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Dopo aver creato le credenziali, copia il <strong>Client ID</strong> (termina con <code>.apps.googleusercontent.com</code>) e incollalo qui sotto
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            5
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-purple-900">Rimuovi limite 100 utenti (opzionale)</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              • Vai su "Schermata di consenso OAuth" e clicca <strong>"Pubblica app"</strong><br/>
-                              • Con scope di base (email, profile, openid) la pubblicazione è immediata<br/>
-                              • Una volta pubblicata, chiunque potrà accedere senza limiti
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 pt-4 border-t">
-                      <div className="space-y-2">
-                        <Label htmlFor="googleOAuthClientId">Google Client ID</Label>
-                        <Input
-                          id="googleOAuthClientId"
-                          type="text"
-                          placeholder="123456789-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com"
-                          value={googleOAuthClientId}
-                          onChange={(e) => setGoogleOAuthClientId(e.target.value)}
-                        />
-                        <p className="text-xs text-gray-500">
-                          Il Client ID OAuth 2.0 per l'autenticazione Google nei video meeting
-                        </p>
-                      </div>
-
-                      {googleOAuthSettings?.googleClientId && (
-                        <Alert className="bg-green-50 border-green-200">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          <AlertDescription className="text-sm text-green-800">
-                            Google OAuth è configurato. I partecipanti ai video meeting potranno autenticarsi con Google.
-                          </AlertDescription>
-                        </Alert>
-                      )}
-
-                      <Button
-                        onClick={handleGoogleOAuthSave}
-                        disabled={!googleOAuthClientId.trim()}
-                        className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700"
-                      >
-                        <Save className="h-4 w-4 mr-2" />
-                        Salva Google Client ID
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
               </TabsContent>
 
               {/* Video Meeting Tab Content */}

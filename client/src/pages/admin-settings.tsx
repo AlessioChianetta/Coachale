@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
   ChevronUp,
   Copy,
   Check,
+  Video,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
@@ -59,6 +60,8 @@ export default function AdminSettings() {
   const [clientSecret, setClientSecret] = useState("");
   const [guideOpen, setGuideOpen] = useState(false);
   const [copiedUri, setCopiedUri] = useState(false);
+  const [videoMeetingClientId, setVideoMeetingClientId] = useState("");
+  const [videoMeetingGuideOpen, setVideoMeetingGuideOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -104,6 +107,23 @@ export default function AdminSettings() {
       return response.json();
     },
   });
+
+  const { data: videoMeetingOAuthData, isLoading: videoMeetingOAuthLoading } = useQuery({
+    queryKey: ["/api/admin/settings/video-meeting-oauth"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/settings/video-meeting-oauth", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch Video Meeting OAuth settings");
+      return response.json();
+    },
+  });
+
+  useEffect(() => {
+    if (videoMeetingOAuthData?.clientId) {
+      setVideoMeetingClientId(videoMeetingOAuthData.clientId);
+    }
+  }, [videoMeetingOAuthData]);
 
   const oauthConfig: GoogleOAuthConfig = oauthData || {
     configured: false,
@@ -159,9 +179,55 @@ export default function AdminSettings() {
     saveOAuthMutation.mutate({ clientId, clientSecret });
   };
 
+  const saveVideoMeetingOAuthMutation = useMutation({
+    mutationFn: async (data: { clientId: string }) => {
+      const response = await fetch("/api/admin/settings/video-meeting-oauth", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to save settings");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/settings/video-meeting-oauth"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-log"] });
+      toast({
+        title: "Configurazione salvata",
+        description: "Le credenziali Video Meeting OAuth sono state aggiornate.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile salvare la configurazione.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveVideoMeetingOAuth = () => {
+    if (!videoMeetingClientId) {
+      toast({
+        title: "Campo obbligatorio",
+        description: "Inserisci il Google Client ID.",
+        variant: "destructive",
+      });
+      return;
+    }
+    saveVideoMeetingOAuthMutation.mutate({ clientId: videoMeetingClientId });
+  };
+
   const getActionLabel = (action: string) => {
     const labels: Record<string, string> = {
       update_google_oauth: "Aggiornamento Google OAuth",
+      update_video_meeting_oauth: "Aggiornamento Video Meeting OAuth",
       create_setting: "Nuova impostazione",
       update_setting: "Modifica impostazione",
       activate_user: "Attivazione utente",
@@ -443,6 +509,145 @@ export default function AdminSettings() {
                           <strong>Fatto!</strong> Una volta salvate le credenziali, tutti i consultant potranno 
                           collegare il proprio Google Drive e Calendar cliccando semplicemente "Connetti" 
                           nelle rispettive impostazioni.
+                        </p>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Video className="w-5 h-5 text-teal-500" />
+                  Video Meeting OAuth
+                </CardTitle>
+                <CardDescription>
+                  Configura l'autenticazione Google Sign-In per i video meeting di tutti i consultant
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-4 rounded-xl bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800">
+                  <p className="text-sm text-teal-800 dark:text-teal-200">
+                    <strong>A cosa serve?</strong> Il Google Client ID permette ai partecipanti dei video meeting 
+                    di autenticarsi con il loro account Google. Questo consente di identificare automaticamente 
+                    chi è il proprietario/venditore durante la chiamata.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${videoMeetingOAuthData?.configured ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {videoMeetingOAuthData?.configured ? 'Configurato' : 'Non configurato'}
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="videoMeetingClientId">Google Client ID</Label>
+                    <Input
+                      id="videoMeetingClientId"
+                      type="text"
+                      placeholder="123456789-xxxxxxxx.apps.googleusercontent.com"
+                      value={videoMeetingClientId}
+                      onChange={(e) => setVideoMeetingClientId(e.target.value)}
+                    />
+                    <p className="text-xs text-gray-500">
+                      Il Client ID OAuth 2.0 per l'autenticazione Google nei video meeting
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={handleSaveVideoMeetingOAuth}
+                    disabled={saveVideoMeetingOAuthMutation.isPending}
+                    className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {saveVideoMeetingOAuthMutation.isPending ? "Salvataggio..." : "Salva Client ID"}
+                  </Button>
+                </div>
+
+                <Collapsible open={videoMeetingGuideOpen} onOpenChange={setVideoMeetingGuideOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between">
+                      <span className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4" />
+                        Guida: Come ottenere il Client ID per Video Meeting
+                      </span>
+                      {videoMeetingGuideOpen ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-4">
+                    <div className="space-y-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-teal-500 text-white flex items-center justify-center font-bold text-sm">
+                          1
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Vai alla Google Cloud Console
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Puoi usare lo stesso progetto Google Cloud creato per Drive/Calendar.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-teal-500 text-white flex items-center justify-center font-bold text-sm">
+                          2
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Crea credenziali OAuth 2.0
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Vai su "API e servizi" → "Credenziali" → "Crea credenziali" → "ID client OAuth". 
+                            Seleziona "Applicazione web" e aggiungi le origini JavaScript autorizzate 
+                            (es: il dominio della piattaforma).
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-teal-500 text-white flex items-center justify-center font-bold text-sm">
+                          3
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Configura la schermata di consenso OAuth
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Seleziona "Esterno" come tipo utente. Aggiungi gli scope: email, profile, openid. 
+                            Per rimuovere il limite di 100 utenti test, pubblica l'app.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">
+                          4
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            Copia il Client ID
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Copia il Client ID (termina con <code className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">.apps.googleusercontent.com</code>) 
+                            e incollalo nel campo sopra.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800">
+                        <p className="text-sm text-green-800 dark:text-green-200">
+                          <strong>Fatto!</strong> Tutti i consultant potranno usare l'autenticazione Google 
+                          nei loro video meeting senza dover configurare nulla.
                         </p>
                       </div>
                     </div>

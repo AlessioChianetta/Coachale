@@ -395,6 +395,90 @@ router.post(
   }
 );
 
+// Video Meeting OAuth Settings (for Google Sign-In in video meetings)
+router.get(
+  "/admin/settings/video-meeting-oauth",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [clientIdSetting] = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, "video_meeting_google_client_id"))
+        .limit(1);
+
+      res.json({
+        success: true,
+        configured: !!clientIdSetting?.value,
+        clientId: clientIdSetting?.value || null
+      });
+    } catch (error: any) {
+      console.error("Get Video Meeting OAuth settings error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/settings/video-meeting-oauth",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { clientId } = req.body;
+
+      if (!clientId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Client ID is required" 
+        });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, "video_meeting_google_client_id"))
+        .limit(1);
+
+      if (existing) {
+        await db
+          .update(systemSettings)
+          .set({
+            value: clientId,
+            updatedBy: req.user!.id,
+            updatedAt: new Date()
+          })
+          .where(eq(systemSettings.key, "video_meeting_google_client_id"));
+      } else {
+        await db.insert(systemSettings).values({
+          key: "video_meeting_google_client_id",
+          value: clientId,
+          category: "google_oauth" as any,
+          description: "Google OAuth Client ID for Video Meeting authentication",
+          updatedBy: req.user!.id
+        });
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "update_video_meeting_oauth",
+        targetType: "setting",
+        targetId: "video_meeting_google_client_id",
+        details: { clientIdPrefix: clientId.substring(0, 20) + "..." }
+      });
+
+      res.json({ 
+        success: true,
+        message: "Video Meeting OAuth settings saved successfully"
+      });
+    } catch (error: any) {
+      console.error("Save Video Meeting OAuth settings error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
 router.get(
   "/admin/audit-log",
   authenticateToken,

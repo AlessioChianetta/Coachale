@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import { z } from "zod";
 import { sendEmail } from "../services/email-scheduler";
 import { db } from "../db";
-import { automatedEmailsLog, users } from "../../shared/schema";
+import { automatedEmailsLog, users, systemSettings } from "../../shared/schema";
 import { eq, sql } from "drizzle-orm";
 
 const router = Router();
@@ -1839,43 +1839,26 @@ router.post("/consultant/smtp-settings/test", authenticateToken, requireRole("co
 
 // ==========================================
 // GOOGLE OAUTH SETTINGS (for video meeting authentication)
+// Now uses global settings from Super Admin
 // ==========================================
 
-// GET Google OAuth settings
+// GET Google OAuth settings - Returns global settings configured by Super Admin
 router.get("/consultant/google-oauth", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
-    const [user] = await db
-      .select({ googleClientId: users.googleClientId })
-      .from(users)
-      .where(eq(users.id, req.user!.id));
+    // Fetch global Video Meeting OAuth settings from systemSettings
+    const [globalSetting] = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.key, "video_meeting_google_client_id"))
+      .limit(1);
     
     res.json({
-      googleClientId: user?.googleClientId || null,
+      googleClientId: globalSetting?.value || null,
+      isGlobal: true, // Indicate this is a global setting
     });
   } catch (error: any) {
     console.error("[GoogleOAuth GET] Error:", error);
     res.status(500).json({ error: "Errore nel recupero delle impostazioni Google OAuth" });
-  }
-});
-
-// PUT/Save Google OAuth settings
-router.put("/consultant/google-oauth", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
-  try {
-    const { googleClientId } = req.body;
-    
-    await db
-      .update(users)
-      .set({ googleClientId: googleClientId || null })
-      .where(eq(users.id, req.user!.id));
-    
-    console.log(`[GoogleOAuth PUT] Saved googleClientId for consultant ${req.user!.id}`);
-    res.json({
-      success: true,
-      message: "Impostazioni Google OAuth salvate con successo",
-    });
-  } catch (error: any) {
-    console.error("[GoogleOAuth PUT] Error:", error);
-    res.status(500).json({ error: "Errore nel salvataggio delle impostazioni Google OAuth" });
   }
 });
 
