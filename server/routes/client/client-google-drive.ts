@@ -1,17 +1,22 @@
 import { Router } from "express";
 import { authenticateToken, requireRole, type AuthRequest } from "../../middleware/auth";
 import { db } from "../../db";
-import { consultantAvailabilitySettings, clientKnowledgeDocuments, users, vertexAiSettings } from "../../../shared/schema";
+import { clientKnowledgeDocuments, users, vertexAiSettings } from "../../../shared/schema";
 import { eq } from "drizzle-orm";
 import { extractTextFromFile, type VertexAICredentials } from "../../services/document-processor";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import {
-  listDriveFolders,
-  listDriveFiles,
-  downloadDriveFile,
-  isDriveConnected
+  buildBaseUrlFromRequest,
+  getClientDriveAuthorizationUrl,
+  exchangeClientDriveCodeForTokens,
+  getClientDriveUserEmail,
+  listClientDriveFolders,
+  listClientDriveFiles,
+  downloadClientDriveFile,
+  isClientDriveConnected,
+  disconnectClientDrive
 } from "../../services/google-drive-service";
 
 const router = Router();
@@ -24,16 +29,7 @@ async function ensureUploadDir() {
   return dir;
 }
 
-async function getClientConsultantId(clientId: string): Promise<string | null> {
-  const [client] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, clientId))
-    .limit(1);
-  
-  return client?.consultantId || null;
-}
-
+// Check client's own Google Drive connection status
 router.get(
   "/client/google-drive/status",
   authenticateToken,
@@ -41,28 +37,20 @@ router.get(
   async (req: AuthRequest, res) => {
     try {
       const clientId = req.user!.id;
-      const consultantId = await getClientConsultantId(clientId);
       
-      if (!consultantId) {
-        return res.json({
-          success: true,
-          connected: false,
-          error: "No consultant assigned"
-        });
-      }
-      
-      const [settings] = await db
+      const [user] = await db
         .select()
-        .from(consultantAvailabilitySettings)
-        .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+        .from(users)
+        .where(eq(users.id, clientId))
         .limit(1);
       
-      const connected = !!(settings?.googleDriveRefreshToken);
+      const connected = !!(user?.googleDriveRefreshToken);
       
       res.json({
         success: true,
         connected,
-        email: settings?.googleDriveEmail || null
+        email: user?.googleDriveEmail || null,
+        connectedAt: user?.googleDriveConnectedAt || null
       });
     } catch (error: any) {
       console.error("❌ [CLIENT GOOGLE DRIVE] Error checking status:", error);
@@ -74,6 +62,114 @@ router.get(
   }
 );
 
+// Initiate OAuth flow for client's own Google Drive
+router.get(
+  "/client/google-drive/connect",
+  authenticateToken,
+  requireRole("client"),
+  async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user!.id;
+      const baseUrl = buildBaseUrlFromRequest(req);
+      
+      const authUrl = await getClientDriveAuthorizationUrl(clientId, baseUrl);
+      
+      res.json({
+        success: true,
+        authUrl
+      });
+    } catch (error: any) {
+      console.error("❌ [CLIENT GOOGLE DRIVE] Error generating auth URL:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to generate Google Drive authorization URL"
+      });
+    }
+  }
+);
+
+// OAuth callback for client's Google Drive
+router.get(
+  "/client/google-drive/callback",
+  async (req, res) => {
+    try {
+      const { code, state, error } = req.query;
+      
+      if (error) {
+        console.error("❌ [CLIENT GOOGLE DRIVE] OAuth error:", error);
+        return res.redirect('/client/knowledge-documents?drive_error=' + encodeURIComponent(String(error)));
+      }
+      
+      if (!code || !state) {
+        return res.redirect('/client/knowledge-documents?drive_error=missing_params');
+      }
+      
+      const clientId = state as string;
+      const baseUrl = buildBaseUrlFromRequest(req);
+      
+      console.log(`🔄 [CLIENT GOOGLE DRIVE] Processing OAuth callback for client ${clientId}`);
+      
+      const tokens = await exchangeClientDriveCodeForTokens(code as string, clientId, baseUrl);
+      
+      const connectedAt = new Date();
+      
+      await db
+        .update(users)
+        .set({
+          googleDriveRefreshToken: tokens.refreshToken,
+          googleDriveAccessToken: tokens.accessToken,
+          googleDriveTokenExpiresAt: tokens.expiresAt,
+          googleDriveConnectedAt: connectedAt
+        })
+        .where(eq(users.id, clientId));
+      
+      // Get the user's email
+      const userEmail = await getClientDriveUserEmail(clientId);
+      if (userEmail) {
+        await db
+          .update(users)
+          .set({ 
+            googleDriveEmail: userEmail
+          })
+          .where(eq(users.id, clientId));
+      }
+      
+      console.log(`✅ [CLIENT GOOGLE DRIVE] Connected for client ${clientId} (${userEmail})`);
+      
+      res.redirect('/client/knowledge-documents?drive_connected=true');
+    } catch (error: any) {
+      console.error("❌ [CLIENT GOOGLE DRIVE] OAuth callback error:", error);
+      res.redirect('/client/knowledge-documents?drive_error=' + encodeURIComponent(error.message || 'Unknown error'));
+    }
+  }
+);
+
+// Disconnect client's Google Drive
+router.post(
+  "/client/google-drive/disconnect",
+  authenticateToken,
+  requireRole("client"),
+  async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user!.id;
+      
+      await disconnectClientDrive(clientId);
+      
+      res.json({
+        success: true,
+        message: "Google Drive disconnected successfully"
+      });
+    } catch (error: any) {
+      console.error("❌ [CLIENT GOOGLE DRIVE] Error disconnecting:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to disconnect Google Drive"
+      });
+    }
+  }
+);
+
+// List folders from client's own Google Drive
 router.get(
   "/client/google-drive/folders",
   authenticateToken,
@@ -81,25 +177,17 @@ router.get(
   async (req: AuthRequest, res) => {
     try {
       const clientId = req.user!.id;
-      const consultantId = await getClientConsultantId(clientId);
       const parentId = req.query.parentId as string | undefined;
       
-      if (!consultantId) {
-        return res.status(400).json({
-          success: false,
-          error: "No consultant assigned"
-        });
-      }
-      
-      const connected = await isDriveConnected(consultantId);
+      const connected = await isClientDriveConnected(clientId);
       if (!connected) {
         return res.status(400).json({
           success: false,
-          error: "Consultant has not connected Google Drive"
+          error: "Google Drive not connected"
         });
       }
       
-      const folders = await listDriveFolders(consultantId, parentId);
+      const folders = await listClientDriveFolders(clientId, parentId);
       
       res.json({
         success: true,
@@ -115,6 +203,7 @@ router.get(
   }
 );
 
+// List files from client's own Google Drive
 router.get(
   "/client/google-drive/files",
   authenticateToken,
@@ -122,25 +211,17 @@ router.get(
   async (req: AuthRequest, res) => {
     try {
       const clientId = req.user!.id;
-      const consultantId = await getClientConsultantId(clientId);
       const parentId = req.query.parentId as string | undefined;
       
-      if (!consultantId) {
-        return res.status(400).json({
-          success: false,
-          error: "No consultant assigned"
-        });
-      }
-      
-      const connected = await isDriveConnected(consultantId);
+      const connected = await isClientDriveConnected(clientId);
       if (!connected) {
         return res.status(400).json({
           success: false,
-          error: "Consultant has not connected Google Drive"
+          error: "Google Drive not connected"
         });
       }
       
-      const files = await listDriveFiles(consultantId, parentId);
+      const files = await listClientDriveFiles(clientId, parentId);
       
       res.json({
         success: true,
@@ -156,6 +237,7 @@ router.get(
   }
 );
 
+// Import files from client's own Google Drive
 router.post(
   "/client/google-drive/import",
   authenticateToken,
@@ -163,15 +245,7 @@ router.post(
   async (req: AuthRequest, res) => {
     try {
       const clientId = req.user!.id;
-      const consultantId = await getClientConsultantId(clientId);
       const { fileIds, fileId, title, description, category, priority } = req.body;
-      
-      if (!consultantId) {
-        return res.status(400).json({
-          success: false,
-          error: "No consultant assigned"
-        });
-      }
       
       const idsToImport: string[] = fileIds || (fileId ? [fileId] : []);
       
@@ -182,13 +256,22 @@ router.post(
         });
       }
       
-      const connected = await isDriveConnected(consultantId);
+      const connected = await isClientDriveConnected(clientId);
       if (!connected) {
         return res.status(400).json({
           success: false,
-          error: "Consultant has not connected Google Drive"
+          error: "Google Drive not connected"
         });
       }
+      
+      // Get client's consultant for Vertex AI credentials
+      const [client] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, clientId))
+        .limit(1);
+      
+      const consultantId = client?.consultantId || null;
       
       console.log(`📥 [CLIENT GOOGLE DRIVE] Importing ${idsToImport.length} file(s) for client ${clientId}`);
       
@@ -231,7 +314,7 @@ router.post(
         let finalFilePath: string | null = null;
         
         try {
-          const { filePath, fileName, mimeType } = await downloadDriveFile(consultantId, currentFileId);
+          const { filePath, fileName, mimeType } = await downloadClientDriveFile(clientId, currentFileId);
           tempFilePath = filePath;
           
           const fileType = ALLOWED_MIME_TYPES[mimeType];

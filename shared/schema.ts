@@ -26,6 +26,14 @@ export const users = pgTable("users", {
   preferredAiProvider: text("preferred_ai_provider").$type<"vertex_admin" | "google_studio" | "custom" | "vertex_self">().default("vertex_admin"), // AI provider preference: vertex_admin (default Vertex AI), google_studio (fallback Google AI Studio), custom (client's own Google AI Studio API keys), vertex_self (client's own Vertex AI)
   encryptionSalt: text("encryption_salt"), // Unique salt for per-consultant encryption key derivation (only for consultants)
   googleClientId: text("google_client_id"), // Google OAuth Client ID for video meeting authentication (consultant-level)
+  
+  // Google Drive Integration (for clients to connect their own Drive)
+  googleDriveRefreshToken: text("google_drive_refresh_token"),
+  googleDriveAccessToken: text("google_drive_access_token"),
+  googleDriveTokenExpiresAt: timestamp("google_drive_token_expires_at"),
+  googleDriveConnectedAt: timestamp("google_drive_connected_at"),
+  googleDriveEmail: text("google_drive_email"),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
