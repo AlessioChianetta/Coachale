@@ -6,7 +6,7 @@ export interface AuthUser {
   email: string;
   firstName: string;
   lastName: string;
-  role: "consultant" | "client";
+  role: "consultant" | "client" | "super_admin";
   avatar?: string | null;
   geminiApiKey?: string | null;
   geminiApiKeys?: string[] | null;

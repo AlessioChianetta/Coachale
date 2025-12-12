@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { db } from '../db';
-import { consultantAvailabilitySettings } from '../../shared/schema';
+import { consultantAvailabilitySettings, systemSettings } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import type { Request } from 'express';
 import fs from 'fs/promises';
@@ -17,7 +17,54 @@ export function buildBaseUrlFromRequest(req: Request): string {
   return `${protocol}://${host}`;
 }
 
+async function getGlobalOAuthCredentials() {
+  const [clientIdSetting] = await db
+    .select()
+    .from(systemSettings)
+    .where(eq(systemSettings.key, "google_oauth_client_id"))
+    .limit(1);
+
+  const [clientSecretSetting] = await db
+    .select()
+    .from(systemSettings)
+    .where(eq(systemSettings.key, "google_oauth_client_secret"))
+    .limit(1);
+
+  if (clientIdSetting?.value && clientSecretSetting?.value) {
+    return {
+      clientId: clientIdSetting.value as string,
+      clientSecret: clientSecretSetting.value as string
+    };
+  }
+  return null;
+}
+
 async function getConsultantOAuthCredentials(consultantId: string, redirectBaseUrl?: string) {
+  const globalCredentials = await getGlobalOAuthCredentials();
+  
+  if (globalCredentials) {
+    let baseUrl = 'http://localhost:5000';
+    
+    if (process.env.REPLIT_DOMAINS) {
+      const domains = process.env.REPLIT_DOMAINS.split(',');
+      baseUrl = `https://${domains[0]}`;
+    }
+    
+    if (redirectBaseUrl) {
+      baseUrl = redirectBaseUrl;
+    }
+    
+    const finalRedirectUri = `${baseUrl}/api/consultant/google-drive/callback`;
+    
+    console.log(`🔗 [GOOGLE DRIVE] Using GLOBAL OAuth credentials. Redirect URI: ${finalRedirectUri}`);
+    
+    return {
+      clientId: globalCredentials.clientId,
+      clientSecret: globalCredentials.clientSecret,
+      redirectUri: finalRedirectUri
+    };
+  }
+
   const [settings] = await db
     .select()
     .from(consultantAvailabilitySettings)
@@ -25,7 +72,7 @@ async function getConsultantOAuthCredentials(consultantId: string, redirectBaseU
     .limit(1);
 
   if (!settings?.googleOAuthClientId || !settings?.googleOAuthClientSecret) {
-    throw new Error('Google OAuth credentials not configured. Please set Client ID and Client Secret in settings.');
+    throw new Error('Google OAuth credentials not configured. Please ask the administrator to configure global Google OAuth settings.');
   }
 
   let baseUrl = 'http://localhost:5000';
@@ -41,7 +88,7 @@ async function getConsultantOAuthCredentials(consultantId: string, redirectBaseU
   
   const finalRedirectUri = `${baseUrl}/api/consultant/google-drive/callback`;
   
-  console.log(`🔗 [GOOGLE DRIVE] Redirect URI for consultant ${consultantId}: ${finalRedirectUri}`);
+  console.log(`🔗 [GOOGLE DRIVE] Using consultant-specific OAuth. Redirect URI for consultant ${consultantId}: ${finalRedirectUri}`);
   
   return {
     clientId: settings.googleOAuthClientId,

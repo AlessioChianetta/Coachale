@@ -101,6 +101,11 @@ const ClientKnowledgeDocuments = lazy(() => import("./pages/client-knowledge-doc
 const ClientKnowledgeApis = lazy(() => import("./pages/client-knowledge-apis"));
 const TrainingMapPage = lazy(() => import("@/pages/training-map"));
 
+const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
+const AdminHierarchy = lazy(() => import("@/pages/admin-hierarchy"));
+const AdminUsers = lazy(() => import("@/pages/admin-users"));
+const AdminSettings = lazy(() => import("@/pages/admin-settings"));
+
 function Router() {
   const user = getAuthUser();
   const isClient = user?.role === "client";
@@ -577,6 +582,31 @@ function Router() {
       </Route>
 
       <Route path="/client/faq" component={ClientFAQ} />
+
+      {/* Super Admin Routes */}
+      <Route path="/admin">
+        <AuthGuard requiredRole="super_admin">
+          <AdminDashboard />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/admin/hierarchy">
+        <AuthGuard requiredRole="super_admin">
+          <AdminHierarchy />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/admin/users">
+        <AuthGuard requiredRole="super_admin">
+          <AdminUsers />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/admin/settings">
+        <AuthGuard requiredRole="super_admin">
+          <AdminSettings />
+        </AuthGuard>
+      </Route>
 
       <Route path="/consultation/:id/fathom">
         <AuthGuard>

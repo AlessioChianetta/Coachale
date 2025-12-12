@@ -4,7 +4,7 @@ import { isAuthenticated, getAuthUser } from "@/lib/auth";
 
 type AuthGuardProps = {
   children: ReactNode;
-  requiredRole?: "consultant" | "client";
+  requiredRole?: "consultant" | "client" | "super_admin";
   fallback?: ReactNode;
 };
 
