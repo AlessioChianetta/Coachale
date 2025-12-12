@@ -8,7 +8,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     email: string;
-    role: "consultant" | "client";
+    role: "consultant" | "client" | "super_admin";
     consultantId?: string;
   };
 }
@@ -42,7 +42,7 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
   }
 };
 
-export const requireRole = (role: "consultant" | "client") => {
+export const requireRole = (role: "consultant" | "client" | "super_admin") => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required' });
@@ -56,13 +56,13 @@ export const requireRole = (role: "consultant" | "client") => {
   };
 };
 
-export const requireAnyRole = (roles: Array<"consultant" | "client" | "admin">) => {
+export const requireAnyRole = (roles: Array<"consultant" | "client" | "super_admin">) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required' });
     }
 
-    if (!roles.includes(req.user.role as any)) {
+    if (!roles.includes(req.user.role)) {
       return res.status(403).json({ 
         message: `Access denied. Required role: ${roles.join(' or ')}` 
       });
@@ -70,4 +70,16 @@ export const requireAnyRole = (roles: Array<"consultant" | "client" | "admin">) 
 
     next();
   };
+};
+
+export const requireSuperAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  if (req.user.role !== 'super_admin') {
+    return res.status(403).json({ message: 'Super admin access required' });
+  }
+
+  next();
 };

@@ -14,7 +14,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
-  role: text("role").notNull().$type<"consultant" | "client">(),
+  role: text("role").notNull().$type<"consultant" | "client" | "super_admin">(),
   avatar: text("avatar"),
   phoneNumber: text("phone_number"),
   consultantId: varchar("consultant_id"),
@@ -4827,3 +4827,36 @@ export type UpdateClientKnowledgeApi = z.infer<typeof updateClientKnowledgeApiSc
 
 export type ClientKnowledgeApiCache = typeof clientKnowledgeApiCache.$inferSelect;
 export type InsertClientKnowledgeApiCache = typeof clientKnowledgeApiCache.$inferInsert;
+
+// ============================================
+// SUPER ADMIN - System Settings
+// ============================================
+
+export const systemSettings = pgTable("system_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),
+  value: jsonb("value"),
+  category: text("category").$type<"google_oauth" | "email" | "integrations" | "general">().notNull(),
+  description: text("description"),
+  isEncrypted: boolean("is_encrypted").default(false),
+  updatedBy: varchar("updated_by").references(() => users.id),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const adminAuditLog = pgTable("admin_audit_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminId: varchar("admin_id").references(() => users.id).notNull(),
+  action: text("action").notNull(),
+  targetType: text("target_type").$type<"user" | "setting" | "system">().notNull(),
+  targetId: varchar("target_id"),
+  details: jsonb("details"),
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+// Types for System Settings
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type InsertSystemSetting = typeof systemSettings.$inferInsert;
+export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
+export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;

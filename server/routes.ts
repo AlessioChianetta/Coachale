@@ -95,6 +95,7 @@ import clientKnowledgeDocumentsRouter from "./routes/client/client-knowledge-doc
 import clientKnowledgeApisRouter from "./routes/client/client-knowledge-apis";
 import googleDriveRouter from "./routes/google-drive";
 import clientGoogleDriveRouter from "./routes/client/client-google-drive";
+import adminRouter from "./routes/admin";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
 import { handleWebhook } from "./whatsapp/webhook-handler";
 import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
@@ -6698,6 +6699,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google Drive Integration routes
   app.use("/api", googleDriveRouter);
   app.use("/api", clientGoogleDriveRouter);
+
+  // Super Admin routes
+  app.use("/api", adminRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
