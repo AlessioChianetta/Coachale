@@ -295,7 +295,9 @@ export async function extractStructuredDataFromExcel(filePath: string): Promise<
   console.log(`📄 [EXCEL] Reading spreadsheet with structured extraction: ${filePath}`);
   
   try {
-    const workbook = XLSX.readFile(filePath);
+    // Read file as buffer and use XLSX.read() for better ES module compatibility
+    const fileBuffer = await fs.readFile(filePath);
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
     let extractedText = '';
     let totalRows = 0;
     let maxColumns = 0;

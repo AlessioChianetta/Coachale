@@ -68,7 +68,8 @@ export class ExcelStorage implements IStorage {
   }
 
   private readWorkbook(): XLSX.WorkBook {
-    return XLSX.readFile(this.excelFile);
+    const fileBuffer = fs.readFileSync(this.excelFile);
+    return XLSX.read(fileBuffer, { type: 'buffer' });
   }
 
   private writeWorkbook(workbook: XLSX.WorkBook) {
