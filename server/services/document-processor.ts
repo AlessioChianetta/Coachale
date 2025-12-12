@@ -4,6 +4,11 @@
  * Supports: PDF, DOCX, TXT, MD, RTF, CSV, XLSX, XLS, PPTX, ODT
  * Audio transcription: MP3, WAV, M4A, OGG, WEBM
  * Uses Vertex AI as priority for audio transcription when credentials are available
+ * 
+ * Enhanced features:
+ * - Automatic file type detection using magic bytes (handles misnamed files)
+ * - Multiple encoding support for CSV (UTF-8, Latin-1, Windows-1252)
+ * - Structured data extraction for tabular preview
  */
 
 import fs from 'fs/promises';
@@ -14,6 +19,95 @@ import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import officeparser from 'officeparser';
 import { VertexAI } from '@google-cloud/vertexai';
+
+/**
+ * Structured data for tabular files (CSV/Excel)
+ * Used for frontend preview and AI context
+ */
+export interface StructuredTableData {
+  sheets: Array<{
+    name: string;
+    headers: string[];
+    rows: any[][];
+    rowCount: number;
+    columnCount: number;
+  }>;
+  totalRows: number;
+  totalColumns: number;
+  fileType: 'csv' | 'xlsx' | 'xls';
+}
+
+/**
+ * Detect real file type from magic bytes (first bytes of file)
+ * This handles cases where file extension doesn't match content
+ */
+export async function detectRealFileType(filePath: string): Promise<'xlsx' | 'xls' | 'csv' | 'unknown'> {
+  try {
+    const buffer = Buffer.alloc(8);
+    const fileHandle = await fs.open(filePath, 'r');
+    await fileHandle.read(buffer, 0, 8, 0);
+    await fileHandle.close();
+    
+    // ZIP signature (PK..) - XLSX files are ZIP archives
+    if (buffer[0] === 0x50 && buffer[1] === 0x4B && buffer[2] === 0x03 && buffer[3] === 0x04) {
+      console.log('🔍 [FILE DETECT] Detected ZIP/XLSX format from magic bytes');
+      return 'xlsx';
+    }
+    
+    // OLE2 compound document signature - XLS (old Excel)
+    if (buffer[0] === 0xD0 && buffer[1] === 0xCF && buffer[2] === 0x11 && buffer[3] === 0xE0) {
+      console.log('🔍 [FILE DETECT] Detected OLE2/XLS format from magic bytes');
+      return 'xls';
+    }
+    
+    // Check if it looks like text (CSV)
+    const textBuffer = await fs.readFile(filePath, { encoding: null });
+    const first1000 = textBuffer.slice(0, 1000);
+    let textChars = 0;
+    for (const byte of first1000) {
+      // ASCII printable + common whitespace
+      if ((byte >= 32 && byte <= 126) || byte === 9 || byte === 10 || byte === 13) {
+        textChars++;
+      }
+    }
+    
+    if (textChars / first1000.length > 0.9) {
+      console.log('🔍 [FILE DETECT] Detected text/CSV format from content analysis');
+      return 'csv';
+    }
+    
+    return 'unknown';
+  } catch (error: any) {
+    console.warn(`⚠️ [FILE DETECT] Could not detect file type: ${error.message}`);
+    return 'unknown';
+  }
+}
+
+/**
+ * Read file with multiple encoding attempts
+ * Tries UTF-8, then Latin-1 (ISO-8859-1), then Windows-1252
+ */
+async function readFileWithEncoding(filePath: string): Promise<string> {
+  const encodings = ['utf-8', 'latin1'] as const;
+  
+  for (const encoding of encodings) {
+    try {
+      const content = await fs.readFile(filePath, { encoding: encoding as BufferEncoding });
+      // Check for common encoding issues (replacement character)
+      if (!content.includes('\uFFFD')) {
+        console.log(`✅ [ENCODING] Successfully read file with ${encoding} encoding`);
+        return content;
+      }
+    } catch (error: any) {
+      console.warn(`⚠️ [ENCODING] Failed to read with ${encoding}: ${error.message}`);
+    }
+  }
+  
+  // Fallback: read as buffer and convert
+  console.log('🔄 [ENCODING] Trying binary read with manual conversion...');
+  const buffer = await fs.readFile(filePath);
+  return buffer.toString('latin1');
+}
 
 export interface VertexAICredentials {
   projectId: string;
@@ -124,43 +218,61 @@ export async function extractTextFromMD(filePath: string): Promise<string> {
 }
 
 /**
- * Extract text from CSV file using papaparse
+ * Extract structured data from CSV file
+ * Returns both text for AI and structured data for preview
  */
-export async function extractTextFromCSV(filePath: string): Promise<string> {
-  console.log(`📄 [CSV] Parsing CSV file: ${filePath}`);
+export async function extractStructuredDataFromCSV(filePath: string): Promise<{ text: string; structured: StructuredTableData }> {
+  console.log(`📄 [CSV] Parsing CSV file with encoding detection: ${filePath}`);
   
   try {
-    const fileContent = await fs.readFile(filePath, 'utf-8');
+    // Use encoding-aware reading
+    const fileContent = await readFileWithEncoding(filePath);
     const result = Papa.parse(fileContent, {
       header: true,
       skipEmptyLines: true,
+      dynamicTyping: true,
     });
     
     if (result.errors && result.errors.length > 0) {
-      console.warn('⚠️ [CSV] Parse warnings:', result.errors);
+      console.warn('⚠️ [CSV] Parse warnings:', result.errors.slice(0, 5));
     }
     
-    // Convert CSV data to readable text
     const rows = result.data as Record<string, any>[];
     const headers = result.meta.fields || [];
     
-    let extractedText = `CSV Data (${rows.length} rows, ${headers.length} columns)\n`;
-    extractedText += `Columns: ${headers.join(', ')}\n\n`;
+    // Create structured data for frontend preview
+    const structured: StructuredTableData = {
+      sheets: [{
+        name: 'Sheet1',
+        headers: headers,
+        rows: rows.map(row => headers.map(h => row[h] ?? '')),
+        rowCount: rows.length,
+        columnCount: headers.length,
+      }],
+      totalRows: rows.length,
+      totalColumns: headers.length,
+      fileType: 'csv',
+    };
     
-    // Add row data
+    // Create optimized text format for AI
+    // Format: Header row + pipe-separated data rows (more compact than Row-by-Row)
+    let extractedText = `=== CSV DATA ===\n`;
+    extractedText += `Totale: ${rows.length} righe x ${headers.length} colonne\n\n`;
+    extractedText += `INTESTAZIONI: ${headers.join(' | ')}\n\n`;
+    extractedText += `DATI:\n`;
+    
     rows.forEach((row, index) => {
-      extractedText += `Row ${index + 1}:\n`;
-      headers.forEach(header => {
-        if (row[header] !== undefined && row[header] !== '') {
-          extractedText += `  ${header}: ${row[header]}\n`;
-        }
+      const rowValues = headers.map(h => {
+        const val = row[h];
+        if (val === null || val === undefined || val === '') return '-';
+        return String(val).replace(/\|/g, '/').replace(/\n/g, ' ');
       });
-      extractedText += '\n';
+      extractedText += `${index + 1}. ${rowValues.join(' | ')}\n`;
     });
     
-    console.log(`✅ [CSV] Extracted ${rows.length} rows, ${headers.length} columns`);
+    console.log(`✅ [CSV] Extracted ${rows.length} rows, ${headers.length} columns (${extractedText.length} chars)`);
     
-    return extractedText.trim();
+    return { text: extractedText.trim(), structured };
   } catch (error: any) {
     console.error(`❌ [CSV] Parse failed:`, error.message);
     throw new Error(`Failed to parse CSV file: ${error.message}`);
@@ -168,51 +280,93 @@ export async function extractTextFromCSV(filePath: string): Promise<string> {
 }
 
 /**
- * Extract text from Excel files (XLSX, XLS)
+ * Extract text from CSV file using papaparse (legacy wrapper)
  */
-export async function extractTextFromExcel(filePath: string): Promise<string> {
-  console.log(`📄 [EXCEL] Reading spreadsheet: ${filePath}`);
+export async function extractTextFromCSV(filePath: string): Promise<string> {
+  const { text } = await extractStructuredDataFromCSV(filePath);
+  return text;
+}
+
+/**
+ * Extract structured data from Excel files (XLSX, XLS)
+ * Returns both text for AI and structured data for preview
+ */
+export async function extractStructuredDataFromExcel(filePath: string): Promise<{ text: string; structured: StructuredTableData }> {
+  console.log(`📄 [EXCEL] Reading spreadsheet with structured extraction: ${filePath}`);
   
   try {
     const workbook = XLSX.readFile(filePath);
     let extractedText = '';
+    let totalRows = 0;
+    let maxColumns = 0;
+    
+    const sheets: StructuredTableData['sheets'] = [];
     
     workbook.SheetNames.forEach((sheetName, sheetIndex) => {
       const sheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
+      const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as any[][];
       
-      extractedText += `=== Sheet ${sheetIndex + 1}: ${sheetName} ===\n\n`;
+      if (data.length === 0) return;
       
-      if (data.length > 0) {
-        const headers = data[0] as string[];
-        extractedText += `Columns: ${headers.filter(h => h).join(', ')}\n\n`;
-        
-        data.slice(1).forEach((row, rowIndex) => {
-          const rowData = row.map((cell, cellIndex) => {
-            const header = headers[cellIndex] || `Col${cellIndex + 1}`;
-            return cell !== undefined && cell !== '' ? `${header}: ${cell}` : null;
-          }).filter(Boolean);
-          
-          if (rowData.length > 0) {
-            extractedText += `Row ${rowIndex + 1}: ${rowData.join(', ')}\n`;
-          }
+      const headers = (data[0] as any[]).map((h, i) => h !== undefined && h !== '' ? String(h) : `Col${i + 1}`);
+      const rows = data.slice(1);
+      
+      // Add to structured data
+      sheets.push({
+        name: sheetName,
+        headers: headers,
+        rows: rows,
+        rowCount: rows.length,
+        columnCount: headers.length,
+      });
+      
+      totalRows += rows.length;
+      maxColumns = Math.max(maxColumns, headers.length);
+      
+      // Create text for AI - optimized pipe-separated format
+      extractedText += `=== FOGLIO ${sheetIndex + 1}: ${sheetName} ===\n`;
+      extractedText += `Totale: ${rows.length} righe x ${headers.length} colonne\n\n`;
+      extractedText += `INTESTAZIONI: ${headers.join(' | ')}\n\n`;
+      extractedText += `DATI:\n`;
+      
+      rows.forEach((row, rowIndex) => {
+        const rowValues = headers.map((_, cellIndex) => {
+          const val = row[cellIndex];
+          if (val === null || val === undefined || val === '') return '-';
+          return String(val).replace(/\|/g, '/').replace(/\n/g, ' ');
         });
-      }
+        extractedText += `${rowIndex + 1}. ${rowValues.join(' | ')}\n`;
+      });
       
       extractedText += '\n';
     });
     
-    console.log(`✅ [EXCEL] Extracted ${workbook.SheetNames.length} sheets`);
+    const structured: StructuredTableData = {
+      sheets,
+      totalRows,
+      totalColumns: maxColumns,
+      fileType: 'xlsx',
+    };
+    
+    console.log(`✅ [EXCEL] Extracted ${workbook.SheetNames.length} sheets, ${totalRows} total rows (${extractedText.length} chars)`);
     
     if (!extractedText.trim()) {
       throw new Error('Excel file appears to be empty');
     }
     
-    return extractedText.trim();
+    return { text: extractedText.trim(), structured };
   } catch (error: any) {
     console.error(`❌ [EXCEL] Read failed:`, error.message);
     throw new Error(`Failed to read Excel file: ${error.message}`);
   }
+}
+
+/**
+ * Extract text from Excel files (XLSX, XLS) - legacy wrapper
+ */
+export async function extractTextFromExcel(filePath: string): Promise<string> {
+  const { text } = await extractStructuredDataFromExcel(filePath);
+  return text;
 }
 
 /**
@@ -421,30 +575,44 @@ export type KnowledgeFileType =
   | 'mp3' | 'wav' | 'm4a' | 'ogg' | 'webm_audio';
 
 /**
- * Extract text from file based on MIME type
- * Supports optional Vertex AI credentials for audio transcription
+ * Extract text and structured data from file
+ * Returns both text for AI and structured data for tabular files
  */
-export async function extractTextFromFile(
+export async function extractTextAndStructuredData(
   filePath: string,
   mimeType: string,
   vertexCredentials?: VertexAICredentials
-): Promise<string> {
+): Promise<{ text: string; structured?: StructuredTableData }> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('📚 [DOCUMENT PROCESSOR] Starting text extraction');
+  console.log('📚 [DOCUMENT PROCESSOR] Starting text extraction with auto-detection');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`📁 File: ${path.basename(filePath)}`);
-  console.log(`📋 MIME Type: ${mimeType}`);
+  console.log(`📋 MIME Type (from browser): ${mimeType}`);
   
   try {
     await fs.access(filePath);
     const stats = await fs.stat(filePath);
     console.log(`📊 File size: ${(stats.size / 1024).toFixed(2)} KB`);
     
-    let extractedText: string;
     const ext = path.extname(filePath).toLowerCase();
     
-    // Route to appropriate extraction method based on MIME type
-    switch (mimeType) {
+    // SMART DETECTION: For CSV/text files, check if they're actually Excel files
+    let effectiveMimeType = mimeType;
+    if (mimeType === 'text/csv' || mimeType === 'application/csv' || ext === '.csv') {
+      const realType = await detectRealFileType(filePath);
+      if (realType === 'xlsx' || realType === 'xls') {
+        console.log(`🔄 [AUTO-DETECT] File is actually Excel (${realType}), not CSV! Switching extraction method.`);
+        effectiveMimeType = realType === 'xlsx' 
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'application/vnd.ms-excel';
+      }
+    }
+    
+    let extractedText: string;
+    let structured: StructuredTableData | undefined;
+    
+    // Route to appropriate extraction method based on effective MIME type
+    switch (effectiveMimeType) {
       // PDF
       case 'application/pdf':
         extractedText = await extractTextFromPDF(filePath);
@@ -467,17 +635,23 @@ export async function extractTextFromFile(
         extractedText = await extractTextFromMD(filePath);
         break;
       
-      // CSV
+      // CSV - with structured data extraction
       case 'text/csv':
-      case 'application/csv':
-        extractedText = await extractTextFromCSV(filePath);
+      case 'application/csv': {
+        const csvResult = await extractStructuredDataFromCSV(filePath);
+        extractedText = csvResult.text;
+        structured = csvResult.structured;
         break;
+      }
       
-      // Excel
+      // Excel - with structured data extraction
       case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-      case 'application/vnd.ms-excel':
-        extractedText = await extractTextFromExcel(filePath);
+      case 'application/vnd.ms-excel': {
+        const excelResult = await extractStructuredDataFromExcel(filePath);
+        extractedText = excelResult.text;
+        structured = excelResult.structured;
         break;
+      }
       
       // PowerPoint
       case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
@@ -524,10 +698,22 @@ export async function extractTextFromFile(
         break;
       
       default:
-        // Fallback: try to detect by file extension
-        console.warn(`⚠️ Unknown MIME type: ${mimeType}, trying by extension: ${ext}`);
+        // Fallback: try to detect by file extension with smart detection
+        console.warn(`⚠️ Unknown MIME type: ${effectiveMimeType}, trying by extension: ${ext}`);
         
-        if (ext === '.pdf') {
+        // First, try smart detection for any file
+        const detectedType = await detectRealFileType(filePath);
+        if (detectedType === 'xlsx' || detectedType === 'xls') {
+          console.log(`🔄 [AUTO-DETECT] Fallback detected Excel format`);
+          const excelResult = await extractStructuredDataFromExcel(filePath);
+          extractedText = excelResult.text;
+          structured = excelResult.structured;
+        } else if (detectedType === 'csv') {
+          console.log(`🔄 [AUTO-DETECT] Fallback detected CSV format`);
+          const csvResult = await extractStructuredDataFromCSV(filePath);
+          extractedText = csvResult.text;
+          structured = csvResult.structured;
+        } else if (ext === '.pdf') {
           extractedText = await extractTextFromPDF(filePath);
         } else if (ext === '.docx' || ext === '.doc') {
           extractedText = await extractTextFromDOCX(filePath);
@@ -536,9 +722,13 @@ export async function extractTextFromFile(
         } else if (ext === '.md' || ext === '.markdown') {
           extractedText = await extractTextFromMD(filePath);
         } else if (ext === '.csv') {
-          extractedText = await extractTextFromCSV(filePath);
+          const csvResult = await extractStructuredDataFromCSV(filePath);
+          extractedText = csvResult.text;
+          structured = csvResult.structured;
         } else if (ext === '.xlsx' || ext === '.xls') {
-          extractedText = await extractTextFromExcel(filePath);
+          const excelResult = await extractStructuredDataFromExcel(filePath);
+          extractedText = excelResult.text;
+          structured = excelResult.structured;
         } else if (ext === '.pptx' || ext === '.ppt') {
           extractedText = await extractTextFromPPTX(filePath);
         } else if (ext === '.rtf') {
@@ -556,16 +746,19 @@ export async function extractTextFromFile(
         } else if (ext === '.webm') {
           extractedText = await transcribeAudioWithGemini(filePath, 'audio/webm', vertexCredentials);
         } else {
-          throw new Error(`Unsupported file type: ${mimeType} (extension: ${ext})`);
+          throw new Error(`Unsupported file type: ${effectiveMimeType} (extension: ${ext})`);
         }
     }
     
     console.log('✅ [DOCUMENT PROCESSOR] Extraction successful');
     console.log(`📊 Total characters extracted: ${extractedText.length}`);
     console.log(`📊 Estimated tokens: ~${Math.ceil(extractedText.length / 4)}`);
+    if (structured) {
+      console.log(`📊 Structured data: ${structured.totalRows} rows x ${structured.totalColumns} columns across ${structured.sheets.length} sheet(s)`);
+    }
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
-    return extractedText;
+    return { text: extractedText, structured };
     
   } catch (error: any) {
     console.error('❌ [DOCUMENT PROCESSOR] Extraction failed');
@@ -573,6 +766,19 @@ export async function extractTextFromFile(
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     throw error;
   }
+}
+
+/**
+ * Extract text from file based on MIME type (legacy wrapper)
+ * Supports optional Vertex AI credentials for audio transcription
+ */
+export async function extractTextFromFile(
+  filePath: string,
+  mimeType: string,
+  vertexCredentials?: VertexAICredentials
+): Promise<string> {
+  const { text } = await extractTextAndStructuredData(filePath, mimeType, vertexCredentials);
+  return text;
 }
 
 /**

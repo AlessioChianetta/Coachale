@@ -4644,6 +4644,20 @@ export const clientKnowledgeDocuments = pgTable("client_knowledge_documents", {
   keywords: jsonb("keywords").$type<string[]>().default(sql`'[]'::jsonb`),
   tags: jsonb("tags").$type<string[]>().default(sql`'[]'::jsonb`),
   
+  // Structured data for tabular files (CSV/Excel) - used for preview
+  structuredData: jsonb("structured_data").$type<{
+    sheets: Array<{
+      name: string;
+      headers: string[];
+      rows: any[][];
+      rowCount: number;
+      columnCount: number;
+    }>;
+    totalRows: number;
+    totalColumns: number;
+    fileType: 'csv' | 'xlsx' | 'xls';
+  } | null>(),
+  
   // Versioning
   version: integer("version").default(1).notNull(),
   previousVersionId: varchar("previous_version_id"),

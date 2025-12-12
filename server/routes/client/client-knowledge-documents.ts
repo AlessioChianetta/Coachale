@@ -10,7 +10,7 @@ import {
   users,
 } from "../../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { extractTextFromFile, type VertexAICredentials } from "../../services/document-processor";
+import { extractTextAndStructuredData, type VertexAICredentials, type StructuredTableData } from "../../services/document-processor";
 import { parseServiceAccountJson } from "../../ai/provider-factory";
 import fs from "fs/promises";
 import path from "path";
@@ -240,18 +240,25 @@ router.post(
             console.warn(`⚠️ [CLIENT KNOWLEDGE DOCUMENTS] Could not load Vertex AI credentials, will use fallback:`, credError.message);
           }
           
-          const extractedContent = await extractTextFromFile(finalFilePath!, file.mimetype, vertexCredentials);
+          // Use enhanced extraction with structured data support
+          const { text: extractedContent, structured: structuredData } = await extractTextAndStructuredData(
+            finalFilePath!, 
+            file.mimetype, 
+            vertexCredentials
+          );
 
+          // Update with extracted content and structured data (for CSV/Excel preview)
           await db
             .update(clientKnowledgeDocuments)
             .set({
               extractedContent,
+              structuredData: structuredData || null,
               status: "indexed",
               updatedAt: new Date(),
             })
             .where(eq(clientKnowledgeDocuments.id, documentId));
 
-          console.log(`✅ [CLIENT KNOWLEDGE DOCUMENTS] Document indexed: "${title}"`);
+          console.log(`✅ [CLIENT KNOWLEDGE DOCUMENTS] Document indexed: "${title}" (${extractedContent.length} chars${structuredData ? `, ${structuredData.totalRows} rows` : ''})`);
         } catch (extractError: any) {
           console.error(`❌ [CLIENT KNOWLEDGE DOCUMENTS] Text extraction failed:`, extractError.message);
           await db
