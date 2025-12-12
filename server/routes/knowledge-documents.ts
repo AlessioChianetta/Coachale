@@ -9,7 +9,7 @@ import {
   vertexAiSettings,
 } from "../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { extractTextAndStructuredData, type VertexAICredentials, type StructuredTableData } from "../services/document-processor";
+import { extractTextFromFile, type VertexAICredentials } from "../services/document-processor";
 import { parseServiceAccountJson } from "../ai/provider-factory";
 import fs from "fs/promises";
 import path from "path";
@@ -230,25 +230,18 @@ router.post(
             console.warn(`⚠️ [KNOWLEDGE DOCUMENTS] Could not load Vertex AI credentials, will use fallback:`, credError.message);
           }
           
-          // Use enhanced extraction with structured data support
-          const { text: extractedContent, structured: structuredData } = await extractTextAndStructuredData(
-            finalFilePath!, 
-            file.mimetype, 
-            vertexCredentials
-          );
+          const extractedContent = await extractTextFromFile(finalFilePath!, file.mimetype, vertexCredentials);
 
-          // Update with extracted content and structured data (for CSV/Excel preview)
           await db
             .update(consultantKnowledgeDocuments)
             .set({
               extractedContent,
-              structuredData: structuredData || null,
               status: "indexed",
               updatedAt: new Date(),
             })
             .where(eq(consultantKnowledgeDocuments.id, documentId));
 
-          console.log(`✅ [KNOWLEDGE DOCUMENTS] Document indexed: "${title}" (${extractedContent.length} chars${structuredData ? `, ${structuredData.totalRows} rows` : ''})`);
+          console.log(`✅ [KNOWLEDGE DOCUMENTS] Document indexed: "${title}"`);
         } catch (extractError: any) {
           console.error(`❌ [KNOWLEDGE DOCUMENTS] Text extraction failed:`, extractError.message);
           await db
@@ -577,7 +570,6 @@ router.get(
           extractedContent: document.extractedContent,
           contentSummary: document.contentSummary,
           summaryEnabled: document.summaryEnabled,
-          structuredData: document.structuredData,
           tags: document.tags,
           priority: document.priority,
           usageCount: document.usageCount,
