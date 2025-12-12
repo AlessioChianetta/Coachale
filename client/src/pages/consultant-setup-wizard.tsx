@@ -170,19 +170,19 @@ export default function ConsultantSetupWizard() {
     },
   });
 
-  const testVertexMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/consultant/onboarding/test/vertex-ai", {
+  const testMutation = useMutation({
+    mutationFn: async ({ endpoint, stepName }: { endpoint: string; stepName: string }) => {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Test failed");
-      return data;
+      return { ...data, stepName };
     },
     onSuccess: (data) => {
       toast({
-        title: "Vertex AI Verificato",
+        title: `${data.stepName} Verificato`,
         description: data.message,
       });
       refetch();
@@ -197,6 +197,36 @@ export default function ConsultantSetupWizard() {
     },
     onSettled: () => {
       setTestingStep(null);
+    },
+  });
+
+  const skipMutation = useMutation({
+    mutationFn: async (stepId: string) => {
+      const res = await fetch(`/api/consultant/onboarding/status/${stepId}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "skipped" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Skip failed");
+      return data;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Passaggio Saltato",
+        description: "Puoi configurarlo in seguito se necessario.",
+      });
+      refetch();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -225,6 +255,7 @@ export default function ConsultantSetupWizard() {
       errorMessage: status?.smtpErrorMessage,
       required: true,
       configLink: "/consultant/api-keys-unified?tab=email",
+      testEndpoint: "/api/consultant/onboarding/test/smtp",
     },
     {
       id: "google_calendar",
@@ -236,6 +267,7 @@ export default function ConsultantSetupWizard() {
       errorMessage: status?.googleCalendarErrorMessage,
       required: true,
       configLink: "/consultant/api-keys-unified?tab=calendar",
+      testEndpoint: "/api/consultant/onboarding/test/google-calendar",
     },
     {
       id: "video_meeting",
@@ -247,6 +279,7 @@ export default function ConsultantSetupWizard() {
       errorMessage: status?.videoMeetingErrorMessage,
       required: false,
       configLink: "/consultant/api-keys-unified?tab=video",
+      testEndpoint: "/api/consultant/onboarding/test/video-meeting",
     },
     {
       id: "whatsapp_ai",
@@ -258,6 +291,7 @@ export default function ConsultantSetupWizard() {
       errorMessage: status?.whatsappAiErrorMessage,
       required: false,
       configLink: "/consultant/api-keys-unified?tab=whatsapp-ai",
+      testEndpoint: "/api/consultant/onboarding/test/whatsapp-ai",
     },
     {
       id: "lead_import",
@@ -269,6 +303,7 @@ export default function ConsultantSetupWizard() {
       errorMessage: status?.leadImportErrorMessage,
       required: false,
       configLink: "/consultant/api-keys-unified?tab=lead-import",
+      testEndpoint: "/api/consultant/onboarding/test/lead-import",
     },
     {
       id: "knowledge_base",
@@ -278,6 +313,7 @@ export default function ConsultantSetupWizard() {
       status: status?.knowledgeBaseStatus || "pending",
       required: false,
       configLink: "/consultant/knowledge-documents",
+      testEndpoint: "/api/consultant/onboarding/test/knowledge-base",
     },
   ];
 
@@ -288,11 +324,24 @@ export default function ConsultantSetupWizard() {
 
   const activeStepData = steps.find(s => s.id === activeStep);
 
-  const handleTest = async (stepId: string) => {
+  const stepNameMap: Record<string, string> = {
+    vertex_ai: "Vertex AI",
+    smtp: "Email SMTP",
+    google_calendar: "Google Calendar",
+    video_meeting: "Video Meeting",
+    whatsapp_ai: "WhatsApp AI",
+    lead_import: "Lead Import",
+    knowledge_base: "Knowledge Base",
+  };
+
+  const handleTest = async (stepId: string, endpoint?: string) => {
+    if (!endpoint) return;
     setTestingStep(stepId);
-    if (stepId === "vertex_ai") {
-      testVertexMutation.mutate();
-    }
+    testMutation.mutate({ endpoint, stepName: stepNameMap[stepId] || stepId });
+  };
+
+  const handleSkip = async (stepId: string) => {
+    skipMutation.mutate(stepId);
   };
 
   if (isLoading) {
@@ -418,9 +467,9 @@ export default function ConsultantSetupWizard() {
                             </Button>
                           </Link>
 
-                          {activeStepData.testEndpoint && activeStepData.status !== "pending" && (
+                          {activeStepData.testEndpoint && (
                             <Button
-                              onClick={() => handleTest(activeStepData.id)}
+                              onClick={() => handleTest(activeStepData.id, activeStepData.testEndpoint)}
                               disabled={testingStep === activeStepData.id}
                               className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
                             >
@@ -432,15 +481,20 @@ export default function ConsultantSetupWizard() {
                               ) : (
                                 <>
                                   <RefreshCw className="h-4 w-4 mr-2" />
-                                  Testa Connessione
+                                  {activeStepData.status === "pending" ? "Verifica Configurazione" : "Testa Connessione"}
                                 </>
                               )}
                             </Button>
                           )}
 
-                          {!activeStepData.required && activeStepData.status === "pending" && (
-                            <Button variant="ghost" className="w-full text-muted-foreground">
-                              Salta questo passaggio
+                          {!activeStepData.required && activeStepData.status !== "verified" && activeStepData.status !== "skipped" && (
+                            <Button 
+                              variant="ghost" 
+                              className="w-full text-muted-foreground"
+                              onClick={() => handleSkip(activeStepData.id)}
+                              disabled={skipMutation.isPending}
+                            >
+                              {skipMutation.isPending ? "Salvataggio..." : "Salta questo passaggio"}
                             </Button>
                           )}
                         </div>
@@ -477,6 +531,25 @@ export default function ConsultantSetupWizard() {
                         </div>
                       )}
 
+                      {activeStep === "google_calendar" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-blue-600" />
+                            Collegamento Google Calendar
+                          </h4>
+                          <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                            <li>Vai alla pagina di configurazione</li>
+                            <li>Clicca "Connetti Google Calendar"</li>
+                            <li>Accedi con il tuo account Google</li>
+                            <li>Autorizza l'accesso al calendario</li>
+                            <li>Seleziona il calendario principale da sincronizzare</li>
+                          </ol>
+                          <p className="text-xs text-muted-foreground mt-3 italic">
+                            Gli appuntamenti creati nella piattaforma appariranno automaticamente nel tuo Google Calendar.
+                          </p>
+                        </div>
+                      )}
+
                       {activeStep === "video_meeting" && (
                         <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
@@ -489,6 +562,64 @@ export default function ConsultantSetupWizard() {
                             <li>Copia Username e Password</li>
                             <li>Incollali nella configurazione</li>
                           </ol>
+                          <p className="text-xs text-muted-foreground mt-3 italic">
+                            I server TURN permettono videochiamate stabili anche quando i partecipanti sono dietro firewall restrittivi.
+                          </p>
+                        </div>
+                      )}
+
+                      {activeStep === "whatsapp_ai" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4 text-blue-600" />
+                            Credenziali AI per WhatsApp
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-2">
+                            <p>Gli agenti WhatsApp possono usare credenziali AI separate per:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li>Non consumare il tuo budget AI principale</li>
+                              <li>Avere limiti di utilizzo dedicati</li>
+                              <li>Monitorare i costi separatamente</li>
+                            </ul>
+                            <p className="mt-2">Configura come per Vertex AI principale, ma con un progetto dedicato.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "lead_import" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <UserPlus className="h-4 w-4 text-blue-600" />
+                            Import Lead Automatico
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-2">
+                            <p>Collega API esterne per importare lead automaticamente:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li>CRM esterni (HubSpot, Salesforce, ecc.)</li>
+                              <li>Landing page e form</li>
+                              <li>Webhook personalizzati</li>
+                            </ul>
+                            <p className="text-xs mt-2 italic">Questo passaggio è opzionale. Puoi anche inserire i lead manualmente.</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeStep === "knowledge_base" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-blue-600" />
+                            Base di Conoscenza AI
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-2">
+                            <p>Carica documenti per permettere all'AI di rispondere con informazioni specifiche:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li>PDF, Word, Excel e file di testo</li>
+                              <li>Manuali e guide dei tuoi prodotti</li>
+                              <li>FAQ e risposte standard</li>
+                              <li>Politiche aziendali e procedure</li>
+                            </ul>
+                            <p className="text-xs mt-2 italic">L'AI userà questi documenti per dare risposte più accurate e personalizzate.</p>
+                          </div>
                         </div>
                       )}
                     </CardContent>
