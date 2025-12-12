@@ -1,0 +1,29 @@
+d340cc91108
+2
+chunk-QCHXOAYK.js?v=9a7d639a:903 Uncaught SyntaxError: The requested module '/src/components/sidebar.tsx' does not provide an export named 'Sidebar' (at consultant-setup-wizard.tsx:5:10)
+injected.js:37 The above error occurred in the <AuthGuard> component:
+
+    at AuthGuard (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=9a7d639a:323:16)
+    at Switch (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.d…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=9a7d639a:379:17)
+    at Suspense
+    at Router (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.dev/src/App.tsx?v=EdhAqh7L_vK20Ld8VFtpO:216:35)
+    at Provider (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.d…unner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=9a7d639a:38:15)
+    at TooltipProvider (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.d…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=9a7d639a:64:5)
+    at TourProvider (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at QueryClientProvider (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.d…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=9a7d639a:2805:3)
+    at V (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=9a7d639a:44:25)
+    at J (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.d…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=9a7d639a:42:18)
+    at App (https://243e6f15-7a95-4003-8f41-dc0486bda01d-00-1cq3a4f43edsg.worf.replit.dev/src/App.tsx?v=EdhAqh7L_vK20Ld8VFtpO:1388:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+chunk-RPCDYKBN.js?v=9a7d639a:19413 Uncaught SyntaxError: The requested module '/src/components/sidebar.tsx' does not provide an export named 'Sidebar' (at consultant-setup-wizard.tsx:5:10)
+﻿
+
+Press ctrl i to turn on code suggestions. Press ctrl x to disable code suggestions.
+ctrl
+i
+ to turn on code suggestions. Don't show again
+
