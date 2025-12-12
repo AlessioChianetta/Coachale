@@ -803,7 +803,10 @@ router.get('/ai-ideas', authenticateToken, requireRole('consultant'), async (req
 router.post('/ai-ideas', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { name, description, targetAudience, agentType, integrationTypes, sourceType } = req.body;
+    const { 
+      name, description, targetAudience, agentType, integrationTypes, sourceType,
+      suggestedAgentType, personality, whoWeHelp, whoWeDontHelp, whatWeDo, howWeDoIt, usp, suggestedInstructions, useCases
+    } = req.body;
     
     if (!name || !description) {
       return res.status(400).json({
@@ -821,6 +824,15 @@ router.post('/ai-ideas', authenticateToken, requireRole('consultant'), async (re
         agentType: agentType || 'whatsapp',
         integrationTypes: integrationTypes || [],
         sourceType: sourceType || 'generated',
+        suggestedAgentType: suggestedAgentType || 'reactive_lead',
+        personality: personality || null,
+        whoWeHelp: whoWeHelp || null,
+        whoWeDontHelp: whoWeDontHelp || null,
+        whatWeDo: whatWeDo || null,
+        howWeDoIt: howWeDoIt || null,
+        usp: usp || null,
+        suggestedInstructions: suggestedInstructions || null,
+        useCases: useCases || [],
       })
       .returning();
     
@@ -943,6 +955,218 @@ router.put('/ai-ideas/:id/implement', authenticateToken, requireRole('consultant
     res.status(500).json({
       success: false,
       error: 'Failed to update idea',
+    });
+  }
+});
+
+router.get('/ai-ideas/:id', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { id } = req.params;
+    
+    const idea = await db.query.consultantAiIdeas.findFirst({
+      where: and(
+        eq(consultantAiIdeas.id, id),
+        eq(consultantAiIdeas.consultantId, consultantId)
+      ),
+    });
+    
+    if (!idea) {
+      return res.status(404).json({
+        success: false,
+        error: 'Idea not found',
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: idea,
+    });
+  } catch (error: any) {
+    console.error('Error fetching AI idea:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch AI idea',
+    });
+  }
+});
+
+router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { textDescription, urls, knowledgeDocIds, integrations, numberOfIdeas } = req.body;
+    
+    if (!integrations || integrations.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Seleziona almeno un\'integrazione (booking o consultation)',
+      });
+    }
+    
+    const vertexSettings = await db.query.vertexAiSettings.findFirst({
+      where: eq(vertexAiSettings.userId, consultantId),
+    });
+    
+    if (!vertexSettings) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vertex AI non configurato. Vai su API Keys per configurarlo.',
+      });
+    }
+    
+    let combinedContent = '';
+    
+    if (textDescription) {
+      combinedContent += `\n\nDESCRIZIONE BUSINESS:\n${textDescription}`;
+    }
+    
+    if (knowledgeDocIds && knowledgeDocIds.length > 0) {
+      const docs = await db.select()
+        .from(consultantKnowledgeDocuments)
+        .where(and(
+          eq(consultantKnowledgeDocuments.consultantId, consultantId),
+          sql`${consultantKnowledgeDocuments.id} = ANY(${knowledgeDocIds})`
+        ));
+      
+      for (const doc of docs) {
+        if (doc.extractedText) {
+          combinedContent += `\n\nDOCUMENTO "${doc.fileName}":\n${doc.extractedText.substring(0, 5000)}`;
+        }
+      }
+    }
+    
+    if (urls && urls.length > 0) {
+      combinedContent += `\n\nURL DA ANALIZZARE: ${urls.filter((u: string) => u).join(', ')}`;
+    }
+    
+    if (!combinedContent.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Fornisci almeno una fonte: testo, documenti o URL',
+      });
+    }
+    
+    const integrationsDescription = integrations.map((i: string) => {
+      if (i === 'booking') return 'Presa Appuntamento (può prenotare appuntamenti nel calendario)';
+      if (i === 'consultation') return 'Supporto Consulenziale (fornisce informazioni e supporto senza prenotare)';
+      return i;
+    }).join(', ');
+    
+    const agentTypeMapping = `
+- reactive_lead: Agente INBOUND che riceve messaggi, risponde e può prenotare appuntamenti
+- proactive_setter: Agente OUTBOUND che contatta proattivamente i lead per fissare appuntamenti  
+- informative_advisor: Agente CONSULENZIALE che informa ed educa senza prenotare appuntamenti`;
+    
+    const prompt = `Sei un esperto di automazione WhatsApp per business. Analizza il seguente contesto aziendale e genera ${numberOfIdeas || 3} idee per agenti AI WhatsApp.
+
+CONTESTO AZIENDALE:
+${combinedContent}
+
+INTEGRAZIONI DISPONIBILI:
+${integrationsDescription}
+
+TIPI DI AGENTE DISPONIBILI:
+${agentTypeMapping}
+
+Per ogni idea, genera un JSON con questa struttura ESATTA:
+{
+  "name": "Nome breve dell'agente (max 30 caratteri)",
+  "description": "Descrizione completa di cosa fa l'agente (2-3 frasi)",
+  "personality": "professionale" | "amichevole" | "empatico" | "diretto",
+  "suggestedAgentType": "reactive_lead" | "proactive_setter" | "informative_advisor",
+  "integrations": ["booking"] e/o ["consultation"],
+  "useCases": ["Caso d'uso 1", "Caso d'uso 2", "Caso d'uso 3"],
+  "whoWeHelp": "Chi aiutiamo (target audience)",
+  "whoWeDontHelp": "Chi NON aiutiamo",
+  "whatWeDo": "Cosa facciamo per loro",
+  "howWeDoIt": "Come lo facciamo",
+  "usp": "Punto di forza unico"
+}
+
+REGOLE:
+- Se l'integrazione è solo "booking", usa agentType "reactive_lead" o "proactive_setter"
+- Se l'integrazione è solo "consultation", usa agentType "informative_advisor"
+- Se entrambe le integrazioni sono selezionate, puoi usare qualsiasi tipo
+- Genera idee diverse tra loro (non ripetere lo stesso tipo di agente)
+- Rispondi SOLO con un array JSON valido, senza altri commenti
+
+RISPOSTA (array JSON):`;
+
+    let serviceAccountJson;
+    try {
+      serviceAccountJson = JSON.parse(vertexSettings.serviceAccountJson);
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        error: 'Errore nel parsing delle credenziali Vertex AI.',
+      });
+    }
+    
+    const vertexAI = new VertexAI({
+      project: vertexSettings.projectId,
+      location: vertexSettings.location,
+      googleAuthOptions: {
+        credentials: serviceAccountJson,
+      },
+    });
+    
+    const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    let ideas;
+    try {
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) {
+        throw new Error('No JSON array found in response');
+      }
+      ideas = JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      console.error('Error parsing Vertex AI response:', text);
+      return res.status(500).json({
+        success: false,
+        error: 'Errore nel parsing della risposta AI. Riprova.',
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: ideas,
+    });
+  } catch (error: any) {
+    console.error('Error generating AI ideas:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Errore durante la generazione delle idee',
+    });
+  }
+});
+
+router.get('/knowledge-documents', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const docs = await db.select({
+      id: consultantKnowledgeDocuments.id,
+      fileName: consultantKnowledgeDocuments.fileName,
+      fileType: consultantKnowledgeDocuments.fileType,
+      fileSize: consultantKnowledgeDocuments.fileSize,
+      createdAt: consultantKnowledgeDocuments.createdAt,
+    })
+      .from(consultantKnowledgeDocuments)
+      .where(eq(consultantKnowledgeDocuments.consultantId, consultantId))
+      .orderBy(consultantKnowledgeDocuments.createdAt);
+    
+    res.json({
+      success: true,
+      data: docs,
+    });
+  } catch (error: any) {
+    console.error('Error fetching knowledge documents:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch knowledge documents',
     });
   }
 });
