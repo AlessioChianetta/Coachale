@@ -184,8 +184,84 @@ export default function ConsultantWhatsAppPage() {
   const [selectedIntegrations, setSelectedIntegrations] = useState<string[]>([]);
   const [numberOfIdeas, setNumberOfIdeas] = useState(3);
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
-  const [savedIdeas, setSavedIdeas] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Query per caricare le idee salvate dal backend
+  const { data: savedIdeasData, refetch: refetchSavedIdeas } = useQuery({
+    queryKey: ["/api/consultant/onboarding/ai-ideas"],
+    queryFn: async () => {
+      const res = await fetch("/api/consultant/onboarding/ai-ideas", {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to fetch saved ideas");
+      return res.json();
+    },
+  });
+
+  const savedIdeas = savedIdeasData?.data || [];
+
+  // Mutation per salvare un'idea
+  const saveIdeaMutation = useMutation({
+    mutationFn: async (idea: any) => {
+      const res = await fetch("/api/consultant/onboarding/ai-ideas", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: idea.name,
+          description: idea.description,
+          targetAudience: idea.target || idea.personality,
+          agentType: "whatsapp",
+          integrationTypes: idea.integrations || [],
+          sourceType: "generated",
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to save idea");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchSavedIdeas();
+      toast({
+        title: "💡 Idea salvata",
+        description: "L'idea è stata salvata nel database.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation per eliminare un'idea
+  const deleteIdeaMutation = useMutation({
+    mutationFn: async (ideaId: string) => {
+      const res = await fetch(`/api/consultant/onboarding/ai-ideas/${ideaId}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) throw new Error("Failed to delete idea");
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchSavedIdeas();
+      toast({
+        title: "🗑️ Idea rimossa",
+        description: "L'idea è stata eliminata.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const searchParams = new URLSearchParams(useSearch());
   const tabParam = searchParams.get("tab");
@@ -1580,15 +1656,14 @@ export default function ConsultantWhatsAppPage() {
 
                         <Button
                           className="w-full bg-purple-600 hover:bg-purple-700"
-                          onClick={() => {
-                            setSavedIdeas([...savedIdeas, idea]);
-                            toast({
-                              title: "💡 Idea salvata",
-                              description: `"${idea.name}" è stata salvata nelle tue idee.`,
-                            });
-                          }}
+                          disabled={saveIdeaMutation.isPending}
+                          onClick={() => saveIdeaMutation.mutate(idea)}
                         >
-                          <Save className="h-4 w-4 mr-2" />
+                          {saveIdeaMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4 mr-2" />
+                          )}
                           Salva Idea
                         </Button>
                       </CardContent>

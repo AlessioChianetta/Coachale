@@ -2,8 +2,24 @@ import { Router, type Request, type Response } from 'express';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { storage } from '../storage';
 import { db } from '../db';
-import { consultantOnboardingStatus, vertexAiSettings, consultantSmtpSettings, consultantTurnConfig, consultantKnowledgeDocuments, whatsappVertexAiSettings, externalApiConfigs, consultantAvailabilitySettings, users } from '@shared/schema';
-import { eq, and, count } from 'drizzle-orm';
+import { 
+  consultantOnboardingStatus, 
+  vertexAiSettings, 
+  consultantSmtpSettings, 
+  consultantTurnConfig, 
+  consultantKnowledgeDocuments, 
+  whatsappVertexAiSettings, 
+  externalApiConfigs, 
+  consultantAvailabilitySettings, 
+  users,
+  consultantWhatsappConfig,
+  whatsappAgentShares,
+  consultantAiIdeas,
+  universityYears,
+  exercises,
+  emailDrafts
+} from '@shared/schema';
+import { eq, and, count, sql } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient } from '../google-calendar-service';
 import nodemailer from 'nodemailer';
@@ -43,12 +59,112 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       .where(eq(consultantKnowledgeDocuments.consultantId, consultantId));
     const documentsCount = docsResult[0]?.count || 0;
     
+    // Count WhatsApp agents by type
+    const inboundAgentResult = await db.select({ count: count() })
+      .from(consultantWhatsappConfig)
+      .where(and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        eq(consultantWhatsappConfig.agentType, 'reactive_lead')
+      ));
+    const hasInboundAgent = Number(inboundAgentResult[0]?.count || 0) > 0;
+    
+    const outboundAgentResult = await db.select({ count: count() })
+      .from(consultantWhatsappConfig)
+      .where(and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        eq(consultantWhatsappConfig.agentType, 'proactive_setter')
+      ));
+    const hasOutboundAgent = Number(outboundAgentResult[0]?.count || 0) > 0;
+    
+    const consultativeAgentResult = await db.select({ count: count() })
+      .from(consultantWhatsappConfig)
+      .where(and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        eq(consultantWhatsappConfig.agentType, 'informative_advisor')
+      ));
+    const hasConsultativeAgent = Number(consultativeAgentResult[0]?.count || 0) > 0;
+    
+    // Count public agent links
+    const publicLinksResult = await db.select({ count: count() })
+      .from(whatsappAgentShares)
+      .where(and(
+        eq(whatsappAgentShares.consultantId, consultantId),
+        eq(whatsappAgentShares.isActive, true)
+      ));
+    const publicLinksCount = Number(publicLinksResult[0]?.count || 0);
+    const hasPublicAgentLink = publicLinksCount > 0;
+    
+    // Count AI ideas
+    const ideasResult = await db.select({ count: count() })
+      .from(consultantAiIdeas)
+      .where(eq(consultantAiIdeas.consultantId, consultantId));
+    const generatedIdeasCount = Number(ideasResult[0]?.count || 0);
+    const hasGeneratedIdeas = generatedIdeasCount > 0;
+    
+    // Count courses (university years)
+    const coursesResult = await db.select({ count: count() })
+      .from(universityYears)
+      .where(eq(universityYears.createdBy, consultantId));
+    const coursesCount = Number(coursesResult[0]?.count || 0);
+    const hasCreatedCourse = coursesCount > 0;
+    
+    // Count exercises
+    const exercisesResult = await db.select({ count: count() })
+      .from(exercises)
+      .where(eq(exercises.createdBy, consultantId));
+    const exercisesCount = Number(exercisesResult[0]?.count || 0);
+    const hasCreatedExercise = exercisesCount > 0;
+    
+    // Count summary emails sent
+    const summaryEmailsResult = await db.select({ count: count() })
+      .from(emailDrafts)
+      .where(and(
+        eq(emailDrafts.consultantId, consultantId),
+        eq(emailDrafts.emailType, 'consultation_summary'),
+        eq(emailDrafts.status, 'sent')
+      ));
+    const summaryEmailsCount = Number(summaryEmailsResult[0]?.count || 0);
+    const hasFirstSummaryEmail = summaryEmailsCount > 0;
+    
+    // Update the status record with calculated values
+    await db.update(consultantOnboardingStatus)
+      .set({
+        hasInboundAgent,
+        hasOutboundAgent,
+        hasConsultativeAgent,
+        hasPublicAgentLink,
+        publicLinksCount,
+        hasGeneratedIdeas,
+        generatedIdeasCount,
+        hasCreatedCourse,
+        coursesCount,
+        hasCreatedExercise,
+        exercisesCount,
+        hasFirstSummaryEmail,
+        summaryEmailsCount,
+        updatedAt: new Date(),
+      })
+      .where(eq(consultantOnboardingStatus.consultantId, consultantId));
+    
     const enrichedStatus = {
       ...status,
       hasVertexConfig: !!vertexSettings?.projectId,
       hasSmtpConfig: !!smtpSettings?.smtpHost,
       hasTurnConfig: !!turnConfig?.usernameEncrypted,
       documentsCount,
+      hasInboundAgent,
+      hasOutboundAgent,
+      hasConsultativeAgent,
+      hasPublicAgentLink,
+      publicLinksCount,
+      hasGeneratedIdeas,
+      generatedIdeasCount,
+      hasCreatedCourse,
+      coursesCount,
+      hasCreatedExercise,
+      exercisesCount,
+      hasFirstSummaryEmail,
+      summaryEmailsCount,
     };
     
     res.json({
@@ -654,6 +770,179 @@ router.put('/client-ai-strategy', authenticateToken, requireRole('consultant'), 
     res.status(500).json({
       success: false,
       error: 'Failed to update strategy',
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI Ideas CRUD API
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get('/ai-ideas', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const ideas = await db.select()
+      .from(consultantAiIdeas)
+      .where(eq(consultantAiIdeas.consultantId, consultantId))
+      .orderBy(consultantAiIdeas.createdAt);
+    
+    res.json({
+      success: true,
+      data: ideas,
+    });
+  } catch (error: any) {
+    console.error('Error fetching AI ideas:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch AI ideas',
+    });
+  }
+});
+
+router.post('/ai-ideas', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { name, description, targetAudience, agentType, integrationTypes, sourceType } = req.body;
+    
+    if (!name || !description) {
+      return res.status(400).json({
+        success: false,
+        error: 'Name and description are required',
+      });
+    }
+    
+    const [newIdea] = await db.insert(consultantAiIdeas)
+      .values({
+        consultantId,
+        name,
+        description,
+        targetAudience: targetAudience || null,
+        agentType: agentType || 'whatsapp',
+        integrationTypes: integrationTypes || [],
+        sourceType: sourceType || 'generated',
+      })
+      .returning();
+    
+    res.json({
+      success: true,
+      data: newIdea,
+    });
+  } catch (error: any) {
+    console.error('Error creating AI idea:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create AI idea',
+    });
+  }
+});
+
+router.post('/ai-ideas/bulk', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { ideas } = req.body;
+    
+    if (!ideas || !Array.isArray(ideas) || ideas.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Ideas array is required',
+      });
+    }
+    
+    const ideasToInsert = ideas.map((idea: any) => ({
+      consultantId,
+      name: idea.name,
+      description: idea.description,
+      targetAudience: idea.targetAudience || null,
+      agentType: idea.agentType || 'whatsapp',
+      integrationTypes: idea.integrationTypes || [],
+      sourceType: idea.sourceType || 'generated',
+    }));
+    
+    const newIdeas = await db.insert(consultantAiIdeas)
+      .values(ideasToInsert)
+      .returning();
+    
+    res.json({
+      success: true,
+      data: newIdeas,
+      count: newIdeas.length,
+    });
+  } catch (error: any) {
+    console.error('Error creating AI ideas in bulk:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create AI ideas',
+    });
+  }
+});
+
+router.delete('/ai-ideas/:id', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { id } = req.params;
+    
+    const [deleted] = await db.delete(consultantAiIdeas)
+      .where(and(
+        eq(consultantAiIdeas.id, id),
+        eq(consultantAiIdeas.consultantId, consultantId)
+      ))
+      .returning();
+    
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        error: 'Idea not found',
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Idea deleted',
+    });
+  } catch (error: any) {
+    console.error('Error deleting AI idea:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete AI idea',
+    });
+  }
+});
+
+router.put('/ai-ideas/:id/implement', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { id } = req.params;
+    const { implementedAgentId } = req.body;
+    
+    const [updated] = await db.update(consultantAiIdeas)
+      .set({
+        isImplemented: true,
+        implementedAgentId: implementedAgentId || null,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(consultantAiIdeas.id, id),
+        eq(consultantAiIdeas.consultantId, consultantId)
+      ))
+      .returning();
+    
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        error: 'Idea not found',
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: updated,
+    });
+  } catch (error: any) {
+    console.error('Error marking idea as implemented:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update idea',
     });
   }
 });
