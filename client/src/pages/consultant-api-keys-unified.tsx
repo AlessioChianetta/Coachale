@@ -353,6 +353,16 @@ export default function ConsultantApiKeysUnified() {
   const queryClient = useQueryClient();
   const searchParams = useSearch();
 
+  // Read tab parameter from URL and set active tab
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    const tabParam = params.get('tab');
+    const validTabs = ['ai', 'client-ai', 'email', 'whatsapp', 'calendar', 'lead-import', 'video-meeting'];
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
   const [vertexFormData, setVertexFormData] = useState({
     projectId: "",
     location: "us-central1",

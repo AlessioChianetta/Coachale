@@ -2,11 +2,12 @@ import { Router, type Request, type Response } from 'express';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { storage } from '../storage';
 import { db } from '../db';
-import { consultantOnboardingStatus, vertexAiSettings, consultantSmtpSettings, consultantTurnConfig, consultantKnowledgeDocuments, whatsappVertexAiSettings, externalApiConfigs, consultantAvailabilitySettings } from '@shared/schema';
+import { consultantOnboardingStatus, vertexAiSettings, consultantSmtpSettings, consultantTurnConfig, consultantKnowledgeDocuments, whatsappVertexAiSettings, externalApiConfigs, consultantAvailabilitySettings, users } from '@shared/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient } from '../google-calendar-service';
 import nodemailer from 'nodemailer';
+import { decryptForConsultant } from '../encryption';
 
 const router = Router();
 
@@ -141,12 +142,12 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
     
     let serviceAccountJson;
     try {
-      const decrypted = await storage.decryptData(vertexSettings.serviceAccountJson, consultantId);
-      serviceAccountJson = JSON.parse(decrypted);
+      // Vertex AI credentials are stored in plain text
+      serviceAccountJson = JSON.parse(vertexSettings.serviceAccountJson);
     } catch (e) {
       return res.status(400).json({
         success: false,
-        error: 'Errore nella decrittazione delle credenziali Vertex AI',
+        error: 'Errore nel parsing delle credenziali Vertex AI. Verifica che il JSON sia valido.',
       });
     }
     
@@ -215,24 +216,15 @@ router.post('/test/smtp', authenticateToken, requireRole('consultant'), async (r
       });
     }
     
-    let decryptedPassword: string;
     try {
-      decryptedPassword = await storage.decryptData(smtpSettings.smtpPassword, consultantId);
-    } catch (e) {
-      return res.status(400).json({
-        success: false,
-        message: 'Errore nella decrittazione della password SMTP',
-      });
-    }
-    
-    try {
+      // SMTP password is stored in plain text
       const transporter = nodemailer.createTransport({
         host: smtpSettings.smtpHost,
         port: smtpSettings.smtpPort,
         secure: smtpSettings.smtpSecure,
         auth: {
           user: smtpSettings.smtpUser,
-          pass: decryptedPassword,
+          pass: smtpSettings.smtpPassword,
         },
       });
       
@@ -296,7 +288,7 @@ router.post('/test/google-calendar', authenticateToken, requireRole('consultant'
       
       res.json({
         success: true,
-        message: `Google Calendar connesso! Trovati ${calendarsCount} calendari.`,
+        message: `Google Calendar connesso con successo! Il tuo account ha ${calendarsCount} calendari (es. primario, compleanni, festività).`,
         details: { calendarsCount },
       });
     } catch (calendarError: any) {
@@ -339,7 +331,17 @@ router.post('/test/video-meeting', authenticateToken, requireRole('consultant'),
     }
     
     try {
-      const decryptedApiKey = await storage.decryptData(turnConfig.usernameEncrypted, consultantId);
+      // TURN config uses encryptForConsultant with salt
+      const [consultant] = await db.select({ encryptionSalt: users.encryptionSalt })
+        .from(users)
+        .where(eq(users.id, consultantId))
+        .limit(1);
+      
+      if (!consultant?.encryptionSalt) {
+        throw new Error('Salt di crittografia non trovato per il consultant');
+      }
+      
+      const decryptedApiKey = decryptForConsultant(turnConfig.usernameEncrypted, consultant.encryptionSalt);
       
       const response = await fetch(`https://global.relay.metered.ca/api/v1/turn/credentials?apiKey=${decryptedApiKey}`);
       
@@ -416,7 +418,7 @@ router.post('/test/lead-import', authenticateToken, requireRole('consultant'), a
         throw new Error('Configurazione API incompleta: manca API key o endpoint');
       }
       
-      const decryptedApiKey = await storage.decryptData(apiConfig.apiKey, consultantId);
+      const decryptedApiKey = storage.decryptData(apiConfig.apiKey);
       
       const response = await fetch(apiConfig.apiEndpoint, {
         method: 'GET',
@@ -491,8 +493,8 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
     }
     
     try {
-      const decrypted = await storage.decryptData(whatsappSettings.serviceAccountJson, consultantId);
-      const serviceAccountJson = JSON.parse(decrypted);
+      // WhatsApp Vertex AI credentials are stored in plain text
+      const serviceAccountJson = JSON.parse(whatsappSettings.serviceAccountJson);
       
       const vertexAI = new VertexAI({
         project: whatsappSettings.projectId,

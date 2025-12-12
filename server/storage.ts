@@ -646,6 +646,10 @@ export interface IStorage {
   updateConsultationInvite(inviteToken: string, data: Partial<Omit<InsertConsultationInvite, 'inviteToken' | 'agentId'>>): Promise<ConsultationInvite | null>;
   deleteConsultationInvite(inviteToken: string): Promise<boolean>;
   trackConsultationInviteAccess(inviteToken: string): Promise<void>;
+
+  // Encryption/Decryption operations for credentials
+  encryptData(text: string): string;
+  decryptData(text: string): string;
 }
 
 import { db } from "./db.js";
@@ -4469,6 +4473,15 @@ export class DatabaseStorage implements IStorage {
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     return decrypted.toString();
+  }
+
+  // Public encryption/decryption methods for credentials
+  encryptData(text: string): string {
+    return this.encryptApiKey(text);
+  }
+
+  decryptData(text: string): string {
+    return this.decryptApiKey(text);
   }
 
   // External API Configuration operations

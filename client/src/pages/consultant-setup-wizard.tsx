@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { getAuthHeaders } from "@/lib/auth";
 import Sidebar from "@/components/sidebar";
+import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -278,7 +279,7 @@ export default function ConsultantSetupWizard() {
       testedAt: status?.videoMeetingTestedAt,
       errorMessage: status?.videoMeetingErrorMessage,
       required: false,
-      configLink: "/consultant/api-keys-unified?tab=video",
+      configLink: "/consultant/api-keys-unified?tab=video-meeting",
       testEndpoint: "/api/consultant/onboarding/test/video-meeting",
     },
     {
@@ -290,7 +291,7 @@ export default function ConsultantSetupWizard() {
       testedAt: status?.whatsappAiTestedAt,
       errorMessage: status?.whatsappAiErrorMessage,
       required: false,
-      configLink: "/consultant/api-keys-unified?tab=whatsapp-ai",
+      configLink: "/consultant/api-keys-unified?tab=whatsapp",
       testEndpoint: "/api/consultant/onboarding/test/whatsapp-ai",
     },
     {
@@ -642,7 +643,7 @@ export default function ConsultantSetupWizard() {
                       <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
                         <Sparkles className="h-4 w-4 text-white" />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="text-sm font-medium">Ciao! Sono qui per aiutarti</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           {activeStep === "vertex_ai" && "Vertex AI è il cuore della piattaforma. Ti permette di usare Gemini per tutte le funzionalità AI."}
@@ -653,6 +654,31 @@ export default function ConsultantSetupWizard() {
                           {activeStep === "lead_import" && "Importa lead automaticamente da CRM esterni o landing page."}
                           {activeStep === "knowledge_base" && "Carica documenti per far rispondere l'AI con informazioni specifiche sul tuo business."}
                         </p>
+                        <Button 
+                          size="sm"
+                          className="mt-3 w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                          onClick={() => {
+                            const stepMessages: Record<string, string> = {
+                              vertex_ai: "Aiutami a configurare Vertex AI per la mia piattaforma. Come ottengo le credenziali Google Cloud?",
+                              smtp: "Come configuro il server SMTP per inviare email automatiche ai clienti?",
+                              google_calendar: "Aiutami a collegare Google Calendar per sincronizzare gli appuntamenti.",
+                              video_meeting: "Come configuro le credenziali TURN di Metered.ca per le videochiamate?",
+                              whatsapp_ai: "Spiegami come configurare credenziali AI separate per gli agenti WhatsApp.",
+                              lead_import: "Come posso importare lead automaticamente da API esterne?",
+                              knowledge_base: "Come carico documenti nella Knowledge Base per migliorare le risposte dell'AI?",
+                            };
+                            const message = stepMessages[activeStep] || "Aiutami con la configurazione della piattaforma.";
+                            window.dispatchEvent(new CustomEvent('ai:open-and-ask', { 
+                              detail: { 
+                                document: { id: activeStep, title: activeStepData?.title || 'Setup Wizard' },
+                                autoMessage: message 
+                              } 
+                            }));
+                          }}
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Chiedimi qualcosa
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -695,6 +721,7 @@ export default function ConsultantSetupWizard() {
           </div>
         </div>
       </main>
+      <ConsultantAIAssistant />
     </div>
   );
 }
