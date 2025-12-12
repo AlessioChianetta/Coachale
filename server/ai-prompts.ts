@@ -1972,6 +1972,289 @@ Sezioni Email Marketing:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+🛒 SETUP WIZARD - LISTA DELLA SPESA (Account da Creare)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PRIMA DI INIZIARE - Cosa ti serve creare:
+
+📋 ACCOUNT NECESSARI (lista completa):
+┌─────────────────────────────────────────────────────────────┐
+│ SERVIZIO          │ GRATUITO?  │ DOVE REGISTRARSI            │
+├─────────────────────────────────────────────────────────────┤
+│ 1. Google Cloud   │ Sì (gratis)│ console.cloud.google.com   │
+│ 2. Account Gmail  │ Sì         │ gmail.com (già hai)         │
+│ 3. Metered.ca     │ Sì (gratis)│ metered.ca                  │
+│ 4. Twilio         │ Prova gratis│ twilio.com                 │
+└─────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔵 1. VERTEX AI (Gemini) - OBBLIGATORIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Dove configurare: Impostazioni → API Keys → tab "AI"
+🔗 URL piattaforma: /consultant/api-keys-unified?tab=ai
+
+🛒 COSA TI SERVE PRIMA:
+- Account Google (quello che usi per Gmail)
+- Carta di credito (per attivare, ma NON verrai addebitato subito)
+
+📝 PASSAGGI ESATTI:
+
+STEP 1: Vai su Google Cloud Console
+   → Apri: https://console.cloud.google.com
+   → Accedi con il tuo account Google
+
+STEP 2: Crea un nuovo progetto
+   → In alto a sinistra, clicca sul menu progetti
+   → Clicca "Nuovo Progetto"
+   → Nome: "Piattaforma AI" (o come preferisci)
+   → Clicca "Crea"
+   → Aspetta 30 secondi che si crei
+
+STEP 3: Abilita l'API Vertex AI
+   → Vai su: APIs & Services → Library
+   → Cerca "Vertex AI API"
+   → Clicca su "Vertex AI API"
+   → Clicca "Abilita" (pulsante blu)
+
+STEP 4: Crea le credenziali (Service Account)
+   → Vai su: IAM & Admin → Service Accounts
+   → Clicca "Create Service Account"
+   → Nome: "piattaforma-ai"
+   → Clicca "Create and Continue"
+   → Ruolo: cerca "Vertex AI User" e selezionalo
+   → Clicca "Continue" → "Done"
+
+STEP 5: Scarica il file JSON delle credenziali
+   → Nella lista Service Accounts, clicca sui 3 puntini a destra
+   → Seleziona "Manage keys"
+   → Clicca "Add Key" → "Create new key"
+   → Seleziona "JSON"
+   → Clicca "Create" → si scarica un file .json
+   → ⚠️ CONSERVA QUESTO FILE, ti serve!
+
+STEP 6: Inserisci nella piattaforma
+   → Vai su /consultant/api-keys-unified?tab=ai
+   → Project ID: lo trovi nel file JSON alla voce "project_id"
+   → Location: scrivi "us-central1"
+   → Credenziali JSON: apri il file .json con un editor di testo,
+     copia TUTTO il contenuto e incollalo nel campo
+   → Salva e testa la connessione
+
+💡 COSTO: Google dà $300 di credito gratuito per 90 giorni.
+   Dopo, paghi solo per l'uso effettivo (circa $0.001 per richiesta).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔵 2. EMAIL SMTP - OBBLIGATORIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Dove configurare: Impostazioni → API Keys → tab "Email"
+🔗 URL piattaforma: /consultant/api-keys-unified?tab=email
+
+🛒 COSA TI SERVE PRIMA:
+- Un account Gmail (quello che usi già va bene)
+
+📝 PASSAGGI ESATTI PER GMAIL:
+
+STEP 1: Attiva la verifica in 2 passaggi
+   → Vai su: https://myaccount.google.com/security
+   → Cerca "Verifica in 2 passaggi"
+   → Se non è attiva, attivala (ti serve il telefono)
+
+STEP 2: Crea una App Password
+   → Sempre in Security, cerca "Password per le app"
+   → Oppure vai su: https://myaccount.google.com/apppasswords
+   → Nome app: "Piattaforma Email"
+   → Clicca "Crea"
+   → ⚠️ COPIA la password di 16 caratteri che appare!
+   → (Es: "abcd efgh ijkl mnop" - senza spazi)
+
+STEP 3: Inserisci nella piattaforma
+   → Vai su /consultant/api-keys-unified?tab=email
+   → Host SMTP: smtp.gmail.com
+   → Porta: 587
+   → Sicuro (TLS): Sì
+   → Username: la tua email Gmail completa (es: tuonome@gmail.com)
+   → Password: la App Password di 16 caratteri (senza spazi)
+   → Email mittente: la stessa email Gmail
+   → Nome mittente: Il tuo nome (es: "Mario Rossi Consulenze")
+   → Salva e testa
+
+💡 ALTERNATIVA OUTLOOK:
+   → Host: smtp.office365.com
+   → Porta: 587
+   → Username: la tua email Outlook
+   → Password: la password normale
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔵 3. GOOGLE CALENDAR - OBBLIGATORIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Dove configurare: Impostazioni → Calendario
+🔗 URL piattaforma: /consultant/calendar-settings
+
+🛒 COSA TI SERVE PRIMA:
+- Account Google (lo stesso di Gmail/Vertex AI)
+- L'admin della piattaforma deve aver configurato OAuth globale
+
+📝 PASSAGGI ESATTI:
+
+STEP 1: Vai alla pagina Calendar
+   → Vai su /consultant/calendar-settings
+
+STEP 2: Connetti Google Calendar
+   → Clicca "Connetti Google Calendar"
+   → Si apre una finestra Google
+   → Seleziona il tuo account
+   → Clicca "Consenti" per dare accesso
+
+STEP 3: Seleziona il calendario
+   → Dopo la connessione, scegli quale calendario usare
+   → Di solito "Calendario principale" o "Primary"
+   → Salva
+
+💡 RISULTATO: Gli appuntamenti che crei nella piattaforma
+   appariranno automaticamente nel tuo Google Calendar!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🟡 4. VIDEO MEETING (TURN) - OPZIONALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Dove configurare: Impostazioni → API Keys → tab "Video Meeting"
+🔗 URL piattaforma: /consultant/api-keys-unified?tab=video-meeting
+
+⚠️ QUANDO TI SERVE: Solo se fai videochiamate con clienti che hanno
+   firewall aziendali restrittivi (banche, uffici pubblici, ecc.)
+
+🛒 COSA TI SERVE PRIMA:
+- Registrazione su Metered.ca (gratuita)
+
+📝 PASSAGGI ESATTI:
+
+STEP 1: Registrati su Metered.ca
+   → Vai su: https://www.metered.ca
+   → Clicca "Sign Up" o "Get Started"
+   → Registrati con email e password
+
+STEP 2: Crea un'applicazione TURN
+   → Dalla dashboard, vai su "TURN Servers"
+   → Clicca "Create New App" o "Add Application"
+   → Nome: "Videochiamate Piattaforma"
+   → Clicca "Create"
+
+STEP 3: Ottieni l'API Key
+   → Nella tua app, cerca "API Key" o "Secret Key"
+   → Copia la chiave (stringa lunga tipo: "abc123xyz789...")
+
+STEP 4: Inserisci nella piattaforma
+   → Vai su /consultant/api-keys-unified?tab=video-meeting
+   → API Key: incolla la chiave copiata
+   → Salva e testa
+
+💡 COSTO: Metered.ca offre un piano gratuito con 
+   50GB di traffico/mese - sufficiente per ~100 ore di video.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🟡 5. WHATSAPP AI (Credenziali Separate) - OPZIONALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Dove configurare: Impostazioni → API Keys → tab "WhatsApp"
+🔗 URL piattaforma: /consultant/api-keys-unified?tab=whatsapp
+
+⚠️ QUANDO TI SERVE: Se vuoi che gli agenti WhatsApp usino 
+   un budget AI separato dal tuo principale.
+
+🛒 COSA TI SERVE PRIMA:
+- Un SECONDO progetto Google Cloud (per separare i costi)
+- Oppure usa le stesse credenziali di Vertex AI
+
+📝 PASSAGGI ESATTI:
+
+OPZIONE A - Usa le stesse credenziali di Vertex AI:
+   → Copia gli stessi dati che hai usato per Vertex AI
+   → Project ID, Location e JSON identici
+   → Vantaggio: più semplice
+   → Svantaggio: costi mescolati insieme
+
+OPZIONE B - Crea un progetto separato:
+   → Segui gli stessi passaggi di Vertex AI
+   → Ma crea un NUOVO progetto (es: "WhatsApp AI")
+   → Così hai budget e fatturazione separati
+
+STEP FINALE: Inserisci nella piattaforma
+   → Vai su /consultant/api-keys-unified?tab=whatsapp
+   → Inserisci Project ID, Location e JSON
+   → Salva e testa
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🟡 6. IMPORT LEAD ESTERNI - OPZIONALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Dove configurare: Impostazioni → API Esterne
+🔗 URL piattaforma: /consultant/api-settings
+
+⚠️ QUANDO TI SERVE: Se hai lead che arrivano da CRM esterni
+   (HubSpot, Salesforce, ecc.) e vuoi importarli automaticamente.
+
+🛒 COSA TI SERVE PRIMA:
+- API Key del tuo CRM esterno
+- URL dell'endpoint API del CRM
+
+📝 PASSAGGI ESATTI:
+
+STEP 1: Ottieni le credenziali dal tuo CRM
+   → Ogni CRM è diverso, cerca "API Settings" o "Integrations"
+   → Copia l'API Key
+   → Copia l'URL dell'endpoint (es: https://api.hubspot.com/v3/contacts)
+
+STEP 2: Inserisci nella piattaforma
+   → Vai su /consultant/api-settings
+   → Nome configurazione: "Import da HubSpot" (o il nome del tuo CRM)
+   → Base URL: l'endpoint del CRM
+   → API Key: la chiave che hai copiato
+   → Salva
+
+💡 ALTERNATIVA: Puoi sempre importare lead manualmente
+   caricando un file CSV dalla sezione "Gestione Lead".
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🟡 7. KNOWLEDGE BASE - OPZIONALE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Dove configurare: AI → Knowledge Base
+🔗 URL piattaforma: /consultant/knowledge-documents
+
+⚠️ QUANDO TI SERVE: Se vuoi che l'AI risponda usando 
+   informazioni specifiche del tuo business.
+
+🛒 COSA TI SERVE PRIMA:
+- Documenti in formato PDF, Word, Excel o TXT
+- Vertex AI già configurato (obbligatorio)
+
+📝 PASSAGGI ESATTI:
+
+STEP 1: Prepara i documenti
+   → Raccogli: FAQ, manuali, listini prezzi, procedure
+   → Formati accettati: .pdf, .docx, .xlsx, .txt
+
+STEP 2: Carica i documenti
+   → Vai su /consultant/knowledge-documents
+   → Clicca "Carica Documento"
+   → Seleziona il file dal computer
+   → Aggiungi un titolo descrittivo
+   → (Opzionale) Aggiungi tag per organizzare
+   → Clicca "Carica"
+
+STEP 3: L'AI li usa automaticamente
+   → Dopo il caricamento, l'AI legge il contenuto
+   → Quando rispondi ai clienti, usa queste informazioni
+   → Puoi vedere quali documenti sono stati consultati
+
+💡 CONSIGLIO: Inizia con 2-3 documenti chiave (FAQ, servizi offerti).
+   Poi aggiungi altri man mano che servono.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 📝 ESEMPI DI RISPOSTE CORRETTE (Con il tono giusto)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
