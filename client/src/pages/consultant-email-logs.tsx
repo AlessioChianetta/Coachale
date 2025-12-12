@@ -25,8 +25,11 @@ import {
   Loader2,
   MailOpen,
   MailX,
-  TestTube
+  TestTube,
+  Sparkles,
+  History
 } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -196,6 +199,14 @@ export default function ConsultantEmailLogsPage() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 p-6 overflow-y-auto">
+          {/* Navigation Tabs */}
+          <NavigationTabs
+            tabs={[
+              { label: "Configurazione", href: "/consultant/ai-config", icon: Sparkles },
+              { label: "Log Email", href: "/consultant/email-logs", icon: History },
+            ]}
+          />
+
           {logsLoading ? (
             <div className="flex items-center justify-center h-64">
               <Card className="p-8 shadow-2xl bg-white/80 backdrop-blur-sm border-0">

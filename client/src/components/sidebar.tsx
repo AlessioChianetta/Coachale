@@ -106,8 +106,6 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "Clienti", href: "/consultant/clients", icon: Users, badge: "12", color: "text-purple-500" },
       { name: "Calendario", href: "/consultant/appointments", icon: Calendar, color: "text-orange-500" },
       { name: "Task", href: "/consultant/tasks", icon: ListTodo, color: "text-pink-500" },
-      { name: "Obiettivi", href: "/consultant/client-state", icon: Target, color: "text-green-500" },
-      { name: "Feedback", href: "/consultant/client-daily", icon: CheckSquare, color: "text-rose-500" },
     ]
   },
   {
@@ -115,11 +113,8 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Megaphone,
     defaultExpanded: true,
     items: [
-      { name: "Email", href: "/consultant/email-logs", icon: Mail, color: "text-sky-500" },
       { name: "WhatsApp", href: "/consultant/whatsapp-conversations", icon: MessageSquare, color: "text-green-500" },
-      { name: "Campagne", href: "/consultant/campaigns", icon: Megaphone, color: "text-amber-500" },
       { name: "Lead", href: "/consultant/proactive-leads", icon: UserPlus, color: "text-emerald-500" },
-      { name: "AI Agents", href: "/consultant/whatsapp-agents-chat", icon: Bot, color: "text-cyan-500", badge: "NEW" },
       { name: "Template", href: "/consultant/whatsapp-templates", icon: FileText, color: "text-blue-500" },
     ]
   },
@@ -152,7 +147,6 @@ const consultantCategories: SidebarCategoryExtended[] = [
       { name: "API Keys", href: "/consultant/api-keys-unified", icon: Key, color: "text-purple-500" },  
       { name: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings, color: "text-gray-500" },
       { name: "Email Journey", href: "/consultant/ai-config", icon: Sparkles, color: "text-fuchsia-500" },
-      { name: "Crea Template", href: "/consultant/whatsapp/custom-templates/list", icon: PenSquare, color: "text-purple-500" },
     ]
   },
   {

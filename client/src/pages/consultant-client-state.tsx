@@ -17,6 +17,7 @@ import {
   Search,
   Activity
 } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import ClientStateDashboard from "@/components/client-state-dashboard";
@@ -127,6 +128,15 @@ export default function ConsultantClientStatePage() {
         <main className={`flex-1 transition-all duration-300 ${isMobile ? 'ml-0' : sidebarOpen ? 'ml-64' : 'ml-0'}`}>
           <div className="container mx-auto px-4 py-8 max-w-7xl">
             
+            {/* Navigation Tabs */}
+            <NavigationTabs
+              tabs={[
+                { label: "Clienti", href: "/consultant/clients", icon: Users },
+                { label: "Stato Cliente", href: "/consultant/client-state", icon: Target },
+                { label: "Feedback", href: "/consultant/client-daily", icon: CheckCircle },
+              ]}
+            />
+
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 rounded-3xl p-8 text-white shadow-2xl mb-8">
               <div className="flex items-center gap-4 mb-4">

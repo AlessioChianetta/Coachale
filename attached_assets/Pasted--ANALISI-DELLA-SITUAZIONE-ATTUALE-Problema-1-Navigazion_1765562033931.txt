@@ -1,0 +1,141 @@
+📊 ANALISI DELLA SITUAZIONE ATTUALE
+Problema 1: Navigazione Disconnessa
+Attualmente le pagine sono "isole separate" - non c'è modo di navigare facilmente tra sezioni correlate.
+
+Esempio visivo del problema:
+
+┌─────────────────────────────────────────┐
+│  /consultant/clients                     │
+│  ┌─────────────────────────────────────┐│
+│  │  Lista Clienti                      ││
+│  │  [Nessun link a Stato/Feedback]     ││ ← PROBLEMA
+│  └─────────────────────────────────────┘│
+└─────────────────────────────────────────┘
+
+Problema 2: AI Assistant Non Iper-Contestuale
+Il file use-consultant-page-context.tsx riconosce alcune pagine, ma:
+
+/consultant/client-state e /consultant/client-daily vengono trattate genericamente come "client_specific"
+Mancano contesti specifici per proactive-leads, whatsapp-templates, ecc.
+I suggerimenti (helpPoints) sono troppo generici
+Problema 3: Guide Esistenti Statiche
+Ho trovato 5 guide esistenti: guide-clients.tsx, guide-email.tsx, guide-whatsapp.tsx, guide-university.tsx, guide-calendar.tsx
+
+Queste guide sono pagine statiche, non contestuali
+Non si aggiornano in base alle nuove sezioni
+🎯 PIANO DETTAGLIATO DI SOLUZIONE
+FASE 1: Aggiunta Navigazione Tab/Pulsanti
+1.1 Pagina /consultant/clients → Link a Stato e Feedback
+
+PRIMA:                              DOPO:
+┌──────────────────────┐           ┌──────────────────────────────────────┐
+│ 👥 Clienti           │           │ 👥 Clienti                           │
+│                      │    →      │ ┌──────────────────────────────────┐ │
+│ [Lista clienti...]   │           │ │ [Clienti] [Stato] [Feedback]    │ │ ← TAB BAR
+│                      │           │ └──────────────────────────────────┘ │
+└──────────────────────┘           │ [Lista clienti...]                   │
+                                   └──────────────────────────────────────┘
+
+1.2 Pagina /consultant/ai-config → Link a Email Logs
+
+DOPO:
+┌─────────────────────────────────────────────────┐
+│ ✨ Email Journey AI                              │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ [Configurazione] [📧 Log Email]             │ │ ← TAB aggiunta
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+
+1.3 Pagina /consultant/proactive-leads → Link a Campagne
+
+DOPO:
+┌─────────────────────────────────────────────────┐
+│ 🎯 Lead Proattivi                               │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ [Lead] [📣 Campagne]                        │ │ ← TAB aggiunta
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+
+1.4 Pagina /consultant/whatsapp-templates → Link a Template Personalizzati
+
+DOPO:
+┌─────────────────────────────────────────────────┐
+│ 📝 Template WhatsApp                            │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ [Template] [✏️ Personalizzati]              │ │ ← TAB aggiunta
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+
+1.5 Pagina /consultant/whatsapp → Link a Chat Agenti
+
+DOPO:
+┌─────────────────────────────────────────────────┐
+│ 💬 Gestione WhatsApp                            │
+│ ┌─────────────────────────────────────────────┐ │
+│ │ [Setup] [🤖 Chat Agenti]                    │ │ ← TAB aggiunta
+│ └─────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+
+FASE 2: Aggiornamento Sistema AI Contestuale
+2.1 Espandere ConsultantPageType per riconoscere ogni pagina
+
+// PRIMA (generico):
+"client_specific"  // tratta tutte le pagine client allo stesso modo
+// DOPO (specifico):
+"client_state"          // /consultant/client-state
+"client_daily"          // /consultant/client-daily  
+"client_roadmap"        // /consultant/client-roadmap
+"proactive_leads"       // /consultant/proactive-leads
+"whatsapp_agents_chat"  // /consultant/whatsapp-agents-chat
+
+2.2 Creare helpPoints specifici per ogni pagina
+
+Esempio per /consultant/client-state:
+
+case "client_state":
+  return [
+    "Definire lo stato attuale del cliente",
+    "Impostare lo stato ideale desiderato", 
+    "Identificare ostacoli e blocchi",
+    "Generare analisi AI dello stato",
+    "Tracciare progressi nel tempo"
+  ];
+
+Esempio per /consultant/client-daily:
+
+case "client_daily":
+  return [
+    "Visualizzare riflessioni giornaliere",
+    "Monitorare completion rate task",
+    "Assegnare nuovi task",
+    "Analizzare pattern di engagement",
+    "Generare report feedback"
+  ];
+
+FASE 3: Rielaborazione Guide AI
+3.1 Aggiornare file guide esistenti
+
+guide-clients.tsx → Aggiungere sezioni su Stato e Feedback
+guide-email.tsx → Aggiungere sezione Log Email
+guide-whatsapp.tsx → Aggiungere sezioni Chat Agenti e Template Personalizzati
+3.2 Creare nuove guide mancanti
+
+guide-leads.tsx → Guida completa Lead + Campagne
+guide-ai-config.tsx → Guida Email Journey + Log
+FASE 4: Testing e Validazione
+4.1 Verificare navigazione tab funzionante
+4.2 Testare contesto AI su ogni pagina
+4.3 Validare che l'AI risponda contestualmente
+
+📋 RIEPILOGO MODIFICHE FILE
+File	Azione
+consultant-clients.tsx	+ Tab bar navigazione
+consultant-ai-config.tsx	+ Tab Email Logs
+proactive-leads.tsx	+ Tab Campagne
+consultant-whatsapp-templates.tsx	+ Tab Template Personalizzati
+consultant-whatsapp.tsx	+ Tab Chat Agenti
+use-consultant-page-context.tsx	+ 5 nuovi pageType specifici
+ConsultantContextPanel.tsx	+ helpPoints dettagliati per ogni pagina
+guide-clients.tsx	Aggiornamento contenuti
+guide-whatsapp.tsx	Aggiornamento contenuti
+guide-email.tsx	Aggiornamento contenuti

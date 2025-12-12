@@ -54,7 +54,9 @@ import {
   AlertTriangle,
   Filter,
   ExternalLink,
+  PenSquare,
 } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 
 interface TemplateVersion {
   id: string;
@@ -374,6 +376,15 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
         />
         <div className="flex-1 overflow-y-auto">
           <div className="container mx-auto p-6 max-w-7xl">
+          {/* Navigation Tabs */}
+          <NavigationTabs
+            tabs={[
+              { label: "Template Twilio", href: "/consultant/whatsapp-templates", icon: FileText },
+              { label: "Template Personalizzati", href: "/consultant/whatsapp/custom-templates/list", icon: PenSquare },
+            ]}
+            className="mb-6"
+          />
+
           {/* Modern Header with Gradient */}
           <div className="relative mb-8 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 p-8 text-white shadow-2xl">
             <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,black)]" />

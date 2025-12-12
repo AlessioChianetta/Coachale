@@ -29,8 +29,10 @@ import {
   Target,
   Zap,
   Trash2,
-  Key
+  Key,
+  CheckSquare
 } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -246,6 +248,15 @@ export default function ConsultantClientsPage() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
+          {/* Navigation Tabs */}
+          <NavigationTabs
+            tabs={[
+              { label: "Clienti", href: "/consultant/clients", icon: Users },
+              { label: "Stato Cliente", href: "/consultant/client-state", icon: Target },
+              { label: "Feedback", href: "/consultant/client-daily", icon: CheckSquare },
+            ]}
+          />
+
           {/* Premium Header */}
           <div className="mb-4 sm:mb-6 md:mb-8">
             <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl">

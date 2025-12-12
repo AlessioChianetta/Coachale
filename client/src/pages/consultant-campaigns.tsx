@@ -12,7 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, UserPlus, Megaphone } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { CampaignsList } from "@/components/campaigns/CampaignsList";
 import { CampaignForm } from "@/components/campaigns/CampaignForm";
 import CampaignDetailAnalytics from "@/components/campaigns/CampaignDetailAnalytics";
@@ -89,6 +90,14 @@ export default function ConsultantCampaignsPage() {
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
           <div className="max-w-7xl mx-auto">
+            {/* Navigation Tabs */}
+            <NavigationTabs
+              tabs={[
+                { label: "Lead Proattivi", href: "/consultant/proactive-leads", icon: UserPlus },
+                { label: "Campagne", href: "/consultant/campaigns", icon: Megaphone },
+              ]}
+            />
+
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white">

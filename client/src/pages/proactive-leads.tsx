@@ -60,6 +60,7 @@ import {
   Play,
   Megaphone,
 } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Papa from "papaparse";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -925,6 +926,14 @@ export default function ProactiveLeadsPage() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto space-y-6 px-4 py-8 sm:px-6 lg:px-8">
+            {/* Navigation Tabs */}
+            <NavigationTabs
+              tabs={[
+                { label: "Lead Proattivi", href: "/consultant/proactive-leads", icon: UserPlus },
+                { label: "Campagne", href: "/consultant/campaigns", icon: Megaphone },
+              ]}
+            />
+
             {/* Header */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>

@@ -36,8 +36,10 @@ import {
   CheckCircle,
   Pause,
   Lock,
-  HelpCircle
+  HelpCircle,
+  PenSquare
 } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -524,6 +526,14 @@ export default function ConsultantWhatsAppTemplatesPage() {
         <div className="flex-1 overflow-y-auto">
           <div className="container mx-auto p-6 max-w-7xl">
           <div className="space-y-8">
+            {/* Navigation Tabs */}
+            <NavigationTabs
+              tabs={[
+                { label: "Template Twilio", href: "/consultant/whatsapp-templates", icon: FileText },
+                { label: "Template Personalizzati", href: "/consultant/whatsapp/custom-templates/list", icon: PenSquare },
+              ]}
+            />
+
             {/* Hero Header with Gradient */}
             <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white p-8 md:p-12 rounded-2xl shadow-2xl animate-in fade-in-50 duration-500">
               <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-6">

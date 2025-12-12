@@ -18,14 +18,19 @@ export function ConsultantContextPanel({ isOpen, onClose, pageContext, onOpenMai
       case "whatsapp_config":
       case "whatsapp_conversations":
       case "whatsapp_templates":
+      case "whatsapp_agents_chat":
         return MessageSquare;
       case "calendar_settings":
       case "calendar":
         return Calendar;
       case "clients_management":
       case "client_specific":
+      case "client_state":
+      case "client_daily":
+      case "client_roadmap":
         return Users;
       case "campaigns":
+      case "proactive_leads":
       case "email_journey":
       case "email_logs":
         return BarChart;
@@ -46,16 +51,26 @@ export function ConsultantContextPanel({ isOpen, onClose, pageContext, onOpenMai
         return "Conversazioni WhatsApp";
       case "whatsapp_templates":
         return "Template WhatsApp";
+      case "whatsapp_agents_chat":
+        return "Chat Agenti WhatsApp";
       case "calendar_settings":
         return "Impostazioni Calendario";
       case "calendar":
         return "Calendario";
       case "clients_management":
         return "Gestione Clienti";
+      case "client_state":
+        return "Stato Clienti";
+      case "client_daily":
+        return "Task & Feedback";
+      case "client_roadmap":
+        return "Roadmap Cliente";
       case "client_specific":
         return "Cliente Specifico";
       case "campaigns":
         return "Campagne Marketing";
+      case "proactive_leads":
+        return "Lead Proattivi";
       case "email_journey":
         return "Email Journey";
       case "email_logs":
@@ -78,6 +93,7 @@ export function ConsultantContextPanel({ isOpen, onClose, pageContext, onOpenMai
       case "whatsapp_config":
       case "whatsapp_conversations":
       case "whatsapp_templates":
+      case "whatsapp_agents_chat":
         return "📱";
       case "calendar_settings":
       case "calendar":
@@ -85,8 +101,16 @@ export function ConsultantContextPanel({ isOpen, onClose, pageContext, onOpenMai
       case "clients_management":
       case "client_specific":
         return "👥";
+      case "client_state":
+        return "🎯";
+      case "client_daily":
+        return "✅";
+      case "client_roadmap":
+        return "🗺️";
       case "campaigns":
         return "📊";
+      case "proactive_leads":
+        return "🎯";
       case "email_journey":
       case "email_logs":
         return "📧";
@@ -106,9 +130,23 @@ export function ConsultantContextPanel({ isOpen, onClose, pageContext, onOpenMai
       case "whatsapp_config":
         return [
           "Configurare le credenziali Twilio",
-          "Creare e gestire template",
-          "Visualizzare conversazioni attive",
+          "Creare e gestire agenti personalizzati",
+          "Impostare orari di lavoro",
           "Best practices WhatsApp Business"
+        ];
+      case "whatsapp_agents_chat":
+        return [
+          "Visualizzare conversazioni attive",
+          "Monitorare performance agenti",
+          "Rispondere manualmente se necessario",
+          "Analizzare pattern di conversazione"
+        ];
+      case "whatsapp_templates":
+        return [
+          "Creare template Twilio approvati",
+          "Personalizzare messaggi automatici",
+          "Gestire template personalizzati",
+          "Ottimizzare tassi di risposta"
         ];
       case "calendar_settings":
         return [
@@ -124,12 +162,57 @@ export function ConsultantContextPanel({ isOpen, onClose, pageContext, onOpenMai
           "Analizzare progressi",
           "Gestire assegnazioni"
         ];
+      case "client_state":
+        return [
+          "Definire stato attuale del cliente",
+          "Impostare stato ideale desiderato",
+          "Identificare ostacoli e blocchi",
+          "Generare analisi AI dello stato",
+          "Tracciare progressi nel tempo"
+        ];
+      case "client_daily":
+        return [
+          "Visualizzare riflessioni giornaliere",
+          "Monitorare completion rate task",
+          "Assegnare nuovi task",
+          "Analizzare pattern di engagement",
+          "Generare report feedback"
+        ];
+      case "client_roadmap":
+        return [
+          "Visualizzare percorso cliente",
+          "Pianificare milestone",
+          "Monitorare progressi",
+          "Adattare il percorso"
+        ];
       case "campaigns":
         return [
           "Creare nuove campagne",
           "Analizzare performance",
           "Monitorare conversion rate",
           "Ottimizzare strategia"
+        ];
+      case "proactive_leads":
+        return [
+          "Gestire lead proattivi",
+          "Configurare follow-up automatici",
+          "Importare lead da CSV",
+          "Monitorare stato contatti",
+          "Assegnare lead a campagne"
+        ];
+      case "email_journey":
+        return [
+          "Configurare journey email automatico",
+          "Personalizzare template giornalieri",
+          "Monitorare invii e aperture",
+          "Gestire azioni suggerite AI"
+        ];
+      case "email_logs":
+        return [
+          "Visualizzare storico invii",
+          "Analizzare email generate",
+          "Tracciare delivery status",
+          "Debug problemi invio"
         ];
       case "api_settings":
         return [

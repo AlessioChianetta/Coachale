@@ -14,7 +14,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { WhatsAppMessageBubble } from "@/components/whatsapp/WhatsAppMessageBubble";
 import { AgentShareManager } from "@/components/whatsapp/agent-share-manager";
-import { Loader2, MessageCircle, Plus, Send, Bot, ArrowLeft, Sparkles, Menu, Camera, Mic, X, Share2 } from "lucide-react";
+import { Loader2, MessageCircle, Plus, Send, Bot, ArrowLeft, Sparkles, Menu, Camera, Mic, X, Share2, Settings } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { formatDistanceToNow } from "date-fns";
 import it from "date-fns/locale/it";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -650,7 +651,15 @@ export default function ConsultantWhatsAppAgentsChat() {
 
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-
+      {/* Navigation Tabs - Fixed at top */}
+      <div className="p-4 pb-0">
+        <NavigationTabs
+          tabs={[
+            { label: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings },
+            { label: "Chat Agenti", href: "/consultant/whatsapp-agents-chat", icon: MessageCircle },
+          ]}
+        />
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}

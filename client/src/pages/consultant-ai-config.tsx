@@ -49,8 +49,10 @@ import {
   HelpCircle,
   Info,
   Megaphone,
-  ChevronsUpDown
+  ChevronsUpDown,
+  History
 } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -1646,6 +1648,14 @@ Non limitarti a stato attuale/ideale. Attingi da:
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 p-6 overflow-y-auto">
+          {/* Navigation Tabs */}
+          <NavigationTabs
+            tabs={[
+              { label: "Configurazione", href: "/consultant/ai-config", icon: Sparkles },
+              { label: "Log Email", href: "/consultant/email-logs", icon: History },
+            ]}
+          />
+
           <div className="mb-8">
             <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-3xl p-8 text-white shadow-2xl">
               <div className="flex items-center justify-between">

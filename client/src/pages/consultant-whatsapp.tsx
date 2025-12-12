@@ -71,8 +71,10 @@ import {
   Calendar,
   BookOpen,
   Database,
-  ArrowRight
+  ArrowRight,
+  Settings
 } from "lucide-react";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
 import { it } from "date-fns/locale";
 import WhatsAppLayout from "@/components/whatsapp/WhatsAppLayout";
@@ -618,6 +620,13 @@ export default function ConsultantWhatsAppPage() {
       }
     >
       <div className="max-w-7xl mx-auto space-y-8">
+        {/* Navigation Tabs */}
+        <NavigationTabs
+          tabs={[
+            { label: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings },
+            { label: "Chat Agenti", href: "/consultant/whatsapp-agents-chat", icon: MessageCircle },
+          ]}
+        />
         <Tabs defaultValue={initialTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 gap-2">
             <TabsTrigger value="custom" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">

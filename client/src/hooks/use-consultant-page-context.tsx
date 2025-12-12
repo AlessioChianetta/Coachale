@@ -7,11 +7,16 @@ export type ConsultantPageType =
   | "whatsapp_config"
   | "whatsapp_conversations"
   | "whatsapp_templates"
+  | "whatsapp_agents_chat"
   | "calendar_settings"
   | "calendar"
   | "clients_management"
+  | "client_state"
+  | "client_daily"
+  | "client_roadmap"
   | "client_specific"
   | "campaigns"
+  | "proactive_leads"
   | "email_journey"
   | "email_logs"
   | "smtp_settings"
@@ -219,7 +224,38 @@ export function useConsultantPageContext(options: UseConsultantPageContextOption
         };
       }
     }
-    // Client Specific Pages
+    // Client State Page
+    else if (location === '/consultant/client-state') {
+      newContext.pageType = "client_state";
+      if (clientsStats) {
+        newContext.additionalContext = {
+          totalClients: clientsStats.totalClients || 0,
+          activeClients: clientsStats.activeClients || 0,
+        };
+      }
+    }
+    // Client Daily/Feedback Page
+    else if (location === '/consultant/client-daily') {
+      newContext.pageType = "client_daily";
+      if (clientsStats) {
+        newContext.additionalContext = {
+          totalClients: clientsStats.totalClients || 0,
+          activeClients: clientsStats.activeClients || 0,
+        };
+      }
+    }
+    // Client Roadmap Page
+    else if (location === '/consultant/client-roadmap') {
+      newContext.pageType = "client_roadmap";
+      if (options.clientId) {
+        newContext.resourceId = options.clientId;
+        newContext.additionalContext = {
+          clientId: options.clientId,
+          clientName: options.clientName,
+        };
+      }
+    }
+    // Client Specific Pages (fallback)
     else if (location.includes('/consultant/client-')) {
       newContext.pageType = "client_specific";
       if (options.clientId) {
@@ -240,6 +276,25 @@ export function useConsultantPageContext(options: UseConsultantPageContextOption
       }
       if (options.campaignId) {
         newContext.resourceId = options.campaignId;
+      }
+    }
+    // Proactive Leads
+    else if (location === '/consultant/proactive-leads') {
+      newContext.pageType = "proactive_leads";
+      if (campaignsStats) {
+        newContext.additionalContext = {
+          activeCampaigns: campaignsStats.activeCampaigns || 0,
+        };
+      }
+    }
+    // WhatsApp Agents Chat
+    else if (location === '/consultant/whatsapp-agents-chat') {
+      newContext.pageType = "whatsapp_agents_chat";
+      if (whatsappStats) {
+        newContext.additionalContext = {
+          activeConversations: whatsappStats.activeConversations || 0,
+          unreadMessages: whatsappStats.unreadMessages || 0,
+        };
       }
     }
     // Email Journey

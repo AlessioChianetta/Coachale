@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Users, Target, CheckSquare } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import ClientTasksView from "@/components/consultant-client-tasks";
 import ReflectionHistory from "@/components/consultant-reflection-history";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
+import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -78,6 +80,15 @@ export default function ConsultantClientDaily() {
         <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <main className="flex-1 container mx-auto px-4 py-6 max-w-7xl">
+          {/* Navigation Tabs */}
+          <NavigationTabs
+            tabs={[
+              { label: "Clienti", href: "/consultant/clients", icon: Users },
+              { label: "Stato Cliente", href: "/consultant/client-state", icon: Target },
+              { label: "Feedback", href: "/consultant/client-daily", icon: CheckSquare },
+            ]}
+          />
+
           {/* Enhanced Hero Section */}
           <div className="mb-8 relative overflow-hidden rounded-2xl">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 opacity-10"></div>
