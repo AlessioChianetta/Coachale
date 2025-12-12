@@ -52,7 +52,9 @@ export default function Login() {
       // Small delay before redirect to ensure login flag is processed
       setTimeout(() => {
         // Redirect based on user role
-        if (data.user.role === "consultant") {
+        if (data.user.role === "super_admin") {
+          setLocation("/admin");
+        } else if (data.user.role === "consultant") {
           setLocation("/consultant");
         } else {
           setLocation("/client");

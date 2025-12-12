@@ -10,7 +10,9 @@ export default function RoleBasedRedirect() {
     const user = getAuthUser();
     
     if (user) {
-      if (user.role === "consultant") {
+      if (user.role === "super_admin") {
+        setLocation("/admin");
+      } else if (user.role === "consultant") {
         setLocation("/consultant");
       } else if (user.role === "client") {
         setLocation("/client");
