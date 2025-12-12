@@ -15,8 +15,14 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Schema**: Supports users, exercises, assignments, submissions, consultations, goals, and analytics.
 ## Authentication & Authorization
 - **JWT tokens** for client-side authentication.
-- **Role-based access control** (consultant/client) via middleware.
+- **Role-based access control** (consultant/client/super_admin) via middleware.
 - **Secure password handling** using bcrypt.
+- **Super Admin System**: Centralized management of all consultants and clients.
+  - Super Admin credentials: `alessioadmin@gmail.com` / `aaa1aaa2`
+  - Routes: `/admin`, `/admin/hierarchy`, `/admin/users`, `/admin/settings`
+  - APIs: `/api/admin/*` (stats, hierarchy, users, settings, audit-log)
+  - Global Google Drive OAuth configuration stored in `systemSettings` table
+  - All admin actions logged in `adminAuditLog` table
 ## UI/UX Decisions
 - Uses `shadcn/ui` and `Tailwind CSS` for modern, accessible, and responsive design.
 - Interactive guided tours via `Driver.js` for onboarding.
