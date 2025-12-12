@@ -160,7 +160,7 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
         },
       });
       
-      const model = vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
       const result = await model.generateContent('Rispondi solo "OK" se funziona.');
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -323,7 +323,7 @@ router.post('/test/video-meeting', authenticateToken, requireRole('consultant'),
       where: eq(consultantTurnConfig.consultantId, consultantId),
     });
     
-    if (!turnConfig || !turnConfig.usernameEncrypted) {
+    if (!turnConfig || (!turnConfig.apiKeyEncrypted && !turnConfig.usernameEncrypted)) {
       return res.status(400).json({
         success: false,
         message: 'Credenziali TURN non configurate. Vai su Impostazioni Video per configurarle.',
@@ -341,7 +341,12 @@ router.post('/test/video-meeting', authenticateToken, requireRole('consultant'),
         throw new Error('Salt di crittografia non trovato per il consultant');
       }
       
-      const decryptedApiKey = decryptForConsultant(turnConfig.usernameEncrypted, consultant.encryptionSalt);
+      // Use apiKeyEncrypted if available, otherwise try usernameEncrypted for backwards compatibility
+      const encryptedApiKey = turnConfig.apiKeyEncrypted || turnConfig.usernameEncrypted;
+      if (!encryptedApiKey) {
+        throw new Error('API Key Metered non trovata nella configurazione');
+      }
+      const decryptedApiKey = decryptForConsultant(encryptedApiKey, consultant.encryptionSalt);
       
       const response = await fetch(`https://global.relay.metered.ca/api/v1/turn/credentials?apiKey=${decryptedApiKey}`);
       
@@ -414,13 +419,13 @@ router.post('/test/lead-import', authenticateToken, requireRole('consultant'), a
     }
     
     try {
-      if (!apiConfig.apiKey || !apiConfig.apiEndpoint) {
-        throw new Error('Configurazione API incompleta: manca API key o endpoint');
+      if (!apiConfig.apiKey || !apiConfig.baseUrl) {
+        throw new Error('Configurazione API incompleta: manca API key o base URL');
       }
       
       const decryptedApiKey = storage.decryptData(apiConfig.apiKey);
       
-      const response = await fetch(apiConfig.apiEndpoint, {
+      const response = await fetch(apiConfig.baseUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${decryptedApiKey}`,
@@ -504,7 +509,7 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
         },
       });
       
-      const model = vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
       const result = await model.generateContent('Rispondi solo "OK" se funziona.');
       const response = result.response;
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';

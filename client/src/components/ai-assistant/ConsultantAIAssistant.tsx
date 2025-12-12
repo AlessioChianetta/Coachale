@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FloatingButton } from "./FloatingButton";
 import { ChatPanel } from "./ChatPanel";
 import { ContextButton } from "./ContextButton";
 import { ConsultantContextPanel } from "./ConsultantContextPanel";
 import { ConsultantPageContext, useConsultantPageContext } from "@/hooks/use-consultant-page-context";
+import { OpenAndAskPayload } from "@/hooks/use-document-focus";
 
 interface ConsultantAIAssistantProps {
   clientId?: string;
@@ -17,6 +18,20 @@ export function ConsultantAIAssistant(props: ConsultantAIAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isContextPanelOpen, setIsContextPanelOpen] = useState(false);
   const [openedFromContext, setOpenedFromContext] = useState(false);
+  const [autoMessage, setAutoMessage] = useState<string | null>(null);
+
+  // Listen for 'ai:open-and-ask' events from setup wizard and other pages
+  useEffect(() => {
+    const handleOpenAndAsk = (event: CustomEvent<OpenAndAskPayload>) => {
+      setAutoMessage(event.detail.autoMessage || null);
+      setIsOpen(true);
+    };
+
+    window.addEventListener('ai:open-and-ask', handleOpenAndAsk as EventListener);
+    return () => {
+      window.removeEventListener('ai:open-and-ask', handleOpenAndAsk as EventListener);
+    };
+  }, []);
 
   // Use consultant-specific hook
   const pageContext = useConsultantPageContext(props);
@@ -34,6 +49,11 @@ export function ConsultantAIAssistant(props: ConsultantAIAssistantProps) {
   const handleCloseMainAI = () => {
     setIsOpen(false);
     setOpenedFromContext(false);
+    setAutoMessage(null);
+  };
+
+  const handleAutoMessageSent = () => {
+    setAutoMessage(null);
   };
 
   const handleContextButtonClick = () => {
@@ -77,6 +97,8 @@ export function ConsultantAIAssistant(props: ConsultantAIAssistantProps) {
         hasPageContext={hasContext}
         openedFromContext={openedFromContext}
         isConsultantMode={true} // NEW: Flag to indicate consultant mode
+        autoMessage={autoMessage}
+        onAutoMessageSent={handleAutoMessageSent}
       />
     </>
   );
