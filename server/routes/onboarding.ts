@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { storage } from '../storage';
 import { db } from '../db';
-import { consultantOnboardingStatus, vertexAiSettings, consultantSmtpSettings, consultantTurnConfig, knowledgeDocuments } from '@shared/schema';
+import { consultantOnboardingStatus, vertexAiSettings, consultantSmtpSettings, consultantTurnConfig, consultantKnowledgeDocuments } from '@shared/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
 
@@ -36,8 +36,8 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     });
     
     const docsResult = await db.select({ count: count() })
-      .from(knowledgeDocuments)
-      .where(eq(knowledgeDocuments.createdBy, consultantId));
+      .from(consultantKnowledgeDocuments)
+      .where(eq(consultantKnowledgeDocuments.consultantId, consultantId));
     const documentsCount = docsResult[0]?.count || 0;
     
     const enrichedStatus = {
