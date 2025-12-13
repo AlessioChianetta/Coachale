@@ -701,9 +701,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getClientsByConsultant(consultantId: string, activeOnly: boolean = false): Promise<User[]> {
-    // Return all clients assigned to this consultant, optionally filtering by active status
+    // Return all users assigned to this consultant (both clients and consultants who are also clients)
+    // A user is considered a "client" of a consultant if they have consultantId set to that consultant
     const conditions = [
-      eq(schema.users.role, 'client'),
       eq(schema.users.consultantId, consultantId)
     ];
     
