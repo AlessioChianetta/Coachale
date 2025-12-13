@@ -396,6 +396,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's profiles for profile switching (Email Condivisa feature)
+  app.get("/api/auth/my-profiles", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const profiles = await storage.getUserRoleProfiles(userId);
+      
+      // For each profile, get consultant name if it's a client profile
+      const profilesWithNames = await Promise.all(profiles.map(async (profile) => {
+        let consultantName = null;
+        if (profile.role === 'client' && profile.consultantId) {
+          const consultant = await storage.getUser(profile.consultantId);
+          if (consultant) {
+            consultantName = `${consultant.firstName} ${consultant.lastName}`;
+          }
+        }
+        return {
+          id: profile.id,
+          role: profile.role,
+          consultantId: profile.consultantId,
+          consultantName,
+          isDefault: profile.isDefault,
+          isActive: profile.isActive,
+        };
+      }));
+
+      res.json({ profiles: profilesWithNames });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get("/api/auth/me", authenticateToken, async (req: AuthRequest, res) => {
     try {
       const user = await storage.getUser(req.user!.id);
@@ -2155,19 +2186,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { firstName, lastName, email, password } = req.body;
 
-      // Validate required fields
-      if (!firstName || !lastName || !email || !password) {
-        return res.status(400).json({ message: "Tutti i campi sono obbligatori" });
+      // Validate required fields for email (always needed)
+      if (!email) {
+        return res.status(400).json({ message: "L'email è obbligatoria" });
+      }
+
+      // Check if user already exists FIRST
+      const existingUser = await storage.getUserByEmail(email);
+      
+      if (existingUser) {
+        // EMAIL CONDIVISA: Check if user already has a client profile for this consultant
+        const existingProfiles = await storage.getUserRoleProfiles(existingUser.id);
+        const hasClientProfileForThisConsultant = existingProfiles.some(
+          p => p.role === 'client' && p.consultantId === req.user!.id
+        );
+
+        if (hasClientProfileForThisConsultant) {
+          return res.status(400).json({ 
+            message: "Questo utente è già un tuo cliente" 
+          });
+        }
+
+        // Add new client profile for existing user
+        await storage.createUserRoleProfile({
+          userId: existingUser.id,
+          role: 'client',
+          consultantId: req.user!.id,
+          isDefault: false,
+          isActive: true,
+        });
+
+        // Initialize email automation and client state tracking for the new profile
+        try {
+          await storage.upsertClientEmailAutomation({
+            consultantId: req.user!.id,
+            clientId: existingUser.id,
+            enabled: false,
+          });
+
+          await storage.upsertClientState({
+            clientId: existingUser.id,
+            consultantId: req.user!.id,
+            currentState: `Nuovo cliente - ${existingUser.firstName} sta iniziando il percorso`,
+            idealState: `Da definire durante la prima consulenza`,
+            internalBenefit: null,
+            externalBenefit: null,
+            mainObstacle: null,
+            pastAttempts: null,
+            currentActions: null,
+            futureVision: null,
+            motivationDrivers: null,
+          });
+        } catch (initError: any) {
+          console.error(`⚠️  [NEW CLIENT PROFILE] Failed to initialize records:`, initError.message);
+        }
+
+        return res.status(201).json({
+          message: "Profilo cliente aggiunto con successo",
+          user: {
+            id: existingUser.id,
+            firstName: existingUser.firstName,
+            lastName: existingUser.lastName,
+            email: existingUser.email,
+            username: existingUser.username,
+            role: "client",
+          },
+          isExistingUser: true,
+        });
+      }
+
+      // For NEW users: validate all required fields
+      if (!firstName || !lastName || !password) {
+        return res.status(400).json({ message: "Nome, cognome e password sono obbligatori" });
       }
 
       if (password.length < 6) {
         return res.status(400).json({ message: "La password deve essere di almeno 6 caratteri" });
-      }
-
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ message: "Un utente con questa email esiste già" });
       }
 
       // Generate username from email
@@ -2185,6 +2279,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: hashedPassword,
         role: "client",
         consultantId: req.user!.id,
+      });
+
+      // Create default client profile for new user
+      await storage.createUserRoleProfile({
+        userId: user.id,
+        role: 'client',
+        consultantId: req.user!.id,
+        isDefault: true,
+        isActive: true,
       });
 
       // Initialize email automation and client state tracking

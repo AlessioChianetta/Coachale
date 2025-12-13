@@ -11,6 +11,8 @@ export interface AuthUser {
   geminiApiKey?: string | null;
   geminiApiKeys?: string[] | null;
   isActive?: boolean;
+  profileId?: string;
+  consultantId?: string | null;
 }
 
 export const getToken = (): string | null => {
