@@ -2038,6 +2038,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create new client (consultant only)
+  app.post("/api/clients", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { firstName, lastName, email, password } = req.body;
+
+      // Validate required fields
+      if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({ message: "Tutti i campi sono obbligatori" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ message: "La password deve essere di almeno 6 caratteri" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Un utente con questa email esiste già" });
+      }
+
+      // Generate username from email
+      const username = email.split('@')[0] + '_' + Date.now().toString().slice(-4);
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create client user
+      const user = await storage.createUser({
+        firstName,
+        lastName,
+        email,
+        username,
+        password: hashedPassword,
+        role: "client",
+        consultantId: req.user!.id,
+      });
+
+      // Initialize email automation and client state tracking
+      try {
+        await storage.upsertClientEmailAutomation({
+          consultantId: req.user!.id,
+          clientId: user.id,
+          enabled: false,
+        });
+
+        await storage.upsertClientState({
+          clientId: user.id,
+          consultantId: req.user!.id,
+          currentState: `Nuovo cliente - ${firstName} sta iniziando il percorso`,
+          idealState: `Da definire durante la prima consulenza`,
+          internalBenefit: null,
+          externalBenefit: null,
+          mainObstacle: null,
+          pastAttempts: null,
+          currentActions: null,
+          futureVision: null,
+          motivationDrivers: null,
+        });
+      } catch (initError: any) {
+        console.error(`⚠️  [NEW CLIENT] Failed to initialize records:`, initError.message);
+      }
+
+      res.status(201).json({
+        message: "Cliente creato con successo",
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          username: user.username,
+          role: user.role,
+        },
+      });
+    } catch (error: any) {
+      console.error("Client creation error:", error);
+      res.status(400).json({ message: error.message || "Errore durante la creazione del cliente" });
+    }
+  });
+
   // Update user (for phone number, etc.)
   app.patch("/api/users/:id", authenticateToken, async (req: AuthRequest, res) => {
     try {

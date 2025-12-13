@@ -1,5 +1,5 @@
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,8 @@ import {
   Zap,
   Trash2,
   Key,
-  CheckSquare
+  CheckSquare,
+  Loader2
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Navbar from "@/components/navbar";
@@ -46,6 +47,14 @@ export default function ConsultantClientsPage() {
   const [editingClient, setEditingClient] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
+  const [isNewClientDialogOpen, setIsNewClientDialogOpen] = useState(false);
+  const [newClientForm, setNewClientForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: ''
+  });
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
   const [editForm, setEditForm] = useState({
     firstName: '',
     lastName: '',
@@ -57,6 +66,60 @@ export default function ConsultantClientsPage() {
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const createClientMutation = useMutation({
+    mutationFn: async (data: typeof newClientForm) => {
+      const response = await fetch('/api/clients', {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Errore nella creazione del cliente');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Cliente creato",
+        description: "Il nuovo cliente è stato creato con successo",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      setIsNewClientDialogOpen(false);
+      setNewClientForm({ firstName: '', lastName: '', email: '', password: '' });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleCreateClient = () => {
+    if (!newClientForm.firstName || !newClientForm.lastName || !newClientForm.email || !newClientForm.password) {
+      toast({
+        title: "Campi obbligatori",
+        description: "Compila tutti i campi per creare il cliente",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (newClientForm.password.length < 6) {
+      toast({
+        title: "Password troppo corta",
+        description: "La password deve essere di almeno 6 caratteri",
+        variant: "destructive",
+      });
+      return;
+    }
+    createClientMutation.mutate(newClientForm);
+  };
 
   // Fetch clients
   const { data: clients = [], error: clientsError, isLoading: clientsLoading } = useQuery({
@@ -383,6 +446,14 @@ export default function ConsultantClientsPage() {
                       <option value="active">Solo attivi</option>
                       <option value="inactive">Solo inattivi</option>
                     </select>
+                    <Button 
+                      onClick={() => setIsNewClientDialogOpen(true)}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                      size="sm"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Nuovo Cliente
+                    </Button>
                     <Button variant="outline" size="sm" className="border-slate-200 hover:bg-slate-50">
                       <Download className="w-4 h-4 mr-2" />
                       Esporta
@@ -579,6 +650,106 @@ export default function ConsultantClientsPage() {
           </Card>
         </div>
       </div>
+
+      {/* New Client Dialog */}
+      <Dialog open={isNewClientDialogOpen} onOpenChange={setIsNewClientDialogOpen}>
+        <DialogContent className="max-w-md bg-white/95 backdrop-blur-sm border-slate-200">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <UserPlus className="h-5 w-5 text-emerald-600" />
+              </div>
+              Nuovo Cliente
+            </DialogTitle>
+            <DialogDescription className="text-slate-600">
+              Crea un nuovo account cliente associato al tuo profilo consulente
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newFirstName" className="text-right text-sm font-medium">
+                Nome *
+              </Label>
+              <Input
+                id="newFirstName"
+                value={newClientForm.firstName}
+                onChange={(e) => setNewClientForm(prev => ({...prev, firstName: e.target.value}))}
+                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                placeholder="Nome"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newLastName" className="text-right text-sm font-medium">
+                Cognome *
+              </Label>
+              <Input
+                id="newLastName"
+                value={newClientForm.lastName}
+                onChange={(e) => setNewClientForm(prev => ({...prev, lastName: e.target.value}))}
+                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                placeholder="Cognome"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newEmail" className="text-right text-sm font-medium">
+                Email *
+              </Label>
+              <Input
+                id="newEmail"
+                type="email"
+                value={newClientForm.email}
+                onChange={(e) => setNewClientForm(prev => ({...prev, email: e.target.value}))}
+                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                placeholder="email@esempio.com"
+              />
+            </div>
+            
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="newPassword" className="text-right text-sm font-medium">
+                Password *
+              </Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newClientForm.password}
+                onChange={(e) => setNewClientForm(prev => ({...prev, password: e.target.value}))}
+                className="col-span-3 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                placeholder="Minimo 6 caratteri"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter className="gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsNewClientDialogOpen(false)}
+              className="border-slate-200 hover:bg-slate-50"
+            >
+              Annulla
+            </Button>
+            <Button 
+              onClick={handleCreateClient}
+              disabled={createClientMutation.isPending}
+              className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
+            >
+              {createClientMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creazione...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Crea Cliente
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Enhanced Edit Client Dialog */}
       <Dialog open={!!editingClient} onOpenChange={() => setEditingClient(null)}>

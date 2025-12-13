@@ -1637,64 +1637,85 @@ export default function ConsultantWhatsAppPage() {
 
               {/* Pannello Destra - Configurazione */}
               <div className="space-y-6">
-                {/* Integrazioni Disponibili */}
+                {/* Tipo Agente */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-purple-600" />
-                      Integrazioni
+                      <Bot className="h-5 w-5 text-purple-600" />
+                      Tipo Agente
                     </CardTitle>
                     <CardDescription>
-                      Seleziona le funzionalità da includere
+                      Seleziona il tipo di agente da creare
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center space-x-2">
                       <Checkbox
-                        id="integration-booking"
-                        checked={selectedIntegrations.includes("booking")}
+                        id="agent-type-inbound"
+                        checked={selectedIntegrations.includes("reactive_lead")}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedIntegrations([...selectedIntegrations, "booking"]);
+                            setSelectedIntegrations([...selectedIntegrations.filter(i => !["reactive_lead", "proactive_setter", "informative_advisor"].includes(i)), "reactive_lead"]);
                           } else {
-                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "booking"));
+                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "reactive_lead"));
                           }
                         }}
                       />
                       <label
-                        htmlFor="integration-booking"
+                        htmlFor="agent-type-inbound"
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
                       >
-                        <Calendar className="h-4 w-4 text-blue-600" />
-                        Presa Appuntamento
+                        <Phone className="h-4 w-4 text-blue-600" />
+                        📞 Inbound (Ricevi lead)
                       </label>
                     </div>
                     
                     <div className="flex items-center space-x-2">
                       <Checkbox
-                        id="integration-consultation"
-                        checked={selectedIntegrations.includes("consultation")}
+                        id="agent-type-outbound"
+                        checked={selectedIntegrations.includes("proactive_setter")}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedIntegrations([...selectedIntegrations, "consultation"]);
+                            setSelectedIntegrations([...selectedIntegrations.filter(i => !["reactive_lead", "proactive_setter", "informative_advisor"].includes(i)), "proactive_setter"]);
                           } else {
-                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "consultation"));
+                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "proactive_setter"));
                           }
                         }}
                       />
                       <label
-                        htmlFor="integration-consultation"
+                        htmlFor="agent-type-outbound"
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
                       >
-                        <BookOpen className="h-4 w-4 text-green-600" />
-                        Supporto Consulenziale
+                        <MessageSquare className="h-4 w-4 text-green-600" />
+                        🎯 Outbound (Contatta lead)
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="agent-type-advisory"
+                        checked={selectedIntegrations.includes("informative_advisor")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedIntegrations([...selectedIntegrations.filter(i => !["reactive_lead", "proactive_setter", "informative_advisor"].includes(i)), "informative_advisor"]);
+                          } else {
+                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "informative_advisor"));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="agent-type-advisory"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                      >
+                        <BookOpen className="h-4 w-4 text-purple-600" />
+                        💬 Consulenziale (Supporto clienti)
                       </label>
                     </div>
 
                     <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 mt-4">
                       <Info className="h-4 w-4 text-blue-600" />
                       <AlertDescription className="text-xs">
-                        Seleziona almeno un'integrazione per generare idee mirate
+                        Seleziona almeno un tipo di agente per generare idee mirate
                       </AlertDescription>
                     </Alert>
                   </CardContent>
