@@ -1,0 +1,151 @@
+Ora ho una visione completa. Ti mostro l'analisi dettagliata con i problemi esatti e le soluzioni.
+
+📊 ANALISI COMPLETA DEI PROBLEMI
+❌ PROBLEMA 1: Solo 3 tipi di agente visibili in AgentBasicSetup.tsx
+📍 Dove: client/src/components/whatsapp/wizard-steps/AgentBasicSetup.tsx (righe 113-183)
+🔴 Stato attuale:
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  {/* SOLO 3 CARD: */}
+  <label htmlFor="reactive_lead">    {/* ✅ Receptionist */}
+  <label htmlFor="proactive_setter"> {/* ✅ Setter */}
+  <label htmlFor="informative_advisor"> {/* ✅ Consulente */}
+  
+  {/* ❌ MANCA: customer_success */}
+  {/* ❌ MANCA: intake_coordinator */}
+</div>
+
+🖼️ Cosa vede l'utente OGGI:
+┌─────────────────┬─────────────────┬─────────────────┐
+│ 📞 Receptionist │ 📤 Setter       │ 🎓 Consulente   │
+│   (Inbound)     │   (Outbound)    │   (Educativo)   │
+└─────────────────┴─────────────────┴─────────────────┘
+
+✅ Cosa DEVE vedere:
+┌─────────────────┬─────────────────┬─────────────────┐
+│ 📞 Receptionist │ 📤 Setter       │ 🎓 Consulente   │
+│   (Inbound)     │   (Outbound)    │   (Educativo)   │
+├─────────────────┴─────────────────┴─────────────────┤
+│                         ↓                           │
+├─────────────────────────┬───────────────────────────┤
+│ 🛎️ Customer Success     │ 📋 Intake Coordinator     │
+│   (Post-Vendita)        │   (Raccolta Documenti)    │
+│   ❌ NO Booking         │   ❌ NO Booking           │
+└─────────────────────────┴───────────────────────────┘
+
+🛠️ Soluzione:
+Aggiungere 2 nuove <label> con le card per:
+
+customer_success - icona HeartHandshake, colore viola
+intake_coordinator - icona ClipboardList, colore indaco
+Cambiare la grid da md:grid-cols-3 a una struttura a 2 righe (3+2) per mantenere equilibrio visivo.
+
+❌ PROBLEMA 2: Badge mancanti nel wizard delle istruzioni
+📍 Dove: client/src/components/whatsapp/AgentInstructionsPanel.tsx (righe 2339-2342 e 2440-2443)
+🔴 Stato attuale:
+// Riga 2339-2342 - Template Standard description
+{agentType === "inbound" && "Receptionist ottimizzato"}
+{agentType === "outbound" && "Marco Setter ottimizzato"}
+{agentType === "consultative" && "Consulente Educativo"}
+// ❌ MANCA: customer_success
+// ❌ MANCA: intake_coordinator
+
+// Riga 2440-2443 - Badge nel wizard
+{agentType === "inbound" && "📞 Agente Inbound"}
+{agentType === "outbound" && "📤 Agente Outbound"}
+{agentType === "consultative" && "🎓 Agente Consulenziale"}
+// ❌ MANCA: customer_success
+// ❌ MANCA: intake_coordinator
+
+🛠️ Soluzione:
+Aggiungere in entrambi i punti:
+
+{agentType === "customer_success" && "🛎️ Agente Customer Success"}
+{agentType === "intake_coordinator" && "📋 Agente Intake Coordinator"}
+
+❌ PROBLEMA 3: Logica "Genera da info profilo" genera da zero
+📍 Dove: client/src/components/whatsapp/AgentInstructionsPanel.tsx (riga 2006)
+🔴 Stato attuale della funzione handleGenerateInstructions:
+const handleGenerateInstructions = async () => {
+  // ...
+  const response = await fetch('/api/whatsapp/config/instructions/generate', {
+    method: "POST",
+    body: JSON.stringify({
+      agentType,
+      objective: customObjective,
+      customObjective: ...,
+      bookingEnabled: ...,
+      // ❌ NON PASSA IL TEMPLATE BASE!
+    }),
+  });
+  // ...
+  setInstructions(data.data.instructions); // Sostituisce tutto con output AI
+};
+
+🔴 Il Backend (riga 674 di agent-instructions-router.ts):
+const systemPrompt = `Sei un esperto di prompt engineering...
+// ❌ GENERA DA ZERO senza considerare il template base dell'agente
+
+🖼️ Flusso ATTUALE (sbagliato):
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│ Utente clicca    │ ──► │ Backend riceve   │ ──► │ AI genera script │
+│ "Genera da info" │     │ solo obiettivo   │     │ DA ZERO          │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+                                                           │
+                                                           ▼
+                                               ┌──────────────────────┐
+                                               │ ❌ Script nuovo      │
+                                               │ NON basato su        │
+                                               │ template agente      │
+                                               └──────────────────────┘
+
+✅ Flusso CORRETTO (da implementare):
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│ Utente clicca    │ ──► │ Frontend carica  │ ──► │ Backend riceve   │
+│ "Genera da info" │     │ template BASE    │     │ template +       │
+│                  │     │ dell'agente      │     │ obiettivo        │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+                                                           │
+                                                           ▼
+                                               ┌──────────────────────┐
+                                               │ AI MODIFICA il       │
+                                               │ template esistente   │
+                                               │ in base all'obiettivo│
+                                               └──────────────────────┘
+                                                           │
+                                                           ▼
+                                               ┌──────────────────────┐
+                                               │ ✅ Script basato su  │
+                                               │ template + obiettivo │
+                                               │ + variabili profilo  │
+                                               └──────────────────────┘
+
+🛠️ Soluzione:
+Frontend: Modificare handleGenerateInstructions per passare il baseTemplate dell'agente corrente
+Backend: Modificare l'endpoint /instructions/generate per:
+Ricevere il template base
+Usare l'AI per ADATTARE il template (non crearne uno nuovo)
+Prompt: "Modifica questo template per l'obiettivo X"
+✅ COSA GIÀ FUNZIONA (non toccare)
+Componente	Stato	Note
+CUSTOMER_SUCCESS_TEMPLATE	✅ Esiste	156 righe complete (890-1045)
+INTAKE_COORDINATOR_TEMPLATE	✅ Esiste	~150 righe complete (1047+)
+OBJECTIVE_OPTIONS_BY_TYPE	✅ Completo	Ha tutti i 5 tipi con obiettivi
+mapAgentTypeToInternal()	✅ Funziona	Mappa customer_success e intake_coordinator
+getInitialInstructions()	✅ Funziona	Carica i template corretti
+defaultObjectives	✅ Completo	Ha i default per tutti i 5 tipi
+Backend Schema	✅ Completo	generateInstructionsSchema ha tutti i tipi
+Backend Labels	✅ Completo	agentTypeLabels ha tutti i 5 tipi
+Backend Guidance	✅ Completo	objectiveSpecificGuidance ha tutti gli obiettivi
+📋 PIANO DETTAGLIATO DI IMPLEMENTAZIONE
+
+
+
+Esempio pratico:
+Tipo Agente	isProactive = OFF	isProactive = ON
+📞 Receptionist	Aspetta che il lead scriva	Scrive lui per primo
+🛎️ Customer Success	Risponde quando il cliente ha problemi	Contatta per check-in periodici
+📋 Intake Coordinator	Aspetta il cliente	Contatta per raccogliere documenti
+Cosa serve:
+Database: Aggiungere campo isProactiveAgent: boolean in consultantWhatsappConfig
+Frontend: Aggiungere switch "Modalità Proattiva" nella sezione "Opzioni Agente" (righe 354-411)
+Backend: Usare questo flag per decidere se l'agente può iniziare conversazioni
