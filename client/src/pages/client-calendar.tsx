@@ -19,6 +19,7 @@ const MomentumDashboard = lazy(() => import('@/components/momentum/MomentumDashb
 const MomentumSidebar = lazy(() => import('@/components/layout/MomentumSidebar'));
 import { useCheckinScheduler } from '@/hooks/use-checkin-scheduler';
 import { useToast } from '@/hooks/use-toast';
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { Target, Settings, Plus, CheckSquare } from 'lucide-react';
 import { driverConfig } from '@/lib/tour/driver-config';
 import { calendarTourSteps } from '@/components/interactive-tour/calendar-tour-steps';
@@ -38,6 +39,7 @@ export default function ClientCalendar() {
   const { toast } = useToast();
   const [location] = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<{ start: Date; end: Date; allDay: boolean } | null>(null);
@@ -196,6 +198,9 @@ export default function ClientCalendar() {
         role="client"
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        showRoleSwitch={showRoleSwitch}
+        currentRole={currentRole}
+        onRoleSwitch={handleRoleSwitch}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">

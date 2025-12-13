@@ -38,6 +38,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import BadgeDisplay from "@/components/BadgeDisplay";
 import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
 import { usePageContext } from "@/hooks/use-page-context";
@@ -58,6 +59,7 @@ export default function ClientDashboard() {
   const [isTourActive, setIsTourActive] = useState(false);
   const { toast } = useToast();
   const { startTour, hasCompletedTour } = useTour();
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
 
   // Wrapper per startTour che apre la sidebar prima di iniziare
   const handleStartPlatformTour = () => {
@@ -235,7 +237,7 @@ export default function ClientDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900" data-testid="client-dashboard">
       <div className="flex h-screen">
-        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <div className="flex-1 overflow-y-auto bg-transparent">
           {/* Integrated Header with Menu Button */}

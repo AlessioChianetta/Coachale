@@ -51,8 +51,9 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getAuthUser, logout } from "@/lib/auth";
+import { getAuthUser, logout, getToken, setToken, setAuthUser } from "@/lib/auth";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 interface SidebarItem {
   name: string;
@@ -249,12 +250,97 @@ const clientItems: SidebarItemWithChildren[] = [
   },
 ];
 
-export default function Sidebar({ role, isOpen, onClose, showRoleSwitch, onRoleSwitch, currentRole }: SidebarProps) {
+interface ProfileInfo {
+  id: string;
+  role: "consultant" | "client" | "super_admin";
+  consultantId?: string | null;
+  isDefault?: boolean;
+}
+
+export default function Sidebar({ role, isOpen, onClose, showRoleSwitch: externalShowRoleSwitch, onRoleSwitch: externalOnRoleSwitch, currentRole: externalCurrentRole }: SidebarProps) {
   const [location, setLocation] = useLocation();
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
   const [isLoadingFinancial, setIsLoadingFinancial] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [profiles, setProfiles] = useState<ProfileInfo[]>([]);
+  const [isSwitching, setIsSwitching] = useState(false);
+
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      const token = getToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch("/api/auth/my-profiles", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setProfiles(data.profiles || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profiles:", error);
+      }
+    };
+
+    if (externalShowRoleSwitch === undefined) {
+      fetchProfiles();
+    }
+  }, [externalShowRoleSwitch]);
+
+  const handleInternalRoleSwitch = async (targetRole: "consultant" | "client") => {
+    if (isSwitching) return;
+
+    const user = getAuthUser();
+    const targetProfile = profiles.find(p => p.role === targetRole);
+    if (!targetProfile || !user) return;
+
+    if (targetProfile.id === user.profileId) return;
+
+    setIsSwitching(true);
+    try {
+      const token = getToken();
+      const response = await fetch("/api/auth/select-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ profileId: targetProfile.id, rememberChoice: false }),
+      });
+
+      if (!response.ok) throw new Error("Errore nel cambio profilo");
+
+      const data = await response.json();
+      setToken(data.token);
+      setAuthUser(data.user);
+
+      toast({
+        title: "Profilo cambiato",
+        description: `Ora sei in modalità ${data.user.role === 'consultant' ? 'Consulente' : 'Cliente'}`,
+      });
+
+      if (data.user.role === "consultant") {
+        setLocation("/consultant");
+      } else {
+        setLocation("/client");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nel cambio profilo",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSwitching(false);
+    }
+  };
+
+  const showRoleSwitch = externalShowRoleSwitch !== undefined ? externalShowRoleSwitch : profiles.length > 1;
+  const currentRole = externalCurrentRole || (getAuthUser()?.role as "consultant" | "client" | undefined);
+  const onRoleSwitch = externalOnRoleSwitch || handleInternalRoleSwitch;
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() => {
     const saved = localStorage.getItem('sidebar-expanded-items');
     return saved ? new Set(JSON.parse(saved)) : new Set();

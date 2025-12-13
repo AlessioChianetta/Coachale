@@ -38,11 +38,13 @@ import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { useState } from "react";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 
 export default function ConsultantClientsPage() {
   const isMobile = useIsMobile();
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -308,7 +310,7 @@ export default function ConsultantClientsPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
           {/* Navigation Tabs */}

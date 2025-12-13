@@ -44,6 +44,7 @@ import { useClientPriorityScore } from "@/hooks/useClientPriorityScore";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { type Exercise, type ExerciseAssignment, type User } from "@shared/schema";
 import { useLocation } from "wouter";
 import { 
@@ -75,6 +76,7 @@ export default function ConsultantDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
 
   // Client-centric priority scoring system (3 livelli)
   const {
@@ -255,7 +257,7 @@ export default function ConsultantDashboard() {
       <div className="min-h-screen bg-background">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
         <div className="flex h-[calc(100vh-80px)]">
-          <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
           <div className="flex-1 p-4 md:p-6 overflow-y-auto">
             <div className="flex justify-center">
               <ExerciseForm
@@ -274,7 +276,7 @@ export default function ConsultantDashboard() {
     <div className="min-h-screen bg-background" data-testid="consultant-dashboard">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <div className="flex-1 p-6 overflow-y-auto">
           {/* Header */}

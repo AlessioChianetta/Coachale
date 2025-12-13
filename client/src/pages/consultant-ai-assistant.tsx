@@ -13,6 +13,7 @@ import { QuickActions } from "@/components/ai-assistant/QuickActions";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { cn } from "@/lib/utils";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -66,6 +67,7 @@ export default function ConsultantAIAssistant() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
 
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -445,7 +447,7 @@ export default function ConsultantAIAssistant() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <div className="flex h-screen">
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <div className="flex-1 flex overflow-hidden">
           {(!isMobile || chatSidebarOpen) && (

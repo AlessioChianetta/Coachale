@@ -47,6 +47,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { getAuthHeaders } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import Sidebar from '@/components/sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Menu } from 'lucide-react';
@@ -68,6 +69,7 @@ export default function ClientSalesAgentsList() {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
@@ -210,7 +212,7 @@ export default function ClientSalesAgentsList() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-black">
       <div className="flex h-screen">
-        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <div className="flex-1 overflow-y-auto bg-transparent">
           {/* Header with menu button */}

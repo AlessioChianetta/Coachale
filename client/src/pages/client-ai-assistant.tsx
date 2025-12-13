@@ -17,6 +17,7 @@ import { AIMode, ConsultantType } from "@/components/ai-assistant/AIAssistant";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { cn } from "@/lib/utils";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -72,6 +73,7 @@ export default function ClientAIAssistant() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { theme, setTheme } = useTheme();
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
 
   const [mode, setMode] = useState<AIMode>("assistenza");
   const [consultantType, setConsultantType] = useState<ConsultantType>("finanziario");
@@ -454,7 +456,7 @@ export default function ClientAIAssistant() {
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'dark' : ''} bg-gradient-to-br ${theme === 'dark' ? 'from-gray-900 via-gray-900 to-gray-900' : 'from-slate-50 via-blue-50 to-purple-50'}`}>
       <div className="flex h-screen">
-        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <div className="flex-1 flex overflow-hidden">
           {(!isMobile || chatSidebarOpen) && (

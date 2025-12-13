@@ -24,6 +24,7 @@ import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { type User as UserType } from "@shared/schema";
 
 const appointmentSchema = z.object({
@@ -424,6 +425,7 @@ export default function ConsultantAppointments() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showTasksPreview, setShowTasksPreview] = useState(false);
   const isMobile = useIsMobile();
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
 
   const [justCompletedConsultationId, setJustCompletedConsultationId] = useState<string | null>(null);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
@@ -798,7 +800,7 @@ export default function ConsultantAppointments() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
         <div className="flex h-[calc(100vh-80px)]">
-          <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
           <div className="flex-1 p-6 overflow-y-auto flex items-center justify-center">
             <Card className="p-8 shadow-2xl bg-white/80 backdrop-blur-sm border-0">
               <div className="text-center">
@@ -820,7 +822,7 @@ export default function ConsultantAppointments() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950" data-testid="consultant-appointments-page">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
         <div className="flex-1 p-8 overflow-y-auto">
           {/* Header Premium */}
           <div className="mb-8">

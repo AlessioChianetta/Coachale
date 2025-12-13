@@ -28,6 +28,7 @@ import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { getAuthHeaders } from "@/lib/auth";
 import ConsultationTasksManager from "@/components/consultation-tasks-manager";
 
@@ -64,6 +65,7 @@ const categoryLabels = {
 
 export default function ConsultantTasks() {
   const isMobile = useIsMobile();
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Filtri
@@ -184,7 +186,7 @@ export default function ConsultantTasks() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
       <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
         <div className="flex-1 p-8 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">

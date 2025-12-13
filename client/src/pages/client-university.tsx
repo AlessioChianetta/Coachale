@@ -47,6 +47,7 @@ import {
 import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { useToast } from "@/hooks/use-toast";
+import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { apiRequest } from "@/lib/queryClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { getAuthUser } from "@/lib/auth";
@@ -332,6 +333,7 @@ const ModulesWithExercises = ({
 export default function ClientUniversity() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
   const [expandedYears, setExpandedYears] = useState<string[]>([]);
   const [expandedTrimesters, setExpandedTrimesters] = useState<string[]>([]);
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
@@ -558,7 +560,7 @@ export default function ClientUniversity() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
       <div className="flex h-screen">
-        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
 
         <main className="flex-1 overflow-y-auto bg-transparent">
           <div className="container mx-auto px-4 lg:px-8 pt-6 pb-8">
