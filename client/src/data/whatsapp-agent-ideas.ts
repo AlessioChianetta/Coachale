@@ -3,7 +3,9 @@ export interface AgentIdea {
   name: string;
   description: string;
   suggestedPersonality: "professionale" | "amichevole" | "entusiasta" | "formale" | "amico_fidato" | "consulente_esperto";
-  agentType?: "reactive_lead" | "proactive_setter";
+  agentType?: "reactive_lead" | "proactive_setter" | "informative_advisor" | "customer_success" | "intake_coordinator";
+  isProactiveAgent?: boolean;
+  integrationMode?: "whatsapp_ai" | "ai_only";
 }
 
 export interface AgentCategory {

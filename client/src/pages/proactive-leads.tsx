@@ -195,16 +195,16 @@ export default function ProactiveLeadsPage() {
 
   const leads: ProactiveLead[] = leadsData?.leads || [];
 
-  // Fetch WhatsApp agents for dropdown
+  // Fetch proactive WhatsApp agents for dropdown (only agents with isProactiveAgent=true AND Twilio configured)
   const { data: agentsData, isLoading: agentsLoading } = useQuery({
-    queryKey: ["/api/whatsapp/config"],
+    queryKey: ["/api/whatsapp/config/proactive"],
     queryFn: async () => {
-      const response = await fetch("/api/whatsapp/config", {
+      const response = await fetch("/api/whatsapp/config/proactive", {
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
         if (response.status === 404) return { configs: [] };
-        throw new Error("Failed to fetch WhatsApp agents");
+        throw new Error("Failed to fetch proactive WhatsApp agents");
       }
       return response.json();
     },

@@ -8351,6 +8351,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get proactive WhatsApp agents (isProactiveAgent=true OR agentType=proactive_setter) with Twilio configured
+  app.get("/api/whatsapp/config/proactive", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const configs = await db
+        .select()
+        .from(schema.consultantWhatsappConfig)
+        .where(
+          and(
+            eq(schema.consultantWhatsappConfig.consultantId, consultantId),
+            eq(schema.consultantWhatsappConfig.isActive, true),
+            sql`(${schema.consultantWhatsappConfig.isProactiveAgent} = true OR ${schema.consultantWhatsappConfig.agentType} = 'proactive_setter')`,
+            sql`${schema.consultantWhatsappConfig.twilioAccountSid} IS NOT NULL AND ${schema.consultantWhatsappConfig.twilioAccountSid} != ''`,
+            sql`${schema.consultantWhatsappConfig.twilioAuthToken} IS NOT NULL AND ${schema.consultantWhatsappConfig.twilioAuthToken} != ''`,
+            sql`${schema.consultantWhatsappConfig.twilioWhatsappNumber} IS NOT NULL AND ${schema.consultantWhatsappConfig.twilioWhatsappNumber} != ''`
+          )
+        )
+        .orderBy(schema.consultantWhatsappConfig.createdAt);
+
+      res.json({
+        success: true,
+        configs: configs.map((config) => ({
+          id: config.id,
+          agentName: config.agentName,
+          twilioWhatsappNumber: config.twilioWhatsappNumber,
+          agentType: config.agentType,
+          isProactiveAgent: config.isProactiveAgent,
+          isDryRun: config.isDryRun,
+          integrationMode: config.integrationMode,
+        })),
+        count: configs.length,
+      });
+    } catch (error: any) {
+      console.error("❌ Error fetching proactive WhatsApp agents:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   // Get single WhatsApp config by agentId
   app.get("/api/whatsapp/config/:agentId", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
