@@ -68,7 +68,7 @@ export const whatsappConfigSchema = z.object({
   // Step 4: Agent Instructions - Handled by AgentInstructionsPanel
   agentInstructions: z.string().nullable().optional(),
   agentInstructionsEnabled: z.boolean().default(false),
-  selectedTemplate: z.enum(["receptionist", "marco_setter", "custom"]).default("receptionist"),
+  selectedTemplate: z.enum(["receptionist", "marco_setter", "informative_advisor", "customer_success", "intake_coordinator", "custom"]).default("receptionist"),
 }).refine(
   (data) => {
     // Conditional validation: working hours required if enabled
