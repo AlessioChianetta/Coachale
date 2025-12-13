@@ -24,6 +24,9 @@ import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient } from '../google-calendar-service';
 import nodemailer from 'nodemailer';
 import { decryptForConsultant } from '../encryption';
+import { upload } from '../middleware/upload';
+import { extractTextFromFile } from '../services/document-processor';
+import fs from 'fs/promises';
 
 const router = Router();
 
@@ -991,10 +994,62 @@ router.get('/ai-ideas/:id', authenticateToken, requireRole('consultant'), async 
   }
 });
 
+router.post('/ai-ideas/upload-files', authenticateToken, requireRole('consultant'), upload.array('files', 10), async (req: AuthRequest, res: Response) => {
+  try {
+    const files = req.files as Express.Multer.File[];
+    
+    if (!files || files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Nessun file caricato',
+      });
+    }
+    
+    console.log(`📁 [AI-IDEAS] Processing ${files.length} uploaded files`);
+    
+    const extractedTexts: { fileName: string; text: string; error?: string }[] = [];
+    
+    for (const file of files) {
+      try {
+        console.log(`📄 [AI-IDEAS] Extracting text from: ${file.originalname} (${file.mimetype})`);
+        const text = await extractTextFromFile(file.path, file.mimetype);
+        extractedTexts.push({
+          fileName: file.originalname,
+          text: text.substring(0, 10000),
+        });
+        console.log(`✅ [AI-IDEAS] Extracted ${text.length} chars from ${file.originalname}`);
+      } catch (extractError: any) {
+        console.error(`❌ [AI-IDEAS] Failed to extract from ${file.originalname}:`, extractError.message);
+        extractedTexts.push({
+          fileName: file.originalname,
+          text: '',
+          error: extractError.message,
+        });
+      } finally {
+        try {
+          await fs.unlink(file.path);
+        } catch (e) {
+        }
+      }
+    }
+    
+    res.json({
+      success: true,
+      data: extractedTexts,
+    });
+  } catch (error: any) {
+    console.error('Error processing uploaded files:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Errore durante l\'elaborazione dei file',
+    });
+  }
+});
+
 router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { textDescription, urls, knowledgeDocIds, integrations, numberOfIdeas } = req.body;
+    const { textDescription, urls, knowledgeDocIds, integrations, numberOfIdeas, uploadedFilesText } = req.body;
     
     if (!integrations || integrations.length === 0) {
       return res.status(400).json({
@@ -1037,6 +1092,14 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
     
     if (urls && urls.length > 0) {
       combinedContent += `\n\nURL DA ANALIZZARE: ${urls.filter((u: string) => u).join(', ')}`;
+    }
+    
+    if (uploadedFilesText && uploadedFilesText.length > 0) {
+      for (const fileData of uploadedFilesText) {
+        if (fileData.text) {
+          combinedContent += `\n\nFILE CARICATO "${fileData.fileName}":\n${fileData.text.substring(0, 5000)}`;
+        }
+      }
     }
     
     if (!combinedContent.trim()) {

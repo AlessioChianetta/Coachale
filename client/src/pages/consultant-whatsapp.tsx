@@ -292,10 +292,11 @@ export default function ConsultantWhatsAppPage() {
     },
   });
 
-  // Mutation per salvare e creare agente subito
+  // Mutation per salvare e creare agente subito (directly without wizard)
   const saveAndCreateAgentMutation = useMutation({
     mutationFn: async (idea: any) => {
-      const res = await fetch("/api/consultant/onboarding/ai-ideas", {
+      // First save the idea
+      const saveRes = await fetch("/api/consultant/onboarding/ai-ideas", {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
@@ -319,17 +320,38 @@ export default function ConsultantWhatsAppPage() {
           useCases: idea.useCases,
         }),
       });
-      if (!res.ok) throw new Error("Failed to save idea");
-      return res.json();
+      if (!saveRes.ok) throw new Error("Failed to save idea");
+      const savedIdea = await saveRes.json();
+      const savedIdeaId = savedIdea.data?.id || savedIdea.id;
+
+      // Then create the agent directly from the idea
+      const createRes = await fetch("/api/whatsapp/config/from-idea", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ideaId: savedIdeaId }),
+      });
+      if (!createRes.ok) throw new Error("Failed to create agent from idea");
+      return createRes.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/onboarding/ai-ideas"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/config"] });
+      const agentData = data.data || data;
+      const agentName = agentData?.agentName || agentData?.name || "Nuovo agente";
+      const agentId = agentData?.id;
       toast({
-        title: "💡 Idea salvata",
-        description: "Reindirizzamento alla creazione dell'agente...",
+        title: "🤖 Agente creato!",
+        description: `L'agente "${agentName}" è stato creato con successo.`,
       });
-      const savedIdeaId = data.data?.id || data.id;
-      navigate(`/consultant/whatsapp/agent/new?fromIdea=${savedIdeaId}`);
+      // Navigate to the agent edit page if we have an ID, otherwise to list
+      if (agentId) {
+        navigate(`/consultant/whatsapp/agent/${agentId}`);
+      } else {
+        navigate("/consultant/whatsapp");
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -1759,6 +1781,42 @@ export default function ConsultantWhatsAppPage() {
                   onClick={async () => {
                     setIsGenerating(true);
                     try {
+                      let uploadedFilesText: { fileName: string; text: string }[] = [];
+                      
+                      if (uploadedFiles.length > 0) {
+                        toast({
+                          title: "📄 Elaborazione file...",
+                          description: `Estrazione testo da ${uploadedFiles.length} file...`,
+                        });
+                        
+                        const formData = new FormData();
+                        for (const file of uploadedFiles) {
+                          formData.append("files", file);
+                        }
+                        
+                        const uploadRes = await fetch("/api/consultant/onboarding/ai-ideas/upload-files", {
+                          method: "POST",
+                          headers: getAuthHeaders(),
+                          body: formData,
+                        });
+                        
+                        if (!uploadRes.ok) {
+                          const uploadError = await uploadRes.json();
+                          throw new Error(uploadError.error || "Errore durante l'upload dei file");
+                        }
+                        
+                        const uploadData = await uploadRes.json();
+                        uploadedFilesText = uploadData.data || [];
+                        
+                        const successCount = uploadedFilesText.filter(f => f.text).length;
+                        if (successCount > 0) {
+                          toast({
+                            title: "✅ File elaborati",
+                            description: `Estratto testo da ${successCount} file`,
+                          });
+                        }
+                      }
+                      
                       const res = await fetch("/api/consultant/onboarding/ai-ideas/generate", {
                         method: "POST",
                         headers: {
@@ -1771,19 +1829,21 @@ export default function ConsultantWhatsAppPage() {
                           knowledgeDocIds: selectedKnowledgeDocIds,
                           integrations: selectedIntegrations,
                           numberOfIdeas: numberOfIdeas,
+                          uploadedFilesText: uploadedFilesText,
                         }),
                       });
 
                       if (!res.ok) {
                         const errorData = await res.json();
-                        throw new Error(errorData.message || "Errore nella generazione delle idee");
+                        throw new Error(errorData.message || errorData.error || "Errore nella generazione delle idee");
                       }
 
                       const data = await res.json();
-                      setGeneratedIdeas(data.ideas || []);
+                      setGeneratedIdeas(data.data || data.ideas || []);
+                      setUploadedFiles([]);
                       toast({
                         title: "✨ Idee generate!",
-                        description: `Sono state generate ${data.ideas?.length || 0} idee per i tuoi agenti.`,
+                        description: `Sono state generate ${(data.data || data.ideas)?.length || 0} idee per i tuoi agenti.`,
                       });
                     } catch (error: any) {
                       toast({
@@ -1799,7 +1859,7 @@ export default function ConsultantWhatsAppPage() {
                   {isGenerating ? (
                     <>
                       <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      Generazione in corso...
+                      {uploadedFiles.length > 0 ? "Elaborazione file..." : "Generazione in corso..."}
                     </>
                   ) : (
                     <>

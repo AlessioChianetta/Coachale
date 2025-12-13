@@ -8732,6 +8732,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/whatsapp/config/from-idea - Create WhatsApp agent directly from an idea
+  app.post("/api/whatsapp/config/from-idea", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { ideaId } = req.body;
+
+      if (!ideaId) {
+        return res.status(400).json({ message: "ideaId is required" });
+      }
+
+      // Fetch the idea data
+      const [idea] = await db
+        .select()
+        .from(schema.consultantAiIdeas)
+        .where(
+          and(
+            eq(schema.consultantAiIdeas.id, ideaId),
+            eq(schema.consultantAiIdeas.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+
+      // Map personality to aiPersonality
+      const personalityMap: Record<string, string> = {
+        professionale: "consulente_professionale",
+        amichevole: "amico_fidato",
+        empatico: "consigliere_empatico",
+        diretto: "stratega_diretto",
+      };
+      const aiPersonality = personalityMap[idea.personality || ""] || "amico_fidato";
+
+      // Map suggestedAgentType (already in correct format)
+      const agentType = idea.suggestedAgentType || "reactive_lead";
+
+      // Create the WhatsApp agent config
+      const [config] = await db
+        .insert(schema.consultantWhatsappConfig)
+        .values({
+          consultantId,
+          agentName: idea.name,
+          integrationMode: "ai_only" as const,
+          twilioAccountSid: null,
+          twilioAuthToken: null,
+          twilioWhatsappNumber: null,
+          autoResponseEnabled: true,
+          agentType: agentType as "reactive_lead" | "proactive_setter" | "informative_advisor",
+          workingHoursEnabled: false,
+          workingHoursStart: null,
+          workingHoursEnd: null,
+          workingDays: null,
+          afterHoursMessage: null,
+          businessName: null,
+          businessDescription: idea.description || null,
+          consultantBio: null,
+          salesScript: null,
+          vision: null,
+          mission: null,
+          values: null,
+          usp: idea.usp || null,
+          whoWeHelp: idea.whoWeHelp || null,
+          whoWeDontHelp: idea.whoWeDontHelp || null,
+          whatWeDo: idea.whatWeDo || null,
+          howWeDoIt: idea.howWeDoIt || null,
+          softwareCreated: null,
+          booksPublished: null,
+          yearsExperience: null,
+          clientsHelped: null,
+          resultsGenerated: null,
+          caseStudies: null,
+          servicesOffered: null,
+          guarantees: null,
+          aiPersonality: aiPersonality as any,
+          whatsappConciseMode: false,
+          defaultObiettivi: null,
+          defaultDesideri: null,
+          defaultUncino: null,
+          defaultIdealState: null,
+          isDryRun: true,
+          isActive: true,
+          bookingEnabled: true,
+          objectionHandlingEnabled: true,
+          disqualificationEnabled: true,
+          upsellingEnabled: false,
+          agentInstructions: idea.suggestedInstructions || null,
+          agentInstructionsEnabled: !!idea.suggestedInstructions,
+          selectedTemplate: "custom",
+          businessHeaderMode: "assistant",
+          professionalRole: null,
+          customBusinessHeader: null,
+        })
+        .returning();
+
+      console.log(`✅ Created WhatsApp agent from idea: ${idea.name} (Agent ID: ${config.id})`);
+
+      // Mark the idea as implemented
+      await db
+        .update(schema.consultantAiIdeas)
+        .set({
+          isImplemented: true,
+          implementedAgentId: config.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.consultantAiIdeas.id, ideaId));
+
+      console.log(`✅ Marked idea ${ideaId} as implemented with agent ${config.id}`);
+
+      res.json({
+        success: true,
+        message: "WhatsApp agent created successfully from idea",
+        data: {
+          id: config.id,
+          agentName: config.agentName,
+          integrationMode: config.integrationMode,
+          agentType: config.agentType,
+          aiPersonality: config.aiPersonality,
+          businessDescription: config.businessDescription,
+          whoWeHelp: config.whoWeHelp,
+          whoWeDontHelp: config.whoWeDontHelp,
+          whatWeDo: config.whatWeDo,
+          howWeDoIt: config.howWeDoIt,
+          usp: config.usp,
+          agentInstructions: config.agentInstructions,
+          agentInstructionsEnabled: config.agentInstructionsEnabled,
+          isActive: config.isActive,
+          isDryRun: config.isDryRun,
+          createdAt: config.createdAt,
+        },
+        ideaId: ideaId,
+      });
+    } catch (error: any) {
+      console.error("❌ Error creating WhatsApp agent from idea:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.delete("/api/whatsapp/config/:id", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const consultantId = req.user!.id;
