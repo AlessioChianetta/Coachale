@@ -90,7 +90,9 @@ interface WhatsAppConfig {
   twilioAuthToken: string;
   twilioWhatsappNumber: string;
   autoResponseEnabled: boolean;
-  agentType?: "reactive_lead" | "proactive_setter";
+  agentType?: "reactive_lead" | "proactive_setter" | "informative_advisor" | "customer_success" | "intake_coordinator";
+  integrationMode?: "whatsapp_ai" | "ai_only";
+  isProactiveAgent?: boolean;
   workingHoursEnabled?: boolean;
   workingHoursStart?: string;
   workingHoursEnd?: string;
@@ -806,12 +808,38 @@ export default function ConsultantWhatsAppPage() {
                             font-semibold text-xs px-2 py-0.5 border-2
                             ${config.agentType === "proactive_setter"
                               ? "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border-emerald-300 dark:from-emerald-900/30 dark:to-green-900/30 dark:text-emerald-300 dark:border-emerald-700"
+                              : config.agentType === "informative_advisor"
+                              ? "bg-gradient-to-r from-purple-50 to-violet-50 text-purple-700 border-purple-300 dark:from-purple-900/30 dark:to-violet-900/30 dark:text-purple-300 dark:border-purple-700"
+                              : config.agentType === "customer_success"
+                              ? "bg-gradient-to-r from-pink-50 to-rose-50 text-pink-700 border-pink-300 dark:from-pink-900/30 dark:to-rose-900/30 dark:text-pink-300 dark:border-pink-700"
+                              : config.agentType === "intake_coordinator"
+                              ? "bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 border-amber-300 dark:from-amber-900/30 dark:to-orange-900/30 dark:text-amber-300 dark:border-amber-700"
                               : "bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-300 dark:from-blue-900/30 dark:to-indigo-900/30 dark:text-blue-300 dark:border-blue-700"
                             }
                           `}
                         >
-                          {config.agentType === "proactive_setter" ? "🎯 Setter" : "📞 Receptionist"}
+                          {config.agentType === "proactive_setter" ? "🎯 Setter" 
+                            : config.agentType === "informative_advisor" ? "📚 Educativo"
+                            : config.agentType === "customer_success" ? "💜 Customer Success"
+                            : config.agentType === "intake_coordinator" ? "📋 Intake"
+                            : "📞 Receptionist"}
                         </Badge>
+                        {config.isProactiveAgent && config.agentType !== "proactive_setter" && (
+                          <Badge 
+                            variant="outline"
+                            className="bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 border-2 border-orange-300 dark:from-orange-900/30 dark:to-amber-900/30 dark:text-orange-300 dark:border-orange-700 font-semibold text-xs px-2 py-0.5"
+                          >
+                            ⚡ Proattivo
+                          </Badge>
+                        )}
+                        {config.integrationMode === "ai_only" && (
+                          <Badge 
+                            variant="outline"
+                            className="bg-gradient-to-r from-violet-50 to-purple-50 text-violet-700 border-2 border-violet-300 dark:from-violet-900/30 dark:to-purple-900/30 dark:text-violet-300 dark:border-violet-700 font-semibold text-xs px-2 py-0.5"
+                          >
+                            🤖 Solo AI
+                          </Badge>
+                        )}
                         <Badge 
                           className={`
                             font-semibold text-xs px-2 py-0.5 border-2
@@ -1019,10 +1047,20 @@ export default function ConsultantWhatsAppPage() {
                                   className={
                                     idea.agentType === "proactive_setter"
                                       ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs"
+                                      : idea.agentType === "informative_advisor"
+                                      ? "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs"
+                                      : idea.agentType === "customer_success"
+                                      ? "bg-pink-50 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400 text-xs"
+                                      : idea.agentType === "intake_coordinator"
+                                      ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-xs"
                                       : "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 text-xs"
                                   }
                                 >
-                                  {idea.agentType === "proactive_setter" ? "Setter" : "Lead"}
+                                  {idea.agentType === "proactive_setter" ? "Setter" 
+                                    : idea.agentType === "informative_advisor" ? "Educativo"
+                                    : idea.agentType === "customer_success" ? "Customer Success"
+                                    : idea.agentType === "intake_coordinator" ? "Intake"
+                                    : "Lead"}
                                 </Badge>
                               </div>
                               <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 leading-relaxed">
@@ -1859,7 +1897,7 @@ export default function ConsultantWhatsAppPage() {
                         checked={selectedIntegrations.includes("informative_advisor")}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedIntegrations([...selectedIntegrations.filter(i => !["reactive_lead", "proactive_setter", "informative_advisor"].includes(i)), "informative_advisor"]);
+                            setSelectedIntegrations([...selectedIntegrations, "informative_advisor"]);
                           } else {
                             setSelectedIntegrations(selectedIntegrations.filter(i => i !== "informative_advisor"));
                           }
@@ -1871,6 +1909,48 @@ export default function ConsultantWhatsAppPage() {
                       >
                         <BookOpen className="h-4 w-4 text-purple-600" />
                         💬 Consulenziale (Supporto clienti)
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="agent-type-customer-success"
+                        checked={selectedIntegrations.includes("customer_success")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedIntegrations([...selectedIntegrations, "customer_success"]);
+                          } else {
+                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "customer_success"));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="agent-type-customer-success"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                      >
+                        <Users className="h-4 w-4 text-pink-600" />
+                        💜 Customer Success (Post-Vendita)
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="agent-type-intake"
+                        checked={selectedIntegrations.includes("intake_coordinator")}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedIntegrations([...selectedIntegrations, "intake_coordinator"]);
+                          } else {
+                            setSelectedIntegrations(selectedIntegrations.filter(i => i !== "intake_coordinator"));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="agent-type-intake"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2"
+                      >
+                        <ClipboardCheck className="h-4 w-4 text-amber-600" />
+                        📋 Intake Coordinator (Documenti)
                       </label>
                     </div>
 

@@ -104,7 +104,7 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
     }
   };
 
-  const isProactiveAgent = formData.agentType === "proactive_setter";
+  const isProactiveAgent = formData.agentType === "proactive_setter" || formData.isProactiveAgent === true;
 
   return (
     <div className="space-y-6">

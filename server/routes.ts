@@ -8474,6 +8474,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           businessHeaderMode: config.businessHeaderMode,
           professionalRole: config.professionalRole,
           customBusinessHeader: config.customBusinessHeader,
+          // Integration Mode and Proactive Agent
+          integrationMode: config.integrationMode,
+          isProactiveAgent: config.isProactiveAgent,
           createdAt: config.createdAt,
           updatedAt: config.updatedAt,
         },
