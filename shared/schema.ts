@@ -5030,3 +5030,198 @@ export const insertUserRoleProfileSchema = createInsertSchema(userRoleProfiles).
   id: true,
   createdAt: true,
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Follow-up Algorithmic System - Intelligent proactive outreach
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Conversation States - Track conversation lifecycle
+export const conversationStates = pgTable("conversation_states", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }).notNull(),
+  
+  currentState: text("current_state").$type<
+    "new_contact" | "contacted" | "engaged" | "qualified" | "stalled" | 
+    "negotiating" | "demo" | "closed_won" | "closed_lost" | "ghost" | "nurturing"
+  >().default("new_contact").notNull(),
+  previousState: text("previous_state").$type<
+    "new_contact" | "contacted" | "engaged" | "qualified" | "stalled" | 
+    "negotiating" | "demo" | "closed_won" | "closed_lost" | "ghost" | "nurturing"
+  >(),
+  
+  // Signals detected by AI
+  hasAskedPrice: boolean("has_asked_price").default(false).notNull(),
+  hasMentionedUrgency: boolean("has_mentioned_urgency").default(false).notNull(),
+  hasSaidNoExplicitly: boolean("has_said_no_explicitly").default(false).notNull(),
+  discoveryCompleted: boolean("discovery_completed").default(false).notNull(),
+  demoPresented: boolean("demo_presented").default(false).notNull(),
+  
+  // Follow-up tracking
+  followupCount: integer("followup_count").default(0).notNull(),
+  maxFollowupsAllowed: integer("max_followups_allowed").default(5).notNull(),
+  lastFollowupAt: timestamp("last_followup_at"),
+  nextFollowupScheduledAt: timestamp("next_followup_scheduled_at"),
+  
+  // AI scoring
+  engagementScore: integer("engagement_score").default(50).notNull(), // 0-100
+  conversionProbability: real("conversion_probability").default(0.5), // 0-1
+  lastAiEvaluationAt: timestamp("last_ai_evaluation_at"),
+  aiRecommendation: text("ai_recommendation"), // Last AI decision reasoning
+  
+  stateChangedAt: timestamp("state_changed_at").default(sql`now()`),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConversationState = typeof conversationStates.$inferSelect;
+export type InsertConversationState = typeof conversationStates.$inferInsert;
+
+// Follow-up Rules - Configurable automation rules (uses existing whatsappCustomTemplates from line ~2811)
+export const followupRules = pgTable("followup_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  agentId: varchar("agent_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }),
+  
+  name: text("name").notNull(),
+  description: text("description"),
+  
+  triggerType: text("trigger_type").$type<"time_based" | "event_based" | "ai_decision">().default("time_based").notNull(),
+  triggerCondition: jsonb("trigger_condition").$type<{
+    hoursWithoutReply?: number;
+    daysWithoutReply?: number;
+    afterState?: string;
+    onEvent?: string;
+    minEngagementScore?: number;
+    maxEngagementScore?: number;
+  }>().notNull(),
+  
+  templateId: varchar("template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
+  fallbackMessage: text("fallback_message"),
+  
+  applicableToStates: jsonb("applicable_to_states").$type<string[]>().default([]),
+  applicableToAgentTypes: jsonb("applicable_to_agent_types").$type<string[]>().default([]),
+  applicableToChannels: jsonb("applicable_to_channels").$type<string[]>().default([]),
+  
+  maxAttempts: integer("max_attempts").default(3).notNull(),
+  cooldownHours: integer("cooldown_hours").default(24).notNull(),
+  priority: integer("priority").default(5).notNull(),
+  
+  isActive: boolean("is_active").default(true).notNull(),
+  isDefault: boolean("is_default").default(false).notNull(),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type FollowupRule = typeof followupRules.$inferSelect;
+export type InsertFollowupRule = typeof followupRules.$inferInsert;
+
+// Scheduled Follow-up Messages - Queue for pending outreach
+export const scheduledFollowupMessages = pgTable("scheduled_followup_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }).notNull(),
+  ruleId: varchar("rule_id").references(() => followupRules.id, { onDelete: "set null" }),
+  templateId: varchar("template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
+  
+  scheduledFor: timestamp("scheduled_for").notNull(),
+  status: text("status").$type<"pending" | "sent" | "cancelled" | "failed" | "skipped">().default("pending").notNull(),
+  
+  // Template variables
+  templateVariables: jsonb("template_variables").$type<Record<string, string>>().default({}),
+  fallbackMessage: text("fallback_message"),
+  
+  // AI decision context
+  aiDecisionReasoning: text("ai_decision_reasoning"),
+  aiConfidenceScore: real("ai_confidence_score"),
+  
+  // Execution tracking
+  sentAt: timestamp("sent_at"),
+  cancelledAt: timestamp("cancelled_at"),
+  cancelReason: text("cancel_reason").$type<"user_replied" | "manual" | "max_reached" | "state_changed" | "error">(),
+  errorMessage: text("error_message"),
+  
+  // Retry tracking
+  attemptCount: integer("attempt_count").default(0).notNull(),
+  maxAttempts: integer("max_attempts").default(3).notNull(),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type ScheduledFollowupMessage = typeof scheduledFollowupMessages.$inferSelect;
+export type InsertScheduledFollowupMessage = typeof scheduledFollowupMessages.$inferInsert;
+
+// Follow-up Analytics - Track performance metrics
+export const followupAnalytics = pgTable("followup_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  agentId: varchar("agent_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }),
+  templateId: varchar("template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
+  ruleId: varchar("rule_id").references(() => followupRules.id, { onDelete: "set null" }),
+  
+  // Time period
+  date: timestamp("date").notNull(),
+  
+  // Counts
+  messagesSent: integer("messages_sent").default(0).notNull(),
+  messagesDelivered: integer("messages_delivered").default(0).notNull(),
+  messagesRead: integer("messages_read").default(0).notNull(),
+  repliesReceived: integer("replies_received").default(0).notNull(),
+  conversionsAchieved: integer("conversions_achieved").default(0).notNull(),
+  
+  // Rates (calculated)
+  deliveryRate: real("delivery_rate"),
+  readRate: real("read_rate"),
+  responseRate: real("response_rate"),
+  conversionRate: real("conversion_rate"),
+  
+  // AI metrics
+  aiDecisionsMade: integer("ai_decisions_made").default(0).notNull(),
+  aiDecisionsAccepted: integer("ai_decisions_accepted").default(0).notNull(),
+  avgConfidenceScore: real("avg_confidence_score"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type FollowupAnalytic = typeof followupAnalytics.$inferSelect;
+export type InsertFollowupAnalytic = typeof followupAnalytics.$inferInsert;
+
+// Follow-up AI Evaluation Log - Track AI decisions for learning
+export const followupAiEvaluationLog = pgTable("followup_ai_evaluation_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }).notNull(),
+  
+  // AI Input
+  conversationContext: jsonb("conversation_context").$type<{
+    lastMessages: Array<{ role: string; content: string; timestamp: string }>;
+    currentState: string;
+    daysSilent: number;
+    followupCount: number;
+    channel: string;
+    agentType: string;
+    signals: Record<string, boolean>;
+  }>().notNull(),
+  
+  // AI Output
+  decision: text("decision").$type<"send_now" | "schedule" | "skip" | "stop">().notNull(),
+  urgency: text("urgency").$type<"now" | "tomorrow" | "next_week" | "never">(),
+  selectedTemplateId: varchar("selected_template_id"),
+  reasoning: text("reasoning").notNull(),
+  confidenceScore: real("confidence_score").notNull(),
+  
+  // Outcome tracking (filled later)
+  wasExecuted: boolean("was_executed").default(false).notNull(),
+  leadReplied: boolean("lead_replied"),
+  repliedWithinHours: integer("replied_within_hours"),
+  outcomePositive: boolean("outcome_positive"), // Did it lead to engagement/conversion?
+  
+  // Model info
+  modelUsed: text("model_used").default("gemini-2.5-flash").notNull(),
+  tokensUsed: integer("tokens_used"),
+  latencyMs: integer("latency_ms"),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type FollowupAiEvaluationLog = typeof followupAiEvaluationLog.$inferSelect;
+export type InsertFollowupAiEvaluationLog = typeof followupAiEvaluationLog.$inferInsert;
