@@ -394,6 +394,266 @@ class NotFoundError extends Error {
 }
 
 /**
+ * Validation schema for generate instructions request
+ */
+const generateInstructionsSchema = z.object({
+  agentType: z.enum(["inbound", "outbound", "consultative"]),
+  objective: z.enum(["appointment", "info_gathering", "quote_request", "lead_qualification", "other"]),
+  customObjective: z.string().optional(),
+  bookingEnabled: z.boolean().optional(),
+});
+
+/**
+ * POST /api/whatsapp/config/instructions/generate
+ * Generate AI instructions based on agent type and objective
+ */
+router.post(
+  "/whatsapp/config/instructions/generate",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const validationResult = generateInstructionsSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: validationResult.error.errors,
+        });
+      }
+
+      const { agentType, objective, customObjective, bookingEnabled } = validationResult.data;
+
+      console.log(`🤖 [GENERATE INSTRUCTIONS] Starting generation for consultant ${consultantId}`);
+      console.log(`   - Agent Type: ${agentType}`);
+      console.log(`   - Objective: ${objective}`);
+      console.log(`   - Custom Objective: ${customObjective || 'N/A'}`);
+      console.log(`   - Booking Enabled: ${bookingEnabled !== false ? 'YES' : 'NO'}`);
+
+      const { getAIProvider } = await import("../../ai/provider-factory");
+      const providerResult = await getAIProvider(consultantId, consultantId);
+
+      if (!providerResult || !providerResult.client) {
+        return res.status(500).json({
+          success: false,
+          error: "AI provider not available. Please configure your AI settings.",
+        });
+      }
+
+      console.log(`✅ [GENERATE INSTRUCTIONS] Using provider: ${providerResult.metadata.name}`);
+
+      const agentTypeLabels: Record<string, string> = {
+        inbound: "INBOUND (Receptionist) - Lead che scrivono spontaneamente",
+        outbound: "OUTBOUND (Setter) - Lead che contatti tu proattivamente",
+        consultative: "CONSULTATIVO (Educativo) - Solo informativo, senza vendita",
+      };
+
+      const objectiveLabels: Record<string, string> = {
+        appointment: "Presa appuntamento - Fissare una call o meeting di consulenza",
+        info_gathering: "Raccolta informazioni - Qualificare il lead raccogliendo dati",
+        quote_request: "Richiesta preventivo - Raccogliere info per inviare un preventivo personalizzato",
+        lead_qualification: "Qualificazione lead - Verificare interesse, budget e fit",
+        other: customObjective || "Obiettivo personalizzato",
+      };
+
+      const objectiveSpecificGuidance: Record<string, string> = {
+        appointment: `
+🎯 FOCUS: Le domande devono guidare verso la PRESA APPUNTAMENTO.
+- Fase 1-3: Scopri motivazione, situazione attuale e obiettivi numerici
+- Fase 4: Magic Question per proporre la consulenza gratuita
+- Fase 5-8: Raccolta slot, telefono, email per confermare l'appuntamento
+- Fase 9: Supporto pre-appuntamento`,
+        
+        info_gathering: `
+🎯 FOCUS: Le domande devono essere orientate a RACCOGLIERE INFORMAZIONI dettagliate.
+- Fase 1: Scopri perché hanno scritto e cosa cercano
+- Fase 2-3: Approfondisci situazione attuale, bisogni, problemi specifici
+- Fase 3.5: Verifica priorità e urgenza
+- Fase 4: Chiedi se vogliono approfondire con una call
+- Fase 5-9: Se accettano, raccogli contatti; altrimenti ringrazia e offri supporto`,
+
+        quote_request: `
+🎯 FOCUS: Le domande devono raccogliere INFO PER UN PREVENTIVO.
+- Fase 1: Scopri che tipo di servizio/prodotto cercano
+- Fase 2: Chiedi dettagli specifici (quantità, dimensioni, specifiche tecniche)
+- Fase 3: Chiedi budget indicativo e timeline desiderata
+- Fase 3.5: Verifica eventuali requisiti speciali o vincoli
+- Fase 4: Proponi di inviare il preventivo via email o fissare una call
+- Fase 5-9: Raccogli contatti per invio preventivo`,
+
+        lead_qualification: `
+🎯 FOCUS: Le domande devono QUALIFICARE il lead (BANT: Budget, Authority, Need, Timeline).
+- Fase 1: Scopri perché hanno scritto e qual è il loro ruolo decisionale
+- Fase 2: Verifica il bisogno reale e l'urgenza
+- Fase 3: Chiedi obiettivi e budget disponibile
+- Fase 3.5: Verifica timeline e processo decisionale
+- Fase 4: Se qualificato, proponi una call; se non qualificato, indirizza altrove
+- Fase 5-9: Per lead qualificati, raccogli contatti`,
+
+        other: `
+🎯 FOCUS: ${customObjective || "Obiettivo personalizzato definito dal consulente"}.
+- Adatta le domande di ogni fase per raggiungere questo obiettivo specifico
+- Mantieni la struttura delle 9 fasi ma personalizza le domande
+- Assicurati che ogni fase contribuisca al raggiungimento dell'obiettivo`,
+      };
+
+      const bookingSection = bookingEnabled !== false
+        ? `
+📅 BOOKING ABILITATO:
+L'agente PUÒ prendere appuntamenti. Includi le fasi 5-8 per:
+- Proposta slot disponibili
+- Raccolta telefono
+- Raccolta email
+- Attesa creazione appuntamento con Google Calendar`
+        : `
+🚫 BOOKING DISABILITATO:
+L'agente NON può prendere appuntamenti. 
+Le fasi 5-8 devono essere adattate per raccogliere contatti senza fissare appuntamenti.
+Invece di proporre slot, proponi di inviare informazioni via email o di essere ricontattati.`;
+
+      const systemPrompt = `Sei un esperto di prompt engineering per agenti AI conversazionali WhatsApp per il settore consulenziale.
+
+Il tuo compito è generare istruzioni COMPLETE e DETTAGLIATE per un agente WhatsApp.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONFIGURAZIONE AGENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 TIPO AGENTE: ${agentTypeLabels[agentType]}
+📌 OBIETTIVO PRINCIPALE: ${objectiveLabels[objective]}
+
+${objectiveSpecificGuidance[objective]}
+
+${bookingSection}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LE 9 FASI DELLA CONVERSAZIONE (STRUTTURA FISSA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Genera istruzioni dettagliate per OGNI fase:
+
+FASE 1️⃣ - ACCOGLIENZA E MOTIVAZIONE
+→ Crea messaggio di benvenuto e domande per scoprire perché hanno scritto
+
+FASE 2️⃣ - DIAGNOSI STATO ATTUALE  
+→ Domande per capire situazione attuale, problemi, difficoltà
+
+FASE 3️⃣ - STATO IDEALE E OBIETTIVI
+→ Domande per far emergere obiettivi con NUMERI CONCRETI
+
+FASE 3.5️⃣ - VERIFICA BLOCCHI/OSTACOLI
+→ Domande per scoprire cosa impedisce di raggiungere gli obiettivi
+
+FASE 4️⃣ - MAGIC QUESTION
+→ Domanda di transizione per proporre la call/soluzione
+
+FASE 5️⃣ - PROPOSTA SLOT
+→ Come proporre orari disponibili (se booking abilitato)
+
+FASE 6️⃣ - RACCOLTA TELEFONO
+→ Come chiedere il numero di telefono
+
+FASE 7️⃣ - RACCOLTA EMAIL
+→ Come chiedere l'email
+
+FASE 8️⃣ - ATTESA CREAZIONE APPUNTAMENTO
+→ Messaggio placeholder mentre si crea l'evento
+
+FASE 9️⃣ - SUPPORTO PRE-APPUNTAMENTO
+→ Come gestire domande dopo la conferma
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VARIABILI DISPONIBILI (usa SOLO queste)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+\${businessName} - Nome del business
+\${businessDescription} - Descrizione del business
+\${consultantDisplayName} - Nome del consulente
+\${whoWeHelp} - Chi aiutiamo (target)
+\${whatWeDo} - Cosa facciamo
+\${clientsHelped} - Numero clienti aiutati
+\${yearsExperience} - Anni di esperienza
+\${firstName} - Nome del lead
+\${lastName} - Cognome del lead
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STILE DI SCRITTURA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Usa separatori ━━━ per le sezioni
+✅ Includi emoji per evidenziare concetti (con moderazione)
+✅ Scrivi in italiano
+✅ Per ogni fase includi:
+   - Obiettivo della fase
+   - Esempi di domande (2-3 varianti)
+   - Checkpoint (quando passare alla fase successiva)
+   - Tono consigliato
+✅ Usa **grassetto** per parole chiave
+✅ Messaggi WhatsApp: brevi (1-3 righe), conversazionali
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GENERA ORA le istruzioni complete. Restituisci SOLO le istruzioni, senza commenti aggiuntivi.`;
+
+      const result = await providerResult.client.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: systemPrompt }]
+          }
+        ],
+      });
+
+      let generatedInstructions = result.response.text();
+
+      generatedInstructions = generatedInstructions.replace(/\*\*\s+([^\*]+?)\s+\*\*/g, '**$1**');
+      generatedInstructions = generatedInstructions.replace(/\*\s+([^\*]+?)\s+\*/g, '*$1*');
+
+      const variableMapping: Record<string, string> = {
+        '${nomeConsulente}': '${consultantDisplayName}',
+        '${nomeBusiness}': '${businessName}',
+        '${descrizioneConsulente}': '${consultantBio}',
+        '${descrizioneBusiness}': '${businessDescription}',
+        '${nome}': '${firstName}',
+        '${cognome}': '${lastName}',
+      };
+
+      for (const [incorrect, correct] of Object.entries(variableMapping)) {
+        generatedInstructions = generatedInstructions.replace(
+          new RegExp(incorrect.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 
+          correct
+        );
+      }
+
+      console.log(`✅ [GENERATE INSTRUCTIONS] Generated successfully`);
+      console.log(`   - Length: ${generatedInstructions.length} chars`);
+      console.log(`   - Provider: ${providerResult.metadata.name}`);
+
+      res.json({
+        success: true,
+        data: {
+          instructions: generatedInstructions,
+          length: generatedInstructions.length,
+          provider: providerResult.metadata.name,
+          agentType,
+          objective,
+        },
+        message: "Instructions generated successfully",
+      });
+    } catch (error: any) {
+      console.error("❌ [GENERATE INSTRUCTIONS] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to generate instructions with AI",
+      });
+    }
+  }
+);
+
+/**
  * Helper function: Enhance instructions with AI
  * Shared logic for both agent-scoped and create-mode enhancement
  */

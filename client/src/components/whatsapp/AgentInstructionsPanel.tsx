@@ -35,8 +35,15 @@ import {
   Heart,
   Lightbulb,
   MessageSquare,
-  ChevronDown
+  ChevronDown,
+  Phone,
+  UserPlus,
+  GraduationCap,
+  FileText,
+  Pencil
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +51,27 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+
+const NINE_PHASES = [
+  { id: 1, name: "Accoglienza e Motivazione", icon: "👋" },
+  { id: 2, name: "Diagnosi Stato Attuale", icon: "🔍" },
+  { id: 3, name: "Stato Ideale e Obiettivi", icon: "🎯" },
+  { id: 3.5, name: "Verifica Blocchi/Ostacoli", icon: "🚧" },
+  { id: 4, name: "Magic Question", icon: "✨" },
+  { id: 5, name: "Proposta Slot", icon: "📅" },
+  { id: 6, name: "Raccolta Telefono", icon: "📱" },
+  { id: 7, name: "Raccolta Email", icon: "📧" },
+  { id: 8, name: "Attesa Creazione Appuntamento", icon: "⏳" },
+  { id: 9, name: "Supporto Pre-Appuntamento", icon: "🤝" }
+];
+
+const OBJECTIVE_OPTIONS = [
+  { value: "appointment", label: "Presa appuntamento", icon: "📅", description: "Fissa una call o meeting" },
+  { value: "info_gathering", label: "Raccolta informazioni", icon: "ℹ️", description: "Raccolta dati e qualifica" },
+  { value: "quote_request", label: "Richiesta preventivo", icon: "💰", description: "Invio preventivo personalizzato" },
+  { value: "lead_qualification", label: "Qualificazione lead", icon: "✅", description: "Verifica interesse e fit" },
+  { value: "other", label: "Altro", icon: "✏️", description: "Obiettivo personalizzato" },
+];
 
 interface AgentInstructionsPanelProps {
   agentId?: string | null;
@@ -1144,7 +1172,8 @@ export default function AgentInstructionsPanel({
 
   // Local state
   const [enabled, setEnabled] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<"receptionist" | "marco_setter" | "custom">("receptionist");
+  const [agentType, setAgentType] = useState<"inbound" | "outbound" | "consultative">("inbound");
+  const [selectedTemplate, setSelectedTemplate] = useState<"receptionist" | "marco_setter" | "informative_advisor" | "custom">("receptionist");
   const [instructions, setInstructions] = useState("");
   const [businessHeaderMode, setBusinessHeaderMode] = useState<string>("assistant");
   const [professionalRole, setProfessionalRole] = useState<string>("");
@@ -1155,6 +1184,9 @@ export default function AgentInstructionsPanel({
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [enhancementMode, setEnhancementMode] = useState<"enhance" | "simplify" | "expand" | "formalize" | "friendly" | "examples" | "whatsapp">("enhance");
+  const [customObjective, setCustomObjective] = useState<string>("appointment");
+  const [customOtherObjective, setCustomOtherObjective] = useState<string>("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Fetch current configuration (only in edit mode with agentId)
   const { data: configData, isLoading: isLoadingConfig } = useQuery({
@@ -1206,6 +1238,18 @@ export default function AgentInstructionsPanel({
       setProfessionalRole(configData.professionalRole || "");
       setCustomBusinessHeader(configData.customBusinessHeader || "");
 
+      // Derive agentType from selectedTemplate
+      if (configData.selectedTemplate === "receptionist" || configData.selectedTemplate === "custom") {
+        // If custom, default to inbound; if receptionist, it's inbound
+        if (configData.selectedTemplate === "receptionist") {
+          setAgentType("inbound");
+        }
+      } else if (configData.selectedTemplate === "marco_setter") {
+        setAgentType("outbound");
+      } else if (configData.selectedTemplate === "informative_advisor") {
+        setAgentType("consultative");
+      }
+
       console.log("📥 [LOAD CONFIG] State popolato con:");
       console.log("  - businessHeaderMode:", configData.businessHeaderMode || "assistant");
       console.log("  - professionalRole:", configData.professionalRole || "");
@@ -1219,6 +1263,8 @@ export default function AgentInstructionsPanel({
         setInstructions(RECEPTIONIST_TEMPLATE);
       } else if (configData.selectedTemplate === "marco_setter") {
         setInstructions(MARCO_SETTER_TEMPLATE);
+      } else if (configData.selectedTemplate === "informative_advisor") {
+        setInstructions(INFORMATIVE_ADVISOR_TEMPLATE);
       }
     }
   }, [configData, mode]);
@@ -1253,6 +1299,16 @@ export default function AgentInstructionsPanel({
       setProfessionalRole(initialData.professionalRole || "");
       setCustomBusinessHeader(initialData.customBusinessHeader || "");
 
+      // Derive agentType from selectedTemplate
+      if (initialData.selectedTemplate === "receptionist") {
+        setAgentType("inbound");
+      } else if (initialData.selectedTemplate === "marco_setter") {
+        setAgentType("outbound");
+      } else if (initialData.selectedTemplate === "informative_advisor") {
+        setAgentType("consultative");
+      }
+      // For custom, keep default agentType (inbound)
+
       // Set initial instructions based on template
       if (initialData.selectedTemplate === "custom") {
         setInstructions(initialData.agentInstructions || "");
@@ -1280,16 +1336,74 @@ export default function AgentInstructionsPanel({
     }
   }, [enabled, selectedTemplate, instructions, businessHeaderMode, professionalRole, customBusinessHeader, mode, onChange]);
 
-  // Handle template change
+  // Helper function to get the standard template for an agent type
+  const getStandardTemplateForType = (type: "inbound" | "outbound" | "consultative"): "receptionist" | "marco_setter" | "informative_advisor" => {
+    switch (type) {
+      case "inbound":
+        return "receptionist";
+      case "outbound":
+        return "marco_setter";
+      case "consultative":
+        return "informative_advisor";
+    }
+  };
+
+  // Helper function to get template content
+  const getTemplateContent = (template: "receptionist" | "marco_setter" | "informative_advisor"): string => {
+    switch (template) {
+      case "receptionist":
+        return RECEPTIONIST_TEMPLATE;
+      case "marco_setter":
+        return MARCO_SETTER_TEMPLATE;
+      case "informative_advisor":
+        return INFORMATIVE_ADVISOR_TEMPLATE;
+    }
+  };
+
+  // Handle agent type change - Step 1
+  const handleAgentTypeChange = (type: "inbound" | "outbound" | "consultative") => {
+    setAgentType(type);
+    // When changing agent type, if not custom, update to the standard template for that type
+    if (selectedTemplate !== "custom") {
+      const newTemplate = getStandardTemplateForType(type);
+      setSelectedTemplate(newTemplate);
+      setInstructions(getTemplateContent(newTemplate));
+    }
+    setValidationError("");
+  };
+
+  // Handle template selection - Step 2 (standard vs custom)
+  const handleTemplateSelection = (selection: "standard" | "custom") => {
+    if (selection === "standard") {
+      const standardTemplate = getStandardTemplateForType(agentType);
+      setSelectedTemplate(standardTemplate);
+      setInstructions(getTemplateContent(standardTemplate));
+    } else {
+      setSelectedTemplate("custom");
+      // Keep current instructions when switching to custom, or use empty if none
+      if (selectedTemplate === "custom") {
+        // Already custom, keep instructions
+      } else {
+        // Switching from standard to custom - keep current instructions as base or use stored custom
+        setInstructions(configData?.agentInstructions || instructions || "");
+      }
+    }
+    setValidationError("");
+  };
+
+  // Handle template change (legacy support for direct template changes)
   const handleTemplateChange = (template: "receptionist" | "marco_setter" | "informative_advisor" | "custom") => {
     setSelectedTemplate(template);
 
     if (template === "receptionist") {
       setInstructions(RECEPTIONIST_TEMPLATE);
+      setAgentType("inbound");
     } else if (template === "marco_setter") {
       setInstructions(MARCO_SETTER_TEMPLATE);
+      setAgentType("outbound");
     } else if (template === "informative_advisor") {
       setInstructions(INFORMATIVE_ADVISOR_TEMPLATE);
+      setAgentType("consultative");
     } else if (template === "custom") {
       // Keep current instructions if switching to custom
       if (selectedTemplate !== "custom") {
@@ -1316,6 +1430,57 @@ export default function AgentInstructionsPanel({
       textarea.selectionStart = textarea.selectionEnd = start + variable.length;
       textarea.focus();
     }, 0);
+  };
+
+  // Generate instructions with AI based on objective
+  const handleGenerateInstructions = async () => {
+    setIsGenerating(true);
+    isEnhancingRef.current = true;
+    
+    try {
+      const effectiveBookingEnabled = bookingEnabled !== undefined 
+        ? bookingEnabled 
+        : (configData?.bookingEnabled !== undefined ? configData.bookingEnabled : true);
+      
+      const response = await fetch('/api/whatsapp/config/instructions/generate', {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          agentType,
+          objective: customObjective,
+          customObjective: customObjective === "other" ? customOtherObjective : undefined,
+          bookingEnabled: effectiveBookingEnabled,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate instructions");
+      }
+
+      const data = await response.json();
+      setInstructions(data.data.instructions);
+      
+      toast({
+        title: "🤖 Istruzioni Generate!",
+        description: `Generate ${data.data.length} caratteri di istruzioni personalizzate.`,
+      });
+    } catch (error: any) {
+      console.error("Generation error:", error);
+      toast({
+        title: "❌ Errore",
+        description: error.message || "Impossibile generare le istruzioni",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+      setTimeout(() => {
+        isEnhancingRef.current = false;
+      }, 100);
+    }
   };
 
   // Enhance instructions with AI
@@ -1597,49 +1762,232 @@ export default function AgentInstructionsPanel({
         </Alert>
       )}
 
-      {/* Template Selection */}
+      {/* Step 1 - Agent Type Selection */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Scegli Template</CardTitle>
+          <CardTitle className="text-base">Step 1: Tipo di Agente</CardTitle>
+          <CardDescription className="text-xs">
+            Seleziona il tipo di agente in base al tuo caso d'uso
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Select
-            value={selectedTemplate}
-            onValueChange={handleTemplateChange}
-            disabled={!enabled}
-          >
-            <SelectTrigger id="template-select" className="h-auto">
-              <SelectValue placeholder="Seleziona template" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="receptionist">
-                <div className="flex items-center gap-2 py-1">
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-700">Inbound</Badge>
-                  <span>Receptionist (Lead che scrivono)</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="marco_setter">
-                <div className="flex items-center gap-2 py-1">
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700">Outbound</Badge>
-                  <span>Marco Setter (Lead contattati)</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="informative_advisor">
-                <div className="flex items-center gap-2 py-1">
-                  <Badge variant="secondary" className="bg-green-100 text-green-700">Educativo</Badge>
-                  <span>Consulente Educativo (Solo informativo)</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="custom">
-                <div className="flex items-center gap-2 py-1">
-                  <Badge variant="outline">Custom</Badge>
-                  <span>Template Personalizzato</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => handleAgentTypeChange("inbound")}
+              disabled={!enabled}
+              className={cn(
+                "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
+                agentType === "inbound" 
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30" 
+                  : "border-gray-200 dark:border-gray-700 hover:border-blue-300",
+                !enabled && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Phone className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+              <div className="font-medium text-sm">Inbound</div>
+              <div className="text-xs text-muted-foreground mt-1">Per lead che scrivono spontaneamente</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleAgentTypeChange("outbound")}
+              disabled={!enabled}
+              className={cn(
+                "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
+                agentType === "outbound" 
+                  ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30" 
+                  : "border-gray-200 dark:border-gray-700 hover:border-purple-300",
+                !enabled && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <UserPlus className="h-8 w-8 mx-auto mb-2 text-purple-500" />
+              <div className="font-medium text-sm">Outbound</div>
+              <div className="text-xs text-muted-foreground mt-1">Per lead che contatti tu</div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleAgentTypeChange("consultative")}
+              disabled={!enabled}
+              className={cn(
+                "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
+                agentType === "consultative" 
+                  ? "border-green-500 bg-green-50 dark:bg-green-950/30" 
+                  : "border-gray-200 dark:border-gray-700 hover:border-green-300",
+                !enabled && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <GraduationCap className="h-8 w-8 mx-auto mb-2 text-green-500" />
+              <div className="font-medium text-sm">Consultativo</div>
+              <div className="text-xs text-muted-foreground mt-1">Solo informativo/educativo</div>
+            </button>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Step 2 - Template Selection */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Step 2: Scegli Template</CardTitle>
+          <CardDescription className="text-xs">
+            Usa il template standard ottimizzato o crea il tuo personalizzato
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => handleTemplateSelection("standard")}
+              disabled={!enabled}
+              className={cn(
+                "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
+                selectedTemplate !== "custom"
+                  ? "border-primary bg-primary/5"
+                  : "border-gray-200 dark:border-gray-700 hover:border-primary/50",
+                !enabled && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <FileText className="h-6 w-6 mx-auto mb-2 text-primary" />
+              <div className="font-medium text-sm">Template Standard</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {agentType === "inbound" && "Receptionist ottimizzato"}
+                {agentType === "outbound" && "Marco Setter ottimizzato"}
+                {agentType === "consultative" && "Consulente Educativo"}
+              </div>
+              {selectedTemplate !== "custom" && (
+                <Badge variant="default" className="mt-2 text-xs">
+                  Selezionato
+                </Badge>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTemplateSelection("custom")}
+              disabled={!enabled}
+              className={cn(
+                "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
+                selectedTemplate === "custom"
+                  ? "border-primary bg-primary/5"
+                  : "border-gray-200 dark:border-gray-700 hover:border-primary/50",
+                !enabled && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              <Pencil className="h-6 w-6 mx-auto mb-2 text-primary" />
+              <div className="font-medium text-sm">Template Personalizzato</div>
+              <div className="text-xs text-muted-foreground mt-1">Scrivi le tue istruzioni</div>
+              {selectedTemplate === "custom" && (
+                <Badge variant="default" className="mt-2 text-xs">
+                  Selezionato
+                </Badge>
+              )}
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Step 3a - Objective Selection (only for custom template) */}
+      {enabled && selectedTemplate === "custom" && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Obiettivo Principale
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Seleziona l'obiettivo principale della conversazione
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {OBJECTIVE_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setCustomObjective(option.value)}
+                  className={cn(
+                    "p-3 rounded-lg border-2 text-left transition-all duration-200 hover:shadow-md",
+                    customObjective === option.value
+                      ? "border-primary bg-primary/5"
+                      : "border-gray-200 dark:border-gray-700 hover:border-primary/50"
+                  )}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">{option.icon}</span>
+                    <span className="font-medium text-sm">{option.label}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{option.description}</div>
+                </button>
+              ))}
+            </div>
+            {customObjective === "other" && (
+              <div className="mt-4">
+                <Label htmlFor="custom-objective-input" className="text-sm mb-2 block">
+                  Descrivi il tuo obiettivo personalizzato
+                </Label>
+                <Input
+                  id="custom-objective-input"
+                  value={customOtherObjective}
+                  onChange={(e) => setCustomOtherObjective(e.target.value)}
+                  placeholder="Es: Raccogliere feedback sui prodotti..."
+                  className="mt-1"
+                />
+              </div>
+            )}
+            
+            <div className="mt-6 flex justify-center">
+              <Button
+                onClick={handleGenerateInstructions}
+                disabled={isGenerating || (customObjective === "other" && !customOtherObjective.trim())}
+                size="lg"
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-3 shadow-lg"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                    Generazione in corso...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="h-5 w-5 mr-2" />
+                    🤖 Genera Istruzioni AI
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 3b - 9 Phases Checklist (only for custom template) */}
+      {enabled && selectedTemplate === "custom" && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              Le 9 Fasi della Conversazione (struttura fissa)
+            </CardTitle>
+            <CardDescription className="text-xs">
+              L'AI genererà domande specifiche per il tuo obiettivo in ogni fase
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {NINE_PHASES.map((phase) => (
+                <div
+                  key={phase.id}
+                  className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 border border-muted"
+                >
+                  <span className="text-lg">{phase.icon}</span>
+                  <span className="flex-1 text-sm font-medium">{phase.name}</span>
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Variable Insertion Chips */}
       {enabled && (
