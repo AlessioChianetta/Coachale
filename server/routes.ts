@@ -97,6 +97,7 @@ import googleDriveRouter from "./routes/google-drive";
 import clientGoogleDriveRouter from "./routes/client/client-google-drive";
 import adminRouter from "./routes/admin";
 import onboardingRouter from "./routes/onboarding";
+import followupApiRouter from "./routes/followup-api";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
 import { handleWebhook } from "./whatsapp/webhook-handler";
 import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
@@ -7000,6 +7001,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Consultant Onboarding routes
   app.use("/api/consultant/onboarding", onboardingRouter);
+
+  // Follow-up Automation API routes
+  app.use("/api/followup", followupApiRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
