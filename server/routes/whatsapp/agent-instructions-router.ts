@@ -398,7 +398,18 @@ class NotFoundError extends Error {
  */
 const generateInstructionsSchema = z.object({
   agentType: z.enum(["inbound", "outbound", "consultative"]),
-  objective: z.enum(["appointment", "info_gathering", "quote_request", "lead_qualification", "other"]),
+  objective: z.enum([
+    "appointment", 
+    "info_gathering", 
+    "quote_request", 
+    "lead_qualification", 
+    "follow_up",
+    "conversion",
+    "education", 
+    "support", 
+    "faq",
+    "other"
+  ]),
   customObjective: z.string().optional(),
   bookingEnabled: z.boolean().optional(),
 });
@@ -455,6 +466,11 @@ router.post(
         info_gathering: "Raccolta informazioni - Qualificare il lead raccogliendo dati",
         quote_request: "Richiesta preventivo - Raccogliere info per inviare un preventivo personalizzato",
         lead_qualification: "Qualificazione lead - Verificare interesse, budget e fit",
+        follow_up: "Follow-up contatto - Ricontattare lead interessato per mantenere relazione",
+        conversion: "Conversione interesse - Portare lead verso l'azione finale",
+        education: "Educazione prodotto - Insegnare e informare sul prodotto/servizio",
+        support: "Supporto informativo - Rispondere a domande e dubbi",
+        faq: "FAQ automatiche - Gestire domande frequenti in modo automatico",
         other: customObjective || "Obiettivo personalizzato",
       };
 
@@ -492,10 +508,55 @@ router.post(
 - Fase 4: Se qualificato, proponi una call; se non qualificato, indirizza altrove
 - Fase 5-9: Per lead qualificati, raccogli contatti`,
 
+        follow_up: `
+🎯 FOCUS: Le domande devono MANTENERE LA RELAZIONE e riportare interesse.
+- Fase 1: Ricorda chi sei e perché li stai ricontattando
+- Fase 2: Chiedi come è andato con il tema discusso precedentemente
+- Fase 3: Scopri se ci sono nuovi bisogni o dubbi emersi
+- Fase 3.5: Verifica se hanno valutato alternative o hanno domande
+- Fase 4: Proponi un prossimo step (call, demo, contenuto)
+- Fase 5-9: Se interessati, raccogli disponibilità per approfondimento`,
+
+        conversion: `
+🎯 FOCUS: Le domande devono PORTARE VERSO LA DECISIONE finale.
+- Fase 1: Riepiloga i benefici discussi e il valore della soluzione
+- Fase 2: Affronta le ultime obiezioni o dubbi
+- Fase 3: Chiedi esplicitamente cosa manca per procedere
+- Fase 3.5: Offri rassicurazioni (garanzie, testimonianze, prove)
+- Fase 4: Proponi l'azione finale (acquisto, iscrizione, contratto)
+- Fase 5-9: Accompagna il processo di chiusura`,
+
+        education: `
+🎯 FOCUS: Le domande devono EDUCARE E INFORMARE senza vendere.
+- Fase 1: Scopri cosa vuole imparare e il suo livello di conoscenza
+- Fase 2: Valuta le sue basi sull'argomento
+- Fase 3: Spiega in modo chiaro con esempi pratici
+- Fase 4: Verifica la comprensione e offri approfondimenti
+- Fase 5-6: Suggerisci risorse e prossimi passi educativi
+- NON menzionare mai appuntamenti, call o vendite`,
+
+        support: `
+🎯 FOCUS: Le domande devono RISOLVERE DUBBI e fornire supporto.
+- Fase 1: Scopri qual è il dubbio o problema specifico
+- Fase 2: Raccogli dettagli per capire meglio la situazione
+- Fase 3: Fornisci la risposta o soluzione chiara
+- Fase 4: Verifica se ha risolto e se ci sono altri dubbi
+- Fase 5-6: Offri ulteriore supporto se necessario
+- Mantieni tono paziente e disponibile`,
+
+        faq: `
+🎯 FOCUS: Rispondi in modo RAPIDO e PRECISO alle domande frequenti.
+- Riconosci la domanda e classifica la categoria
+- Fornisci risposta strutturata e completa
+- Offri link o risorse aggiuntive se disponibili
+- Chiedi se la risposta è stata utile
+- Proponi altre FAQ correlate che potrebbero interessare
+- Mantieni risposte concise ma complete`,
+
         other: `
 🎯 FOCUS: ${customObjective || "Obiettivo personalizzato definito dal consulente"}.
 - Adatta le domande di ogni fase per raggiungere questo obiettivo specifico
-- Mantieni la struttura delle 9 fasi ma personalizza le domande
+- Mantieni la struttura delle fasi ma personalizza le domande
 - Assicurati che ogni fase contribuisca al raggiungimento dell'obiettivo`,
       };
 
