@@ -2012,6 +2012,14 @@ export default function AgentInstructionsPanel({
         ? bookingEnabled 
         : (configData?.bookingEnabled !== undefined ? configData.bookingEnabled : true);
       
+      // Get base template for the current agent type
+      const baseTemplate = getInitialInstructions(
+        agentType === "inbound" ? "reactive_lead" :
+        agentType === "outbound" ? "proactive_setter" :
+        agentType === "consultative" ? "informative_advisor" :
+        agentType
+      );
+      
       const response = await fetch('/api/whatsapp/config/instructions/generate', {
         method: "POST",
         headers: {
@@ -2023,6 +2031,7 @@ export default function AgentInstructionsPanel({
           objective: customObjective,
           customObjective: customObjective === "other" ? customOtherObjective : undefined,
           bookingEnabled: effectiveBookingEnabled,
+          baseTemplate, // Pass the base template for AI to adapt
         }),
       });
 

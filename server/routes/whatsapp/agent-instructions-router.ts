@@ -420,6 +420,7 @@ const generateInstructionsSchema = z.object({
   ]),
   customObjective: z.string().optional(),
   bookingEnabled: z.boolean().optional(),
+  baseTemplate: z.string().optional(), // Template base da adattare invece di generare da zero
 });
 
 /**
@@ -443,13 +444,14 @@ router.post(
         });
       }
 
-      const { agentType, objective, customObjective, bookingEnabled } = validationResult.data;
+      const { agentType, objective, customObjective, bookingEnabled, baseTemplate } = validationResult.data;
 
       console.log(`🤖 [GENERATE INSTRUCTIONS] Starting generation for consultant ${consultantId}`);
       console.log(`   - Agent Type: ${agentType}`);
       console.log(`   - Objective: ${objective}`);
       console.log(`   - Custom Objective: ${customObjective || 'N/A'}`);
       console.log(`   - Booking Enabled: ${bookingEnabled !== false ? 'YES' : 'NO'}`);
+      console.log(`   - Base Template: ${baseTemplate ? `YES (${baseTemplate.length} chars)` : 'NO - will generate from scratch'}`);
 
       const { getAIProvider } = await import("../../ai/provider-factory");
       const providerResult = await getAIProvider(consultantId, consultantId);
@@ -671,7 +673,55 @@ L'agente NON può prendere appuntamenti.
 Le fasi 5-8 devono essere adattate per raccogliere contatti senza fissare appuntamenti.
 Invece di proporre slot, proponi di inviare informazioni via email o di essere ricontattati.`;
 
-      const systemPrompt = `Sei un esperto di prompt engineering per agenti AI conversazionali WhatsApp per il settore consulenziale.
+      // Build different prompts based on whether baseTemplate is provided
+      let systemPrompt: string;
+      
+      if (baseTemplate && baseTemplate.length > 500) {
+        // ADAPT MODE: Use base template and adapt it to the objective
+        systemPrompt = `Sei un esperto di prompt engineering per agenti AI conversazionali WhatsApp per il settore consulenziale.
+
+Il tuo compito è ADATTARE il template esistente in base all'obiettivo specificato dal consulente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONFIGURAZIONE AGENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📌 TIPO AGENTE: ${agentTypeLabels[agentType]}
+📌 OBIETTIVO PRINCIPALE: ${objectiveLabels[objective]}
+
+${objectiveSpecificGuidance[objective]}
+
+${bookingSection}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TEMPLATE BASE DA ADATTARE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${baseTemplate}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ISTRUZIONI DI ADATTAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ MANTIENI la struttura delle fasi del template base
+✅ MANTIENI le variabili \${...} esattamente come sono
+✅ MANTIENI lo stile e il tono generale
+✅ ADATTA gli esempi di domande per allinearsi all'obiettivo "${objectiveLabels[objective]}"
+✅ PERSONALIZZA i checkpoint per raggiungere l'obiettivo specifico
+✅ MODIFICA la Magic Question (Fase 4) per riflettere l'obiettivo
+✅ Se booking disabilitato, adatta le fasi 5-8 di conseguenza
+
+❌ NON cambiare drasticamente la struttura
+❌ NON rimuovere fasi esistenti
+❌ NON aggiungere nuove variabili
+❌ NON tradurre o cambiare lingua
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+GENERA ORA il template ADATTATO. Restituisci SOLO le istruzioni complete, senza commenti.`;
+      } else {
+        // GENERATE FROM SCRATCH MODE: Original behavior
+        systemPrompt = `Sei un esperto di prompt engineering per agenti AI conversazionali WhatsApp per il settore consulenziale.
 
 Il tuo compito è generare istruzioni COMPLETE e DETTAGLIATE per un agente WhatsApp.
 
@@ -754,6 +804,7 @@ STILE DI SCRITTURA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 GENERA ORA le istruzioni complete. Restituisci SOLO le istruzioni, senza commenti aggiuntivi.`;
+      }
 
       const result = await providerResult.client.generateContent({
         model: "gemini-2.5-flash",
