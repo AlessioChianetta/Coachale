@@ -1309,11 +1309,33 @@ export default function AgentInstructionsPanel({
   const lastSyncedPayloadRef = useRef<string>("");
   const isHydratingRef = useRef(false);
 
+  // Helper function to get the initial template based on agent type
+  const getInitialTemplate = (type?: string): "receptionist" | "marco_setter" | "informative_advisor" | "custom" => {
+    const mappedType = mapAgentTypeToInternal(type);
+    switch (mappedType) {
+      case "outbound": return "marco_setter";
+      case "consultative": return "informative_advisor";
+      case "inbound":
+      default: return "receptionist";
+    }
+  };
+
+  // Helper function to get initial instructions based on template
+  const getInitialInstructions = (type?: string): string => {
+    const template = getInitialTemplate(type);
+    switch (template) {
+      case "marco_setter": return MARCO_SETTER_TEMPLATE;
+      case "informative_advisor": return INFORMATIVE_ADVISOR_TEMPLATE;
+      case "receptionist":
+      default: return RECEPTIONIST_TEMPLATE;
+    }
+  };
+
   // Local state - use external agentType from props if available
   const [enabled, setEnabled] = useState(true);
   const [agentType, setAgentType] = useState<"inbound" | "outbound" | "consultative">(() => mapAgentTypeToInternal(externalAgentType));
-  const [selectedTemplate, setSelectedTemplate] = useState<"receptionist" | "marco_setter" | "informative_advisor" | "custom">("receptionist");
-  const [instructions, setInstructions] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<"receptionist" | "marco_setter" | "informative_advisor" | "custom">(() => getInitialTemplate(externalAgentType));
+  const [instructions, setInstructions] = useState(() => getInitialInstructions(externalAgentType));
   const [businessHeaderMode, setBusinessHeaderMode] = useState<string>("assistant");
   const [professionalRole, setProfessionalRole] = useState<string>("");
   const [customBusinessHeader, setCustomBusinessHeader] = useState<string>("");
@@ -1337,6 +1359,14 @@ export default function AgentInstructionsPanel({
       if (mappedType !== agentType) {
         console.log(`🔄 [SYNC AGENT TYPE] Sincronizzazione: ${externalAgentType} → ${mappedType}`);
         setAgentType(mappedType);
+        
+        // Also sync template and instructions if not using custom template
+        if (selectedTemplate !== "custom") {
+          const newTemplate = getInitialTemplate(externalAgentType);
+          setSelectedTemplate(newTemplate);
+          setInstructions(getInitialInstructions(externalAgentType));
+        }
+        
         // Reset obiettivo al default per il nuovo tipo
         const defaultObjectives: Record<string, string> = {
           inbound: "appointment",
