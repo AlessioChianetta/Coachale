@@ -40,7 +40,11 @@ import {
   Briefcase,
   User,
   Calendar,
+  AlertCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -63,12 +67,23 @@ interface UserData {
   level: string | null;
 }
 
+interface ExistingUserInfo {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
 export default function AdminUsers() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [showInactive, setShowInactive] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [existingUserInfo, setExistingUserInfo] = useState<ExistingUserInfo | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [newUser, setNewUser] = useState({
     username: "",
     email: "",
@@ -83,9 +98,9 @@ export default function AdminUsers() {
   const { toast } = useToast();
 
   const { data: usersData, isLoading } = useQuery({
-    queryKey: ["/api/admin/users"],
+    queryKey: ["/api/admin/users", showInactive],
     queryFn: async () => {
-      const response = await fetch("/api/admin/users", {
+      const response = await fetch(`/api/admin/users?includeInactive=${showInactive}`, {
         headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Failed to fetch users");
@@ -94,6 +109,39 @@ export default function AdminUsers() {
   });
 
   const users: UserData[] = usersData?.users || [];
+
+  const checkEmailExists = async (email: string) => {
+    if (!email || !email.includes("@")) {
+      setExistingUserInfo(null);
+      return;
+    }
+    setIsCheckingEmail(true);
+    try {
+      const response = await fetch("/api/admin/users/check-email", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+      const data = await response.json();
+      if (data.exists && data.existingUser) {
+        setExistingUserInfo(data.existingUser);
+        setNewUser(prev => ({
+          ...prev,
+          firstName: data.existingUser.firstName || prev.firstName,
+          lastName: data.existingUser.lastName || prev.lastName,
+        }));
+      } else {
+        setExistingUserInfo(null);
+      }
+    } catch (error) {
+      setExistingUserInfo(null);
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
 
   const toggleActiveMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -105,7 +153,7 @@ export default function AdminUsers() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"], exact: false });
       toast({
         title: "Stato aggiornato",
         description: "Lo stato dell'utente è stato modificato con successo.",
@@ -121,7 +169,7 @@ export default function AdminUsers() {
   });
 
   const createUserMutation = useMutation({
-    mutationFn: async (userData: typeof newUser) => {
+    mutationFn: async (userData: typeof newUser & { updateExistingRole?: boolean }) => {
       const response = await fetch("/api/admin/users", {
         method: "POST",
         headers: {
@@ -136,9 +184,10 @@ export default function AdminUsers() {
       }
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"], exact: false });
       setShowCreateDialog(false);
+      setExistingUserInfo(null);
       setNewUser({
         username: "",
         email: "",
@@ -149,8 +198,10 @@ export default function AdminUsers() {
         phoneNumber: "",
       });
       toast({
-        title: "Utente creato",
-        description: "Il nuovo utente è stato creato con successo.",
+        title: data.existed ? "Ruolo aggiornato" : "Utente creato",
+        description: data.existed 
+          ? data.message || "Il ruolo dell'utente è stato aggiornato."
+          : "Il nuovo utente è stato creato con successo.",
       });
     },
     onError: (error: Error) => {
@@ -201,7 +252,9 @@ export default function AdminUsers() {
   };
 
   const handleCreateUser = () => {
-    if (!newUser.username || !newUser.email || !newUser.password || !newUser.firstName || !newUser.lastName) {
+    const requiresPassword = !existingUserInfo || existingUserInfo.role === newUser.role;
+    
+    if (!newUser.email || !newUser.firstName || !newUser.lastName) {
       toast({
         title: "Campi obbligatori",
         description: "Compila tutti i campi obbligatori.",
@@ -209,7 +262,35 @@ export default function AdminUsers() {
       });
       return;
     }
-    createUserMutation.mutate(newUser);
+    
+    if (requiresPassword && !newUser.password) {
+      toast({
+        title: "Password richiesta",
+        description: "La password è obbligatoria per i nuovi utenti.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const isRoleUpdate = existingUserInfo && existingUserInfo.role !== newUser.role;
+    createUserMutation.mutate({
+      ...newUser,
+      updateExistingRole: isRoleUpdate ? true : undefined,
+    });
+  };
+
+  const resetCreateDialog = () => {
+    setShowCreateDialog(false);
+    setExistingUserInfo(null);
+    setNewUser({
+      username: "",
+      email: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+      role: "client",
+      phoneNumber: "",
+    });
   };
 
   return (
@@ -248,7 +329,7 @@ export default function AdminUsers() {
           <Card className="border-0 shadow-lg mb-6">
             <CardContent className="p-4 md:p-6">
               <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row gap-4 flex-1 w-full md:w-auto items-center">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
@@ -269,9 +350,23 @@ export default function AdminUsers() {
                       <SelectItem value="client">Client</SelectItem>
                     </SelectContent>
                   </Select>
+                  <div className="flex items-center gap-2 whitespace-nowrap">
+                    <Switch
+                      id="show-inactive"
+                      checked={showInactive}
+                      onCheckedChange={setShowInactive}
+                    />
+                    <Label htmlFor="show-inactive" className="text-sm cursor-pointer flex items-center gap-1">
+                      {showInactive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      <span className="hidden sm:inline">Mostra inattivi</span>
+                    </Label>
+                  </div>
                 </div>
 
-                <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                <Dialog open={showCreateDialog} onOpenChange={(open) => {
+                  if (!open) resetCreateDialog();
+                  else setShowCreateDialog(true);
+                }}>
                   <DialogTrigger asChild>
                     <Button className="bg-gradient-to-r from-green-500 to-emerald-500 text-white">
                       <UserPlus className="w-4 h-4 mr-2" />
@@ -305,31 +400,35 @@ export default function AdminUsers() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="username">Username *</Label>
-                        <Input
-                          id="username"
-                          value={newUser.username}
-                          onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
                         <Label htmlFor="email">Email *</Label>
                         <Input
                           id="email"
                           type="email"
                           value={newUser.email}
                           onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                          onBlur={() => checkEmailExists(newUser.email)}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="password">Password *</Label>
-                        <Input
-                          id="password"
-                          type="password"
-                          value={newUser.password}
-                          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                        />
-                      </div>
+                      {existingUserInfo && existingUserInfo.role !== newUser.role && (
+                        <Alert className="bg-amber-50 border-amber-200">
+                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                          <AlertDescription className="text-sm">
+                            Questo utente esiste già come <strong>{existingUserInfo.role === 'consultant' ? 'Consulente' : existingUserInfo.role === 'client' ? 'Cliente' : 'Super Admin'}</strong>. 
+                            Il ruolo verrà aggiornato senza richiedere una nuova password.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                      {!(existingUserInfo && existingUserInfo.role !== newUser.role) && (
+                        <div className="space-y-2">
+                          <Label htmlFor="password">Password *</Label>
+                          <Input
+                            id="password"
+                            type="password"
+                            value={newUser.password}
+                            onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                          />
+                        </div>
+                      )}
                       <div className="space-y-2">
                         <Label htmlFor="phoneNumber">Telefono</Label>
                         <Input
@@ -358,7 +457,7 @@ export default function AdminUsers() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                      <Button variant="outline" onClick={resetCreateDialog}>
                         Annulla
                       </Button>
                       <Button
@@ -366,7 +465,11 @@ export default function AdminUsers() {
                         disabled={createUserMutation.isPending}
                         className="bg-gradient-to-r from-green-500 to-emerald-500"
                       >
-                        {createUserMutation.isPending ? "Creazione..." : "Crea Utente"}
+                        {createUserMutation.isPending 
+                          ? "Elaborazione..." 
+                          : existingUserInfo && existingUserInfo.role !== newUser.role 
+                            ? "Aggiorna Ruolo" 
+                            : "Crea Utente"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -402,50 +505,105 @@ export default function AdminUsers() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredUsers.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center font-semibold text-gray-600 dark:text-gray-300">
-                                {user.firstName?.[0]}{user.lastName?.[0]}
+                      {(() => {
+                        const superAdmins = filteredUsers.filter(u => u.role === 'super_admin');
+                        const consultants = filteredUsers.filter(u => u.role === 'consultant');
+                        const clients = filteredUsers.filter(u => u.role === 'client');
+                        
+                        const renderUserRow = (user: UserData) => (
+                          <TableRow key={user.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center font-semibold text-gray-600 dark:text-gray-300">
+                                  {user.firstName?.[0]}{user.lastName?.[0]}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900 dark:text-white">
+                                    {user.firstName} {user.lastName}
+                                  </p>
+                                  <p className="text-sm text-gray-500">@{user.username}</p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="font-medium text-gray-900 dark:text-white">
-                                  {user.firstName} {user.lastName}
-                                </p>
-                                <p className="text-sm text-gray-500">@{user.username}</p>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                <Mail className="w-4 h-4" />
+                                {user.email}
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                              <Mail className="w-4 h-4" />
-                              {user.email}
-                            </div>
-                          </TableCell>
-                          <TableCell>{getRoleBadge(user.role)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <Calendar className="w-4 h-4" />
-                              {format(new Date(user.createdAt), "d MMM yyyy", { locale: it })}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={user.isActive ? "default" : "secondary"}>
-                              {user.isActive ? "Attivo" : "Inattivo"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Switch
-                                checked={user.isActive}
-                                onCheckedChange={() => toggleActiveMutation.mutate(user.id)}
-                                disabled={toggleActiveMutation.isPending}
-                              />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                            <TableCell>{getRoleBadge(user.role)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <Calendar className="w-4 h-4" />
+                                {format(new Date(user.createdAt), "d MMM yyyy", { locale: it })}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={user.isActive ? "default" : "secondary"}>
+                                {user.isActive ? "Attivo" : "Inattivo"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Switch
+                                  checked={user.isActive}
+                                  onCheckedChange={() => toggleActiveMutation.mutate(user.id)}
+                                  disabled={toggleActiveMutation.isPending}
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                        
+                        const renderSectionHeader = (title: string, icon: React.ReactNode, count: number, bgColor: string) => (
+                          <TableRow key={`header-${title}`} className={bgColor}>
+                            <TableCell colSpan={6} className="py-3">
+                              <div className="flex items-center gap-2 font-semibold">
+                                {icon}
+                                {title} ({count})
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                        
+                        return (
+                          <>
+                            {superAdmins.length > 0 && (
+                              <>
+                                {renderSectionHeader(
+                                  "Super Admin",
+                                  <Shield className="w-4 h-4 text-red-600" />,
+                                  superAdmins.length,
+                                  "bg-red-50 dark:bg-red-900/20"
+                                )}
+                                {superAdmins.map(renderUserRow)}
+                              </>
+                            )}
+                            {consultants.length > 0 && (
+                              <>
+                                {renderSectionHeader(
+                                  "Consulenti",
+                                  <Briefcase className="w-4 h-4 text-blue-600" />,
+                                  consultants.length,
+                                  "bg-blue-50 dark:bg-blue-900/20"
+                                )}
+                                {consultants.map(renderUserRow)}
+                              </>
+                            )}
+                            {clients.length > 0 && (
+                              <>
+                                {renderSectionHeader(
+                                  "Clienti",
+                                  <User className="w-4 h-4 text-green-600" />,
+                                  clients.length,
+                                  "bg-green-50 dark:bg-green-900/20"
+                                )}
+                                {clients.map(renderUserRow)}
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
                     </TableBody>
                   </Table>
                 </div>

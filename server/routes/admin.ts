@@ -140,6 +140,10 @@ router.get(
   requireSuperAdmin,
   async (req: AuthRequest, res) => {
     try {
+      const includeInactive = req.query.includeInactive === 'true';
+      
+      const conditions = includeInactive ? undefined : eq(users.isActive, true);
+
       const allUsers = await db
         .select({
           id: users.id,
@@ -155,7 +159,17 @@ router.get(
           level: users.level
         })
         .from(users)
-        .orderBy(desc(users.createdAt));
+        .where(conditions)
+        .orderBy(
+          sql`CASE 
+            WHEN ${users.role} = 'super_admin' THEN 1 
+            WHEN ${users.role} = 'consultant' THEN 2 
+            WHEN ${users.role} = 'client' THEN 3 
+            ELSE 4
+          END`,
+          users.firstName,
+          users.lastName
+        );
 
       res.json({
         success: true,
@@ -515,17 +529,53 @@ router.get(
 );
 
 router.post(
+  "/admin/users/check-email",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ success: false, error: "Email is required" });
+      }
+
+      const [existing] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          role: users.role
+        })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      res.json({
+        success: true,
+        exists: !!existing,
+        existingUser: existing || null
+      });
+    } catch (error: any) {
+      console.error("Check email error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
   "/admin/users",
   authenticateToken,
   requireSuperAdmin,
   async (req: AuthRequest, res) => {
     try {
-      const { email, password, firstName, lastName, role, consultantId, phoneNumber } = req.body;
+      const { email, password, firstName, lastName, role, consultantId, phoneNumber, updateExistingRole } = req.body;
 
-      if (!email || !password || !firstName || !lastName || !role) {
+      if (!email || !firstName || !lastName || !role) {
         return res.status(400).json({ 
           success: false, 
-          error: "Email, password, firstName, lastName, and role are required" 
+          error: "Email, firstName, lastName, and role are required" 
         });
       }
 
@@ -536,9 +586,73 @@ router.post(
         .limit(1);
 
       if (existing) {
+        if (existing.role === role) {
+          return res.status(400).json({ 
+            success: false, 
+            error: `Un utente con questa email è già registrato come ${role === 'consultant' ? 'Consulente' : role === 'client' ? 'Cliente' : 'Super Admin'}` 
+          });
+        }
+
+        if (existing.role === "super_admin") {
+          return res.status(400).json({ 
+            success: false, 
+            error: "Non è possibile modificare il ruolo di un Super Admin. Contatta l'amministratore di sistema." 
+          });
+        }
+
+        if (!updateExistingRole) {
+          return res.status(400).json({ 
+            success: false, 
+            error: "È necessario confermare esplicitamente l'aggiornamento del ruolo per un utente esistente.",
+            requiresConfirmation: true,
+            existingUser: {
+              id: existing.id,
+              email: existing.email,
+              firstName: existing.firstName,
+              lastName: existing.lastName,
+              role: existing.role
+            }
+          });
+        }
+
+        const [updatedUser] = await db
+          .update(users)
+          .set({ 
+            role,
+            firstName: firstName || existing.firstName,
+            lastName: lastName || existing.lastName,
+            consultantId: role === "client" ? consultantId : null,
+            phoneNumber: phoneNumber || existing.phoneNumber
+          })
+          .where(eq(users.id, existing.id))
+          .returning();
+
+        await db.insert(adminAuditLog).values({
+          adminId: req.user!.id,
+          action: "update_user_role",
+          targetType: "user",
+          targetId: existing.id,
+          details: { email, previousRole: existing.role, newRole: role }
+        });
+
+        return res.json({
+          success: true,
+          existed: true,
+          user: {
+            id: updatedUser.id,
+            email: updatedUser.email,
+            firstName: updatedUser.firstName,
+            lastName: updatedUser.lastName,
+            role: updatedUser.role
+          },
+          message: `Ruolo aggiornato da ${existing.role} a ${role}`
+        });
+      }
+
+      if (!password) {
         return res.status(400).json({ 
           success: false, 
-          error: "User with this email already exists" 
+          error: "Password is required for new users" 
         });
       }
 
@@ -570,6 +684,7 @@ router.post(
 
       res.json({
         success: true,
+        existed: false,
         user: {
           id: newUser.id,
           email: newUser.email,

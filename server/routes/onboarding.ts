@@ -19,7 +19,7 @@ import {
   exercises,
   emailDrafts
 } from '@shared/schema';
-import { eq, and, count, sql } from 'drizzle-orm';
+import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient } from '../google-calendar-service';
 import nodemailer from 'nodemailer';
@@ -1094,7 +1094,7 @@ router.post('/ai-ideas/improve-text', authenticateToken, requireRole('consultant
       },
     });
     
-    const model = vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
     const prompt = `Sei un esperto copywriter italiano. Migliora e espandi il seguente testo di descrizione business, mantenendo le informazioni originali ma:
 - Rendilo più professionale e dettagliato
@@ -1167,7 +1167,7 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
         .from(consultantKnowledgeDocuments)
         .where(and(
           eq(consultantKnowledgeDocuments.consultantId, consultantId),
-          sql`${consultantKnowledgeDocuments.id} = ANY(${knowledgeDocIds})`
+          inArray(consultantKnowledgeDocuments.id, knowledgeDocIds)
         ));
       
       for (const doc of docs) {
