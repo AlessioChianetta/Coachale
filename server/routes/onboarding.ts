@@ -1173,34 +1173,41 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
       });
     }
     
-    const integrationsDescription = integrations.map((i: string) => {
-      if (i === 'booking') return 'Presa Appuntamento (può prenotare appuntamenti nel calendario)';
-      if (i === 'consultation') return 'Supporto Consulenziale (fornisce informazioni e supporto senza prenotare)';
-      return i;
-    }).join(', ');
+    // Map selected agent types to their descriptions
+    const agentTypeDescriptions: Record<string, string> = {
+      'reactive_lead': 'Agente INBOUND/RECEPTIONIST che riceve messaggi, risponde e può prenotare appuntamenti',
+      'proactive_setter': 'Agente OUTBOUND/SETTER che contatta proattivamente i lead per fissare appuntamenti',
+      'informative_advisor': 'Agente CONSULENZIALE/EDUCATIVO che informa ed educa senza prenotare appuntamenti',
+      'customer_success': 'Agente CUSTOMER SUCCESS post-vendita che supporta i clienti esistenti, gestisce retention e upselling',
+      'intake_coordinator': 'Agente INTAKE COORDINATOR che raccoglie documenti, informazioni preliminari e prepara i clienti prima delle consulenze'
+    };
     
-    const agentTypeMapping = `
-- reactive_lead: Agente INBOUND che riceve messaggi, risponde e può prenotare appuntamenti
-- proactive_setter: Agente OUTBOUND che contatta proattivamente i lead per fissare appuntamenti  
-- informative_advisor: Agente CONSULENZIALE che informa ed educa senza prenotare appuntamenti`;
+    // Filter only selected agent types
+    const selectedAgentTypes = integrations.filter((i: string) => 
+      ['reactive_lead', 'proactive_setter', 'informative_advisor', 'customer_success', 'intake_coordinator'].includes(i)
+    );
+    
+    const selectedAgentTypesDescription = selectedAgentTypes.map((type: string) => 
+      `- ${type}: ${agentTypeDescriptions[type] || type}`
+    ).join('\n');
+    
+    // Build the allowed types string for the prompt
+    const allowedTypesEnum = selectedAgentTypes.map((t: string) => `"${t}"`).join(' | ');
     
     const prompt = `Sei un esperto di automazione WhatsApp per business. Analizza il seguente contesto aziendale e genera ${numberOfIdeas || 3} idee per agenti AI WhatsApp.
 
 CONTESTO AZIENDALE:
 ${combinedContent}
 
-INTEGRAZIONI DISPONIBILI:
-${integrationsDescription}
-
-TIPI DI AGENTE DISPONIBILI:
-${agentTypeMapping}
+TIPI DI AGENTE SELEZIONATI DALL'UTENTE (GENERA SOLO TRA QUESTI):
+${selectedAgentTypesDescription}
 
 Per ogni idea, genera un JSON con questa struttura ESATTA:
 {
   "name": "Nome breve dell'agente (max 30 caratteri)",
   "description": "Descrizione completa di cosa fa l'agente (2-3 frasi)",
   "personality": "professionale" | "amichevole" | "empatico" | "diretto",
-  "suggestedAgentType": "reactive_lead" | "proactive_setter" | "informative_advisor",
+  "suggestedAgentType": ${allowedTypesEnum || '"reactive_lead"'},
   "integrations": ["booking"] e/o ["consultation"],
   "useCases": ["Caso d'uso 1", "Caso d'uso 2", "Caso d'uso 3"],
   "whoWeHelp": "Chi aiutiamo (target audience)",
@@ -1215,11 +1222,11 @@ Per ogni idea, genera un JSON con questa struttura ESATTA:
   "suggestedInstructions": "Istruzioni dettagliate per l'agente AI su come comportarsi, rispondere e gestire le conversazioni (min 200 parole). Includi: tono da usare, come presentarsi, come gestire obiezioni, come chiudere la conversazione."
 }
 
-REGOLE:
-- Se l'integrazione è solo "booking", usa agentType "reactive_lead" o "proactive_setter"
-- Se l'integrazione è solo "consultation", usa agentType "informative_advisor"
-- Se entrambe le integrazioni sono selezionate, puoi usare qualsiasi tipo
-- Genera idee diverse tra loro (non ripetere lo stesso tipo di agente)
+REGOLE OBBLIGATORIE:
+- GENERA SOLO agenti con suggestedAgentType tra quelli selezionati: [${selectedAgentTypes.join(', ')}]
+- NON generare MAI tipi di agente non selezionati dall'utente
+- Se sono selezionati più tipi, distribuisci le idee tra i tipi selezionati
+- Genera idee diverse tra loro
 - Per vision e mission, estrai dal contesto se possibile, altrimenti genera basandoti sul business
 - Per businessName e consultantDisplayName, estrai dal contesto se disponibili
 - Le suggestedInstructions devono essere dettagliate e specifiche per il tipo di agente

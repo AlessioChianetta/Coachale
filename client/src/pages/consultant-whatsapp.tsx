@@ -2122,14 +2122,26 @@ export default function ConsultantWhatsAppPage() {
                                         ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300' 
                                         : idea.suggestedAgentType === 'proactive_setter'
                                         ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300'
-                                        : 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300'
+                                        : idea.suggestedAgentType === 'informative_advisor'
+                                        ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300'
+                                        : idea.suggestedAgentType === 'customer_success'
+                                        ? 'bg-pink-100 text-pink-700 border-pink-300 dark:bg-pink-900/30 dark:text-pink-300'
+                                        : idea.suggestedAgentType === 'intake_coordinator'
+                                        ? 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300'
+                                        : 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-900/30 dark:text-gray-300'
                                     }`}
                                   >
                                     {idea.suggestedAgentType === 'reactive_lead' 
                                       ? '📞 Inbound' 
                                       : idea.suggestedAgentType === 'proactive_setter'
                                       ? '🎯 Outbound'
-                                      : '💬 Consulenziale'}
+                                      : idea.suggestedAgentType === 'informative_advisor'
+                                      ? '💬 Consulenziale'
+                                      : idea.suggestedAgentType === 'customer_success'
+                                      ? '💜 Customer Success'
+                                      : idea.suggestedAgentType === 'intake_coordinator'
+                                      ? '📋 Intake'
+                                      : idea.suggestedAgentType}
                                   </Badge>
                                 )}
                                 {idea.personality && (
@@ -2263,14 +2275,26 @@ export default function ConsultantWhatsAppPage() {
                                             ? 'bg-blue-100 text-blue-700 border-blue-300' 
                                             : idea.suggestedAgentType === 'proactive_setter'
                                             ? 'bg-green-100 text-green-700 border-green-300'
-                                            : 'bg-purple-100 text-purple-700 border-purple-300'
+                                            : idea.suggestedAgentType === 'informative_advisor'
+                                            ? 'bg-purple-100 text-purple-700 border-purple-300'
+                                            : idea.suggestedAgentType === 'customer_success'
+                                            ? 'bg-pink-100 text-pink-700 border-pink-300'
+                                            : idea.suggestedAgentType === 'intake_coordinator'
+                                            ? 'bg-amber-100 text-amber-700 border-amber-300'
+                                            : 'bg-gray-100 text-gray-700 border-gray-300'
                                         }`}
                                       >
                                         {idea.suggestedAgentType === 'reactive_lead' 
                                           ? 'Inbound' 
                                           : idea.suggestedAgentType === 'proactive_setter'
                                           ? 'Outbound'
-                                          : 'Consulenziale'}
+                                          : idea.suggestedAgentType === 'informative_advisor'
+                                          ? 'Consulenziale'
+                                          : idea.suggestedAgentType === 'customer_success'
+                                          ? 'Customer Success'
+                                          : idea.suggestedAgentType === 'intake_coordinator'
+                                          ? 'Intake'
+                                          : idea.suggestedAgentType}
                                       </Badge>
                                     )}
                                   </div>
