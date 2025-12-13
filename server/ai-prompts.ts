@@ -2086,6 +2086,38 @@ STEP 3: Inserisci nella piattaforma
    → Username: la tua email Outlook
    → Password: la password normale
 
+⭐ ALTERNATIVA AMAZON SES (CONSIGLIATO per produzione):
+   Amazon SES è il servizio email di AWS, molto affidabile e professionale.
+   
+   ⚠️ ATTENZIONE IMPORTANTE per Amazon SES:
+   
+   1. Crea account AWS: https://aws.amazon.com
+   2. Vai su Amazon SES: https://console.aws.amazon.com/ses/
+   3. Scegli regione Europa (Francoforte - eu-central-1)
+   4. Verifica il tuo dominio (aggiungi record DNS: DKIM, SPF, DMARC)
+   5. Richiedi accesso produzione (esci dalla sandbox)
+   6. Crea credenziali SMTP: https://console.aws.amazon.com/ses/home#/smtp
+      → Clicca "Create SMTP credentials"
+      → Salva Username e Password
+
+   🔴 ERRORE COMUNE DA EVITARE:
+   → Lo USERNAME SMTP di Amazon SES inizia con "AKIA..." e NON è la tua email!
+   → La PASSWORD SMTP è una stringa lunga random, NON è la password AWS!
+   → NON usare la tua email nel campo Username, usa il codice AKIA...!
+
+   ✅ CONFIGURAZIONE CORRETTA:
+   → Host: email-smtp.eu-central-1.amazonaws.com
+   → Porta: 587
+   → SSL/TLS: ✅ ATTIVO (obbligatorio!)
+   → Username: AKIA... (dallo step 6, NON la tua email!)
+   → Password: stringa lunga (dallo step 6, NON password AWS!)
+   → Email mittente: no-reply@tuodominio.it (dominio verificato)
+
+   Se vedi errore "535 Authentication Credentials Invalid":
+   → Stai usando l'email come username invece di AKIA...
+   → Vai su SES → SMTP Settings → Create SMTP credentials
+   → Usa le credenziali generate, NON email e password
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🔵 3. GOOGLE CALENDAR - OBBLIGATORIO

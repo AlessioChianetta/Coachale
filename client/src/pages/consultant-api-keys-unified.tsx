@@ -14,8 +14,10 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   Bot, Key, Mail, MessageSquare, Server, Cloud, Sparkles, Save, 
   AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
-  RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video
+  RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
+  BookOpen, ChevronDown
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -2069,6 +2071,137 @@ export default function ConsultantApiKeysUnified() {
                       </Button>
                     </div>
                   </CardContent>
+                </Card>
+
+                {/* Guida Configurazione SMTP */}
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm mt-6">
+                  <CardHeader>
+                    <Collapsible>
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex items-center justify-between cursor-pointer">
+                          <div className="flex items-center gap-3">
+                            <div className="p-3 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl">
+                              <BookOpen className="h-6 w-6 text-amber-600" />
+                            </div>
+                            <div className="text-left">
+                              <CardTitle className="text-lg">Guida Completa Configurazione SMTP</CardTitle>
+                              <CardDescription>Clicca per espandere la guida passo-passo per Amazon SES e altri provider</CardDescription>
+                            </div>
+                          </div>
+                          <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform" />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="mt-6 space-y-8 text-sm">
+                          {/* AMAZON SES SECTION */}
+                          <div className="space-y-4">
+                            <h3 className="text-lg font-bold flex items-center gap-2 text-orange-600">
+                              <Cloud className="h-5 w-5" />
+                              Amazon SES (Consigliato)
+                            </h3>
+                            
+                            {/* Fase 1-11 con tutte le istruzioni */}
+                            <div className="space-y-4 pl-4 border-l-2 border-orange-200">
+                              <div className="space-y-2">
+                                <h4 className="font-semibold">FASE 1: Creare account AWS</h4>
+                                <p className="text-muted-foreground">Vai su <a href="https://aws.amazon.com" target="_blank" className="text-blue-600 underline">aws.amazon.com</a> e accedi alla console</p>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <h4 className="font-semibold">FASE 2: Aprire Amazon SES</h4>
+                                <p className="text-muted-foreground">Dalla console AWS vai su <a href="https://console.aws.amazon.com/ses/" target="_blank" className="text-blue-600 underline">Amazon SES</a></p>
+                                <p className="text-muted-foreground">Scegli la regione Europa (Francoforte - eu-central-1)</p>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <h4 className="font-semibold">FASE 3-4: Verifica email contatto</h4>
+                                <p className="text-muted-foreground">Inserisci un'email (es. Gmail), Amazon invierà una verifica. Clicca il link nell'email.</p>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <h4 className="font-semibold">FASE 5: Aggiungere dominio</h4>
+                                <p className="text-muted-foreground">Dominio di invio: tuodominio.it</p>
+                                <p className="text-muted-foreground">Dominio MAIL FROM: mail.tuodominio.it</p>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <h4 className="font-semibold text-red-600">FASE 6: Configurare DNS (IMPORTANTE)</h4>
+                                <p className="text-muted-foreground">Clicca "Ottieni record DNS" e aggiungi nel tuo DNS:</p>
+                                <ul className="list-disc list-inside text-muted-foreground space-y-1 ml-2">
+                                  <li>3 record CNAME (DKIM)</li>
+                                  <li>1 record MX per mail.tuodominio.it</li>
+                                  <li>1 record TXT (SPF)</li>
+                                  <li>1 record TXT (DMARC)</li>
+                                </ul>
+                                <p className="text-muted-foreground">Attendi 5-30 minuti per la verifica.</p>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <h4 className="font-semibold">FASE 7-8: Richiedi accesso produzione</h4>
+                                <p className="text-muted-foreground">Dalla dashboard SES clicca "Richiedi accesso alla produzione"</p>
+                                <p className="text-muted-foreground">Nel ticket indica: uso SaaS legittimo, email transazionali, solo utenti registrati, nessuna cold email.</p>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <h4 className="font-semibold text-green-600">FASE 9: Creare credenziali SMTP</h4>
+                                <p className="text-muted-foreground">Vai su <a href="https://console.aws.amazon.com/ses/home#/smtp" target="_blank" className="text-blue-600 underline">SES → SMTP Settings</a></p>
+                                <p className="text-muted-foreground">Clicca "Create SMTP credentials" e salva Username e Password</p>
+                              </div>
+                              
+                              <Alert className="bg-red-50 border-red-200">
+                                <AlertCircle className="h-4 w-4 text-red-600" />
+                                <AlertDescription className="text-red-800">
+                                  <strong>ATTENZIONE:</strong> Lo Username SMTP di Amazon SES inizia con "AKIA..." e NON è la tua email! La Password è una stringa lunga random. Non usare email/password del tuo account AWS.
+                                </AlertDescription>
+                              </Alert>
+                              
+                              <div className="space-y-2">
+                                <h4 className="font-semibold">FASE 10: Configurazione nel form sopra</h4>
+                                <div className="bg-slate-100 p-4 rounded-lg font-mono text-xs space-y-2">
+                                  <p><strong>Host:</strong> email-smtp.eu-central-1.amazonaws.com</p>
+                                  <p><strong>Porta:</strong> 587</p>
+                                  <p><strong>SSL/TLS:</strong> ✅ Attivo</p>
+                                  <p><strong>Username:</strong> AKIA... (dallo step 9)</p>
+                                  <p><strong>Password:</strong> (stringa lunga dallo step 9)</p>
+                                  <p><strong>Email Mittente:</strong> no-reply@tuodominio.it</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* GMAIL SECTION */}
+                          <div className="space-y-4 pt-6 border-t">
+                            <h3 className="text-lg font-bold flex items-center gap-2 text-blue-600">
+                              <Mail className="h-5 w-5" />
+                              Gmail (Solo per test)
+                            </h3>
+                            <div className="bg-slate-100 p-4 rounded-lg font-mono text-xs space-y-2">
+                              <p><strong>Host:</strong> smtp.gmail.com</p>
+                              <p><strong>Porta:</strong> 587</p>
+                              <p><strong>SSL/TLS:</strong> ✅ Attivo</p>
+                              <p><strong>Username:</strong> tuoemail@gmail.com</p>
+                              <p><strong>Password:</strong> App Password (vai su myaccount.google.com → Sicurezza → Password per le app)</p>
+                            </div>
+                          </div>
+                          
+                          {/* OUTLOOK SECTION */}
+                          <div className="space-y-4 pt-6 border-t">
+                            <h3 className="text-lg font-bold flex items-center gap-2 text-purple-600">
+                              <Mail className="h-5 w-5" />
+                              Outlook / Office 365
+                            </h3>
+                            <div className="bg-slate-100 p-4 rounded-lg font-mono text-xs space-y-2">
+                              <p><strong>Host:</strong> smtp.office365.com</p>
+                              <p><strong>Porta:</strong> 587</p>
+                              <p><strong>SSL/TLS:</strong> ✅ Attivo</p>
+                              <p><strong>Username:</strong> tuoemail@outlook.com</p>
+                              <p><strong>Password:</strong> Password account</p>
+                            </div>
+                          </div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </CardHeader>
                 </Card>
               </TabsContent>
 

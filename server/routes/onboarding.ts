@@ -88,6 +88,16 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       ));
     const hasConsultativeAgent = Number(consultativeAgentResult[0]?.count || 0) > 0;
     
+    // Check if at least one agent has Twilio configured
+    const twilioConfiguredAgentResult = await db.select({ count: count() })
+      .from(consultantWhatsappConfig)
+      .where(and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        sql`twilio_account_sid IS NOT NULL AND twilio_account_sid != ''`,
+        sql`twilio_auth_token IS NOT NULL AND twilio_auth_token != ''`
+      ));
+    const hasTwilioConfiguredAgent = Number(twilioConfiguredAgentResult[0]?.count || 0) > 0;
+    
     // Count public agent links
     const publicLinksResult = await db.select({ count: count() })
       .from(whatsappAgentShares)
@@ -159,6 +169,7 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       hasInboundAgent,
       hasOutboundAgent,
       hasConsultativeAgent,
+      hasTwilioConfiguredAgent,
       hasPublicAgentLink,
       publicLinksCount,
       hasGeneratedIdeas,
@@ -192,7 +203,8 @@ router.put('/status/:step', authenticateToken, requireRole('consultant'), async 
     
     const validSteps = [
       'vertex_ai', 'smtp', 'google_calendar', 'video_meeting',
-      'lead_import', 'whatsapp_ai', 'knowledge_base', 'client_ai_strategy'
+      'lead_import', 'whatsapp_ai', 'knowledge_base', 'client_ai_strategy',
+      'twilio_agent'
     ];
     
     if (!validSteps.includes(step)) {
@@ -668,6 +680,57 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
     res.status(500).json({
       success: false,
       message: 'Errore durante il test WhatsApp AI',
+    });
+  }
+});
+
+router.post('/test/twilio-agent', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const agentWithTwilio = await db.query.consultantWhatsappConfig.findFirst({
+      where: and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        sql`twilio_account_sid IS NOT NULL AND twilio_account_sid != ''`,
+        sql`twilio_auth_token IS NOT NULL AND twilio_auth_token != ''`
+      )
+    });
+    
+    if (!agentWithTwilio) {
+      await db.update(consultantOnboardingStatus)
+        .set({
+          twilioAgentStatus: 'pending',
+          twilioAgentTestedAt: new Date(),
+          twilioAgentErrorMessage: 'Nessun agente con credenziali Twilio configurate.',
+          updatedAt: new Date(),
+        })
+        .where(eq(consultantOnboardingStatus.consultantId, consultantId));
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Nessun agente WhatsApp con credenziali Twilio configurate. Configura Twilio Account SID e Auth Token in almeno un agente.',
+      });
+    }
+    
+    await db.update(consultantOnboardingStatus)
+      .set({
+        twilioAgentStatus: 'verified',
+        twilioAgentTestedAt: new Date(),
+        twilioAgentErrorMessage: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(consultantOnboardingStatus.consultantId, consultantId));
+    
+    res.json({
+      success: true,
+      message: `Credenziali Twilio configurate correttamente nell'agente "${agentWithTwilio.name}"!`,
+      details: { agentName: agentWithTwilio.name },
+    });
+  } catch (error: any) {
+    console.error('Error testing Twilio Agent:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Errore durante il test Twilio Agent',
     });
   }
 });

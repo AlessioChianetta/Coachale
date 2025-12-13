@@ -1,0 +1,211 @@
+📘 Guida completa: configurare Amazon SES per l’invio di email automatiche (step-by-step)
+
+Questa guida spiega tutta la procedura completa per collegare Amazon SES (Simple Email Service) al software e inviare email automatiche (registrazione, notifiche, email AI).
+
+👉 È la stessa procedura che hai appena seguito, senza saltare nessun passaggio.
+
+✅ Requisiti
+
+Prima di iniziare ti serve:
+
+Un account AWS attivo
+
+Accesso alla gestione DNS del tuo dominio
+
+Un indirizzo email funzionante (es. Gmail)
+
+FASE 1️⃣ — Creare / accedere all’account AWS
+
+👉 https://aws.amazon.com
+
+👉 https://console.aws.amazon.com
+
+Accedi alla AWS Console.
+
+FASE 2️⃣ — Aprire Amazon SES e scegliere la regione
+
+Dalla AWS Console vai su Amazon SES
+👉 https://console.aws.amazon.com/ses/
+
+In alto a destra scegli la regione:
+
+✅ Europa (Francoforte – eu-central-1)
+(usa sempre la stessa regione)
+
+FASE 3️⃣ — Avviare la configurazione guidata
+
+In Amazon SES clicca:
+
+Inizia la configurazione
+
+
+Link diretto:
+👉 https://console.aws.amazon.com/ses/home#/onboarding
+
+FASE 4️⃣ — Verifica indirizzo email (contatto)
+
+Inserisci un indirizzo email (es. Gmail)
+
+Amazon invia un’email di verifica
+
+Apri l’email e clicca Verify email address
+
+👉 Serve solo come email di contatto, non come mittente.
+
+FASE 5️⃣ — Aggiungere il dominio di invio
+
+Nel wizard SES:
+
+Dominio di invio
+
+tuodominio.it
+
+
+Dominio MAIL FROM (consigliato)
+
+mail.tuodominio.it
+
+
+Lascia invariata l’opzione:
+
+Utilizza il dominio MAIL FROM predefinito in caso di errore MX
+
+FASE 6️⃣ — Configurare il DNS (PASSO PIÙ IMPORTANTE)
+
+Amazon SES mostrerà i record DNS da aggiungere.
+
+👉 Clicca:
+
+Ottieni record DNS
+
+Record da inserire nel DNS:
+
+✅ 3 record CNAME (DKIM)
+
+✅ 1 record MX per mail.tuodominio.it
+
+✅ 1 record TXT (SPF)
+
+✅ 1 record TXT (DMARC)
+
+⚠️ Copia esattamente i valori forniti da Amazon SES
+⚠️ Non modificare nomi o contenuti
+
+Dopo aver salvato i record:
+
+torna su Amazon SES
+
+attendi che lo stato diventi:
+
+Verificato
+
+
+⏱️ 5–30 minuti.
+
+FASE 7️⃣ — Sandbox e richiesta accesso alla produzione
+Cos’è la Sandbox
+
+All’inizio Amazon SES è in Sandbox, con limiti di test.
+
+Per usarlo davvero devi richiedere l’accesso alla produzione.
+
+👉 Dashboard account SES:
+https://console.aws.amazon.com/ses/home#/dashboard
+
+Clicca:
+
+Richiedi accesso alla produzione
+
+FASE 8️⃣ — Ticket di supporto (se richiesto)
+
+A volte Amazon SES apre automaticamente un ticket.
+
+👉 Centro di supporto AWS:
+https://console.aws.amazon.com/support/home
+
+Nel ticket indica:
+
+uso SaaS legittimo
+
+email transazionali e aggiornamenti
+
+solo utenti registrati
+
+nessuna cold email
+
+Dopo la revisione:
+
+Account status: Production
+
+FASE 9️⃣ — Creare le credenziali SMTP SES
+
+Vai su:
+👉 https://console.aws.amazon.com/ses/home#/smtp
+
+Clicca:
+
+Create SMTP credentials
+
+
+Salva:
+
+SMTP Host
+
+SMTP Username
+
+SMTP Password
+
+⚠️ Sono diverse dalle credenziali AWS standard.
+
+FASE 🔟 — Inserire i dati SMTP nel software
+
+Nel form di configurazione SMTP inserisci:
+
+Server SMTP
+Host: email-smtp.eu-central-1.amazonaws.com
+Porta: 587
+
+Sicurezza
+Connessione sicura (SSL/TLS): ATTIVA
+Tipo: TLS / STARTTLS
+
+Autenticazione
+Username: SMTP Username SES
+Password: SMTP Password SES
+
+Mittente
+Email mittente: no-reply@tuodominio.it
+Nome mittente: Nome Brand / Azienda
+
+FASE 11️⃣ — Test di invio
+
+Usa il pulsante Test connessione nel software.
+
+In sandbox: solo email verificate
+
+In produzione: qualsiasi destinatario
+
+Se l’email arriva → ✅ configurazione completata.
+
+🎯 Cosa puoi fare ora con Amazon SES
+
+Email di registrazione
+
+Reset password
+
+Notifiche di sistema
+
+Email AI personalizzate
+
+HTML complesso
+
+Ottima deliverability
+
+📌 Riepilogo finale
+
+✔ Account AWS
+✔ Dominio verificato
+✔ DNS configurato
+✔ Accesso produzione richiesto
+✔ SMTP configurato
+✔ Pronto per inviare email
