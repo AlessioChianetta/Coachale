@@ -2339,6 +2339,8 @@ export default function AgentInstructionsPanel({
                 {agentType === "inbound" && "Receptionist ottimizzato"}
                 {agentType === "outbound" && "Marco Setter ottimizzato"}
                 {agentType === "consultative" && "Consulente Educativo"}
+                {agentType === "customer_success" && "Customer Success ottimizzato"}
+                {agentType === "intake_coordinator" && "Intake Coordinator ottimizzato"}
               </div>
               {selectedTemplate !== "custom" && (
                 <Badge variant="default" className="mt-2 text-xs">
@@ -2440,6 +2442,8 @@ export default function AgentInstructionsPanel({
                   {agentType === "inbound" && "📞 Agente Inbound"}
                   {agentType === "outbound" && "📤 Agente Outbound"}
                   {agentType === "consultative" && "🎓 Agente Consulenziale"}
+                  {agentType === "customer_success" && "🛎️ Agente Customer Success"}
+                  {agentType === "intake_coordinator" && "📋 Agente Intake Coordinator"}
                 </Badge>
                 
                 <div>
@@ -2517,6 +2521,8 @@ export default function AgentInstructionsPanel({
                   {agentType === "inbound" && "📞 Agente Inbound"}
                   {agentType === "outbound" && "📤 Agente Outbound"}
                   {agentType === "consultative" && "🎓 Agente Consulenziale"}
+                  {agentType === "customer_success" && "🛎️ Agente Customer Success"}
+                  {agentType === "intake_coordinator" && "📋 Agente Intake Coordinator"}
                 </Badge>
                 
                 <div>

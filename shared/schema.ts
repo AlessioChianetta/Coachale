@@ -2081,8 +2081,8 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   // WhatsApp Conversation Style (only for clients)
   whatsappConciseMode: boolean("whatsapp_concise_mode").default(false).notNull(),
   
-  // Agent Type: reactive (waits for messages) vs proactive (writes first) vs informative (teaches without booking)
-  agentType: text("agent_type").$type<"reactive_lead" | "proactive_setter" | "informative_advisor">().default("reactive_lead").notNull(),
+  // Agent Type: reactive (waits for messages) vs proactive (writes first) vs informative (teaches without booking) vs customer_success (post-sale) vs intake_coordinator (document collection)
+  agentType: text("agent_type").$type<"reactive_lead" | "proactive_setter" | "informative_advisor" | "customer_success" | "intake_coordinator">().default("reactive_lead").notNull(),
   
   // WhatsApp Message Templates (ContentSid for proactive outreach)
   // PRECEDENCE: Custom template ID > Twilio SID > plaintext fallback
@@ -2118,10 +2118,13 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   // DRY RUN MODE - Per-agent test mode (simulates messages without sending)
   isDryRun: boolean("is_dry_run").default(true).notNull(),
   
+  // Proactive Agent Mode - Can initiate conversations (outreach) instead of only responding
+  isProactiveAgent: boolean("is_proactive_agent").default(false).notNull(),
+  
   // Agent Instructions Configuration (migrazione da hardcoded a DB)
   agentInstructions: text("agent_instructions"),
   agentInstructionsEnabled: boolean("agent_instructions_enabled").default(false).notNull(),
-  selectedTemplate: text("selected_template").$type<"receptionist" | "marco_setter" | "informative_advisor" | "custom">(),
+  selectedTemplate: text("selected_template").$type<"receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator" | "custom">(),
   
   // Feature Blocks Configuration (on/off per funzionalità modulari)
   bookingEnabled: boolean("booking_enabled").default(true).notNull(),
