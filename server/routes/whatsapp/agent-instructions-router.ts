@@ -623,7 +623,7 @@ FASE 8️⃣ - ATTESA CREAZIONE APPUNTAMENTO
 → Messaggio placeholder mentre si crea l'evento
 
 FASE 9️⃣ - SUPPORTO PRE-APPUNTAMENTO
-→ Come gestire domande dopo la conferma`
+→ Come gestire domande dopo la conferma
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VARIABILI DISPONIBILI (usa SOLO queste)
