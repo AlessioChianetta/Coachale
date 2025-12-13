@@ -192,6 +192,9 @@ export default function ConsultantWhatsAppPage() {
   const [generatedIdeas, setGeneratedIdeas] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedKnowledgeDocIds, setSelectedKnowledgeDocIds] = useState<string[]>([]);
+  const [businessNameInput, setBusinessNameInput] = useState("");
+  const [consultantDisplayNameInput, setConsultantDisplayNameInput] = useState("");
+  const [isImprovingText, setIsImprovingText] = useState(false);
 
   // Query per caricare i documenti dalla knowledge base
   const knowledgeDocsQuery = useQuery({
@@ -271,6 +274,10 @@ export default function ConsultantWhatsAppPage() {
           usp: idea.usp,
           suggestedInstructions: idea.suggestedInstructions,
           useCases: idea.useCases,
+          vision: idea.vision,
+          mission: idea.mission,
+          businessName: idea.businessName,
+          consultantDisplayName: idea.consultantDisplayName,
         }),
       });
       if (!res.ok) throw new Error("Failed to save idea");
@@ -318,6 +325,10 @@ export default function ConsultantWhatsAppPage() {
           usp: idea.usp,
           suggestedInstructions: idea.suggestedInstructions,
           useCases: idea.useCases,
+          vision: idea.vision,
+          mission: idea.mission,
+          businessName: idea.businessName,
+          consultantDisplayName: idea.consultantDisplayName,
         }),
       });
       if (!saveRes.ok) throw new Error("Failed to save idea");
@@ -1642,17 +1653,98 @@ export default function ConsultantWhatsAppPage() {
                       Descrivi il tuo business, servizi, clienti tipo, etc.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <Textarea
-                      placeholder="Es: Siamo un'agenzia immobiliare che gestisce vendite e affitti di immobili residenziali e commerciali. I nostri clienti principali sono privati e aziende che cercano soluzioni personalizzate..."
-                      value={textInput}
-                      onChange={(e) => setTextInput(e.target.value)}
-                      rows={8}
-                      className="resize-none"
-                    />
-                    <p className="text-xs text-gray-500 mt-2">
-                      {textInput.length} caratteri
-                    </p>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="business-name-input" className="text-sm font-medium flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-purple-600" />
+                          Nome Business (opzionale)
+                        </Label>
+                        <Input
+                          id="business-name-input"
+                          placeholder="Es: Studio Rossi & Partners"
+                          value={businessNameInput}
+                          onChange={(e) => setBusinessNameInput(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="consultant-display-name-input" className="text-sm font-medium flex items-center gap-2">
+                          <User className="h-4 w-4 text-purple-600" />
+                          Nome Display Consulente (opzionale)
+                        </Label>
+                        <Input
+                          id="consultant-display-name-input"
+                          placeholder="Es: Marco Rossi"
+                          value={consultantDisplayNameInput}
+                          onChange={(e) => setConsultantDisplayNameInput(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Descrizione del Business</Label>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!textInput.trim()) {
+                              toast({
+                                title: "⚠️ Testo mancante",
+                                description: "Inserisci una descrizione da migliorare.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            setIsImprovingText(true);
+                            try {
+                              const res = await fetch("/api/consultant/onboarding/ai-ideas/improve-text", {
+                                method: "POST",
+                                headers: {
+                                  ...getAuthHeaders(),
+                                  "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({ text: textInput }),
+                              });
+                              if (!res.ok) throw new Error("Errore nel miglioramento del testo");
+                              const data = await res.json();
+                              if (data.improvedText) {
+                                setTextInput(data.improvedText);
+                                toast({
+                                  title: "✨ Testo migliorato!",
+                                  description: "La descrizione è stata espansa e migliorata dall'AI.",
+                                });
+                              }
+                            } catch (error: any) {
+                              toast({
+                                title: "❌ Errore",
+                                description: error.message,
+                                variant: "destructive",
+                              });
+                            } finally {
+                              setIsImprovingText(false);
+                            }
+                          }}
+                          disabled={isImprovingText || !textInput.trim()}
+                        >
+                          {isImprovingText ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-4 w-4 mr-2" />
+                          )}
+                          Migliora con AI
+                        </Button>
+                      </div>
+                      <Textarea
+                        placeholder="Es: Siamo un'agenzia immobiliare che gestisce vendite e affitti di immobili residenziali e commerciali. I nostri clienti principali sono privati e aziende che cercano soluzioni personalizzate..."
+                        value={textInput}
+                        onChange={(e) => setTextInput(e.target.value)}
+                        rows={8}
+                        className="resize-none"
+                      />
+                      <p className="text-xs text-gray-500">
+                        {textInput.length} caratteri
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -1830,6 +1922,8 @@ export default function ConsultantWhatsAppPage() {
                           integrations: selectedIntegrations,
                           numberOfIdeas: numberOfIdeas,
                           uploadedFilesText: uploadedFilesText,
+                          businessName: businessNameInput || undefined,
+                          consultantDisplayName: consultantDisplayNameInput || undefined,
                         }),
                       });
 

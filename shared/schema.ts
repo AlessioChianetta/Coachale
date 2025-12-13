@@ -4987,6 +4987,11 @@ export const consultantAiIdeas = pgTable("consultant_ai_ideas", {
   suggestedInstructions: text("suggested_instructions"),
   useCases: jsonb("use_cases").$type<string[]>().default([]),
   
+  vision: text("vision"),
+  mission: text("mission"),
+  businessName: text("business_name"),
+  consultantDisplayName: text("consultant_display_name"),
+  
   isImplemented: boolean("is_implemented").default(false),
   implementedAgentId: varchar("implemented_agent_id"),
   

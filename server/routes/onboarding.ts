@@ -808,7 +808,8 @@ router.post('/ai-ideas', authenticateToken, requireRole('consultant'), async (re
     const consultantId = req.user!.id;
     const { 
       name, description, targetAudience, agentType, integrationTypes, sourceType,
-      suggestedAgentType, personality, whoWeHelp, whoWeDontHelp, whatWeDo, howWeDoIt, usp, suggestedInstructions, useCases
+      suggestedAgentType, personality, whoWeHelp, whoWeDontHelp, whatWeDo, howWeDoIt, usp, suggestedInstructions, useCases,
+      vision, mission, businessName, consultantDisplayName
     } = req.body;
     
     if (!name || !description) {
@@ -836,6 +837,10 @@ router.post('/ai-ideas', authenticateToken, requireRole('consultant'), async (re
         usp: usp || null,
         suggestedInstructions: suggestedInstructions || null,
         useCases: useCases || [],
+        vision: vision || null,
+        mission: mission || null,
+        businessName: businessName || null,
+        consultantDisplayName: consultantDisplayName || null,
       })
       .returning();
     
@@ -1046,10 +1051,84 @@ router.post('/ai-ideas/upload-files', authenticateToken, requireRole('consultant
   }
 });
 
+router.post('/ai-ideas/improve-text', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { text } = req.body;
+    
+    if (!text || !text.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Text is required',
+      });
+    }
+    
+    const vertexSettings = await db.query.vertexAiSettings.findFirst({
+      where: eq(vertexAiSettings.userId, consultantId),
+    });
+    
+    if (!vertexSettings) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vertex AI non configurato. Vai su API Keys per configurarlo.',
+      });
+    }
+    
+    const { VertexAI } = await import('@google-cloud/vertexai');
+    
+    let serviceAccountJson;
+    try {
+      serviceAccountJson = JSON.parse(vertexSettings.serviceAccountJson || '');
+    } catch (e) {
+      return res.status(400).json({
+        success: false,
+        error: 'Configurazione Vertex AI non valida',
+      });
+    }
+    
+    const vertexAI = new VertexAI({
+      project: vertexSettings.projectId,
+      location: vertexSettings.location || 'europe-west1',
+      googleAuthOptions: {
+        credentials: serviceAccountJson,
+      },
+    });
+    
+    const model = vertexAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    
+    const prompt = `Sei un esperto copywriter italiano. Migliora e espandi il seguente testo di descrizione business, mantenendo le informazioni originali ma:
+- Rendilo più professionale e dettagliato
+- Aggiungi dettagli su servizi, target audience, valori
+- Espandilo a circa 200-300 parole
+- Mantieni un tono professionale ma accessibile
+- NON inventare informazioni false, solo espandi e migliora ciò che è già presente
+
+TESTO ORIGINALE:
+${text}
+
+TESTO MIGLIORATO (rispondi SOLO con il testo migliorato, senza introduzioni o commenti):`;
+    
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const improvedText = response.candidates?.[0]?.content?.parts?.[0]?.text || text;
+    
+    res.json({
+      success: true,
+      improvedText: improvedText.trim(),
+    });
+  } catch (error: any) {
+    console.error('Error improving text:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Errore durante il miglioramento del testo',
+    });
+  }
+});
+
 router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
   try {
     const consultantId = req.user!.id;
-    const { textDescription, urls, knowledgeDocIds, integrations, numberOfIdeas, uploadedFilesText } = req.body;
+    const { textDescription, urls, knowledgeDocIds, integrations, numberOfIdeas, uploadedFilesText, businessName, consultantDisplayName } = req.body;
     
     if (!integrations || integrations.length === 0) {
       return res.status(400).json({
@@ -1070,6 +1149,14 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
     }
     
     let combinedContent = '';
+    
+    if (businessName) {
+      combinedContent += `\n\nNOME BUSINESS: ${businessName}`;
+    }
+    
+    if (consultantDisplayName) {
+      combinedContent += `\nNOME CONSULENTE: ${consultantDisplayName}`;
+    }
     
     if (textDescription) {
       combinedContent += `\n\nDESCRIZIONE BUSINESS:\n${textDescription}`;
@@ -1143,7 +1230,12 @@ Per ogni idea, genera un JSON con questa struttura ESATTA:
   "whoWeDontHelp": "Chi NON aiutiamo",
   "whatWeDo": "Cosa facciamo per loro",
   "howWeDoIt": "Come lo facciamo",
-  "usp": "Punto di forza unico"
+  "usp": "Punto di forza unico",
+  "vision": "La visione a lungo termine del business (es: 'Rendere l'automazione accessibile a tutti')",
+  "mission": "La missione quotidiana del business (es: 'Aiutare le PMI a risparmiare tempo con l'AI')",
+  "businessName": "Nome del business/azienda estratto dal contesto (se disponibile, altrimenti suggerisci)",
+  "consultantDisplayName": "Nome del consulente/professionista estratto dal contesto (se disponibile, altrimenti suggerisci)",
+  "suggestedInstructions": "Istruzioni dettagliate per l'agente AI su come comportarsi, rispondere e gestire le conversazioni (min 200 parole). Includi: tono da usare, come presentarsi, come gestire obiezioni, come chiudere la conversazione."
 }
 
 REGOLE:
@@ -1151,6 +1243,9 @@ REGOLE:
 - Se l'integrazione è solo "consultation", usa agentType "informative_advisor"
 - Se entrambe le integrazioni sono selezionate, puoi usare qualsiasi tipo
 - Genera idee diverse tra loro (non ripetere lo stesso tipo di agente)
+- Per vision e mission, estrai dal contesto se possibile, altrimenti genera basandoti sul business
+- Per businessName e consultantDisplayName, estrai dal contesto se disponibili
+- Le suggestedInstructions devono essere dettagliate e specifiche per il tipo di agente
 - Rispondi SOLO con un array JSON valido, senza altri commenti
 
 RISPOSTA (array JSON):`;
