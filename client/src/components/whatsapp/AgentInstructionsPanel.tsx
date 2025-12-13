@@ -40,7 +40,11 @@ import {
   UserPlus,
   GraduationCap,
   FileText,
-  Pencil
+  Pencil,
+  RefreshCw,
+  PenLine,
+  AlertTriangle,
+  XCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -52,18 +56,126 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-const NINE_PHASES = [
-  { id: 1, name: "Accoglienza e Motivazione", icon: "👋" },
-  { id: 2, name: "Diagnosi Stato Attuale", icon: "🔍" },
-  { id: 3, name: "Stato Ideale e Obiettivi", icon: "🎯" },
-  { id: 3.5, name: "Verifica Blocchi/Ostacoli", icon: "🚧" },
-  { id: 4, name: "Magic Question", icon: "✨" },
-  { id: 5, name: "Proposta Slot", icon: "📅" },
-  { id: 6, name: "Raccolta Telefono", icon: "📱" },
-  { id: 7, name: "Raccolta Email", icon: "📧" },
-  { id: 8, name: "Attesa Creazione Appuntamento", icon: "⏳" },
-  { id: 9, name: "Supporto Pre-Appuntamento", icon: "🤝" }
-];
+const PHASE_EMOJI_MAPPING: Record<string, string> = {
+  "accoglienza": "👋",
+  "motivazione": "👋",
+  "diagnosi": "🔍",
+  "stato attuale": "🔍",
+  "stato ideale": "🎯",
+  "obiettivi": "🎯",
+  "blocchi": "🚧",
+  "ostacoli": "🚧",
+  "verifica": "🚧",
+  "magic question": "✨",
+  "magic": "✨",
+  "proposta slot": "📅",
+  "slot": "📅",
+  "telefono": "📱",
+  "raccolta telefono": "📱",
+  "email": "📧",
+  "raccolta email": "📧",
+  "attesa": "⏳",
+  "creazione appuntamento": "⏳",
+  "supporto": "🤝",
+  "pre-appuntamento": "🤝",
+  "interesse": "💡",
+  "scoperta": "🔍",
+  "educazione": "📚",
+  "spiegazione": "💡",
+  "comprensione": "🤔",
+  "approfondimento": "📖",
+  "risorse": "📋",
+  "default": "📌"
+};
+
+interface ExtractedPhase {
+  id: number;
+  name: string;
+  icon: string;
+}
+
+function extractPhasesFromTemplate(templateText: string): ExtractedPhase[] {
+  if (!templateText || templateText.trim().length === 0) {
+    return [];
+  }
+
+  const phases: ExtractedPhase[] = [];
+  const phasePattern = /FASE\s*(\d+(?:\.\d+)?)[️⃣]*\s*[-–]\s*([A-Z\s\(\)]+)/gi;
+  
+  let match;
+  while ((match = phasePattern.exec(templateText)) !== null) {
+    const id = parseFloat(match[1]);
+    const rawName = match[2].trim();
+    const name = rawName.replace(/\s+/g, ' ').replace(/\(.*?\)/g, '').trim();
+    
+    let icon = PHASE_EMOJI_MAPPING["default"];
+    const lowerName = name.toLowerCase();
+    
+    for (const [keyword, emoji] of Object.entries(PHASE_EMOJI_MAPPING)) {
+      if (lowerName.includes(keyword)) {
+        icon = emoji;
+        break;
+      }
+    }
+    
+    if (!phases.some(p => p.id === id)) {
+      phases.push({ id, name, icon });
+    }
+  }
+  
+  return phases.sort((a, b) => a.id - b.id);
+}
+
+type PhaseCompleteness = "complete" | "partial" | "empty";
+
+function checkPhaseCompleteness(templateText: string, phaseId: number): PhaseCompleteness {
+  if (!templateText) return "empty";
+  
+  const phaseIdStr = phaseId.toString().replace('.', '\\.');
+  const phaseStartPattern = new RegExp(`FASE\\s*${phaseIdStr}[️⃣]*\\s*[-–]`, 'i');
+  const phaseStartMatch = templateText.match(phaseStartPattern);
+  
+  if (!phaseStartMatch) return "empty";
+  
+  const startIndex = phaseStartMatch.index! + phaseStartMatch[0].length;
+  const nextPhasePattern = /FASE\s*\d+(?:\.\d+)?[️⃣]*\s*[-–]/gi;
+  nextPhasePattern.lastIndex = startIndex;
+  const nextPhaseMatch = nextPhasePattern.exec(templateText);
+  
+  const endIndex = nextPhaseMatch ? nextPhaseMatch.index : templateText.length;
+  const phaseContent = templateText.slice(startIndex, endIndex).trim();
+  
+  const meaningfulContent = phaseContent
+    .replace(/━+/g, '')
+    .replace(/[⚠️✅❌🎨📋🚨📌👉🎯💪📅📱📧⏳🤝💬❓⏱️📞🎥]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  if (meaningfulContent.length < 50) return "empty";
+  if (meaningfulContent.length < 200) return "partial";
+  return "complete";
+}
+
+function findCurrentPhaseAtCursor(templateText: string, cursorPosition: number): ExtractedPhase | null {
+  if (!templateText || cursorPosition < 0) return null;
+  
+  const phases = extractPhasesFromTemplate(templateText);
+  if (phases.length === 0) return null;
+  
+  const textBeforeCursor = templateText.slice(0, cursorPosition);
+  const phasePattern = /FASE\s*(\d+(?:\.\d+)?)[️⃣]*\s*[-–]\s*([A-Z\s\(\)]+)/gi;
+  
+  let lastMatch: RegExpExecArray | null = null;
+  let match;
+  while ((match = phasePattern.exec(textBeforeCursor)) !== null) {
+    lastMatch = match;
+  }
+  
+  if (!lastMatch) return null;
+  
+  const phaseId = parseFloat(lastMatch[1]);
+  return phases.find(p => p.id === phaseId) || null;
+}
 
 const OBJECTIVE_OPTIONS_BY_TYPE: Record<string, Array<{value: string, label: string, icon: string, description: string}>> = {
   inbound: [
@@ -1212,6 +1324,9 @@ export default function AgentInstructionsPanel({
   const [customObjective, setCustomObjective] = useState<string>("appointment");
   const [customOtherObjective, setCustomOtherObjective] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [wizardMode, setWizardMode] = useState<"generate_from_info" | "write_from_scratch" | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<number>(0);
+  const [currentPhase, setCurrentPhase] = useState<ExtractedPhase | null>(null);
 
   // Fetch current configuration (only in edit mode with agentId)
   const { data: configData, isLoading: isLoadingConfig } = useQuery({
@@ -1849,107 +1964,230 @@ export default function AgentInstructionsPanel({
         </CardContent>
       </Card>
 
-      {/* Step 2 - Objective Selection (only for custom template) */}
+      {/* Step 2 - Wizard Mode Selection (only for custom template) */}
       {enabled && selectedTemplate === "custom" && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-4 w-4" />
-              Step 2: Obiettivo Principale
+              Step 2: Come vuoi creare le istruzioni?
             </CardTitle>
             <CardDescription className="text-xs">
-              Seleziona l'obiettivo principale della conversazione
+              Scegli il metodo di creazione delle istruzioni personalizzate
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {(OBJECTIVE_OPTIONS_BY_TYPE[agentType] || OBJECTIVE_OPTIONS_BY_TYPE.inbound).map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setCustomObjective(option.value)}
-                  className={cn(
-                    "p-3 rounded-lg border-2 text-left transition-all duration-200 hover:shadow-md",
-                    customObjective === option.value
-                      ? "border-primary bg-primary/5"
-                      : "border-gray-200 dark:border-gray-700 hover:border-primary/50"
-                  )}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-lg">{option.icon}</span>
-                    <span className="font-medium text-sm">{option.label}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">{option.description}</div>
-                </button>
-              ))}
+          <CardContent className="space-y-4">
+            {/* Wizard Mode Selection */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setWizardMode("generate_from_info")}
+                className={cn(
+                  "p-4 rounded-lg border-2 text-left transition-all duration-200 hover:shadow-md",
+                  wizardMode === "generate_from_info"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 dark:border-gray-700 hover:border-primary/50"
+                )}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <RefreshCw className="h-5 w-5 text-primary" />
+                  <span className="font-medium text-sm">🔄 Genera da info profilo</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Usa le informazioni già inserite nel profilo agente
+                </div>
+                {wizardMode === "generate_from_info" && (
+                  <Badge variant="default" className="mt-2 text-xs">Selezionato</Badge>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setWizardMode("write_from_scratch");
+                  if (!instructions.trim()) {
+                    setInstructions("");
+                  }
+                }}
+                className={cn(
+                  "p-4 rounded-lg border-2 text-left transition-all duration-200 hover:shadow-md",
+                  wizardMode === "write_from_scratch"
+                    ? "border-primary bg-primary/5"
+                    : "border-gray-200 dark:border-gray-700 hover:border-primary/50"
+                )}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <PenLine className="h-5 w-5 text-primary" />
+                  <span className="font-medium text-sm">📝 Scrivi da zero</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Editor vuoto dove l'AI ti guida passo-passo
+                </div>
+                {wizardMode === "write_from_scratch" && (
+                  <Badge variant="default" className="mt-2 text-xs">Selezionato</Badge>
+                )}
+              </button>
             </div>
-            {customObjective === "other" && (
-              <div className="mt-4">
-                <Label htmlFor="custom-objective-input" className="text-sm mb-2 block">
-                  Descrivi il tuo obiettivo personalizzato
-                </Label>
-                <Input
-                  id="custom-objective-input"
-                  value={customOtherObjective}
-                  onChange={(e) => setCustomOtherObjective(e.target.value)}
-                  placeholder="Es: Raccogliere feedback sui prodotti..."
-                  className="mt-1"
-                />
+
+            {/* Objective Selection - Only when "generate_from_info" is selected */}
+            {wizardMode === "generate_from_info" && (
+              <div className="space-y-4 pt-4 border-t">
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    Seleziona l'obiettivo principale della conversazione
+                  </Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {(OBJECTIVE_OPTIONS_BY_TYPE[agentType] || OBJECTIVE_OPTIONS_BY_TYPE.inbound).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setCustomObjective(option.value)}
+                        className={cn(
+                          "p-3 rounded-lg border-2 text-left transition-all duration-200 hover:shadow-md",
+                          customObjective === option.value
+                            ? "border-primary bg-primary/5"
+                            : "border-gray-200 dark:border-gray-700 hover:border-primary/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">{option.icon}</span>
+                          <span className="font-medium text-sm">{option.label}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{option.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {customObjective === "other" && (
+                  <div>
+                    <Label htmlFor="custom-objective-input" className="text-sm mb-2 block">
+                      Descrivi il tuo obiettivo personalizzato
+                    </Label>
+                    <Input
+                      id="custom-objective-input"
+                      value={customOtherObjective}
+                      onChange={(e) => setCustomOtherObjective(e.target.value)}
+                      placeholder="Es: Raccogliere feedback sui prodotti..."
+                      className="mt-1"
+                    />
+                  </div>
+                )}
+                
+                <div className="flex flex-col items-center gap-2 pt-2">
+                  <Button
+                    onClick={handleGenerateInstructions}
+                    disabled={isGenerating || (customObjective === "other" && !customOtherObjective.trim())}
+                    size="lg"
+                    className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold px-8 py-4 shadow-lg border-2 border-emerald-400"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Generazione in corso...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-5 w-5 mr-2" />
+                        ✨ Genera Nuove Istruzioni
+                      </>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center max-w-md">
+                    Crea istruzioni basate sul profilo agente e l'obiettivo selezionato
+                  </p>
+                </div>
               </div>
             )}
-            
-            <div className="mt-6 flex flex-col items-center gap-2">
-              <Button
-                onClick={handleGenerateInstructions}
-                disabled={isGenerating || (customObjective === "other" && !customOtherObjective.trim())}
-                size="lg"
-                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold px-8 py-4 shadow-lg border-2 border-emerald-400"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Generazione in corso...
-                  </>
-                ) : (
-                  <>
-                    <Wand2 className="h-5 w-5 mr-2" />
-                    ✨ Genera Nuove Istruzioni da Zero
-                  </>
-                )}
-              </Button>
-              <p className="text-xs text-muted-foreground text-center max-w-md">
-                Crea istruzioni completamente nuove basate sull'obiettivo selezionato. Sovrascrive eventuali istruzioni esistenti.
-              </p>
-            </div>
+
+            {/* Direct to editor message - When "write_from_scratch" is selected */}
+            {wizardMode === "write_from_scratch" && (
+              <div className="pt-4 border-t">
+                <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                  <PenLine className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-800 dark:text-blue-200">
+                    Scorri in basso per accedere all'editor. Puoi scrivere le tue istruzioni personalizzate o usare l'AI per migliorarle.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Step 3 - 9 Phases Checklist (only for custom template) */}
+      {/* Step 3 - Dynamic Phases Checklist (only for custom template) */}
       {enabled && selectedTemplate === "custom" && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-              Step 3: Le 9 Fasi della Conversazione
+              Step 3: Fasi della Conversazione
             </CardTitle>
             <CardDescription className="text-xs">
-              L'AI genererà domande specifiche per il tuo obiettivo in ogni fase
+              {extractPhasesFromTemplate(instructions).length > 0 
+                ? `${extractPhasesFromTemplate(instructions).length} fasi rilevate nel template corrente`
+                : "Nessuna fase rilevata - genera o scrivi le istruzioni per vedere le fasi"
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {NINE_PHASES.map((phase) => (
-                <div
-                  key={phase.id}
-                  className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 border border-muted"
-                >
-                  <span className="text-lg">{phase.icon}</span>
-                  <span className="flex-1 text-sm font-medium">{phase.name}</span>
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+            {extractPhasesFromTemplate(instructions).length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {extractPhasesFromTemplate(instructions).map((phase) => {
+                  const completeness = checkPhaseCompleteness(instructions, phase.id);
+                  return (
+                    <div
+                      key={phase.id}
+                      className={cn(
+                        "flex items-center gap-3 p-2 rounded-lg border transition-all duration-200",
+                        completeness === "complete" && "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800",
+                        completeness === "partial" && "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-800",
+                        completeness === "empty" && "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+                      )}
+                    >
+                      <span className="text-lg">{phase.icon}</span>
+                      <div className="flex-1">
+                        <span className="text-sm font-medium">Fase {phase.id}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{phase.name}</span>
+                      </div>
+                      {completeness === "complete" && (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      )}
+                      {completeness === "partial" && (
+                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                      )}
+                      {completeness === "empty" && (
+                        <XCircle className="h-4 w-4 text-red-500" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-muted-foreground">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Nessuna fase rilevata nelle istruzioni correnti</p>
+                <p className="text-xs mt-1">Genera le istruzioni o scrivi manualmente le fasi nel formato "FASE X - NOME"</p>
+              </div>
+            )}
+            
+            {/* Legend */}
+            {extractPhasesFromTemplate(instructions).length > 0 && (
+              <div className="flex items-center gap-4 mt-4 pt-3 border-t text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                  <span>Completa</span>
                 </div>
-              ))}
-            </div>
+                <div className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3 text-yellow-500" />
+                  <span>Parziale</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <XCircle className="h-3 w-3 text-red-500" />
+                  <span>Vuota</span>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -2040,11 +2278,43 @@ export default function AgentInstructionsPanel({
           <CardContent>
             {activeTab === "edit" ? (
               <div className="space-y-3">
+                {/* Current Phase Banner */}
+                {currentPhase && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 transition-all duration-200">
+                    <span className="text-lg">{currentPhase.icon}</span>
+                    <div className="flex-1">
+                      <span className="text-xs text-muted-foreground">Stai modificando:</span>
+                      <span className="text-sm font-medium ml-2">Fase {currentPhase.id} - {currentPhase.name}</span>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      Posizione cursore
+                    </Badge>
+                  </div>
+                )}
+                
                 <Textarea
                   ref={textareaRef}
                   id="instructions-editor"
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
+                  onSelect={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    setCursorPosition(target.selectionStart);
+                    const phase = findCurrentPhaseAtCursor(instructions, target.selectionStart);
+                    setCurrentPhase(phase);
+                  }}
+                  onKeyUp={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    setCursorPosition(target.selectionStart);
+                    const phase = findCurrentPhaseAtCursor(instructions, target.selectionStart);
+                    setCurrentPhase(phase);
+                  }}
+                  onClick={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    setCursorPosition(target.selectionStart);
+                    const phase = findCurrentPhaseAtCursor(instructions, target.selectionStart);
+                    setCurrentPhase(phase);
+                  }}
                   disabled={!enabled}
                   className="font-mono text-sm min-h-[400px] resize-y border-2 focus-visible:ring-2"
                   placeholder="Inserisci le istruzioni per l'agente AI..."
