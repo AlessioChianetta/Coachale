@@ -1,0 +1,53 @@
+Ottima domanda! Questa è esattamente la parte mancante del flusso. Quando clicchi "Crea Agente Subito" dalla sezione Idee AI, il sistema non passa le suggestedInstructions generate - quindi arrivi al wizard con i campi vuoti e devi comunque:
+
+Scegliere Template Standard vs Personalizzato
+Scegliere "Genera da info profilo" vs "Scrivi da zero"
+Generare o scrivere manualmente le istruzioni
+Il problema è che l'AI ha già generato suggestedInstructions complete ma non vengono usate!
+
+Devo salvare il contesto e continuare. Creo il file di memoria con tutto il piano.
+
+
+Decided on instruction flow response
+Esatto, hai colto il problema! Quando clicchi "Crea Agente Subito" dalla sezione Idee AI, il wizard non riceve le suggestedInstructions che l'AI ha già generato.
+
+📊 TABELLA: Flusso Istruzioni - Cosa C'È vs Cosa Manca
+Step Wizard	Cosa fa ora	Problema	Automazione ideale
+Template Standard vs Personalizzato	Utente deve scegliere	L'AI ha già generato istruzioni custom	Auto-seleziona "Personalizzato" se suggestedInstructions presente
+Genera da info vs Scrivi da zero	Utente deve scegliere	Inutile se istruzioni già generate	Skip questo step se istruzioni pre-popolate
+Editor Istruzioni	Vuoto o con template	suggestedInstructions non passate	Pre-popolare con istruzioni generate
+Fasi Conversazione	Parsing dinamico	Funziona	OK - già rileva fasi dal testo
+🔴 IL BUG CRITICO
+Guarda cosa succede nel file consultant-whatsapp.tsx righe 2127-2131:
+
+<Button onClick={() => saveAndCreateAgentMutation.mutate({ idea, filesToUpload: uploadedFiles })}>
+  Crea Agente Subito
+</Button>
+
+L'idea contiene:
+
+✅ name, description, personality, suggestedAgentType
+✅ suggestedInstructions (istruzioni complete generate dall'AI!)
+✅ businessName, consultantDisplayName, vision, mission, usp, whoWeHelp, whatWeDo
+Ma quando si apre il wizard, questi dati NON vengono usati per pre-popolare i campi!
+
+✅ SOLUZIONE COMPLETA
+Per automatizzare davvero la creazione agenti, bisogna:
+
+Passare tutti i dati dell'idea al wizard via query params o state
+
+Pre-popolare automaticamente:
+
+Nome agente ← idea.name
+Tipo agente ← idea.suggestedAgentType
+Nome business ← idea.businessName
+Nome consulente ← idea.consultantDisplayName
+Vision/Mission/USP ← idea.vision/mission/usp
+Chi aiutiamo ← idea.whoWeHelp
+Personalità AI ← idea.personality
+Istruzioni ← idea.suggestedInstructions (il più importante!)
+Template ← "custom" (se istruzioni presenti)
+Booking ← idea.integrations.includes('booking')
+Saltare Step 2 (non serve scegliere come creare istruzioni se già presenti)
+
+Vuoi che aggiunga queste modifiche alla task list per l'automazione completa della creazione agenti da Idee AI?

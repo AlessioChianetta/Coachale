@@ -22,6 +22,7 @@ import {
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient } from '../google-calendar-service';
+import { getAIProvider } from '../ai/provider-factory';
 import nodemailer from 'nodemailer';
 import { decryptForConsultant } from '../encryption';
 import { upload } from '../middleware/upload';
@@ -1063,38 +1064,14 @@ router.post('/ai-ideas/improve-text', authenticateToken, requireRole('consultant
       });
     }
     
-    const vertexSettings = await db.query.vertexAiSettings.findFirst({
-      where: eq(vertexAiSettings.userId, consultantId),
-    });
+    const providerResult = await getAIProvider(consultantId, consultantId);
     
-    if (!vertexSettings) {
+    if (!providerResult || !providerResult.client) {
       return res.status(400).json({
         success: false,
-        error: 'Vertex AI non configurato. Vai su API Keys per configurarlo.',
+        error: 'AI non disponibile. Configura Vertex AI o Google AI Studio.',
       });
     }
-    
-    const { VertexAI } = await import('@google-cloud/vertexai');
-    
-    let serviceAccountJson;
-    try {
-      serviceAccountJson = JSON.parse(vertexSettings.serviceAccountJson || '');
-    } catch (e) {
-      return res.status(400).json({
-        success: false,
-        error: 'Configurazione Vertex AI non valida',
-      });
-    }
-    
-    const vertexAI = new VertexAI({
-      project: vertexSettings.projectId,
-      location: vertexSettings.location || 'europe-west1',
-      googleAuthOptions: {
-        credentials: serviceAccountJson,
-      },
-    });
-    
-    const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     
     const prompt = `Sei un esperto copywriter italiano. Migliora e espandi il seguente testo di descrizione business, mantenendo le informazioni originali ma:
 - Rendilo più professionale e dettagliato
@@ -1108,9 +1085,11 @@ ${text}
 
 TESTO MIGLIORATO (rispondi SOLO con il testo migliorato, senza introduzioni o commenti):`;
     
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const improvedText = response.candidates?.[0]?.content?.parts?.[0]?.text || text;
+    const result = await providerResult.client.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    });
+    const improvedText = result.response.text() || text;
     
     res.json({
       success: true,
@@ -1137,14 +1116,12 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
       });
     }
     
-    const vertexSettings = await db.query.vertexAiSettings.findFirst({
-      where: eq(vertexAiSettings.userId, consultantId),
-    });
+    const providerResult = await getAIProvider(consultantId, consultantId);
     
-    if (!vertexSettings) {
+    if (!providerResult || !providerResult.client) {
       return res.status(400).json({
         success: false,
-        error: 'Vertex AI non configurato. Vai su API Keys per configurarlo.',
+        error: 'AI non disponibile. Configura Vertex AI o Google AI Studio.',
       });
     }
     
@@ -1250,38 +1227,21 @@ REGOLE:
 
 RISPOSTA (array JSON):`;
 
-    let serviceAccountJson;
-    try {
-      serviceAccountJson = JSON.parse(vertexSettings.serviceAccountJson);
-    } catch (e) {
-      return res.status(400).json({
-        success: false,
-        error: 'Errore nel parsing delle credenziali Vertex AI.',
-      });
-    }
-    
-    const vertexAI = new VertexAI({
-      project: vertexSettings.projectId,
-      location: vertexSettings.location,
-      googleAuthOptions: {
-        credentials: serviceAccountJson,
-      },
+    const result = await providerResult.client.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
     });
-    
-    const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const responseText = result.response.text() || '';
     
     let ideas;
     try {
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
         throw new Error('No JSON array found in response');
       }
       ideas = JSON.parse(jsonMatch[0]);
     } catch (e) {
-      console.error('Error parsing Vertex AI response:', text);
+      console.error('Error parsing AI response:', responseText);
       return res.status(500).json({
         success: false,
         error: 'Errore nel parsing della risposta AI. Riprova.',

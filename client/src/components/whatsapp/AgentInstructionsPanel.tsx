@@ -1308,7 +1308,7 @@ export default function AgentInstructionsPanel({
   const isEnhancingRef = useRef(false);
 
   // Local state - use external agentType from props if available
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(true);
   const [agentType, setAgentType] = useState<"inbound" | "outbound" | "consultative">(() => mapAgentTypeToInternal(externalAgentType));
   const [selectedTemplate, setSelectedTemplate] = useState<"receptionist" | "marco_setter" | "informative_advisor" | "custom">("receptionist");
   const [instructions, setInstructions] = useState("");
@@ -1372,7 +1372,7 @@ export default function AgentInstructionsPanel({
         instructionsLength: configData.agentInstructions?.length || 0,
       }, null, 2));
 
-      setEnabled(configData.agentInstructionsEnabled);
+      // enabled is always true - removed setEnabled(configData.agentInstructionsEnabled)
       setSelectedTemplate(configData.selectedTemplate);
       setBusinessHeaderMode(configData.businessHeaderMode || "assistant");
       setProfessionalRole(configData.professionalRole || "");
@@ -1433,7 +1433,7 @@ export default function AgentInstructionsPanel({
     }
 
     if (initialData && mode === "create") {
-      setEnabled(initialData.agentInstructionsEnabled);
+      // enabled is always true - removed setEnabled(initialData.agentInstructionsEnabled)
       setSelectedTemplate(initialData.selectedTemplate);
       setBusinessHeaderMode(initialData.businessHeaderMode || "assistant");
       setProfessionalRole(initialData.professionalRole || "");
@@ -1882,26 +1882,7 @@ export default function AgentInstructionsPanel({
             Personalizza il comportamento dell'agente WhatsApp
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Badge variant={enabled ? "default" : "secondary"}>
-            {enabled ? "Attivo" : "Disattivo"}
-          </Badge>
-          <Switch
-            id="enable-instructions"
-            checked={enabled}
-            onCheckedChange={setEnabled}
-          />
-        </div>
       </div>
-
-      {!enabled && (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Istruzioni disattivate. L'agente userà le istruzioni predefinite hardcoded.
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Step 1 - Template Selection */}
       <Card>
@@ -1916,13 +1897,11 @@ export default function AgentInstructionsPanel({
             <button
               type="button"
               onClick={() => handleTemplateSelection("standard")}
-              disabled={!enabled}
               className={cn(
                 "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
                 selectedTemplate !== "custom"
                   ? "border-primary bg-primary/5"
-                  : "border-gray-200 dark:border-gray-700 hover:border-primary/50",
-                !enabled && "opacity-50 cursor-not-allowed"
+                  : "border-gray-200 dark:border-gray-700 hover:border-primary/50"
               )}
             >
               <FileText className="h-6 w-6 mx-auto mb-2 text-primary" />
@@ -1942,13 +1921,11 @@ export default function AgentInstructionsPanel({
             <button
               type="button"
               onClick={() => handleTemplateSelection("custom")}
-              disabled={!enabled}
               className={cn(
                 "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
                 selectedTemplate === "custom"
                   ? "border-primary bg-primary/5"
-                  : "border-gray-200 dark:border-gray-700 hover:border-primary/50",
-                !enabled && "opacity-50 cursor-not-allowed"
+                  : "border-gray-200 dark:border-gray-700 hover:border-primary/50"
               )}
             >
               <Pencil className="h-6 w-6 mx-auto mb-2 text-primary" />
@@ -2005,9 +1982,7 @@ export default function AgentInstructionsPanel({
                 type="button"
                 onClick={() => {
                   setWizardMode("write_from_scratch");
-                  if (!instructions.trim()) {
-                    setInstructions("");
-                  }
+                  setInstructions("");
                 }}
                 className={cn(
                   "p-4 rounded-lg border-2 text-left transition-all duration-200 hover:shadow-md",
@@ -2192,40 +2167,6 @@ export default function AgentInstructionsPanel({
         </Card>
       )}
 
-      {/* Variable Insertion Chips */}
-      {enabled && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Code className="h-4 w-4" />
-                Variabili Disponibili
-              </CardTitle>
-              <Badge variant="secondary">{variables?.length || 0}</Badge>
-            </div>
-            <CardDescription className="text-xs">
-              Clicca per inserire nel punto del cursore
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-1">
-              {variables?.map((v) => (
-                <Button
-                  key={v.variable}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => insertVariable(v.variable)}
-                  className="text-xs h-auto py-1.5 px-3 bg-gradient-to-br from-background to-muted/30 hover:from-primary/10 hover:to-primary/5 border-primary/20"
-                  title={`${v.description}: ${v.currentValue || 'N/A'}`}
-                >
-                  <Code className="h-3 w-3 mr-1" />
-                  {v.variable}
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Validation Error */}
       {validationError && (
@@ -2315,7 +2256,6 @@ export default function AgentInstructionsPanel({
                     const phase = findCurrentPhaseAtCursor(instructions, target.selectionStart);
                     setCurrentPhase(phase);
                   }}
-                  disabled={!enabled}
                   className="font-mono text-sm min-h-[400px] resize-y border-2 focus-visible:ring-2"
                   placeholder="Inserisci le istruzioni per l'agente AI..."
                 />

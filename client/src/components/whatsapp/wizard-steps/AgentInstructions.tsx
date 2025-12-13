@@ -138,7 +138,7 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
             >
               <div className="flex items-start space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
                 <RadioGroupItem value="assistant" id="assistant" className="mt-1" />
-                <div className="flex-1 space-y-1 cursor-pointer" onClick={() => onChange('businessHeaderMode', 'assistant')}>
+                <div className="flex-1 space-y-1 cursor-pointer">
                   <Label htmlFor="assistant" className="cursor-pointer font-medium">
                     Assistente del consulente
                   </Label>
@@ -153,7 +153,7 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
 
               <div className="flex items-start space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
                 <RadioGroupItem value="direct_professional" id="direct_professional" className="mt-1" />
-                <div className="flex-1 space-y-1 cursor-pointer" onClick={() => onChange('businessHeaderMode', 'direct_professional')}>
+                <div className="flex-1 space-y-1 cursor-pointer">
                   <Label htmlFor="direct_professional" className="cursor-pointer font-medium">
                     Professionista diretto
                   </Label>
@@ -182,7 +182,7 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
 
               <div className="flex items-start space-x-3 rounded-lg border p-3 hover:bg-accent/50 transition-colors">
                 <RadioGroupItem value="none" id="none" className="mt-1" />
-                <div className="flex-1 space-y-1 cursor-pointer" onClick={() => onChange('businessHeaderMode', 'none')}>
+                <div className="flex-1 space-y-1 cursor-pointer">
                   <Label htmlFor="none" className="cursor-pointer font-medium">
                     Nessuna introduzione (controllo totale)
                   </Label>
