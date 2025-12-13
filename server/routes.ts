@@ -8497,7 +8497,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         selectedTemplate,
         businessHeaderMode,
         professionalRole,
-        customBusinessHeader
+        customBusinessHeader,
+        integrationMode,
+        isProactiveAgent
       } = req.body;
 
       // Verify agent belongs to consultant
@@ -8572,6 +8574,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (businessHeaderMode !== undefined) updateData.businessHeaderMode = businessHeaderMode;
       if (professionalRole !== undefined) updateData.professionalRole = professionalRole;
       if (customBusinessHeader !== undefined) updateData.customBusinessHeader = customBusinessHeader;
+      
+      // Integration Mode and Proactive Agent Configuration
+      if (integrationMode !== undefined) updateData.integrationMode = integrationMode;
+      if (isProactiveAgent !== undefined) updateData.isProactiveAgent = isProactiveAgent;
 
       console.log("🟡 [SERVER PUT /config] Dati prima del salvataggio:", JSON.stringify({
         agentInstructions: agentInstructions !== undefined ? `${agentInstructions?.length || 0} chars` : "undefined",
@@ -8874,6 +8880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             defaultIdealState: defaultIdealState || null,
             isDryRun: isDryRun ?? true,
             isActive: true,
+            isProactiveAgent: req.body.isProactiveAgent ?? false,
             // Feature Blocks Configuration
             bookingEnabled: bookingEnabled ?? true,
             objectionHandlingEnabled: objectionHandlingEnabled ?? true,

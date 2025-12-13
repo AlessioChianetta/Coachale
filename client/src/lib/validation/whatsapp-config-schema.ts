@@ -8,9 +8,10 @@ export const whatsappConfigSchema = z.object({
   twilioAuthToken: z.string().optional(),
   twilioWhatsappNumber: z.string().optional(),
   autoResponseEnabled: z.boolean().default(true),
-  agentType: z.enum(["reactive_lead", "proactive_setter"]).default("reactive_lead"),
+  agentType: z.enum(["reactive_lead", "proactive_setter", "informative_advisor", "customer_success", "intake_coordinator"]).default("reactive_lead"),
   whatsappConciseMode: z.boolean().default(true),
   isDryRun: z.boolean().default(true),
+  isProactiveAgent: z.boolean().default(false),
 
   // Step 2: Availability & Automations
   workingHoursEnabled: z.boolean().default(false),

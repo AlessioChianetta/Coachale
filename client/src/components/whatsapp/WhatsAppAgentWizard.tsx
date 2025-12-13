@@ -62,6 +62,7 @@ const emptyFormData = {
   agentType: "reactive_lead" as const,
   whatsappConciseMode: true,
   isDryRun: true,
+  isProactiveAgent: false,
   workingHoursEnabled: false,
   workingHoursStart: "09:00",
   workingHoursEnd: "18:00",
