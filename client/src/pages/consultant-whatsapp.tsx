@@ -301,7 +301,7 @@ export default function ConsultantWhatsAppPage() {
 
   // Mutation per salvare e creare agente subito (directly without wizard)
   const saveAndCreateAgentMutation = useMutation({
-    mutationFn: async (idea: any) => {
+    mutationFn: async ({ idea, filesToUpload }: { idea: any; filesToUpload: File[] }) => {
       // First save the idea
       const saveRes = await fetch("/api/consultant/onboarding/ai-ideas", {
         method: "POST",
@@ -345,7 +345,48 @@ export default function ConsultantWhatsAppPage() {
         body: JSON.stringify({ ideaId: savedIdeaId }),
       });
       if (!createRes.ok) throw new Error("Failed to create agent from idea");
-      return createRes.json();
+      const agentResult = await createRes.json();
+      const agentData = agentResult.data || agentResult;
+      const agentId = agentData?.id;
+
+      // Upload files to the agent's Knowledge Base
+      let uploadedDocsCount = 0;
+      if (agentId && filesToUpload.length > 0) {
+        for (const file of filesToUpload) {
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("title", file.name.replace(/\.[^/.]+$/, "")); // Remove extension for title
+            
+            // Determine file type
+            let fileType = "txt";
+            if (file.type === "application/pdf") {
+              fileType = "pdf";
+            } else if (file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || file.type === "application/msword") {
+              fileType = "docx";
+            } else if (file.type === "text/plain") {
+              fileType = "txt";
+            }
+            formData.append("type", fileType);
+
+            const uploadRes = await fetch(`/api/whatsapp/agent-config/${agentId}/knowledge`, {
+              method: "POST",
+              headers: getAuthHeaders(),
+              body: formData,
+            });
+
+            if (uploadRes.ok) {
+              uploadedDocsCount++;
+            } else {
+              console.warn(`Failed to upload file ${file.name} to agent KB`);
+            }
+          } catch (uploadError) {
+            console.error(`Error uploading file ${file.name}:`, uploadError);
+          }
+        }
+      }
+
+      return { ...agentResult, uploadedDocsCount };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/consultant/onboarding/ai-ideas"] });
@@ -353,9 +394,16 @@ export default function ConsultantWhatsAppPage() {
       const agentData = data.data || data;
       const agentName = agentData?.agentName || agentData?.name || "Nuovo agente";
       const agentId = agentData?.id;
+      const docsCount = data.uploadedDocsCount || 0;
+      
+      // Clear uploaded files after successful agent creation
+      setUploadedFiles([]);
+      
       toast({
         title: "🤖 Agente creato!",
-        description: `L'agente "${agentName}" è stato creato con successo.`,
+        description: docsCount > 0 
+          ? `Agente "${agentName}" creato! ${docsCount} document${docsCount === 1 ? 'o' : 'i'} salvat${docsCount === 1 ? 'o' : 'i'} nella Knowledge Base.`
+          : `L'agente "${agentName}" è stato creato con successo.`,
       });
       // Navigate to the agent edit page if we have an ID, otherwise to list
       if (agentId) {
@@ -1934,7 +1982,7 @@ export default function ConsultantWhatsAppPage() {
 
                       const data = await res.json();
                       setGeneratedIdeas(data.data || data.ideas || []);
-                      setUploadedFiles([]);
+                      // Note: uploadedFiles are kept until agent is created (they'll be uploaded to KB)
                       toast({
                         title: "✨ Idee generate!",
                         description: `Sono state generate ${(data.data || data.ideas)?.length || 0} idee per i tuoi agenti.`,
@@ -2080,7 +2128,7 @@ export default function ConsultantWhatsAppPage() {
                             variant="outline"
                             className="w-full border-green-500 text-green-600 hover:bg-green-50 dark:hover:bg-green-950/20"
                             disabled={saveAndCreateAgentMutation.isPending}
-                            onClick={() => saveAndCreateAgentMutation.mutate(idea)}
+                            onClick={() => saveAndCreateAgentMutation.mutate({ idea, filesToUpload: uploadedFiles })}
                           >
                             {saveAndCreateAgentMutation.isPending ? (
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
