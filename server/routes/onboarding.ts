@@ -1029,8 +1029,8 @@ router.post('/ai-ideas/generate', authenticateToken, requireRole('consultant'), 
         ));
       
       for (const doc of docs) {
-        if (doc.extractedText) {
-          combinedContent += `\n\nDOCUMENTO "${doc.fileName}":\n${doc.extractedText.substring(0, 5000)}`;
+        if (doc.extractedContent) {
+          combinedContent += `\n\nDOCUMENTO "${doc.fileName}":\n${doc.extractedContent.substring(0, 5000)}`;
         }
       }
     }

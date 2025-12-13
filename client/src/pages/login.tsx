@@ -174,28 +174,6 @@ export default function Login() {
                   )}
                 </Button>
 
-                {/* Divider */}
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white dark:bg-gray-950 text-gray-500 dark:text-gray-400">
-                      Non hai un account?
-                    </span>
-                  </div>
-                </div>
-
-                {/* Register Link */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-12 text-base font-semibold border-2 border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all duration-200"
-                  onClick={() => setLocation("/register")}
-                  data-testid="link-register"
-                >
-                  Crea un account gratuito
-                </Button>
               </form>
 
               {/* Demo Notice */}
