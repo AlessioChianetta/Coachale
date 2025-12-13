@@ -65,15 +65,30 @@ const NINE_PHASES = [
   { id: 9, name: "Supporto Pre-Appuntamento", icon: "🤝" }
 ];
 
-const OBJECTIVE_OPTIONS = [
-  { value: "appointment", label: "Presa appuntamento", icon: "📅", description: "Fissa una call o meeting" },
-  { value: "info_gathering", label: "Raccolta informazioni", icon: "ℹ️", description: "Raccolta dati e qualifica" },
-  { value: "quote_request", label: "Richiesta preventivo", icon: "💰", description: "Invio preventivo personalizzato" },
-  { value: "lead_qualification", label: "Qualificazione lead", icon: "✅", description: "Verifica interesse e fit" },
-  { value: "other", label: "Altro", icon: "✏️", description: "Obiettivo personalizzato" },
-];
+const OBJECTIVE_OPTIONS_BY_TYPE: Record<string, Array<{value: string, label: string, icon: string, description: string}>> = {
+  inbound: [
+    { value: "appointment", label: "Presa appuntamento", icon: "📅", description: "Fissa una call o meeting" },
+    { value: "info_gathering", label: "Raccolta informazioni", icon: "ℹ️", description: "Raccolta dati e contatti" },
+    { value: "quote_request", label: "Richiesta preventivo", icon: "💰", description: "Invio preventivo personalizzato" },
+    { value: "other", label: "Altro", icon: "✏️", description: "Obiettivo personalizzato" },
+  ],
+  outbound: [
+    { value: "lead_qualification", label: "Qualificazione lead", icon: "✅", description: "Verifica interesse e fit" },
+    { value: "follow_up", label: "Follow-up contatto", icon: "📞", description: "Ricontattare lead interessato" },
+    { value: "conversion", label: "Conversione interesse", icon: "🎯", description: "Portare lead verso l'azione" },
+    { value: "appointment", label: "Presa appuntamento", icon: "📅", description: "Fissa una call o meeting" },
+    { value: "other", label: "Altro", icon: "✏️", description: "Obiettivo personalizzato" },
+  ],
+  consultative: [
+    { value: "education", label: "Educazione prodotto", icon: "📚", description: "Insegna e informa sul prodotto" },
+    { value: "support", label: "Supporto informativo", icon: "💬", description: "Rispondi a domande e dubbi" },
+    { value: "faq", label: "FAQ automatiche", icon: "❓", description: "Gestisci domande frequenti" },
+    { value: "other", label: "Altro", icon: "✏️", description: "Obiettivo personalizzato" },
+  ],
+};
 
 interface AgentInstructionsPanelProps {
+  agentType?: "reactive_lead" | "proactive_setter" | "informative_advisor";
   agentId?: string | null;
   initialData?: {
     agentInstructions: string | null;
@@ -98,6 +113,15 @@ interface AgentInstructionsPanelProps {
   onSaveSuccess?: () => void;
   onCancel?: () => void;
 }
+
+const mapAgentTypeToInternal = (type?: string): "inbound" | "outbound" | "consultative" => {
+  switch (type) {
+    case "proactive_setter": return "outbound";
+    case "informative_advisor": return "consultative";
+    case "reactive_lead":
+    default: return "inbound";
+  }
+};
 
 interface Variable {
   variable: string;
@@ -1156,6 +1180,7 @@ Dimmi: qual è il risultato che vorresti ottenere nei prossimi 6 mesi?"
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
 export default function AgentInstructionsPanel({ 
+  agentType: externalAgentType,
   agentId, 
   initialData,
   initialVariables,
@@ -1170,9 +1195,9 @@ export default function AgentInstructionsPanel({
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isEnhancingRef = useRef(false);
 
-  // Local state
+  // Local state - use external agentType from props if available
   const [enabled, setEnabled] = useState(false);
-  const [agentType, setAgentType] = useState<"inbound" | "outbound" | "consultative">("inbound");
+  const [agentType, setAgentType] = useState<"inbound" | "outbound" | "consultative">(() => mapAgentTypeToInternal(externalAgentType));
   const [selectedTemplate, setSelectedTemplate] = useState<"receptionist" | "marco_setter" | "informative_advisor" | "custom">("receptionist");
   const [instructions, setInstructions] = useState("");
   const [businessHeaderMode, setBusinessHeaderMode] = useState<string>("assistant");
@@ -1299,15 +1324,16 @@ export default function AgentInstructionsPanel({
       setProfessionalRole(initialData.professionalRole || "");
       setCustomBusinessHeader(initialData.customBusinessHeader || "");
 
-      // Derive agentType from selectedTemplate
-      if (initialData.selectedTemplate === "receptionist") {
+      // Use external agentType from props if available, otherwise derive from template
+      if (externalAgentType) {
+        setAgentType(mapAgentTypeToInternal(externalAgentType));
+      } else if (initialData.selectedTemplate === "receptionist") {
         setAgentType("inbound");
       } else if (initialData.selectedTemplate === "marco_setter") {
         setAgentType("outbound");
       } else if (initialData.selectedTemplate === "informative_advisor") {
         setAgentType("consultative");
       }
-      // For custom, keep default agentType (inbound)
 
       // Set initial instructions based on template
       if (initialData.selectedTemplate === "custom") {
@@ -1762,74 +1788,10 @@ export default function AgentInstructionsPanel({
         </Alert>
       )}
 
-      {/* Step 1 - Agent Type Selection */}
+      {/* Step 1 - Template Selection */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Step 1: Tipo di Agente</CardTitle>
-          <CardDescription className="text-xs">
-            Seleziona il tipo di agente in base al tuo caso d'uso
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => handleAgentTypeChange("inbound")}
-              disabled={!enabled}
-              className={cn(
-                "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
-                agentType === "inbound" 
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30" 
-                  : "border-gray-200 dark:border-gray-700 hover:border-blue-300",
-                !enabled && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <Phone className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-              <div className="font-medium text-sm">Inbound</div>
-              <div className="text-xs text-muted-foreground mt-1">Per lead che scrivono spontaneamente</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAgentTypeChange("outbound")}
-              disabled={!enabled}
-              className={cn(
-                "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
-                agentType === "outbound" 
-                  ? "border-purple-500 bg-purple-50 dark:bg-purple-950/30" 
-                  : "border-gray-200 dark:border-gray-700 hover:border-purple-300",
-                !enabled && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <UserPlus className="h-8 w-8 mx-auto mb-2 text-purple-500" />
-              <div className="font-medium text-sm">Outbound</div>
-              <div className="text-xs text-muted-foreground mt-1">Per lead che contatti tu</div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAgentTypeChange("consultative")}
-              disabled={!enabled}
-              className={cn(
-                "p-4 rounded-lg border-2 text-center transition-all duration-200 hover:shadow-md",
-                agentType === "consultative" 
-                  ? "border-green-500 bg-green-50 dark:bg-green-950/30" 
-                  : "border-gray-200 dark:border-gray-700 hover:border-green-300",
-                !enabled && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <GraduationCap className="h-8 w-8 mx-auto mb-2 text-green-500" />
-              <div className="font-medium text-sm">Consultativo</div>
-              <div className="text-xs text-muted-foreground mt-1">Solo informativo/educativo</div>
-            </button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Step 2 - Template Selection */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Step 2: Scegli Template</CardTitle>
+          <CardTitle className="text-base">Step 1: Scegli Template</CardTitle>
           <CardDescription className="text-xs">
             Usa il template standard ottimizzato o crea il tuo personalizzato
           </CardDescription>
@@ -1887,13 +1849,13 @@ export default function AgentInstructionsPanel({
         </CardContent>
       </Card>
 
-      {/* Step 3a - Objective Selection (only for custom template) */}
+      {/* Step 2 - Objective Selection (only for custom template) */}
       {enabled && selectedTemplate === "custom" && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Target className="h-4 w-4" />
-              Obiettivo Principale
+              Step 2: Obiettivo Principale
             </CardTitle>
             <CardDescription className="text-xs">
               Seleziona l'obiettivo principale della conversazione
@@ -1901,7 +1863,7 @@ export default function AgentInstructionsPanel({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {OBJECTIVE_OPTIONS.map((option) => (
+              {(OBJECTIVE_OPTIONS_BY_TYPE[agentType] || OBJECTIVE_OPTIONS_BY_TYPE.inbound).map((option) => (
                 <button
                   key={option.value}
                   type="button"
@@ -1936,12 +1898,12 @@ export default function AgentInstructionsPanel({
               </div>
             )}
             
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex flex-col items-center gap-2">
               <Button
                 onClick={handleGenerateInstructions}
                 disabled={isGenerating || (customObjective === "other" && !customOtherObjective.trim())}
                 size="lg"
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-3 shadow-lg"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold px-8 py-4 shadow-lg border-2 border-emerald-400"
               >
                 {isGenerating ? (
                   <>
@@ -1951,22 +1913,25 @@ export default function AgentInstructionsPanel({
                 ) : (
                   <>
                     <Wand2 className="h-5 w-5 mr-2" />
-                    🤖 Genera Istruzioni AI
+                    ✨ Genera Nuove Istruzioni da Zero
                   </>
                 )}
               </Button>
+              <p className="text-xs text-muted-foreground text-center max-w-md">
+                Crea istruzioni completamente nuove basate sull'obiettivo selezionato. Sovrascrive eventuali istruzioni esistenti.
+              </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Step 3b - 9 Phases Checklist (only for custom template) */}
+      {/* Step 3 - 9 Phases Checklist (only for custom template) */}
       {enabled && selectedTemplate === "custom" && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-              Le 9 Fasi della Conversazione (struttura fissa)
+              Step 3: Le 9 Fasi della Conversazione
             </CardTitle>
             <CardDescription className="text-xs">
               L'AI genererà domande specifiche per il tuo obiettivo in ogni fase
@@ -2087,17 +2052,22 @@ export default function AgentInstructionsPanel({
 
                 {/* AI Enhancement Dropdown - Only for custom templates */}
                 {selectedTemplate === "custom" && (
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs text-muted-foreground">
-                      Scegli come migliorare le tue istruzioni con l'AI
-                    </p>
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        🔧 Migliora istruzioni esistenti
+                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        Perfeziona e ottimizza le istruzioni già scritte
+                      </p>
+                    </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           disabled={isEnhancing || instructions.length < 50}
-                          variant="secondary"
+                          variant="outline"
                           size="sm"
-                          className="whitespace-nowrap"
+                          className="whitespace-nowrap bg-amber-100 hover:bg-amber-200 border-amber-300 text-amber-800 dark:bg-amber-900/50 dark:hover:bg-amber-900 dark:border-amber-700 dark:text-amber-200"
                         >
                           {isEnhancing ? (
                             <>
@@ -2112,7 +2082,7 @@ export default function AgentInstructionsPanel({
                             </>
                           ) : (
                             <>
-                              <Sparkles className="h-4 w-4 mr-2" />
+                              <Pencil className="h-4 w-4 mr-2" />
                               Migliora con AI
                               <ChevronDown className="h-4 w-4 ml-2" />
                             </>

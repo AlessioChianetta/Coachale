@@ -392,6 +392,7 @@ export default function AgentInstructions({ formData, onChange, errors, mode, ag
       )}
 
       <AgentInstructionsPanel
+        agentType={formData.agentType}
         agentId={agentId}
         initialData={{
           agentInstructions: formData.agentInstructions,
