@@ -17,7 +17,9 @@ import {
   Users,
   AlertCircle,
   Sparkles,
-  GraduationCap
+  GraduationCap,
+  HeartHandshake,
+  ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -110,75 +112,131 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
             value={formData.agentType}
             onValueChange={(value) => onChange("agentType", value)}
           >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <label
-                htmlFor="reactive_lead"
-                className={cn(
-                  "relative cursor-pointer rounded-lg border-2 p-4 hover:border-primary/50 transition-all",
-                  formData.agentType === "reactive_lead"
-                    ? "border-primary bg-primary/5 shadow-md"
-                    : "border-muted"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <RadioGroupItem value="reactive_lead" id="reactive_lead" className="mt-1" />
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-green-500" />
-                      <p className="font-semibold">Receptionist (Inbound)</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label
+                  htmlFor="reactive_lead"
+                  className={cn(
+                    "relative cursor-pointer rounded-lg border-2 p-4 hover:border-primary/50 transition-all",
+                    formData.agentType === "reactive_lead"
+                      ? "border-primary bg-primary/5 shadow-md"
+                      : "border-muted"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="reactive_lead" id="reactive_lead" className="mt-1" />
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-green-500" />
+                        <p className="font-semibold">Receptionist (Inbound)</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Risponde a lead che scrivono spontaneamente. Accogliente e reattivo.
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Risponde a lead che scrivono spontaneamente. Accogliente e reattivo.
-                    </p>
                   </div>
-                </div>
-              </label>
+                </label>
 
-              <label
-                htmlFor="proactive_setter"
-                className={cn(
-                  "relative cursor-pointer rounded-lg border-2 p-4 hover:border-primary/50 transition-all",
-                  formData.agentType === "proactive_setter"
-                    ? "border-primary bg-primary/5 shadow-md"
-                    : "border-muted"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <RadioGroupItem value="proactive_setter" id="proactive_setter" className="mt-1" />
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-orange-500" />
-                      <p className="font-semibold">Setter (Outbound)</p>
+                <label
+                  htmlFor="proactive_setter"
+                  className={cn(
+                    "relative cursor-pointer rounded-lg border-2 p-4 hover:border-primary/50 transition-all",
+                    formData.agentType === "proactive_setter"
+                      ? "border-primary bg-primary/5 shadow-md"
+                      : "border-muted"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="proactive_setter" id="proactive_setter" className="mt-1" />
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-5 w-5 text-orange-500" />
+                        <p className="font-semibold">Setter (Outbound)</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Contatta lead proattivamente per fissare appuntamenti. Diretto e persuasivo.
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Contatta lead proattivamente per fissare appuntamenti. Diretto e persuasivo.
-                    </p>
                   </div>
-                </div>
-              </label>
+                </label>
 
-              <label
-                htmlFor="informative_advisor"
-                className={cn(
-                  "relative cursor-pointer rounded-lg border-2 p-4 hover:border-primary/50 transition-all",
-                  formData.agentType === "informative_advisor"
-                    ? "border-primary bg-primary/5 shadow-md"
-                    : "border-muted"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <RadioGroupItem value="informative_advisor" id="informative_advisor" className="mt-1" />
-                  <div className="space-y-2 flex-1">
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="h-5 w-5 text-blue-500" />
-                      <p className="font-semibold">Consulente Educativo (Informativo)</p>
+                <label
+                  htmlFor="informative_advisor"
+                  className={cn(
+                    "relative cursor-pointer rounded-lg border-2 p-4 hover:border-primary/50 transition-all",
+                    formData.agentType === "informative_advisor"
+                      ? "border-primary bg-primary/5 shadow-md"
+                      : "border-muted"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="informative_advisor" id="informative_advisor" className="mt-1" />
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5 text-blue-500" />
+                        <p className="font-semibold">Consulente Educativo (Informativo)</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Insegna e informa senza prendere appuntamenti. Educativo e paziente.
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Insegna e informa senza prendere appuntamenti. Educativo e paziente.
-                    </p>
                   </div>
-                </div>
-              </label>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label
+                  htmlFor="customer_success"
+                  className={cn(
+                    "relative cursor-pointer rounded-lg border-2 p-4 hover:border-primary/50 transition-all",
+                    formData.agentType === "customer_success"
+                      ? "border-primary bg-primary/5 shadow-md"
+                      : "border-muted"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="customer_success" id="customer_success" className="mt-1" />
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <HeartHandshake className="h-5 w-5 text-purple-500" />
+                        <p className="font-semibold">Customer Success (Post-Vendita)</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Supporta clienti post-acquisto. Risolve problemi e fidelizza.
+                      </p>
+                      <div className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        ❌ NO Booking
+                      </div>
+                    </div>
+                  </div>
+                </label>
+
+                <label
+                  htmlFor="intake_coordinator"
+                  className={cn(
+                    "relative cursor-pointer rounded-lg border-2 p-4 hover:border-primary/50 transition-all",
+                    formData.agentType === "intake_coordinator"
+                      ? "border-primary bg-primary/5 shadow-md"
+                      : "border-muted"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="intake_coordinator" id="intake_coordinator" className="mt-1" />
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <ClipboardList className="h-5 w-5 text-indigo-500" />
+                        <p className="font-semibold">Intake Coordinator (Documenti)</p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Raccoglie documenti prima degli appuntamenti. Organizzato e preciso.
+                      </p>
+                      <div className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        ❌ NO Booking
+                      </div>
+                    </div>
+                  </div>
+                </label>
+              </div>
             </div>
           </RadioGroup>
         </CardContent>
@@ -405,6 +463,22 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
               id="isDryRun"
               checked={formData.isDryRun}
               onCheckedChange={(checked) => onChange("isDryRun", checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/5 transition-colors">
+            <div className="space-y-0.5 flex-1">
+              <Label htmlFor="isProactiveAgent" className="text-base font-semibold cursor-pointer">
+                Modalità Proattiva
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                L'agente può iniziare conversazioni (outreach) invece di solo rispondere
+              </p>
+            </div>
+            <Switch
+              id="isProactiveAgent"
+              checked={formData.isProactiveAgent}
+              onCheckedChange={(checked) => onChange("isProactiveAgent", checked)}
             />
           </div>
         </CardContent>
