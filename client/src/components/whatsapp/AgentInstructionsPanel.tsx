@@ -1306,6 +1306,8 @@ export default function AgentInstructionsPanel({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isEnhancingRef = useRef(false);
+  const lastSyncedPayloadRef = useRef<string>("");
+  const isHydratingRef = useRef(false);
 
   // Local state - use external agentType from props if available
   const [enabled, setEnabled] = useState(true);
@@ -1327,6 +1329,25 @@ export default function AgentInstructionsPanel({
   const [wizardMode, setWizardMode] = useState<"generate_from_info" | "write_from_scratch" | null>(null);
   const [cursorPosition, setCursorPosition] = useState<number>(0);
   const [currentPhase, setCurrentPhase] = useState<ExtractedPhase | null>(null);
+
+  // Sync agentType when externalAgentType prop changes
+  useEffect(() => {
+    if (externalAgentType) {
+      const mappedType = mapAgentTypeToInternal(externalAgentType);
+      if (mappedType !== agentType) {
+        console.log(`🔄 [SYNC AGENT TYPE] Sincronizzazione: ${externalAgentType} → ${mappedType}`);
+        setAgentType(mappedType);
+        // Reset obiettivo al default per il nuovo tipo
+        const defaultObjectives: Record<string, string> = {
+          inbound: "appointment",
+          outbound: "lead_qualification",
+          consultative: "education",
+        };
+        setCustomObjective(defaultObjectives[mappedType] || "appointment");
+        setWizardMode(null);
+      }
+    }
+  }, [externalAgentType]);
 
   // Fetch current configuration (only in edit mode with agentId)
   const { data: configData, isLoading: isLoadingConfig } = useQuery({
@@ -1433,6 +1454,8 @@ export default function AgentInstructionsPanel({
     }
 
     if (initialData && mode === "create") {
+      isHydratingRef.current = true;
+      
       // enabled is always true - removed setEnabled(initialData.agentInstructionsEnabled)
       setSelectedTemplate(initialData.selectedTemplate);
       setBusinessHeaderMode(initialData.businessHeaderMode || "assistant");
@@ -1460,20 +1483,27 @@ export default function AgentInstructionsPanel({
       } else if (initialData.selectedTemplate === "informative_advisor") {
         setInstructions(INFORMATIVE_ADVISOR_TEMPLATE);
       }
+      
+      isHydratingRef.current = false;
     }
   }, [initialData, mode]);
 
   // Sync changes with parent (create mode)
   useEffect(() => {
-    if (mode === "create" && onChange) {
-      onChange({
+    if (mode === "create" && onChange && !isHydratingRef.current) {
+      const payload = {
         agentInstructions: instructions,
         agentInstructionsEnabled: enabled,
         selectedTemplate: selectedTemplate,
         businessHeaderMode: businessHeaderMode,
         professionalRole: professionalRole,
         customBusinessHeader: customBusinessHeader,
-      });
+      };
+      const payloadStr = JSON.stringify(payload);
+      if (payloadStr !== lastSyncedPayloadRef.current) {
+        lastSyncedPayloadRef.current = payloadStr;
+        onChange(payload);
+      }
     }
   }, [enabled, selectedTemplate, instructions, businessHeaderMode, professionalRole, customBusinessHeader, mode, onChange]);
 
@@ -2007,6 +2037,12 @@ export default function AgentInstructionsPanel({
             {/* Objective Selection - Only when "generate_from_info" is selected */}
             {wizardMode === "generate_from_info" && (
               <div className="space-y-4 pt-4 border-t">
+                <Badge className="mb-2">
+                  {agentType === "inbound" && "📞 Agente Inbound"}
+                  {agentType === "outbound" && "📤 Agente Outbound"}
+                  {agentType === "consultative" && "🎓 Agente Consulenziale"}
+                </Badge>
+                
                 <div>
                   <Label className="text-sm font-medium mb-2 block">
                     Seleziona l'obiettivo principale della conversazione
@@ -2077,7 +2113,40 @@ export default function AgentInstructionsPanel({
 
             {/* Direct to editor message - When "write_from_scratch" is selected */}
             {wizardMode === "write_from_scratch" && (
-              <div className="pt-4 border-t">
+              <div className="space-y-4 pt-4 border-t">
+                <Badge className="mb-2">
+                  {agentType === "inbound" && "📞 Agente Inbound"}
+                  {agentType === "outbound" && "📤 Agente Outbound"}
+                  {agentType === "consultative" && "🎓 Agente Consulenziale"}
+                </Badge>
+                
+                <div>
+                  <Label className="text-sm font-medium mb-2 block">
+                    Seleziona l'obiettivo principale della conversazione
+                  </Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {(OBJECTIVE_OPTIONS_BY_TYPE[agentType] || OBJECTIVE_OPTIONS_BY_TYPE.inbound).map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setCustomObjective(option.value)}
+                        className={cn(
+                          "p-3 rounded-lg border-2 text-left transition-all duration-200 hover:shadow-md",
+                          customObjective === option.value
+                            ? "border-primary bg-primary/5"
+                            : "border-gray-200 dark:border-gray-700 hover:border-primary/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-lg">{option.icon}</span>
+                          <span className="font-medium text-sm">{option.label}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{option.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
                 <Alert className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
                   <PenLine className="h-4 w-4 text-blue-600" />
                   <AlertDescription className="text-blue-800 dark:text-blue-200">

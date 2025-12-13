@@ -589,7 +589,32 @@ ${objectiveSpecificGuidance[objective]}
 
 ${bookingSection}
 
+${agentType === "consultative" ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LE 6 FASI DELLA CONVERSAZIONE EDUCATIVA (STRUTTURA FISSA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ IMPORTANTE: Questo agente è PURAMENTE EDUCATIVO/CONSULENZIALE.
+NON menzionare MAI appuntamenti, call, vendite, preventivi o conversioni.
+
+Genera istruzioni dettagliate per OGNI fase:
+
+FASE 1️⃣ - ACCOGLIENZA E SCOPERTA INTERESSE
+→ Messaggio di benvenuto e domande per scoprire cosa vogliono imparare/capire
+
+FASE 2️⃣ - VALUTAZIONE LIVELLO DI CONOSCENZA
+→ Domande per capire quanto già sanno sull'argomento
+
+FASE 3️⃣ - SPIEGAZIONE CHIARA E STRUTTURATA
+→ Come spiegare concetti in modo semplice e progressivo
+
+FASE 4️⃣ - VERIFICA COMPRENSIONE
+→ Domande per assicurarsi che abbiano capito, esempi pratici
+
+FASE 5️⃣ - APPROFONDIMENTO O NUOVI ARGOMENTI
+→ Come proporre argomenti correlati o approfondimenti
+
+FASE 6️⃣ - RISORSE E PROSSIMI PASSI EDUCATIVI
+→ Link, materiali, suggerimenti per continuare ad imparare` : `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 LE 9 FASI DELLA CONVERSAZIONE (STRUTTURA FISSA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -623,7 +648,7 @@ FASE 8️⃣ - ATTESA CREAZIONE APPUNTAMENTO
 → Messaggio placeholder mentre si crea l'evento
 
 FASE 9️⃣ - SUPPORTO PRE-APPUNTAMENTO
-→ Come gestire domande dopo la conferma
+→ Come gestire domande dopo la conferma`}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 VARIABILI DISPONIBILI (usa SOLO queste)
