@@ -5001,3 +5001,29 @@ export const consultantAiIdeas = pgTable("consultant_ai_ideas", {
 
 export type ConsultantAiIdea = typeof consultantAiIdeas.$inferSelect;
 export type InsertConsultantAiIdea = typeof consultantAiIdeas.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// User Role Profiles - Allow same email to have multiple roles (consultant + client)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const userRoleProfiles = pgTable("user_role_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  role: text("role").notNull().$type<"consultant" | "client" | "super_admin">(),
+  consultantId: varchar("consultant_id").references(() => users.id), // null for consultants, references consultant for clients
+  isDefault: boolean("is_default").default(false).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => {
+  return {
+    uniqueUserRoleConsultant: unique().on(table.userId, table.role, table.consultantId),
+  }
+});
+
+export type UserRoleProfile = typeof userRoleProfiles.$inferSelect;
+export type InsertUserRoleProfile = typeof userRoleProfiles.$inferInsert;
+
+export const insertUserRoleProfileSchema = createInsertSchema(userRoleProfiles).omit({
+  id: true,
+  createdAt: true,
+});

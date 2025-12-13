@@ -261,8 +261,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Generate JWT token (permettiamo login anche se non attivo)
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+      // Check for user role profiles (Email Condivisa feature)
+      let profiles = await storage.getUserRoleProfiles(user.id);
+
+      // If no profiles exist, create default profile based on users.role
+      if (profiles.length === 0) {
+        const defaultProfile = await storage.createUserRoleProfile({
+          userId: user.id,
+          role: user.role,
+          consultantId: user.role === 'client' ? user.consultantId : null,
+          isDefault: true,
+          isActive: true,
+        });
+        profiles = [defaultProfile];
+      }
+
+      // If user has multiple profiles, require profile selection
+      if (profiles.length > 1) {
+        // Generate a temporary token for profile selection (short-lived)
+        const tempToken = jwt.sign({ userId: user.id, requireProfileSelection: true }, JWT_SECRET, { expiresIn: '5m' });
+        
+        return res.json({
+          message: "Profile selection required",
+          requireProfileSelection: true,
+          tempToken,
+          profiles: profiles.map(p => ({
+            id: p.id,
+            role: p.role,
+            consultantId: p.consultantId,
+            isDefault: p.isDefault,
+          })),
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            avatar: user.avatar,
+          },
+        });
+      }
+
+      // Single profile: use that profile's role
+      const activeProfile = profiles[0];
+      const token = jwt.sign({ userId: user.id, profileId: activeProfile.id }, JWT_SECRET, { expiresIn: '7d' });
 
       res.json({
         message: "Login successful",
@@ -273,14 +315,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          role: user.role,
+          role: activeProfile.role,
           avatar: user.avatar,
           geminiApiKeys: user.geminiApiKeys,
-          isActive: user.isActive, // Invia anche lo stato isActive
+          isActive: user.isActive,
+          profileId: activeProfile.id,
+          consultantId: activeProfile.consultantId || user.consultantId,
         },
       });
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Login failed" });
+    }
+  });
+
+  // Select profile endpoint (Email Condivisa feature)
+  app.post("/api/auth/select-profile", async (req, res) => {
+    try {
+      const authHeader = req.headers['authorization'];
+      const tempToken = authHeader && authHeader.split(' ')[1];
+
+      if (!tempToken) {
+        return res.status(401).json({ message: 'Token required' });
+      }
+
+      const { profileId } = req.body;
+      if (!profileId) {
+        return res.status(400).json({ message: 'Profile ID required' });
+      }
+
+      // Verify temp token
+      let decoded: any;
+      try {
+        decoded = jwt.verify(tempToken, JWT_SECRET);
+      } catch (err) {
+        return res.status(401).json({ message: 'Invalid or expired token' });
+      }
+
+      const userId = decoded.userId;
+
+      // Get user and verify profile belongs to them
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+
+      const profile = await storage.getUserRoleProfileById(profileId);
+      if (!profile || profile.userId !== userId) {
+        return res.status(403).json({ message: 'Profile not found or access denied' });
+      }
+
+      if (!profile.isActive) {
+        return res.status(403).json({ message: 'Profile is not active' });
+      }
+
+      // Set this profile as default
+      await storage.setDefaultProfile(userId, profileId);
+
+      // Generate new JWT with profileId
+      const token = jwt.sign({ userId: user.id, profileId: profile.id }, JWT_SECRET, { expiresIn: '7d' });
+
+      res.json({
+        message: "Profile selected successfully",
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: profile.role,
+          avatar: user.avatar,
+          geminiApiKeys: user.geminiApiKeys,
+          isActive: user.isActive,
+          profileId: profile.id,
+          consultantId: profile.consultantId || user.consultantId,
+        },
+      });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message || "Profile selection failed" });
     }
   });
 

@@ -120,6 +120,8 @@ import {
   type InsertGeminiSessionHandle,
   type ConsultationInvite,
   type InsertConsultationInvite,
+  type UserRoleProfile,
+  type InsertUserRoleProfile,
 } from "@shared/schema";
 
 // Define types for UserActivityLog and UserSession
@@ -650,6 +652,13 @@ export interface IStorage {
   // Encryption/Decryption operations for credentials
   encryptData(text: string): string;
   decryptData(text: string): string;
+
+  // User Role Profiles operations (Email Condivisa feature)
+  getUserRoleProfiles(userId: string): Promise<UserRoleProfile[]>;
+  getUserRoleProfilesByEmail(email: string): Promise<UserRoleProfile[]>;
+  getUserRoleProfileById(profileId: string): Promise<UserRoleProfile | null>;
+  createUserRoleProfile(profile: InsertUserRoleProfile): Promise<UserRoleProfile>;
+  setDefaultProfile(userId: string, profileId: string): Promise<void>;
 }
 
 import { db } from "./db.js";
@@ -5332,6 +5341,53 @@ export class DatabaseStorage implements IStorage {
       .delete(schema.geminiSessionHandles)
       .where(sql`${schema.geminiSessionHandles.createdAt} < ${cutoffTime}`);
     return result.rowCount || 0;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // User Role Profiles operations (Email Condivisa feature)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async getUserRoleProfiles(userId: string): Promise<UserRoleProfile[]> {
+    return db.select().from(schema.userRoleProfiles)
+      .where(and(
+        eq(schema.userRoleProfiles.userId, userId),
+        eq(schema.userRoleProfiles.isActive, true)
+      ))
+      .orderBy(desc(schema.userRoleProfiles.isDefault));
+  }
+
+  async getUserRoleProfilesByEmail(email: string): Promise<UserRoleProfile[]> {
+    const user = await this.getUserByEmail(email);
+    if (!user) return [];
+    return this.getUserRoleProfiles(user.id);
+  }
+
+  async getUserRoleProfileById(profileId: string): Promise<UserRoleProfile | null> {
+    const [profile] = await db.select().from(schema.userRoleProfiles)
+      .where(eq(schema.userRoleProfiles.id, profileId));
+    return profile || null;
+  }
+
+  async createUserRoleProfile(profile: InsertUserRoleProfile): Promise<UserRoleProfile> {
+    const [created] = await db.insert(schema.userRoleProfiles)
+      .values([profile])
+      .returning();
+    return created;
+  }
+
+  async setDefaultProfile(userId: string, profileId: string): Promise<void> {
+    // First, set all profiles for this user to non-default
+    await db.update(schema.userRoleProfiles)
+      .set({ isDefault: false })
+      .where(eq(schema.userRoleProfiles.userId, userId));
+    
+    // Then, set the specified profile as default
+    await db.update(schema.userRoleProfiles)
+      .set({ isDefault: true })
+      .where(and(
+        eq(schema.userRoleProfiles.id, profileId),
+        eq(schema.userRoleProfiles.userId, userId)
+      ));
   }
 }
 

@@ -10,6 +10,7 @@ export interface AuthRequest extends Request {
     email: string;
     role: "consultant" | "client" | "super_admin";
     consultantId?: string;
+    profileId?: string; // Email Condivisa feature: active profile ID
   };
 }
 
@@ -29,11 +30,26 @@ export const authenticateToken = async (req: AuthRequest, res: Response, next: N
       return res.status(401).json({ message: 'Invalid token' });
     }
 
+    // Email Condivisa feature: if JWT contains profileId, use profile's role
+    let role = user.role;
+    let consultantId = user.consultantId || undefined;
+    let profileId: string | undefined = undefined;
+
+    if (decoded.profileId) {
+      const profile = await storage.getUserRoleProfileById(decoded.profileId);
+      if (profile && profile.userId === user.id && profile.isActive) {
+        role = profile.role;
+        consultantId = profile.consultantId || user.consultantId || undefined;
+        profileId = profile.id;
+      }
+    }
+
     req.user = {
       id: user.id,
       email: user.email,
-      role: user.role,
-      consultantId: user.consultantId || undefined,
+      role: role,
+      consultantId: consultantId,
+      profileId: profileId,
     };
     
     next();
