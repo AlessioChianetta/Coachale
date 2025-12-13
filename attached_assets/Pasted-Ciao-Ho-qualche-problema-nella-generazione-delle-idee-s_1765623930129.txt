@@ -1,0 +1,64 @@
+Ciao! Ho qualche problema nella generazione delle idee, se provo a migliorare il testo con ai, da errore dicendo che non trova il modello o cosa, noi usiamo gemini 2.5 flash, e usiamo VERTEX 
+inoltre se provo a generare un idea, da errore sotto di array non capisco, /consultant/whatsapp  gestione idee
+
+se provo invece a creare un nuovo cliente o consulente e l'email è già presente nel db perchè si è già registrato con uno dei due modi, mi dice che è già presente, ma avevamo messo una logica che va bene all'accesso viene configurato bene e può scegliere, ALT se si è già registrato come consulente o cliente, se io vado a ricrearlo, lui si deve accorgere che è già presente nel sistema e non mi deve chiedere la password perchè riutilizzerà quella dell'altro profilo  ( nel super admin creazione utente )
+
+
+
+Error improving text: ClientError: [VertexAI.ClientError]: got status: 404 Not Found. {"error":{"code":404,"message":"Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-1.5-flash` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions","status":"NOT_FOUND"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:47:21)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async generateContent (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/generate_content.ts:94:3)
+    at async <anonymous> (/home/runner/workspace/server/routes/onboarding.ts:1111:20) {
+  stackTrace: GoogleApiError: Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-1.5-flash` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+      at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:49:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+      at async generateContent (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/generate_content.ts:94:3)
+      at async <anonymous> (/home/runner/workspace/server/routes/onboarding.ts:1111:20) {
+    code: 404,
+    status: 'NOT_FOUND',
+    errorDetails: undefined
+  },
+  [cause]: GoogleApiError: Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-1.5-flash` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+      at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:49:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+      at async generateContent (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/generate_content.ts:94:3)
+      at async <anonymous> (/home/runner/workspace/server/routes/onboarding.ts:1111:20) {
+    code: 404,
+    status: 'NOT_FOUND',
+    errorDetails: undefined
+  }
+}
+10:59:25 AM [express] POST /api/consultant/onboarding/ai-ideas/improve-text 500 in 1620ms :: {"succes…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 3 consultant(s) sequentially...
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-11T11:44:14.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+📌 [WATERMARK] Latest on Twilio (2025-12-11T11:44:14.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+🔒 [CIRCUIT BREAKER] Skipping agent 760bb513-098f-4722-b02a-a700160c2fc3 (Marco setter) - circuit breaker is open
+Error generating AI ideas: error: malformed array literal: "97a7c61a-7e59-4aed-8a76-3c7968fbf1a7"
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async <anonymous> (/home/runner/workspace/server/routes/onboarding.ts:1166:20) {
+  length: 216,
+  severity: 'ERROR',
+  code: '22P02',
+  detail: 'Array value must start with "{" or dimension information.',
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: "unnamed portal parameter $2 = '...'",
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'arrayfuncs.c',
+  line: '262',
+  routine: 'array_in'
+}
+10:59:32 AM [express] POST /api/consultant/onboarding/ai-ideas/generate 500 in 577ms :: {"success":fa…
+✅ [WHATSAPP POLLING] Poll cycle complete
