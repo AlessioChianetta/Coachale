@@ -53,6 +53,7 @@ const ConsultantWhatsAppAgentConfig = lazy(() => import("@/pages/consultant-what
 const ConsultantWhatsAppAgentsChat = lazy(() => import("@/pages/consultant-whatsapp-agents-chat"));
 const ProactiveLeadsPage = lazy(() => import("@/pages/proactive-leads"));
 const ConsultantCampaignsPage = lazy(() => import("@/pages/consultant-campaigns"));
+const ConsultantAutomationsPage = lazy(() => import("@/pages/consultant-automations"));
 const ConsultantApiSettings = lazy(() => import("@/pages/consultant-api-settings"));
 const ConsultantCalendarSettings = lazy(() => import("@/pages/consultant-calendar-settings"));
 const ConsultantProfileSettings = lazy(() => import("@/pages/consultant-profile-settings"));
@@ -294,6 +295,12 @@ function Router() {
       <Route path="/consultant/proactive-leads">
         <AuthGuard requiredRole="consultant">
           <ProactiveLeadsPage />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/automations">
+        <AuthGuard requiredRole="consultant">
+          <ConsultantAutomationsPage />
         </AuthGuard>
       </Route>
 

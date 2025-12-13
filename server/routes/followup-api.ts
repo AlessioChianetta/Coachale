@@ -7,7 +7,7 @@ import { Router } from "express";
 import { db } from "../db";
 import * as schema from "../../shared/schema";
 import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
-import { authenticateToken, requireRole } from "../auth";
+import { authenticateToken, requireRole } from "../middleware/auth";
 
 const router = Router();
 
