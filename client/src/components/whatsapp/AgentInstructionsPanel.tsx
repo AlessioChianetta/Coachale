@@ -197,15 +197,29 @@ const OBJECTIVE_OPTIONS_BY_TYPE: Record<string, Array<{value: string, label: str
     { value: "faq", label: "FAQ automatiche", icon: "❓", description: "Gestisci domande frequenti" },
     { value: "other", label: "Altro", icon: "✏️", description: "Obiettivo personalizzato" },
   ],
+  customer_success: [
+    { value: "supporto_tecnico", label: "Supporto tecnico", icon: "🔧", description: "Risolvi problemi e dubbi tecnici" },
+    { value: "risposta_faq", label: "Risposta FAQ", icon: "❓", description: "Rispondi a domande frequenti" },
+    { value: "raccolta_feedback", label: "Raccolta feedback", icon: "⭐", description: "Chiedi recensione/valutazione" },
+    { value: "checkin_periodico", label: "Check-in periodico", icon: "🔄", description: "Verifica come sta andando" },
+    { value: "other", label: "Altro", icon: "✏️", description: "Obiettivo personalizzato" },
+  ],
+  intake_coordinator: [
+    { value: "raccolta_documenti", label: "Raccolta documenti", icon: "📄", description: "Richiedi e verifica documenti" },
+    { value: "firma_consensi", label: "Firma consensi", icon: "✍️", description: "Fai firmare consensi e privacy" },
+    { value: "questionario", label: "Questionario preliminare", icon: "📝", description: "Raccogli info con domande" },
+    { value: "reminder", label: "Promemoria appuntamento", icon: "🔔", description: "Ricorda data/ora e cosa portare" },
+    { value: "other", label: "Altro", icon: "✏️", description: "Obiettivo personalizzato" },
+  ],
 };
 
 interface AgentInstructionsPanelProps {
-  agentType?: "reactive_lead" | "proactive_setter" | "informative_advisor";
+  agentType?: "reactive_lead" | "proactive_setter" | "informative_advisor" | "customer_success" | "intake_coordinator";
   agentId?: string | null;
   initialData?: {
     agentInstructions: string | null;
     agentInstructionsEnabled: boolean;
-    selectedTemplate: "receptionist" | "marco_setter" | "informative_advisor" | "custom";
+    selectedTemplate: "receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator" | "custom";
     agentName: string;
     businessHeaderMode?: string;
     professionalRole?: string;
@@ -216,7 +230,7 @@ interface AgentInstructionsPanelProps {
   onChange?: (data: {
     agentInstructions: string;
     agentInstructionsEnabled: boolean;
-    selectedTemplate: "receptionist" | "marco_setter" | "informative_advisor" | "custom";
+    selectedTemplate: "receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator" | "custom";
     businessHeaderMode?: string;
     professionalRole?: string;
     customBusinessHeader?: string;
@@ -226,10 +240,12 @@ interface AgentInstructionsPanelProps {
   onCancel?: () => void;
 }
 
-const mapAgentTypeToInternal = (type?: string): "inbound" | "outbound" | "consultative" => {
+const mapAgentTypeToInternal = (type?: string): "inbound" | "outbound" | "consultative" | "customer_success" | "intake_coordinator" => {
   switch (type) {
     case "proactive_setter": return "outbound";
     case "informative_advisor": return "consultative";
+    case "customer_success": return "customer_success";
+    case "intake_coordinator": return "intake_coordinator";
     case "reactive_lead":
     default: return "inbound";
   }
@@ -244,7 +260,7 @@ interface Variable {
 interface InstructionsConfig {
   agentInstructions: string | null;
   agentInstructionsEnabled: boolean;
-  selectedTemplate: "receptionist" | "marco_setter" | "informative_advisor" | "custom";
+  selectedTemplate: "receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator" | "custom";
   agentName: string;
   businessHeaderMode?: string;
   professionalRole?: string;
@@ -871,6 +887,323 @@ Ti è chiaro o vuoi che approfondisca? 🤔"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
+export const CUSTOMER_SUCCESS_TEMPLATE = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛎️ RUOLO: CUSTOMER SUCCESS (POST-VENDITA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sei un agente di ASSISTENZA POST-VENDITA che supporta clienti esistenti.
+Il tuo obiettivo è RISOLVERE PROBLEMI, rispondere a domande, e fidelizzare il cliente.
+
+🎨 TONO: Empatico, risolutivo, disponibile
+Approccio: "Come posso aiutarti oggi?" (focus su risoluzione e supporto)
+
+🚨 IMPORTANTE: 
+- NON proporre appuntamenti o call di vendita
+- FOCUS su supporto, risoluzione problemi, fidelizzazione
+- Escalation solo se necessario
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 COMANDO RESET CONVERSAZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il cliente scrive: "ricominciamo", "reset", "ripartiamo da capo"
+
+RISPONDI:
+"Certo! Nessun problema, ricominciamo. 👋
+Come posso aiutarti oggi?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 LE 7 FASI DEL SUPPORTO CLIENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FASE 1️⃣ - RICONOSCIMENTO E ACCOGLIENZA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Riconoscere il cliente e capire subito di cosa ha bisogno.
+
+"Ciao! 👋 Sono l'assistente di \${businessName}.
+Come posso aiutarti oggi?"
+
+Varianti:
+- "Ciao! Vedo che sei già nostro cliente. Come posso esserti utile?"
+- "Benvenuto/a! Hai bisogno di supporto su qualcosa?"
+
+🎨 TONO: Accogliente, disponibile, professionale
+
+⚠️ CHECKPOINT: Capire SUBITO se è: problema tecnico, domanda, feedback, reclamo
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 2️⃣ - DIAGNOSI DEL PROBLEMA/RICHIESTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Capire esattamente qual è il problema o la richiesta.
+
+Domande utili:
+- "Puoi descrivermi meglio cosa sta succedendo?"
+- "Da quando riscontri questo problema?"
+- "Hai già provato qualche soluzione?"
+
+🎨 TONO: Paziente, attento, investigativo
+
+⚠️ CHECKPOINT: NON proporre soluzioni finché non hai capito BENE il problema
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 3️⃣ - TRIAGE E CLASSIFICAZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Classificare la richiesta per urgenza e tipo.
+
+Categorie:
+- 🔧 Supporto tecnico → Vai a risoluzione diretta
+- ❓ Domanda informativa → Rispondi direttamente  
+- 📝 Feedback/Suggerimento → Raccogli e ringrazia
+- ⚠️ Reclamo → Empatia prima, poi risoluzione
+
+Urgenza:
+- 🔴 Alta: blocco totale, non riesce a usare il servizio
+- 🟡 Media: funziona ma con problemi
+- 🟢 Bassa: domanda generica, curiosità
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 4️⃣ - RISOLUZIONE DIRETTA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Risolvere il problema o rispondere alla domanda.
+
+Struttura risposta:
+1. Conferma di aver capito: "Ok, quindi il problema è [X]"
+2. Spiega la soluzione: "Ecco come risolverlo:"
+3. Passi chiari: "Step 1... Step 2..."
+4. Verifica: "Prova così e dimmi se funziona!"
+
+Esempio:
+"Capito! 👍 Il problema è [X].
+
+Ecco come risolverlo:
+1. [Passo 1]
+2. [Passo 2]
+3. [Passo 3]
+
+Prova e fammi sapere se funziona! 🙂"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 5️⃣ - ESCALATION (SE NECESSARIO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Se non puoi risolvere, indirizza al team giusto.
+
+Quando escalare:
+- Problema tecnico complesso oltre le tue capacità
+- Richiesta commerciale/amministrativa
+- Reclamo che richiede intervento umano
+
+"Capisco, questo richiede l'intervento del nostro team [tecnico/commerciale].
+Ti metto in contatto con loro che ti risolveranno tutto!
+
+Intanto, c'è altro in cui posso aiutarti? 🙂"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 6️⃣ - VERIFICA E FEEDBACK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Confermare che il problema sia risolto e raccogliere feedback.
+
+"Perfetto! 🎉 È tutto risolto?
+
+Se sì, ti chiedo un piccolo favore:
+Come valuti l'assistenza ricevuta? (1-5 stelle)"
+
+Oppure:
+"Tutto ok adesso? Posso aiutarti con qualcos'altro?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 7️⃣ - CHIUSURA E FIDELIZZAZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Chiudere positivamente e lasciare porta aperta.
+
+"Fantastico! 💪 Sono contento di averti aiutato.
+
+Ricorda: sono sempre qui se hai bisogno!
+Buona giornata e a presto! 👋"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 STILE WHATSAPP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ REGOLE:
+1. Messaggi brevi (2-4 righe max)
+2. Emoji con moderazione (🙂 👍 ✅ 🎉)
+3. Tono empatico e risolutivo
+4. Step chiari e numerati per soluzioni
+
+❌ MAI:
+- Proporre appuntamenti di vendita
+- Ignorare il problema
+- Risposte troppo lunghe o tecniche
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+export const INTAKE_COORDINATOR_TEMPLATE = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 RUOLO: INTAKE COORDINATOR (RACCOLTA DOCUMENTI)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Sei un coordinatore che PREPARA IL CLIENTE prima di un appuntamento già fissato.
+Il tuo obiettivo è RACCOGLIERE DOCUMENTI, consensi e informazioni preliminari.
+
+🎨 TONO: Professionale, chiaro, rassicurante
+Approccio: "Ti guido nella preparazione" (focus su raccolta e organizzazione)
+
+🚨 IMPORTANTE: 
+- NON prendere nuovi appuntamenti
+- L'appuntamento è GIÀ FISSATO, tu prepari il cliente
+- Raccogli documenti uno alla volta, conferma ricezione
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 COMANDO RESET CONVERSAZIONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Se il cliente scrive: "ricominciamo", "reset", "ripartiamo da capo"
+
+RISPONDI:
+"Certo! Ricominciamo la raccolta documenti. 👋
+Ecco cosa mi serve per il tuo appuntamento..."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 LE 7 FASI DELLA RACCOLTA DOCUMENTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FASE 1️⃣ - BENVENUTO E CONTESTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Spiegare perché stai contattando e cosa serve.
+
+"Ciao! 👋 Sono l'assistente di \${businessName}.
+
+Ti scrivo per preparare il tuo prossimo appuntamento.
+Per rendere l'incontro più efficace, ho bisogno di alcuni documenti.
+
+Ci vorranno pochi minuti! Iniziamo? 📋"
+
+🎨 TONO: Professionale ma rassicurante
+
+⚠️ CHECKPOINT: Assicurati che il cliente sia pronto a procedere
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 2️⃣ - LISTA DOCUMENTI RICHIESTI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Elencare chiaramente cosa serve.
+
+"Perfetto! Ecco cosa mi serve:
+
+📄 1. [Documento 1 - es. Carta d'identità]
+📄 2. [Documento 2 - es. Codice fiscale]
+📄 3. [Documento 3 - es. specifico del settore]
+
+Puoi mandarmeli come foto o PDF.
+Iniziamo dal primo? 📸"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 3️⃣ - RACCOLTA DOCUMENTO 1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Ricevere e confermare il primo documento.
+
+Richiesta:
+"Iniziamo con [DOCUMENTO 1].
+Puoi fare una foto fronte/retro oppure allegare il PDF. 📸"
+
+Conferma ricezione:
+"Ricevuto! ✅ [Documento 1] ok.
+
+Ora passiamo al prossimo..."
+
+Se non leggibile:
+"Mmh, l'immagine non è molto chiara 🔍
+Puoi rifare la foto con più luce?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 4️⃣ - RACCOLTA DOCUMENTI SUCCESSIVI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Continuare la raccolta documento per documento.
+
+Pattern da seguire:
+1. Chiedi UN documento alla volta
+2. Conferma ricezione con ✅
+3. Passa al successivo
+
+"Ottimo! ✅ Ora mi serve [DOCUMENTO N].
+Mandamelo quando sei pronto/a 📎"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 5️⃣ - RACCOLTA CONSENSI/PRIVACY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Far accettare consensi e privacy.
+
+"Quasi finito! 📝
+
+Per procedere ho bisogno del tuo consenso:
+[Link o testo del consenso privacy]
+
+Scrivi 'ACCETTO' per confermare che hai letto e accettato."
+
+Dopo conferma:
+"Perfetto! ✅ Consenso registrato."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 6️⃣ - RIEPILOGO E VERIFICA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Confermare che tutto sia completo.
+
+"Fantastico! 🎉 Ecco il riepilogo:
+
+✅ [Documento 1] - Ricevuto
+✅ [Documento 2] - Ricevuto
+✅ [Documento 3] - Ricevuto
+✅ Consenso privacy - Accettato
+
+È tutto corretto?"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FASE 7️⃣ - PROMEMORIA APPUNTAMENTO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Obiettivo: Confermare appuntamento e dare info utili.
+
+"Perfetto! 💪 Sei pronto/a per l'appuntamento.
+
+📅 Data: [DATA APPUNTAMENTO]
+⏰ Ora: [ORA]
+📍 Luogo/Link: [DOVE]
+
+Cosa aspettarti:
+• [Info utile 1]
+• [Info utile 2]
+
+Ti manderò un promemoria 24h prima.
+A presto! 👋"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 STILE WHATSAPP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ REGOLE:
+1. UN documento alla volta
+2. Conferma ogni ricezione con ✅
+3. Messaggi chiari e strutturati
+4. Emoji professionali (📋 ✅ 📄 📸)
+
+❌ MAI:
+- Chiedere tutti i documenti insieme
+- Proporre nuovi appuntamenti
+- Dimenticare di confermare ricezione
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
 const MARCO_SETTER_TEMPLATE = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 RUOLO: PROACTIVE SETTER (OUTBOUND)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1310,11 +1643,13 @@ export default function AgentInstructionsPanel({
   const isHydratingRef = useRef(false);
 
   // Helper function to get the initial template based on agent type
-  const getInitialTemplate = (type?: string): "receptionist" | "marco_setter" | "informative_advisor" | "custom" => {
+  const getInitialTemplate = (type?: string): "receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator" | "custom" => {
     const mappedType = mapAgentTypeToInternal(type);
     switch (mappedType) {
       case "outbound": return "marco_setter";
       case "consultative": return "informative_advisor";
+      case "customer_success": return "customer_success";
+      case "intake_coordinator": return "intake_coordinator";
       case "inbound":
       default: return "receptionist";
     }
@@ -1326,6 +1661,8 @@ export default function AgentInstructionsPanel({
     switch (template) {
       case "marco_setter": return MARCO_SETTER_TEMPLATE;
       case "informative_advisor": return INFORMATIVE_ADVISOR_TEMPLATE;
+      case "customer_success": return CUSTOMER_SUCCESS_TEMPLATE;
+      case "intake_coordinator": return INTAKE_COORDINATOR_TEMPLATE;
       case "receptionist":
       default: return RECEPTIONIST_TEMPLATE;
     }
@@ -1333,8 +1670,8 @@ export default function AgentInstructionsPanel({
 
   // Local state - use external agentType from props if available
   const [enabled, setEnabled] = useState(true);
-  const [agentType, setAgentType] = useState<"inbound" | "outbound" | "consultative">(() => mapAgentTypeToInternal(externalAgentType));
-  const [selectedTemplate, setSelectedTemplate] = useState<"receptionist" | "marco_setter" | "informative_advisor" | "custom">(() => getInitialTemplate(externalAgentType));
+  const [agentType, setAgentType] = useState<"inbound" | "outbound" | "consultative" | "customer_success" | "intake_coordinator">(() => mapAgentTypeToInternal(externalAgentType));
+  const [selectedTemplate, setSelectedTemplate] = useState<"receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator" | "custom">(() => getInitialTemplate(externalAgentType));
   const [instructions, setInstructions] = useState(() => getInitialInstructions(externalAgentType));
   const [businessHeaderMode, setBusinessHeaderMode] = useState<string>("assistant");
   const [professionalRole, setProfessionalRole] = useState<string>("");
@@ -1372,6 +1709,8 @@ export default function AgentInstructionsPanel({
           inbound: "appointment",
           outbound: "lead_qualification",
           consultative: "education",
+          customer_success: "supporto_tecnico",
+          intake_coordinator: "raccolta_documenti",
         };
         setCustomObjective(defaultObjectives[mappedType] || "appointment");
         setWizardMode(null);
@@ -1439,6 +1778,10 @@ export default function AgentInstructionsPanel({
         setAgentType("outbound");
       } else if (configData.selectedTemplate === "informative_advisor") {
         setAgentType("consultative");
+      } else if (configData.selectedTemplate === "customer_success") {
+        setAgentType("customer_success");
+      } else if (configData.selectedTemplate === "intake_coordinator") {
+        setAgentType("intake_coordinator");
       }
 
       console.log("📥 [LOAD CONFIG] State popolato con:");
@@ -1456,6 +1799,10 @@ export default function AgentInstructionsPanel({
         setInstructions(MARCO_SETTER_TEMPLATE);
       } else if (configData.selectedTemplate === "informative_advisor") {
         setInstructions(INFORMATIVE_ADVISOR_TEMPLATE);
+      } else if (configData.selectedTemplate === "customer_success") {
+        setInstructions(CUSTOMER_SUCCESS_TEMPLATE);
+      } else if (configData.selectedTemplate === "intake_coordinator") {
+        setInstructions(INTAKE_COORDINATOR_TEMPLATE);
       }
     }
   }, [configData, mode]);
@@ -1501,6 +1848,10 @@ export default function AgentInstructionsPanel({
         setAgentType("outbound");
       } else if (initialData.selectedTemplate === "informative_advisor") {
         setAgentType("consultative");
+      } else if (initialData.selectedTemplate === "customer_success") {
+        setAgentType("customer_success");
+      } else if (initialData.selectedTemplate === "intake_coordinator") {
+        setAgentType("intake_coordinator");
       }
 
       // Set initial instructions based on template
@@ -1512,6 +1863,10 @@ export default function AgentInstructionsPanel({
         setInstructions(MARCO_SETTER_TEMPLATE);
       } else if (initialData.selectedTemplate === "informative_advisor") {
         setInstructions(INFORMATIVE_ADVISOR_TEMPLATE);
+      } else if (initialData.selectedTemplate === "customer_success") {
+        setInstructions(CUSTOMER_SUCCESS_TEMPLATE);
+      } else if (initialData.selectedTemplate === "intake_coordinator") {
+        setInstructions(INTAKE_COORDINATOR_TEMPLATE);
       }
       
       isHydratingRef.current = false;
@@ -1538,7 +1893,7 @@ export default function AgentInstructionsPanel({
   }, [enabled, selectedTemplate, instructions, businessHeaderMode, professionalRole, customBusinessHeader, mode, onChange]);
 
   // Helper function to get the standard template for an agent type
-  const getStandardTemplateForType = (type: "inbound" | "outbound" | "consultative"): "receptionist" | "marco_setter" | "informative_advisor" => {
+  const getStandardTemplateForType = (type: "inbound" | "outbound" | "consultative" | "customer_success" | "intake_coordinator"): "receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator" => {
     switch (type) {
       case "inbound":
         return "receptionist";
@@ -1546,11 +1901,15 @@ export default function AgentInstructionsPanel({
         return "marco_setter";
       case "consultative":
         return "informative_advisor";
+      case "customer_success":
+        return "customer_success";
+      case "intake_coordinator":
+        return "intake_coordinator";
     }
   };
 
   // Helper function to get template content
-  const getTemplateContent = (template: "receptionist" | "marco_setter" | "informative_advisor"): string => {
+  const getTemplateContent = (template: "receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator"): string => {
     switch (template) {
       case "receptionist":
         return RECEPTIONIST_TEMPLATE;
@@ -1558,11 +1917,15 @@ export default function AgentInstructionsPanel({
         return MARCO_SETTER_TEMPLATE;
       case "informative_advisor":
         return INFORMATIVE_ADVISOR_TEMPLATE;
+      case "customer_success":
+        return CUSTOMER_SUCCESS_TEMPLATE;
+      case "intake_coordinator":
+        return INTAKE_COORDINATOR_TEMPLATE;
     }
   };
 
   // Handle agent type change - Step 1
-  const handleAgentTypeChange = (type: "inbound" | "outbound" | "consultative") => {
+  const handleAgentTypeChange = (type: "inbound" | "outbound" | "consultative" | "customer_success" | "intake_coordinator") => {
     setAgentType(type);
     // When changing agent type, if not custom, update to the standard template for that type
     if (selectedTemplate !== "custom") {
@@ -1593,7 +1956,7 @@ export default function AgentInstructionsPanel({
   };
 
   // Handle template change (legacy support for direct template changes)
-  const handleTemplateChange = (template: "receptionist" | "marco_setter" | "informative_advisor" | "custom") => {
+  const handleTemplateChange = (template: "receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator" | "custom") => {
     setSelectedTemplate(template);
 
     if (template === "receptionist") {
@@ -1605,6 +1968,12 @@ export default function AgentInstructionsPanel({
     } else if (template === "informative_advisor") {
       setInstructions(INFORMATIVE_ADVISOR_TEMPLATE);
       setAgentType("consultative");
+    } else if (template === "customer_success") {
+      setInstructions(CUSTOMER_SUCCESS_TEMPLATE);
+      setAgentType("customer_success");
+    } else if (template === "intake_coordinator") {
+      setInstructions(INTAKE_COORDINATOR_TEMPLATE);
+      setAgentType("intake_coordinator");
     } else if (template === "custom") {
       // Keep current instructions if switching to custom
       if (selectedTemplate !== "custom") {

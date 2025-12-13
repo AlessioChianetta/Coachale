@@ -19,7 +19,7 @@ const router = Router();
 const updateInstructionsSchema = z.object({
   agentInstructions: z.string().min(100, "Template must be at least 100 characters").optional(),
   agentInstructionsEnabled: z.boolean().optional(),
-  selectedTemplate: z.enum(["receptionist", "marco_setter", "informative_advisor", "custom"]).optional(),
+  selectedTemplate: z.enum(["receptionist", "marco_setter", "informative_advisor", "customer_success", "intake_coordinator", "custom"]).optional(),
   businessHeaderMode: z.enum(["assistant", "direct_consultant", "direct_professional", "custom", "none"]).optional(),
   professionalRole: z.string().optional(),
   customBusinessHeader: z.string().optional(),
@@ -397,7 +397,7 @@ class NotFoundError extends Error {
  * Validation schema for generate instructions request
  */
 const generateInstructionsSchema = z.object({
-  agentType: z.enum(["inbound", "outbound", "consultative"]),
+  agentType: z.enum(["inbound", "outbound", "consultative", "customer_success", "intake_coordinator"]),
   objective: z.enum([
     "appointment", 
     "info_gathering", 
@@ -408,6 +408,14 @@ const generateInstructionsSchema = z.object({
     "education", 
     "support", 
     "faq",
+    "supporto_tecnico",
+    "risposta_faq",
+    "raccolta_feedback",
+    "checkin_periodico",
+    "raccolta_documenti",
+    "firma_consensi",
+    "questionario",
+    "reminder",
     "other"
   ]),
   customObjective: z.string().optional(),
@@ -459,6 +467,8 @@ router.post(
         inbound: "INBOUND (Receptionist) - Lead che scrivono spontaneamente",
         outbound: "OUTBOUND (Setter) - Lead che contatti tu proattivamente",
         consultative: "CONSULTATIVO (Educativo) - Solo informativo, senza vendita",
+        customer_success: "CUSTOMER SUCCESS - Assistenza post-vendita e fidelizzazione clienti",
+        intake_coordinator: "INTAKE COORDINATOR - Raccolta documenti e onboarding pre-appuntamento",
       };
 
       const objectiveLabels: Record<string, string> = {
@@ -471,6 +481,14 @@ router.post(
         education: "Educazione prodotto - Insegnare e informare sul prodotto/servizio",
         support: "Supporto informativo - Rispondere a domande e dubbi",
         faq: "FAQ automatiche - Gestire domande frequenti in modo automatico",
+        supporto_tecnico: "Supporto Tecnico - Risolvere problemi tecnici e operativi del cliente",
+        risposta_faq: "Risposta FAQ Post-Vendita - Rispondere a domande frequenti dei clienti attivi",
+        raccolta_feedback: "Raccolta Feedback - Ottenere recensioni e feedback sull'esperienza",
+        checkin_periodico: "Check-in Periodico - Mantenere relazione e verificare soddisfazione",
+        raccolta_documenti: "Raccolta Documenti - Raccogliere documenti necessari per il servizio",
+        firma_consensi: "Firma Consensi - Ottenere firme su consensi e autorizzazioni",
+        questionario: "Questionario Pre-Appuntamento - Raccogliere informazioni preparatorie",
+        reminder: "Reminder Appuntamento - Ricordare appuntamenti e scadenze",
         other: customObjective || "Obiettivo personalizzato",
       };
 
@@ -552,6 +570,85 @@ router.post(
 - Chiedi se la risposta è stata utile
 - Proponi altre FAQ correlate che potrebbero interessare
 - Mantieni risposte concise ma complete`,
+
+        supporto_tecnico: `
+🎯 FOCUS: RISOLVERE PROBLEMI TECNICI del cliente in modo efficace.
+- Fase 1: Identifica il problema specifico e la sua urgenza
+- Fase 2: Raccogli dettagli tecnici (versione, dispositivo, errori)
+- Fase 3: Proponi soluzioni step-by-step
+- Fase 4: Verifica se il problema è risolto
+- Fase 5-6: Offri risorse aggiuntive (guide, tutorial)
+- Fase 7: Chiedi feedback sulla risoluzione
+- Mantieni tono paziente e tecnico ma accessibile`,
+
+        risposta_faq: `
+🎯 FOCUS: RISPONDERE RAPIDAMENTE alle domande frequenti dei clienti attivi.
+- Fase 1: Identifica la categoria della domanda
+- Fase 2: Fornisci risposta chiara e strutturata
+- Fase 3: Offri risorse correlate se utili
+- Fase 4: Verifica se la risposta è soddisfacente
+- Fase 5-6: Proponi altre FAQ che potrebbero interessare
+- Mantieni risposte concise ma complete`,
+
+        raccolta_feedback: `
+🎯 FOCUS: OTTENERE FEEDBACK genuino e costruttivo.
+- Fase 1: Ringrazia per la collaborazione e contestualizza
+- Fase 2: Chiedi valutazione generale dell'esperienza (1-10)
+- Fase 3: Approfondisci aspetti positivi
+- Fase 4: Chiedi aree di miglioramento
+- Fase 5: Richiedi recensione/testimonianza se soddisfatto
+- Fase 6: Proponi referral program se presente
+- Mantieni tono genuino e non invadente`,
+
+        checkin_periodico: `
+🎯 FOCUS: MANTENERE LA RELAZIONE e verificare soddisfazione.
+- Fase 1: Saluta calorosamente e ricorda l'ultimo contatto
+- Fase 2: Chiedi come sta andando con il servizio/prodotto
+- Fase 3: Verifica se ci sono nuovi bisogni emersi
+- Fase 4: Offri supporto o risorse utili
+- Fase 5: Proponi upgrade o servizi complementari se pertinenti
+- Fase 6: Conferma disponibilità per future necessità
+- Mantieni tono amichevole e non commerciale`,
+
+        raccolta_documenti: `
+🎯 FOCUS: RACCOGLIERE DOCUMENTI necessari in modo efficiente.
+- Fase 1: Spiega quali documenti servono e perché
+- Fase 2: Fornisci lista chiara e formati accettati
+- Fase 3: Guida su come inviarli (foto, PDF, email)
+- Fase 4: Conferma ricezione di ogni documento
+- Fase 5: Verifica completezza e leggibilità
+- Fase 6: Comunica prossimi step dopo la ricezione
+- Mantieni tono paziente e chiaro`,
+
+        firma_consensi: `
+🎯 FOCUS: OTTENERE FIRME su consensi e autorizzazioni.
+- Fase 1: Spiega l'importanza del documento da firmare
+- Fase 2: Illustra brevemente i punti chiave
+- Fase 3: Rispondi a eventuali dubbi
+- Fase 4: Guida nel processo di firma (digitale o cartacea)
+- Fase 5: Conferma ricezione della firma
+- Fase 6: Comunica prossimi step
+- Mantieni tono professionale e rassicurante`,
+
+        questionario: `
+🎯 FOCUS: RACCOGLIERE INFORMAZIONI preparatorie per l'appuntamento.
+- Fase 1: Spiega perché il questionario è importante
+- Fase 2: Fai domande una alla volta, in modo conversazionale
+- Fase 3: Approfondisci risposte rilevanti
+- Fase 4: Verifica di aver raccolto tutto il necessario
+- Fase 5: Riepiloga le informazioni raccolte
+- Fase 6: Conferma l'appuntamento e i prossimi step
+- Mantieni tono amichevole e non invasivo`,
+
+        reminder: `
+🎯 FOCUS: RICORDARE APPUNTAMENTI e scadenze in modo efficace.
+- Fase 1: Saluta e ricorda l'appuntamento/scadenza
+- Fase 2: Conferma data, ora e modalità
+- Fase 3: Chiedi conferma di partecipazione
+- Fase 4: Fornisci dettagli pratici (link, indirizzo, cosa portare)
+- Fase 5: Offri possibilità di riprogrammare se necessario
+- Fase 6: Ringrazia e chiudi positivamente
+- Mantieni tono cordiale e pratico`,
 
         other: `
 🎯 FOCUS: ${customObjective || "Obiettivo personalizzato definito dal consulente"}.
