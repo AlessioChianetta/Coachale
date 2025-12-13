@@ -13,6 +13,17 @@ import {
 
 const router = Router();
 
+// Proactive mode section to prepend when agent is proactive
+const PROACTIVE_MODE_SECTION = `🚀 MODALITÀ PROATTIVA ATTIVA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Questo agente INIZIA le conversazioni scrivendo per primo ai lead.
+- Il PRIMO messaggio lo invia l'agente, NON il lead
+- L'agente deve avere un messaggio di apertura coinvolgente
+- NON aspettare che il lead scriva per primo
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
 /**
  * Validation schema for agent instructions update
  */
@@ -23,6 +34,7 @@ const updateInstructionsSchema = z.object({
   businessHeaderMode: z.enum(["assistant", "direct_consultant", "direct_professional", "custom", "none"]).optional(),
   professionalRole: z.string().optional(),
   customBusinessHeader: z.string().optional(),
+  isProactiveAgent: z.boolean().optional(),
 });
 
 
@@ -69,6 +81,7 @@ router.get(
           customBusinessHeader: agentConfig.customBusinessHeader || null,
           bookingEnabled: agentConfig.bookingEnabled !== false,
           agentName: agentConfig.agentName,
+          isProactiveAgent: agentConfig.isProactiveAgent || false,
         },
       });
     } catch (error: any) {
@@ -183,6 +196,7 @@ router.put(
           businessHeaderMode: data.businessHeaderMode !== undefined ? data.businessHeaderMode : agentConfig.businessHeaderMode,
           professionalRole: data.professionalRole !== undefined ? data.professionalRole : agentConfig.professionalRole,
           customBusinessHeader: data.customBusinessHeader !== undefined ? data.customBusinessHeader : agentConfig.customBusinessHeader,
+          isProactiveAgent: data.isProactiveAgent !== undefined ? data.isProactiveAgent : agentConfig.isProactiveAgent,
         })
         .where(eq(consultantWhatsappConfig.id, agentId))
         .returning();
@@ -205,6 +219,7 @@ router.put(
           professionalRole: updatedConfig.professionalRole,
           customBusinessHeader: updatedConfig.customBusinessHeader,
           agentName: updatedConfig.agentName,
+          isProactiveAgent: updatedConfig.isProactiveAgent,
         },
         warnings,
         message: "Agent instructions updated successfully",
@@ -420,7 +435,8 @@ const generateInstructionsSchema = z.object({
   ]),
   customObjective: z.string().optional(),
   bookingEnabled: z.boolean().optional(),
-  baseTemplate: z.string().optional(), // Template base da adattare invece di generare da zero
+  baseTemplate: z.string().optional(),
+  isProactiveAgent: z.boolean().optional(),
 });
 
 /**
@@ -444,14 +460,15 @@ router.post(
         });
       }
 
-      const { agentType, objective, customObjective, bookingEnabled, baseTemplate } = validationResult.data;
+      const { agentType, objective, customObjective, bookingEnabled, baseTemplate, isProactiveAgent } = validationResult.data;
 
       console.log(`🤖 [GENERATE INSTRUCTIONS] Starting generation for consultant ${consultantId}`);
       console.log(`   - Agent Type: ${agentType}`);
       console.log(`   - Objective: ${objective}`);
       console.log(`   - Custom Objective: ${customObjective || 'N/A'}`);
       console.log(`   - Booking Enabled: ${bookingEnabled !== false ? 'YES' : 'NO'}`);
-      console.log(`   - Base Template: ${baseTemplate ? `YES (${baseTemplate.length} chars)` : 'NO - will generate from scratch'}`);
+      console.log(`   - Is Proactive Agent: ${isProactiveAgent ? 'YES' : 'NO'}`);
+      console.log(`   - Base Template: ${baseTemplate ? `YES (${baseTemplate.length} chars)` : 'NO - will use default template'}`);
 
       const { getAIProvider } = await import("../../ai/provider-factory");
       const providerResult = await getAIProvider(consultantId, consultantId);
@@ -673,12 +690,25 @@ L'agente NON può prendere appuntamenti.
 Le fasi 5-8 devono essere adattate per raccogliere contatti senza fissare appuntamenti.
 Invece di proporre slot, proponi di inviare informazioni via email o di essere ricontattati.`;
 
-      // Build different prompts based on whether baseTemplate is provided
-      let systemPrompt: string;
+      // baseTemplate is REQUIRED - it must come from the frontend
+      // The frontend has all templates in AgentInstructionsPanel.tsx
+      if (!baseTemplate || baseTemplate.length < 500) {
+        return res.status(400).json({
+          success: false,
+          error: "baseTemplate is required and must be at least 500 characters. The frontend must pass the agent template.",
+        });
+      }
       
-      if (baseTemplate && baseTemplate.length > 500) {
-        // ADAPT MODE: Use base template and adapt it to the objective
-        systemPrompt = `Sei un esperto di prompt engineering per agenti AI conversazionali WhatsApp per il settore consulenziale.
+      let templateToUse = baseTemplate;
+      
+      // Add proactive mode section if isProactiveAgent is true
+      if (isProactiveAgent) {
+        templateToUse = PROACTIVE_MODE_SECTION + templateToUse;
+        console.log(`   - Added PROACTIVE_MODE_SECTION to template`);
+      }
+
+      // ADAPT MODE: Always use base template and adapt it to the objective
+      const systemPrompt = `Sei un esperto di prompt engineering per agenti AI conversazionali WhatsApp per il settore consulenziale.
 
 Il tuo compito è ADATTARE il template esistente in base all'obiettivo specificato dal consulente.
 
@@ -697,7 +727,7 @@ ${bookingSection}
 TEMPLATE BASE DA ADATTARE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${baseTemplate}
+${templateToUse}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ISTRUZIONI DI ADATTAMENTO
@@ -719,92 +749,6 @@ ISTRUZIONI DI ADATTAMENTO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 GENERA ORA il template ADATTATO. Restituisci SOLO le istruzioni complete, senza commenti.`;
-      } else {
-        // GENERATE FROM SCRATCH MODE: Original behavior
-        systemPrompt = `Sei un esperto di prompt engineering per agenti AI conversazionali WhatsApp per il settore consulenziale.
-
-Il tuo compito è generare istruzioni COMPLETE e DETTAGLIATE per un agente WhatsApp.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CONFIGURAZIONE AGENTE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📌 TIPO AGENTE: ${agentTypeLabels[agentType]}
-📌 OBIETTIVO PRINCIPALE: ${objectiveLabels[objective]}
-
-${objectiveSpecificGuidance[objective]}
-
-${bookingSection}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LE 9 FASI DELLA CONVERSAZIONE (STRUTTURA FISSA)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Genera istruzioni dettagliate per OGNI fase:
-
-FASE 1️⃣ - ACCOGLIENZA E MOTIVAZIONE
-→ Crea messaggio di benvenuto e domande per scoprire perché hanno scritto
-
-FASE 2️⃣ - DIAGNOSI STATO ATTUALE  
-→ Domande per capire situazione attuale, problemi, difficoltà
-
-FASE 3️⃣ - STATO IDEALE E OBIETTIVI
-→ Domande per far emergere obiettivi con NUMERI CONCRETI
-
-FASE 3.5️⃣ - VERIFICA BLOCCHI/OSTACOLI
-→ Domande per scoprire cosa impedisce di raggiungere gli obiettivi
-
-FASE 4️⃣ - MAGIC QUESTION
-→ Domanda di transizione per proporre la call/soluzione
-
-FASE 5️⃣ - PROPOSTA SLOT
-→ Come proporre orari disponibili (se booking abilitato)
-
-FASE 6️⃣ - RACCOLTA TELEFONO
-→ Come chiedere il numero di telefono
-
-FASE 7️⃣ - RACCOLTA EMAIL
-→ Come chiedere l'email
-
-FASE 8️⃣ - ATTESA CREAZIONE APPUNTAMENTO
-→ Messaggio placeholder mentre si crea l'evento
-
-FASE 9️⃣ - SUPPORTO PRE-APPUNTAMENTO
-→ Come gestire domande dopo la conferma
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VARIABILI DISPONIBILI (usa SOLO queste)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-\${businessName} - Nome del business
-\${businessDescription} - Descrizione del business
-\${consultantDisplayName} - Nome del consulente
-\${whoWeHelp} - Chi aiutiamo (target)
-\${whatWeDo} - Cosa facciamo
-\${clientsHelped} - Numero clienti aiutati
-\${yearsExperience} - Anni di esperienza
-\${firstName} - Nome del lead
-\${lastName} - Cognome del lead
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STILE DI SCRITTURA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✅ Usa separatori ━━━ per le sezioni
-✅ Includi emoji per evidenziare concetti (con moderazione)
-✅ Scrivi in italiano
-✅ Per ogni fase includi:
-   - Obiettivo della fase
-   - Esempi di domande (2-3 varianti)
-   - Checkpoint (quando passare alla fase successiva)
-   - Tono consigliato
-✅ Usa **grassetto** per parole chiave
-✅ Messaggi WhatsApp: brevi (1-3 righe), conversazionali
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-GENERA ORA le istruzioni complete. Restituisci SOLO le istruzioni, senza commenti aggiuntivi.`;
-      }
 
       const result = await providerResult.client.generateContent({
         model: "gemini-2.5-flash",

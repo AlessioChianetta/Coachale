@@ -2500,7 +2500,7 @@ export default function AgentInstructionsPanel({
                 <div className="flex flex-col items-center gap-2 pt-2">
                   <Button
                     onClick={handleGenerateInstructions}
-                    disabled={isGenerating || (customObjective === "other" && !customOtherObjective.trim())}
+                    disabled={isGenerating || !customObjective || (customObjective === "other" && !customOtherObjective.trim())}
                     size="lg"
                     className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold px-8 py-4 shadow-lg border-2 border-emerald-400"
                   >
