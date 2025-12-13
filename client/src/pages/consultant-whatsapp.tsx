@@ -205,7 +205,7 @@ export default function ConsultantWhatsAppPage() {
     },
   });
 
-  const knowledgeDocs = knowledgeDocsQuery.data?.documents || [];
+  const knowledgeDocs = knowledgeDocsQuery.data?.data || [];
 
   // Query per caricare le idee salvate dal backend
   const savedIdeasQuery = useQuery({

@@ -8813,7 +8813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           defaultDesideri: null,
           defaultUncino: null,
           defaultIdealState: null,
-          isDryRun: true,
+          isDryRun: false,
           isActive: true,
           bookingEnabled: true,
           objectionHandlingEnabled: true,
