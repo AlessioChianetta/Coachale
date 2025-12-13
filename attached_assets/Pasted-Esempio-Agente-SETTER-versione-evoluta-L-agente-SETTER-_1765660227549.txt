@@ -1,0 +1,164 @@
+Esempio – Agente SETTER (versione evoluta)
+
+L’agente SETTER non deve più funzionare con regole rigide del tipo:
+
+messaggio di apertura
+
+follow-up dopo 1 giorno
+
+follow-up dopo 3 giorni
+
+follow-up dopo 7 giorni
+
+Questo approccio va eliminato.
+
+Nuovo paradigma: Follow-up guidato da algoritmo
+
+Il follow-up non è basato sul tempo, ma sul contesto.
+
+È l’algoritmo che decide quando, come e se ricontattare l’utente, analizzando:
+
+comportamento dell’utente
+
+stato della conversazione
+
+obiettivo dell’agente (vendita, consulenza, supporto, booking)
+
+probabilità di risposta / conversione
+
+Caso 1 – Agente di consulenza
+
+Se un agente ha il ruolo di consulente:
+
+l’algoritmo monitora l’inattività dell’utente
+
+se dopo X giorni (es. 3) l’utente non risponde,
+👉 l’agente ricontatta automaticamente
+
+L’agente:
+
+sceglie in autonomia il template più adatto
+
+utilizza un template Twilio coerente con il contesto
+
+invia il messaggio senza intervento umano
+
+Caso 2 – Agente di vendita
+
+Se l’agente è commerciale / sales:
+
+l’algoritmo capisce che la trattativa non è stata chiusa in chat
+
+riconosce segnali di interesse non completato
+
+seleziona il template corretto per riattivare la conversazione
+
+Il follow-up:
+
+è continuo ma intelligente
+
+ha limiti chiari (inizio/fine)
+
+si interrompe automaticamente se accadono determinati eventi:
+
+risposta dell’utente
+
+chiusura vendita
+
+disinteresse esplicito
+
+Gestione Template: rivoluzione UX
+Punto chiave
+
+L’utente NON deve entrare su Twilio.
+Tutto deve avvenire dalla nostra piattaforma.
+
+Nuova struttura Template WhatsApp
+
+Dobbiamo ristrutturare completamente:
+
+/consultant/whatsapp-templates
+
+/consultant/whatsapp/custom-templates/list
+
+Obiettivi UX/UI
+
+template semplici
+
+linguaggio chiaro
+
+utilizzo immediato
+
+zero complessità tecnica per l’utente
+
+Categorie di Template
+
+I template devono essere:
+
+1. Divisi per funzione
+
+Marketing / Vendita
+
+Non marketing (supporto, consulenza, follow-up informativi)
+
+2. Divisi per contesto
+
+Primo contatto
+
+Conversazione aperta
+
+Trattativa bloccata
+
+Post-consulenza
+
+Reminder appuntamento
+
+3. Divisi per canale di acquisizione
+
+Organico
+
+Paid
+
+Referral
+
+👉 L’algoritmo decide quale template inviare e quale no, in base:
+
+alla persona
+
+al canale di provenienza
+
+allo stato della conversazione
+
+Generazione Template con AI
+
+i template vengono generati e ottimizzati con l’AI
+
+l’utente può:
+
+usarli così come sono
+
+personalizzarli leggermente
+
+ogni template è:
+
+chiaro
+
+orientato all’azione
+
+coerente con il ruolo dell’agente
+
+Prossimo step (decisione strategica)
+
+Ora dobbiamo fare 3 cose, in ordine:
+
+Definire gli stati della conversazione (foundation dell’algoritmo)
+
+Ridisegnare UX/UI delle pagine template
+
+Creare il primo set di template AI-ready per:
+
+Setter
+
+Sales
+
+Consultant
