@@ -474,10 +474,25 @@ export default function ConsultantWhatsAppTemplatesPage() {
     [configs, selectedAgentId]
   );
 
-  const agentTemplates = useMemo(() => 
-    templates.filter(t => t.agentId === selectedAgentId),
-    [templates, selectedAgentId]
-  );
+  useEffect(() => {
+    if (selectedAgent) {
+      setPreviewVariables({
+        nomeLead: "Marco Rossi",
+        business: selectedAgent.businessName || "Palestra Fitness",
+        obiettivi: selectedAgent.defaultObiettivi || "Perdere peso",
+        desideri: selectedAgent.defaultDesideri || "Più tempo libero",
+      });
+    }
+  }, [selectedAgent]);
+
+  const agentTemplates = useMemo(() => {
+    if (!selectedAgentId) return [];
+    const filtered = templates.filter(t => t.agentId === selectedAgentId);
+    if (filtered.length === 0) {
+      return templates;
+    }
+    return filtered;
+  }, [templates, selectedAgentId]);
 
   const approvedTemplates = useMemo(() => 
     agentTemplates.filter(t => t.approvalStatus?.toLowerCase() === 'approved'),
