@@ -8298,7 +8298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ success: false, message: "Twilio settings not configured" });
       }
       
-      // Debug mode: show token length and decrypted token
+      // Debug mode: show token length ONLY (never expose actual token for security)
       let debugInfo: any = undefined;
       if (showDebug && user.twilioAuthToken && user.encryptionSalt) {
         try {
@@ -8306,13 +8306,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           debugInfo = {
             encryptedTokenLength: user.twilioAuthToken.length,
             decryptedTokenLength: decryptedToken.length,
-            decryptedToken: decryptedToken, // SHOW THE TOKEN FOR DEBUG
+            canDecrypt: true,
+            // SECURITY: Never expose actual token value
           };
-          console.log("🔓 [Twilio Settings DEBUG] Decrypted token:", decryptedToken);
+          console.log("🔓 [Twilio Settings DEBUG] Token can be decrypted - length:", decryptedToken.length);
         } catch (e: any) {
           debugInfo = {
             error: "Failed to decrypt: " + e.message,
             encryptedTokenLength: user.twilioAuthToken?.length || 0,
+            canDecrypt: false,
           };
         }
       }
@@ -8810,6 +8812,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (integrationMode !== undefined) updateData.integrationMode = integrationMode;
       if (isProactiveAgent !== undefined) updateData.isProactiveAgent = isProactiveAgent;
 
+      // Handle useCentralCredentials - copy Twilio credentials from users table
+      const { useCentralCredentials } = req.body;
+      
+      console.log("🔑 [PUT /config] useCentralCredentials debug:", {
+        useCentralCredentials,
+        twilioAuthTokenProvided: !!twilioAuthToken,
+        twilioAuthTokenLength: twilioAuthToken?.length || 0,
+      });
+      
+      if (useCentralCredentials === true) {
+        console.log("🔑 [PUT /config] useCentralCredentials=true, loading credentials from users table...");
+        
+        const [userCredentials] = await db
+          .select({
+            twilioAccountSid: schema.users.twilioAccountSid,
+            twilioAuthToken: schema.users.twilioAuthToken,
+            encryptionSalt: schema.users.encryptionSalt,
+          })
+          .from(schema.users)
+          .where(eq(schema.users.id, consultantId))
+          .limit(1);
+        
+        console.log("🔍 [PUT /config] Central credentials from users table:", {
+          hasAccountSid: !!userCredentials?.twilioAccountSid,
+          accountSidValue: userCredentials?.twilioAccountSid || "MISSING",
+          hasAuthToken: !!userCredentials?.twilioAuthToken,
+          authTokenLength: userCredentials?.twilioAuthToken?.length || 0,
+          authTokenValue: userCredentials?.twilioAuthToken || "MISSING",
+          hasEncryptionSalt: !!userCredentials?.encryptionSalt,
+        });
+        
+        if (userCredentials?.twilioAccountSid) {
+          updateData.twilioAccountSid = userCredentials.twilioAccountSid;
+        }
+        
+        if (userCredentials?.twilioAuthToken && userCredentials?.encryptionSalt) {
+          try {
+            const decryptedAuthToken = decryptForConsultant(userCredentials.twilioAuthToken, userCredentials.encryptionSalt);
+            updateData.twilioAuthToken = decryptedAuthToken;
+            console.log("✅ [PUT /config] Decrypted and set auth token, length:", decryptedAuthToken?.length || 0);
+          } catch (decryptError: any) {
+            console.error("❌ [PUT /config] Failed to decrypt auth token:", decryptError.message);
+          }
+        }
+      } else {
+        // Only update twilioAuthToken if explicitly provided, not empty, and not the placeholder "configured"
+        if (twilioAuthToken && twilioAuthToken.trim() !== "" && twilioAuthToken !== "configured") {
+          updateData.twilioAuthToken = twilioAuthToken;
+        }
+      }
+
       console.log("🟡 [SERVER PUT /config] Dati prima del salvataggio:", JSON.stringify({
         agentInstructions: agentInstructions !== undefined ? `${agentInstructions?.length || 0} chars` : "undefined",
         agentInstructionsEnabled,
@@ -8819,12 +8872,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         customBusinessHeader,
         ttsEnabled,
         audioResponseMode,
+        twilioAuthTokenWillBeUpdated: !!updateData.twilioAuthToken,
+        twilioAuthTokenLength: updateData.twilioAuthToken?.length || 0,
       }, null, 2));
-
-      // Only update twilioAuthToken if explicitly provided, not empty, and not the placeholder "configured"
-      if (twilioAuthToken && twilioAuthToken.trim() !== "" && twilioAuthToken !== "configured") {
-        updateData.twilioAuthToken = twilioAuthToken;
-      }
 
       const [config] = await db
         .update(schema.consultantWhatsappConfig)

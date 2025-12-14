@@ -102,6 +102,7 @@ const emptyFormData = {
   agentInstructions: null,
   agentInstructionsEnabled: false,
   selectedTemplate: "receptionist" as const,
+  useCentralCredentials: false,
 };
 
 export default function WhatsAppAgentWizard({
@@ -245,6 +246,24 @@ export default function WhatsAppAgentWizard({
 
     // LOGGING DETTAGLIATO per debugging salvataggio feature blocks
     console.log("📋 [WIZARD] Salvataggio agente - Dati completi:", formData);
+    
+    // CRITICAL: Log per debug token Twilio
+    console.log("🔑 [WIZARD] TWILIO CREDENTIALS DEBUG:", {
+      useCentralCredentials: formData.useCentralCredentials,
+      twilioAccountSidLength: formData.twilioAccountSid?.length || 0,
+      twilioAuthTokenLength: formData.twilioAuthToken?.length || 0,
+      twilioAuthTokenValue: formData.twilioAuthToken ? `"${formData.twilioAuthToken}"` : "EMPTY/NULL",
+      twilioWhatsappNumber: formData.twilioWhatsappNumber,
+    });
+    
+    if (!formData.useCentralCredentials && (!formData.twilioAuthToken || formData.twilioAuthToken.length === 0)) {
+      console.warn("⚠️ [WIZARD] ATTENZIONE: useCentralCredentials è false E twilioAuthToken è vuoto! Il backend potrebbe non salvare il token.");
+    }
+    
+    if (formData.useCentralCredentials) {
+      console.log("✅ [WIZARD] useCentralCredentials=true - Il backend copierà le credenziali dalla tabella users");
+    }
+    
     console.log("📋 [WIZARD] Feature Blocks:", {
       bookingEnabled: formData.bookingEnabled,
       objectionHandlingEnabled: formData.objectionHandlingEnabled,
