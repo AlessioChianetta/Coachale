@@ -162,7 +162,7 @@ const isAgentProactive = (config: WhatsAppConfig): boolean => {
   return getAgentType(config) === 'proactive_setter';
 };
 
-function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgentId }: { configs: WhatsAppConfig[]; configsLoading: boolean; selectedAgentId: string | null }) {
+function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgentId, twilioTemplates = [] }: { configs: WhatsAppConfig[]; configsLoading: boolean; selectedAgentId: string | null; twilioTemplates?: TwilioTemplate[] }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedTemplates, setSelectedTemplates] = useState<Map<string, Set<string>>>(new Map());
@@ -180,7 +180,34 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
     },
   });
 
-  const customTemplates: CustomTemplate[] = customTemplatesData?.data || [];
+  const customTemplatesFromDb: CustomTemplate[] = customTemplatesData?.data || [];
+  
+  // Merge custom templates from DB with Twilio templates, converting Twilio templates to CustomTemplate format
+  const twilioAsCustomTemplates: CustomTemplate[] = twilioTemplates
+    .filter(t => t.approvalStatus?.toLowerCase() === 'approved')
+    .map(t => ({
+      id: t.sid,
+      templateName: t.friendlyName,
+      useCase: t.useCase || null,
+      templateType: t.templateType || null,
+      description: null,
+      body: t.bodyText,
+      isActive: true,
+      activeVersion: {
+        id: t.sid,
+        versionNumber: 1,
+        bodyText: t.bodyText || '',
+        twilioStatus: 'approved',
+      },
+    }));
+  
+  // Combine both sources, preferring Twilio templates for approval status
+  const customTemplates: CustomTemplate[] = [
+    ...twilioAsCustomTemplates,
+    ...customTemplatesFromDb.filter(ct => 
+      !twilioAsCustomTemplates.some(tt => tt.templateName === ct.templateName)
+    ),
+  ];
   const selectedAgent = configs.find(c => c.id === selectedAgentId);
   const isProactiveAgentSelected = selectedAgent ? isAgentProactive(selectedAgent) : false;
 
@@ -1208,6 +1235,7 @@ export default function ConsultantWhatsAppTemplatesPage() {
                         configs={configs} 
                         configsLoading={configsLoading} 
                         selectedAgentId={selectedAgentId}
+                        twilioTemplates={agentTemplates}
                       />
 
                       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
