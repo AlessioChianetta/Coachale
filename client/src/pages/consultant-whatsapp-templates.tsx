@@ -263,76 +263,23 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
 
   const bulkAssignMutation = useMutation({
     mutationFn: async ({ agentConfigId, templateIds }: { agentConfigId: string; templateIds: string[] }) => {
-      // Separate Twilio templates (SID starting with HX) from custom templates (UUID)
-      const twilioSids = templateIds.filter(id => id.startsWith('HX'));
-      const customTemplateIds = templateIds.filter(id => !id.startsWith('HX'));
-      
-      const results: any[] = [];
-      
-      // Always save custom template assignments to the assignments table
-      // This ensures stale records are cleared even when all custom templates are deselected
+      // Send ALL template IDs (both Twilio HX and custom UUIDs) to the assignments table
+      // The backend will handle both types uniformly
       const response = await fetch("/api/whatsapp/template-assignments/bulk", {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ agentConfigId, templateIds: customTemplateIds }),
+        body: JSON.stringify({ agentConfigId, templateIds }),
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Failed to save custom template assignments");
+        throw new Error(error.message || "Failed to save template assignments");
       }
-      results.push(await response.json());
+      const result = await response.json();
       
-      // Save Twilio template assignments to the config's whatsappTemplates field
-      // Use deterministic slot-aware mapping instead of heuristics
-      const agent = configs.find(c => c.id === agentConfigId);
-      const existingWhatsappTemplates = agent?.whatsappTemplates || {};
-      
-      // Build inverse mapping: SID → slot
-      // This preserves the existing slot assignments from the config
-      const sidToSlot: Record<string, string> = {};
-      for (const [slot, sid] of Object.entries(existingWhatsappTemplates)) {
-        if (sid) sidToSlot[sid] = slot;
-      }
-      
-      // Build new whatsappTemplates based on current selections
-      const newWhatsappTemplates: Record<string, string | null> = {
-        openingMessageContentSid: null,
-        followUpGentleContentSid: null,
-        followUpValueContentSid: null,
-        followUpFinalContentSid: null,
-      };
-      
-      // Keep only the SIDs that are still selected in their original slots
-      for (const sid of twilioSids) {
-        const slot = sidToSlot[sid];
-        if (slot && slot in newWhatsappTemplates) {
-          // This SID was already assigned to a slot, keep it there
-          newWhatsappTemplates[slot] = sid;
-        }
-        // For new SIDs without existing slots, skip them
-        // The dropdown UI should be used for new slot assignments
-      }
-      
-      // Save the Twilio template assignments
-      const twilioResponse = await fetch(`/api/whatsapp/config/${agentConfigId}/templates`, {
-        method: "PATCH",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ whatsappTemplates: newWhatsappTemplates }),
-      });
-      
-      if (!twilioResponse.ok) {
-        const error = await twilioResponse.json();
-        throw new Error(error.message || "Failed to save Twilio template assignments");
-      }
-      results.push(await twilioResponse.json());
-      
-      return { results, twilioSidsCount: twilioSids.length, customCount: customTemplateIds.length };
+      return { results: [result], assignedCount: result.assignedCount };
     },
     onSuccess: (_, variables) => {
       const currentSelected = selectedTemplates.get(variables.agentConfigId) || new Set();

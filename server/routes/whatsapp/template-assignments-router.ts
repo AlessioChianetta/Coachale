@@ -215,6 +215,7 @@ router.post(
 /**
  * POST /api/whatsapp/template-assignments/bulk
  * Bulk save template assignments for an agent (replaces all existing assignments)
+ * Supports both Twilio templates (SID starting with HX) and custom templates (UUID)
  * 
  * Payload: {
  *   agentConfigId: string,
@@ -260,27 +261,19 @@ router.post(
       const results = [];
       for (let i = 0; i < templateIds.length; i++) {
         const templateId = templateIds[i];
-
-        const template = await db
-          .select()
-          .from(whatsappCustomTemplates)
-          .where(
-            and(
-              eq(whatsappCustomTemplates.id, templateId),
-              eq(whatsappCustomTemplates.consultantId, consultantId),
-              isNull(whatsappCustomTemplates.archivedAt)
-            )
-          )
-          .limit(1);
-
-        if (template && template.length > 0) {
+        
+        // Check if this is a Twilio template (SID starting with HX) or a custom template (UUID)
+        const isTwilioTemplate = templateId.startsWith('HX');
+        
+        if (isTwilioTemplate) {
+          // For Twilio templates, save directly without checking custom templates table
           const newAssignment = await db
             .insert(whatsappTemplateAssignments)
             .values({
               agentConfigId,
               templateId,
               priority: templateIds.length - i,
-              templateType: template[0].templateType,
+              templateType: "twilio", // Mark as Twilio template
             })
             .returning();
 
@@ -288,9 +281,44 @@ router.post(
             templateId,
             assignmentId: newAssignment[0].id,
             action: "assigned",
+            type: "twilio",
           });
+        } else {
+          // For custom templates, verify they exist and belong to the consultant
+          const template = await db
+            .select()
+            .from(whatsappCustomTemplates)
+            .where(
+              and(
+                eq(whatsappCustomTemplates.id, templateId),
+                eq(whatsappCustomTemplates.consultantId, consultantId),
+                isNull(whatsappCustomTemplates.archivedAt)
+              )
+            )
+            .limit(1);
+
+          if (template && template.length > 0) {
+            const newAssignment = await db
+              .insert(whatsappTemplateAssignments)
+              .values({
+                agentConfigId,
+                templateId,
+                priority: templateIds.length - i,
+                templateType: template[0].templateType,
+              })
+              .returning();
+
+            results.push({
+              templateId,
+              assignmentId: newAssignment[0].id,
+              action: "assigned",
+              type: "custom",
+            });
+          }
         }
       }
+
+      console.log(`[TEMPLATE ASSIGNMENTS] Bulk saved ${results.length} templates for agent ${agentConfigId}`);
 
       res.json({
         message: "Template assignments saved successfully",
