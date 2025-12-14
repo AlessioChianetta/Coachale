@@ -8319,6 +8319,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: "Account SID è obbligatorio" });
       }
 
+      // Get consultant's encryption salt
+      const [consultant] = await db
+        .select({ encryptionSalt: schema.users.encryptionSalt })
+        .from(schema.users)
+        .where(eq(schema.users.id, consultantId))
+        .limit(1);
+
+      if (!consultant?.encryptionSalt) {
+        return res.status(400).json({ success: false, message: "Encryption salt non configurato per questo utente. Contatta il supporto." });
+      }
+
       const updateData: any = {
         twilioAccountSid: accountSid,
         twilioWhatsappNumber: whatsappNumber || null,
@@ -8326,8 +8337,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only update auth token if provided (allows keeping existing token)
       if (authToken) {
-        // Encrypt the auth token for storage
-        const encryptedToken = await encryptForConsultant(consultantId, authToken);
+        // Encrypt the auth token for storage using correct signature: (plaintext, salt)
+        const encryptedToken = encryptForConsultant(authToken, consultant.encryptionSalt);
         updateData.twilioAuthToken = encryptedToken;
       }
 
@@ -8362,6 +8373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .select({
             twilioAccountSid: schema.users.twilioAccountSid,
             twilioAuthToken: schema.users.twilioAuthToken,
+            encryptionSalt: schema.users.encryptionSalt,
           })
           .from(schema.users)
           .where(eq(schema.users.id, consultantId))
@@ -8371,7 +8383,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ success: false, message: "Auth Token non trovato. Inserisci un Auth Token per testare." });
         }
 
-        testAuthToken = await decryptForConsultant(consultantId, user.twilioAuthToken);
+        if (!user?.encryptionSalt) {
+          return res.status(400).json({ success: false, message: "Encryption salt non configurato. Contatta il supporto." });
+        }
+
+        // Try to decrypt using correct signature: (encryptedData, salt)
+        try {
+          testAuthToken = decryptForConsultant(user.twilioAuthToken, user.encryptionSalt);
+        } catch (decryptError: any) {
+          console.error("❌ Failed to decrypt stored auth token:", decryptError.message);
+          return res.status(400).json({ 
+            success: false, 
+            message: "Le credenziali salvate sono corrotte. Inserisci nuovamente Account SID e Auth Token, poi salva prima di testare." 
+          });
+        }
         testAccountSid = testAccountSid || user.twilioAccountSid;
       }
 
@@ -8804,6 +8829,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false,
         message: error.message
       });
+    }
+  });
+
+  app.post("/api/whatsapp/config/:agentId/reset-circuit-breaker", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { agentId } = req.params;
+      const consultantId = req.user!.id;
+      
+      const [config] = await db
+        .select()
+        .from(schema.consultantWhatsappConfig)
+        .where(and(
+          eq(schema.consultantWhatsappConfig.id, agentId),
+          eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+        ))
+        .limit(1);
+      
+      if (!config) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      
+      await db
+        .update(schema.whatsappPollingWatermarks)
+        .set({
+          isCircuitBreakerOpen: false,
+          consecutiveErrors: 0,
+          circuitBreakerOpenedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.whatsappPollingWatermarks.agentConfigId, agentId));
+      
+      console.log(`🔓 [CIRCUIT BREAKER] Manually reset for agent ${config.agentName} (${agentId})`);
+      
+      res.json({ success: true, message: `Circuit breaker reset for ${config.agentName}` });
+    } catch (error: any) {
+      console.error("Error resetting circuit breaker:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 

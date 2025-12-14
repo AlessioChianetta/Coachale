@@ -58,7 +58,6 @@ import {
   Upload,
   Download,
   FileSpreadsheet,
-  Play,
   Megaphone,
   Zap,
   User,
@@ -70,6 +69,7 @@ import {
   XCircle,
   Sparkles,
   FileText,
+  Play,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Papa from "papaparse";
@@ -255,6 +255,19 @@ export default function ProactiveLeadsPage() {
   // Fetch active campaigns
   const { data: campaignsData, isLoading: campaignsLoading } = useCampaigns(true);
   const activeCampaigns = campaignsData?.campaigns || [];
+
+  // Fetch CRM import logs
+  const { data: importLogs } = useQuery({
+    queryKey: ["/api/external-api/import-logs"],
+    queryFn: async () => {
+      const response = await fetch("/api/external-api/import-logs?limit=10", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data.logs || [];
+    },
+  });
 
   // Create lead mutation
   const createMutation = useMutation({
@@ -444,8 +457,8 @@ export default function ProactiveLeadsPage() {
     },
   });
 
-  // Manual trigger proactive outreach mutation
-  const runProactiveOutreachMutation = useMutation({
+  // Manual CRM import trigger mutation
+  const triggerCrmImportMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch("/api/proactive-leads/run", {
         method: "POST",
@@ -454,21 +467,34 @@ export default function ProactiveLeadsPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to trigger proactive outreach");
+        throw new Error(errorData.error || "Failed to trigger CRM import");
       }
 
       return response.json();
     },
-    onSuccess: () => {
-      toast({
-        title: "✅ Processo avviato",
-        description: "Il processo di outreach proattivo è stato avviato. Controlla i log per i dettagli.",
-      });
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api/import-logs"] });
+      
+      if (data.results && data.results.length > 0) {
+        const totalImported = data.results.reduce((acc: number, r: any) => acc + (r.imported || 0), 0);
+        const totalUpdated = data.results.reduce((acc: number, r: any) => acc + (r.updated || 0), 0);
+        const totalErrors = data.results.reduce((acc: number, r: any) => acc + (r.errored || 0), 0);
+        
+        toast({
+          title: "✅ Import CRM completato",
+          description: `${totalImported} nuovi lead importati, ${totalUpdated} aggiornati${totalErrors > 0 ? `, ${totalErrors} errori` : ''}.`,
+        });
+      } else {
+        toast({
+          title: "ℹ️ Nessun CRM configurato",
+          description: data.message || "Configura almeno un CRM nella sezione API Esterne per importare lead.",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
-        title: "❌ Errore",
+        title: "❌ Errore import CRM",
         description: error.message,
         variant: "destructive",
       });
@@ -1071,17 +1097,17 @@ export default function ProactiveLeadsPage() {
               </div>
               <div className="flex gap-2 w-full sm:w-auto">
                 <Button
-                  onClick={() => runProactiveOutreachMutation.mutate()}
+                  onClick={() => triggerCrmImportMutation.mutate()}
                   className="bg-purple-600 hover:bg-purple-700 flex-1 sm:flex-none"
                   variant="outline"
-                  disabled={runProactiveOutreachMutation.isPending}
+                  disabled={triggerCrmImportMutation.isPending}
                 >
-                  {runProactiveOutreachMutation.isPending ? (
+                  {triggerCrmImportMutation.isPending ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
                     <Play className="h-4 w-4 mr-2" />
                   )}
-                  Esegui Ora
+                  Importa Ora
                 </Button>
                 <Button
                   onClick={() => setIsBulkImportDialogOpen(true)}
@@ -1187,6 +1213,85 @@ export default function ProactiveLeadsPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* CRM Import Logs Section */}
+            {importLogs && importLogs.length > 0 && (
+              <Collapsible>
+                <Card className="border-0 shadow-md">
+                  <CollapsibleTrigger asChild>
+                    <CardHeader className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          <FileText className="h-5 w-5 text-blue-600" />
+                          Log Importazioni CRM
+                          <Badge variant="secondary" className="ml-2">
+                            {importLogs.length} recenti
+                          </Badge>
+                        </CardTitle>
+                        <ChevronDown className="h-5 w-5 text-gray-500" />
+                      </div>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <div className="space-y-3">
+                        {importLogs.map((log: any, index: number) => (
+                          <div
+                            key={log.id || index}
+                            className={`p-3 rounded-lg border ${
+                              log.status === 'error' 
+                                ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800' 
+                                : 'bg-gray-50 border-gray-200 dark:bg-gray-800/50 dark:border-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                                  {log.timestamp 
+                                    ? format(new Date(log.timestamp), "dd MMM yyyy HH:mm", { locale: it })
+                                    : 'N/A'}
+                                </span>
+                                <Badge 
+                                  className={
+                                    log.status === 'error' 
+                                      ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' 
+                                      : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                  }
+                                >
+                                  {log.status === 'error' ? 'Errore' : 'Successo'}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-4 text-sm">
+                              {log.imported !== undefined && (
+                                <span className="text-green-600 dark:text-green-400">
+                                  <strong>{log.imported}</strong> importati
+                                </span>
+                              )}
+                              {log.updated !== undefined && (
+                                <span className="text-blue-600 dark:text-blue-400">
+                                  <strong>{log.updated}</strong> aggiornati
+                                </span>
+                              )}
+                              {log.errored !== undefined && log.errored > 0 && (
+                                <span className="text-red-600 dark:text-red-400">
+                                  <strong>{log.errored}</strong> errori
+                                </span>
+                              )}
+                            </div>
+                            {log.error && (
+                              <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                                {log.error}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            )}
 
             {/* Status Filter Tabs */}
             <Tabs value={statusFilter} onValueChange={handleStatusFilterChange} className="w-full">

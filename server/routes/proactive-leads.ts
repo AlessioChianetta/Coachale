@@ -794,21 +794,56 @@ router.post("/proactive-leads/bulk", authenticateToken, requireRole("consultant"
   }
 });
 
-// POST /api/proactive-leads/run - Manually trigger proactive outreach process
-// ⚠️ DEPRECATED: Questo endpoint è deprecato. Il sistema ora usa followup-scheduler.ts
+// POST /api/proactive-leads/run - Manually trigger CRM lead import
 router.post("/proactive-leads/run", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
     
-    console.log(`⚠️ [DEPRECATED] Legacy proactive outreach endpoint called by consultant ${consultantId}`);
-    console.log(`   The new followup-scheduler.ts system runs automatically based on conversation states.`);
+    console.log(`📥 [MANUAL IMPORT] Consultant ${consultantId} triggered manual CRM import`);
     
-    // Return deprecation notice instead of running the old system
-    res.status(410).json({
-      success: false,
-      deprecated: true,
-      message: "Questo endpoint è deprecato. Il nuovo sistema di follow-up automatico (followup-scheduler) gestisce automaticamente i follow-up basandosi sullo stato delle conversazioni.",
-      info: "I follow-up vengono ora inviati automaticamente ogni 5 minuti per le conversazioni che richiedono attenzione. Non è necessaria alcuna azione manuale."
+    // Get all active external API configs for this consultant
+    const configs = await storage.getAllExternalApiConfigs(consultantId);
+    const activeConfigs = configs.filter(c => c.isActive && c.pollingEnabled);
+    
+    if (activeConfigs.length === 0) {
+      return res.json({
+        success: true,
+        results: [],
+        message: "Nessun CRM configurato con polling attivo. Vai in Impostazioni > API Esterne per configurare un'integrazione CRM."
+      });
+    }
+    
+    // Import from all active configs
+    const { LeadImportService } = await import('../services/lead-import-service');
+    const importService = new LeadImportService();
+    const results = [];
+    
+    for (const config of activeConfigs) {
+      try {
+        console.log(`📥 [MANUAL IMPORT] Importing from ${config.configName}...`);
+        const result = await importService.importLeadsFromExternal(config, 'manual');
+        results.push({
+          configName: config.configName,
+          ...result
+        });
+        console.log(`✅ [MANUAL IMPORT] ${config.configName}: ${result.imported} imported, ${result.updated} updated`);
+      } catch (importError: any) {
+        console.error(`❌ [MANUAL IMPORT] Error importing from ${config.configName}:`, importError.message);
+        results.push({
+          configName: config.configName,
+          imported: 0,
+          updated: 0,
+          duplicated: 0,
+          errored: 1,
+          errors: [importError.message]
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      results,
+      totalConfigs: activeConfigs.length
     });
     
   } catch (error: any) {

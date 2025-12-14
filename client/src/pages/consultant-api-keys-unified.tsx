@@ -418,6 +418,11 @@ export default function ConsultantApiKeysUnified() {
   const [showTwilioAuthToken, setShowTwilioAuthToken] = useState(false);
   const [isSavingTwilio, setIsSavingTwilio] = useState(false);
   const [isTestingTwilio, setIsTestingTwilio] = useState(false);
+  const [twilioValidationErrors, setTwilioValidationErrors] = useState<{
+    accountSid?: string;
+    authToken?: string;
+    whatsappNumber?: string;
+  }>({});
 
   // Lead Import state
   const [showLeadApiKey, setShowLeadApiKey] = useState(false);
@@ -1127,11 +1132,36 @@ export default function ConsultantApiKeysUnified() {
     }
   };
 
+  const validateTwilioCredentials = (): boolean => {
+    const errors: typeof twilioValidationErrors = {};
+    
+    if (!twilioFormData.accountSid.startsWith('AC')) {
+      errors.accountSid = "L'Account SID deve iniziare con 'AC'";
+    } else if (twilioFormData.accountSid.length !== 34) {
+      errors.accountSid = `L'Account SID deve avere esattamente 34 caratteri (attualmente: ${twilioFormData.accountSid.length})`;
+    }
+    
+    if (twilioFormData.authToken && twilioFormData.authToken.length !== 32) {
+      errors.authToken = `L'Auth Token deve avere esattamente 32 caratteri (attualmente: ${twilioFormData.authToken.length})`;
+    }
+    
+    if (twilioFormData.whatsappNumber) {
+      if (!twilioFormData.whatsappNumber.startsWith('+')) {
+        errors.whatsappNumber = "Il numero deve iniziare con '+' (es: +393500220129)";
+      } else if (!/^\+\d+$/.test(twilioFormData.whatsappNumber)) {
+        errors.whatsappNumber = "Il numero deve contenere solo cifre dopo il '+'";
+      }
+    }
+    
+    setTwilioValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSaveTwilioSettings = async () => {
-    if (!twilioFormData.accountSid) {
+    if (!validateTwilioCredentials()) {
       toast({
-        title: "Errore",
-        description: "Account SID è obbligatorio",
+        title: "Errore di validazione",
+        description: "Controlla i campi evidenziati in rosso",
         variant: "destructive",
       });
       return;
@@ -3700,11 +3730,19 @@ export default function ConsultantApiKeysUnified() {
                           type="text"
                           placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                           value={twilioFormData.accountSid}
-                          onChange={(e) => setTwilioFormData(prev => ({ ...prev, accountSid: e.target.value }))}
+                          onChange={(e) => {
+                            setTwilioFormData(prev => ({ ...prev, accountSid: e.target.value }));
+                            setTwilioValidationErrors(prev => ({ ...prev, accountSid: undefined }));
+                          }}
+                          className={twilioValidationErrors.accountSid ? "border-red-500" : ""}
                         />
-                        <p className="text-xs text-gray-500">
-                          Trovi l'Account SID nella dashboard Twilio
-                        </p>
+                        {twilioValidationErrors.accountSid ? (
+                          <p className="text-xs text-red-500">{twilioValidationErrors.accountSid}</p>
+                        ) : (
+                          <p className="text-xs text-gray-500">
+                            Trovi l'Account SID nella dashboard Twilio
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -3715,7 +3753,11 @@ export default function ConsultantApiKeysUnified() {
                             type={showTwilioAuthToken ? "text" : "password"}
                             placeholder="Il tuo Auth Token Twilio"
                             value={twilioFormData.authToken}
-                            onChange={(e) => setTwilioFormData(prev => ({ ...prev, authToken: e.target.value }))}
+                            onChange={(e) => {
+                              setTwilioFormData(prev => ({ ...prev, authToken: e.target.value }));
+                              setTwilioValidationErrors(prev => ({ ...prev, authToken: undefined }));
+                            }}
+                            className={twilioValidationErrors.authToken ? "border-red-500" : ""}
                           />
                           <Button
                             type="button"
@@ -3731,11 +3773,13 @@ export default function ConsultantApiKeysUnified() {
                             )}
                           </Button>
                         </div>
-                        {twilioSettingsData?.settings && (
+                        {twilioValidationErrors.authToken ? (
+                          <p className="text-xs text-red-500">{twilioValidationErrors.authToken}</p>
+                        ) : twilioSettingsData?.settings ? (
                           <p className="text-xs text-gray-500">
                             Auth Token già salvato. Lascia vuoto per mantenere quello esistente, oppure inserisci un nuovo token.
                           </p>
-                        )}
+                        ) : null}
                       </div>
 
                       <div className="space-y-2">
@@ -3745,11 +3789,19 @@ export default function ConsultantApiKeysUnified() {
                           type="text"
                           placeholder="+393500220129"
                           value={twilioFormData.whatsappNumber}
-                          onChange={(e) => setTwilioFormData(prev => ({ ...prev, whatsappNumber: e.target.value }))}
+                          onChange={(e) => {
+                            setTwilioFormData(prev => ({ ...prev, whatsappNumber: e.target.value }));
+                            setTwilioValidationErrors(prev => ({ ...prev, whatsappNumber: undefined }));
+                          }}
+                          className={twilioValidationErrors.whatsappNumber ? "border-red-500" : ""}
                         />
-                        <p className="text-xs text-gray-500">
-                          Formato internazionale con prefisso (es: +393500220129)
-                        </p>
+                        {twilioValidationErrors.whatsappNumber ? (
+                          <p className="text-xs text-red-500">{twilioValidationErrors.whatsappNumber}</p>
+                        ) : (
+                          <p className="text-xs text-gray-500">
+                            Formato internazionale con prefisso (es: +393500220129)
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex flex-col sm:flex-row gap-3 pt-4">
