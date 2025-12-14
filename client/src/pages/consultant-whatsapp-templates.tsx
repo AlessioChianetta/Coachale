@@ -232,17 +232,6 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
           });
         }
         
-        // ALSO load Twilio template assignments from the config's whatsappTemplates field
-        const agent = configs.find(c => c.id === selectedAgentId);
-        if (agent?.whatsappTemplates) {
-          const twilioSids = Object.values(agent.whatsappTemplates).filter(Boolean) as string[];
-          twilioSids.forEach(sid => {
-            if (sid && sid.startsWith('HX')) {
-              assignedIds.add(sid);
-            }
-          });
-        }
-        
         setSelectedTemplates(prev => new Map(prev).set(selectedAgentId, assignedIds));
         setInitialAssignments(prev => new Map(prev).set(selectedAgentId, new Set(assignedIds)));
       } catch (error) {

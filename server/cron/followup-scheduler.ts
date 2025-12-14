@@ -755,44 +755,75 @@ async function getAvailableTemplates(
 ): Promise<Array<{ id: string; name: string; useCase: string; bodyText: string; twilioStatus: string }>> {
   
   if (agentConfigId) {
-    const assignedTemplates = await db
+    // First, get all assignments for this agent
+    const allAssignments = await db
       .select({
-        id: whatsappCustomTemplates.id,
-        name: whatsappCustomTemplates.templateName,
-        useCase: whatsappCustomTemplates.useCase,
-        bodyText: whatsappCustomTemplates.body,
+        templateId: whatsappTemplateAssignments.templateId,
+        templateType: whatsappTemplateAssignments.templateType,
         priority: whatsappTemplateAssignments.priority,
-        twilioStatus: whatsappTemplateVersions.twilioStatus,
       })
       .from(whatsappTemplateAssignments)
-      .innerJoin(
-        whatsappCustomTemplates,
-        eq(whatsappTemplateAssignments.templateId, whatsappCustomTemplates.id)
-      )
-      .leftJoin(
-        whatsappTemplateVersions,
-        and(
-          eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id),
-          eq(whatsappTemplateVersions.isActive, true)
-        )
-      )
-      .where(
-        and(
-          eq(whatsappTemplateAssignments.agentConfigId, agentConfigId),
-          eq(whatsappCustomTemplates.isActive, true)
-        )
-      )
+      .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId))
       .orderBy(desc(whatsappTemplateAssignments.priority));
 
-    return assignedTemplates.map(t => ({
-      id: t.id,
-      name: t.name,
-      useCase: t.useCase || 'generale',
-      bodyText: t.bodyText || '',
-      twilioStatus: t.twilioStatus || 'not_synced',
-    }));
+    const results: Array<{ id: string; name: string; useCase: string; bodyText: string; twilioStatus: string }> = [];
+    
+    for (const assignment of allAssignments) {
+      const isTwilioTemplate = assignment.templateId.startsWith('HX');
+      
+      if (isTwilioTemplate) {
+        // For Twilio templates, add with the SID as ID
+        // The AI will use this SID to send the template via Twilio
+        results.push({
+          id: assignment.templateId,
+          name: assignment.templateId, // Use SID as name for now
+          useCase: assignment.templateType || 'twilio',
+          bodyText: '', // Body will be fetched from Twilio when sending
+          twilioStatus: 'approved', // If assigned, assume approved
+        });
+      } else {
+        // For custom templates, get details from the custom templates table
+        const customTemplate = await db
+          .select({
+            id: whatsappCustomTemplates.id,
+            name: whatsappCustomTemplates.templateName,
+            useCase: whatsappCustomTemplates.useCase,
+            bodyText: whatsappCustomTemplates.body,
+            twilioStatus: whatsappTemplateVersions.twilioStatus,
+          })
+          .from(whatsappCustomTemplates)
+          .leftJoin(
+            whatsappTemplateVersions,
+            and(
+              eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id),
+              eq(whatsappTemplateVersions.isActive, true)
+            )
+          )
+          .where(
+            and(
+              eq(whatsappCustomTemplates.id, assignment.templateId),
+              eq(whatsappCustomTemplates.isActive, true)
+            )
+          )
+          .limit(1);
+        
+        if (customTemplate.length > 0) {
+          const t = customTemplate[0];
+          results.push({
+            id: t.id,
+            name: t.name,
+            useCase: t.useCase || 'generale',
+            bodyText: t.bodyText || '',
+            twilioStatus: t.twilioStatus || 'not_synced',
+          });
+        }
+      }
+    }
+    
+    return results;
   }
 
+  // Fallback: get all active custom templates for consultant
   const templates = await db
     .select({
       id: whatsappCustomTemplates.id,
