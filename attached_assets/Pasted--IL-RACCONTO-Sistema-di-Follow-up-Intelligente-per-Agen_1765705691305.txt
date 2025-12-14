@@ -1,0 +1,688 @@
+🎯 IL RACCONTO: Sistema di Follow-up Intelligente per Agenti WhatsApp
+Capitolo 1: Il Problema Attuale
+Oggi il tuo sistema funziona così: un agente WhatsApp riceve un messaggio, risponde, e poi... silenzio. Se il lead non risponde, hai delle regole fisse:
+
+Dopo 1 giorno → follow-up gentile
+Dopo 3 giorni → follow-up con valore
+Dopo 7 giorni → ultimo tentativo
+Ma questo approccio ha 3 problemi fondamentali:
+
+È stupido - Non considera il contesto. Un lead che ha chiesto i prezzi e poi tace è MOLTO diverso da uno che non ha mai risposto al primo messaggio.
+
+È rigido - Tratta tutti uguali. Un lead arrivato da una campagna paid (che ha cliccato su un ad, quindi è "caldo") viene trattato come uno arrivato organicamente (che magari stava solo curiosando).
+
+Non scala - Un consulente con 5 agenti diversi (Setter, Sales, Customer Success, ecc.) non può gestire manualmente template diversi per ogni scenario.
+
+Capitolo 2: La Nuova Visione
+Immagina un sistema dove ogni agente è un dipendente virtuale intelligente che:
+
+Osserva il comportamento del lead (risponde veloce? chiede prezzi? solleva obiezioni?)
+Valuta la probabilità che risponda a un follow-up
+Decide autonomamente se, quando, e come ricontattare
+Sceglie il template più adatto al contesto
+Rispetta i limiti di WhatsApp (regola delle 24h → usa template approvati)
+L'Eccezione Fissa
+C'è una sola regola non negoziabile: il primo follow-up dopo 24 ore si fa sempre. È il "tocco base" obbligatorio. Dopo quello, entra in gioco l'algoritmo.
+
+Capitolo 3: Gli Attori del Sistema
+🤖 I 5 Tipi di Agenti (+ Custom)
+1. Reactive Lead (Il Receptionist)
+
+Aspetta che il lead scriva per primo
+Risponde sempre entro la finestra 24h
+Proattività: BASSA (fa follow-up solo se configurato)
+Template tipici: risposte, non outbound
+2. Proactive Setter (Il Venditore Aggressivo)
+
+Scrive per primo senza aspettare
+Fa follow-up persistenti ma intelligenti
+Proattività: ALTA
+Template tipici: opening, gentle, value, last_chance, reactivation
+3. Informative Advisor (Il Maestro)
+
+Non vende, educa
+Manda contenuti di valore senza pressione
+Proattività: MEDIA
+Template tipici: educational_tips, resource_share, weekly_insight
+4. Customer Success (Il Post-Vendita)
+
+Si attiva DOPO che il lead è diventato cliente
+Check-in periodici, upsell delicati
+Proattività: MEDIA-ALTA (ma diverso tono)
+Template tipici: satisfaction_check, onboarding_help, upsell_offer
+5. Intake Coordinator (Il Burocrate)
+
+Raccoglie documenti e informazioni
+Reminder persistenti ma specifici
+Proattività: ALTA (ma focalizzata)
+Template tipici: document_reminder, deadline_alert, missing_info
+6. Custom (Libero)
+
+L'utente definisce tutto: personalità, regole, template
+Il sistema suggerisce ma non impone
+Capitolo 4: Gli Stati della Conversazione
+Ogni conversazione vive in uno stato che determina quali azioni sono possibili:
+
+┌─────────────┐
+│ NEW_CONTACT │ ──────────────────────────────────────┐
+└──────┬──────┘                                        │
+       │ (primo messaggio inviato)                     │
+       ▼                                               │
+┌──────────────┐                                       │
+│ CONTACTED    │ (aspettiamo risposta)                 │
+└──────┬───────┘                                       │
+       │                                               │
+   ┌───┴───┐                                           │
+   ▼       ▼                                           │
+┌─────┐ ┌──────────┐                                   │
+│GHOST│ │ ENGAGED  │ (ha risposto!)                    │
+└──┬──┘ └────┬─────┘                                   │
+   │         │                                         │
+   │    ┌────┴────┐                                    │
+   │    ▼         ▼                                    │
+   │ ┌───────┐ ┌───────────┐                          │
+   │ │STALLED│ │ QUALIFIED │ (discovery completata)    │
+   │ └───┬───┘ └─────┬─────┘                          │
+   │     │           │                                │
+   │     │      ┌────┴────┐                           │
+   │     │      ▼         ▼                           │
+   │     │ ┌────────┐ ┌───────────┐                   │
+   │     │ │DEMO    │ │NEGOTIATING│                   │
+   │     │ └────┬───┘ └─────┬─────┘                   │
+   │     │      │           │                         │
+   │     └──────┴───────────┴──────┐                  │
+   │                               ▼                  │
+   │                        ┌────────────┐            │
+   └───────────────────────▶│ CLOSED_LOST│            │
+                            └────────────┘            │
+                                   ▲                  │
+                            ┌──────┴──────┐           │
+                            │ CLOSED_WON  │◀──────────┘
+                            └─────────────┘
+                                   │
+                                   ▼
+                            ┌─────────────┐
+                            │ NURTURING   │ (cliente, lungo termine)
+                            └─────────────┘
+
+Transizioni Chiave:
+Da	A	Trigger
+NEW_CONTACT	CONTACTED	Primo messaggio inviato
+CONTACTED	ENGAGED	Lead risponde
+CONTACTED	GHOST	Nessuna risposta dopo N follow-up
+ENGAGED	QUALIFIED	Discovery completata (info raccolte)
+ENGAGED	STALLED	Silenzio dopo interesse iniziale
+QUALIFIED	DEMO	Transizione a presentazione
+DEMO	NEGOTIATING	Ha visto prezzi, sta decidendo
+NEGOTIATING	CLOSED_WON	Vendita!
+ANY	CLOSED_LOST	Disinteresse esplicito / STOP
+CLOSED_WON	NURTURING	Post-vendita attivato
+Capitolo 5: L'Algoritmo del Cuore
+Ogni ora (configurabile), un CRON job analizza tutte le conversazioni attive:
+
+Step 1: Raccolta Dati
+Per ogni conversazione, raccoglie:
+
+{
+  // Tempo
+  oreDalLastMessaggio: 48,
+  giorniDalPrimoContatto: 5,
+  
+  // Comportamento
+  haRisposto: true,
+  numeroRisposte: 2,
+  tempoMedioRisposta: "3 ore",
+  ultimoMessaggioLead: "Interessante, ci penso...",
+  
+  // Segnali
+  haChiestoPrezzo: true,
+  haMenzionetoUrgenza: false,
+  haDettoNoChiaro: false,
+  obiezioniSollevate: ["ci_devo_pensare"],
+  
+  // Contesto
+  canaleAcquisizione: "paid_facebook",
+  tipoAgente: "proactive_setter",
+  faseCorrente: "negotiating",
+  followUpGiaFatti: 2,
+  maxFollowUpPermessi: 5
+}
+
+Step 2: Calcolo Score
+let score = 50; // base
+// Fattori positivi
+if (haChiestoPrezzo) score += 20;
+if (haMenzionetoUrgenza) score += 15;
+if (canaleAcquisizione === "paid") score += 10;
+if (tempoMedioRisposta < "6 ore") score += 10;
+// Fattori negativi
+if (obiezioniSollevate.includes("non_ho_soldi")) score -= 15;
+if (followUpGiaFatti > 3) score -= 10;
+if (oreDalLastMessaggio > 168) score -= 20; // >7 giorni
+// Aggiustamento per tipo agente
+if (tipoAgente === "proactive_setter") score += 10; // più aggressivo
+if (tipoAgente === "informative_advisor") score -= 5; // più soft
+
+Step 3: Decisione
+if (score > 70) {
+  // INVIA ORA - Alta probabilità di successo
+  return { action: "send_now", urgency: "high" };
+  
+} else if (score > 40) {
+  // SCHEDULA - Aspetta momento migliore
+  return { action: "schedule", when: "domani mattina 9:00" };
+  
+} else if (score > 20) {
+  // ULTIMO TENTATIVO - Se non ha raggiunto max
+  if (followUpGiaFatti < maxFollowUpPermessi) {
+    return { action: "send_last_chance" };
+  }
+  
+} else {
+  // STOP - Non vale la pena
+  return { action: "mark_as_ghost" };
+}
+
+Step 4: Selezione Template
+L'algoritmo sceglie il template seguendo questa priorità:
+
+Template custom creato dal consulente per quello specifico scenario
+Template per stato (es: se STALLED → usa reactivation_template)
+Template per tipo agente (es: se setter → usa aggressive_followup)
+Template generico fallback
+Prima di inviare, verifica:
+
+✅ Template approvato da Meta?
+✅ Non supera limite follow-up?
+✅ Rispetta cooldown minimo (es: almeno 24h tra messaggi)?
+Capitolo 6: I Template - La Benzina del Sistema
+Struttura Template
+Ogni template ha:
+
+{
+  id: "tmpl_abc123",
+  nome: "Follow-up Gentile 24h",
+  
+  // Contenuto (con variabili)
+  corpo: "Ciao {{nome}}! Volevo solo assicurarmi che tu abbia ricevuto il mio messaggio. Hai avuto modo di pensarci?",
+  variabili: ["nome"],
+  
+  // Categorizzazione
+  categoria: "utility", // marketing | utility | authentication
+  casoUso: "followup_24h",
+  
+  // Targeting
+  perTipiAgente: ["proactive_setter", "reactive_lead"],
+  perCanali: ["paid", "organic"],
+  perStati: ["contacted", "stalled"],
+  
+  // Stato Approvazione
+  stato: "approved", // draft | pending | approved | rejected
+  twilioContentSid: "HX1234567890",
+  
+  // Stats
+  usato: 234,
+  tassoRisposta: 0.23 // 23% risponde dopo questo template
+}
+
+Categorie WhatsApp (Meta)
+Categoria	Uso	Costo
+Marketing	Promo, offerte, nurturing	PIÙ ALTO
+Utility	Transazioni, reminder, aggiornamenti	MEDIO
+Authentication	OTP, verifica account	BASSO
+Strategia: Usa UTILITY quando possibile (es: "reminder appuntamento" invece di "offerta speciale")
+
+Capitolo 7: L'Esperienza Utente (UX Ristrutturata)
+La Nuova Pagina Centrale: /consultant/automations
+Una sola pagina che controlla tutto, con 4 tab:
+
+Tab 1: 📊 Pipeline Lead
+Vista Kanban visuale:
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🔍 Cerca lead...                    [Filtri] [+ Aggiungi]   │
+├──────────┬──────────┬──────────┬──────────┬──────────────────┤
+│  NUOVI   │CONTATTATI│ ENGAGED  │QUALIFICATI│   CHIUSI        │
+│  (12)    │   (8)    │   (5)    │    (3)    │   (15)         │
+├──────────┼──────────┼──────────┼──────────┼──────────────────┤
+│┌────────┐│┌────────┐│┌────────┐│┌────────┐│┌────────────────┐│
+││Marco R.│││Anna B. │││Luca T. │││Sara M. ││ │🟢 Vendita: 8   ││
+││📱 Paid ││├────────┤││📱 3 msg│││⏰ Demo  ││ │🔴 Persi: 7    ││
+││⏰ 2h   │││        │││🔥 Caldo│││domani   ││ └────────────────┘│
+│└────────┘││Maria C.│││        │││        ││                  │
+│┌────────┐││📱 Org  │││        ││└────────┘│                  │
+││Luigi P.│││⏰ 1g   ││└────────┘│          │                  │
+││📱 Org  ││└────────┘│          │          │                  │
+│└────────┘│          │          │          │                  │
+└──────────┴──────────┴──────────┴──────────┴──────────────────┘
+
+Click su card → Apre sidebar con:
+
+Cronologia conversazione
+Prossimo follow-up programmato
+Pulsanti: [Scrivi Ora] [Salta Follow-up] [Marca come Perso]
+Tab 2: ⚡ Automazioni
+Lista di regole con toggle ON/OFF:
+
+┌──────────────────────────────────────────────────────────────┐
+│ ⚡ REGOLE AUTOMAZIONE                    [+ Nuova Regola]   │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 🟢 Follow-up 24h (Automatico)                    [ON ────]  │
+│    Quando: Nessuna risposta dopo 24h                        │
+│    Template: "Gentle Reminder"                              │
+│    Limite: Max 1 per conversazione                          │
+│    ────────────────────────────────────────────             │
+│                                                              │
+│ 🟢 Riattivazione 7 giorni                        [ON ────]  │
+│    Quando: Silenzio dopo interesse                          │
+│    Template: "Ti sei perso qualcosa?"                       │
+│    Limite: Max 2, poi stop                                  │
+│    ────────────────────────────────────────────             │
+│                                                              │
+│ 🔴 Nurturing Mensile                             [─── OFF]  │
+│    Quando: Cliente inattivo 30+ giorni                      │
+│    Template: "Check-in mensile"                             │
+│    ────────────────────────────────────────────             │
+│                                                              │
+│ 🟡 Anniversario 1 Anno                           [─── OFF]  │
+│    Quando: 365 giorni dal primo contatto                    │
+│    Template: "Un anno insieme!"                             │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+Click su regola → Editor con:
+
+Condizioni trigger
+Selezione template
+Limiti e cooldown
+Per quali agenti/canali applicare
+Tab 3: 📝 Template
+Griglia template semplificata:
+
+┌──────────────────────────────────────────────────────────────┐
+│ 📝 TEMPLATE WHATSAPP                     [+ Crea Template]  │
+├──────────────────────────────────────────────────────────────┤
+│ Filtri: [Tutti ▼] [Approvati ▼] [Setter ▼]                  │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│ ┌────────────────────────┐  ┌────────────────────────┐      │
+│ │ 📨 Opening Setter      │  │ 🔄 Gentle 24h          │      │
+│ │ ───────────────────    │  │ ───────────────────    │      │
+│ │ "Ciao {{nome}}! Ho     │  │ "Ciao {{nome}}, volevo │      │
+│ │  notato che..."        │  │  solo fare un..."      │      │
+│ │                        │  │                        │      │
+│ │ 🟢 Approvato           │  │ 🟢 Approvato           │      │
+│ │ 📊 Usato 145x | 23%    │  │ 📊 Usato 89x | 31%     │      │
+│ │                        │  │                        │      │
+│ │ [👁 Preview] [✏ Edit]  │  │ [👁 Preview] [✏ Edit]  │      │
+│ └────────────────────────┘  └────────────────────────┘      │
+│                                                              │
+│ ┌────────────────────────┐  ┌────────────────────────┐      │
+│ │ 🎯 Value Proposition   │  │ 🆘 Last Chance         │      │
+│ │ ───────────────────    │  │ ───────────────────    │      │
+│ │ 🟡 In Revisione        │  │ 🟢 Approvato           │      │
+│ │ ⏳ Inviato 2h fa       │  │ 📊 Usato 34x | 12%     │      │
+│ └────────────────────────┘  └────────────────────────┘      │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+Wizard "Crea Template" in 3 step:
+
+╔══════════════════════════════════════════════════════════════╗
+║  Step 1 di 3: QUANDO USARLO?                                 ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  Seleziona lo scenario:                                      ║
+║                                                              ║
+║  ○ 📨 Primo Contatto                                        ║
+║       Per scrivere a lead nuovi                             ║
+║                                                              ║
+║  ● 🔄 Nessuna Risposta                                      ║
+║       Dopo quanto? [24 ore ▼]                               ║
+║                                                              ║
+║  ○ 🛑 Trattativa Bloccata                                   ║
+║       Quando il lead ha smesso di rispondere                ║
+║                                                              ║
+║  ○ 🎉 Post-Vendita                                          ║
+║       Per clienti acquisiti                                 ║
+║                                                              ║
+║  ○ 📆 Lungo Termine                                         ║
+║       Dopo [30 ▼] [60 ▼] [90 ▼] [365 ▼] giorni             ║
+║                                                              ║
+║                                    [Avanti →]               ║
+╚══════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════╗
+║  Step 2 di 3: SCRIVI IL MESSAGGIO                            ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  Nome template: [Follow-up gentile 24h_____________]         ║
+║                                                              ║
+║  ┌────────────────────────────────────────────────────────┐ ║
+║  │ Ciao {{nome}}!                                         │ ║
+║  │                                                         │ ║
+║  │ Volevo solo assicurarmi che tu abbia ricevuto il mio  │ ║
+║  │ messaggio di ieri.                                     │ ║
+║  │                                                         │ ║
+║  │ Hai avuto modo di pensarci? Sono qui per qualsiasi    │ ║
+║  │ domanda! 😊                                            │ ║
+║  └────────────────────────────────────────────────────────┘ ║
+║                                                              ║
+║  Variabili disponibili:                                      ║
+║  [+ {{nome}}] [+ {{business}}] [+ {{data}}]                 ║
+║                                                              ║
+║  [🪄 Genera con AI]        [← Indietro] [Avanti →]          ║
+╚══════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════╗
+║  Step 3 di 3: CONFERMA E INVIA                               ║
+╠══════════════════════════════════════════════════════════════╣
+║                                                              ║
+║  📱 ANTEPRIMA                                               ║
+║  ┌────────────────────────────────┐                         ║
+║  │ ┌──────────────────────────┐  │                         ║
+║  │ │ Ciao Marco!              │  │                         ║
+║  │ │                          │  │                         ║
+║  │ │ Volevo solo assicurarmi  │  │                         ║
+║  │ │ che tu abbia ricevuto... │  │                         ║
+║  │ └──────────────────────────┘  │                         ║
+║  └────────────────────────────────┘                         ║
+║                                                              ║
+║  Categoria: [Utility ▼] (consigliato per follow-up)         ║
+║                                                              ║
+║  ⚠️ Il template verrà inviato a WhatsApp per approvazione.  ║
+║     Tempo stimato: 1-24 ore                                  ║
+║                                                              ║
+║         [← Indietro] [✅ Invia per Approvazione]            ║
+╚══════════════════════════════════════════════════════════════╝
+
+Tab 4: 📢 Campagne
+Per broadcast manuali one-shot (rimane simile all'attuale ma integrata):
+
+┌──────────────────────────────────────────────────────────────┐
+│ 📢 CAMPAGNE BROADCAST                    [+ Nuova Campagna] │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│ ┌──────────────────────────────────────────────────────────┐│
+│ │ 🎄 Promo Natale 2025                                     ││
+│ │ Stato: Completata | Inviati: 234 | Aperti: 67%           ││
+│ │ Data: 20 Dic 2025                                        ││
+│ └──────────────────────────────────────────────────────────┘│
+│                                                              │
+│ ┌──────────────────────────────────────────────────────────┐│
+│ │ 📣 Lancio Nuovo Servizio                                 ││
+│ │ Stato: Programmata | Target: 189 lead                    ││
+│ │ Data: 15 Gen 2026, 10:00                                 ││
+│ └──────────────────────────────────────────────────────────┘│
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+Capitolo 8: Il Flusso Completo in Azione
+Scenario: Marco, Proactive Setter per Palestra
+Giorno 0 - 10:00
+
+Lead "Giulia" arriva da Facebook Ads
+Sistema crea conversazione: stato = NEW_CONTACT, canale = paid
+Regola "Opening Automatico" → invia template "opening_setter"
+Stato → CONTACTED
+Giorno 0 - 14:00
+
+Giulia risponde: "Interessante, quanto costa?"
+Stato → ENGAGED
+AI risponde con info (dentro finestra 24h, messaggio libero)
+Flag: haChiestoPrezzo = true
+Giorno 1 - 15:00
+
+Giulia non ha risposto
+CRON valuta:
+oreDalLastMessaggio = 25
+haChiestoPrezzo = true → score +20
+canale paid → score +10
+Score finale: 80 (alto!)
+Azione: INVIA ORA
+Seleziona template: gentle_followup_24h
+Stato → resta ENGAGED
+Giorno 3 - 10:00
+
+Ancora silenzio
+CRON valuta:
+oreDalLastMessaggio = 68
+followUpGiaFatti = 1
+haChiestoPrezzo = true
+Score: 65
+Azione: SCHEDULE per domani mattina 9:00
+Template: value_proposition
+Giorno 5 - 09:00
+
+Giulia risponde: "Ok mi interessa, ma devo pensarci"
+Stato → NEGOTIATING
+AI gestisce obiezione (dentro 24h)
+Flag: obiezioniSollevate = ["ci_devo_pensare"]
+Giorno 6 - 10:00
+
+Silenzio
+CRON valuta:
+oreDalLastMessaggio = 25
+obiezioniSollevate presente → score -10
+maHaDettoInteresse = true → score +15
+Score: 55
+Azione: SEND
+Template: objection_handler ("Su cosa esattamente hai bisogno di riflettere?")
+Giorno 7 - 11:00
+
+Giulia: "Quando posso venire?"
+🎉 CONVERSIONE!
+Stato → CLOSED_WON
+Notifica email al consulente
+Attivazione agente "Customer Success" per follow-up post-vendita
+Capitolo 9: Metriche e Analytics
+Il sistema traccia tutto per ottimizzare:
+
+Dashboard Consulente
+┌────────────────────────────────────────────────────────────┐
+│ 📊 PERFORMANCE FOLLOW-UP - Ultimo mese                     │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│  │   234    │  │   67%    │  │   23%    │  │   12%    │  │
+│  │ Template │  │ Delivery │  │ Response │  │Conversion│  │
+│  │  Inviati │  │   Rate   │  │   Rate   │  │   Rate   │  │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
+│                                                            │
+│  🏆 TOP TEMPLATE                                          │
+│  1. Gentle 24h → 31% response rate                        │
+│  2. Value Prop → 28% response rate                        │
+│  3. Opening → 24% response rate                           │
+│                                                            │
+│  ⚠️ TEMPLATE DA MIGLIORARE                                │
+│  1. Last Chance → 8% response rate (sotto media)          │
+│                                                            │
+│  📈 TREND CONVERSIONI                                     │
+│  [Grafico a linee: conversioni per settimana]             │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+
+Capitolo 10: Implementazione Tecnica (Riassunto)
+Nuove Tabelle Database
+conversation_states - Stati conversazione con timestamp transizioni
+followup_rules - Regole automazione configurabili
+custom_templates - Template creati localmente + sync Twilio
+scheduled_messages - Queue messaggi programmati
+followup_analytics - Statistiche per ottimizzazione
+Nuovi Endpoint API
+POST   /api/automations/rules         # Crea regola
+GET    /api/automations/rules         # Lista regole
+PATCH  /api/automations/rules/:id     # Modifica/toggle
+DELETE /api/automations/rules/:id     # Elimina
+POST   /api/templates                 # Crea template (locale)
+POST   /api/templates/:id/submit      # Invia a Twilio per approvazione
+GET    /api/templates/:id/status      # Check stato approvazione
+GET    /api/pipeline/leads            # Pipeline visuale
+PATCH  /api/pipeline/leads/:id/stage  # Sposta tra stage
+POST   /api/followup/evaluate/:conversationId  # Forza valutazione algoritmo
+POST   /api/followup/skip/:conversationId      # Salta prossimo follow-up
+
+CRON Jobs
+Ogni ora: Valutazione algoritmo su tutte le conversazioni attive
+Ogni 5 minuti: Check stato approvazione template pendenti
+Ogni giorno alle 00:00: Calcolo analytics giornaliere
+Epilogo: La Visione Finale
+Quando questo sistema sarà completo, il consulente avrà dipendenti virtuali che:
+
+✅ Non dormono mai
+✅ Non dimenticano nessun lead
+✅ Sanno quando è il momento giusto per scrivere
+✅ Scelgono le parole giuste per ogni situazione
+✅ Rispettano le regole di WhatsApp automaticamente
+✅ Imparano dai dati (quali template funzionano meglio)
+✅ Scalano infinitamente (1 agente o 100, stesso sforzo)
+
+E tutto questo con un'interfaccia così semplice che anche un non-tecnico può configurarla in 5 minuti.
+
+
+
+
+
+🧠 ALGORITMO IBRIDO: Regole + LLM (Gemini 2.5 Flash)
+L'algoritmo diventa:
+
+┌─────────────────────────────────────────────────────────────┐
+│  FASE 1: REGOLE DETERMINISTICHE (veloce, no costi AI)      │
+│  ─────────────────────────────────────────────────────────  │
+│  • Ultimo messaggio < 24h? → NON fare nulla (sessione ok)  │
+│  • Stato = CLOSED_LOST? → STOP definitivo                  │
+│  • Max follow-up raggiunto? → STOP                         │
+│  • Primo follow-up 24h non fatto? → INVIA SUBITO           │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼ (se passa i check)
+┌─────────────────────────────────────────────────────────────┐
+│  FASE 2: VALUTAZIONE LLM (Gemini 2.5 Flash)                │
+│  ─────────────────────────────────────────────────────────  │
+│  INPUT al modello:                                         │
+│  • Cronologia ultimi 10 messaggi                           │
+│  • Stato conversazione                                     │
+│  • Canale acquisizione                                     │
+│  • Tipo agente                                             │
+│  • Template disponibili                                    │
+│  • Giorni senza risposta                                   │
+│                                                             │
+│  OUTPUT JSON:                                              │
+│  {                                                         │
+│    "shouldContact": true/false,                            │
+│    "urgency": "now" | "tomorrow" | "next_week" | "never",  │
+│    "selectedTemplateId": "tmpl_xxx",                       │
+│    "customVariables": { "nome": "Marco", ... },            │
+│    "reasoning": "Il lead ha mostrato interesse...",        │
+│    "confidenceScore": 0.85                                 │
+│  }                                                         │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  FASE 3: ESECUZIONE                                        │
+│  ─────────────────────────────────────────────────────────  │
+│  • Se urgency = "now" → Invia template via Twilio          │
+│  • Se urgency = "tomorrow" → Schedula in queue             │
+│  • Se urgency = "next_week" → Schedula per settimana       │
+│  • Se urgency = "never" → Marca conversazione come ghost   │
+└─────────────────────────────────────────────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Creo la pagina /consultant/automations con le 4 tab. Questa è un'implementazione frontend significativa, quindi la delego a un subagent:
+
+
+
+Showing 9 changed files.
+
+
+Unified
+
+Split
+App.tsx
+client/src
+
+Modified
+
+AnalyticsDashboard.tsx
+client/src/components/automations
+
+Added
+
+AutomationRulesList.tsx
+client/src/components/automations
+
+Added
+
+PipelineKanban.tsx
+client/src/components/automations
+
+Added
+
+RuleFormDialog.tsx
+client/src/components/automations
+
+Added
+
+TemplatesGrid.tsx
+client/src/components/automations
+
+Added
+
+useFollowupApi.ts
+client/src/hooks
+
+Added
+
+consultant-automations.tsx
+client/src/pages
+
+Added
+
+followup-api.ts
+server/routes
+
