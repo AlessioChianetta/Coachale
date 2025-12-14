@@ -8281,12 +8281,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/consultant/twilio-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
       const consultantId = req.user!.id;
+      const showDebug = req.query.debug === "true";
 
       const [user] = await db
         .select({
           twilioAccountSid: schema.users.twilioAccountSid,
           twilioAuthToken: schema.users.twilioAuthToken,
           twilioWhatsappNumber: schema.users.twilioWhatsappNumber,
+          encryptionSalt: schema.users.encryptionSalt,
         })
         .from(schema.users)
         .where(eq(schema.users.id, consultantId))
@@ -8295,6 +8297,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user || !user.twilioAccountSid) {
         return res.status(404).json({ success: false, message: "Twilio settings not configured" });
       }
+      
+      // Debug mode: show token length and decrypted token
+      let debugInfo: any = undefined;
+      if (showDebug && user.twilioAuthToken && user.encryptionSalt) {
+        try {
+          const decryptedToken = decryptForConsultant(user.twilioAuthToken, user.encryptionSalt);
+          debugInfo = {
+            encryptedTokenLength: user.twilioAuthToken.length,
+            decryptedTokenLength: decryptedToken.length,
+            decryptedToken: decryptedToken, // SHOW THE TOKEN FOR DEBUG
+          };
+          console.log("🔓 [Twilio Settings DEBUG] Decrypted token:", decryptedToken);
+        } catch (e: any) {
+          debugInfo = {
+            error: "Failed to decrypt: " + e.message,
+            encryptedTokenLength: user.twilioAuthToken?.length || 0,
+          };
+        }
+      }
 
       res.json({
         success: true,
@@ -8302,7 +8323,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           accountSid: user.twilioAccountSid,
           whatsappNumber: user.twilioWhatsappNumber || "",
           hasAuthToken: !!user.twilioAuthToken,
+          authTokenLength: user.twilioAuthToken?.length || 0,
         },
+        debug: debugInfo,
       });
     } catch (error: any) {
       console.error("❌ Error fetching Twilio settings:", error);
@@ -8314,9 +8337,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const consultantId = req.user!.id;
       const { accountSid, authToken, whatsappNumber } = req.body;
+      
+      console.log("📥 [Twilio Settings] Received save request:", {
+        consultantId,
+        accountSidLength: accountSid?.length || 0,
+        authTokenLength: authToken?.length || 0,
+        hasAuthToken: !!authToken,
+        whatsappNumber: whatsappNumber || "N/A",
+      });
 
       if (!accountSid) {
         return res.status(400).json({ success: false, message: "Account SID è obbligatorio" });
+      }
+      
+      // CRITICAL: Also require auth token when saving Twilio settings
+      if (!authToken || authToken.trim() === "") {
+        console.log("❌ [Twilio Settings] Auth Token is required but was empty/null");
+        return res.status(400).json({ success: false, message: "Auth Token è obbligatorio" });
       }
 
       // Get consultant's encryption salt
@@ -8335,19 +8372,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         twilioWhatsappNumber: whatsappNumber || null,
       };
 
-      // Only update auth token if provided (allows keeping existing token)
-      if (authToken) {
-        // Encrypt the auth token for storage using correct signature: (plaintext, salt)
-        const encryptedToken = encryptForConsultant(authToken, consultant.encryptionSalt);
-        updateData.twilioAuthToken = encryptedToken;
-      }
+      // Encrypt the auth token for storage
+      const encryptedToken = encryptForConsultant(authToken, consultant.encryptionSalt);
+      updateData.twilioAuthToken = encryptedToken;
+      console.log("🔐 [Twilio Settings] Encrypted auth token - original length:", authToken.length, "encrypted length:", encryptedToken.length);
 
       await db
         .update(schema.users)
         .set(updateData)
         .where(eq(schema.users.id, consultantId));
 
-      console.log(`✅ [Twilio Settings] Updated for consultant ${consultantId}`);
+      console.log(`✅ [Twilio Settings] Updated for consultant ${consultantId} - token saved successfully`);
 
       res.json({
         success: true,
@@ -8981,8 +9016,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(schema.users.id, consultantId))
           .limit(1);
         
+        console.log("🔍 [WHATSAPP CONFIG] Central credentials check:", {
+          hasAccountSid: !!userCredentials?.twilioAccountSid,
+          accountSidLength: userCredentials?.twilioAccountSid?.length || 0,
+          hasAuthToken: !!userCredentials?.twilioAuthToken,
+          authTokenLength: userCredentials?.twilioAuthToken?.length || 0,
+          hasEncryptionSalt: !!userCredentials?.encryptionSalt,
+        });
+        
         if (!userCredentials?.twilioAccountSid || !userCredentials?.twilioAuthToken) {
-          console.log("❌ [WHATSAPP CONFIG] Central Twilio credentials not found");
+          console.log("❌ [WHATSAPP CONFIG] Central Twilio credentials not found - accountSid exists:", !!userCredentials?.twilioAccountSid, "authToken exists:", !!userCredentials?.twilioAuthToken);
           return res.status(400).json({ 
             message: "Credenziali Twilio centralizzate non configurate. Vai nelle Impostazioni API per configurarle." 
           });
@@ -9000,13 +9043,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const decryptedAuthToken = decryptForConsultant(userCredentials.twilioAuthToken, userCredentials.encryptionSalt);
           effectiveTwilioAccountSid = userCredentials.twilioAccountSid;
           effectiveTwilioAuthToken = decryptedAuthToken;
-          console.log("✅ [WHATSAPP CONFIG] Loaded central Twilio credentials successfully");
+          console.log("✅ [WHATSAPP CONFIG] Loaded central Twilio credentials successfully - decrypted token length:", decryptedAuthToken?.length || 0);
         } catch (decryptError: any) {
           console.error("❌ [WHATSAPP CONFIG] Failed to decrypt central auth token:", decryptError.message);
           return res.status(400).json({ 
             message: "Impossibile decriptare le credenziali Twilio salvate. Riconfigura le credenziali nelle Impostazioni API." 
           });
         }
+      } else {
+        console.log("ℹ️ [WHATSAPP CONFIG] useCentralCredentials is false/undefined - using provided credentials");
+        console.log("🔍 [WHATSAPP CONFIG] Provided credentials check:", {
+          hasAccountSid: !!twilioAccountSid,
+          accountSidLength: twilioAccountSid?.length || 0,
+          hasAuthToken: !!twilioAuthToken,
+          authTokenLength: twilioAuthToken?.length || 0,
+        });
       }
       
       // Validate required fields only for new configs
@@ -9105,9 +9156,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use effective credentials if useCentralCredentials is enabled
         if (useCentralCredentials && effectiveTwilioAuthToken) {
           updateData.twilioAuthToken = effectiveTwilioAuthToken;
+          console.log("🔐 [WHATSAPP CONFIG UPDATE] Using central credentials auth token - length:", effectiveTwilioAuthToken.length);
         } else if (twilioAuthToken && twilioAuthToken !== "KEEP_EXISTING") {
           updateData.twilioAuthToken = twilioAuthToken;
+          console.log("🔐 [WHATSAPP CONFIG UPDATE] Using provided auth token - length:", twilioAuthToken.length);
+        } else {
+          console.log("ℹ️ [WHATSAPP CONFIG UPDATE] Keeping existing auth token (not updating)");
         }
+        
+        // Final validation before saving - ensure token is not empty for whatsapp_ai mode
+        console.log("📊 [WHATSAPP CONFIG UPDATE] Pre-save data:", {
+          agentName: updateData.agentName,
+          twilioAccountSidLength: updateData.twilioAccountSid?.length || 0,
+          twilioAuthTokenLength: updateData.twilioAuthToken?.length || 0,
+          twilioWhatsappNumber: updateData.twilioWhatsappNumber,
+        });
 
         [config] = await db
           .update(schema.consultantWhatsappConfig)
@@ -9115,9 +9178,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(schema.consultantWhatsappConfig.id, existingConfig.id))
           .returning();
 
-        console.log(`✅ Updated WhatsApp config ${existingConfig.id} for consultant ${consultantId}`);
+        console.log(`✅ Updated WhatsApp config ${existingConfig.id} for consultant ${consultantId} - saved token length:`, config.twilioAuthToken?.length || 0);
       } else {
         // Create new config - use effective credentials if useCentralCredentials is enabled
+        // CRITICAL: Final validation - ensure token is NOT empty for whatsapp_ai mode before saving
+        if (integrationMode === "whatsapp_ai") {
+          if (!effectiveTwilioAuthToken || effectiveTwilioAuthToken.trim() === "") {
+            console.log("❌ [WHATSAPP CONFIG CREATE] BLOCKING SAVE - Auth token is empty/null!");
+            console.log("🔍 [WHATSAPP CONFIG CREATE] Debug info:", {
+              useCentralCredentials,
+              effectiveTwilioAuthTokenExists: !!effectiveTwilioAuthToken,
+              effectiveTwilioAuthTokenLength: effectiveTwilioAuthToken?.length || 0,
+              twilioAuthTokenFromBody: twilioAuthToken?.length || 0,
+            });
+            return res.status(400).json({ 
+              message: "Errore critico: Auth Token Twilio è vuoto. Verifica le credenziali nelle Impostazioni API." 
+            });
+          }
+          console.log("✅ [WHATSAPP CONFIG CREATE] Auth token validated - length:", effectiveTwilioAuthToken.length);
+        }
+        
+        console.log("📊 [WHATSAPP CONFIG CREATE] Pre-save data:", {
+          agentName,
+          twilioAccountSidLength: effectiveTwilioAccountSid?.length || 0,
+          twilioAuthTokenLength: effectiveTwilioAuthToken?.length || 0,
+          twilioWhatsappNumber,
+          useCentralCredentials,
+        });
+        
         [config] = await db
           .insert(schema.consultantWhatsappConfig)
           .values({
@@ -9178,7 +9266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .returning();
 
-        console.log(`✅ Created WhatsApp config for consultant ${consultantId} - Agent: ${agentName}`);
+        console.log(`✅ Created WhatsApp config for consultant ${consultantId} - Agent: ${agentName} - saved token length:`, config.twilioAuthToken?.length || 0);
       }
 
       // Return config without sensitive credentials (exclude only twilioAuthToken)
