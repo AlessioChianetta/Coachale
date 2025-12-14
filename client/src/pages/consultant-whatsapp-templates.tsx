@@ -616,12 +616,12 @@ export default function ConsultantWhatsAppTemplatesPage() {
                       automaticamente i lead che non rispondono. Configura le regole dalla pagina Automazioni.
                     </p>
                   </div>
-                  <Link href="/consultant/automations">
-                    <Button className="bg-amber-600 hover:bg-amber-700 text-white shadow-md">
+                  <Button asChild className="bg-amber-600 hover:bg-amber-700 text-white shadow-md">
+                    <Link href="/consultant/automations">
                       <Settings className="h-4 w-4 mr-2" />
                       Configura Automazioni
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
