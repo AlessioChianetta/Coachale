@@ -274,11 +274,23 @@ export async function processScheduledMessages(): Promise<void> {
   }
 }
 
+interface ApplicableRule {
+  id: string;
+  name: string;
+  priority: number;
+  triggerType: string;
+  templateId: string | null;
+  fallbackMessage: string | null;
+  maxAttempts: number;
+  cooldownHours: number;
+}
+
 interface CandidateConversation {
   conversationId: string;
   stateId: string;
   currentState: string;
   daysSilent: number;
+  hoursSilent: number;
   followupCount: number;
   maxFollowupsAllowed: number;
   engagementScore: number;
@@ -295,6 +307,109 @@ interface CandidateConversation {
   agentType: string;
   phoneNumber: string;
   leadName?: string;
+  applicableRules: ApplicableRule[];
+  lastFollowupAt?: Date | null;
+}
+
+async function findApplicableRules(
+  consultantId: string,
+  agentConfigId: string | null,
+  currentState: string,
+  agentType: string,
+  engagementScore: number,
+  hoursSilent: number,
+  lastFollowupAt?: Date | null
+): Promise<ApplicableRule[]> {
+  const allRules = await db
+    .select()
+    .from(followupRules)
+    .where(
+      and(
+        eq(followupRules.consultantId, consultantId),
+        eq(followupRules.isActive, true)
+      )
+    )
+    .orderBy(desc(followupRules.priority));
+
+  const applicable: ApplicableRule[] = [];
+
+  for (const rule of allRules) {
+    const applicableToStates = (rule.applicableToStates as string[] | null) || [];
+    if (applicableToStates.length > 0 && !applicableToStates.includes(currentState)) {
+      continue;
+    }
+
+    const applicableToAgentTypes = (rule.applicableToAgentTypes as string[] | null) || [];
+    if (applicableToAgentTypes.length > 0 && !applicableToAgentTypes.includes(agentType)) {
+      continue;
+    }
+
+    if (rule.agentId && rule.agentId !== agentConfigId) {
+      continue;
+    }
+
+    const condition = rule.triggerCondition as {
+      hoursWithoutReply?: number;
+      daysWithoutReply?: number;
+      afterState?: string;
+      minEngagementScore?: number;
+      maxEngagementScore?: number;
+    } | null;
+
+    if (condition) {
+      if (condition.hoursWithoutReply !== undefined) {
+        if (hoursSilent < condition.hoursWithoutReply) {
+          continue;
+        }
+      }
+
+      if (condition.daysWithoutReply !== undefined) {
+        const requiredHours = condition.daysWithoutReply * 24;
+        if (hoursSilent < requiredHours) {
+          continue;
+        }
+      }
+
+      if (condition.minEngagementScore !== undefined) {
+        if (engagementScore < condition.minEngagementScore) {
+          continue;
+        }
+      }
+
+      if (condition.maxEngagementScore !== undefined) {
+        if (engagementScore > condition.maxEngagementScore) {
+          continue;
+        }
+      }
+
+      if (condition.afterState !== undefined) {
+        if (currentState !== condition.afterState) {
+          continue;
+        }
+      }
+    }
+
+    if (lastFollowupAt && rule.cooldownHours > 0) {
+      const hoursSinceLastFollowup = (Date.now() - new Date(lastFollowupAt).getTime()) / (1000 * 60 * 60);
+      if (hoursSinceLastFollowup < rule.cooldownHours) {
+        console.log(`⏰ [FOLLOWUP-SCHEDULER] Rule "${rule.name}" skipped due to cooldown (${hoursSinceLastFollowup.toFixed(1)}h < ${rule.cooldownHours}h)`);
+        continue;
+      }
+    }
+
+    applicable.push({
+      id: rule.id,
+      name: rule.name,
+      priority: rule.priority,
+      triggerType: rule.triggerType,
+      templateId: rule.templateId,
+      fallbackMessage: rule.fallbackMessage,
+      maxAttempts: rule.maxAttempts,
+      cooldownHours: rule.cooldownHours,
+    });
+  }
+
+  return applicable;
 }
 
 async function findCandidateConversations(): Promise<CandidateConversation[]> {
@@ -328,6 +443,7 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
       discoveryCompleted: conversationStates.discoveryCompleted,
       demoPresented: conversationStates.demoPresented,
       nextFollowupScheduledAt: conversationStates.nextFollowupScheduledAt,
+      lastFollowupAt: conversationStates.lastFollowupAt,
       conversation: {
         consultantId: whatsappConversations.consultantId,
         agentConfigId: whatsappConversations.agentConfigId,
@@ -354,9 +470,11 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
 
   for (const state of candidateStates) {
     const lastMessageAt = state.conversation.lastMessageAt;
-    const daysSilent = lastMessageAt 
-      ? Math.floor((now.getTime() - new Date(lastMessageAt).getTime()) / (1000 * 60 * 60 * 24))
-      : 999;
+    const msSilent = lastMessageAt 
+      ? (now.getTime() - new Date(lastMessageAt).getTime())
+      : 999 * 24 * 60 * 60 * 1000;
+    const hoursSilent = msSilent / (1000 * 60 * 60);
+    const daysSilent = Math.floor(hoursSilent / 24);
 
     if (state.nextFollowupScheduledAt && new Date(state.nextFollowupScheduledAt) > now) {
       continue;
@@ -379,11 +497,22 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
       }
     }
 
+    const applicableRules = await findApplicableRules(
+      state.conversation.consultantId,
+      state.conversation.agentConfigId,
+      state.currentState,
+      agentType,
+      state.engagementScore,
+      hoursSilent,
+      state.lastFollowupAt
+    );
+
     candidates.push({
       conversationId: state.conversationId,
       stateId: state.stateId,
       currentState: state.currentState,
       daysSilent,
+      hoursSilent,
       followupCount: state.followupCount,
       maxFollowupsAllowed: state.maxFollowupsAllowed,
       engagementScore: state.engagementScore,
@@ -399,6 +528,8 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
       agentConfigId: state.conversation.agentConfigId,
       agentType,
       phoneNumber: state.conversation.phoneNumber,
+      applicableRules,
+      lastFollowupAt: state.lastFollowupAt,
     });
   }
 
@@ -409,7 +540,96 @@ async function evaluateConversation(
   candidate: CandidateConversation
 ): Promise<'scheduled' | 'skipped' | 'stopped'> {
   console.log(`🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation ${candidate.conversationId}`);
-  console.log(`   State: ${candidate.currentState}, Days silent: ${candidate.daysSilent}, Follow-ups: ${candidate.followupCount}/${candidate.maxFollowupsAllowed}`);
+  console.log(`   State: ${candidate.currentState}, Days silent: ${candidate.daysSilent}, Hours silent: ${candidate.hoursSilent.toFixed(1)}, Follow-ups: ${candidate.followupCount}/${candidate.maxFollowupsAllowed}`);
+  
+  // Bug 3 Fix: Safety check for applicableRules that could be undefined
+  const applicableRules = candidate.applicableRules;
+  if (!applicableRules || !Array.isArray(applicableRules)) {
+    console.log(`⚠️ [FOLLOWUP-SCHEDULER] applicableRules is undefined or not an array for ${candidate.conversationId}, skipping`);
+    return 'skipped';
+  }
+  
+  console.log(`   📋 Applicable rules: ${applicableRules.length}`);
+
+  if (applicableRules.length === 0) {
+    console.log(`⏭️ [FOLLOWUP-SCHEDULER] No applicable rules for ${candidate.conversationId}, skipping`);
+    return 'skipped';
+  }
+  
+  // Bug 1 Fix: Check for existing pending messages before scheduling
+  const existingPending = await db
+    .select({ id: scheduledFollowupMessages.id })
+    .from(scheduledFollowupMessages)
+    .where(
+      and(
+        eq(scheduledFollowupMessages.conversationId, candidate.conversationId),
+        eq(scheduledFollowupMessages.status, 'pending')
+      )
+    )
+    .limit(1);
+  
+  if (existingPending.length > 0) {
+    console.log(`⏭️ [FOLLOWUP-SCHEDULER] Pending message already exists for ${candidate.conversationId} (id: ${existingPending[0].id}), skipping duplicate scheduling`);
+    return 'skipped';
+  }
+
+  const timeBasedRule = applicableRules.find(r => r.triggerType === 'time_based');
+  
+  if (timeBasedRule) {
+    console.log(`⚡ [FOLLOWUP-SCHEDULER] Using deterministic time_based rule: "${timeBasedRule.name}" (priority: ${timeBasedRule.priority})`);
+    
+    if (candidate.followupCount >= timeBasedRule.maxAttempts) {
+      console.log(`🛑 [FOLLOWUP-SCHEDULER] Max attempts reached for rule "${timeBasedRule.name}" (${candidate.followupCount}/${timeBasedRule.maxAttempts})`);
+      
+      await updateConversationState(candidate.conversationId, {
+        currentState: 'ghost',
+        previousState: candidate.currentState,
+        lastAiEvaluationAt: new Date(),
+        aiRecommendation: `Max follow-up attempts reached (${timeBasedRule.maxAttempts}) for rule "${timeBasedRule.name}"`,
+      });
+      
+      return 'stopped';
+    }
+
+    const scheduledFor = new Date();
+    
+    await db.insert(scheduledFollowupMessages).values({
+      conversationId: candidate.conversationId,
+      ruleId: timeBasedRule.id,
+      templateId: timeBasedRule.templateId,
+      scheduledFor,
+      status: 'pending',
+      templateVariables: {},
+      fallbackMessage: timeBasedRule.fallbackMessage,
+      aiDecisionReasoning: `Deterministic time_based rule: "${timeBasedRule.name}"`,
+      aiConfidenceScore: 1.0,
+      attemptCount: 0,
+      maxAttempts: timeBasedRule.maxAttempts,
+    });
+
+    await updateConversationState(candidate.conversationId, {
+      nextFollowupScheduledAt: scheduledFor,
+      lastAiEvaluationAt: new Date(),
+      aiRecommendation: `Applied rule "${timeBasedRule.name}" - time_based trigger`,
+    });
+
+    console.log(`📅 [FOLLOWUP-SCHEDULER] Scheduled follow-up for ${candidate.conversationId} using rule "${timeBasedRule.name}"`);
+    return 'scheduled';
+  }
+
+  const aiDecisionRule = applicableRules.find(r => r.triggerType === 'ai_decision');
+  
+  if (!aiDecisionRule) {
+    const eventBasedRule = applicableRules.find(r => r.triggerType === 'event_based');
+    if (eventBasedRule) {
+      console.log(`⏭️ [FOLLOWUP-SCHEDULER] Only event_based rules available for ${candidate.conversationId}, waiting for trigger event`);
+    } else {
+      console.log(`⏭️ [FOLLOWUP-SCHEDULER] No time_based or ai_decision rules for ${candidate.conversationId}, skipping`);
+    }
+    return 'skipped';
+  }
+
+  console.log(`🤖 [FOLLOWUP-SCHEDULER] Using AI decision for rule: "${aiDecisionRule.name}"`);
 
   const lastMessages = await getLastMessages(candidate.conversationId, 10);
   const availableTemplates = await getAvailableTemplates(candidate.consultantId, candidate.agentConfigId);
@@ -454,17 +674,21 @@ async function evaluateConversation(
   if (decision.decision === 'send_now' || decision.decision === 'schedule') {
     const scheduledFor = calculateScheduledTime(decision);
     
+    const templateIdToUse = aiDecisionRule.templateId || decision.suggestedTemplateId || null;
+    const fallbackMessageToUse = aiDecisionRule.fallbackMessage || decision.suggestedMessage || null;
+    
     await db.insert(scheduledFollowupMessages).values({
       conversationId: candidate.conversationId,
-      templateId: decision.suggestedTemplateId || null,
+      ruleId: aiDecisionRule.id,
+      templateId: templateIdToUse,
       scheduledFor,
       status: 'pending',
       templateVariables: {},
-      fallbackMessage: decision.suggestedMessage || null,
+      fallbackMessage: fallbackMessageToUse,
       aiDecisionReasoning: decision.reasoning,
       aiConfidenceScore: decision.confidenceScore,
       attemptCount: 0,
-      maxAttempts: 3,
+      maxAttempts: aiDecisionRule.maxAttempts,
     });
 
     await updateConversationState(candidate.conversationId, {
@@ -475,7 +699,7 @@ async function evaluateConversation(
       ...(decision.updatedConversionProbability && { conversionProbability: decision.updatedConversionProbability }),
     });
 
-    console.log(`📅 [FOLLOWUP-SCHEDULER] Scheduled follow-up for ${candidate.conversationId} at ${scheduledFor.toISOString()}`);
+    console.log(`📅 [FOLLOWUP-SCHEDULER] Scheduled follow-up for ${candidate.conversationId} at ${scheduledFor.toISOString()} (AI decision with rule "${aiDecisionRule.name}")`);
     return 'scheduled';
   }
 
