@@ -5072,6 +5072,10 @@ export const conversationStates = pgTable("conversation_states", {
   stateChangedAt: timestamp("state_changed_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => {
+  return {
+    uniqueConversationId: unique().on(table.conversationId),
+  }
 });
 
 export type ConversationState = typeof conversationStates.$inferSelect;
