@@ -8880,7 +8880,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         agentName,
         twilioAccountSid, 
         twilioAuthToken, 
-        twilioWhatsappNumber, 
+        twilioWhatsappNumber,
+        useCentralCredentials,
         autoResponseEnabled,
         agentType,
         workingHoursEnabled,
@@ -8963,6 +8964,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get integration mode from request body
       const integrationMode = req.body.integrationMode || "whatsapp_ai";
       
+      // Handle useCentralCredentials - copy credentials from users table
+      let effectiveTwilioAccountSid = twilioAccountSid;
+      let effectiveTwilioAuthToken = twilioAuthToken;
+      
+      if (useCentralCredentials) {
+        console.log("🔑 [WHATSAPP CONFIG] useCentralCredentials flag detected, loading from users table...");
+        
+        const [userCredentials] = await db
+          .select({
+            twilioAccountSid: schema.users.twilioAccountSid,
+            twilioAuthToken: schema.users.twilioAuthToken,
+            encryptionSalt: schema.users.encryptionSalt,
+          })
+          .from(schema.users)
+          .where(eq(schema.users.id, consultantId))
+          .limit(1);
+        
+        if (!userCredentials?.twilioAccountSid || !userCredentials?.twilioAuthToken) {
+          console.log("❌ [WHATSAPP CONFIG] Central Twilio credentials not found");
+          return res.status(400).json({ 
+            message: "Credenziali Twilio centralizzate non configurate. Vai nelle Impostazioni API per configurarle." 
+          });
+        }
+        
+        if (!userCredentials?.encryptionSalt) {
+          console.log("❌ [WHATSAPP CONFIG] Encryption salt not found for user");
+          return res.status(400).json({ 
+            message: "Encryption salt non configurato. Contatta il supporto." 
+          });
+        }
+        
+        // Decrypt the auth token from central settings
+        try {
+          const decryptedAuthToken = decryptForConsultant(userCredentials.twilioAuthToken, userCredentials.encryptionSalt);
+          effectiveTwilioAccountSid = userCredentials.twilioAccountSid;
+          effectiveTwilioAuthToken = decryptedAuthToken;
+          console.log("✅ [WHATSAPP CONFIG] Loaded central Twilio credentials successfully");
+        } catch (decryptError: any) {
+          console.error("❌ [WHATSAPP CONFIG] Failed to decrypt central auth token:", decryptError.message);
+          return res.status(400).json({ 
+            message: "Impossibile decriptare le credenziali Twilio salvate. Riconfigura le credenziali nelle Impostazioni API." 
+          });
+        }
+      }
+      
       // Validate required fields only for new configs
       if (!existingConfig) {
         // agentName is always required
@@ -8973,10 +9019,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Twilio credentials only required for WhatsApp integration mode
         if (integrationMode === "whatsapp_ai") {
-          if (!twilioAccountSid || !twilioAuthToken || !twilioWhatsappNumber) {
+          if (!effectiveTwilioAccountSid || !effectiveTwilioAuthToken || !twilioWhatsappNumber) {
             const missingFields = [];
-            if (!twilioAccountSid) missingFields.push("twilioAccountSid");
-            if (!twilioAuthToken) missingFields.push("twilioAuthToken");
+            if (!effectiveTwilioAccountSid) missingFields.push("twilioAccountSid");
+            if (!effectiveTwilioAuthToken) missingFields.push("twilioAuthToken");
             if (!twilioWhatsappNumber) missingFields.push("twilioWhatsappNumber");
             console.log("❌ [WHATSAPP CONFIG] Missing Twilio credentials for whatsapp_ai mode:", missingFields);
             return res.status(400).json({ message: `Missing required Twilio fields: ${missingFields.join(", ")}` });
@@ -9002,7 +9048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const updateData: any = {
           agentName: agentName || existingConfig.agentName,
           integrationMode: integrationMode,
-          twilioAccountSid: twilioAccountSid || existingConfig.twilioAccountSid,
+          twilioAccountSid: effectiveTwilioAccountSid || existingConfig.twilioAccountSid,
           twilioWhatsappNumber: twilioWhatsappNumber || existingConfig.twilioWhatsappNumber,
           autoResponseEnabled: autoResponseEnabled ?? true,
           agentType: agentType || existingConfig.agentType || "reactive_lead",
@@ -9056,7 +9102,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
 
         // Only update twilioAuthToken if explicitly provided and not "KEEP_EXISTING"
-        if (twilioAuthToken && twilioAuthToken !== "KEEP_EXISTING") {
+        // Use effective credentials if useCentralCredentials is enabled
+        if (useCentralCredentials && effectiveTwilioAuthToken) {
+          updateData.twilioAuthToken = effectiveTwilioAuthToken;
+        } else if (twilioAuthToken && twilioAuthToken !== "KEEP_EXISTING") {
           updateData.twilioAuthToken = twilioAuthToken;
         }
 
@@ -9068,15 +9117,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`✅ Updated WhatsApp config ${existingConfig.id} for consultant ${consultantId}`);
       } else {
-        // Create new config
+        // Create new config - use effective credentials if useCentralCredentials is enabled
         [config] = await db
           .insert(schema.consultantWhatsappConfig)
           .values({
             consultantId,
             agentName,
             integrationMode: integrationMode as "whatsapp_ai" | "ai_only",
-            twilioAccountSid: twilioAccountSid || null,
-            twilioAuthToken: twilioAuthToken || null,
+            twilioAccountSid: effectiveTwilioAccountSid || null,
+            twilioAuthToken: effectiveTwilioAuthToken || null,
             twilioWhatsappNumber: twilioWhatsappNumber || null,
             autoResponseEnabled: autoResponseEnabled ?? true,
             agentType: agentType || "reactive_lead",

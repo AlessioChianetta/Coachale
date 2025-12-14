@@ -63,15 +63,25 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
   const hasTwilioConfigured = !!(twilioSettings?.settings?.accountSid && twilioSettings?.settings?.hasAuthToken);
 
   useEffect(() => {
-    if (twilioSettings?.settings && hasTwilioConfigured) {
-      // Only sync the accountSid for display purposes
+    const isWhatsAppMode = (formData.integrationMode || "whatsapp_ai") === "whatsapp_ai";
+    
+    if (twilioSettings?.settings && hasTwilioConfigured && isWhatsAppMode) {
+      // Sync the accountSid for display purposes
       if (twilioSettings.settings.accountSid && formData.twilioAccountSid !== twilioSettings.settings.accountSid) {
         onChange("twilioAccountSid", twilioSettings.settings.accountSid);
       }
-      // NOTE: Do NOT set twilioAuthToken here - the backend uses centralized Twilio settings
-      // when sending WhatsApp messages. The agent only needs twilioWhatsappNumber.
+      // Set flag to use central credentials - backend will copy Account SID and Auth Token
+      if (!formData.useCentralCredentials) {
+        onChange("useCentralCredentials", true);
+      }
+    } else if (!isWhatsAppMode && formData.useCentralCredentials) {
+      // Reset flag when switching to AI-only mode
+      onChange("useCentralCredentials", false);
+    } else if (!hasTwilioConfigured && formData.useCentralCredentials) {
+      // Reset flag when central credentials are not available
+      onChange("useCentralCredentials", false);
     }
-  }, [twilioSettings, hasTwilioConfigured]);
+  }, [twilioSettings, hasTwilioConfigured, formData.integrationMode]);
 
   return (
     <div className="space-y-6">
