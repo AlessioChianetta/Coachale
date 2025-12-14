@@ -277,6 +277,8 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [templateToExport, setTemplateToExport] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [syncAgentDialogOpen, setSyncAgentDialogOpen] = useState(false);
+  const [syncSelectedAgentId, setSyncSelectedAgentId] = useState<string>("");
 
   const { data: templatesData, isLoading, error } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates"],
@@ -459,6 +461,57 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     },
   });
 
+  const syncTwilioMutation = useMutation({
+    mutationFn: async (agentConfigId: string) => {
+      const response = await fetch("/api/whatsapp/custom-templates/sync-twilio-status", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ agentConfigId })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to sync Twilio status");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/custom-templates"] });
+      setSyncAgentDialogOpen(false);
+      toast({
+        title: "✅ Sincronizzazione Completata",
+        description: data.message || `${data.updated} template aggiornati`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore Sincronizzazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const verifyCredentialsMutation = useMutation({
+    mutationFn: async (agentConfigId: string) => {
+      const response = await fetch("/api/whatsapp/custom-templates/verify-agent-credentials", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ agentConfigId })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to verify credentials");
+      }
+      return response.json();
+    },
+  });
+
   const handleEdit = (templateId: string) => {
     navigate(`/consultant/whatsapp/custom-templates?id=${templateId}`);
   };
@@ -492,7 +545,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     restoreMutation.mutate(templateId);
   };
 
-  const handleExportToTwilio = (templateId: string) => {
+  const handleExportToTwilio = async (templateId: string) => {
     if (agents.length === 0) {
       toast({
         title: "❌ Errore",
@@ -502,11 +555,69 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
       return;
     }
     if (agents.length === 1) {
-      exportMutation.mutate({ templateId, agentConfigId: agents[0].id });
+      try {
+        const credentials = await verifyCredentialsMutation.mutateAsync(agents[0].id);
+        if (!credentials.valid) {
+          toast({
+            title: "❌ Credenziali Mancanti",
+            description: credentials.message || "Configura le credenziali Twilio per questo agente",
+            variant: "destructive"
+          });
+          return;
+        }
+        exportMutation.mutate({ templateId, agentConfigId: agents[0].id });
+      } catch (error: any) {
+        toast({
+          title: "❌ Errore",
+          description: error.message || "Impossibile verificare le credenziali",
+          variant: "destructive"
+        });
+      }
     } else {
       setTemplateToExport(templateId);
       setSelectedAgentId(agents[0].id);
       setExportDialogOpen(true);
+    }
+  };
+
+  const handleSyncTwilioStatus = () => {
+    if (agents.length === 0) {
+      toast({
+        title: "❌ Errore",
+        description: "Configura prima un agente WhatsApp nella sezione Agenti",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (agents.length === 1) {
+      syncTwilioMutation.mutate(agents[0].id);
+    } else {
+      setSyncSelectedAgentId(agents[0].id);
+      setSyncAgentDialogOpen(true);
+    }
+  };
+
+  const handleExportWithVerification = async () => {
+    if (!selectedAgentId || !templateToExport) return;
+    
+    try {
+      const credentials = await verifyCredentialsMutation.mutateAsync(selectedAgentId);
+      if (!credentials.valid) {
+        toast({
+          title: "❌ Credenziali Mancanti",
+          description: credentials.message || "Configura le credenziali Twilio per questo agente",
+          variant: "destructive"
+        });
+        return;
+      }
+      exportMutation.mutate({ templateId: templateToExport, agentConfigId: selectedAgentId });
+      setExportDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "❌ Errore",
+        description: error.message || "Impossibile verificare le credenziali",
+        variant: "destructive"
+      });
     }
   };
 
@@ -582,10 +693,14 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={() => handleExportToTwilio(template.id)}
-                  disabled={!template.activeVersion || exportMutation.isPending}
+                  disabled={!template.activeVersion || exportMutation.isPending || !!template.activeVersion?.twilioContentSid}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  {exportMutation.isPending ? "Esportazione..." : "Esporta a Twilio"}
+                  {template.activeVersion?.twilioContentSid 
+                    ? "Già su Twilio" 
+                    : exportMutation.isPending 
+                      ? "Esportazione..." 
+                      : "Esporta a Twilio"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {template.archivedAt ? (
@@ -882,14 +997,30 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => navigate("/consultant/whatsapp/custom-templates")}
-                    size="lg"
-                    className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg hover:shadow-xl transition-all duration-200"
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    Crea Nuovo Template
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={handleSyncTwilioStatus}
+                      size="lg"
+                      variant="outline"
+                      disabled={syncTwilioMutation.isPending}
+                      className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                    >
+                      {syncTwilioMutation.isPending ? (
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-5 w-5 mr-2" />
+                      )}
+                      Sincronizza Stato Twilio
+                    </Button>
+                    <Button
+                      onClick={() => navigate("/consultant/whatsapp/custom-templates")}
+                      size="lg"
+                      className="bg-white text-blue-600 hover:bg-blue-50 shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      <Plus className="h-5 w-5 mr-2" />
+                      Crea Nuovo Template
+                    </Button>
+                  </div>
                 </div>
 
                 {!showEmptyState && (
@@ -942,6 +1073,26 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
 
             {!showEmptyState && (
               <div className="sticky top-0 z-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 pb-4 pt-2 -mt-2 space-y-4 mb-6">
+                <div className="flex flex-wrap items-center gap-4 p-3 bg-white rounded-xl border shadow-sm">
+                  <span className="text-xs font-semibold text-slate-600">Legenda Stati Twilio:</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-gray-300" />
+                    <span className="text-xs text-slate-600">Bozza (non inviato)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                    <span className="text-xs text-slate-600">In Attesa approvazione Meta</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                    <span className="text-xs text-slate-600">Approvato da Meta</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-500" />
+                    <span className="text-xs text-slate-600">Rifiutato da Meta</span>
+                  </div>
+                </div>
+
                 <div className="flex flex-wrap gap-2 p-3 bg-white/80 backdrop-blur-sm rounded-xl border shadow-sm">
                   {categories.map((cat) => {
                     const config = CATEGORY_CONFIG[cat];
@@ -1213,20 +1364,77 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                 Annulla
               </Button>
               <Button 
-                onClick={() => {
-                  exportMutation.mutate({ 
-                    templateId: templateToExport!, 
-                    agentConfigId: selectedAgentId 
-                  });
-                  setExportDialogOpen(false);
-                }}
-                disabled={!selectedAgentId}
+                onClick={handleExportWithVerification}
+                disabled={!selectedAgentId || verifyCredentialsMutation.isPending || exportMutation.isPending}
               >
-                Esporta a Twilio
+                {verifyCredentialsMutation.isPending || exportMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Esportazione...
+                  </>
+                ) : (
+                  "Esporta a Twilio"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={syncAgentDialogOpen} onOpenChange={setSyncAgentDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Sincronizza Stato Template</DialogTitle>
+              <DialogDescription>
+                Seleziona l'agente WhatsApp per sincronizzare lo stato dei template da Twilio
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Agente WhatsApp</label>
+                <Select value={syncSelectedAgentId} onValueChange={setSyncSelectedAgentId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleziona agente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agents.map((agent: any) => (
+                      <SelectItem key={agent.id} value={agent.id}>
+                        {agent.agentName} ({agent.twilioWhatsappNumber})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Alert>
+                <RefreshCw className="h-4 w-4" />
+                <AlertDescription>
+                  Questa operazione verificherà lo stato di approvazione Meta per tutti i template esportati su Twilio.
+                </AlertDescription>
+              </Alert>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSyncAgentDialogOpen(false)}>
+                Annulla
+              </Button>
+              <Button 
+                onClick={() => syncTwilioMutation.mutate(syncSelectedAgentId)}
+                disabled={!syncSelectedAgentId || syncTwilioMutation.isPending}
+              >
+                {syncTwilioMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sincronizzazione...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Sincronizza
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <ConsultantAIAssistant />
       </div>
     </div>

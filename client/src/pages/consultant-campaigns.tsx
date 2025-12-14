@@ -8,6 +8,13 @@ import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAss
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +39,14 @@ import {
   AlertTriangle,
   ArrowRight,
   Bot,
+  ChevronDown,
+  ChevronUp,
+  Link2,
+  Copy,
+  CheckCircle2,
+  Database,
+  Plug,
+  ExternalLink,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { CampaignsList } from "@/components/campaigns/CampaignsList";
@@ -43,6 +58,7 @@ import {
   useUpdateCampaign,
   useDeleteCampaign,
 } from "@/hooks/useCampaigns";
+import { useExternalApiConfigs } from "@/hooks/useExternalApiConfig";
 import { getAuthHeaders } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import type { MarketingCampaign } from "@db/schema";
@@ -52,6 +68,12 @@ interface WhatsAppAgent {
   agentName: string;
   twilioWhatsappNumber: string;
   isProactiveAgent?: boolean;
+  whatsappTemplates?: {
+    openingMessageContentSid?: string;
+    followUpGentleContentSid?: string;
+    followUpValueContentSid?: string;
+    followUpFinalContentSid?: string;
+  };
 }
 
 interface CustomTemplate {
@@ -69,6 +91,10 @@ export default function ConsultantCampaignsPage() {
   const [selectedCampaign, setSelectedCampaign] = useState<MarketingCampaign | null>(null);
   const [analyticsCampaign, setAnalyticsCampaign] = useState<MarketingCampaign | null>(null);
   const [showWarning, setShowWarning] = useState(false);
+  const [isGuidedFlowOpen, setIsGuidedFlowOpen] = useState(true);
+  const [isUtmDialogOpen, setIsUtmDialogOpen] = useState(false);
+  const [utmCampaignCode, setUtmCampaignCode] = useState("");
+  const [utmLinkCopied, setUtmLinkCopied] = useState(false);
 
   const { data: campaignsData, isLoading } = useCampaigns();
   const createMutation = useCreateCampaign();
@@ -105,12 +131,20 @@ export default function ConsultantCampaignsPage() {
     },
   });
 
+  const { data: externalApiConfigs } = useExternalApiConfigs();
+
   const agents: WhatsAppAgent[] = agentsData?.configs || [];
   const templates: CustomTemplate[] = templatesData?.data || [];
 
   const hasActiveAgent = agents.length > 0;
+  const agentsWithoutOpeningTemplate = agents.filter(
+    (agent) => !agent.whatsappTemplates?.openingMessageContentSid
+  );
+  const hasAgentsWithMissingTemplates = agentsWithoutOpeningTemplate.length > 0;
   const hasTemplates = templates.length > 0;
   const hasCampaigns = campaigns.length > 0;
+
+  const activeCrmConfigs = externalApiConfigs?.filter((config) => config.isActive) || [];
 
   const totalLeads = campaigns.reduce((sum, c) => sum + (c.totalLeads || 0), 0);
   const convertedLeads = campaigns.reduce((sum, c) => sum + (c.convertedLeads || 0), 0);
@@ -158,6 +192,22 @@ export default function ConsultantCampaignsPage() {
     }
   };
 
+  const generateUtmLink = () => {
+    if (!utmCampaignCode.trim()) return "";
+    const baseNumber = agents[0]?.twilioWhatsappNumber?.replace(/\D/g, "") || "";
+    const cleanCode = utmCampaignCode.trim().replace(/\s+/g, "_").toLowerCase();
+    return `https://wa.me/${baseNumber}?text=Ciao!%20Arrivo%20dalla%20campagna%20${encodeURIComponent(cleanCode)}`;
+  };
+
+  const handleCopyUtmLink = async () => {
+    const link = generateUtmLink();
+    if (link) {
+      await navigator.clipboard.writeText(link);
+      setUtmLinkCopied(true);
+      setTimeout(() => setUtmLinkCopied(false), 2000);
+    }
+  };
+
   const guidedSteps = [
     {
       number: 1,
@@ -187,6 +237,27 @@ export default function ConsultantCampaignsPage() {
   ];
 
   const isSetupComplete = hasActiveAgent && hasTemplates;
+
+  const externalSources = [
+    { 
+      name: "HubSpot", 
+      icon: "🟠", 
+      status: "coming_soon" as const,
+      description: "CRM e Marketing Automation"
+    },
+    { 
+      name: "Pipedrive", 
+      icon: "🟢", 
+      status: "coming_soon" as const,
+      description: "Sales CRM"
+    },
+    { 
+      name: "Salesforce", 
+      icon: "🔵", 
+      status: "coming_soon" as const,
+      description: "Enterprise CRM"
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -219,118 +290,174 @@ export default function ConsultantCampaignsPage() {
                   <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
                     Campagne Marketing
                   </h1>
-                  <p className="mt-2 text-white/80 text-lg">
-                    Gestisci le tue campagne di lead generation e marketing automation
+                  <p className="mt-2 text-white/80 text-lg max-w-2xl">
+                    Traccia da dove arrivano i tuoi lead e misura quali campagne marketing convertono meglio. Collega le tue fonti di traffico per statistiche automatiche.
                   </p>
                 </div>
-                <Button
-                  onClick={handleCreateClick}
-                  size="lg"
-                  className="bg-white text-purple-700 hover:bg-white/90 font-semibold shadow-lg"
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Nuova Campagna
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    onClick={() => setIsUtmDialogOpen(true)}
+                    variant="outline"
+                    size="lg"
+                    className="bg-white/10 border-white/30 text-white hover:bg-white/20 font-semibold"
+                  >
+                    <Link2 className="h-5 w-5 mr-2" />
+                    Genera Link Tracciato
+                  </Button>
+                  <Button
+                    onClick={handleCreateClick}
+                    size="lg"
+                    className="bg-white text-purple-700 hover:bg-white/90 font-semibold shadow-lg"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Nuova Campagna
+                  </Button>
+                </div>
               </div>
               <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
               <div className="absolute -left-10 -top-10 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
             </div>
 
-            {!isSetupComplete && (
-              <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-r from-primary/5 to-transparent">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Target className="h-5 w-5 text-primary" />
-                    Flusso Guidato - Configura le tue Campagne
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    {guidedSteps.map((step, index) => {
-                      const StepIcon = step.icon;
-                      const isActive = !guidedSteps.slice(0, index).some((s) => !s.isComplete);
-                      
-                      return (
-                        <div
-                          key={step.number}
-                          className={cn(
-                            "relative rounded-xl border p-4 transition-all duration-200",
-                            step.isComplete
-                              ? "border-green-500/50 bg-green-50 dark:bg-green-950/20"
-                              : step.isCurrent && isActive
-                              ? "border-primary shadow-md ring-2 ring-primary/20"
-                              : isActive
-                              ? "border-muted-foreground/30 hover:border-primary/50 hover:shadow-sm"
-                              : "border-muted opacity-60"
-                          )}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div
-                              className={cn(
-                                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold text-sm",
-                                step.isComplete
-                                  ? "bg-green-500 text-white"
-                                  : step.isCurrent && isActive
-                                  ? "bg-primary text-primary-foreground"
-                                  : isActive
-                                  ? "bg-muted-foreground/20 text-muted-foreground"
-                                  : "bg-muted text-muted-foreground"
-                              )}
-                            >
-                              {step.isComplete ? (
-                                <Check className="h-5 w-5" />
-                              ) : (
-                                <StepIcon className="h-5 w-5" />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-muted-foreground">
-                                  Step {step.number}
-                                </span>
-                                {step.isComplete && (
-                                  <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                    Completato
-                                  </span>
+            {hasAgentsWithMissingTemplates && (
+              <Alert className="border-yellow-200 bg-yellow-50 dark:border-yellow-900/30 dark:bg-yellow-950/20">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <AlertTitle className="text-yellow-800 dark:text-yellow-400">
+                  Template di apertura mancante
+                </AlertTitle>
+                <AlertDescription className="text-yellow-700 dark:text-yellow-500">
+                  {agentsWithoutOpeningTemplate.length === 1 ? (
+                    <>L'agente "{agentsWithoutOpeningTemplate[0].agentName}" non ha un template di apertura assegnato. </>
+                  ) : (
+                    <>{agentsWithoutOpeningTemplate.length} agenti non hanno un template di apertura assegnato. </>
+                  )}
+                  <Link href="/consultant/whatsapp-templates">
+                    <Button variant="link" className="h-auto p-0 text-yellow-700 dark:text-yellow-400 underline">
+                      Configura i template
+                    </Button>
+                  </Link>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Collapsible open={isGuidedFlowOpen} onOpenChange={setIsGuidedFlowOpen}>
+              <Card className={cn(
+                "border-2 border-dashed transition-all duration-200",
+                isSetupComplete 
+                  ? "border-green-500/30 bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/20" 
+                  : "border-primary/30 bg-gradient-to-r from-primary/5 to-transparent"
+              )}>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="pb-4 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Target className={cn("h-5 w-5", isSetupComplete ? "text-green-600" : "text-primary")} />
+                        Flusso Guidato - Configura le tue Campagne
+                        {isSetupComplete && (
+                          <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400 ml-2">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Setup Completato
+                          </span>
+                        )}
+                      </CardTitle>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        {isGuidedFlowOpen ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <div className="grid gap-4 md:grid-cols-3">
+                      {guidedSteps.map((step, index) => {
+                        const StepIcon = step.icon;
+                        const isActive = !guidedSteps.slice(0, index).some((s) => !s.isComplete);
+                        
+                        return (
+                          <div
+                            key={step.number}
+                            className={cn(
+                              "relative rounded-xl border p-4 transition-all duration-200",
+                              step.isComplete
+                                ? "border-green-500/50 bg-green-50 dark:bg-green-950/20"
+                                : step.isCurrent && isActive
+                                ? "border-primary shadow-md ring-2 ring-primary/20"
+                                : isActive
+                                ? "border-muted-foreground/30 hover:border-primary/50 hover:shadow-sm"
+                                : "border-muted opacity-60"
+                            )}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={cn(
+                                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold text-sm",
+                                  step.isComplete
+                                    ? "bg-green-500 text-white"
+                                    : step.isCurrent && isActive
+                                    ? "bg-primary text-primary-foreground"
+                                    : isActive
+                                    ? "bg-muted-foreground/20 text-muted-foreground"
+                                    : "bg-muted text-muted-foreground"
+                                )}
+                              >
+                                {step.isComplete ? (
+                                  <Check className="h-5 w-5" />
+                                ) : (
+                                  <StepIcon className="h-5 w-5" />
                                 )}
                               </div>
-                              <h4 className="font-semibold text-foreground mt-0.5">
-                                {step.title}
-                              </h4>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {step.description}
-                              </p>
-                              {!step.isComplete && !step.isCurrent && isActive && (
-                                <Link href={step.href}>
-                                  <Button
-                                    variant="link"
-                                    size="sm"
-                                    className="h-auto p-0 mt-2 text-primary"
-                                  >
-                                    Configura ora
-                                    <ArrowRight className="h-3 w-3 ml-1" />
-                                  </Button>
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-                          {index < guidedSteps.length - 1 && (
-                            <div className="absolute -right-4 top-1/2 hidden md:block">
-                              <ArrowRight
-                                className={cn(
-                                  "h-4 w-4",
-                                  step.isComplete ? "text-green-500" : "text-muted-foreground/30"
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-muted-foreground">
+                                    Step {step.number}
+                                  </span>
+                                  {step.isComplete && (
+                                    <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                      Completato
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="font-semibold text-foreground mt-0.5">
+                                  {step.title}
+                                </h4>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {step.description}
+                                </p>
+                                {!step.isComplete && !step.isCurrent && isActive && (
+                                  <Link href={step.href}>
+                                    <Button
+                                      variant="link"
+                                      size="sm"
+                                      className="h-auto p-0 mt-2 text-primary"
+                                    >
+                                      Configura ora
+                                      <ArrowRight className="h-3 w-3 ml-1" />
+                                    </Button>
+                                  </Link>
                                 )}
-                              />
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
+                            {index < guidedSteps.length - 1 && (
+                              <div className="absolute -right-4 top-1/2 hidden md:block">
+                                <ArrowRight
+                                  className={cn(
+                                    "h-4 w-4",
+                                    step.isComplete ? "text-green-500" : "text-muted-foreground/30"
+                                  )}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </CollapsibleContent>
               </Card>
-            )}
+            </Collapsible>
 
             <div className="grid gap-4 md:grid-cols-4">
               <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background border-blue-200/50 dark:border-blue-800/30">
@@ -410,6 +537,76 @@ export default function ConsultantCampaignsPage() {
               </Card>
             </div>
 
+            <Card className="shadow-md border bg-card">
+              <CardHeader className="border-b bg-muted/30">
+                <CardTitle className="flex items-center gap-2">
+                  <Plug className="h-5 w-5 text-primary" />
+                  Fonti Collegate
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {activeCrmConfigs.length > 0 ? (
+                    activeCrmConfigs.map((config) => (
+                      <div
+                        key={config.id}
+                        className="flex items-center gap-3 p-4 rounded-lg border bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white">
+                          <Database className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{config.configName}</p>
+                          <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Connesso
+                          </p>
+                        </div>
+                        <Link href="/consultant/knowledge/apis">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <Database className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">API CRM Personalizzata</p>
+                        <p className="text-xs text-muted-foreground">Non configurato</p>
+                      </div>
+                      <Link href="/consultant/knowledge/apis">
+                        <Button variant="outline" size="sm">
+                          Configura
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                  
+                  {externalSources.map((source) => (
+                    <div
+                      key={source.name}
+                      className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-xl">
+                        {source.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{source.name}</p>
+                        <p className="text-xs text-muted-foreground">{source.description}</p>
+                      </div>
+                      <Button variant="outline" size="sm" disabled>
+                        Presto
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="shadow-lg border-0 bg-card">
               <CardHeader className="border-b bg-muted/30">
                 <CardTitle className="flex items-center gap-2">
@@ -469,6 +666,71 @@ export default function ConsultantCampaignsPage() {
                 Continua comunque senza agente
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isUtmDialogOpen} onOpenChange={setIsUtmDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5 text-primary" />
+              Genera Link Tracciato
+            </DialogTitle>
+            <DialogDescription>
+              Crea un link WhatsApp con codice campagna per tracciare da dove arrivano i tuoi lead.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label htmlFor="campaign-code">Codice Campagna</Label>
+              <Input
+                id="campaign-code"
+                placeholder="Es: facebook_marzo2025, linkedin_ads"
+                value={utmCampaignCode}
+                onChange={(e) => setUtmCampaignCode(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Usa un codice identificativo per la tua campagna (senza spazi, usa underscore)
+              </p>
+            </div>
+            
+            {utmCampaignCode.trim() && (
+              <div className="space-y-2">
+                <Label>Link Generato</Label>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={generateUtmLink()}
+                    className="font-mono text-sm bg-muted"
+                  />
+                  <Button
+                    onClick={handleCopyUtmLink}
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                  >
+                    {utmLinkCopied ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {!agents[0]?.twilioWhatsappNumber && (
+                  <p className="text-xs text-yellow-600">
+                    ⚠️ Configura un agente WhatsApp per generare link funzionanti
+                  </p>
+                )}
+              </div>
+            )}
+
+            <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800/30">
+              <Target className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-700 dark:text-blue-400 text-sm">
+                Quando un lead clicca questo link, il messaggio iniziale includerà il codice campagna, permettendoti di tracciare l'origine del contatto.
+              </AlertDescription>
+            </Alert>
           </div>
         </DialogContent>
       </Dialog>

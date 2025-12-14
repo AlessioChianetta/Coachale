@@ -150,7 +150,12 @@ interface PreviewVariables {
 }
 
 const getAgentType = (config: WhatsAppConfig): "reactive_lead" | "proactive_setter" => {
-  return config.agentType || (config.isProactiveAgent ? 'proactive_setter' : 'reactive_lead');
+  // Fix: Considera proattivo se agentType è 'proactive_setter' OPPURE isProactiveAgent è true
+  // Questo allinea con la logica backend: (isProactiveAgent = true OR agentType = 'proactive_setter')
+  if (config.agentType === 'proactive_setter' || config.isProactiveAgent === true) {
+    return 'proactive_setter';
+  }
+  return 'reactive_lead';
 };
 
 const isAgentProactive = (config: WhatsAppConfig): boolean => {
@@ -1021,26 +1026,26 @@ export default function ConsultantWhatsAppTemplatesPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="none">-- Nessun template --</SelectItem>
-                                  {agentTemplates.map((template) => (
-                                    <SelectItem key={template.sid} value={template.sid}>
-                                      <div className="flex items-center gap-2">
-                                        <span>{template.friendlyName}</span>
-                                        {template.approvalStatus && (
+                                  {agentTemplates
+                                    .filter((template) => template.approvalStatus?.toLowerCase() === 'approved')
+                                    .map((template) => (
+                                      <SelectItem key={template.sid} value={template.sid}>
+                                        <div className="flex items-center gap-2">
+                                          <span>{template.friendlyName}</span>
                                           <Badge 
                                             variant="outline" 
-                                            className={cn(
-                                              "text-xs",
-                                              template.approvalStatus.toLowerCase() === 'approved' 
-                                                ? "bg-green-50 text-green-700" 
-                                                : "bg-yellow-50 text-yellow-700"
-                                            )}
+                                            className="text-xs bg-green-50 text-green-700"
                                           >
-                                            {getApprovalStatusLabel(template.approvalStatus)}
+                                            Approvato
                                           </Badge>
-                                        )}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  {agentTemplates.filter(t => t.approvalStatus?.toLowerCase() !== 'approved').length > 0 && (
+                                    <div className="px-2 py-1.5 text-xs text-muted-foreground border-t mt-1">
+                                      {agentTemplates.filter(t => t.approvalStatus?.toLowerCase() !== 'approved').length} template non ancora approvati da Meta
+                                    </div>
+                                  )}
                                 </SelectContent>
                               </Select>
                             </div>

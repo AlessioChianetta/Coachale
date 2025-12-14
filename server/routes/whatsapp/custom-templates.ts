@@ -16,6 +16,7 @@ import {
 } from "../../services/whatsapp/templates-service";
 import { resolveVariables } from "../../services/whatsapp/variable-resolver";
 import { db } from "../../db";
+import * as schema from "../../../shared/schema";
 import { 
   whatsappTemplateVersions, 
   whatsappVariableCatalog,
@@ -954,6 +955,224 @@ Ricorda: rispondi SOLO con il JSON valido.`;
       res.status(500).json({
         success: false,
         error: error.message || "Errore durante la generazione del template",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/custom-templates/sync-twilio-status
+ * Sync Twilio approval status for all templates that have been exported
+ */
+router.post(
+  "/whatsapp/custom-templates/sync-twilio-status",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { agentConfigId } = req.body;
+
+      if (!agentConfigId) {
+        return res.status(400).json({
+          success: false,
+          error: "agentConfigId è richiesto",
+        });
+      }
+
+      // Get agent config with Twilio credentials
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentConfigId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione agente non trovata",
+        });
+      }
+
+      if (!agentConfig.twilioAccountSid || !agentConfig.twilioAuthToken) {
+        return res.status(400).json({
+          success: false,
+          error: "Credenziali Twilio non configurate per questo agente",
+        });
+      }
+
+      // Get all template versions with twilioContentSid
+      const versionsWithTwilio = await db
+        .select({
+          id: whatsappTemplateVersions.id,
+          templateId: whatsappTemplateVersions.templateId,
+          twilioContentSid: whatsappTemplateVersions.twilioContentSid,
+          twilioStatus: whatsappTemplateVersions.twilioStatus,
+        })
+        .from(whatsappTemplateVersions)
+        .innerJoin(
+          schema.whatsappCustomTemplates,
+          eq(whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id)
+        )
+        .where(
+          and(
+            eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+            sql`${whatsappTemplateVersions.twilioContentSid} IS NOT NULL`
+          )
+        );
+
+      if (versionsWithTwilio.length === 0) {
+        return res.json({
+          success: true,
+          message: "Nessun template da sincronizzare",
+          updated: 0,
+          results: [],
+        });
+      }
+
+      console.log(`🔄 [SYNC TWILIO] Syncing ${versionsWithTwilio.length} templates for consultant ${consultantId}`);
+
+      const { checkTemplateApprovalStatus } = await import("../../services/whatsapp/template-approval-checker");
+      const results: Array<{ versionId: string; contentSid: string; oldStatus: string | null; newStatus: string; success: boolean }> = [];
+
+      for (const version of versionsWithTwilio) {
+        try {
+          const statusResult = await checkTemplateApprovalStatus(
+            agentConfig.twilioAccountSid!,
+            agentConfig.twilioAuthToken!,
+            version.twilioContentSid!
+          );
+
+          // Map Twilio status to our enum
+          let dbStatus: "draft" | "pending_approval" | "approved" | "rejected" = "draft";
+          if (statusResult.status === "approved") {
+            dbStatus = "approved";
+          } else if (statusResult.status === "pending" || statusResult.status === "received") {
+            dbStatus = "pending_approval";
+          } else if (statusResult.status === "rejected" || statusResult.status === "paused" || statusResult.status === "disabled") {
+            dbStatus = "rejected";
+          }
+
+          // Update version in DB
+          await db
+            .update(whatsappTemplateVersions)
+            .set({ twilioStatus: dbStatus })
+            .where(eq(whatsappTemplateVersions.id, version.id));
+
+          results.push({
+            versionId: version.id,
+            contentSid: version.twilioContentSid!,
+            oldStatus: version.twilioStatus,
+            newStatus: dbStatus,
+            success: true,
+          });
+
+          console.log(`✅ [SYNC TWILIO] Updated ${version.twilioContentSid}: ${version.twilioStatus} -> ${dbStatus}`);
+        } catch (error: any) {
+          console.error(`❌ [SYNC TWILIO] Error syncing ${version.twilioContentSid}:`, error.message);
+          results.push({
+            versionId: version.id,
+            contentSid: version.twilioContentSid!,
+            oldStatus: version.twilioStatus,
+            newStatus: "error",
+            success: false,
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+
+      res.json({
+        success: true,
+        message: `Sincronizzati ${successCount}/${versionsWithTwilio.length} template`,
+        updated: successCount,
+        results,
+      });
+    } catch (error: any) {
+      console.error("❌ [SYNC TWILIO] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante la sincronizzazione",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/custom-templates/verify-agent-credentials
+ * Verify that an agent has valid Twilio credentials configured
+ */
+router.post(
+  "/whatsapp/custom-templates/verify-agent-credentials",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { agentConfigId } = req.body;
+
+      if (!agentConfigId) {
+        return res.status(400).json({
+          success: false,
+          error: "agentConfigId è richiesto",
+        });
+      }
+
+      const [agentConfig] = await db
+        .select({
+          id: consultantWhatsappConfig.id,
+          agentName: consultantWhatsappConfig.agentName,
+          twilioAccountSid: consultantWhatsappConfig.twilioAccountSid,
+          twilioAuthToken: consultantWhatsappConfig.twilioAuthToken,
+          twilioWhatsappNumber: consultantWhatsappConfig.twilioWhatsappNumber,
+        })
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentConfigId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione agente non trovata",
+        });
+      }
+
+      const missingFields: string[] = [];
+      if (!agentConfig.twilioAccountSid) missingFields.push("Twilio Account SID");
+      if (!agentConfig.twilioAuthToken) missingFields.push("Twilio Auth Token");
+      if (!agentConfig.twilioWhatsappNumber) missingFields.push("Numero WhatsApp Twilio");
+
+      if (missingFields.length > 0) {
+        return res.json({
+          success: false,
+          valid: false,
+          agentName: agentConfig.agentName,
+          missingFields,
+          message: `Configura: ${missingFields.join(", ")}`,
+        });
+      }
+
+      res.json({
+        success: true,
+        valid: true,
+        agentName: agentConfig.agentName,
+        message: "Credenziali Twilio configurate correttamente",
+      });
+    } catch (error: any) {
+      console.error("❌ [VERIFY CREDENTIALS] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante la verifica",
       });
     }
   }
