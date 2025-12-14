@@ -159,6 +159,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     items: [
       { name: "WhatsApp", href: "/consultant/guide-whatsapp", icon: MessageSquare, color: "text-green-500" },
       { name: "Email", href: "/consultant/guide-email", icon: Mail, color: "text-sky-500" },
+      { name: "Automazioni", href: "/consultant/guide-automations", icon: Zap, color: "text-purple-500" },
       { name: "Università", href: "/consultant/guide-university", icon: GraduationCap, color: "text-amber-500" },
       { name: "Clienti", href: "/consultant/guide-clients", icon: Users, color: "text-purple-500" },
       { name: "Calendar", href: "/consultant/guide-calendar", icon: CalendarDays, color: "text-blue-500" },

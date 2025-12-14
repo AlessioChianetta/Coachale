@@ -80,6 +80,7 @@ const GuideEmail = lazy(() => import("@/pages/guide-email"));
 const GuideUniversity = lazy(() => import("@/pages/guide-university"));
 const GuideClients = lazy(() => import("@/pages/guide-clients"));
 const GuideCalendar = lazy(() => import("@/pages/guide-calendar"));
+const GuideAutomations = lazy(() => import("@/pages/guide-automations"));
 const ConsultantSetupWizard = lazy(() => import("@/pages/consultant-setup-wizard"));
 const PublicAgentShare = lazy(() => import("@/pages/public-agent-share"));
 const RealtimeTest = lazy(() => import("@/pages/realtime-test"));
@@ -391,6 +392,12 @@ function Router() {
       <Route path="/consultant/guide-calendar">
         <AuthGuard requiredRole="consultant">
           <GuideCalendar />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/guide-automations">
+        <AuthGuard requiredRole="consultant">
+          <GuideAutomations />
         </AuthGuard>
       </Route>
 

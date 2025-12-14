@@ -197,7 +197,7 @@ Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
     const userPrompt = `Crea una regola di follow-up basata su questa descrizione: "${description}"`;
 
     const result = await aiProvider.client.generateContent({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       contents: [
         { role: "user", parts: [{ text: userPrompt }] }
       ],
@@ -236,15 +236,15 @@ Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
       priority: Math.min(10, Math.max(1, generatedRule.priority || 5)),
     };
 
-    res.json(validatedRule);
+    res.json({ success: true, data: validatedRule });
   } catch (error: any) {
     console.error("Error generating rule with AI:", error);
     
     if (error.message?.includes("JSON")) {
-      return res.status(500).json({ message: "L'AI ha generato una risposta non valida. Riprova con una descrizione diversa." });
+      return res.status(500).json({ success: false, message: "L'AI ha generato una risposta non valida. Riprova con una descrizione diversa." });
     }
     
-    res.status(500).json({ message: error.message || "Errore durante la generazione della regola." });
+    res.status(500).json({ success: false, message: error.message || "Errore durante la generazione della regola." });
   }
 });
 
