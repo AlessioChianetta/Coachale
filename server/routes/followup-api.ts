@@ -8,6 +8,7 @@ import { db } from "../db";
 import * as schema from "../../shared/schema";
 import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
+import { getAIProvider } from "../ai/provider-factory";
 
 const router = Router();
 
@@ -149,6 +150,101 @@ router.patch("/rules/:id/toggle", authenticateToken, requireRole("consultant"), 
   } catch (error: any) {
     console.error("Error toggling followup rule:", error);
     res.status(500).json({ message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI RULE GENERATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.post("/rules/generate-with-ai", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const { description } = req.body;
+    
+    if (!description || typeof description !== "string" || description.trim().length < 10) {
+      return res.status(400).json({ message: "Descrizione troppo corta. Fornisci almeno 10 caratteri." });
+    }
+
+    const aiProvider = await getAIProvider(req.user!.id, "admin");
+    
+    if (!aiProvider) {
+      return res.status(500).json({ message: "Impossibile accedere al provider AI. Contatta l'amministratore." });
+    }
+
+    const systemPrompt = `Sei un assistente AI specializzato nella creazione di regole di follow-up per automazioni WhatsApp e CRM.
+
+Il tuo compito è interpretare una descrizione in linguaggio naturale e generare una regola di follow-up strutturata.
+
+REGOLE:
+1. triggerType può essere: "time_based", "event_based", o "ai_decision"
+2. Per trigger time_based, usa hoursWithoutReply nel triggerCondition
+3. maxAttempts deve essere tra 1 e 10
+4. cooldownHours deve essere tra 1 e 168 (1 settimana)
+5. priority deve essere tra 1 e 10 (10 = massima priorità)
+
+Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
+{
+  "name": "Nome breve e descrittivo della regola",
+  "description": "Descrizione dettagliata di cosa fa la regola",
+  "triggerType": "time_based|event_based|ai_decision",
+  "triggerCondition": { "hoursWithoutReply": numero },
+  "fallbackMessage": "Messaggio da inviare se nessun template è disponibile",
+  "maxAttempts": numero,
+  "cooldownHours": numero,
+  "priority": numero
+}`;
+
+    const userPrompt = `Crea una regola di follow-up basata su questa descrizione: "${description}"`;
+
+    const result = await aiProvider.client.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [
+        { role: "user", parts: [{ text: userPrompt }] }
+      ],
+      generationConfig: {
+        systemInstruction: systemPrompt,
+        temperature: 0.3,
+        maxOutputTokens: 1024,
+      }
+    });
+
+    const responseText = result.response.text();
+    
+    let jsonStr = responseText.trim();
+    if (jsonStr.startsWith("```json")) {
+      jsonStr = jsonStr.slice(7);
+    } else if (jsonStr.startsWith("```")) {
+      jsonStr = jsonStr.slice(3);
+    }
+    if (jsonStr.endsWith("```")) {
+      jsonStr = jsonStr.slice(0, -3);
+    }
+    jsonStr = jsonStr.trim();
+
+    const generatedRule = JSON.parse(jsonStr);
+
+    const validatedRule = {
+      name: generatedRule.name || "Nuova Regola AI",
+      description: generatedRule.description || "",
+      triggerType: ["time_based", "event_based", "ai_decision"].includes(generatedRule.triggerType) 
+        ? generatedRule.triggerType 
+        : "time_based",
+      triggerCondition: generatedRule.triggerCondition || { hoursWithoutReply: 24 },
+      fallbackMessage: generatedRule.fallbackMessage || "",
+      maxAttempts: Math.min(10, Math.max(1, generatedRule.maxAttempts || 3)),
+      cooldownHours: Math.min(168, Math.max(1, generatedRule.cooldownHours || 24)),
+      priority: Math.min(10, Math.max(1, generatedRule.priority || 5)),
+    };
+
+    res.json(validatedRule);
+  } catch (error: any) {
+    console.error("Error generating rule with AI:", error);
+    
+    if (error.message?.includes("JSON")) {
+      return res.status(500).json({ message: "L'AI ha generato una risposta non valida. Riprova con una descrizione diversa." });
+    }
+    
+    res.status(500).json({ message: error.message || "Errore durante la generazione della regola." });
   }
 });
 

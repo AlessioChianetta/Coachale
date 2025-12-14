@@ -136,3 +136,76 @@ export function useFollowupAnalytics() {
     },
   });
 }
+
+export function useGenerateRuleWithAI() {
+  return useMutation({
+    mutationFn: async (description: string) => {
+      const res = await fetch("/api/followup/rules/generate-with-ai", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        credentials: "include",
+        body: JSON.stringify({ description }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Errore durante la generazione");
+      }
+      return res.json();
+    },
+  });
+}
+
+export function useGenerateTemplateWithAI() {
+  return useMutation({
+    mutationFn: async (description: string) => {
+      const res = await fetch("/api/whatsapp/custom-templates/generate-with-ai", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        credentials: "include",
+        body: JSON.stringify({ description }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Errore durante la generazione del template");
+      }
+      return res.json();
+    },
+  });
+}
+
+export function useCreateWhatsAppTemplate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      templateName: string;
+      templateType: string;
+      description?: string;
+      bodyText: string;
+      variables?: Array<{ variableKey: string; position: number }>;
+    }) => {
+      const res = await fetch("/api/whatsapp/custom-templates", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Errore durante la creazione del template");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-templates"] });
+    },
+  });
+}

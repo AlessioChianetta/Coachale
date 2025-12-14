@@ -1,9 +1,14 @@
-import { useWhatsAppTemplates } from "@/hooks/useFollowupApi";
+import { useState } from "react";
+import { useWhatsAppTemplates, useGenerateTemplateWithAI, useCreateWhatsAppTemplate } from "@/hooks/useFollowupApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, ExternalLink, Check, AlertCircle, Clock } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { FileText, ExternalLink, Check, AlertCircle, Clock, Sparkles, Loader2, Save, Eye } from "lucide-react";
 import { Link } from "wouter";
 
 interface WhatsAppTemplate {
@@ -15,6 +20,15 @@ interface WhatsAppTemplate {
   activeVersion?: {
     twilioApprovalStatus: "not_synced" | "pending" | "approved" | "rejected" | null;
   } | null;
+}
+
+interface GeneratedTemplate {
+  templateName: string;
+  templateType: "opening" | "followup_gentle" | "followup_value" | "followup_final";
+  description: string;
+  bodyText: string;
+  variables: Array<{ variableKey: string; position: number }>;
+  extractedVariables: string[];
 }
 
 function getTemplateTypeBadge(type: string) {
@@ -29,6 +43,21 @@ function getTemplateTypeBadge(type: string) {
       return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Final</Badge>;
     default:
       return <Badge variant="secondary">{type}</Badge>;
+  }
+}
+
+function getTemplateTypeLabel(type: string) {
+  switch (type) {
+    case "opening":
+      return "Primo Contatto";
+    case "followup_gentle":
+      return "Follow-up Gentile";
+    case "followup_value":
+      return "Follow-up Valore";
+    case "followup_final":
+      return "Follow-up Finale";
+    default:
+      return type;
   }
 }
 
@@ -164,13 +193,227 @@ function EmptyState() {
   );
 }
 
+function AITemplateWizard() {
+  const [open, setOpen] = useState(false);
+  const [description, setDescription] = useState("");
+  const [generatedTemplate, setGeneratedTemplate] = useState<GeneratedTemplate | null>(null);
+  const { toast } = useToast();
+  
+  const generateMutation = useGenerateTemplateWithAI();
+  const createMutation = useCreateWhatsAppTemplate();
+
+  const handleGenerate = async () => {
+    if (!description.trim() || description.length < 10) {
+      toast({
+        title: "Descrizione troppo breve",
+        description: "Inserisci una descrizione di almeno 10 caratteri.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await generateMutation.mutateAsync(description);
+      if (result.success && result.data) {
+        setGeneratedTemplate(result.data);
+        toast({
+          title: "Template generato!",
+          description: "Controlla l'anteprima e salva il template.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore nella generazione",
+        description: error.message || "Si è verificato un errore. Riprova.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSave = async () => {
+    if (!generatedTemplate) return;
+
+    try {
+      await createMutation.mutateAsync({
+        templateName: generatedTemplate.templateName,
+        templateType: generatedTemplate.templateType,
+        description: generatedTemplate.description,
+        bodyText: generatedTemplate.bodyText,
+        variables: generatedTemplate.variables,
+      });
+      
+      toast({
+        title: "Template salvato!",
+        description: "Il template è stato creato con successo.",
+      });
+      
+      setOpen(false);
+      setDescription("");
+      setGeneratedTemplate(null);
+    } catch (error: any) {
+      toast({
+        title: "Errore nel salvataggio",
+        description: error.message || "Si è verificato un errore. Riprova.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+    setDescription("");
+    setGeneratedTemplate(null);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) handleClose();
+      else setOpen(true);
+    }}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4" />
+          Crea Template con AI
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            Genera Template con AI
+          </DialogTitle>
+          <DialogDescription>
+            Descrivi il tipo di template che desideri e l'AI lo genererà per te.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="description">Descrivi il template che vuoi creare</Label>
+            <Textarea
+              id="description"
+              placeholder="Es: Un messaggio di follow-up per ricordare un appuntamento, oppure un messaggio di benvenuto per nuovi lead..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              disabled={generateMutation.isPending}
+            />
+            <p className="text-xs text-muted-foreground">
+              Sii specifico nella descrizione per ottenere risultati migliori.
+            </p>
+          </div>
+
+          {!generatedTemplate && (
+            <Button 
+              onClick={handleGenerate} 
+              disabled={generateMutation.isPending || description.length < 10}
+              className="w-full"
+            >
+              {generateMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generazione in corso...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Genera Template
+                </>
+              )}
+            </Button>
+          )}
+
+          {generatedTemplate && (
+            <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Eye className="h-4 w-4" />
+                Anteprima Template Generato
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Nome:</span>
+                  <span className="font-medium">{generatedTemplate.templateName}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Tipo:</span>
+                  {getTemplateTypeBadge(generatedTemplate.templateType)}
+                </div>
+                
+                {generatedTemplate.description && (
+                  <div>
+                    <span className="text-sm text-muted-foreground">Descrizione:</span>
+                    <p className="text-sm mt-1">{generatedTemplate.description}</p>
+                  </div>
+                )}
+                
+                <div>
+                  <span className="text-sm text-muted-foreground">Messaggio:</span>
+                  <div className="mt-2 p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm whitespace-pre-wrap">{generatedTemplate.bodyText}</p>
+                  </div>
+                </div>
+
+                {generatedTemplate.extractedVariables.length > 0 && (
+                  <div>
+                    <span className="text-sm text-muted-foreground">Variabili utilizzate:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {generatedTemplate.extractedVariables.map((v) => (
+                        <Badge key={v} variant="secondary" className="text-xs">
+                          {`{${v}}`}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2">
+          {generatedTemplate && (
+            <>
+              <Button 
+                variant="outline" 
+                onClick={() => setGeneratedTemplate(null)}
+                disabled={createMutation.isPending}
+              >
+                Rigenera
+              </Button>
+              <Button 
+                onClick={handleSave}
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Salvataggio...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Salva Template
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function TemplatesGrid() {
   const { data, isLoading } = useWhatsAppTemplates();
 
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Skeleton className="h-10 w-48" />
           <Skeleton className="h-10 w-40" />
         </div>
         <LoadingSkeleton />
@@ -182,7 +425,8 @@ export function TemplatesGrid() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <AITemplateWizard />
         <Link href="/consultant/whatsapp/custom-templates">
           <Button className="flex items-center gap-2">
             <ExternalLink className="h-4 w-4" />

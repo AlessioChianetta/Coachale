@@ -771,4 +771,192 @@ router.post(
   }
 );
 
+/**
+ * POST /api/whatsapp/custom-templates/generate-with-ai
+ * Generate a template using AI based on a natural language description
+ */
+router.post(
+  "/whatsapp/custom-templates/generate-with-ai",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      // Validate request body
+      const generateSchema = z.object({
+        description: z.string().min(10, "La descrizione deve essere almeno di 10 caratteri"),
+      });
+
+      const validationResult = generateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Validazione fallita",
+          details: validationResult.error.errors,
+        });
+      }
+
+      const { description } = validationResult.data;
+
+      // Get AI provider
+      const { getAIProvider } = await import("../../ai/provider-factory");
+      const provider = await getAIProvider(consultantId);
+      
+      if (!provider) {
+        return res.status(500).json({
+          success: false,
+          error: "Impossibile ottenere il provider AI. Verifica la configurazione.",
+        });
+      }
+
+      // Fetch available variables from catalog
+      const catalogVariables = await db
+        .select({
+          variableKey: whatsappVariableCatalog.variableKey,
+          variableName: whatsappVariableCatalog.variableName,
+          description: whatsappVariableCatalog.description,
+        })
+        .from(whatsappVariableCatalog);
+
+      const variablesListText = catalogVariables
+        .map(v => `- {${v.variableKey}}: ${v.variableName} - ${v.description}`)
+        .join("\n");
+
+      // Build AI prompt
+      const systemPrompt = `Sei un esperto di copywriting per messaggi WhatsApp aziendali in italiano.
+Il tuo compito è generare template di messaggi WhatsApp efficaci e professionali.
+
+REGOLE IMPORTANTI:
+1. I messaggi devono essere in ITALIANO
+2. Devono essere brevi, diretti e professionali (max 500 caratteri)
+3. Usa un tono cordiale ma professionale
+4. Puoi usare SOLO queste variabili disponibili (racchiuse tra parentesi graffe):
+${variablesListText}
+
+5. Il tipo di template deve essere uno di questi:
+   - "opening": Primo contatto con un nuovo lead
+   - "followup_gentle": Follow-up gentile dopo primo contatto
+   - "followup_value": Follow-up con proposta di valore
+   - "followup_final": Follow-up finale/ultimo tentativo
+
+6. Il nome del template deve essere breve e descrittivo (senza spazi, usa underscore)
+
+FORMATO OUTPUT (JSON valido):
+{
+  "templateName": "nome_template_esempio",
+  "templateType": "opening|followup_gentle|followup_value|followup_final",
+  "description": "Breve descrizione del template",
+  "bodyText": "Testo del messaggio con {nome_lead} e altre variabili"
+}
+
+Rispondi SOLO con il JSON, senza altro testo.`;
+
+      const userPrompt = `Genera un template WhatsApp basato su questa richiesta dell'utente:
+
+"${description}"
+
+Ricorda: rispondi SOLO con il JSON valido.`;
+
+      console.log(`🤖 [AI TEMPLATE] Generating template for consultant ${consultantId}`);
+
+      const result = await provider.client.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [
+          { role: "user", parts: [{ text: userPrompt }] }
+        ],
+        generationConfig: {
+          systemInstruction: systemPrompt,
+          temperature: 0.7,
+          maxOutputTokens: 1024,
+        },
+      });
+
+      const responseText = result.response.text();
+      console.log(`🤖 [AI TEMPLATE] Raw response:`, responseText);
+
+      // Parse JSON response
+      let generatedTemplate;
+      try {
+        // Clean up response - remove markdown code blocks if present
+        let cleanJson = responseText.trim();
+        if (cleanJson.startsWith("```json")) {
+          cleanJson = cleanJson.slice(7);
+        }
+        if (cleanJson.startsWith("```")) {
+          cleanJson = cleanJson.slice(3);
+        }
+        if (cleanJson.endsWith("```")) {
+          cleanJson = cleanJson.slice(0, -3);
+        }
+        cleanJson = cleanJson.trim();
+
+        generatedTemplate = JSON.parse(cleanJson);
+      } catch (parseError) {
+        console.error("❌ [AI TEMPLATE] Failed to parse AI response:", parseError);
+        return res.status(500).json({
+          success: false,
+          error: "L'AI ha restituito una risposta non valida. Riprova.",
+        });
+      }
+
+      // Validate the generated template structure
+      const templateValidation = z.object({
+        templateName: z.string().min(1),
+        templateType: z.enum(["opening", "followup_gentle", "followup_value", "followup_final"]),
+        description: z.string().optional(),
+        bodyText: z.string().min(1),
+      });
+
+      const parsedTemplate = templateValidation.safeParse(generatedTemplate);
+      if (!parsedTemplate.success) {
+        console.error("❌ [AI TEMPLATE] Invalid template structure:", parsedTemplate.error);
+        return res.status(500).json({
+          success: false,
+          error: "Il template generato non è valido. Riprova con una descrizione diversa.",
+        });
+      }
+
+      // Extract variables from bodyText and build variable mappings
+      const { extractVariablesFromText } = await import("../../validators/whatsapp/custom-template-schema");
+      const extractedVars = extractVariablesFromText(parsedTemplate.data.bodyText);
+      
+      // Filter to only include valid catalog variables
+      const validVariableKeys = catalogVariables.map(v => v.variableKey);
+      const validExtractedVars = extractedVars.filter(v => validVariableKeys.includes(v));
+
+      // Build variable mappings with positions
+      const variables = validExtractedVars.map((varKey, index) => ({
+        variableKey: varKey,
+        position: index + 1,
+      }));
+
+      console.log(`✅ [AI TEMPLATE] Generated template: ${parsedTemplate.data.templateName}`);
+
+      res.json({
+        success: true,
+        data: {
+          templateName: parsedTemplate.data.templateName,
+          templateType: parsedTemplate.data.templateType,
+          description: parsedTemplate.data.description || "",
+          bodyText: parsedTemplate.data.bodyText,
+          variables,
+          extractedVariables: validExtractedVars,
+        },
+      });
+
+      // Cleanup AI provider if needed
+      if (provider.cleanup) {
+        await provider.cleanup();
+      }
+    } catch (error: any) {
+      console.error("❌ [AI TEMPLATE] Error generating template:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante la generazione del template",
+      });
+    }
+  }
+);
+
 export default router;

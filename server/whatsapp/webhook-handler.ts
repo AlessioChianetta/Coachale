@@ -8,6 +8,7 @@ import {
   whatsappPendingMessages,
   users,
   whatsappGlobalApiKeys,
+  conversationStates,
 } from "../../shared/schema";
 import { eq, and, isNull, asc, sql } from "drizzle-orm";
 import { scheduleMessageProcessing } from "./message-processor";
@@ -683,6 +684,30 @@ export async function findOrCreateConversation(
       console.log(
         `✅ [CONVERSATION CREATED] id=${conversation.id} for ${normalizedPhone} (Type: ${participant.type}, ${isLead ? "Lead" : "Known User"}${isProactiveLead ? " - PROACTIVE" : ""}) assigned to agent: ${agentConfigId || 'default'}`
       );
+
+      // Create initial conversation state for follow-up automation (with upsert to handle duplicates)
+      try {
+        await tx
+          .insert(conversationStates)
+          .values({
+            conversationId: conversation.id,
+            currentState: 'new',
+            previousState: null,
+            followupCount: 0,
+            maxFollowupsAllowed: 5,
+            engagementScore: 50,
+            conversionProbability: null,
+            hasAskedPrice: false,
+            hasMentionedUrgency: false,
+            hasSaidNoExplicitly: false,
+            discoveryCompleted: false,
+            demoPresented: false,
+          })
+          .onConflictDoNothing({ target: conversationStates.conversationId });
+        console.log(`📊 [CONVERSATION STATE] Created initial state for conversation ${conversation.id}`);
+      } catch (stateError) {
+        console.warn(`⚠️ [CONVERSATION STATE] Failed to create state for ${conversation.id}:`, stateError);
+      }
     } else {
       // Conflict occurred, fetch the existing conversation
       console.log(`⚠️ [RACE CONDITION] Duplicate detected, fetching existing conversation...`);
