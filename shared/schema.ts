@@ -2812,15 +2812,16 @@ export const whatsappCustomTemplates = pgTable("whatsapp_custom_templates", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   templateName: text("template_name").notNull(),
-  templateType: text("template_type").$type<"opening" | "followup_gentle" | "followup_value" | "followup_final">().notNull(),
+  templateType: text("template_type").$type<"opening" | "followup_gentle" | "followup_value" | "followup_final">(), // DEPRECATED: kept for backward compatibility, use useCase instead
+  useCase: text("use_case"), // Freeform text describing template purpose: "primo contatto", "follow-up dopo demo", "richiesta referral", etc.
   description: text("description"), // Optional description of template purpose
+  body: text("body"), // Template body text (moved from versions for simpler access)
+  isActive: boolean("is_active").default(true).notNull(), // Quick filter for active templates
   archivedAt: timestamp("archived_at"), // NULL = active, set = archived
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
-}, (table) => ({
-  // Only one template definition per type per consultant (versions are in separate table)
-  uniqueTemplatePerType: unique().on(table.consultantId, table.templateType),
-}));
+});
+// NOTE: Removed UNIQUE constraint on (consultantId, templateType) to allow unlimited templates per consultant
 
 // Template versions - each edit creates a new version
 export const whatsappTemplateVersions = pgTable("whatsapp_template_versions", {
@@ -2856,6 +2857,7 @@ export const whatsappTemplateVariables = pgTable("whatsapp_template_variables", 
 }));
 
 // Template assignments - links custom templates to WhatsApp agent configurations
+// Allows N templates per agent - AI will choose the most appropriate one based on context
 export const whatsappTemplateAssignments = pgTable("whatsapp_template_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   agentConfigId: varchar("agent_config_id")
@@ -2865,13 +2867,12 @@ export const whatsappTemplateAssignments = pgTable("whatsapp_template_assignment
     .references(() => whatsappCustomTemplates.id, { onDelete: "cascade" })
     .notNull(),
   templateType: text("template_type")
-    .$type<"opening" | "followup_gentle" | "followup_value" | "followup_final">()
-    .notNull(),
+    .$type<"opening" | "followup_gentle" | "followup_value" | "followup_final">(), // DEPRECATED: kept for backward compatibility
+  priority: integer("priority").default(0), // Higher priority = preferred by AI when multiple templates match
   assignedAt: timestamp("assigned_at").default(sql`now()`).notNull(),
-}, (table) => ({
-  // Constraint: un solo template custom per tipo per agente
-  uniqueAssignment: unique().on(table.agentConfigId, table.templateType),
-}));
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+// NOTE: Removed UNIQUE constraint on (agentConfigId, templateType) to allow N templates per agent
 
 // Sample data for template preview
 export const whatsappTemplateSamples = pgTable("whatsapp_template_samples", {

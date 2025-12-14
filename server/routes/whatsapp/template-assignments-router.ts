@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express";
+import { Router, type Response } from "express";
 import { db } from "../../db";
 import { eq, and, isNull } from "drizzle-orm";
 import {
@@ -14,6 +14,7 @@ const router = Router();
 /**
  * GET /api/whatsapp/template-assignments/:agentConfigId
  * Fetch all template assignments for a specific agent config
+ * Returns an array of all assigned templates (supports N templates per agent)
  */
 router.get(
   "/:agentConfigId",
@@ -24,7 +25,6 @@ router.get(
       const { agentConfigId } = req.params;
       const consultantId = req.user!.id;
 
-      // Verify the agent config belongs to this consultant
       const agentConfig = await db
         .select()
         .from(consultantWhatsappConfig)
@@ -40,14 +40,17 @@ router.get(
         return res.status(404).json({ message: "Agent configuration not found" });
       }
 
-      // Fetch all assignments for this agent with template and active version info
       const assignments = await db
         .select({
           id: whatsappTemplateAssignments.id,
-          templateType: whatsappTemplateAssignments.templateType,
           templateId: whatsappTemplateAssignments.templateId,
+          templateType: whatsappTemplateAssignments.templateType,
+          priority: whatsappTemplateAssignments.priority,
+          assignedAt: whatsappTemplateAssignments.assignedAt,
           templateName: whatsappCustomTemplates.templateName,
           templateDescription: whatsappCustomTemplates.description,
+          useCase: whatsappCustomTemplates.useCase,
+          body: whatsappCustomTemplates.body,
           activeVersionId: whatsappTemplateVersions.id,
           activeVersionNumber: whatsappTemplateVersions.versionNumber,
           activeVersionBody: whatsappTemplateVersions.bodyText,
@@ -58,7 +61,7 @@ router.get(
           whatsappCustomTemplates,
           and(
             eq(whatsappTemplateAssignments.templateId, whatsappCustomTemplates.id),
-            isNull(whatsappCustomTemplates.archivedAt) // Only non-archived templates
+            isNull(whatsappCustomTemplates.archivedAt)
           )
         )
         .leftJoin(
@@ -70,28 +73,28 @@ router.get(
         )
         .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId));
 
-      // Format response as a map by template type
-      const assignmentsMap: Record<string, any> = {};
-      assignments.forEach((assignment) => {
-        assignmentsMap[assignment.templateType] = {
-          assignmentId: assignment.id,
-          templateId: assignment.templateId,
-          templateName: assignment.templateName,
-          templateDescription: assignment.templateDescription,
-          activeVersion: assignment.activeVersionId
-            ? {
-                id: assignment.activeVersionId,
-                versionNumber: assignment.activeVersionNumber,
-                bodyText: assignment.activeVersionBody,
-                twilioStatus: assignment.twilioStatus,
-              }
-            : null,
-        };
-      });
+      const formattedAssignments = assignments.map((a) => ({
+        assignmentId: a.id,
+        templateId: a.templateId,
+        templateName: a.templateName,
+        templateDescription: a.templateDescription,
+        useCase: a.useCase || a.templateType || "generale",
+        priority: a.priority || 0,
+        assignedAt: a.assignedAt,
+        body: a.body || a.activeVersionBody,
+        activeVersion: a.activeVersionId
+          ? {
+              id: a.activeVersionId,
+              versionNumber: a.activeVersionNumber,
+              bodyText: a.activeVersionBody,
+              twilioStatus: a.twilioStatus,
+            }
+          : null,
+      }));
 
       res.json({
         agentConfigId,
-        assignments: assignmentsMap,
+        assignments: formattedAssignments,
       });
     } catch (error: any) {
       console.error("[TEMPLATE ASSIGNMENTS] Error fetching assignments:", error);
@@ -102,11 +105,12 @@ router.get(
 
 /**
  * POST /api/whatsapp/template-assignments
- * Save or update template assignments for an agent
+ * Add a template assignment to an agent (allows multiple templates per agent)
  * 
  * Payload: {
  *   agentConfigId: string,
- *   assignments: Array<{ templateType: string, templateId: string | null }>
+ *   templateId: string,
+ *   priority?: number
  * }
  */
 router.post(
@@ -115,18 +119,17 @@ router.post(
   requireRole("consultant"),
   async (req: AuthRequest, res: Response) => {
     try {
-      const { agentConfigId, assignments } = req.body;
+      const { agentConfigId, templateId, priority = 0 } = req.body;
       const consultantId = req.user!.id;
 
       if (!agentConfigId) {
         return res.status(400).json({ message: "agentConfigId is required" });
       }
 
-      if (!Array.isArray(assignments)) {
-        return res.status(400).json({ message: "assignments must be an array" });
+      if (!templateId) {
+        return res.status(400).json({ message: "templateId is required" });
       }
 
-      // Verify the agent config belongs to this consultant
       const agentConfig = await db
         .select()
         .from(consultantWhatsappConfig)
@@ -142,38 +145,122 @@ router.post(
         return res.status(404).json({ message: "Agent configuration not found" });
       }
 
-      // Process each assignment
+      const template = await db
+        .select()
+        .from(whatsappCustomTemplates)
+        .where(
+          and(
+            eq(whatsappCustomTemplates.id, templateId),
+            eq(whatsappCustomTemplates.consultantId, consultantId),
+            isNull(whatsappCustomTemplates.archivedAt)
+          )
+        )
+        .limit(1);
+
+      if (!template || template.length === 0) {
+        return res.status(404).json({
+          message: `Template not found or does not belong to you: ${templateId}`,
+        });
+      }
+
+      const existingAssignment = await db
+        .select()
+        .from(whatsappTemplateAssignments)
+        .where(
+          and(
+            eq(whatsappTemplateAssignments.agentConfigId, agentConfigId),
+            eq(whatsappTemplateAssignments.templateId, templateId)
+          )
+        )
+        .limit(1);
+
+      if (existingAssignment && existingAssignment.length > 0) {
+        await db
+          .update(whatsappTemplateAssignments)
+          .set({
+            priority,
+            updatedAt: new Date(),
+          })
+          .where(eq(whatsappTemplateAssignments.id, existingAssignment[0].id));
+
+        return res.json({
+          message: "Template assignment updated",
+          assignmentId: existingAssignment[0].id,
+          action: "updated",
+        });
+      }
+
+      const newAssignment = await db
+        .insert(whatsappTemplateAssignments)
+        .values({
+          agentConfigId,
+          templateId,
+          priority,
+          templateType: template[0].templateType,
+        })
+        .returning();
+
+      res.json({
+        message: "Template assigned successfully",
+        assignmentId: newAssignment[0].id,
+        action: "created",
+      });
+    } catch (error: any) {
+      console.error("[TEMPLATE ASSIGNMENTS] Error creating assignment:", error);
+      res.status(500).json({ message: "Failed to create template assignment" });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/template-assignments/bulk
+ * Bulk save template assignments for an agent (replaces all existing assignments)
+ * 
+ * Payload: {
+ *   agentConfigId: string,
+ *   templateIds: string[]
+ * }
+ */
+router.post(
+  "/bulk",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { agentConfigId, templateIds } = req.body;
+      const consultantId = req.user!.id;
+
+      if (!agentConfigId) {
+        return res.status(400).json({ message: "agentConfigId is required" });
+      }
+
+      if (!Array.isArray(templateIds)) {
+        return res.status(400).json({ message: "templateIds must be an array" });
+      }
+
+      const agentConfig = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentConfigId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig || agentConfig.length === 0) {
+        return res.status(404).json({ message: "Agent configuration not found" });
+      }
+
+      await db
+        .delete(whatsappTemplateAssignments)
+        .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId));
+
       const results = [];
-      for (const assignment of assignments) {
-        const { templateType, templateId } = assignment;
+      for (let i = 0; i < templateIds.length; i++) {
+        const templateId = templateIds[i];
 
-        if (!templateType) {
-          continue; // Skip invalid entries
-        }
-
-        // Validate template type
-        const validTypes = ["opening", "followup_gentle", "followup_value", "followup_final"];
-        if (!validTypes.includes(templateType)) {
-          return res.status(400).json({
-            message: `Invalid templateType: ${templateType}. Must be one of: ${validTypes.join(", ")}`,
-          });
-        }
-
-        // If templateId is null/empty, delete the assignment
-        if (!templateId) {
-          await db
-            .delete(whatsappTemplateAssignments)
-            .where(
-              and(
-                eq(whatsappTemplateAssignments.agentConfigId, agentConfigId),
-                eq(whatsappTemplateAssignments.templateType, templateType as any)
-              )
-            );
-          results.push({ templateType, action: "deleted" });
-          continue;
-        }
-
-        // Verify the template exists and belongs to this consultant
         const template = await db
           .select()
           .from(whatsappCustomTemplates)
@@ -186,56 +273,143 @@ router.post(
           )
           .limit(1);
 
-        if (!template || template.length === 0) {
-          return res.status(404).json({
-            message: `Template not found or does not belong to you: ${templateId}`,
-          });
-        }
-
-        // Check if assignment already exists
-        const existingAssignment = await db
-          .select()
-          .from(whatsappTemplateAssignments)
-          .where(
-            and(
-              eq(whatsappTemplateAssignments.agentConfigId, agentConfigId),
-              eq(whatsappTemplateAssignments.templateType, templateType as any)
-            )
-          )
-          .limit(1);
-
-        if (existingAssignment && existingAssignment.length > 0) {
-          // Update existing assignment
-          await db
-            .update(whatsappTemplateAssignments)
-            .set({
-              templateId,
-              updatedAt: new Date(),
-            })
-            .where(eq(whatsappTemplateAssignments.id, existingAssignment[0].id));
-          results.push({ templateType, action: "updated", assignmentId: existingAssignment[0].id });
-        } else {
-          // Create new assignment
+        if (template && template.length > 0) {
           const newAssignment = await db
             .insert(whatsappTemplateAssignments)
             .values({
               agentConfigId,
               templateId,
-              templateType: templateType as any,
+              priority: templateIds.length - i,
+              templateType: template[0].templateType,
             })
             .returning();
-          results.push({ templateType, action: "created", assignmentId: newAssignment[0].id });
+
+          results.push({
+            templateId,
+            assignmentId: newAssignment[0].id,
+            action: "assigned",
+          });
         }
       }
 
       res.json({
         message: "Template assignments saved successfully",
         agentConfigId,
+        assignedCount: results.length,
         results,
       });
     } catch (error: any) {
-      console.error("[TEMPLATE ASSIGNMENTS] Error saving assignments:", error);
+      console.error("[TEMPLATE ASSIGNMENTS] Error bulk saving assignments:", error);
       res.status(500).json({ message: "Failed to save template assignments" });
+    }
+  }
+);
+
+/**
+ * DELETE /api/whatsapp/template-assignments/:assignmentId
+ * Remove a specific template assignment
+ */
+router.delete(
+  "/:assignmentId",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { assignmentId } = req.params;
+      const consultantId = req.user!.id;
+
+      const assignment = await db
+        .select({
+          id: whatsappTemplateAssignments.id,
+          agentConfigId: whatsappTemplateAssignments.agentConfigId,
+        })
+        .from(whatsappTemplateAssignments)
+        .innerJoin(
+          consultantWhatsappConfig,
+          eq(whatsappTemplateAssignments.agentConfigId, consultantWhatsappConfig.id)
+        )
+        .where(
+          and(
+            eq(whatsappTemplateAssignments.id, assignmentId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!assignment || assignment.length === 0) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      await db
+        .delete(whatsappTemplateAssignments)
+        .where(eq(whatsappTemplateAssignments.id, assignmentId));
+
+      res.json({
+        message: "Template assignment removed successfully",
+        assignmentId,
+      });
+    } catch (error: any) {
+      console.error("[TEMPLATE ASSIGNMENTS] Error deleting assignment:", error);
+      res.status(500).json({ message: "Failed to delete template assignment" });
+    }
+  }
+);
+
+/**
+ * PATCH /api/whatsapp/template-assignments/:assignmentId/priority
+ * Update priority of a template assignment
+ */
+router.patch(
+  "/:assignmentId/priority",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res: Response) => {
+    try {
+      const { assignmentId } = req.params;
+      const { priority } = req.body;
+      const consultantId = req.user!.id;
+
+      if (typeof priority !== "number") {
+        return res.status(400).json({ message: "priority must be a number" });
+      }
+
+      const assignment = await db
+        .select({
+          id: whatsappTemplateAssignments.id,
+        })
+        .from(whatsappTemplateAssignments)
+        .innerJoin(
+          consultantWhatsappConfig,
+          eq(whatsappTemplateAssignments.agentConfigId, consultantWhatsappConfig.id)
+        )
+        .where(
+          and(
+            eq(whatsappTemplateAssignments.id, assignmentId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!assignment || assignment.length === 0) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+
+      await db
+        .update(whatsappTemplateAssignments)
+        .set({
+          priority,
+          updatedAt: new Date(),
+        })
+        .where(eq(whatsappTemplateAssignments.id, assignmentId));
+
+      res.json({
+        message: "Priority updated successfully",
+        assignmentId,
+        priority,
+      });
+    } catch (error: any) {
+      console.error("[TEMPLATE ASSIGNMENTS] Error updating priority:", error);
+      res.status(500).json({ message: "Failed to update priority" });
     }
   }
 );

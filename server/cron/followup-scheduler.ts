@@ -15,6 +15,8 @@ import {
   whatsappConversations,
   whatsappMessages,
   whatsappCustomTemplates,
+  whatsappTemplateAssignments,
+  whatsappTemplateVersions,
   consultantWhatsappConfig,
   users
 } from '../../shared/schema';
@@ -526,15 +528,63 @@ async function getLastMessages(
 async function getAvailableTemplates(
   consultantId: string,
   agentConfigId: string | null
-): Promise<Array<{ id: string; name: string; useCase: string; bodyText: string }>> {
+): Promise<Array<{ id: string; name: string; useCase: string; bodyText: string; twilioStatus: string }>> {
+  
+  if (agentConfigId) {
+    const assignedTemplates = await db
+      .select({
+        id: whatsappCustomTemplates.id,
+        name: whatsappCustomTemplates.templateName,
+        useCase: whatsappCustomTemplates.useCase,
+        bodyText: whatsappCustomTemplates.body,
+        priority: whatsappTemplateAssignments.priority,
+        twilioStatus: whatsappTemplateVersions.twilioStatus,
+      })
+      .from(whatsappTemplateAssignments)
+      .innerJoin(
+        whatsappCustomTemplates,
+        eq(whatsappTemplateAssignments.templateId, whatsappCustomTemplates.id)
+      )
+      .leftJoin(
+        whatsappTemplateVersions,
+        and(
+          eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id),
+          eq(whatsappTemplateVersions.isActive, true)
+        )
+      )
+      .where(
+        and(
+          eq(whatsappTemplateAssignments.agentConfigId, agentConfigId),
+          eq(whatsappCustomTemplates.isActive, true)
+        )
+      )
+      .orderBy(desc(whatsappTemplateAssignments.priority));
+
+    return assignedTemplates.map(t => ({
+      id: t.id,
+      name: t.name,
+      useCase: t.useCase || 'generale',
+      bodyText: t.bodyText || '',
+      twilioStatus: t.twilioStatus || 'not_synced',
+    }));
+  }
+
   const templates = await db
     .select({
       id: whatsappCustomTemplates.id,
       name: whatsappCustomTemplates.templateName,
       useCase: whatsappCustomTemplates.useCase,
       bodyText: whatsappCustomTemplates.body,
+      twilioStatus: whatsappTemplateVersions.twilioStatus,
     })
     .from(whatsappCustomTemplates)
+    .leftJoin(
+      whatsappTemplateVersions,
+      and(
+        eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id),
+        eq(whatsappTemplateVersions.isActive, true)
+      )
+    )
     .where(
       and(
         eq(whatsappCustomTemplates.consultantId, consultantId),
@@ -545,8 +595,9 @@ async function getAvailableTemplates(
   return templates.map(t => ({
     id: t.id,
     name: t.name,
-    useCase: t.useCase || 'general',
-    bodyText: t.bodyText,
+    useCase: t.useCase || 'generale',
+    bodyText: t.bodyText || '',
+    twilioStatus: t.twilioStatus || 'not_synced',
   }));
 }
 
