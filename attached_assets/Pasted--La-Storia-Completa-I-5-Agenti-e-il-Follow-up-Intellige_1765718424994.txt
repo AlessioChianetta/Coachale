@@ -1,0 +1,175 @@
+📖 La Storia Completa: I 5 Agenti e il Follow-up Intelligente
+🤖 AGENTE 1: Reactive Lead (Il Receptionist)
+Come funziona OGGI:
+Scenario: Sofia trova il tuo sito e scrive su WhatsApp alle 15:00:
+
+"Ciao, vorrei informazioni sui vostri servizi"
+
+L'agente risponde automaticamente. Sofia legge ma non risponde più.
+
+Problema OGGI: Il sistema vecchio manda follow-up fissi (24h, 72h...) anche se l'agente è un "Receptionist" che dovrebbe essere PASSIVO. Risultato: Sofia si sente pressata.
+
+Come DOVREBBE funzionare:
+L'AI sa che è un agente reactive_lead → proattività BASSA. Decide:
+
+1 solo follow-up gentile dopo 48h
+Se non risponde → stop, niente pressione
+🔥 AGENTE 2: Proactive Setter (Il Venditore)
+Come funziona OGGI:
+Scenario: Luca si iscrive da Facebook Ads. L'agente scrive per primo:
+
+"Ciao Luca! Ho visto il tuo interesse..."
+
+Luca risponde chiedendo il prezzo, poi sparisce.
+
+Problema OGGI: Stessi follow-up del Receptionist. Ma Luca ha chiesto il PREZZO! È caldissimo!
+
+Come DOVREBBE funzionare:
+L'AI sa che:
+
+Agente = proactive_setter → può insistere
+Luca ha chiesto prezzo → segnale forte
+Canale = paid → lead qualificato
+Decisione: Follow-up più aggressivi e mirati al prezzo, fino a 5 tentativi.
+
+📚 AGENTE 3: Informative Advisor (Il Maestro)
+Come funziona OGGI:
+Scenario: Maria si iscrive per ricevere consigli gratuiti. L'agente le manda contenuti educativi.
+
+Problema OGGI: Dopo 24h senza risposta parte il solito follow-up "Hai ricevuto il messaggio?". Ma Maria non deve comprare nulla! È in modalità APPRENDIMENTO.
+
+Come DOVREBBE funzionare:
+L'AI sa che è un informative_advisor:
+
+NON manda follow-up "commerciali"
+Manda template tipo: weekly_insight, educational_tip
+Niente pressione di vendita
+Timing più lungo (ogni 7 giorni, non 24h)
+🎯 AGENTE 4: Customer Success (Post-Vendita)
+Come funziona OGGI:
+Scenario: Giovanni ha appena comprato il tuo corso. L'agente dovrebbe fare check-in.
+
+Problema OGGI: Giovanni riceve gli stessi follow-up di chi NON ha ancora comprato! "Hai bisogno di più info?" quando è già cliente.
+
+Come DOVREBBE funzionare:
+L'AI sa che lo stato è closed_won → passa a nurturing:
+
+Template specifici: onboarding_help, satisfaction_check
+Dopo 30 giorni: upsell_offer (solo se engagement alto)
+Tono diverso: supporto, non vendita
+📋 AGENTE 5: Intake Coordinator (Il Burocrate)
+Come funziona OGGI:
+Scenario: Anna deve mandare documenti per completare la pratica. L'agente le ha chiesto l'IBAN.
+
+Problema OGGI: Dopo 24h parte "Hai ricevuto il messaggio?" generico invece di "Ci manca ancora il tuo IBAN".
+
+Come DOVREBBE funzionare:
+L'AI sa che è un intake_coordinator:
+
+Template specifici: document_reminder, missing_info, deadline_alert
+Follow-up PERSISTENTI ma SPECIFICI
+Es: "Anna, per procedere ci serve ancora: ✅ Carta identità (ricevuta) ❌ IBAN (mancante)"
+🔧 COME SI RISOLVE (Piano Tecnico)
+STEP 1: Creare conversation_states automaticamente
+┌─────────────────────┐
+│ Nuovo messaggio     │
+│ WhatsApp ricevuto   │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐     ┌─────────────────────┐
+│ Esiste già          │ NO  │ CREA record         │
+│ conversation_state? ├────►│ conversation_states │
+└──────────┬──────────┘     │ con:                │
+           │ SÌ             │ - stato: new_contact│
+           ▼                │ - agentType         │
+    [Continua flusso]       │ - canale acquisiz.  │
+                            └─────────────────────┘
+
+STEP 2: Collegare template agli agenti
+┌─────────────────────────────────────────────────────┐
+│            TEMPLATE ASSIGNMENTS                      │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│  AGENTE: Proactive Setter                           │
+│  ├── opening → "Apertura aggressiva"                │
+│  ├── followup_price → "Hai chiesto il prezzo..."   │
+│  ├── followup_gentle → "Reminder gentile"          │
+│  └── last_chance → "Ultimo tentativo"              │
+│                                                      │
+│  AGENTE: Informative Advisor                        │
+│  ├── educational_tip → "Consiglio della settimana" │
+│  ├── resource_share → "Risorsa gratuita"           │
+│  └── weekly_insight → "Riflessione settimanale"    │
+│                                                      │
+│  AGENTE: Customer Success                           │
+│  ├── onboarding_help → "Come va il corso?"         │
+│  ├── satisfaction_check → "Feedback?"              │
+│  └── upsell_offer → "Novità per te"                │
+│                                                      │
+│  AGENTE: Intake Coordinator                         │
+│  ├── document_reminder → "Documenti mancanti"      │
+│  ├── deadline_alert → "Scadenza vicina!"           │
+│  └── missing_info → "Ci serve ancora..."           │
+│                                                      │
+└─────────────────────────────────────────────────────┘
+
+STEP 3: Flusso AI Decision
+         ┌──────────────────────────────────────┐
+         │         CRON ogni 5 minuti           │
+         └──────────────────┬───────────────────┘
+                            │
+                            ▼
+         ┌──────────────────────────────────────┐
+         │   Trova conversazioni con            │
+         │   conversation_states attivi         │
+         └──────────────────┬───────────────────┘
+                            │
+              ┌─────────────┼─────────────┐
+              ▼             ▼             ▼
+         ┌────────┐   ┌────────┐   ┌────────┐
+         │ Conv 1 │   │ Conv 2 │   │ Conv 3 │
+         └───┬────┘   └───┬────┘   └───┬────┘
+             │            │            │
+             ▼            ▼            ▼
+    ┌─────────────────────────────────────────┐
+    │          REGOLE DETERMINISTICHE          │
+    ├─────────────────────────────────────────┤
+    │ ❌ Ha detto NO? → STOP                   │
+    │ ❌ Max follow-up raggiunti? → STOP       │
+    │ ❌ Closed won/lost? → STOP               │
+    │ ⏰ < 24h? → SKIP                         │
+    │ ✅ = 24h esatte + primo follow-up? →     │
+    │    INVIA SEMPRE (regola obbligatoria)    │
+    └──────────────────┬──────────────────────┘
+                       │
+                       ▼
+    ┌─────────────────────────────────────────┐
+    │           AI GEMINI VALUTA               │
+    ├─────────────────────────────────────────┤
+    │ Input:                                   │
+    │ - Tipo agente (setter/advisor/etc)      │
+    │ - Stato conversazione                    │
+    │ - Segnali (prezzo, urgenza, no)         │
+    │ - Canale acquisizione                    │
+    │ - Template DELL'AGENTE (non tutti)      │
+    │ - Ultimi messaggi                        │
+    │                                          │
+    │ Output:                                  │
+    │ - send_now / schedule / skip / stop     │
+    │ - Quale template usare                   │
+    │ - Reasoning                              │
+    └──────────────────┬──────────────────────┘
+                       │
+                       ▼
+    ┌─────────────────────────────────────────┐
+    │         VERIFICA PRE-INVIO              │
+    ├─────────────────────────────────────────┤
+    │ ✅ Template approvato Twilio/Meta?       │
+    │ ✅ Rispetta cooldown minimo?             │
+    │ ✅ Non supera limite follow-up?          │
+    └──────────────────┬──────────────────────┘
+                       │
+                       ▼
+               [INVIA MESSAGGIO]
+
