@@ -2868,11 +2868,9 @@ export const whatsappTemplateAssignments = pgTable("whatsapp_template_assignment
   agentConfigId: varchar("agent_config_id")
     .references(() => consultantWhatsappConfig.id, { onDelete: "cascade" })
     .notNull(),
-  templateId: varchar("template_id")
-    .references(() => whatsappCustomTemplates.id, { onDelete: "cascade" })
-    .notNull(),
+  templateId: varchar("template_id").notNull(),
   templateType: text("template_type")
-    .$type<"opening" | "followup_gentle" | "followup_value" | "followup_final">(), // DEPRECATED: kept for backward compatibility
+    .$type<"opening" | "followup_gentle" | "followup_value" | "followup_final" | "twilio">(), // Supports custom templates and Twilio built-in templates
   priority: integer("priority").default(0), // Higher priority = preferred by AI when multiple templates match
   assignedAt: timestamp("assigned_at").default(sql`now()`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`now()`),
