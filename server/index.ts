@@ -14,6 +14,7 @@ import { verifyEncryptionConfig } from "./encryption";
 import { setupWebSocketTest } from "./test-websocket";
 import { setupGeminiLiveWSService } from "./ai/gemini-live-ws-service";
 import { setupVideoCopilotWebSocket } from "./websocket/video-ai-copilot";
+import { initFollowupScheduler } from "./cron/followup-scheduler";
 
 function validateEnvironmentVariables() {
   const requiredVars = [
@@ -300,5 +301,16 @@ app.use((req, res, next) => {
     log("✅ Training summary aggregator started");
   } else {
     log("📊 Training summary aggregator is disabled (set TRAINING_AGGREGATOR_ENABLED=true to enable)");
+  }
+
+  // Setup Follow-up Scheduler for automated WhatsApp follow-ups
+  const followupSchedulerEnabled = process.env.FOLLOWUP_SCHEDULER_ENABLED !== "false";
+  
+  if (followupSchedulerEnabled) {
+    log("⚡ Follow-up scheduler enabled - starting scheduler...");
+    initFollowupScheduler();
+    log("✅ Follow-up scheduler started");
+  } else {
+    log("⚡ Follow-up scheduler is disabled (set FOLLOWUP_SCHEDULER_ENABLED=true to enable)");
   }
 })();
