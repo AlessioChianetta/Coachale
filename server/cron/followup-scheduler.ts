@@ -662,6 +662,7 @@ async function sendFollowupMessage(
       phoneNumber: whatsappConversations.phoneNumber,
       consultantId: whatsappConversations.consultantId,
       agentConfigId: whatsappConversations.agentConfigId,
+      lastMessageAt: whatsappConversations.lastMessageAt,
     })
     .from(whatsappConversations)
     .where(eq(whatsappConversations.id, message.conversationId))
@@ -671,24 +672,130 @@ async function sendFollowupMessage(
     throw new Error(`Conversation ${message.conversationId} not found`);
   }
 
-  const { phoneNumber, consultantId, agentConfigId } = conversation[0];
+  const { phoneNumber, consultantId, agentConfigId, lastMessageAt } = conversation[0];
 
-  let messageText = message.fallbackMessage || '';
-  
-  if (message.templateId) {
-    const template = await db
-      .select({ body: whatsappCustomTemplates.body })
-      .from(whatsappCustomTemplates)
-      .where(eq(whatsappCustomTemplates.id, message.templateId))
-      .limit(1);
+  // WhatsApp 24h Rule: Check if last lead message was within 24 hours
+  const lastLeadMessage = await db
+    .select({ createdAt: whatsappMessages.createdAt })
+    .from(whatsappMessages)
+    .where(
+      and(
+        eq(whatsappMessages.conversationId, message.conversationId),
+        eq(whatsappMessages.sender, 'client')
+      )
+    )
+    .orderBy(desc(whatsappMessages.createdAt))
+    .limit(1);
+
+  const hoursSinceLastLeadMessage = lastLeadMessage.length > 0 && lastLeadMessage[0].createdAt
+    ? (Date.now() - new Date(lastLeadMessage[0].createdAt).getTime()) / (1000 * 60 * 60)
+    : 999; // Assume > 24h if no messages
+
+  const isWithin24Hours = hoursSinceLastLeadMessage < 24;
+  console.log(`⏰ [FOLLOWUP-SCHEDULER] Hours since last lead message: ${hoursSinceLastLeadMessage.toFixed(1)}, within 24h: ${isWithin24Hours}`);
+
+  let messageText = '';
+  let useTemplate = false;
+  let twilioContentSid: string | null = null;
+
+  // If > 24h, MUST use approved Twilio template
+  if (!isWithin24Hours) {
+    console.log(`📋 [FOLLOWUP-SCHEDULER] Outside 24h window - MUST use approved template`);
     
-    if (template.length > 0) {
-      messageText = template[0].body;
-      
-      const variables = message.templateVariables as Record<string, string> || {};
-      for (const [key, value] of Object.entries(variables)) {
-        messageText = messageText.replace(`{{${key}}}`, value);
+    if (message.templateId) {
+      // Check if template has approved version
+      const templateVersion = await db
+        .select({
+          bodyText: whatsappTemplateVersions.bodyText,
+          twilioStatus: whatsappTemplateVersions.twilioStatus,
+          twilioContentSid: whatsappTemplateVersions.twilioContentSid,
+        })
+        .from(whatsappTemplateVersions)
+        .where(
+          and(
+            eq(whatsappTemplateVersions.templateId, message.templateId),
+            eq(whatsappTemplateVersions.isActive, true)
+          )
+        )
+        .limit(1);
+
+      if (templateVersion.length > 0 && templateVersion[0].twilioStatus === 'approved') {
+        messageText = templateVersion[0].bodyText;
+        twilioContentSid = templateVersion[0].twilioContentSid;
+        useTemplate = true;
+        console.log(`✅ [FOLLOWUP-SCHEDULER] Using approved template with ContentSid: ${twilioContentSid}`);
+      } else {
+        // Try fallback to template body
+        const template = await db
+          .select({ body: whatsappCustomTemplates.body })
+          .from(whatsappCustomTemplates)
+          .where(eq(whatsappCustomTemplates.id, message.templateId))
+          .limit(1);
+
+        if (template.length > 0 && template[0].body) {
+          messageText = template[0].body;
+        }
       }
+    }
+
+    // If no approved template available, find one from agent's assigned templates
+    if (!messageText && agentConfigId) {
+      const approvedTemplate = await db
+        .select({
+          bodyText: whatsappTemplateVersions.bodyText,
+          twilioContentSid: whatsappTemplateVersions.twilioContentSid,
+        })
+        .from(whatsappTemplateAssignments)
+        .innerJoin(
+          whatsappTemplateVersions,
+          and(
+            eq(whatsappTemplateVersions.templateId, whatsappTemplateAssignments.templateId),
+            eq(whatsappTemplateVersions.isActive, true),
+            eq(whatsappTemplateVersions.twilioStatus, 'approved')
+          )
+        )
+        .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId))
+        .orderBy(desc(whatsappTemplateAssignments.priority))
+        .limit(1);
+
+      if (approvedTemplate.length > 0) {
+        messageText = approvedTemplate[0].bodyText;
+        twilioContentSid = approvedTemplate[0].twilioContentSid;
+        useTemplate = true;
+        console.log(`✅ [FOLLOWUP-SCHEDULER] Found approved template from agent assignments`);
+      }
+    }
+
+    if (!messageText) {
+      throw new Error('No approved template available for follow-up outside 24h window');
+    }
+  } else {
+    // Within 24h - can use free-form AI message or template
+    console.log(`💬 [FOLLOWUP-SCHEDULER] Within 24h window - can use free-form message`);
+    
+    if (message.templateId) {
+      const template = await db
+        .select({ body: whatsappCustomTemplates.body })
+        .from(whatsappCustomTemplates)
+        .where(eq(whatsappCustomTemplates.id, message.templateId))
+        .limit(1);
+      
+      if (template.length > 0 && template[0].body) {
+        messageText = template[0].body;
+      }
+    }
+
+    // Fall back to AI-generated message
+    if (!messageText) {
+      messageText = message.fallbackMessage || '';
+    }
+  }
+
+  // Apply template variables
+  if (messageText) {
+    const variables = message.templateVariables as Record<string, string> || {};
+    for (const [key, value] of Object.entries(variables)) {
+      messageText = messageText.replace(`{{${key}}}`, value);
     }
   }
 
@@ -696,17 +803,18 @@ async function sendFollowupMessage(
     throw new Error('No message text available');
   }
 
-  // Invia il messaggio via Twilio
+  // Send message via Twilio
   console.log(`📱 [FOLLOWUP-SCHEDULER] Sending follow-up to ${phoneNumber}: "${messageText.substring(0, 50)}..."`);
   
   await sendWhatsAppMessage(
     consultantId,
     phoneNumber,
     messageText,
-    undefined, // messageId
+    undefined,
     {
       agentConfigId: agentConfigId || undefined,
       conversationId: message.conversationId,
+      twilioContentSid: twilioContentSid || undefined,
     }
   );
   

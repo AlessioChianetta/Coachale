@@ -795,52 +795,27 @@ router.post("/proactive-leads/bulk", authenticateToken, requireRole("consultant"
 });
 
 // POST /api/proactive-leads/run - Manually trigger proactive outreach process
+// ⚠️ DEPRECATED: Questo endpoint è deprecato. Il sistema ora usa followup-scheduler.ts
 router.post("/proactive-leads/run", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
     
-    // Throttling check: prevent spam (60s cooldown per consultant)
-    const now = Date.now();
-    const lastRun = lastRunByConsultant.get(consultantId);
+    console.log(`⚠️ [DEPRECATED] Legacy proactive outreach endpoint called by consultant ${consultantId}`);
+    console.log(`   The new followup-scheduler.ts system runs automatically based on conversation states.`);
     
-    if (lastRun && (now - lastRun) < COOLDOWN_MS) {
-      const remainingSeconds = Math.ceil((COOLDOWN_MS - (now - lastRun)) / 1000);
-      return res.status(429).json({
-        success: false,
-        error: `Devi aspettare ${remainingSeconds} secondi prima di eseguire nuovamente`,
-        remainingSeconds
-      });
-    }
-    
-    console.log(`🚀 [MANUAL TRIGGER] Proactive outreach triggered by consultant ${consultantId}`);
-    
-    // Update last run timestamp
-    lastRunByConsultant.set(consultantId, now);
-    
-    // Run the proactive outreach process
-    const startedAt = new Date();
-    
-    // Run async without blocking response
-    processProactiveOutreach()
-      .then(() => {
-        console.log(`✅ [MANUAL TRIGGER] Proactive outreach completed successfully`);
-      })
-      .catch((error) => {
-        console.error(`❌ [MANUAL TRIGGER] Proactive outreach failed:`, error);
-      });
-    
-    // Respond immediately
-    res.json({
-      success: true,
-      message: "Processo di outreach proattivo avviato",
-      startedAt: startedAt.toISOString()
+    // Return deprecation notice instead of running the old system
+    res.status(410).json({
+      success: false,
+      deprecated: true,
+      message: "Questo endpoint è deprecato. Il nuovo sistema di follow-up automatico (followup-scheduler) gestisce automaticamente i follow-up basandosi sullo stato delle conversazioni.",
+      info: "I follow-up vengono ora inviati automaticamente ogni 5 minuti per le conversazioni che richiedono attenzione. Non è necessaria alcuna azione manuale."
     });
     
   } catch (error: any) {
-    console.error("❌ [PROACTIVE LEADS RUN] Error triggering proactive outreach:", error);
+    console.error("❌ [PROACTIVE LEADS RUN] Error:", error);
     res.status(500).json({
       success: false,
-      error: error.message || "Failed to trigger proactive outreach"
+      error: error.message || "Failed to process request"
     });
   }
 });

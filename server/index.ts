@@ -267,14 +267,18 @@ app.use((req, res, next) => {
   }
 
   // Setup Proactive Outreach scheduler
-  const proactiveOutreachEnabled = process.env.PROACTIVE_OUTREACH_ENABLED !== "false";
+  // ⚠️ DEPRECATED: proactive-outreach.ts è stato sostituito da followup-scheduler.ts
+  // Il nuovo sistema usa AI per decidere quando e come fare follow-up
+  // Mantenuto per backward compatibility ma disabilitato di default
+  const proactiveOutreachEnabled = process.env.PROACTIVE_OUTREACH_ENABLED === "true";
   
   if (proactiveOutreachEnabled) {
-    log("📤 Proactive outreach scheduler enabled - starting scheduler...");
+    log("⚠️ DEPRECATED: Proactive outreach scheduler is deprecated - use followup-scheduler instead");
+    log("📤 Starting legacy proactive outreach scheduler...");
     startProactiveOutreachScheduler();
-    log("✅ Proactive outreach scheduler started");
+    log("✅ Legacy proactive outreach scheduler started (will be removed in future version)");
   } else {
-    log("📤 Proactive outreach scheduler is disabled (set PROACTIVE_OUTREACH_ENABLED=true to enable)");
+    log("📤 Legacy proactive outreach disabled - using new followup-scheduler.ts system");
   }
 
   // Setup Lead Polling Scheduler
