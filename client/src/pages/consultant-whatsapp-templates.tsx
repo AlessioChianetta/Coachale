@@ -293,6 +293,20 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
     return null;
   }
 
+  const isLoading = loadingAssignments.has(selectedAgentId);
+  const configSelectedTemplates = selectedTemplates.get(selectedAgentId) || new Set();
+  
+  const approvedTemplates = customTemplates.filter(
+    (t) => t.activeVersion?.twilioStatus?.toLowerCase() === "approved"
+  );
+  
+  const mainTemplate = approvedTemplates.find(t => t.templateType === "opening");
+  const otherTemplates = approvedTemplates.filter(t => t.templateType !== "opening");
+  
+  const assignedNonApprovedTemplates = customTemplates.filter(
+    (t) => configSelectedTemplates.has(t.id) && t.activeVersion?.twilioStatus?.toLowerCase() !== "approved"
+  );
+
   if (customTemplates.length === 0) {
     return (
       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -316,8 +330,31 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
     );
   }
 
-  const isLoading = loadingAssignments.has(selectedAgentId);
-  const configSelectedTemplates = selectedTemplates.get(selectedAgentId) || new Set();
+  if (approvedTemplates.length === 0) {
+    return (
+      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <div className="p-2 rounded-lg bg-gradient-to-r from-emerald-500 to-blue-500">
+              <ListChecks className="h-5 w-5 text-white" />
+            </div>
+            Template Personalizzati
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              Nessun template approvato disponibile. Solo i template approvati da Meta possono essere assegnati all'AI. 
+              <a href="/consultant/whatsapp/custom-templates/list" className="underline font-medium hover:text-amber-900 ml-1">
+                Vai alla lista template
+              </a> per verificare lo stato di approvazione.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -348,7 +385,7 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
           )}
         </div>
         <CardDescription>
-          Seleziona i template personalizzati per questo agente
+          Seleziona i template personalizzati per questo agente (solo approvati)
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -358,59 +395,160 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
             <span className="ml-2 text-gray-500">Caricamento assegnazioni...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {customTemplates.map((template) => {
-              const isSelected = configSelectedTemplates.has(template.id);
-              const displayUseCase = template.useCase || template.templateType || "Generale";
-              
-              return (
+          <div className="space-y-6">
+            {mainTemplate && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <span className="text-sm font-semibold text-gray-700">Template MAIN (Primo Messaggio)</span>
+                </div>
                 <label
-                  key={template.id}
+                  key={mainTemplate.id}
                   className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                    isSelected
-                      ? "border-blue-400 bg-blue-50 shadow-md"
-                      : "border-gray-200 bg-white hover:border-blue-200 hover:bg-gray-50"
+                    configSelectedTemplates.has(mainTemplate.id)
+                      ? "border-blue-500 bg-blue-100 shadow-lg ring-2 ring-blue-200"
+                      : "border-blue-200 bg-blue-50 hover:border-blue-400 hover:shadow-md"
                   }`}
                 >
                   <Checkbox
-                    checked={isSelected}
+                    checked={configSelectedTemplates.has(mainTemplate.id)}
                     onCheckedChange={(checked) =>
-                      handleTemplateToggle(selectedAgentId, template.id, checked === true)
+                      handleTemplateToggle(selectedAgentId, mainTemplate.id, checked === true)
                     }
                     className="mt-1"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 truncate">
-                      {template.templateName}
+                    <div className="font-semibold text-gray-900 truncate flex items-center gap-2">
+                      {mainTemplate.templateName}
+                      <Badge className="bg-blue-600 text-white text-xs">MAIN</Badge>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-300">
-                        {displayUseCase}
+                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                        Approvato
                       </Badge>
-                      {template.activeVersion && (
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            template.activeVersion.twilioStatus === "approved"
-                              ? "bg-green-50 text-green-700 border-green-300"
-                              : template.activeVersion.twilioStatus === "pending"
-                              ? "bg-yellow-50 text-yellow-700 border-yellow-300"
-                              : "bg-gray-50 text-gray-600 border-gray-300"
-                          }`}
-                        >
-                          {template.activeVersion.twilioStatus}
-                        </Badge>
-                      )}
                     </div>
-                    {template.description && (
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                        {template.description}
+                    {mainTemplate.description && (
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                        {mainTemplate.description}
                       </p>
                     )}
                   </div>
                 </label>
-              );
-            })}
+              </div>
+            )}
+            
+            {otherTemplates.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+                  <span className="text-sm font-semibold text-gray-700">Altri Template Approvati ({otherTemplates.length})</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {otherTemplates.map((template) => {
+                    const isSelected = configSelectedTemplates.has(template.id);
+                    const displayUseCase = template.useCase || template.templateType || "Generale";
+                    
+                    return (
+                      <label
+                        key={template.id}
+                        className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                          isSelected
+                            ? "border-blue-400 bg-blue-50 shadow-md"
+                            : "border-gray-200 bg-white hover:border-blue-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) =>
+                            handleTemplateToggle(selectedAgentId, template.id, checked === true)
+                          }
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 truncate">
+                            {template.templateName}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-300">
+                              {displayUseCase}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                              Approvato
+                            </Badge>
+                          </div>
+                          {template.description && (
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                              {template.description}
+                            </p>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {assignedNonApprovedTemplates.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span className="text-sm font-semibold text-red-700">Template Assegnati Non Approvati ({assignedNonApprovedTemplates.length})</span>
+                </div>
+                <Alert className="border-red-200 bg-red-50 mb-3">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800 text-sm">
+                    Questi template sono attualmente assegnati ma non sono approvati da Meta. Deselezionali per rimuoverli o attendi l'approvazione.
+                  </AlertDescription>
+                </Alert>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {assignedNonApprovedTemplates.map((template) => {
+                    const displayUseCase = template.useCase || template.templateType || "Generale";
+                    const status = template.activeVersion?.twilioStatus || "draft";
+                    
+                    return (
+                      <label
+                        key={template.id}
+                        className="flex items-start gap-3 p-4 rounded-lg border-2 border-red-300 bg-red-50 cursor-pointer transition-all duration-200 hover:border-red-400"
+                      >
+                        <Checkbox
+                          checked={true}
+                          onCheckedChange={(checked) =>
+                            handleTemplateToggle(selectedAgentId, template.id, checked === true)
+                          }
+                          className="mt-1"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 truncate">
+                            {template.templateName}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-300">
+                              {displayUseCase}
+                            </Badge>
+                            <Badge variant="outline" className={`text-xs ${
+                              status === "pending" || status === "pending_approval"
+                                ? "bg-yellow-50 text-yellow-700 border-yellow-300"
+                                : status === "rejected"
+                                ? "bg-red-50 text-red-700 border-red-300"
+                                : "bg-gray-50 text-gray-600 border-gray-300"
+                            }`}>
+                              {status === "pending" || status === "pending_approval" ? "In Attesa" :
+                               status === "rejected" ? "Rifiutato" : status}
+                            </Badge>
+                          </div>
+                          {template.description && (
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                              {template.description}
+                            </p>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
