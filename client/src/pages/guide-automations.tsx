@@ -4,6 +4,7 @@ import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   UserPlus, 
   Megaphone, 
@@ -13,193 +14,244 @@ import {
   BarChart,
   MessageSquare,
   ArrowRight,
-  Clock,
   BookOpen,
   CheckCircle2,
   Bot,
   Upload,
-  RefreshCw,
   Target,
-  TestTube
+  TestTube,
+  AlertTriangle,
+  Clock,
+  ShieldCheck,
+  ExternalLink,
+  ChevronRight,
+  ListChecks,
+  Gauge
 } from "lucide-react";
 import { Link } from "wouter";
 
-function AutomationFlowVisual() {
-  const steps = [
-    { icon: UserPlus, label: "Lead Proattivi", color: "bg-blue-500" },
-    { icon: Megaphone, label: "Campagne", color: "bg-purple-500" },
-    { icon: MessageSquare, label: "Chat WhatsApp", color: "bg-green-500" },
-    { icon: Settings, label: "Regole", color: "bg-red-500" },
-    { icon: FileText, label: "Template", color: "bg-indigo-500" },
-    { icon: BarChart, label: "Analytics", color: "bg-teal-500" },
-  ];
-
+function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 py-4">
-      {steps.map((step, index) => (
-        <div key={step.label} className="flex items-center">
-          <div className="flex flex-col items-center">
-            <div className={`${step.color} p-3 rounded-full text-white`}>
-              <step.icon className="h-5 w-5" />
+    <div className="flex items-center gap-2 text-sm">
+      <div className="flex gap-1">
+        {Array.from({ length: total }).map((_, i) => (
+          <div
+            key={i}
+            className={`w-2 h-2 rounded-full ${
+              i < current ? "bg-current" : "bg-current/30"
+            }`}
+          />
+        ))}
+      </div>
+      <span className="font-medium">Sezione {current} di {total}</span>
+    </div>
+  );
+}
+
+function SectionCard({ 
+  children, 
+  gradient, 
+  borderColor,
+  sectionNumber,
+  title,
+  subtitle,
+  icon: Icon
+}: { 
+  children: React.ReactNode;
+  gradient: string;
+  borderColor: string;
+  sectionNumber: number;
+  title: string;
+  subtitle: string;
+  icon: React.ElementType;
+}) {
+  return (
+    <Card className={`${gradient} ${borderColor} border-2`}>
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-white/80 dark:bg-black/30 shadow-sm">
+              <Icon className="h-6 w-6" />
             </div>
-            <span className="text-xs mt-1 text-center font-medium">{step.label}</span>
+            <div>
+              <CardTitle className="text-xl">{title}</CardTitle>
+              <CardDescription className="mt-1">{subtitle}</CardDescription>
+            </div>
           </div>
-          {index < steps.length - 1 && (
-            <ArrowRight className="h-4 w-4 mx-2 text-muted-foreground" />
+          <ProgressIndicator current={sectionNumber} total={3} />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StepCard({
+  number,
+  title,
+  description,
+  icon: Icon,
+  iconColor,
+  badge,
+  badgeVariant = "default",
+  children,
+  link,
+  linkText
+}: {
+  number: number;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  iconColor: string;
+  badge?: string;
+  badgeVariant?: "default" | "destructive" | "outline" | "secondary";
+  children?: React.ReactNode;
+  link?: string;
+  linkText?: string;
+}) {
+  return (
+    <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur rounded-xl border p-5 shadow-sm">
+      <div className="flex items-start gap-4">
+        <div className={`${iconColor} text-white rounded-xl w-12 h-12 flex items-center justify-center font-bold text-lg shrink-0 shadow-lg`}>
+          {number}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <Icon className={`h-5 w-5 ${iconColor.replace('bg-', 'text-').replace('-500', '-600').replace('-600', '-600')}`} />
+            <h4 className="font-semibold text-lg">{title}</h4>
+            {badge && (
+              <Badge variant={badgeVariant} className="ml-auto shrink-0">
+                {badge}
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">{description}</p>
+          {children}
+          {link && linkText && (
+            <Link href={link}>
+              <Button variant="outline" size="sm" className="mt-3 gap-2">
+                {linkText}
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Link>
           )}
         </div>
-      ))}
+      </div>
     </div>
+  );
+}
+
+function ChecklistItem({ checked = false, children }: { checked?: boolean; children: React.ReactNode }) {
+  return (
+    <li className="flex items-start gap-2 text-sm">
+      <CheckCircle2 className={`h-4 w-4 mt-0.5 shrink-0 ${checked ? 'text-green-500' : 'text-muted-foreground'}`} />
+      <span>{children}</span>
+    </li>
+  );
+}
+
+function WarningBox({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-800">
+      <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+      <div className="text-sm text-amber-800 dark:text-amber-200">{children}</div>
+    </div>
+  );
+}
+
+function TwilioTemplateExplainer() {
+  return (
+    <Card className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border-violet-200 dark:border-violet-800 border-2">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-violet-500 text-white shadow-lg">
+            <FileText className="h-6 w-6" />
+          </div>
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              Template Twilio - Guida Completa
+              <Badge variant="destructive">FONDAMENTALE</Badge>
+            </CardTitle>
+            <CardDescription>Senza template approvati da Meta, NON puoi inviare messaggi proattivi</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="bg-white/80 dark:bg-gray-900/80 rounded-lg p-4 border">
+            <h5 className="font-semibold mb-2 flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-violet-600" />
+              Cos'è un Template Twilio?
+            </h5>
+            <p className="text-sm text-muted-foreground">
+              È un messaggio pre-approvato da Meta/WhatsApp che puoi usare per contattare i clienti per primo. 
+              WhatsApp richiede l'approvazione per prevenire lo spam.
+            </p>
+          </div>
+          
+          <div className="bg-white/80 dark:bg-gray-900/80 rounded-lg p-4 border">
+            <h5 className="font-semibold mb-2 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-violet-600" />
+              Processo di Approvazione
+            </h5>
+            <p className="text-sm text-muted-foreground">
+              Dopo aver creato un template, Meta lo rivede in <strong>24-48 ore</strong>. 
+              Solo i template con stato "approved" possono essere usati.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white/80 dark:bg-gray-900/80 rounded-lg p-4 border">
+          <h5 className="font-semibold mb-3 flex items-center gap-2">
+            <ListChecks className="h-4 w-4 text-violet-600" />
+            Stati Possibili del Template
+          </h5>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+              <Clock className="h-3 w-3 mr-1" />
+              pending - In revisione
+            </Badge>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              approved - Pronto all'uso
+            </Badge>
+            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-300">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              rejected - Da correggere
+            </Badge>
+          </div>
+        </div>
+
+        <WarningBox>
+          <strong>Attenzione:</strong> Se un template viene rifiutato, controlla il motivo nella console Twilio 
+          e correggilo. Motivi comuni: contenuto promozionale troppo aggressivo, mancanza di opt-out, 
+          variabili non corrette.
+        </WarningBox>
+
+        <div className="flex flex-wrap gap-2">
+          <Link href="/consultant/whatsapp-templates">
+            <Button className="gap-2 bg-violet-600 hover:bg-violet-700">
+              <FileText className="h-4 w-4" />
+              Gestisci Template Twilio
+            </Button>
+          </Link>
+          <Link href="/consultant/whatsapp/custom-templates/list">
+            <Button variant="outline" className="gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Template Personalizzati
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function GuideAutomations() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const steps = [
-    {
-      number: 1,
-      title: "Configura il tuo Agente WhatsApp",
-      icon: Bot,
-      color: "bg-purple-500",
-      description: "Prima di tutto, hai bisogno di un 'agente' che risponda ai messaggi WhatsApp.",
-      details: [
-        "Vai nella sezione 'WhatsApp' dal menu laterale",
-        "Clicca su 'Impostazioni Agente' o 'Nuovo Agente'",
-        "Inserisci le credenziali Twilio (Account SID, Auth Token, numero WhatsApp)",
-        "Configura il comportamento dell'agente (nome, personalità, istruzioni)",
-        "Salva le impostazioni - l'agente è pronto!"
-      ],
-      tip: "Puoi avere più agenti per gestire diversi tipi di conversazioni (es: vendite, supporto, info)."
-    },
-    {
-      number: 2,
-      title: "Importa i tuoi Lead Proattivi",
-      icon: Upload,
-      color: "bg-blue-500",
-      description: "I 'lead proattivi' sono persone che vuoi contattare tu per primo.",
-      details: [
-        "Vai su 'Lead Proattivi' (menu laterale o tab in alto)",
-        "Clicca 'Importa CSV' oppure 'Aggiungi Manualmente'",
-        "Se usi CSV: il file deve avere colonne come nome, cognome, telefono, email",
-        "Verifica che i numeri di telefono siano corretti (formato italiano +39...)",
-        "I lead importati appariranno nella lista 'Da Contattare'"
-      ],
-      tip: "Puoi anche aggiungere note e tag per organizzare meglio i tuoi lead."
-    },
-    {
-      number: 3,
-      title: "Crea una Campagna",
-      icon: Megaphone,
-      color: "bg-orange-500",
-      description: "Le campagne inviano messaggi in massa ai tuoi lead proattivi.",
-      details: [
-        "Vai su 'Campagne' (tab in alto)",
-        "Clicca 'Nuova Campagna'",
-        "Scegli un nome per la campagna (es: 'Promozione Gennaio')",
-        "Seleziona i lead da includere (puoi filtrare per tag o stato)",
-        "Scegli il template del messaggio da inviare",
-        "Pianifica l'invio (subito o data/ora futura)",
-        "Avvia la campagna!"
-      ],
-      tip: "Inizia con pochi lead per testare, poi scala gradualmente."
-    },
-    {
-      number: 4,
-      title: "I Lead Rispondono e Diventano 'Conversazioni'",
-      icon: MessageSquare,
-      color: "bg-green-500",
-      description: "Quando un lead risponde al messaggio, diventa una conversazione attiva.",
-      details: [
-        "Il lead riceve il messaggio WhatsApp",
-        "Se risponde, il sistema crea automaticamente una 'conversazione'",
-        "L'agente AI risponde in automatico (se abilitato)",
-        "La conversazione appare nella 'Pipeline' qui sotto",
-        "Puoi vedere lo stato: nuovo, in follow-up, interessato, convertito..."
-      ],
-      tip: "Puoi sempre disabilitare l'AI e rispondere manualmente dalla chat WhatsApp."
-    },
-    {
-      number: 5,
-      title: "Configura le Regole di Follow-up",
-      icon: Settings,
-      color: "bg-red-500",
-      description: "Le regole inviano messaggi automatici basandosi su tempo e stato.",
-      details: [
-        "Vai sulla pagina Automazioni e sul tab 'Regole'",
-        "Clicca 'Nuova Regola' o 'Crea con AI'",
-        "Esempio regola: 'Se nessuna risposta dopo 24 ore → invia reminder'",
-        "Imposta: trigger (tempo/evento), template da usare, numero max tentativi",
-        "Attiva la regola con lo switch",
-        "Il sistema controlla automaticamente ogni ora e invia i messaggi"
-      ],
-      tip: "Usa 'Crea con AI' per descrivere in parole semplici cosa vuoi fare."
-    },
-    {
-      number: 6,
-      title: "Prepara i Template dei Messaggi",
-      icon: FileText,
-      color: "bg-indigo-500",
-      description: "I template sono modelli di messaggio pre-scritti usati dalle regole.",
-      details: [
-        "Vai sulla pagina Automazioni e sul tab 'Template'",
-        "Clicca 'Nuovo Template' o 'Crea con AI'",
-        "Scrivi il testo del messaggio (es: 'Ciao {{nome}}, ti ricontattiamo per...')",
-        "Puoi usare variabili come {{nome}}, {{data}}, {{prodotto}}",
-        "I template vengono usati sia dalle campagne che dalle regole automatiche"
-      ],
-      tip: "Crea template diversi per ogni fase: primo contatto, reminder, offerta speciale..."
-    },
-    {
-      number: 7,
-      title: "Monitora i Risultati",
-      icon: BarChart,
-      color: "bg-teal-500",
-      description: "Controlla come stanno andando le tue automazioni.",
-      details: [
-        "Vai sulla pagina Automazioni e sul tab 'Analytics'",
-        "Vedi quanti messaggi sono stati inviati, consegnati, letti",
-        "Controlla quante conversioni hai ottenuto",
-        "Identifica quali regole funzionano meglio",
-        "Ottimizza le tue strategie in base ai dati"
-      ],
-      tip: "Controlla gli analytics almeno una volta a settimana per migliorare i risultati."
-    }
-  ];
-
-  const testingSteps = [
-    {
-      number: 1,
-      title: "Aggiungi te stesso come lead di test",
-      description: "Vai su 'Lead Proattivi' e aggiungi il tuo numero di telefono come nuovo lead."
-    },
-    {
-      number: 2,
-      title: "Crea una campagna di test",
-      description: "Crea una campagna con solo il tuo lead e un messaggio semplice di prova."
-    },
-    {
-      number: 3,
-      title: "Invia il messaggio",
-      description: "Avvia la campagna. Dovresti ricevere un messaggio WhatsApp entro pochi secondi."
-    },
-    {
-      number: 4,
-      title: "Rispondi al messaggio",
-      description: "Rispondi qualcosa. Il sistema creerà automaticamente una conversazione."
-    },
-    {
-      number: 5,
-      title: "Verifica la pipeline",
-      description: "Vai sulla pagina Automazioni e controlla che la tua conversazione appaia nella pipeline."
-    },
-    {
-      number: 6,
-      title: "Testa le regole",
-      description: "Crea una regola di test (es: dopo 1 ora senza risposta) e verifica che funzioni."
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -216,176 +268,342 @@ export default function GuideAutomations() {
         )}
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="bg-purple-100 dark:bg-purple-900 p-3 rounded-lg">
-                <BookOpen className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+          <div className="max-w-5xl mx-auto space-y-8">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-4 rounded-2xl shadow-lg">
+                <BookOpen className="h-8 w-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Guida Sistema Automazioni</h1>
-                <p className="text-muted-foreground">Impara come configurare e testare il sistema di follow-up automatico</p>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                  Guida Sistema Automazioni
+                </h1>
+                <p className="text-muted-foreground mt-1">
+                  Configura il sistema di follow-up automatico WhatsApp in 3 semplici fasi
+                </p>
               </div>
             </div>
 
-            <Card className="border-purple-200 bg-purple-50/50 dark:bg-purple-950/20 dark:border-purple-800">
+            <SectionCard
+              sectionNumber={1}
+              title="Prima di Iniziare"
+              subtitle="Prerequisiti obbligatori - senza questi il sistema NON funziona"
+              icon={ShieldCheck}
+              gradient="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30"
+              borderColor="border-red-200 dark:border-red-800"
+            >
+              <WarningBox>
+                <strong>IMPORTANTE:</strong> Completa tutti questi passaggi prima di procedere. 
+                Senza le credenziali Twilio e i template approvati, il sistema non può inviare messaggi.
+              </WarningBox>
+
+              <StepCard
+                number={1}
+                title="Configura Agente WhatsApp"
+                description="Collega il tuo account Twilio per abilitare l'invio e la ricezione di messaggi WhatsApp."
+                icon={Bot}
+                iconColor="bg-red-500"
+                badge="OBBLIGATORIO"
+                badgeVariant="destructive"
+                link="/consultant/whatsapp"
+                linkText="Vai a Setup Agente"
+              >
+                <ul className="space-y-1.5 mb-3">
+                  <ChecklistItem>Account Twilio attivo con WhatsApp Business API</ChecklistItem>
+                  <ChecklistItem>Account SID e Auth Token recuperati dalla console</ChecklistItem>
+                  <ChecklistItem>Numero WhatsApp Business verificato</ChecklistItem>
+                  <ChecklistItem>Credenziali inserite nell'agente</ChecklistItem>
+                </ul>
+              </StepCard>
+
+              <StepCard
+                number={2}
+                title="Crea e Approva Template Twilio"
+                description="I template sono messaggi pre-approvati da Meta. Senza approvazione, non puoi contattare i clienti per primo."
+                icon={FileText}
+                iconColor="bg-orange-500"
+                badge="OBBLIGATORIO"
+                badgeVariant="destructive"
+                link="/consultant/whatsapp-templates"
+                linkText="Vai a Template Twilio"
+              >
+                <ul className="space-y-1.5 mb-3">
+                  <ChecklistItem>Crea almeno un template nella console Twilio</ChecklistItem>
+                  <ChecklistItem>Attendi l'approvazione di Meta (24-48h)</ChecklistItem>
+                  <ChecklistItem>Verifica stato "approved" nella lista template</ChecklistItem>
+                </ul>
+              </StepCard>
+
+              <StepCard
+                number={3}
+                title="Assegna Template all'Agente"
+                description="Collega i template approvati al tuo agente WhatsApp per poterli usare nelle campagne."
+                icon={Settings}
+                iconColor="bg-amber-500"
+                badge="OBBLIGATORIO"
+                badgeVariant="destructive"
+              >
+                <ul className="space-y-1.5">
+                  <ChecklistItem>Vai nelle impostazioni dell'agente</ChecklistItem>
+                  <ChecklistItem>Seleziona i template da associare</ChecklistItem>
+                  <ChecklistItem>Verifica che l'agente abbia almeno un template assegnato</ChecklistItem>
+                </ul>
+              </StepCard>
+            </SectionCard>
+
+            <TwilioTemplateExplainer />
+
+            <SectionCard
+              sectionNumber={2}
+              title="Configura il Sistema"
+              subtitle="Imposta lead, campagne e regole di automazione"
+              icon={Settings}
+              gradient="bg-gradient-to-br from-blue-50 to-violet-50 dark:from-blue-950/30 dark:to-violet-950/30"
+              borderColor="border-blue-200 dark:border-blue-800"
+            >
+              <StepCard
+                number={4}
+                title="Importa Lead Proattivi"
+                description="Aggiungi i contatti che vuoi raggiungere. Puoi importarli da file CSV o aggiungerli manualmente."
+                icon={Upload}
+                iconColor="bg-blue-500"
+                badge="CONSIGLIATO"
+                badgeVariant="secondary"
+                link="/consultant/proactive-leads"
+                linkText="Vai a Lead Proattivi"
+              >
+                <ul className="space-y-1.5 mb-3">
+                  <ChecklistItem>Prepara un file CSV con: nome, cognome, telefono (+39...)</ChecklistItem>
+                  <ChecklistItem>Clicca "Importa CSV" e carica il file</ChecklistItem>
+                  <ChecklistItem>Oppure usa "Aggiungi Manualmente" per singoli lead</ChecklistItem>
+                  <ChecklistItem>Aggiungi tag per organizzare i lead (es: "evento2024", "newsletter")</ChecklistItem>
+                </ul>
+              </StepCard>
+
+              <StepCard
+                number={5}
+                title="Crea Campagne per Invio Massivo"
+                description="Le campagne inviano il primo messaggio ai tuoi lead selezionati usando i template approvati."
+                icon={Megaphone}
+                iconColor="bg-purple-500"
+                badge="CONSIGLIATO"
+                badgeVariant="secondary"
+                link="/consultant/campaigns"
+                linkText="Vai a Campagne"
+              >
+                <ul className="space-y-1.5 mb-3">
+                  <ChecklistItem>Clicca "Nuova Campagna"</ChecklistItem>
+                  <ChecklistItem>Seleziona i lead da contattare (filtra per tag se necessario)</ChecklistItem>
+                  <ChecklistItem>Scegli il template approvato da usare</ChecklistItem>
+                  <ChecklistItem>Pianifica l'invio: immediato o programmato</ChecklistItem>
+                  <ChecklistItem>Inizia con pochi lead per testare!</ChecklistItem>
+                </ul>
+              </StepCard>
+
+              <StepCard
+                number={6}
+                title="Configura Regole di Follow-up"
+                description="Le regole inviano automaticamente messaggi di follow-up basandosi su tempo e comportamento."
+                icon={Zap}
+                iconColor="bg-indigo-500"
+                badge="OPZIONALE"
+                badgeVariant="outline"
+                link="/consultant/automations"
+                linkText="Vai a Automazioni"
+              >
+                <ul className="space-y-1.5 mb-3">
+                  <ChecklistItem>Esempio: "Se nessuna risposta dopo 24h → invia reminder"</ChecklistItem>
+                  <ChecklistItem>Imposta trigger temporali o basati su eventi</ChecklistItem>
+                  <ChecklistItem>Scegli il template da inviare</ChecklistItem>
+                  <ChecklistItem>Limita il numero massimo di tentativi</ChecklistItem>
+                  <ChecklistItem>Usa "Crea con AI" per regole complesse</ChecklistItem>
+                </ul>
+              </StepCard>
+
+              <StepCard
+                number={7}
+                title="Prepara Template Messaggi Personalizzati"
+                description="Crea template interni per i follow-up automatici e le risposte dell'agente AI."
+                icon={FileText}
+                iconColor="bg-cyan-500"
+                badge="OPZIONALE"
+                badgeVariant="outline"
+              >
+                <ul className="space-y-1.5">
+                  <ChecklistItem>Vai nella sezione Template delle Automazioni</ChecklistItem>
+                  <ChecklistItem>Usa variabili: {"{{nome}}"}, {"{{data}}"}, {"{{prodotto}}"}</ChecklistItem>
+                  <ChecklistItem>Crea template diversi per ogni fase del funnel</ChecklistItem>
+                  <ChecklistItem>Testa il rendering delle variabili prima dell'uso</ChecklistItem>
+                </ul>
+              </StepCard>
+            </SectionCard>
+
+            <SectionCard
+              sectionNumber={3}
+              title="Monitora e Ottimizza"
+              subtitle="Gestisci le conversazioni attive e analizza i risultati"
+              icon={Gauge}
+              gradient="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30"
+              borderColor="border-emerald-200 dark:border-emerald-800"
+            >
+              <StepCard
+                number={8}
+                title="Monitora Pipeline Conversazioni"
+                description="Visualizza tutte le conversazioni attive organizzate per stato nel kanban."
+                icon={Target}
+                iconColor="bg-emerald-500"
+                link="/consultant/automations"
+                linkText="Vai a Pipeline"
+              >
+                <ul className="space-y-1.5">
+                  <ChecklistItem>Visualizza lo stato di ogni conversazione</ChecklistItem>
+                  <ChecklistItem>Sposta manualmente i lead tra le colonne</ChecklistItem>
+                  <ChecklistItem>Rispondi direttamente dalla chat se necessario</ChecklistItem>
+                  <ChecklistItem>Identifica i lead più promettenti</ChecklistItem>
+                </ul>
+              </StepCard>
+
+              <StepCard
+                number={9}
+                title="Controlla Analytics"
+                description="Analizza le performance delle tue campagne e automazioni."
+                icon={BarChart}
+                iconColor="bg-teal-500"
+              >
+                <ul className="space-y-1.5">
+                  <ChecklistItem>Messaggi inviati, consegnati, letti</ChecklistItem>
+                  <ChecklistItem>Tasso di risposta per campagna</ChecklistItem>
+                  <ChecklistItem>Conversioni e appuntamenti fissati</ChecklistItem>
+                  <ChecklistItem>Performance delle regole automatiche</ChecklistItem>
+                </ul>
+              </StepCard>
+
+              <StepCard
+                number={10}
+                title="Testa il Sistema"
+                description="Prima di usare il sistema con i clienti reali, testalo con il tuo numero."
+                icon={TestTube}
+                iconColor="bg-green-500"
+              >
+                <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border">
+                  <h5 className="font-medium mb-3 flex items-center gap-2">
+                    <ListChecks className="h-4 w-4 text-green-600" />
+                    Checklist di Test
+                  </h5>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center text-xs font-bold text-green-600">1</div>
+                      <span>Aggiungi te stesso come lead di test</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center text-xs font-bold text-green-600">2</div>
+                      <span>Crea una campagna con solo il tuo lead</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center text-xs font-bold text-green-600">3</div>
+                      <span>Invia e verifica di ricevere il messaggio</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center text-xs font-bold text-green-600">4</div>
+                      <span>Rispondi e controlla la pipeline</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center text-xs font-bold text-green-600">5</div>
+                      <span>Crea una regola di test</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <div className="w-5 h-5 rounded-full border-2 border-green-500 flex items-center justify-center text-xs font-bold text-green-600">6</div>
+                      <span>Verifica il follow-up automatico</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 p-4 bg-green-100/80 dark:bg-green-950/40 rounded-lg border border-green-200 dark:border-green-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <span className="font-semibold text-green-800 dark:text-green-200">Sistema Pronto!</span>
+                  </div>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Se tutti i test sono passati, il sistema è configurato correttamente. 
+                    Puoi iniziare a importare i lead reali e avviare le campagne.
+                  </p>
+                </div>
+              </StepCard>
+            </SectionCard>
+
+            <Card className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/50 dark:to-slate-900/50 border-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-purple-600" />
-                  Come Funziona il Sistema
+                  <ArrowRight className="h-5 w-5 text-indigo-600" />
+                  Accesso Rapido
                 </CardTitle>
                 <CardDescription>
-                  Il flusso completo delle automazioni WhatsApp
+                  Vai direttamente alle pagine più importanti del sistema
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <AutomationFlowVisual />
-                <p className="text-sm text-muted-foreground text-center mt-4">
-                  1. Importi <strong>Lead</strong> → 2. Crei <strong>Campagne</strong> → 
-                  3. I lead rispondono e diventano <strong>Conversazioni</strong> → 
-                  4. Le <strong>Regole</strong> inviano <strong>Template</strong> automaticamente → 
-                  5. Monitora tutto dagli <strong>Analytics</strong>
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-purple-600" />
-                  I 7 Passi per Configurare il Sistema
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {steps.map((step) => (
-                  <div key={step.number} className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-                    <div className="flex items-start gap-4">
-                      <div className={`${step.color} text-white rounded-full w-10 h-10 flex items-center justify-center font-bold text-lg shrink-0`}>
-                        {step.number}
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <Link href="/consultant/whatsapp">
+                    <Button variant="outline" className="w-full justify-start gap-3 h-auto py-4 hover:bg-red-50 hover:border-red-300 dark:hover:bg-red-950/30">
+                      <Bot className="h-5 w-5 text-red-500" />
+                      <div className="text-left">
+                        <div className="font-medium">Setup Agente WhatsApp</div>
+                        <div className="text-xs text-muted-foreground">Configura credenziali Twilio</div>
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <step.icon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                          <h4 className="font-semibold">{step.title}</h4>
-                        </div>
-                        <p className="text-sm text-muted-foreground mb-3">{step.description}</p>
-                        
-                        <ul className="space-y-1.5 mb-3">
-                          {step.details.map((detail, idx) => (
-                            <li key={idx} className="flex items-start gap-2 text-sm">
-                              <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                              <span>{detail}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        
-                        <div className="flex items-start gap-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded text-sm">
-                          <span className="text-amber-600 font-medium">Suggerimento:</span>
-                          <span className="text-amber-700 dark:text-amber-300">{step.tip}</span>
-                        </div>
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/consultant/whatsapp-templates">
+                    <Button variant="outline" className="w-full justify-start gap-3 h-auto py-4 hover:bg-orange-50 hover:border-orange-300 dark:hover:bg-orange-950/30">
+                      <FileText className="h-5 w-5 text-orange-500" />
+                      <div className="text-left">
+                        <div className="font-medium">Template Twilio</div>
+                        <div className="text-xs text-muted-foreground">Gestisci template approvati</div>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TestTube className="h-5 w-5 text-purple-600" />
-                  Come Testare il Sistema (Passo-Passo)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Prima di usare il sistema con i clienti reali, testalo usando il tuo numero di telefono:
-                </p>
-                
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                  {testingSteps.map((step) => (
-                    <div key={step.number} className="bg-white dark:bg-gray-900 rounded-lg p-3 border">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                          {step.number}
-                        </div>
-                        <h5 className="font-medium text-sm">{step.title}</h5>
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/consultant/proactive-leads">
+                    <Button variant="outline" className="w-full justify-start gap-3 h-auto py-4 hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-950/30">
+                      <UserPlus className="h-5 w-5 text-blue-500" />
+                      <div className="text-left">
+                        <div className="font-medium">Lead Proattivi</div>
+                        <div className="text-xs text-muted-foreground">Importa e gestisci contatti</div>
                       </div>
-                      <p className="text-xs text-muted-foreground">{step.description}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 p-3 bg-green-50 dark:bg-green-950/30 rounded border border-green-200 dark:border-green-800">
-                  <div className="flex items-center gap-2 mb-1">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <span className="font-medium text-sm text-green-800 dark:text-green-200">Quando tutto funziona:</span>
-                  </div>
-                  <p className="text-xs text-green-700 dark:text-green-300">
-                    Se hai ricevuto i messaggi, visto le conversazioni nella pipeline e le regole hanno inviato i follow-up automatici, 
-                    il sistema è configurato correttamente! Puoi iniziare ad importare i lead reali.
-                  </p>
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/consultant/campaigns">
+                    <Button variant="outline" className="w-full justify-start gap-3 h-auto py-4 hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-950/30">
+                      <Megaphone className="h-5 w-5 text-purple-500" />
+                      <div className="text-left">
+                        <div className="font-medium">Campagne</div>
+                        <div className="text-xs text-muted-foreground">Crea invii massivi</div>
+                      </div>
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/consultant/automations">
+                    <Button variant="outline" className="w-full justify-start gap-3 h-auto py-4 hover:bg-indigo-50 hover:border-indigo-300 dark:hover:bg-indigo-950/30">
+                      <Zap className="h-5 w-5 text-indigo-500" />
+                      <div className="text-left">
+                        <div className="font-medium">Automazioni</div>
+                        <div className="text-xs text-muted-foreground">Pipeline e regole follow-up</div>
+                      </div>
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/consultant/whatsapp/custom-templates/list">
+                    <Button variant="outline" className="w-full justify-start gap-3 h-auto py-4 hover:bg-teal-50 hover:border-teal-300 dark:hover:bg-teal-950/30">
+                      <MessageSquare className="h-5 w-5 text-teal-500" />
+                      <div className="text-left">
+                        <div className="font-medium">Template Personalizzati</div>
+                        <div className="text-xs text-muted-foreground">Crea template interni</div>
+                      </div>
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <RefreshCw className="h-5 w-5 text-purple-600" />
-                  Cosa Succede Automaticamente?
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-                    <h4 className="font-medium mb-2 flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-blue-500" />
-                      Ogni Ora
-                    </h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>- Il sistema controlla tutte le conversazioni attive</li>
-                      <li>- Verifica se qualche regola deve scattare</li>
-                      <li>- Invia automaticamente i messaggi di follow-up</li>
-                      <li>- Aggiorna gli stati nella pipeline</li>
-                    </ul>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-                    <h4 className="font-medium mb-2 flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-yellow-500" />
-                      Quando Arriva un Messaggio
-                    </h4>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>- Il sistema riceve il messaggio via Twilio</li>
-                      <li>- Trova o crea la conversazione</li>
-                      <li>- L'agente AI risponde (se abilitato)</li>
-                      <li>- Aggiorna lo stato nella pipeline</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex flex-wrap gap-2">
-              <Link href="/consultant/proactive-leads">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Vai a Lead Proattivi
-                </Button>
-              </Link>
-              <Link href="/consultant/automations">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Zap className="h-4 w-4" />
-                  Vai a Automazioni
-                </Button>
-              </Link>
-              <Link href="/consultant/whatsapp">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  Vai a WhatsApp
-                </Button>
-              </Link>
-            </div>
           </div>
         </main>
       </div>
