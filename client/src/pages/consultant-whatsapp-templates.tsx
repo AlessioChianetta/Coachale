@@ -297,14 +297,16 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
   const configSelectedTemplates = selectedTemplates.get(selectedAgentId) || new Set();
   
   const approvedTemplates = customTemplates.filter(
-    (t) => t.activeVersion?.twilioStatus?.toLowerCase() === "approved"
+    (t) => t.approvalStatus?.toLowerCase() === "approved" || t.activeVersion?.twilioStatus?.toLowerCase() === "approved"
   );
   
   const mainTemplate = approvedTemplates.find(t => t.templateType === "opening");
   const otherTemplates = approvedTemplates.filter(t => t.templateType !== "opening");
   
   const assignedNonApprovedTemplates = customTemplates.filter(
-    (t) => configSelectedTemplates.has(t.id) && t.activeVersion?.twilioStatus?.toLowerCase() !== "approved"
+    (t) => configSelectedTemplates.has(t.id) && 
+           t.approvalStatus?.toLowerCase() !== "approved" && 
+           t.activeVersion?.twilioStatus?.toLowerCase() !== "approved"
   );
 
   if (customTemplates.length === 0) {
