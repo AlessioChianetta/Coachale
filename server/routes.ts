@@ -8721,7 +8721,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Only update provided fields
       if (agentName !== undefined) updateData.agentName = agentName;
-      if (twilioAccountSid !== undefined) updateData.twilioAccountSid = twilioAccountSid;
+      // Only update twilioAccountSid if it's truthy (not empty/undefined)
+      if (twilioAccountSid && twilioAccountSid.trim() !== "") {
+        updateData.twilioAccountSid = twilioAccountSid;
+      }
       if (twilioWhatsappNumber !== undefined) updateData.twilioWhatsappNumber = twilioWhatsappNumber;
       if (autoResponseEnabled !== undefined) updateData.autoResponseEnabled = autoResponseEnabled;
       if (agentType !== undefined) updateData.agentType = agentType;
@@ -8783,8 +8786,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         audioResponseMode,
       }, null, 2));
 
-      // Only update twilioAuthToken if explicitly provided and not empty
-      if (twilioAuthToken && twilioAuthToken.trim() !== "") {
+      // Only update twilioAuthToken if explicitly provided, not empty, and not the placeholder "configured"
+      if (twilioAuthToken && twilioAuthToken.trim() !== "" && twilioAuthToken !== "configured") {
         updateData.twilioAuthToken = twilioAuthToken;
       }
 

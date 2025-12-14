@@ -33,6 +33,7 @@ import {
   useManualImport,
   useStartPolling,
   useStopPolling,
+  useImportLogs,
 } from "@/hooks/useExternalApiConfig";
 import { useCampaigns } from "@/hooks/useCampaigns";
 import CalendarView from "@/components/calendar/CalendarView";
@@ -566,6 +567,7 @@ export default function ConsultantApiKeysUnified() {
   const manualImportMutation = useManualImport();
   const startPollingMutation = useStartPolling();
   const stopPollingMutation = useStopPolling();
+  const { data: importLogs, isLoading: importLogsLoading } = useImportLogs(leadImportConfigId || "", 20);
 
   const campaigns = campaignsData?.campaigns || [];
   const existingLeadConfig = leadImportConfigs && leadImportConfigs.length > 0 ? leadImportConfigs[0] : null;
@@ -3514,6 +3516,95 @@ export default function ConsultantApiKeysUnified() {
                           )}
                         </Button>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Sezione 3: Storico Importazioni */}
+                  <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-purple-600" />
+                        Storico Importazioni
+                      </CardTitle>
+                      <CardDescription>Cronologia delle importazioni lead recenti</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {importLogsLoading ? (
+                        <div className="flex justify-center p-8">
+                          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                        </div>
+                      ) : importLogs && importLogs.length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Data/Ora</TableHead>
+                                <TableHead>Tipo</TableHead>
+                                <TableHead>Lead Importati</TableHead>
+                                <TableHead>Lead Aggiornati</TableHead>
+                                <TableHead>Errori</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Durata</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {importLogs.map((log: any) => (
+                                <TableRow key={log.id}>
+                                  <TableCell className="text-sm">
+                                    {log.startedAt ? new Date(log.startedAt).toLocaleString('it-IT', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    }) : '-'}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className={
+                                      log.importType === 'manual' 
+                                        ? 'bg-blue-50 text-blue-700 border-blue-300'
+                                        : 'bg-green-50 text-green-700 border-green-300'
+                                    }>
+                                      {log.importType === 'manual' ? 'Manuale' : 'Automatico'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center font-medium">
+                                    {log.leadsImported || 0}
+                                  </TableCell>
+                                  <TableCell className="text-center font-medium">
+                                    {log.leadsUpdated || 0}
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <span className={log.leadsErrored > 0 ? 'text-red-600 font-medium' : ''}>
+                                      {log.leadsErrored || 0}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge className={
+                                      log.status === 'success' 
+                                        ? 'bg-green-100 text-green-800 border-green-300'
+                                        : log.status === 'partial'
+                                        ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                                        : 'bg-red-100 text-red-800 border-red-300'
+                                    }>
+                                      {log.status === 'success' ? 'Successo' : log.status === 'partial' ? 'Parziale' : 'Errore'}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-sm text-muted-foreground">
+                                    {log.durationMs ? `${(log.durationMs / 1000).toFixed(1)}s` : '-'}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ) : (
+                        <div className="text-center p-8 text-gray-500">
+                          <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                          <p>Nessuna importazione registrata</p>
+                          <p className="text-sm mt-1">Le importazioni appariranno qui dopo la prima esecuzione</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>

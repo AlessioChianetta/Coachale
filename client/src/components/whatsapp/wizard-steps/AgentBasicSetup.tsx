@@ -64,14 +64,12 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
 
   useEffect(() => {
     if (twilioSettings?.settings && hasTwilioConfigured) {
+      // Only sync the accountSid for display purposes
       if (twilioSettings.settings.accountSid && formData.twilioAccountSid !== twilioSettings.settings.accountSid) {
         onChange("twilioAccountSid", twilioSettings.settings.accountSid);
       }
-      // Note: authToken is encrypted on server, we just mark that it's configured
-      // The actual token will be fetched by the server when needed
-      if (twilioSettings.settings.hasAuthToken && !formData.twilioAuthToken) {
-        onChange("twilioAuthToken", "configured"); // Placeholder to indicate it's set
-      }
+      // NOTE: Do NOT set twilioAuthToken here - the backend uses centralized Twilio settings
+      // when sending WhatsApp messages. The agent only needs twilioWhatsappNumber.
     }
   }, [twilioSettings, hasTwilioConfigured]);
 

@@ -47,6 +47,7 @@ import {
   Database,
   Plug,
   ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { CampaignsList } from "@/components/campaigns/CampaignsList";
@@ -550,20 +551,64 @@ export default function ConsultantCampaignsPage() {
                     activeCrmConfigs.map((config) => (
                       <div
                         key={config.id}
-                        className="flex items-center gap-3 p-4 rounded-lg border bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30"
+                        className="flex items-start gap-3 p-4 rounded-lg border bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30"
                       >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white shrink-0">
                           <Database className="h-5 w-5" />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 space-y-1">
                           <p className="font-medium text-sm truncate">{config.configName}</p>
-                          <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Connesso
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap text-xs">
+                            <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Connesso
+                            </span>
+                            <span className="text-muted-foreground">|</span>
+                            {config.pollingEnabled ? (
+                              <span className="text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                                <RefreshCw className="h-3 w-3" />
+                                Polling Attivo (ogni {config.pollingIntervalMinutes} min)
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground flex items-center gap-1">
+                                <Circle className="h-3 w-3" />
+                                Polling Inattivo
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>
+                              Ultima:{" "}
+                              {config.lastImportAt
+                                ? new Date(config.lastImportAt).toLocaleString("it-IT", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
+                                : "Mai importato"}
+                            </span>
+                            {config.lastImportStatus && (
+                              <span
+                                className={cn(
+                                  "inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium",
+                                  config.lastImportStatus === "success"
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                    : config.lastImportStatus === "partial"
+                                    ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                    : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+                                )}
+                              >
+                                {config.lastImportStatus === "success" && "✅"}
+                                {config.lastImportStatus === "partial" && "⚠️"}
+                                {config.lastImportStatus === "error" && "❌"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <Link href="/consultant/knowledge/apis">
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
                             <ExternalLink className="h-4 w-4" />
                           </Button>
                         </Link>
