@@ -81,6 +81,13 @@ import {
   Zap,
   Heart,
   Users,
+  Headphones,
+  ShoppingCart,
+  Target,
+  Wrench,
+  UserPlus,
+  TrendingUp,
+  Bell,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 
@@ -98,7 +105,7 @@ interface CustomTemplate {
   id: string;
   consultantId: string;
   templateName: string;
-  templateType: "opening" | "followup_gentle" | "followup_value" | "followup_final" | "stalled" | "customer_success" | "reactivation";
+  templateType: "opening" | "followup_gentle" | "followup_value" | "followup_final" | "stalled" | "customer_success" | "reactivation" | "customer_care" | "venditori" | "setter" | "assistenza" | "onboarding" | "upsell" | "reminder";
   description: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -109,7 +116,7 @@ interface CustomTemplate {
 type SortOption = "newest" | "oldest" | "name_asc" | "name_desc";
 type ViewMode = "grid" | "list";
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 30;
 
 const CATEGORY_CONFIG: Record<string, { label: string; color: string; gradient: string; icon: string; lucideIcon?: any }> = {
   all: {
@@ -163,6 +170,55 @@ const CATEGORY_CONFIG: Record<string, { label: string; color: string; gradient: 
     gradient: "from-indigo-500 to-violet-500",
     icon: "🔄",
     lucideIcon: RefreshCw,
+  },
+  customer_care: {
+    label: "Assistenza Clienti",
+    color: "bg-teal-500",
+    gradient: "from-teal-500 to-cyan-500",
+    icon: "🎧",
+    lucideIcon: Headphones,
+  },
+  venditori: {
+    label: "Venditori",
+    color: "bg-emerald-500",
+    gradient: "from-emerald-500 to-green-500",
+    icon: "💼",
+    lucideIcon: ShoppingCart,
+  },
+  setter: {
+    label: "Setter",
+    color: "bg-sky-500",
+    gradient: "from-sky-500 to-blue-500",
+    icon: "🎯",
+    lucideIcon: Target,
+  },
+  assistenza: {
+    label: "Supporto Tecnico",
+    color: "bg-slate-600",
+    gradient: "from-slate-600 to-gray-600",
+    icon: "🔧",
+    lucideIcon: Wrench,
+  },
+  onboarding: {
+    label: "Onboarding",
+    color: "bg-violet-500",
+    gradient: "from-violet-500 to-purple-500",
+    icon: "🚀",
+    lucideIcon: UserPlus,
+  },
+  upsell: {
+    label: "Upsell",
+    color: "bg-rose-500",
+    gradient: "from-rose-500 to-pink-500",
+    icon: "📈",
+    lucideIcon: TrendingUp,
+  },
+  reminder: {
+    label: "Promemoria",
+    color: "bg-yellow-500",
+    gradient: "from-yellow-500 to-amber-500",
+    icon: "🔔",
+    lucideIcon: Bell,
   },
 };
 
@@ -264,6 +320,13 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
       stalled: templates.filter((t) => t.templateType === "stalled").length,
       customer_success: templates.filter((t) => t.templateType === "customer_success").length,
       reactivation: templates.filter((t) => t.templateType === "reactivation").length,
+      customer_care: templates.filter((t) => t.templateType === "customer_care").length,
+      venditori: templates.filter((t) => t.templateType === "venditori").length,
+      setter: templates.filter((t) => t.templateType === "setter").length,
+      assistenza: templates.filter((t) => t.templateType === "assistenza").length,
+      onboarding: templates.filter((t) => t.templateType === "onboarding").length,
+      upsell: templates.filter((t) => t.templateType === "upsell").length,
+      reminder: templates.filter((t) => t.templateType === "reminder").length,
       approved: templates.filter((t) => t.activeVersion?.twilioStatus === "approved").length,
       pending: templates.filter((t) => t.activeVersion?.twilioStatus === "pending_approval").length,
       archived: templates.filter((t) => t.archivedAt).length,
@@ -450,7 +513,21 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const showEmptyState = !isLoading && templates.length === 0;
   const showNoResults = !isLoading && templates.length > 0 && filteredAndSortedTemplates.length === 0;
 
-  const categories = ["all", "opening", "followup_gentle", "stalled", "customer_success", "reactivation"];
+  const categories = [
+    "all", 
+    "opening", 
+    "followup_gentle", 
+    "stalled", 
+    "customer_success", 
+    "reactivation",
+    "customer_care",
+    "venditori",
+    "setter",
+    "assistenza",
+    "onboarding",
+    "upsell",
+    "reminder"
+  ];
 
   const getCategoryCount = (cat: string) => {
     if (cat === "all") return stats.total;
@@ -840,13 +917,20 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                             <span className="text-xs">Per Categoria</span>
                           </div>
                         </TooltipTrigger>
-                        <TooltipContent className="p-3">
-                          <div className="space-y-1.5 text-sm">
+                        <TooltipContent className="p-3 max-w-xs">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
                             <p>👋 Apertura: {stats.opening}</p>
                             <p>💬 Follow-up: {stats.followup_gentle}</p>
                             <p>⏸️ Bloccati: {stats.stalled}</p>
                             <p>🎯 Post-vendita: {stats.customer_success}</p>
                             <p>🔄 Riattivazione: {stats.reactivation}</p>
+                            <p>🎧 Assistenza Clienti: {stats.customer_care}</p>
+                            <p>💼 Venditori: {stats.venditori}</p>
+                            <p>🎯 Setter: {stats.setter}</p>
+                            <p>🔧 Supporto Tecnico: {stats.assistenza}</p>
+                            <p>🚀 Onboarding: {stats.onboarding}</p>
+                            <p>📈 Upsell: {stats.upsell}</p>
+                            <p>🔔 Promemoria: {stats.reminder}</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -857,8 +941,8 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
             </div>
 
             {!showEmptyState && (
-              <div className="space-y-4 mb-6">
-                <div className="flex flex-wrap gap-2">
+              <div className="sticky top-0 z-20 bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 pb-4 pt-2 -mt-2 space-y-4 mb-6">
+                <div className="flex flex-wrap gap-2 p-3 bg-white/80 backdrop-blur-sm rounded-xl border shadow-sm">
                   {categories.map((cat) => {
                     const config = CATEGORY_CONFIG[cat];
                     const count = getCategoryCount(cat);
@@ -869,19 +953,19 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                         key={cat}
                         onClick={() => setSelectedCategory(cat)}
                         className={`
-                          flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm
-                          transition-all duration-200 border-2
+                          flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs
+                          transition-all duration-200 border
                           ${isSelected 
-                            ? `bg-gradient-to-r ${config.gradient} text-white border-transparent shadow-lg` 
-                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:shadow'
+                            ? `bg-gradient-to-r ${config.gradient} text-white border-transparent shadow-md` 
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:shadow-sm'
                           }
                         `}
                       >
-                        <span>{config.icon}</span>
-                        <span>{config.label}</span>
+                        <span className="text-sm">{config.icon}</span>
+                        <span className="hidden sm:inline">{config.label}</span>
                         <Badge 
                           variant="secondary" 
-                          className={`ml-1 ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-100'}`}
+                          className={`text-xs px-1.5 py-0 ${isSelected ? 'bg-white/25 text-white' : 'bg-slate-100'}`}
                         >
                           {count}
                         </Badge>
@@ -890,21 +974,21 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   })}
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 bg-white p-4 rounded-xl border shadow-sm">
+                <div className="flex flex-col sm:flex-row gap-3 bg-white/80 backdrop-blur-sm p-3 rounded-xl border shadow-sm">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Cerca template per nome..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 border-2 focus-visible:ring-purple-500/20"
+                      className="pl-10 border-2 focus-visible:ring-purple-500/20 h-9"
                     />
                   </div>
                   
                   <div className="flex items-center gap-2">
                     <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                      <SelectTrigger className="w-[180px] border-2">
-                        <ArrowUpDown className="h-4 w-4 mr-2" />
+                      <SelectTrigger className="w-[160px] border-2 h-9">
+                        <ArrowUpDown className="h-3.5 w-3.5 mr-2" />
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -915,22 +999,22 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                       </SelectContent>
                     </Select>
 
-                    <div className="flex items-center border-2 rounded-lg p-1">
+                    <div className="flex items-center border-2 rounded-lg p-0.5">
                       <Button
                         variant={viewMode === "grid" ? "secondary" : "ghost"}
                         size="sm"
                         onClick={() => setViewMode("grid")}
-                        className="h-8 w-8 p-0"
+                        className="h-7 w-7 p-0"
                       >
-                        <Grid3X3 className="h-4 w-4" />
+                        <Grid3X3 className="h-3.5 w-3.5" />
                       </Button>
                       <Button
                         variant={viewMode === "list" ? "secondary" : "ghost"}
                         size="sm"
                         onClick={() => setViewMode("list")}
-                        className="h-8 w-8 p-0"
+                        className="h-7 w-7 p-0"
                       >
-                        <List className="h-4 w-4" />
+                        <List className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
@@ -995,7 +1079,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
             {!isLoading && paginatedTemplates.length > 0 && (
               <>
                 {viewMode === "grid" ? (
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {paginatedTemplates.map(renderTemplateCard)}
                   </div>
                 ) : (

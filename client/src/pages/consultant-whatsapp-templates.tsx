@@ -96,6 +96,7 @@ interface WhatsAppConfig {
   autoResponseEnabled: boolean;
   isActive: boolean;
   agentType?: "reactive_lead" | "proactive_setter";
+  isProactiveAgent?: boolean;
   businessName?: string | null;
   consultantDisplayName?: string | null;
   whatsappTemplates?: {
@@ -142,10 +143,19 @@ interface TemplateAssignmentData {
 
 interface PreviewVariables {
   nomeLead: string;
+  nomeConsulente: string;
   business: string;
   obiettivi: string;
   desideri: string;
 }
+
+const getAgentType = (config: WhatsAppConfig): "reactive_lead" | "proactive_setter" => {
+  return config.agentType || (config.isProactiveAgent ? 'proactive_setter' : 'reactive_lead');
+};
+
+const isAgentProactive = (config: WhatsAppConfig): boolean => {
+  return getAgentType(config) === 'proactive_setter';
+};
 
 function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgentId }: { configs: WhatsAppConfig[]; configsLoading: boolean; selectedAgentId: string | null }) {
   const { toast } = useToast();
@@ -167,11 +177,11 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
 
   const customTemplates: CustomTemplate[] = customTemplatesData?.data || [];
   const selectedAgent = configs.find(c => c.id === selectedAgentId);
-  const isProactiveAgent = selectedAgent?.agentType === 'proactive_setter';
+  const isProactiveAgentSelected = selectedAgent ? isAgentProactive(selectedAgent) : false;
 
   useEffect(() => {
     const loadAssignments = async () => {
-      if (!selectedAgentId || !isProactiveAgent) return;
+      if (!selectedAgentId || !isProactiveAgentSelected) return;
       if (loadingAssignments.has(selectedAgentId)) return;
       
       setLoadingAssignments(prev => new Set([...prev, selectedAgentId]));
@@ -196,10 +206,10 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
       }
     };
 
-    if (selectedAgentId && isProactiveAgent && customTemplates.length > 0) {
+    if (selectedAgentId && isProactiveAgentSelected && customTemplates.length > 0) {
       loadAssignments();
     }
-  }, [selectedAgentId, isProactiveAgent, customTemplates.length]);
+  }, [selectedAgentId, isProactiveAgentSelected, customTemplates.length]);
 
   const bulkAssignMutation = useMutation({
     mutationFn: async ({ agentConfigId, templateIds }: { agentConfigId: string; templateIds: string[] }) => {
@@ -274,7 +284,7 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
     );
   }
 
-  if (!selectedAgentId || !isProactiveAgent) {
+  if (!selectedAgentId || !isProactiveAgentSelected) {
     return null;
   }
 
@@ -422,10 +432,12 @@ export default function ConsultantWhatsAppTemplatesPage() {
   
   const [previewVariables, setPreviewVariables] = useState<PreviewVariables>({
     nomeLead: "Marco Rossi",
+    nomeConsulente: "Luca",
     business: "Palestra Fitness",
     obiettivi: "Perdere peso",
     desideri: "Più tempo libero",
   });
+  const [selectedPreviewTemplateId, setSelectedPreviewTemplateId] = useState<string | null>(null);
 
   const { data: templatesData, isLoading: templatesLoading, error: templatesError } = useQuery({
     queryKey: ["/api/whatsapp/templates"],
@@ -460,7 +472,7 @@ export default function ConsultantWhatsAppTemplatesPage() {
 
   useEffect(() => {
     if (configs.length > 0 && !selectedAgentId) {
-      const proactiveAgent = configs.find(c => c.agentType === 'proactive_setter');
+      const proactiveAgent = configs.find(c => isAgentProactive(c));
       if (proactiveAgent) {
         setSelectedAgentId(proactiveAgent.id);
       } else if (configs[0]) {
@@ -478,10 +490,12 @@ export default function ConsultantWhatsAppTemplatesPage() {
     if (selectedAgent) {
       setPreviewVariables({
         nomeLead: "Marco Rossi",
+        nomeConsulente: selectedAgent.consultantDisplayName || selectedAgent.agentName || "Luca",
         business: selectedAgent.businessName || "Palestra Fitness",
         obiettivi: selectedAgent.defaultObiettivi || "Perdere peso",
         desideri: selectedAgent.defaultDesideri || "Più tempo libero",
       });
+      setSelectedPreviewTemplateId(null);
     }
   }, [selectedAgent]);
 
@@ -703,11 +717,29 @@ export default function ConsultantWhatsAppTemplatesPage() {
     if (!templateBody) return null;
     
     let preview = templateBody;
+    
+    // Replace numbered placeholders {{1}}, {{2}}, etc.
     preview = preview.replace(/\{\{1\}\}/g, `<span class="font-semibold text-blue-600">${previewVariables.nomeLead}</span>`);
-    preview = preview.replace(/\{\{2\}\}/g, `<span class="font-semibold text-green-600">${selectedAgent?.consultantDisplayName || selectedAgent?.agentName || "Luca"}</span>`);
+    preview = preview.replace(/\{\{2\}\}/g, `<span class="font-semibold text-green-600">${previewVariables.nomeConsulente}</span>`);
     preview = preview.replace(/\{\{3\}\}/g, `<span class="font-semibold text-purple-600">${previewVariables.business}</span>`);
     preview = preview.replace(/\{\{4\}\}/g, `<span class="font-semibold text-orange-600">${previewVariables.obiettivi}</span>`);
     preview = preview.replace(/\{\{5\}\}/g, `<span class="font-semibold text-pink-600">${previewVariables.desideri}</span>`);
+    
+    // Replace semantic variables {nome_lead}, {nome_consulente}, {nome_business}, etc.
+    preview = preview.replace(/\{nome_lead\}/gi, `<span class="font-semibold text-blue-600">${previewVariables.nomeLead}</span>`);
+    preview = preview.replace(/\{nome_consulente\}/gi, `<span class="font-semibold text-green-600">${previewVariables.nomeConsulente}</span>`);
+    preview = preview.replace(/\{nome_business\}/gi, `<span class="font-semibold text-purple-600">${previewVariables.business}</span>`);
+    preview = preview.replace(/\{business\}/gi, `<span class="font-semibold text-purple-600">${previewVariables.business}</span>`);
+    preview = preview.replace(/\{obiettivi\}/gi, `<span class="font-semibold text-orange-600">${previewVariables.obiettivi}</span>`);
+    preview = preview.replace(/\{desideri\}/gi, `<span class="font-semibold text-pink-600">${previewVariables.desideri}</span>`);
+    
+    // Also handle double bracket semantic variables {{nome_lead}}, etc.
+    preview = preview.replace(/\{\{nome_lead\}\}/gi, `<span class="font-semibold text-blue-600">${previewVariables.nomeLead}</span>`);
+    preview = preview.replace(/\{\{nome_consulente\}\}/gi, `<span class="font-semibold text-green-600">${previewVariables.nomeConsulente}</span>`);
+    preview = preview.replace(/\{\{nome_business\}\}/gi, `<span class="font-semibold text-purple-600">${previewVariables.business}</span>`);
+    preview = preview.replace(/\{\{business\}\}/gi, `<span class="font-semibold text-purple-600">${previewVariables.business}</span>`);
+    preview = preview.replace(/\{\{obiettivi\}\}/gi, `<span class="font-semibold text-orange-600">${previewVariables.obiettivi}</span>`);
+    preview = preview.replace(/\{\{desideri\}\}/gi, `<span class="font-semibold text-pink-600">${previewVariables.desideri}</span>`);
     
     return <div className="text-sm whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: preview }} />;
   };
@@ -790,7 +822,7 @@ export default function ConsultantWhatsAppTemplatesPage() {
                   </div>
                   <div className="bg-purple-500/20 backdrop-blur-sm rounded-lg p-3 border border-purple-300/30">
                     <p className="text-xs text-purple-100 mb-1">Agenti Attivi</p>
-                    <p className="text-2xl font-bold">{configs.filter(c => c.agentType === 'proactive_setter').length}</p>
+                    <p className="text-2xl font-bold">{configs.filter(c => isAgentProactive(c)).length}</p>
                   </div>
                 </div>
               </div>
@@ -847,12 +879,12 @@ export default function ConsultantWhatsAppTemplatesPage() {
                                       variant="outline" 
                                       className={cn(
                                         "text-xs",
-                                        selectedAgent.agentType === 'proactive_setter' 
+                                        isAgentProactive(selectedAgent) 
                                           ? "bg-green-50 text-green-700 border-green-300" 
                                           : "bg-blue-50 text-blue-700 border-blue-300"
                                       )}
                                     >
-                                      {selectedAgent.agentType === 'proactive_setter' ? 'Proattivo' : 'Reattivo'}
+                                      {isAgentProactive(selectedAgent) ? 'Proattivo' : 'Reattivo'}
                                     </Badge>
                                     <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-300">
                                       {getTemplateCount(selectedAgent.id)} template
@@ -894,12 +926,12 @@ export default function ConsultantWhatsAppTemplatesPage() {
                                           variant="outline" 
                                           className={cn(
                                             "text-xs",
-                                            config.agentType === 'proactive_setter' 
+                                            isAgentProactive(config) 
                                               ? "bg-green-50 text-green-700 border-green-300" 
                                               : "bg-blue-50 text-blue-700 border-blue-300"
                                           )}
                                         >
-                                          {config.agentType === 'proactive_setter' ? 'Proattivo' : 'Reattivo'}
+                                          {isAgentProactive(config) ? 'Proattivo' : 'Reattivo'}
                                         </Badge>
                                         <span className="text-purple-600">{getTemplateCount(config.id)} template</span>
                                       </div>
@@ -917,7 +949,7 @@ export default function ConsultantWhatsAppTemplatesPage() {
                     </CardContent>
                   </Card>
 
-                  {selectedAgentId && selectedAgent?.agentType === 'proactive_setter' && (
+                  {selectedAgentId && selectedAgent && isAgentProactive(selectedAgent) && (
                     <>
                       <Card className={cn(
                         "shadow-xl border-4 bg-white/95 backdrop-blur-sm",
@@ -1027,165 +1059,11 @@ export default function ConsultantWhatsAppTemplatesPage() {
                         </CardContent>
                       </Card>
 
-                      <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="flex items-center gap-3 text-xl">
-                            <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
-                              <Repeat className="h-5 w-5 text-white" />
-                            </div>
-                            Template Follow-up
-                            <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-300">
-                              Opzionali - L'AI decide quale usare
-                            </Badge>
-                          </CardTitle>
-                          <CardDescription>
-                            Configura i template per i messaggi di follow-up automatici
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-br from-green-50 to-emerald-50 hover:border-green-300 transition-all">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Timer className="h-5 w-5 text-green-600" />
-                                <h4 className="font-semibold text-gray-900">Gentle 24h</h4>
-                              </div>
-                              <p className="text-xs text-gray-500 mb-3">
-                                Messaggio gentile dopo 24 ore senza risposta
-                              </p>
-                              <Select
-                                value={getAssignedTemplate(selectedAgentId, 'followUpGentleContentSid') || 'none'}
-                                onValueChange={(value) => handleTemplateChange(selectedAgentId, 'followUpGentleContentSid', value)}
-                              >
-                                <SelectTrigger className="w-full bg-white">
-                                  <SelectValue placeholder="Seleziona..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">-- Nessuno --</SelectItem>
-                                  {agentTemplates.map((template) => (
-                                    <SelectItem key={template.sid} value={template.sid}>
-                                      {template.friendlyName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Badge 
-                                className={cn(
-                                  "mt-2 text-xs",
-                                  getAssignedTemplate(selectedAgentId, 'followUpGentleContentSid') && getAssignedTemplate(selectedAgentId, 'followUpGentleContentSid') !== 'none'
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-gray-100 text-gray-500"
-                                )}
-                              >
-                                {getAssignedTemplate(selectedAgentId, 'followUpGentleContentSid') && getAssignedTemplate(selectedAgentId, 'followUpGentleContentSid') !== 'none' ? "🟢 Assegnato" : "⚪ Non assegnato"}
-                              </Badge>
-                            </div>
-
-                            <div className="border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-br from-purple-50 to-violet-50 hover:border-purple-300 transition-all">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Gift className="h-5 w-5 text-purple-600" />
-                                <h4 className="font-semibold text-gray-900">Value Proposition</h4>
-                              </div>
-                              <p className="text-xs text-gray-500 mb-3">
-                                Proposta di valore dopo il gentle reminder
-                              </p>
-                              <Select
-                                value={getAssignedTemplate(selectedAgentId, 'followUpValueContentSid') || 'none'}
-                                onValueChange={(value) => handleTemplateChange(selectedAgentId, 'followUpValueContentSid', value)}
-                              >
-                                <SelectTrigger className="w-full bg-white">
-                                  <SelectValue placeholder="Seleziona..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">-- Nessuno --</SelectItem>
-                                  {agentTemplates.map((template) => (
-                                    <SelectItem key={template.sid} value={template.sid}>
-                                      {template.friendlyName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Badge 
-                                className={cn(
-                                  "mt-2 text-xs",
-                                  getAssignedTemplate(selectedAgentId, 'followUpValueContentSid') && getAssignedTemplate(selectedAgentId, 'followUpValueContentSid') !== 'none'
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-gray-100 text-gray-500"
-                                )}
-                              >
-                                {getAssignedTemplate(selectedAgentId, 'followUpValueContentSid') && getAssignedTemplate(selectedAgentId, 'followUpValueContentSid') !== 'none' ? "🟢 Assegnato" : "⚪ Non assegnato"}
-                              </Badge>
-                            </div>
-
-                            <div className="border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-br from-orange-50 to-amber-50 hover:border-orange-300 transition-all">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Zap className="h-5 w-5 text-orange-600" />
-                                <h4 className="font-semibold text-gray-900">Last Chance</h4>
-                              </div>
-                              <p className="text-xs text-gray-500 mb-3">
-                                Ultimo tentativo prima di archiviare
-                              </p>
-                              <Select
-                                value={getAssignedTemplate(selectedAgentId, 'followUpFinalContentSid') || 'none'}
-                                onValueChange={(value) => handleTemplateChange(selectedAgentId, 'followUpFinalContentSid', value)}
-                              >
-                                <SelectTrigger className="w-full bg-white">
-                                  <SelectValue placeholder="Seleziona..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">-- Nessuno --</SelectItem>
-                                  {agentTemplates.map((template) => (
-                                    <SelectItem key={template.sid} value={template.sid}>
-                                      {template.friendlyName}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Badge 
-                                className={cn(
-                                  "mt-2 text-xs",
-                                  getAssignedTemplate(selectedAgentId, 'followUpFinalContentSid') && getAssignedTemplate(selectedAgentId, 'followUpFinalContentSid') !== 'none'
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-gray-100 text-gray-500"
-                                )}
-                              >
-                                {getAssignedTemplate(selectedAgentId, 'followUpFinalContentSid') && getAssignedTemplate(selectedAgentId, 'followUpFinalContentSid') !== 'none' ? "🟢 Assegnato" : "⚪ Non assegnato"}
-                              </Badge>
-                            </div>
-
-                            <div className="border-2 border-gray-200 rounded-xl p-4 bg-gradient-to-br from-blue-50 to-cyan-50 hover:border-blue-300 transition-all opacity-50">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Repeat className="h-5 w-5 text-blue-600" />
-                                <h4 className="font-semibold text-gray-900">Reactivation</h4>
-                              </div>
-                              <p className="text-xs text-gray-500 mb-3">
-                                Riattivazione lead dopo lungo periodo
-                              </p>
-                              <div className="bg-gray-100 rounded-lg p-3 text-center">
-                                <span className="text-xs text-gray-500">Prossimamente</span>
-                              </div>
-                              <Badge className="mt-2 text-xs bg-gray-100 text-gray-500">
-                                🔜 Coming Soon
-                              </Badge>
-                            </div>
-                          </div>
-
-                          {hasChanges(selectedAgentId) && (
-                            <div className="mt-4 flex justify-end">
-                              <Button
-                                onClick={() => handleSaveChanges(selectedAgentId)}
-                                disabled={updateTemplatesMutation.isPending}
-                              >
-                                {updateTemplatesMutation.isPending ? (
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                ) : (
-                                  <Save className="h-4 w-4 mr-2" />
-                                )}
-                                Salva Template Follow-up
-                              </Button>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
+                      <CustomTemplateAssignmentSection 
+                        configs={configs} 
+                        configsLoading={configsLoading} 
+                        selectedAgentId={selectedAgentId}
+                      />
 
                       <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
                         <CardHeader className="pb-3">
@@ -1193,16 +1071,65 @@ export default function ConsultantWhatsAppTemplatesPage() {
                             <div className="p-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500">
                               <Eye className="h-5 w-5 text-white" />
                             </div>
-                            Anteprima Interattiva
+                            Anteprima Interattiva Template
                           </CardTitle>
                           <CardDescription>
-                            Modifica i valori per vedere come apparirà il messaggio
+                            Seleziona un template e modifica i valori per vedere come apparirà il messaggio
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             <div className="space-y-4">
-                              <h4 className="font-medium text-gray-700 flex items-center gap-2">
+                              <div>
+                                <Label className="text-sm font-medium mb-2 block">
+                                  Seleziona Template da Visualizzare
+                                </Label>
+                                <Select
+                                  value={selectedPreviewTemplateId || openingTemplateAssigned || 'none'}
+                                  onValueChange={(value) => setSelectedPreviewTemplateId(value === 'none' ? null : value)}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Seleziona un template..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">-- Seleziona un template --</SelectItem>
+                                    {selectedOpeningTemplate && (
+                                      <SelectItem value={selectedOpeningTemplate.sid}>
+                                        <div className="flex items-center gap-2">
+                                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                                            Apertura
+                                          </Badge>
+                                          <span>{selectedOpeningTemplate.friendlyName}</span>
+                                        </div>
+                                      </SelectItem>
+                                    )}
+                                    {agentTemplates
+                                      .filter(t => t.sid !== selectedOpeningTemplate?.sid)
+                                      .map((template) => (
+                                        <SelectItem key={template.sid} value={template.sid}>
+                                          <div className="flex items-center gap-2">
+                                            <span>{template.friendlyName}</span>
+                                            {template.approvalStatus && (
+                                              <Badge 
+                                                variant="outline" 
+                                                className={cn(
+                                                  "text-xs",
+                                                  template.approvalStatus.toLowerCase() === 'approved' 
+                                                    ? "bg-green-50 text-green-700" 
+                                                    : "bg-yellow-50 text-yellow-700"
+                                                )}
+                                              >
+                                                {getApprovalStatusLabel(template.approvalStatus)}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              <h4 className="font-medium text-gray-700 flex items-center gap-2 pt-2">
                                 <Settings className="h-4 w-4" />
                                 Variabili del Messaggio
                               </h4>
@@ -1217,6 +1144,18 @@ export default function ConsultantWhatsAppTemplatesPage() {
                                     value={previewVariables.nomeLead}
                                     onChange={(e) => setPreviewVariables(prev => ({ ...prev, nomeLead: e.target.value }))}
                                     placeholder="Marco Rossi"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="preview-consulente" className="text-sm font-medium">
+                                    Nome Consulente
+                                  </Label>
+                                  <Input
+                                    id="preview-consulente"
+                                    value={previewVariables.nomeConsulente}
+                                    onChange={(e) => setPreviewVariables(prev => ({ ...prev, nomeConsulente: e.target.value }))}
+                                    placeholder="Luca"
                                     className="mt-1"
                                   />
                                 </div>
@@ -1244,7 +1183,7 @@ export default function ConsultantWhatsAppTemplatesPage() {
                                     className="mt-1"
                                   />
                                 </div>
-                                <div>
+                                <div className="sm:col-span-2">
                                   <Label htmlFor="preview-desideri" className="text-sm font-medium">
                                     Desideri
                                   </Label>
@@ -1264,9 +1203,10 @@ export default function ConsultantWhatsAppTemplatesPage() {
                                   size="sm"
                                   onClick={() => setPreviewVariables({
                                     nomeLead: "Marco Rossi",
-                                    business: "Palestra Fitness",
-                                    obiettivi: "Perdere peso",
-                                    desideri: "Più tempo libero",
+                                    nomeConsulente: selectedAgent?.consultantDisplayName || selectedAgent?.agentName || "Luca",
+                                    business: selectedAgent?.businessName || "Palestra Fitness",
+                                    obiettivi: selectedAgent?.defaultObiettivi || "Perdere peso",
+                                    desideri: selectedAgent?.defaultDesideri || "Più tempo libero",
                                   })}
                                 >
                                   <RotateCcw className="h-4 w-4 mr-2" />
@@ -1311,41 +1251,51 @@ export default function ConsultantWhatsAppTemplatesPage() {
                                 Anteprima Messaggio
                               </h4>
                               
-                              <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl p-4 min-h-[200px]">
-                                {selectedOpeningTemplate ? (
-                                  <div className="bg-[#DCF8C6] text-[#303030] p-4 rounded-lg rounded-tl-none shadow-md max-w-md ml-auto">
-                                    {renderPreviewMessage(selectedOpeningTemplate.bodyText)}
-                                    <p className="text-xs text-right text-gray-500 mt-2">
-                                      {new Date().toLocaleTimeString("it-IT", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                      <span className="ml-1">✓✓</span>
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center h-full text-gray-400">
-                                    <div className="text-center">
-                                      <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                                      <p>Seleziona un template di apertura per vedere l'anteprima</p>
+                              <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl p-4 min-h-[280px]">
+                                {(() => {
+                                  const previewTemplateId = selectedPreviewTemplateId || openingTemplateAssigned;
+                                  const previewTemplate = agentTemplates.find(t => t.sid === previewTemplateId);
+                                  
+                                  if (previewTemplate) {
+                                    return (
+                                      <div className="space-y-3">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                                            {previewTemplate.friendlyName}
+                                          </Badge>
+                                        </div>
+                                        <div className="bg-[#DCF8C6] text-[#303030] p-4 rounded-lg rounded-tl-none shadow-md max-w-md ml-auto">
+                                          {renderPreviewMessage(previewTemplate.bodyText)}
+                                          <p className="text-xs text-right text-gray-500 mt-2">
+                                            {new Date().toLocaleTimeString("it-IT", {
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            })}
+                                            <span className="ml-1">✓✓</span>
+                                          </p>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  
+                                  return (
+                                    <div className="flex items-center justify-center h-full text-gray-400">
+                                      <div className="text-center">
+                                        <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                        <p>Seleziona un template per vedere l'anteprima</p>
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  );
+                                })()}
                               </div>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-
-                      <CustomTemplateAssignmentSection 
-                        configs={configs} 
-                        configsLoading={configsLoading} 
-                        selectedAgentId={selectedAgentId}
-                      />
                     </>
                   )}
 
-                  {selectedAgentId && selectedAgent?.agentType !== 'proactive_setter' && (
+                  {selectedAgentId && selectedAgent && !isAgentProactive(selectedAgent) && (
                     <Card className="shadow-lg border-2 border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50">
                       <CardContent className="py-12">
                         <div className="text-center max-w-md mx-auto">

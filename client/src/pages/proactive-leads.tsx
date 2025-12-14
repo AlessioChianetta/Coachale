@@ -41,6 +41,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
   Users,
@@ -60,6 +61,15 @@ import {
   Play,
   Megaphone,
   Zap,
+  User,
+  ChevronDown,
+  ChevronUp,
+  MessageCircle,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Sparkles,
+  FileText,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Papa from "papaparse";
@@ -88,7 +98,7 @@ interface ProactiveLead {
   leadInfo: LeadInfo;
   idealState: string | null;
   contactSchedule: string;
-  contactFrequency: number;
+  contactFrequency?: number;
   lastContactedAt: string | null;
   lastMessageSent: string | null;
   status: "pending" | "contacted" | "responded" | "converted" | "inactive";
@@ -117,7 +127,7 @@ interface FormData {
   leadInfo: LeadInfo;
   idealState: string;
   contactSchedule: string;
-  contactFrequency: number;
+  notes?: string;
 }
 
 const emptyFormData: FormData = {
@@ -134,7 +144,35 @@ const emptyFormData: FormData = {
   },
   idealState: "",
   contactSchedule: "",
-  contactFrequency: 7,
+  notes: "",
+};
+
+const statusConfig = {
+  pending: {
+    color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600",
+    icon: Clock,
+    label: "In Attesa",
+  },
+  contacted: {
+    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 border-blue-300 dark:border-blue-600",
+    icon: MessageCircle,
+    label: "Contattato",
+  },
+  responded: {
+    color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-600",
+    icon: CheckCircle2,
+    label: "Ha Risposto",
+  },
+  converted: {
+    color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 border-purple-300 dark:border-purple-600",
+    icon: Sparkles,
+    label: "Convertito",
+  },
+  inactive: {
+    color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300 dark:border-red-600",
+    icon: XCircle,
+    label: "Inattivo",
+  },
 };
 
 const statusColors = {
@@ -166,6 +204,7 @@ export default function ProactiveLeadsPage() {
   const [formData, setFormData] = useState<FormData>(emptyFormData);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [advancedDetailsOpen, setAdvancedDetailsOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -485,10 +524,11 @@ export default function ProactiveLeadsPage() {
       },
       idealState: lead.idealState || "",
       contactSchedule: contactScheduleFormatted,
-      contactFrequency: lead.contactFrequency,
+      notes: lead.metadata?.notes || "",
     });
     setSelectedLead(lead);
     setFormErrors({});
+    setAdvancedDetailsOpen(false);
     setIsDialogOpen(true);
   };
 
@@ -602,8 +642,12 @@ export default function ProactiveLeadsPage() {
       phoneNumber: formData.phoneNumber,
       agentConfigId: formData.agentConfigId,
       contactSchedule: isoSchedule,
-      contactFrequency: formData.contactFrequency,
     };
+    
+    // Add notes to metadata if present
+    if (formData.notes?.trim()) {
+      dataToSend.metadata = { notes: formData.notes.trim() };
+    }
     
     // Add campaignId if selected
     if (formData.campaignId) {
@@ -677,30 +721,24 @@ export default function ProactiveLeadsPage() {
   const [rawCsvData, setRawCsvData] = useState<any[]>([]);
 
   // Expected field mappings (italiano -> campo interno)
-  const expectedFields = {
+  const expectedFields: Record<string, string> = {
     nome: 'firstName',
     cognome: 'lastName',
     telefono: 'phoneNumber',
-    data_contatto: 'contactSchedule',
-    frequenza: 'contactFrequency',
-    stato_ideale: 'idealState',
     obiettivi: 'leadInfo.obiettivi',
     desideri: 'leadInfo.desideri',
     uncino: 'leadInfo.uncino',
-    fonte: 'leadInfo.fonte',
+    note: 'metadata.notes',
   };
 
   const fieldLabels: Record<string, string> = {
     firstName: 'Nome',
     lastName: 'Cognome',
     phoneNumber: 'Telefono',
-    contactSchedule: 'Data Contatto',
-    contactFrequency: 'Frequenza',
-    idealState: 'Stato Ideale',
     'leadInfo.obiettivi': 'Obiettivi',
     'leadInfo.desideri': 'Desideri',
     'leadInfo.uncino': 'Uncino',
-    'leadInfo.fonte': 'Fonte',
+    'metadata.notes': 'Note',
   };
 
   const requiredFields = ['firstName', 'lastName', 'phoneNumber'];
@@ -712,17 +750,40 @@ export default function ProactiveLeadsPage() {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
+      encoding: "UTF-8",
       complete: (results) => {
+        if (results.errors && results.errors.length > 0) {
+          const errorMessages = results.errors.slice(0, 3).map(e => e.message).join('; ');
+          toast({
+            title: "⚠️ Errori nel CSV",
+            description: `Trovati ${results.errors.length} errori: ${errorMessages}`,
+            variant: "destructive",
+          });
+        }
+
         const headers = results.meta.fields || [];
+        const validData = (results.data as any[]).filter(row => {
+          return Object.values(row).some(val => val && String(val).trim() !== '');
+        });
+
+        if (validData.length === 0) {
+          toast({
+            title: "❌ File vuoto",
+            description: "Il file CSV non contiene dati validi.",
+            variant: "destructive",
+          });
+          return;
+        }
+
         setCsvHeaders(headers);
-        setRawCsvData(results.data);
+        setRawCsvData(validData);
 
         // Auto-detect field mappings
         const autoMapping: Record<string, string> = {};
         headers.forEach(header => {
           const normalized = header.toLowerCase().trim();
           
-          // Exact match
+          // Exact match first
           if (expectedFields[normalized]) {
             autoMapping[header] = expectedFields[normalized];
           }
@@ -730,32 +791,23 @@ export default function ProactiveLeadsPage() {
           else if (normalized.includes('nome') && !normalized.includes('cognome')) {
             autoMapping[header] = 'firstName';
           }
-          else if (normalized.includes('cognome')) {
+          else if (normalized.includes('cognome') || normalized === 'surname' || normalized === 'lastname') {
             autoMapping[header] = 'lastName';
           }
-          else if (normalized.includes('telefono') || normalized.includes('phone')) {
+          else if (normalized.includes('telefono') || normalized.includes('phone') || normalized.includes('cell')) {
             autoMapping[header] = 'phoneNumber';
           }
-          else if (normalized.includes('data') || normalized.includes('contatto') || normalized.includes('schedule')) {
-            autoMapping[header] = 'contactSchedule';
-          }
-          else if (normalized.includes('frequen')) {
-            autoMapping[header] = 'contactFrequency';
-          }
-          else if (normalized.includes('stato') || normalized.includes('ideale')) {
-            autoMapping[header] = 'idealState';
-          }
-          else if (normalized.includes('obiettiv')) {
+          else if (normalized.includes('obiettiv') || normalized.includes('objective') || normalized.includes('goal')) {
             autoMapping[header] = 'leadInfo.obiettivi';
           }
-          else if (normalized.includes('desider')) {
+          else if (normalized.includes('desider') || normalized.includes('desire') || normalized.includes('wish')) {
             autoMapping[header] = 'leadInfo.desideri';
           }
           else if (normalized.includes('uncino') || normalized.includes('hook')) {
             autoMapping[header] = 'leadInfo.uncino';
           }
-          else if (normalized.includes('fonte') || normalized.includes('source')) {
-            autoMapping[header] = 'leadInfo.fonte';
+          else if (normalized.includes('note') || normalized.includes('notes') || normalized.includes('commento') || normalized.includes('comment')) {
+            autoMapping[header] = 'metadata.notes';
           }
           else {
             // Campo non riconosciuto - lascialo vuoto
@@ -771,12 +823,29 @@ export default function ProactiveLeadsPage() {
           mappedFields.includes(field)
         );
 
-        if (!hasAllRequired || Object.values(autoMapping).some(v => !v)) {
+        // Check if there are unmapped headers that contain data
+        const unmappedHeaders = headers.filter(h => !autoMapping[h]);
+        const hasUnmappedWithData = unmappedHeaders.some(h => 
+          validData.some(row => row[h] && String(row[h]).trim() !== '')
+        );
+
+        if (!hasAllRequired || hasUnmappedWithData) {
           // Show mapping dialog for manual correction
           setShowMappingDialog(true);
+          toast({
+            title: "ℹ️ Mappatura necessaria",
+            description: hasAllRequired 
+              ? "Alcuni campi non sono stati riconosciuti automaticamente."
+              : "Assicurati di mappare i campi obbligatori: Nome, Cognome, Telefono.",
+            variant: "default",
+          });
         } else {
           // Auto-mapping successful, process data
-          processCSVData(results.data, autoMapping);
+          processCSVData(validData, autoMapping);
+          toast({
+            title: "✅ CSV caricato",
+            description: `${validData.length} lead pronti per l'import.`,
+          });
         }
 
         setImportResult(null);
@@ -794,18 +863,29 @@ export default function ProactiveLeadsPage() {
 
   const processCSVData = (data: any[], mapping: Record<string, string>) => {
     const processedData = data.map(row => {
-      const newRow: any = {};
+      const newRow: any = {
+        leadInfo: {},
+        metadata: {},
+      };
       Object.entries(mapping).forEach(([csvHeader, fieldPath]) => {
-        if (fieldPath && row[csvHeader]) {
+        const value = row[csvHeader];
+        if (fieldPath && value && String(value).trim() !== '') {
           if (fieldPath.startsWith('leadInfo.')) {
             const field = fieldPath.split('.')[1];
-            if (!newRow.leadInfo) newRow.leadInfo = {};
-            newRow.leadInfo[field] = row[csvHeader];
+            newRow.leadInfo[field] = String(value).trim();
+          } else if (fieldPath.startsWith('metadata.')) {
+            const field = fieldPath.split('.')[1];
+            newRow.metadata[field] = String(value).trim();
           } else {
-            newRow[fieldPath] = row[csvHeader];
+            newRow[fieldPath] = String(value).trim();
           }
         }
       });
+      
+      // Clean up empty nested objects
+      if (Object.keys(newRow.leadInfo).length === 0) delete newRow.leadInfo;
+      if (Object.keys(newRow.metadata).length === 0) delete newRow.metadata;
+      
       return newRow;
     });
     
@@ -851,26 +931,58 @@ export default function ProactiveLeadsPage() {
       return;
     }
 
+    // Validate required fields before import
+    const validationErrors: Array<{ row: number; error: string }> = [];
+    csvData.forEach((row, index) => {
+      const errors: string[] = [];
+      if (!row.firstName || row.firstName.trim() === '') errors.push('Nome mancante');
+      if (!row.lastName || row.lastName.trim() === '') errors.push('Cognome mancante');
+      if (!row.phoneNumber || row.phoneNumber.trim() === '') {
+        errors.push('Telefono mancante');
+      } else if (!row.phoneNumber.startsWith('+')) {
+        errors.push('Telefono deve iniziare con +');
+      }
+      if (errors.length > 0) {
+        validationErrors.push({ row: index + 1, error: errors.join(', ') });
+      }
+    });
+
+    if (validationErrors.length > 0) {
+      toast({
+        title: "⚠️ Errori di validazione",
+        description: `${validationErrors.length} lead con errori. Verifica i dati.`,
+        variant: "destructive",
+      });
+      setImportResult({
+        successful: 0,
+        failed: validationErrors.length,
+        errors: validationErrors,
+      });
+      return;
+    }
+
     const defaultAgentId = agents[0].id;
     const now = new Date();
     const defaultContactSchedule = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
 
     const leadsToImport = csvData.map((row: any) => {
       const leadData: any = {
-        firstName: row.nome || row.Nome || row.firstName || row.FirstName || "",
-        lastName: row.cognome || row.Cognome || row.lastName || row.LastName || "",
-        phoneNumber: row.telefono || row.Telefono || row.phone || row.Phone || row.phoneNumber || "",
+        firstName: row.firstName,
+        lastName: row.lastName,
+        phoneNumber: row.phoneNumber,
         agentConfigId: defaultAgentId,
-        contactSchedule: row.data_contatto || row.contactSchedule || defaultContactSchedule,
-        contactFrequency: parseInt(row.frequenza || row.frequency || "7"),
-        idealState: row.stato_ideale || row.idealState || "",
-        leadInfo: {
-          obiettivi: row.obiettivi || row.objectives || undefined,
-          desideri: row.desideri || row.desires || undefined,
-          uncino: row.uncino || row.hook || undefined,
-          fonte: row.fonte || row.source || undefined,
-        },
+        contactSchedule: defaultContactSchedule,
       };
+
+      // Add leadInfo only if it has values
+      if (row.leadInfo && Object.keys(row.leadInfo).length > 0) {
+        leadData.leadInfo = row.leadInfo;
+      }
+
+      // Add metadata only if it has values
+      if (row.metadata && Object.keys(row.metadata).length > 0) {
+        leadData.metadata = row.metadata;
+      }
 
       // Add campaignId if selected
       if (bulkCampaignId) {
@@ -890,18 +1002,24 @@ export default function ProactiveLeadsPage() {
         nome: "Mario",
         cognome: "Rossi",
         telefono: "+393331234567",
-        data_contatto: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        frequenza: "7",
-        stato_ideale: "la libertà finanziaria",
         obiettivi: "creare un patrimonio solido",
         desideri: "generare rendita passiva",
-        uncino: "ho visto che sei interessato",
-        fonte: "LinkedIn",
+        uncino: "ho visto che sei interessato agli investimenti",
+        note: "Lead interessante da LinkedIn",
+      },
+      {
+        nome: "Laura",
+        cognome: "Bianchi",
+        telefono: "+393339876543",
+        obiettivi: "raggiungere l'indipendenza finanziaria",
+        desideri: "vivere di rendita",
+        uncino: "hai partecipato al nostro webinar",
+        note: "",
       },
     ];
 
     const csv = Papa.unparse(template);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
@@ -1088,52 +1206,74 @@ export default function ProactiveLeadsPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedLeads.map((lead) => (
-                          <TableRow key={lead.id}>
-                            <TableCell className="font-medium">
-                              {lead.firstName} {lead.lastName}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4 text-gray-400" />
-                                <span className="font-mono text-sm">{lead.phoneNumber}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate">
-                              {lead.leadInfo?.obiettivi || lead.idealState || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">{formatContactSchedule(lead.contactSchedule)}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={statusColors[lead.status]}>
-                                {statusLabels[lead.status]}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleEdit(lead)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDelete(lead)}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {paginatedLeads.map((lead) => {
+                          const config = statusConfig[lead.status] || statusConfig.pending;
+                          const StatusIcon = config?.icon || Clock;
+                          const hasResponded = lead.status === "responded" || lead.status === "converted";
+                          
+                          return (
+                            <TableRow key={lead.id} className={hasResponded ? "bg-green-50/50 dark:bg-green-950/20" : ""}>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                  <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${hasResponded ? 'bg-green-100 dark:bg-green-900/40' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                                    <User className={`h-4 w-4 ${hasResponded ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`} />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span>{lead.firstName} {lead.lastName}</span>
+                                      {hasResponded && (
+                                        <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 px-1.5 py-0.5 rounded-full">
+                                          <CheckCircle2 className="h-3 w-3" />
+                                          Risposta
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Phone className="h-4 w-4 text-gray-400" />
+                                  <span className="font-mono text-sm">{lead.phoneNumber}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="max-w-xs truncate">
+                                {lead.leadInfo?.obiettivi || lead.idealState || "N/A"}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-gray-400" />
+                                  <span className="text-sm">{formatContactSchedule(lead.contactSchedule)}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={`${config?.color || statusConfig.pending.color} border flex items-center gap-1.5 w-fit`}>
+                                  <StatusIcon className="h-3.5 w-3.5" />
+                                  {config?.label || "In Attesa"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEdit(lead)}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(lead)}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -1226,103 +1366,23 @@ export default function ProactiveLeadsPage() {
             </DialogHeader>
 
             <div className="space-y-6 py-4">
-              {/* Campaign Selection Section */}
-              <div className="space-y-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                <div className="flex items-center gap-2 pb-2">
-                  <Megaphone className="h-5 w-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Campagna Marketing (Opzionale)
-                  </h3>
-                </div>
-                <div className="space-y-2 pl-7">
-                  <Label htmlFor="campaignId" className="text-sm font-medium">
-                    Seleziona Campagna
-                  </Label>
-                  <Select
-                    value={formData.campaignId || undefined}
-                    onValueChange={handleCampaignChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Nessuna campagna (usa default agente)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {campaignsLoading ? (
-                        <div className="p-4 text-center">
-                          <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                        </div>
-                      ) : activeCampaigns.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-gray-500">
-                          Nessuna campagna attiva
-                        </div>
-                      ) : (
-                        activeCampaigns.map((campaign: any) => (
-                          <SelectItem key={campaign.id} value={campaign.id}>
-                            <div className="flex items-center gap-2">
-                              <Megaphone className="h-4 w-4" />
-                              {campaign.campaignName} ({campaign.campaignType})
-                            </div>
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {formData.campaignId && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleCampaignChange("")}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      Rimuovi campagna
-                    </Button>
-                  )}
-                  {formData.campaignId && (
-                    <div className="bg-blue-100 dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700 rounded-lg p-3 flex items-start gap-3 mt-2">
-                      <span className="text-blue-600 text-xl">ℹ️</span>
-                      <div className="flex-1 text-sm">
-                        <p className="font-semibold text-blue-900 dark:text-blue-200">Campagna Selezionata</p>
-                        <p className="text-blue-800 dark:text-blue-300 mt-1">
-                          I campi sottostanti sono stati auto-popolati con i dati della campagna.
-                          Puoi modificarli manualmente se necessario.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Basic Information Section */}
+              {/* Essential Fields Section */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2">
-                  <UserPlus className="h-5 w-5 text-gray-600" />
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  <UserPlus className="h-5 w-5 text-blue-600" />
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Informazioni Personali
+                    Informazioni Essenziali
                   </h3>
+                  <Badge variant="outline" className="ml-auto text-xs">Campi obbligatori</Badge>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-7">
+                
+                {/* Nome e Cognome */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Label htmlFor="firstName" className="text-sm font-medium flex items-center gap-1">
-                        Nome <span className="text-red-500">*</span>
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="bg-purple-100 text-purple-700 border-purple-300 text-xs hover:bg-purple-200">
-                              {"{{1}}"} Tutti i template
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs">
-                            <p className="text-xs font-semibold mb-1">Variabile universale:</p>
-                            <p className="text-xs">
-                              Il nome del lead è la prima variabile <strong>{"{{1}}"}</strong> in TUTTI i template Twilio
-                              (Opening, Gentle Follow-up, Value Follow-up, Final Follow-up).
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                    <Label htmlFor="firstName" className="text-sm font-medium flex items-center gap-2">
+                      <User className="h-4 w-4 text-gray-500" />
+                      Nome <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="firstName"
                       value={formData.firstName}
@@ -1339,7 +1399,8 @@ export default function ProactiveLeadsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm font-medium flex items-center gap-1">
+                    <Label htmlFor="lastName" className="text-sm font-medium flex items-center gap-2">
+                      <User className="h-4 w-4 text-gray-500" />
                       Cognome <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -1358,9 +1419,10 @@ export default function ProactiveLeadsPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 pl-7">
-                  <Label htmlFor="phoneNumber" className="text-sm font-medium flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
+                {/* Telefono */}
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber" className="text-sm font-medium flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-500" />
                     Numero di Telefono <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -1387,18 +1449,11 @@ export default function ProactiveLeadsPage() {
                     </p>
                   )}
                 </div>
-              </div>
 
-              {/* WhatsApp Agent Section */}
-              <div className="space-y-4 pt-2 border-t">
-                <div className="flex items-center gap-2 pb-2">
-                  <Bot className="h-5 w-5 text-gray-600" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Configurazione Agente
-                  </h3>
-                </div>
-                <div className="space-y-2 pl-7">
-                  <Label htmlFor="agentConfigId" className="text-sm font-medium flex items-center gap-1">
+                {/* Agente WhatsApp */}
+                <div className="space-y-2">
+                  <Label htmlFor="agentConfigId" className="text-sm font-medium flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-gray-500" />
                     Agente WhatsApp <span className="text-red-500">*</span>
                   </Label>
                   <Select
@@ -1444,51 +1499,170 @@ export default function ProactiveLeadsPage() {
                     </p>
                   )}
                   {formData.agentConfigId && agents.find(a => a.id === formData.agentConfigId)?.isDryRun !== false && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-3">
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-3 mt-2">
                       <span className="text-orange-600 text-xl">⚠️</span>
                       <div className="flex-1 text-sm">
                         <p className="font-semibold text-orange-800">Modalità Test Attiva</p>
                         <p className="text-orange-700 mt-1">
-                          L'agente è in <strong>modalità test (dry run)</strong>. 
                           I messaggi verranno simulati ma <strong>NON inviati</strong> al contatto.
                         </p>
                       </div>
                     </div>
                   )}
                 </div>
+
+                {/* Data contatto programmato */}
+                <div className="space-y-3">
+                  <Label htmlFor="contactSchedule" className="text-sm font-medium flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    Data e Ora Contatto <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const targetTime = new Date();
+                        targetTime.setMinutes(targetTime.getMinutes() + 5);
+                        const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
+                        setFormData({ ...formData, contactSchedule: formatted });
+                      }}
+                    >
+                      Tra 5 min
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const targetTime = new Date();
+                        targetTime.setMinutes(targetTime.getMinutes() + 30);
+                        const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
+                        setFormData({ ...formData, contactSchedule: formatted });
+                      }}
+                    >
+                      Tra 30 min
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const targetTime = new Date();
+                        targetTime.setHours(targetTime.getHours() + 1);
+                        const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
+                        setFormData({ ...formData, contactSchedule: formatted });
+                      }}
+                    >
+                      Tra 1 ora
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        tomorrow.setHours(9, 0, 0, 0);
+                        const formatted = format(tomorrow, "yyyy-MM-dd'T'HH:mm");
+                        setFormData({ ...formData, contactSchedule: formatted });
+                      }}
+                    >
+                      Domani 9:00
+                    </Button>
+                  </div>
+                  <Input
+                    id="contactSchedule"
+                    type="datetime-local"
+                    value={formData.contactSchedule}
+                    onChange={(e) => setFormData({ ...formData, contactSchedule: e.target.value })}
+                    min={getMinDateTime()}
+                    className={formErrors.contactSchedule ? "border-red-500" : ""}
+                  />
+                  {formErrors.contactSchedule && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {formErrors.contactSchedule}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    L'AI decide autonomamente i follow-up successivi in base alle risposte
+                  </p>
+                </div>
               </div>
 
-              {/* Lead Details Section */}
-              <div className="space-y-4 pt-2 border-t">
-                <div className="flex items-center gap-2 pb-2">
-                  <Target className="h-5 w-5 text-gray-600" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Dettagli Lead
-                  </h3>
-                  <span className="text-xs text-gray-500 ml-2">(Opzionale - usa i default dell'agente se vuoto)</span>
-                </div>
-                <div className="space-y-4 pl-7">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Label htmlFor="obiettivi" className="text-sm font-medium">
-                        Obiettivi
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300 text-xs">
-                              Non usato
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs">
-                            <p className="text-xs">
-                              Questo campo non è attualmente mappato ad alcuna variabile nei template Twilio.
-                              Verrà salvato nel database ma non sostituirà variabili nei messaggi.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+              {/* Collapsible Advanced Details Section */}
+              <Collapsible open={advancedDetailsOpen} onOpenChange={setAdvancedDetailsOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-gray-600" />
+                      <span className="font-medium">Dettagli Avanzati</span>
+                      <Badge variant="outline" className="text-xs">Opzionale</Badge>
                     </div>
+                    {advancedDetailsOpen ? (
+                      <ChevronUp className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-gray-500" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-4 space-y-4">
+                  {/* Campagna Marketing */}
+                  <div className="space-y-2 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <Label htmlFor="campaignId" className="text-sm font-medium flex items-center gap-2">
+                      <Megaphone className="h-4 w-4 text-blue-600" />
+                      Campagna Marketing
+                    </Label>
+                    <Select
+                      value={formData.campaignId || undefined}
+                      onValueChange={handleCampaignChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Nessuna campagna" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {campaignsLoading ? (
+                          <div className="p-4 text-center">
+                            <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                          </div>
+                        ) : activeCampaigns.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-gray-500">
+                            Nessuna campagna attiva
+                          </div>
+                        ) : (
+                          activeCampaigns.map((campaign: any) => (
+                            <SelectItem key={campaign.id} value={campaign.id}>
+                              {campaign.campaignName}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    {formData.campaignId && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCampaignChange("")}
+                        className="text-xs text-gray-500"
+                      >
+                        Rimuovi campagna
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Obiettivi */}
+                  <div className="space-y-2">
+                    <Label htmlFor="obiettivi" className="text-sm font-medium flex items-center gap-2">
+                      <Target className="h-4 w-4 text-gray-500" />
+                      Obiettivi
+                    </Label>
                     <Textarea
                       id="obiettivi"
                       value={formData.leadInfo.obiettivi || ""}
@@ -1504,27 +1678,12 @@ export default function ProactiveLeadsPage() {
                     />
                   </div>
 
+                  {/* Desideri */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Label htmlFor="desideri" className="text-sm font-medium">
-                        Desideri
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300 text-xs">
-                              Non usato
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs">
-                            <p className="text-xs">
-                              Questo campo non è attualmente mappato ad alcuna variabile nei template Twilio.
-                              Verrà salvato nel database ma non sostituirà variabili nei messaggi.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                    <Label htmlFor="desideri" className="text-sm font-medium flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-gray-500" />
+                      Desideri
+                    </Label>
                     <Textarea
                       id="desideri"
                       value={formData.leadInfo.desideri || ""}
@@ -1540,30 +1699,12 @@ export default function ProactiveLeadsPage() {
                     />
                   </div>
 
+                  {/* Uncino */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Label htmlFor="uncino" className="text-sm font-medium">
-                        Uncino (Hook)
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs hover:bg-orange-200">
-                              {"{{4}}"} Opening
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs">
-                            <p className="text-xs font-semibold mb-1">Mappato a variabile Twilio:</p>
-                            <ul className="list-disc list-inside text-xs space-y-1">
-                              <li><strong>{"{{4}}"}</strong> nel template <strong>Opening Message</strong></li>
-                            </ul>
-                            <p className="text-xs mt-2 text-gray-600">
-                              Esempio: "Ti scrivo perché [uncino]"
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                    <Label htmlFor="uncino" className="text-sm font-medium flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4 text-gray-500" />
+                      Uncino (Hook)
+                    </Label>
                     <Textarea
                       id="uncino"
                       value={formData.leadInfo.uncino || ""}
@@ -1579,40 +1720,12 @@ export default function ProactiveLeadsPage() {
                     />
                   </div>
 
+                  {/* Stato Ideale */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Label htmlFor="idealState" className="text-sm font-medium">
-                        Stato Ideale
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="flex gap-1 flex-wrap">
-                              <Badge className="bg-orange-100 text-orange-700 border-orange-300 text-xs hover:bg-orange-200">
-                                {"{{5}}"} Opening
-                              </Badge>
-                              <Badge className="bg-green-100 text-green-700 border-green-300 text-xs hover:bg-green-200">
-                                {"{{3}}"} Gentle/Value
-                              </Badge>
-                              <Badge className="bg-blue-100 text-blue-700 border-blue-300 text-xs hover:bg-blue-200">
-                                {"{{2}}"} Final
-                              </Badge>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs">
-                            <p className="text-xs font-semibold mb-1">Mappato a variabili Twilio:</p>
-                            <ul className="list-disc list-inside text-xs space-y-1">
-                              <li><strong>{"{{5}}"}</strong> nel template <strong>Opening Message</strong></li>
-                              <li><strong>{"{{3}}"}</strong> nei template <strong>Gentle</strong> e <strong>Value Follow-up</strong></li>
-                              <li><strong>{"{{2}}"}</strong> nel template <strong>Final Follow-up</strong></li>
-                            </ul>
-                            <p className="text-xs mt-2 text-gray-600">
-                              Questo è il campo più usato: presente in TUTTI i template follow-up.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                    <Label htmlFor="idealState" className="text-sm font-medium flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-gray-500" />
+                      Stato Ideale
+                    </Label>
                     <Textarea
                       id="idealState"
                       value={formData.idealState}
@@ -1622,145 +1735,24 @@ export default function ProactiveLeadsPage() {
                       className="resize-none"
                     />
                   </div>
-                </div>
-              </div>
 
-              {/* Scheduling Section */}
-              <div className="space-y-4 pt-2 border-t">
-                <div className="flex items-center gap-2 pb-2">
-                  <Calendar className="h-5 w-5 text-gray-600" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Programmazione Contatto
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-7">
-                  <div className="space-y-3">
-                    <Label htmlFor="contactSchedule" className="text-sm font-medium flex items-center gap-1">
-                      Data e Ora Contatto <span className="text-red-500">*</span>
+                  {/* Note */}
+                  <div className="space-y-2">
+                    <Label htmlFor="notes" className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-gray-500" />
+                      Note
                     </Label>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const targetTime = new Date();
-                          targetTime.setMinutes(targetTime.getMinutes() + 5);
-                          const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
-                          setFormData({ ...formData, contactSchedule: formatted });
-                        }}
-                      >
-                        Tra 5 min
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const targetTime = new Date();
-                          targetTime.setMinutes(targetTime.getMinutes() + 15);
-                          const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
-                          setFormData({ ...formData, contactSchedule: formatted });
-                        }}
-                      >
-                        Tra 15 min
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const targetTime = new Date();
-                          targetTime.setMinutes(targetTime.getMinutes() + 30);
-                          const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
-                          setFormData({ ...formData, contactSchedule: formatted });
-                        }}
-                      >
-                        Tra 30 min
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const targetTime = new Date();
-                          targetTime.setHours(targetTime.getHours() + 1);
-                          const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
-                          setFormData({ ...formData, contactSchedule: formatted });
-                        }}
-                      >
-                        Tra 1 ora
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const targetTime = new Date();
-                          targetTime.setHours(targetTime.getHours() + 2);
-                          const formatted = format(targetTime, "yyyy-MM-dd'T'HH:mm");
-                          setFormData({ ...formData, contactSchedule: formatted });
-                        }}
-                      >
-                        Tra 2 ore
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const tomorrow = new Date();
-                          tomorrow.setDate(tomorrow.getDate() + 1);
-                          tomorrow.setHours(9, 0, 0, 0);
-                          const formatted = format(tomorrow, "yyyy-MM-dd'T'HH:mm");
-                          setFormData({ ...formData, contactSchedule: formatted });
-                        }}
-                      >
-                        Domani 9:00
-                      </Button>
-                    </div>
-                    <Input
-                      id="contactSchedule"
-                      type="datetime-local"
-                      value={formData.contactSchedule}
-                      onChange={(e) => setFormData({ ...formData, contactSchedule: e.target.value })}
-                      min={getMinDateTime()}
-                      className={formErrors.contactSchedule ? "border-red-500" : ""}
+                    <Textarea
+                      id="notes"
+                      value={formData.notes || ""}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Note interne sul lead..."
+                      rows={2}
+                      className="resize-none"
                     />
-                    {formErrors.contactSchedule && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        {formErrors.contactSchedule}
-                      </p>
-                    )}
                   </div>
-
-                  <div className="space-y-3">
-                    <Label htmlFor="contactFrequency" className="text-sm font-medium">
-                      Frequenza Follow-up
-                    </Label>
-                    <Select
-                      value={formData.contactFrequency.toString()}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, contactFrequency: parseInt(value) })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Ogni giorno</SelectItem>
-                        <SelectItem value="3">Ogni 3 giorni</SelectItem>
-                        <SelectItem value="7">Ogni 7 giorni</SelectItem>
-                        <SelectItem value="14">Ogni 14 giorni</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500">
-                      Il sistema invierà automaticamente follow-up con questa frequenza
-                    </p>
-                  </div>
-                </div>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
 
             <div className="flex justify-end gap-3 pt-6 border-t">
@@ -1847,11 +1839,10 @@ export default function ProactiveLeadsPage() {
                   <p className="font-semibold text-blue-900 dark:text-blue-200">📋 Guida Rapida Import CSV</p>
                   <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-300">
                     <li><strong>Campi obbligatori:</strong> Nome, Cognome, Telefono</li>
-                    <li><strong>Campi opzionali:</strong> Data Contatto, Stato Ideale, Obiettivi, Desideri, Uncino</li>
-                    <li><strong>Formato telefono:</strong> +39 seguito dal numero (es: +393331234567)</li>
-                    <li><strong>Formato data:</strong> YYYY-MM-DD o data ISO (es: 2025-11-15 oppure 2025-11-15T10:00:00)</li>
-                    <li><strong>Intestazioni accettate:</strong> nome/Nome/firstName, cognome/Cognome/lastName, telefono/Telefono/phone</li>
-                    <li>💡 <strong>Non preoccuparti dell'ordine o nomi esatti delle colonne - ti aiuterò a mapparle!</strong></li>
+                    <li><strong>Campi opzionali:</strong> Obiettivi, Desideri, Uncino, Note</li>
+                    <li><strong>Formato telefono:</strong> deve iniziare con + (es: +393331234567)</li>
+                    <li><strong>Intestazioni accettate:</strong> nome, cognome, telefono, obiettivi, desideri, uncino, note</li>
+                    <li>💡 <strong>Se le colonne non vengono riconosciute automaticamente, ti aiuterò a mapparle!</strong></li>
                   </ul>
                 </AlertDescription>
               </Alert>
@@ -1946,51 +1937,72 @@ export default function ProactiveLeadsPage() {
               {csvData.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-gray-900">
-                      Anteprima ({csvData.length} lead)
+                    <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-green-600" />
+                      Anteprima ({csvData.length} lead totali)
                     </h4>
                     <Button
                       onClick={() => {
                         setCsvData([]);
+                        setRawCsvData([]);
+                        setCsvHeaders([]);
+                        setFieldMapping({});
                         const input = document.getElementById('csv-upload') as HTMLInputElement;
                         if (input) input.value = '';
                       }}
                       variant="ghost"
                       size="sm"
+                      className="text-red-600 hover:text-red-700"
                     >
+                      <Trash2 className="h-4 w-4 mr-1" />
                       Cancella
                     </Button>
                   </div>
-                  <div className="border rounded-lg overflow-hidden">
+                  
+                  {/* Success indicator */}
+                  <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span><strong>{csvData.length}</strong> lead pronti per l'importazione</span>
+                  </div>
+                  
+                  <div className="border rounded-lg overflow-hidden dark:border-gray-700">
                     <div className="max-h-64 overflow-y-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-gray-100 sticky top-0">
+                        <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0">
                           <tr>
-                            <th className="px-3 py-2 text-left font-medium text-gray-700">#</th>
-                            <th className="px-3 py-2 text-left font-medium text-gray-700">Nome</th>
-                            <th className="px-3 py-2 text-left font-medium text-gray-700">Cognome</th>
-                            <th className="px-3 py-2 text-left font-medium text-gray-700">Telefono</th>
-                            <th className="px-3 py-2 text-left font-medium text-gray-700">Stato Ideale</th>
+                            <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">#</th>
+                            <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Nome</th>
+                            <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Cognome</th>
+                            <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Telefono</th>
+                            <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Obiettivi</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {csvData.slice(0, 10).map((row: any, index) => (
-                            <tr key={index} className="border-t hover:bg-gray-50">
-                              <td className="px-3 py-2 text-gray-600">{index + 1}</td>
-                              <td className="px-3 py-2">{row.nome || row.Nome || row.firstName || '-'}</td>
-                              <td className="px-3 py-2">{row.cognome || row.Cognome || row.lastName || '-'}</td>
-                              <td className="px-3 py-2 font-mono text-xs">
-                                {row.telefono || row.Telefono || row.phone || '-'}
-                              </td>
-                              <td className="px-3 py-2 text-xs">{row.stato_ideale || row.idealState || '-'}</td>
-                            </tr>
-                          ))}
+                          {csvData.slice(0, 5).map((row: any, index) => {
+                            const hasPhoneError = !row.phoneNumber?.startsWith('+');
+                            return (
+                              <tr key={index} className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{index + 1}</td>
+                                <td className="px-3 py-2 dark:text-white">{row.firstName || '-'}</td>
+                                <td className="px-3 py-2 dark:text-white">{row.lastName || '-'}</td>
+                                <td className={`px-3 py-2 font-mono text-xs ${hasPhoneError ? 'text-red-600' : 'dark:text-white'}`}>
+                                  {row.phoneNumber || '-'}
+                                  {hasPhoneError && <span className="ml-1 text-red-500">⚠️</span>}
+                                </td>
+                                <td className="px-3 py-2 text-xs text-gray-600 dark:text-gray-400 max-w-[150px] truncate">
+                                  {row.leadInfo?.obiettivi || '-'}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
-                    {csvData.length > 10 && (
-                      <div className="px-3 py-2 bg-gray-50 text-xs text-gray-600 border-t">
-                        Mostrando 10 di {csvData.length} lead...
+                    {csvData.length > 5 && (
+                      <div className="px-3 py-2 bg-gray-50 dark:bg-gray-800 text-xs text-gray-600 dark:text-gray-400 border-t dark:border-gray-700 flex items-center gap-2">
+                        <span>📊 Mostrando 5 di {csvData.length} lead</span>
+                        <span className="text-gray-400">|</span>
+                        <span>Altri {csvData.length - 5} lead verranno importati</span>
                       </div>
                     )}
                   </div>

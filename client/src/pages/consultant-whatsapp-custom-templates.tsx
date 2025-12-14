@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Save, Loader2, Sparkles, Database, FileCheck, CheckCircle2, Edit, Wand2, AlertTriangle, MessageSquare, Clock, Send, RotateCcw, PartyPopper, UserX, ShoppingCart, Calendar, Check, Info } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save, Loader2, Sparkles, Database, FileCheck, CheckCircle2, Edit, Wand2, AlertTriangle, MessageSquare, Clock, Send, RotateCcw, PartyPopper, UserX, ShoppingCart, Calendar, Check, Info, Plus, UserPlus, RefreshCw, Gift, Heart, FileText, Bell, CheckCheck, Lightbulb, BookOpen, Mail, Zap, CalendarCheck, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import confetti from "canvas-confetti";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -39,67 +39,224 @@ interface ScenarioOption {
   title: string;
   description: string;
   category: string;
+  agentType: "SETTER" | "CUSTOMER_SUCCESS" | "INTAKE_COORDINATOR" | "INFORMATIVE_ADVISOR" | "REACTIVE_LEAD" | "CUSTOM";
   useCase: string;
   hasDropdown?: boolean;
   dropdownOptions?: { value: string; label: string }[];
+  isCustom?: boolean;
 }
 
-const SCENARIO_OPTIONS: ScenarioOption[] = [
+const AGENT_TYPE_COLORS: Record<string, string> = {
+  SETTER: "bg-blue-500",
+  CUSTOMER_SUCCESS: "bg-green-500",
+  INTAKE_COORDINATOR: "bg-orange-500",
+  INFORMATIVE_ADVISOR: "bg-purple-500",
+  REACTIVE_LEAD: "bg-cyan-500",
+  CUSTOM: "bg-gray-500"
+};
+
+const AGENT_TYPE_LABELS: Record<string, string> = {
+  SETTER: "Setter",
+  CUSTOMER_SUCCESS: "Customer Success",
+  INTAKE_COORDINATOR: "Intake Coordinator",
+  INFORMATIVE_ADVISOR: "Informative Advisor",
+  REACTIVE_LEAD: "Reactive Lead",
+  CUSTOM: "Custom"
+};
+
+const BASE_SCENARIO_OPTIONS: ScenarioOption[] = [
   {
-    id: "primo-contatto",
+    id: "setter-primo-contatto-freddo",
     icon: <Send className="h-6 w-6" />,
-    title: "PRIMO CONTATTO",
+    title: "PRIMO CONTATTO FREDDO",
     description: "Per scrivere a lead nuovi che non hanno mai ricevuto messaggi",
     category: "Opening",
-    useCase: "primo-contatto"
+    agentType: "SETTER",
+    useCase: "primo-contatto-freddo"
   },
   {
-    id: "nessuna-risposta",
-    icon: <RotateCcw className="h-6 w-6" />,
-    title: "NESSUNA RISPOSTA",
-    description: "Quando il lead non risponde dopo un certo tempo",
+    id: "setter-followup-interesse",
+    icon: <RefreshCw className="h-6 w-6" />,
+    title: "FOLLOW-UP DOPO INTERESSE",
+    description: "Quando il lead ha mostrato interesse iniziale",
     category: "Follow-up",
-    useCase: "follow-up",
+    agentType: "SETTER",
+    useCase: "followup-interesse",
     hasDropdown: true,
     dropdownOptions: [
       { value: "24h", label: "Dopo 24 ore" },
       { value: "48h", label: "Dopo 48 ore" },
-      { value: "72h", label: "Dopo 72 ore" },
-      { value: "7d", label: "Dopo 7 giorni" }
+      { value: "72h", label: "Dopo 72 ore" }
     ]
   },
   {
-    id: "trattativa-bloccata",
-    icon: <UserX className="h-6 w-6" />,
-    title: "TRATTATIVA BLOCCATA",
-    description: "Quando il lead ha mostrato interesse ma si è fermato",
-    category: "Stalled",
-    useCase: "stalled"
-  },
-  {
-    id: "post-vendita",
-    icon: <PartyPopper className="h-6 w-6" />,
-    title: "POST-VENDITA",
-    description: "Per clienti che hanno già acquistato",
-    category: "Customer Success",
-    useCase: "customer-success"
-  },
-  {
-    id: "lungo-termine",
-    icon: <Calendar className="h-6 w-6" />,
-    title: "LUNGO TERMINE",
-    description: "Per riattivare lead dopo molto tempo",
+    id: "setter-recupero-lead-dormiente",
+    icon: <RotateCcw className="h-6 w-6" />,
+    title: "RECUPERO LEAD DORMIENTE",
+    description: "Per riattivare lead che non rispondono da tempo",
     category: "Reactivation",
-    useCase: "riattivazione",
+    agentType: "SETTER",
+    useCase: "recupero-lead-dormiente",
     hasDropdown: true,
     dropdownOptions: [
       { value: "30d", label: "Dopo 30 giorni" },
       { value: "60d", label: "Dopo 60 giorni" },
-      { value: "90d", label: "Dopo 90 giorni" },
-      { value: "365d", label: "Dopo 1 anno" }
+      { value: "90d", label: "Dopo 90 giorni" }
+    ]
+  },
+  {
+    id: "setter-richiesta-referral",
+    icon: <UserPlus className="h-6 w-6" />,
+    title: "RICHIESTA REFERRAL",
+    description: "Per chiedere referenze a clienti soddisfatti",
+    category: "Referral",
+    agentType: "SETTER",
+    useCase: "richiesta-referral"
+  },
+  {
+    id: "cs-onboarding",
+    icon: <PartyPopper className="h-6 w-6" />,
+    title: "ONBOARDING",
+    description: "Benvenuto e primi passi dopo l'acquisto",
+    category: "Onboarding",
+    agentType: "CUSTOMER_SUCCESS",
+    useCase: "onboarding"
+  },
+  {
+    id: "cs-checkin-soddisfazione",
+    icon: <Heart className="h-6 w-6" />,
+    title: "CHECK-IN SODDISFAZIONE",
+    description: "Verifica la soddisfazione del cliente",
+    category: "Satisfaction",
+    agentType: "CUSTOMER_SUCCESS",
+    useCase: "checkin-soddisfazione",
+    hasDropdown: true,
+    dropdownOptions: [
+      { value: "7d", label: "Dopo 7 giorni" },
+      { value: "14d", label: "Dopo 14 giorni" },
+      { value: "30d", label: "Dopo 30 giorni" }
+    ]
+  },
+  {
+    id: "cs-upsell",
+    icon: <ShoppingCart className="h-6 w-6" />,
+    title: "UPSELL",
+    description: "Proposta di upgrade o prodotti aggiuntivi",
+    category: "Sales",
+    agentType: "CUSTOMER_SUCCESS",
+    useCase: "upsell"
+  },
+  {
+    id: "cs-rinnovo",
+    icon: <RefreshCw className="h-6 w-6" />,
+    title: "RINNOVO",
+    description: "Reminder per il rinnovo di abbonamenti/servizi",
+    category: "Renewal",
+    agentType: "CUSTOMER_SUCCESS",
+    useCase: "rinnovo",
+    hasDropdown: true,
+    dropdownOptions: [
+      { value: "30d", label: "30 giorni prima" },
+      { value: "14d", label: "14 giorni prima" },
+      { value: "7d", label: "7 giorni prima" }
+    ]
+  },
+  {
+    id: "cs-anniversario",
+    icon: <Gift className="h-6 w-6" />,
+    title: "ANNIVERSARIO",
+    description: "Auguri per anniversari speciali con il cliente",
+    category: "Celebration",
+    agentType: "CUSTOMER_SUCCESS",
+    useCase: "anniversario"
+  },
+  {
+    id: "intake-richiesta-documenti",
+    icon: <FileText className="h-6 w-6" />,
+    title: "RICHIESTA DOCUMENTI",
+    description: "Per richiedere documentazione al cliente",
+    category: "Documents",
+    agentType: "INTAKE_COORDINATOR",
+    useCase: "richiesta-documenti"
+  },
+  {
+    id: "intake-reminder-scadenza",
+    icon: <Bell className="h-6 w-6" />,
+    title: "REMINDER SCADENZA",
+    description: "Promemoria per scadenze importanti",
+    category: "Reminder",
+    agentType: "INTAKE_COORDINATOR",
+    useCase: "reminder-scadenza",
+    hasDropdown: true,
+    dropdownOptions: [
+      { value: "7d", label: "7 giorni prima" },
+      { value: "3d", label: "3 giorni prima" },
+      { value: "1d", label: "1 giorno prima" }
+    ]
+  },
+  {
+    id: "intake-conferma-ricezione",
+    icon: <CheckCheck className="h-6 w-6" />,
+    title: "CONFERMA RICEZIONE",
+    description: "Conferma di ricezione documenti o pratiche",
+    category: "Confirmation",
+    agentType: "INTAKE_COORDINATOR",
+    useCase: "conferma-ricezione"
+  },
+  {
+    id: "advisor-tip-educativo",
+    icon: <Lightbulb className="h-6 w-6" />,
+    title: "TIP EDUCATIVO",
+    description: "Condividi consigli e best practice",
+    category: "Education",
+    agentType: "INFORMATIVE_ADVISOR",
+    useCase: "tip-educativo"
+  },
+  {
+    id: "advisor-condivisione-risorsa",
+    icon: <BookOpen className="h-6 w-6" />,
+    title: "CONDIVISIONE RISORSA",
+    description: "Condividi articoli, guide o contenuti utili",
+    category: "Resources",
+    agentType: "INFORMATIVE_ADVISOR",
+    useCase: "condivisione-risorsa"
+  },
+  {
+    id: "advisor-newsletter",
+    icon: <Mail className="h-6 w-6" />,
+    title: "NEWSLETTER",
+    description: "Aggiornamenti periodici e novità",
+    category: "Newsletter",
+    agentType: "INFORMATIVE_ADVISOR",
+    useCase: "newsletter"
+  },
+  {
+    id: "reactive-risposta-automatica",
+    icon: <Zap className="h-6 w-6" />,
+    title: "RISPOSTA AUTOMATICA",
+    description: "Risposta rapida a richieste inbound",
+    category: "Auto-reply",
+    agentType: "REACTIVE_LEAD",
+    useCase: "risposta-automatica"
+  },
+  {
+    id: "reactive-conferma-appuntamento",
+    icon: <CalendarCheck className="h-6 w-6" />,
+    title: "CONFERMA APPUNTAMENTO",
+    description: "Conferma e reminder appuntamenti",
+    category: "Appointment",
+    agentType: "REACTIVE_LEAD",
+    useCase: "conferma-appuntamento",
+    hasDropdown: true,
+    dropdownOptions: [
+      { value: "24h", label: "24 ore prima" },
+      { value: "2h", label: "2 ore prima" },
+      { value: "confirmation", label: "Conferma immediata" }
     ]
   }
 ];
+
+const CUSTOM_SCENARIOS_STORAGE_KEY = "whatsapp_custom_scenarios";
 
 const WIZARD_STEPS = [
   { id: "scenario", label: "Scenario", description: "Scegli il contesto" },
@@ -125,6 +282,112 @@ export default function ConsultantWhatsAppCustomTemplates() {
   const [description, setDescription] = useState("");
   const [bodyText, setBodyText] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
+  const [customScenarios, setCustomScenarios] = useState<ScenarioOption[]>([]);
+  const [showCustomScenarioForm, setShowCustomScenarioForm] = useState(false);
+  const [newCustomScenarioName, setNewCustomScenarioName] = useState("");
+  const [newCustomScenarioDescription, setNewCustomScenarioDescription] = useState("");
+  const [selectedAgentTypeFilter, setSelectedAgentTypeFilter] = useState<string>("ALL");
+
+  useEffect(() => {
+    const stored = localStorage.getItem(CUSTOM_SCENARIOS_STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        const restored: ScenarioOption[] = parsed.map((s: any) => ({
+          ...s,
+          icon: <Plus className="h-6 w-6" />,
+          isCustom: true
+        }));
+        setCustomScenarios(restored);
+      } catch (e) {
+        console.error("Error loading custom scenarios:", e);
+      }
+    }
+  }, []);
+
+  const SCENARIO_OPTIONS = useMemo(() => {
+    return [...BASE_SCENARIO_OPTIONS, ...customScenarios];
+  }, [customScenarios]);
+
+  const filteredScenarios = useMemo(() => {
+    if (selectedAgentTypeFilter === "ALL") {
+      return SCENARIO_OPTIONS;
+    }
+    return SCENARIO_OPTIONS.filter(s => s.agentType === selectedAgentTypeFilter);
+  }, [SCENARIO_OPTIONS, selectedAgentTypeFilter]);
+
+  const handleAddCustomScenario = () => {
+    if (!newCustomScenarioName.trim()) {
+      toast({
+        title: "⚠️ Nome Richiesto",
+        description: "Inserisci un nome per lo scenario custom.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newScenario: ScenarioOption = {
+      id: `custom-${Date.now()}`,
+      icon: <Plus className="h-6 w-6" />,
+      title: newCustomScenarioName.toUpperCase(),
+      description: newCustomScenarioDescription || "Scenario personalizzato",
+      category: "Custom",
+      agentType: "CUSTOM",
+      useCase: newCustomScenarioName.toLowerCase().replace(/\s+/g, "-"),
+      isCustom: true
+    };
+
+    const updatedScenarios = [...customScenarios, newScenario];
+    setCustomScenarios(updatedScenarios);
+    
+    const toStore = updatedScenarios.map(s => ({
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      category: s.category,
+      agentType: s.agentType,
+      useCase: s.useCase,
+      isCustom: true
+    }));
+    localStorage.setItem(CUSTOM_SCENARIOS_STORAGE_KEY, JSON.stringify(toStore));
+
+    setNewCustomScenarioName("");
+    setNewCustomScenarioDescription("");
+    setShowCustomScenarioForm(false);
+    setSelectedScenario(newScenario.id);
+    setUseCase(newScenario.useCase);
+
+    toast({
+      title: "✅ Scenario Creato",
+      description: `Lo scenario "${newScenario.title}" è stato salvato.`,
+    });
+  };
+
+  const handleDeleteCustomScenario = (scenarioId: string) => {
+    const updatedScenarios = customScenarios.filter(s => s.id !== scenarioId);
+    setCustomScenarios(updatedScenarios);
+    
+    const toStore = updatedScenarios.map(s => ({
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      category: s.category,
+      agentType: s.agentType,
+      useCase: s.useCase,
+      isCustom: true
+    }));
+    localStorage.setItem(CUSTOM_SCENARIOS_STORAGE_KEY, JSON.stringify(toStore));
+
+    if (selectedScenario === scenarioId) {
+      setSelectedScenario("");
+      setUseCase("");
+    }
+
+    toast({
+      title: "🗑️ Scenario Eliminato",
+      description: "Lo scenario custom è stato rimosso.",
+    });
+  };
 
   const { data: existingTemplateData, isLoading: loadingTemplate } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates", templateId],
@@ -311,6 +574,26 @@ export default function ConsultantWhatsAppCustomTemplates() {
     }
   });
 
+  const parseAIResponse = (response: any): string => {
+    if (typeof response === 'string') {
+      const cleaned = response.replace(/```json?\n?/g, '').replace(/```\n?/g, '').trim();
+      try {
+        const parsed = JSON.parse(cleaned);
+        return parsed.message || parsed.text || parsed.content || cleaned;
+      } catch {
+        return cleaned;
+      }
+    }
+    
+    if (typeof response === 'object' && response !== null) {
+      return response.message || response.text || response.content || 
+             response.data?.message || response.data?.text || response.data?.content ||
+             (typeof response === 'object' ? JSON.stringify(response) : String(response));
+    }
+    
+    return String(response);
+  };
+
   const generateAIMessageMutation = useMutation({
     mutationFn: async (prompt: string) => {
       const response = await fetch("/api/ai/generate-template-message", {
@@ -322,17 +605,36 @@ export default function ConsultantWhatsAppCustomTemplates() {
           variables: catalog.map(v => v.variableKey)
         })
       });
-      if (!response.ok) throw new Error("Errore generazione AI");
-      return response.json();
+      
+      if (!response.ok) {
+        let errorMessage = "Errore generazione AI";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const responseText = await response.text();
+      return parseAIResponse(responseText);
     },
-    onSuccess: (data) => {
-      setBodyText(data.message || data.data?.message || "");
-      toast({ title: "✨ Messaggio generato!", description: "Puoi modificarlo come preferisci." });
+    onSuccess: (parsedMessage: string) => {
+      if (parsedMessage && parsedMessage.length > 0 && !parsedMessage.startsWith('{')) {
+        setBodyText(parsedMessage);
+        toast({ title: "✨ Messaggio generato!", description: "Puoi modificarlo come preferisci." });
+      } else {
+        toast({
+          title: "⚠️ Risposta vuota",
+          description: "L'AI non ha generato un messaggio. Riprova con una descrizione diversa.",
+          variant: "destructive",
+        });
+      }
     },
     onError: (error: Error) => {
       toast({
         title: "❌ Errore Generazione",
-        description: error.message,
+        description: error.message || "Si è verificato un errore durante la generazione. Riprova.",
         variant: "destructive",
       });
     }
@@ -516,7 +818,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
   );
 
   const renderStep1 = () => (
-    <div className="animate-in fade-in-50 duration-300">
+    <div className="animate-in fade-in-50 duration-300 space-y-4">
       <Card className="shadow-xl border-2">
         <CardHeader className="pb-4">
           <CardTitle className="text-2xl flex items-center gap-2">
@@ -528,8 +830,35 @@ export default function ConsultantWhatsAppCustomTemplates() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {SCENARIO_OPTIONS.map((scenario) => (
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Badge 
+              variant={selectedAgentTypeFilter === "ALL" ? "default" : "outline"}
+              className="cursor-pointer hover:bg-primary/80"
+              onClick={() => setSelectedAgentTypeFilter("ALL")}
+            >
+              Tutti ({SCENARIO_OPTIONS.length})
+            </Badge>
+            {Object.entries(AGENT_TYPE_LABELS).map(([key, label]) => {
+              const count = SCENARIO_OPTIONS.filter(s => s.agentType === key).length;
+              if (count === 0) return null;
+              return (
+                <Badge 
+                  key={key}
+                  variant={selectedAgentTypeFilter === key ? "default" : "outline"}
+                  className={cn(
+                    "cursor-pointer transition-colors",
+                    selectedAgentTypeFilter === key && AGENT_TYPE_COLORS[key]
+                  )}
+                  onClick={() => setSelectedAgentTypeFilter(key)}
+                >
+                  {label} ({count})
+                </Badge>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2">
+            {filteredScenarios.map((scenario) => (
               <Card
                 key={scenario.id}
                 onClick={() => handleScenarioSelect(scenario.id)}
@@ -546,7 +875,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
                       "p-3 rounded-lg transition-colors",
                       selectedScenario === scenario.id
                         ? "bg-blue-500 text-white"
-                        : "bg-gray-100 text-gray-600 dark:bg-gray-800"
+                        : AGENT_TYPE_COLORS[scenario.agentType] ? `${AGENT_TYPE_COLORS[scenario.agentType]} text-white` : "bg-gray-100 text-gray-600 dark:bg-gray-800"
                     )}>
                       {scenario.icon}
                     </div>
@@ -556,13 +885,34 @@ export default function ConsultantWhatsAppCustomTemplates() {
                         {selectedScenario === scenario.id && (
                           <CheckCircle2 className="h-4 w-4 text-blue-500" />
                         )}
+                        {scenario.isCustom && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0 ml-auto text-red-500 hover:text-red-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCustomScenario(scenario.id);
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                         {scenario.description}
                       </p>
-                      <Badge variant="outline" className="text-xs">
-                        {scenario.category}
-                      </Badge>
+                      <div className="flex gap-1 flex-wrap">
+                        <Badge variant="outline" className="text-xs">
+                          {scenario.category}
+                        </Badge>
+                        <Badge 
+                          variant="secondary" 
+                          className={cn("text-xs text-white", AGENT_TYPE_COLORS[scenario.agentType])}
+                        >
+                          {AGENT_TYPE_LABELS[scenario.agentType]}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                   
@@ -590,6 +940,71 @@ export default function ConsultantWhatsAppCustomTemplates() {
               </Card>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-xl border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors">
+        <CardContent className="p-4">
+          {!showCustomScenarioForm ? (
+            <Button
+              variant="ghost"
+              className="w-full h-20 flex flex-col items-center justify-center gap-2 hover:bg-blue-50"
+              onClick={() => setShowCustomScenarioForm(true)}
+            >
+              <Plus className="h-8 w-8 text-blue-500" />
+              <span className="text-sm font-medium text-gray-600">Crea il tuo scenario</span>
+            </Button>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg flex items-center gap-2">
+                  <Plus className="h-5 w-5 text-blue-500" />
+                  Nuovo Scenario Custom
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setShowCustomScenarioForm(false);
+                    setNewCustomScenarioName("");
+                    setNewCustomScenarioDescription("");
+                  }}
+                >
+                  Annulla
+                </Button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="custom-scenario-name">Nome Scenario *</Label>
+                  <Input
+                    id="custom-scenario-name"
+                    placeholder="Es: Follow-up Post Demo"
+                    value={newCustomScenarioName}
+                    onChange={(e) => setNewCustomScenarioName(e.target.value)}
+                    maxLength={50}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="custom-scenario-desc">Descrizione (opzionale)</Label>
+                  <Textarea
+                    id="custom-scenario-desc"
+                    placeholder="Descrivi quando utilizzare questo scenario..."
+                    value={newCustomScenarioDescription}
+                    onChange={(e) => setNewCustomScenarioDescription(e.target.value)}
+                    rows={2}
+                    maxLength={200}
+                  />
+                </div>
+                <Button
+                  onClick={handleAddCustomScenario}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crea Scenario
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
