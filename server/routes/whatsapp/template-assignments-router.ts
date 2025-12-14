@@ -15,6 +15,7 @@ const router = Router();
  * GET /api/whatsapp/template-assignments/:agentConfigId
  * Fetch all template assignments for a specific agent config
  * Returns an array of all assigned templates (supports N templates per agent)
+ * Handles both Twilio templates (HX prefix) and custom templates (UUID)
  */
 router.get(
   "/:agentConfigId",
@@ -40,57 +41,96 @@ router.get(
         return res.status(404).json({ message: "Agent configuration not found" });
       }
 
-      const assignments = await db
+      // First, get ALL assignments for this agent (no INNER JOIN to avoid filtering Twilio templates)
+      const allAssignments = await db
         .select({
           id: whatsappTemplateAssignments.id,
           templateId: whatsappTemplateAssignments.templateId,
           templateType: whatsappTemplateAssignments.templateType,
           priority: whatsappTemplateAssignments.priority,
           assignedAt: whatsappTemplateAssignments.assignedAt,
-          templateName: whatsappCustomTemplates.templateName,
-          templateDescription: whatsappCustomTemplates.description,
-          useCase: whatsappCustomTemplates.useCase,
-          body: whatsappCustomTemplates.body,
-          activeVersionId: whatsappTemplateVersions.id,
-          activeVersionNumber: whatsappTemplateVersions.versionNumber,
-          activeVersionBody: whatsappTemplateVersions.bodyText,
-          twilioStatus: whatsappTemplateVersions.twilioStatus,
         })
         .from(whatsappTemplateAssignments)
-        .innerJoin(
-          whatsappCustomTemplates,
-          and(
-            eq(whatsappTemplateAssignments.templateId, whatsappCustomTemplates.id),
-            isNull(whatsappCustomTemplates.archivedAt)
-          )
-        )
-        .leftJoin(
-          whatsappTemplateVersions,
-          and(
-            eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id),
-            eq(whatsappTemplateVersions.isActive, true)
-          )
-        )
         .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId));
 
-      const formattedAssignments = assignments.map((a) => ({
-        assignmentId: a.id,
-        templateId: a.templateId,
-        templateName: a.templateName,
-        templateDescription: a.templateDescription,
-        useCase: a.useCase || a.templateType || "generale",
-        priority: a.priority || 0,
-        assignedAt: a.assignedAt,
-        body: a.body || a.activeVersionBody,
-        activeVersion: a.activeVersionId
-          ? {
-              id: a.activeVersionId,
-              versionNumber: a.activeVersionNumber,
-              bodyText: a.activeVersionBody,
-              twilioStatus: a.twilioStatus,
-            }
-          : null,
-      }));
+      const formattedAssignments = [];
+
+      for (const assignment of allAssignments) {
+        const isTwilioTemplate = assignment.templateId.startsWith('HX');
+
+        if (isTwilioTemplate) {
+          // For Twilio templates (HX prefix), return basic metadata
+          formattedAssignments.push({
+            assignmentId: assignment.id,
+            templateId: assignment.templateId,
+            templateName: assignment.templateId, // Use SID as name
+            templateDescription: "Twilio pre-approved template",
+            useCase: assignment.templateType || "twilio",
+            priority: assignment.priority || 0,
+            assignedAt: assignment.assignedAt,
+            body: null, // Body fetched from Twilio when needed
+            isTwilioTemplate: true,
+            activeVersion: {
+              id: null,
+              versionNumber: null,
+              bodyText: null,
+              twilioStatus: "approved", // Twilio templates are pre-approved
+            },
+          });
+        } else {
+          // For custom templates (UUID), fetch full metadata from whatsappCustomTemplates
+          const customTemplateData = await db
+            .select({
+              templateName: whatsappCustomTemplates.templateName,
+              templateDescription: whatsappCustomTemplates.description,
+              useCase: whatsappCustomTemplates.useCase,
+              body: whatsappCustomTemplates.body,
+              activeVersionId: whatsappTemplateVersions.id,
+              activeVersionNumber: whatsappTemplateVersions.versionNumber,
+              activeVersionBody: whatsappTemplateVersions.bodyText,
+              twilioStatus: whatsappTemplateVersions.twilioStatus,
+            })
+            .from(whatsappCustomTemplates)
+            .leftJoin(
+              whatsappTemplateVersions,
+              and(
+                eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id),
+                eq(whatsappTemplateVersions.isActive, true)
+              )
+            )
+            .where(
+              and(
+                eq(whatsappCustomTemplates.id, assignment.templateId),
+                isNull(whatsappCustomTemplates.archivedAt)
+              )
+            )
+            .limit(1);
+
+          if (customTemplateData.length > 0) {
+            const t = customTemplateData[0];
+            formattedAssignments.push({
+              assignmentId: assignment.id,
+              templateId: assignment.templateId,
+              templateName: t.templateName,
+              templateDescription: t.templateDescription,
+              useCase: t.useCase || assignment.templateType || "generale",
+              priority: assignment.priority || 0,
+              assignedAt: assignment.assignedAt,
+              body: t.body || t.activeVersionBody,
+              isTwilioTemplate: false,
+              activeVersion: t.activeVersionId
+                ? {
+                    id: t.activeVersionId,
+                    versionNumber: t.activeVersionNumber,
+                    bodyText: t.activeVersionBody,
+                    twilioStatus: t.twilioStatus,
+                  }
+                : null,
+            });
+          }
+          // If custom template not found (archived/deleted), skip it silently
+        }
+      }
 
       res.json({
         agentConfigId,
