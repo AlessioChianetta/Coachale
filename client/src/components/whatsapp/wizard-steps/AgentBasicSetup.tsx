@@ -59,15 +59,18 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
     },
   });
 
-  const hasTwilioConfigured = !!(twilioSettings?.accountSid && twilioSettings?.authToken);
+  // FIX: Backend returns { settings: { accountSid, hasAuthToken, whatsappNumber } }
+  const hasTwilioConfigured = !!(twilioSettings?.settings?.accountSid && twilioSettings?.settings?.hasAuthToken);
 
   useEffect(() => {
-    if (twilioSettings && hasTwilioConfigured) {
-      if (twilioSettings.accountSid && formData.twilioAccountSid !== twilioSettings.accountSid) {
-        onChange("twilioAccountSid", twilioSettings.accountSid);
+    if (twilioSettings?.settings && hasTwilioConfigured) {
+      if (twilioSettings.settings.accountSid && formData.twilioAccountSid !== twilioSettings.settings.accountSid) {
+        onChange("twilioAccountSid", twilioSettings.settings.accountSid);
       }
-      if (twilioSettings.authToken && !formData.twilioAuthToken) {
-        onChange("twilioAuthToken", twilioSettings.authToken);
+      // Note: authToken is encrypted on server, we just mark that it's configured
+      // The actual token will be fetched by the server when needed
+      if (twilioSettings.settings.hasAuthToken && !formData.twilioAuthToken) {
+        onChange("twilioAuthToken", "configured"); // Placeholder to indicate it's set
       }
     }
   }, [twilioSettings, hasTwilioConfigured]);
@@ -367,7 +370,7 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
                   <div className="space-y-2">
                     <p className="font-medium">Account Twilio configurato</p>
                     <div className="text-sm space-y-1">
-                      <p><span className="font-medium">Account SID:</span> {twilioSettings?.accountSid?.substring(0, 10)}...</p>
+                      <p><span className="font-medium">Account SID:</span> {twilioSettings?.settings?.accountSid?.substring(0, 10)}...</p>
                       <p><span className="font-medium">Auth Token:</span> ••••••••••••</p>
                     </div>
                     <Link href="/consultant/api-keys-unified?tab=twilio">

@@ -286,11 +286,13 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const [twilioTemplatesData, setTwilioTemplatesData] = useState<any>(null);
   const [fetchTwilioAgentId, setFetchTwilioAgentId] = useState<string>("");
   const [hasAutoSynced, setHasAutoSynced] = useState(false);
+  const [hasAutoFetchedTwilio, setHasAutoFetchedTwilio] = useState(false);
   const [twilioSectionOpen, setTwilioSectionOpen] = useState(true);
   const [approvedSectionOpen, setApprovedSectionOpen] = useState(true);
   const [pendingSectionOpen, setPendingSectionOpen] = useState(true);
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(true);
   const [localDraftsSectionOpen, setLocalDraftsSectionOpen] = useState(true);
+  const [twilioOnlySectionOpen, setTwilioOnlySectionOpen] = useState(true);
 
   const { data: templatesData, isLoading, error } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates"],
@@ -398,6 +400,20 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
       }
     }
   }, [agents, templates, hasAutoSynced]);
+
+  useEffect(() => {
+    if (!hasAutoFetchedTwilio && agents.length > 0) {
+      const agentWithTwilio = agents.find((a: any) => a.twilioAccountSid && a.twilioAuthToken);
+      if (agentWithTwilio) {
+        fetchTwilioTemplatesMutation.mutate(agentWithTwilio.id, {
+          onSuccess: (data) => {
+            setTwilioTemplatesData(data);
+          }
+        });
+        setHasAutoFetchedTwilio(true);
+      }
+    }
+  }, [agents, hasAutoFetchedTwilio]);
 
   const totalPages = Math.ceil(filteredAndSortedTemplates.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -1523,6 +1539,80 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                     </CollapsibleContent>
                   </Collapsible>
                 )}
+
+                {(() => {
+                  const twilioOnlyTemplates = twilioTemplatesData?.twilioTemplates?.filter(
+                    (t: any) => t.linkedToLocal === false
+                  ) || [];
+                  
+                  if (twilioOnlyTemplates.length === 0) return null;
+                  
+                  return (
+                    <Collapsible open={twilioOnlySectionOpen} onOpenChange={setTwilioOnlySectionOpen}>
+                      <CollapsibleTrigger asChild>
+                        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-xl cursor-pointer hover:from-indigo-600 hover:to-violet-700 transition-colors shadow-lg">
+                          <div className="flex items-center gap-3 text-white">
+                            <ExternalLink className="h-6 w-6" />
+                            <h2 className="text-lg font-bold">Template Solo su Twilio</h2>
+                            <Badge className="bg-white/20 text-white border-0">
+                              {twilioOnlyTemplates.length} template
+                            </Badge>
+                          </div>
+                          <ChevronDown className={`h-5 w-5 text-white transition-transform duration-200 ${twilioOnlySectionOpen ? 'rotate-180' : ''}`} />
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-4">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {twilioOnlyTemplates.map((template: any) => (
+                            <Card key={template.sid} className="border-2 border-indigo-100 hover:border-indigo-300 transition-colors">
+                              <CardHeader className="pb-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <CardTitle className="text-base truncate">
+                                      {template.friendlyName}
+                                    </CardTitle>
+                                    <div className="text-xs text-muted-foreground mt-1 font-mono">
+                                      SID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{template.sid}</code>
+                                    </div>
+                                  </div>
+                                  <Badge className={`text-xs text-white flex-shrink-0 ${
+                                    template.approvalStatus === 'approved' ? 'bg-green-500' :
+                                    template.approvalStatus === 'pending' || template.approvalStatus === 'received' ? 'bg-yellow-500' :
+                                    template.approvalStatus === 'rejected' ? 'bg-red-500' :
+                                    'bg-gray-500'
+                                  }`}>
+                                    {template.approvalStatus === 'approved' ? (
+                                      <><CheckCircle2 className="h-3 w-3 mr-1" />Approvato</>
+                                    ) : template.approvalStatus === 'pending' || template.approvalStatus === 'received' ? (
+                                      <><Clock className="h-3 w-3 mr-1" />In Attesa</>
+                                    ) : template.approvalStatus === 'rejected' ? (
+                                      <><XCircle className="h-3 w-3 mr-1" />Rifiutato</>
+                                    ) : (
+                                      template.approvalStatus
+                                    )}
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="pt-0">
+                                {template.bodyPreview && (
+                                  <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 p-3 rounded-lg border border-slate-200/60 text-sm text-slate-700 whitespace-pre-wrap max-h-[100px] overflow-hidden">
+                                    {template.bodyPreview}
+                                  </div>
+                                )}
+                                <div className="mt-3 flex items-center gap-2">
+                                  <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs">
+                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                    Solo Twilio
+                                  </Badge>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })()}
 
                 {renderPagination()}
               </div>
