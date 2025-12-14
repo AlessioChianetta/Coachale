@@ -1,0 +1,36 @@
+Ho configurato la pagina /consultant/whatsapp-templates   tuttavia, su seleziona agente, se seleziono un agente che sul DB ha proattivo mi dice che è reattivo ( vero )
+ma ho anche impostato nella configurazione dell'agente proattivo, quindi deve farmelo modifiare
+
+2) Il messaggio di apertura, me lo fa impostare, ma le variabili non sono popolate, c'è solo  Ciao {{1}}! 👋 Sono {{2}} di {{3}}.
+
+3) Temaplte follow up, ricordati che dobbiamo trattarlo come un umano, c'è un algoritmo sotto che fa follow up, e il backend è configurato per funzionare con migliaia
+di template, quindi togliamo la sezione configura i template follow up 24 h value proposition etc che non servono e lasciamo solo attivare i template personalizati 
+e assegnarli al tipo di agente
+
+4) l'anteprima interattiva, deve essere visualizzata per tutti i template personalizzati, non solo per il primo messaggio di apertura
+
+
+poi dobbiamo andare a inserire ed abilitare i template di riferimento, affinchè l'algoritmo decide quale usare rispetto allo stato della persona su whatsapp
+
+La sezione template disponibili dentro /consultant/whatsapp-templates dobbiamo modificarla bene, dobbiamo intanto cambiare il layout per far entrare anche 10+ agenti
+e poi per ogni agente, in base ai template assegnati, bisognerà visualizzare un anteprima di come saranno i messaggi se l'ai deciderà di inviarli, con la possibilità
+di cambiare i valori in tempo reale per testare l'anteprima e salvare, dentro invece la sezione  /consultant/whatsapp/custom-templates/list  dobbiamo migliorare il layout
+per far si che ne entrano anche 100 di template, e dobbiamo ordinarli per categoria di template, tipo customer care, venditori, setter, assitenza, etc etc etc
+
+quando entro dentro /consultant/whatsapp/custom-templates dobbiamo farla in stile IDEE AI dentro la pagina /consultant/whatsapp, tuttavia, guarda i 5 agenti che ho configurato, e 
+i diversi obiettivi che si possono fare, gli scenari devono essere tanti non 5 come messi adesso, e poi metti anche creail tuo scenario, e lo salviamo rimane anche per
+la volta successiva, inoltre la generazione con configura con ai, da errore json 
+
+
+successivamente dobbiamo migliorare la pagina /consultant/proactive-leads a livello di ui e ux, e quando proviamo a fare Aggiungi Nuovo Lead c'è ancora la vecchia
+configurazione di frequenza follow up, e anche l'aggiunta di un lead va configurata meglio a livello di ui e ux per essere più semplice nell'utilizzo
+
+controlla anche la sezione import csv per funzionare bene e importare lead nel modo corretto,  aggiorniamo il template e aggiorniamo anche la pagina importa lead
+da csv per essere migliore e semplice
+
+
+anche la pagina /consultant/campaigns  deve migliorare a livello di layout e grafica ui e ux, inoltre, cerchiamo di dare un flusso a queste pagine per non lasciarle sparpagliate
+ma rendiamo semplice e intuitivo la gestione tipo step 1 fai questo, inutile che crei una nuova campagna se prima non hai fatto step 2   quindi le pagine
+devono avere un oridne cronologico
+
+
