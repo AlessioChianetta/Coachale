@@ -279,6 +279,9 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [syncAgentDialogOpen, setSyncAgentDialogOpen] = useState(false);
   const [syncSelectedAgentId, setSyncSelectedAgentId] = useState<string>("");
+  const [twilioTemplatesDialogOpen, setTwilioTemplatesDialogOpen] = useState(false);
+  const [twilioTemplatesData, setTwilioTemplatesData] = useState<any>(null);
+  const [fetchTwilioAgentId, setFetchTwilioAgentId] = useState<string>("");
 
   const { data: templatesData, isLoading, error } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates"],
@@ -512,6 +515,52 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     },
   });
 
+  const fetchTwilioTemplatesMutation = useMutation({
+    mutationFn: async (agentConfigId: string) => {
+      const response = await fetch("/api/whatsapp/custom-templates/fetch-from-twilio", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ agentConfigId })
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch Twilio templates");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setTwilioTemplatesData(data);
+      setTwilioTemplatesDialogOpen(true);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFetchTwilioTemplates = () => {
+    if (agents.length === 0) {
+      toast({
+        title: "❌ Errore",
+        description: "Configura prima un agente WhatsApp nella sezione Agenti",
+        variant: "destructive"
+      });
+      return;
+    }
+    if (agents.length === 1) {
+      fetchTwilioTemplatesMutation.mutate(agents[0].id);
+    } else {
+      setFetchTwilioAgentId(agents[0].id);
+      setTwilioTemplatesDialogOpen(true);
+    }
+  };
+
   const handleEdit = (templateId: string) => {
     navigate(`/consultant/whatsapp/custom-templates?id=${templateId}`);
   };
@@ -743,6 +792,28 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   {statusConfig.label}
                 </Badge>
               </div>
+
+              {template.activeVersion.twilioContentSid ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-2.5">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-xs font-medium">Su Twilio</span>
+                  </div>
+                  <div className="mt-1.5 text-xs text-green-600 font-mono bg-green-100/50 px-2 py-1 rounded truncate">
+                    SID: {template.activeVersion.twilioContentSid}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
+                  <div className="flex items-center gap-2 text-amber-700">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-xs font-medium">Non su Twilio</span>
+                  </div>
+                  <p className="text-xs text-amber-600 mt-1">
+                    Esporta questo template per usarlo su WhatsApp Business
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <div className="text-sm bg-gradient-to-br from-slate-50 to-blue-50/30 p-4 rounded-lg border border-slate-200/60 font-mono text-slate-700 leading-relaxed min-h-[80px] max-h-[120px] overflow-hidden break-words whitespace-pre-wrap">
@@ -998,6 +1069,20 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   </div>
 
                   <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={handleFetchTwilioTemplates}
+                      size="lg"
+                      variant="outline"
+                      disabled={fetchTwilioTemplatesMutation.isPending}
+                      className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                    >
+                      {fetchTwilioTemplatesMutation.isPending ? (
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      ) : (
+                        <ExternalLink className="h-5 w-5 mr-2" />
+                      )}
+                      Vedi Template Twilio
+                    </Button>
                     <Button
                       onClick={handleSyncTwilioStatus}
                       size="lg"
@@ -1430,6 +1515,167 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                     Sincronizza
                   </>
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={twilioTemplatesDialogOpen} onOpenChange={(open) => {
+          setTwilioTemplatesDialogOpen(open);
+          if (!open) setTwilioTemplatesData(null);
+        }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ExternalLink className="h-5 w-5" />
+                Template su Twilio
+              </DialogTitle>
+              <DialogDescription>
+                Visualizza tutti i template presenti sul tuo account Twilio con stato di approvazione Meta
+              </DialogDescription>
+            </DialogHeader>
+
+            {!twilioTemplatesData && agents.length > 1 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Seleziona Agente WhatsApp</label>
+                  <Select value={fetchTwilioAgentId} onValueChange={setFetchTwilioAgentId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona agente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {agents.map((agent: any) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.agentName} ({agent.twilioWhatsappNumber})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  onClick={() => fetchTwilioTemplatesMutation.mutate(fetchTwilioAgentId)}
+                  disabled={!fetchTwilioAgentId || fetchTwilioTemplatesMutation.isPending}
+                  className="w-full"
+                >
+                  {fetchTwilioTemplatesMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Recupero template...
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Recupera Template da Twilio
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {fetchTwilioTemplatesMutation.isPending && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-10 w-10 animate-spin text-purple-600 mb-4" />
+                <p className="text-sm text-muted-foreground">Recupero template da Twilio...</p>
+              </div>
+            )}
+
+            {twilioTemplatesData && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-3 p-3 bg-slate-50 rounded-lg border">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white border">
+                    <span className="text-sm font-medium">{twilioTemplatesData.summary?.totalOnTwilio || 0}</span>
+                    <span className="text-xs text-muted-foreground">Totali</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-50 border border-green-200">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <span className="text-sm font-medium text-green-700">{twilioTemplatesData.summary?.approvedOnTwilio || 0}</span>
+                    <span className="text-xs text-green-600">Approvati</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-yellow-50 border border-yellow-200">
+                    <Clock className="h-4 w-4 text-yellow-600" />
+                    <span className="text-sm font-medium text-yellow-700">{twilioTemplatesData.summary?.pendingOnTwilio || 0}</span>
+                    <span className="text-xs text-yellow-600">In Attesa</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200">
+                    <Zap className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-700">{twilioTemplatesData.summary?.linkedToLocal || 0}</span>
+                    <span className="text-xs text-blue-600">Collegati</span>
+                  </div>
+                </div>
+
+                {twilioTemplatesData.orphanedLocalTemplates?.length > 0 && (
+                  <Alert variant="destructive" className="bg-red-50 border-red-200">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription className="text-red-800">
+                      <strong>{twilioTemplatesData.orphanedLocalTemplates.length} template locali</strong> hanno SID che non esistono su Twilio. 
+                      Potrebbero essere stati cancellati o avere SID errati.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {twilioTemplatesData.twilioTemplates?.map((template: any) => (
+                    <div
+                      key={template.sid}
+                      className={`border rounded-lg p-4 transition-colors ${
+                        template.linkedToLocal ? 'bg-blue-50/50 border-blue-200' : 'bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900 truncate">{template.friendlyName}</span>
+                            {template.linkedToLocal && (
+                              <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
+                                Collegato
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1 font-mono">
+                            SID: <code className="bg-gray-200 px-1.5 py-0.5 rounded">{template.sid}</code>
+                          </div>
+                          {template.linkedToLocal && template.localTemplateName && (
+                            <div className="text-xs text-blue-600 mt-1">
+                              → Template locale: <strong>{template.localTemplateName}</strong>
+                            </div>
+                          )}
+                        </div>
+                        <Badge className={`text-xs text-white flex-shrink-0 ${
+                          template.approvalStatus === 'approved' ? 'bg-green-500' :
+                          template.approvalStatus === 'pending' || template.approvalStatus === 'received' ? 'bg-yellow-500' :
+                          template.approvalStatus === 'rejected' ? 'bg-red-500' :
+                          'bg-gray-500'
+                        }`}>
+                          {template.approvalStatus === 'approved' ? 'Approvato' :
+                           template.approvalStatus === 'pending' || template.approvalStatus === 'received' ? 'In Attesa' :
+                           template.approvalStatus === 'rejected' ? 'Rifiutato' :
+                           template.approvalStatus}
+                        </Badge>
+                      </div>
+                      {template.bodyPreview && (
+                        <div className="bg-gray-50 rounded-md p-3 text-sm text-gray-700 whitespace-pre-wrap border mt-2">
+                          {template.bodyPreview}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {twilioTemplatesData.twilioTemplates?.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Nessun template trovato su Twilio per questo agente</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setTwilioTemplatesDialogOpen(false);
+                setTwilioTemplatesData(null);
+              }}>
+                Chiudi
               </Button>
             </DialogFooter>
           </DialogContent>

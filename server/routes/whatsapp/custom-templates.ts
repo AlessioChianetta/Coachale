@@ -24,7 +24,7 @@ import {
   users,
   consultantWhatsappConfig,
 } from "../../../shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -1173,6 +1173,229 @@ router.post(
       res.status(500).json({
         success: false,
         error: error.message || "Errore durante la verifica",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/custom-templates/fetch-from-twilio
+ * Fetch all templates directly from Twilio Content API and compare with local DB
+ */
+router.post(
+  "/whatsapp/custom-templates/fetch-from-twilio",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { agentConfigId } = req.body;
+
+      if (!agentConfigId) {
+        return res.status(400).json({
+          success: false,
+          error: "agentConfigId è richiesto",
+        });
+      }
+
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentConfigId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Configurazione agente non trovata",
+        });
+      }
+
+      if (!agentConfig.twilioAccountSid || !agentConfig.twilioAuthToken) {
+        return res.status(400).json({
+          success: false,
+          error: "Credenziali Twilio non configurate per questo agente",
+        });
+      }
+
+      const twilio = (await import('twilio')).default;
+      const twilioClient = twilio(agentConfig.twilioAccountSid, agentConfig.twilioAuthToken);
+
+      console.log(`🔍 [FETCH TWILIO] Fetching all templates from Twilio for agent ${agentConfig.agentName}`);
+
+      const twilioTemplates = await twilioClient.content.v1.contents.list({ limit: 100 });
+
+      console.log(`📋 [FETCH TWILIO] Found ${twilioTemplates.length} templates on Twilio`);
+
+      const templatesWithStatus = await Promise.all(
+        twilioTemplates.map(async (t) => {
+          let approvalStatus = "unknown";
+          try {
+            const approvalRequests = t.approvalRequests as any;
+            if (approvalRequests?.whatsapp?.status) {
+              approvalStatus = approvalRequests.whatsapp.status;
+            }
+          } catch (e) {}
+
+          return {
+            sid: t.sid,
+            friendlyName: t.friendlyName,
+            language: t.language,
+            dateCreated: t.dateCreated,
+            approvalStatus,
+            bodyPreview: (() => {
+              try {
+                const types = t.types as any;
+                if (types?.['twilio/text']?.body) {
+                  return types['twilio/text'].body.substring(0, 100) + (types['twilio/text'].body.length > 100 ? '...' : '');
+                }
+                return null;
+              } catch (e) {
+                return null;
+              }
+            })(),
+          };
+        })
+      );
+
+      const localVersions = await db
+        .select({
+          id: whatsappTemplateVersions.id,
+          templateId: whatsappTemplateVersions.templateId,
+          templateName: schema.whatsappCustomTemplates.templateName,
+          twilioContentSid: whatsappTemplateVersions.twilioContentSid,
+          twilioStatus: whatsappTemplateVersions.twilioStatus,
+          versionNumber: whatsappTemplateVersions.versionNumber,
+        })
+        .from(whatsappTemplateVersions)
+        .innerJoin(
+          schema.whatsappCustomTemplates,
+          eq(whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id)
+        )
+        .where(eq(schema.whatsappCustomTemplates.consultantId, consultantId));
+
+      const matchedTemplates = templatesWithStatus.map((twilioT) => {
+        const localMatch = localVersions.find((v) => v.twilioContentSid === twilioT.sid);
+        return {
+          ...twilioT,
+          linkedToLocal: !!localMatch,
+          localTemplateName: localMatch?.templateName || null,
+          localVersionId: localMatch?.id || null,
+          localStatus: localMatch?.twilioStatus || null,
+          statusMismatch: localMatch ? localMatch.twilioStatus !== twilioT.approvalStatus : false,
+        };
+      });
+
+      const orphanedLocal = localVersions.filter(
+        (v) => v.twilioContentSid && !templatesWithStatus.find((t) => t.sid === v.twilioContentSid)
+      );
+
+      res.json({
+        success: true,
+        agentName: agentConfig.agentName,
+        twilioTemplates: matchedTemplates,
+        orphanedLocalTemplates: orphanedLocal.map((o) => ({
+          versionId: o.id,
+          templateName: o.templateName,
+          twilioContentSid: o.twilioContentSid,
+          localStatus: o.twilioStatus,
+          message: "Template non trovato su Twilio (cancellato o SID errato)",
+        })),
+        summary: {
+          totalOnTwilio: twilioTemplates.length,
+          approvedOnTwilio: matchedTemplates.filter((t) => t.approvalStatus === "approved").length,
+          pendingOnTwilio: matchedTemplates.filter((t) => t.approvalStatus === "pending" || t.approvalStatus === "received").length,
+          linkedToLocal: matchedTemplates.filter((t) => t.linkedToLocal).length,
+          orphanedLocal: orphanedLocal.length,
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [FETCH TWILIO] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante il recupero dei template da Twilio",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/custom-templates/link-twilio-template
+ * Link an existing Twilio template to a local template version
+ */
+router.post(
+  "/whatsapp/custom-templates/link-twilio-template",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { versionId, twilioContentSid, agentConfigId } = req.body;
+
+      if (!versionId || !twilioContentSid || !agentConfigId) {
+        return res.status(400).json({
+          success: false,
+          error: "versionId, twilioContentSid e agentConfigId sono richiesti",
+        });
+      }
+
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentConfigId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig || !agentConfig.twilioAccountSid || !agentConfig.twilioAuthToken) {
+        return res.status(400).json({
+          success: false,
+          error: "Credenziali Twilio non configurate",
+        });
+      }
+
+      const twilio = (await import('twilio')).default;
+      const twilioClient = twilio(agentConfig.twilioAccountSid, agentConfig.twilioAuthToken);
+
+      const content = await twilioClient.content.v1.contents(twilioContentSid).fetch();
+
+      let approvalStatus: "draft" | "pending_approval" | "approved" | "rejected" = "draft";
+      const approvalRequests = content.approvalRequests as any;
+      if (approvalRequests?.whatsapp?.status) {
+        const status = approvalRequests.whatsapp.status;
+        if (status === "approved") approvalStatus = "approved";
+        else if (status === "pending" || status === "received") approvalStatus = "pending_approval";
+        else if (status === "rejected" || status === "paused" || status === "disabled") approvalStatus = "rejected";
+      }
+
+      await db
+        .update(whatsappTemplateVersions)
+        .set({
+          twilioContentSid,
+          twilioStatus: approvalStatus,
+          lastSyncedAt: new Date(),
+        })
+        .where(eq(whatsappTemplateVersions.id, versionId));
+
+      res.json({
+        success: true,
+        message: `Template collegato con successo. Stato: ${approvalStatus}`,
+        twilioContentSid,
+        approvalStatus,
+      });
+    } catch (error: any) {
+      console.error("❌ [LINK TEMPLATE] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Errore durante il collegamento del template",
       });
     }
   }
