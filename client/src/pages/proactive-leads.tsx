@@ -1055,11 +1055,15 @@ export default function ProactiveLeadsPage() {
             />
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 dark:from-blue-600/20 dark:to-purple-600/20">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                  <Users className="h-8 w-8 text-blue-600" />
-                  Gestione Lead Proattivi
+                <h1 className="text-3xl font-bold flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg shadow-lg">
+                    <Users className="h-7 w-7 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Gestione Lead Proattivi
+                  </span>
                 </h1>
                 <p className="mt-2 text-gray-600 dark:text-gray-400">
                   Gestisci e monitora i tuoi lead proattivi con follow-up automatici via WhatsApp
@@ -1119,6 +1123,71 @@ export default function ProactiveLeadsPage() {
               </Alert>
             )}
 
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="border-0 shadow-md bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
+                      <Users className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Totale Lead</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{leads.length}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-md bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-gray-400 to-gray-500 rounded-lg shadow-md">
+                      <Clock className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">In Attesa</p>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {leads.filter((l) => l.status === "pending").length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-md">
+                      <MessageCircle className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Contattati</p>
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {leads.filter((l) => l.status === "contacted").length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-md">
+                      <Sparkles className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Convertiti</p>
+                      <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                        {leads.filter((l) => l.status === "converted").length}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Status Filter Tabs */}
             <Tabs value={statusFilter} onValueChange={handleStatusFilterChange} className="w-full">
               <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
@@ -1167,8 +1236,8 @@ export default function ProactiveLeadsPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+              <Card className="shadow-xl border-0">
+                <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900 dark:to-slate-900 rounded-t-lg">
                   <CardTitle>Lead ({filteredLeads.length})</CardTitle>
                   <div className="flex items-center gap-2">
                     <Label htmlFor="items-per-page" className="text-sm text-gray-600">
@@ -1212,7 +1281,7 @@ export default function ProactiveLeadsPage() {
                           const hasResponded = lead.status === "responded" || lead.status === "converted";
                           
                           return (
-                            <TableRow key={lead.id} className={hasResponded ? "bg-green-50/50 dark:bg-green-950/20" : ""}>
+                            <TableRow key={lead.id} className={`transition-all duration-200 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 hover:shadow-sm ${hasResponded ? "bg-green-50/50 dark:bg-green-950/20" : ""}`}>
                               <TableCell className="font-medium">
                                 <div className="flex items-center gap-2">
                                   <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${hasResponded ? 'bg-green-100 dark:bg-green-900/40' : 'bg-gray-100 dark:bg-gray-800'}`}>
@@ -1340,7 +1409,7 @@ export default function ProactiveLeadsPage() {
       <>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="space-y-3 pb-4 border-b">
+            <DialogHeader className="space-y-3 pb-4 border-b bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 -mx-6 -mt-6 px-6 pt-6 rounded-t-lg">
               <DialogTitle className="flex items-center gap-3 text-2xl">
                 {selectedLead ? (
                   <>

@@ -817,13 +817,87 @@ export default function ConsultantWhatsAppCustomTemplates() {
     </div>
   );
 
+  const primoContattoScenario = SCENARIO_OPTIONS.find(s => s.id === "setter-primo-contatto-freddo");
+  
+  const filteredScenariosWithoutPrimoContatto = useMemo(() => {
+    const withoutPrimo = filteredScenarios.filter(s => s.id !== "setter-primo-contatto-freddo");
+    return withoutPrimo;
+  }, [filteredScenarios]);
+
   const renderStep1 = () => (
     <div className="animate-in fade-in-50 duration-300 space-y-4">
+      {primoContattoScenario && (
+        <Card
+          onClick={() => handleScenarioSelect(primoContattoScenario.id)}
+          className={cn(
+            "cursor-pointer transition-all duration-300 shadow-xl",
+            selectedScenario === primoContattoScenario.id
+              ? "border-4 border-emerald-500 bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/40 dark:to-teal-900/40 ring-4 ring-emerald-300 shadow-2xl shadow-emerald-200 scale-[1.01]"
+              : "border-2 border-emerald-300 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 hover:shadow-2xl hover:scale-[1.01] hover:border-emerald-400"
+          )}
+        >
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className={cn(
+                "p-4 rounded-xl transition-all duration-300",
+                selectedScenario === primoContattoScenario.id
+                  ? "bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-300"
+                  : "bg-gradient-to-br from-emerald-400 to-teal-400 text-white"
+              )}>
+                <Send className="h-8 w-8" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                  <h3 className="font-bold text-xl text-emerald-800 dark:text-emerald-200">
+                    🚀 PRIMO MESSAGGIO
+                  </h3>
+                  <Badge className="bg-gradient-to-r from-amber-400 to-orange-400 text-white border-0 shadow-md">
+                    ⭐ Più Importante
+                  </Badge>
+                  {selectedScenario === primoContattoScenario.id && (
+                    <CheckCircle2 className="h-6 w-6 text-emerald-600 animate-in zoom-in-50" />
+                  )}
+                </div>
+                <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-3 leading-relaxed">
+                  <strong>Il messaggio che avvia la conversazione!</strong> Questo è il template più strategico: 
+                  la prima impressione conta e determina il tasso di risposta dei tuoi lead.
+                </p>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-3">
+                  💡 Usalo per contattare lead nuovi che non hanno mai ricevuto messaggi da te.
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  <Badge variant="outline" className="text-xs border-emerald-400 text-emerald-700 dark:text-emerald-300">
+                    Opening
+                  </Badge>
+                  <Badge className="text-xs bg-blue-500 text-white">
+                    Setter
+                  </Badge>
+                  <Badge variant="outline" className="text-xs border-emerald-400 text-emerald-700 dark:text-emerald-300">
+                    🎯 Alto impatto
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="relative py-4">
+        <div className="absolute inset-0 flex items-center">
+          <Separator className="w-full" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-4 text-sm text-muted-foreground font-medium">
+            — oppure scegli un altro scenario —
+          </span>
+        </div>
+      </div>
+
       <Card className="shadow-xl border-2">
         <CardHeader className="pb-4">
           <CardTitle className="text-2xl flex items-center gap-2">
             <MessageSquare className="h-6 w-6 text-blue-600" />
-            Seleziona lo Scenario
+            Altri Scenari
           </CardTitle>
           <CardDescription className="text-base">
             Scegli il contesto in cui verrà utilizzato questo template WhatsApp
@@ -836,10 +910,10 @@ export default function ConsultantWhatsAppCustomTemplates() {
               className="cursor-pointer hover:bg-primary/80"
               onClick={() => setSelectedAgentTypeFilter("ALL")}
             >
-              Tutti ({SCENARIO_OPTIONS.length})
+              Tutti ({SCENARIO_OPTIONS.filter(s => s.id !== "setter-primo-contatto-freddo").length})
             </Badge>
             {Object.entries(AGENT_TYPE_LABELS).map(([key, label]) => {
-              const count = SCENARIO_OPTIONS.filter(s => s.agentType === key).length;
+              const count = SCENARIO_OPTIONS.filter(s => s.agentType === key && s.id !== "setter-primo-contatto-freddo").length;
               if (count === 0) return null;
               return (
                 <Badge 
@@ -858,7 +932,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2">
-            {filteredScenarios.map((scenario) => (
+            {filteredScenariosWithoutPrimoContatto.map((scenario) => (
               <Card
                 key={scenario.id}
                 onClick={() => handleScenarioSelect(scenario.id)}

@@ -109,6 +109,8 @@ interface OnboardingStatus {
   publicLinksCount: number;
   hasGeneratedIdeas: boolean;
   generatedIdeasCount: number;
+  hasCustomTemplate: boolean;
+  customTemplatesCount: number;
   hasCreatedCourse: boolean;
   coursesCount: number;
   hasCreatedExercise: boolean;
@@ -406,6 +408,17 @@ export default function ConsultantSetupWizard() {
           count: status?.generatedIdeasCount,
           countLabel: "idee",
         },
+        {
+          id: "whatsapp_template",
+          stepNumber: 11,
+          title: "Template WhatsApp",
+          description: "Crea almeno un template WhatsApp per i tuoi messaggi automatici",
+          icon: <MessageSquare className="h-4 w-4" />,
+          status: status?.hasCustomTemplate ? "verified" : "pending",
+          configLink: "/consultant/whatsapp-templates",
+          count: status?.customTemplatesCount,
+          countLabel: "template",
+        },
       ],
     },
     {
@@ -414,7 +427,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_course",
-          stepNumber: 11,
+          stepNumber: 12,
           title: "Primo Corso",
           description: "Crea il tuo primo corso formativo per i clienti",
           icon: <BookOpen className="h-4 w-4" />,
@@ -425,7 +438,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "first_exercise",
-          stepNumber: 12,
+          stepNumber: 13,
           title: "Primo Esercizio",
           description: "Crea il tuo primo esercizio pratico per i clienti",
           icon: <ClipboardList className="h-4 w-4" />,
@@ -436,7 +449,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "knowledge_base",
-          stepNumber: 13,
+          stepNumber: 14,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -454,7 +467,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_summary_email",
-          stepNumber: 14,
+          stepNumber: 15,
           title: "Prima Email Riassuntiva",
           description: "Invia la tua prima email riassuntiva dopo una consulenza",
           icon: <MailCheck className="h-4 w-4" />,
@@ -465,7 +478,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "video_meeting",
-          stepNumber: 15,
+          stepNumber: 16,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -477,7 +490,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "lead_import",
-          stepNumber: 16,
+          stepNumber: 17,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,
@@ -509,6 +522,7 @@ export default function ConsultantSetupWizard() {
     consultative_agent: "Agente Consulenziale",
     public_agent_link: "Link Pubblico Agente",
     ai_ideas: "Idee AI Generate",
+    whatsapp_template: "Template WhatsApp",
     first_course: "Primo Corso",
     first_exercise: "Primo Esercizio",
     knowledge_base: "Knowledge Base",
@@ -548,7 +562,7 @@ export default function ConsultantSetupWizard() {
                     Setup Iniziale Piattaforma
                   </h1>
                   <p className="text-sm text-muted-foreground">
-                    Completa tutti i 16 step per sbloccare le funzionalità complete
+                    Completa tutti i 17 step per sbloccare le funzionalità complete
                   </p>
                 </div>
               </div>
@@ -830,6 +844,24 @@ export default function ConsultantSetupWizard() {
                         </div>
                       )}
 
+                      {activeStep === "whatsapp_template" && (
+                        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                            <MessageSquare className="h-4 w-4 text-blue-600" />
+                            Template WhatsApp
+                          </h4>
+                          <div className="text-sm text-muted-foreground space-y-2">
+                            <p>I template WhatsApp personalizzano i tuoi messaggi automatici:</p>
+                            <ul className="list-disc list-inside ml-2 space-y-1">
+                              <li>I template personalizzano i messaggi automatici</li>
+                              <li>Puoi creare template per diversi scenari (apertura, follow-up, etc.)</li>
+                              <li>I template supportano variabili dinamiche come {"{nome_lead}"}</li>
+                            </ul>
+                            <p className="mt-2">Vai alla sezione Template per creare i tuoi messaggi personalizzati.</p>
+                          </div>
+                        </div>
+                      )}
+
                       {activeStep === "first_course" && (
                         <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                           <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
@@ -970,6 +1002,7 @@ export default function ConsultantSetupWizard() {
                           {activeStep === "consultative_agent" && "L'agente Consulenziale offre supporto avanzato prima della consulenza umana."}
                           {activeStep === "public_agent_link" && "I link pubblici permettono ai clienti di contattarti facilmente ovunque."}
                           {activeStep === "ai_ideas" && "Genera idee creative per migliorare le conversazioni dei tuoi agenti."}
+                          {activeStep === "whatsapp_template" && "I template WhatsApp personalizzano i messaggi automatici per ogni scenario."}
                           {activeStep === "first_course" && "I corsi formativi aiutano i clienti a crescere e aumentano la loro fidelizzazione."}
                           {activeStep === "first_exercise" && "Gli esercizi pratici consolidano l'apprendimento dei tuoi clienti."}
                           {activeStep === "knowledge_base" && "Carica documenti per far rispondere l'AI con informazioni specifiche sul tuo business."}
@@ -991,6 +1024,7 @@ export default function ConsultantSetupWizard() {
                               consultative_agent: "Come funziona l'agente Consulenziale e come posso configurarlo?",
                               public_agent_link: "Come genero e condivido un link pubblico per i miei agenti WhatsApp?",
                               ai_ideas: "Come posso usare l'AI per generare idee creative per i miei agenti?",
+                              whatsapp_template: "Come creo template WhatsApp personalizzati per i messaggi automatici?",
                               first_course: "Aiutami a creare il mio primo corso formativo per i clienti.",
                               first_exercise: "Come creo un esercizio pratico efficace per i miei clienti?",
                               knowledge_base: "Come carico documenti nella Knowledge Base per migliorare le risposte dell'AI?",
@@ -1041,7 +1075,7 @@ export default function ConsultantSetupWizard() {
                   <Alert className="mt-6 bg-emerald-50 border-emerald-200">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     <AlertDescription className="text-emerald-800">
-                      🎉 Tutti i 15 step sono completati! La piattaforma è pronta all'uso.
+                      🎉 Tutti i 17 step sono completati! La piattaforma è pronta all'uso.
                     </AlertDescription>
                   </Alert>
                 )}
