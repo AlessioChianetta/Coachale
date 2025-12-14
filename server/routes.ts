@@ -8306,6 +8306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           autoResponseEnabled: config.autoResponseEnabled,
           isActive: config.isActive,
           agentType: config.agentType,
+          isProactiveAgent: config.isProactiveAgent,
           workingHoursEnabled: config.workingHoursEnabled,
           workingHoursStart: config.workingHoursStart,
           workingHoursEnd: config.workingHoursEnd,
