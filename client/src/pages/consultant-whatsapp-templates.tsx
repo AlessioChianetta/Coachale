@@ -37,7 +37,9 @@ import {
   Pause,
   Lock,
   HelpCircle,
-  PenSquare
+  PenSquare,
+  Zap,
+  Settings
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,6 +50,7 @@ import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Link } from "wouter";
 
 interface TwilioTemplate {
   sid: string;
@@ -596,6 +599,32 @@ export default function ConsultantWhatsAppTemplatesPage() {
                 </div>
               </div>
             </div>
+
+            {/* Automation System Banner */}
+            <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 shadow-lg animate-in fade-in-50 duration-500">
+              <CardContent className="py-5">
+                <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                  <div className="p-3 rounded-full bg-amber-100">
+                    <Zap className="h-6 w-6 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                      Nuovo Sistema Follow-up Automatico
+                    </h3>
+                    <p className="text-gray-600 text-sm">
+                      I template WhatsApp vengono ora utilizzati dal sistema di automazioni per ricontattare 
+                      automaticamente i lead che non rispondono. Configura le regole dalla pagina Automazioni.
+                    </p>
+                  </div>
+                  <Link href="/consultant/automations">
+                    <Button className="bg-amber-600 hover:bg-amber-700 text-white shadow-md">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Configura Automazioni
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Error Alert */}
             {templatesError && (
