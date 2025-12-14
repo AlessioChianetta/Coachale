@@ -34,6 +34,11 @@ export const users = pgTable("users", {
   googleDriveConnectedAt: timestamp("google_drive_connected_at"),
   googleDriveEmail: text("google_drive_email"),
   
+  // Twilio Configuration (consultant-level centralized settings)
+  twilioAccountSid: text("twilio_account_sid"),
+  twilioAuthToken: text("twilio_auth_token"),
+  twilioWhatsappNumber: text("twilio_whatsapp_number"),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 

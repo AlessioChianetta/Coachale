@@ -359,7 +359,7 @@ export default function ConsultantApiKeysUnified() {
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     const tabParam = params.get('tab');
-    const validTabs = ['ai', 'client-ai', 'email', 'whatsapp', 'calendar', 'lead-import', 'video-meeting'];
+    const validTabs = ['ai', 'client-ai', 'email', 'whatsapp', 'calendar', 'lead-import', 'video-meeting', 'twilio'];
     if (tabParam && validTabs.includes(tabParam)) {
       setActiveTab(tabParam);
     }
@@ -408,6 +408,16 @@ export default function ConsultantApiKeysUnified() {
   });
   const [showTurnPassword, setShowTurnPassword] = useState(false);
   const [isSavingTurnConfig, setIsSavingTurnConfig] = useState(false);
+
+  // Twilio Centralized Settings state
+  const [twilioFormData, setTwilioFormData] = useState({
+    accountSid: "",
+    authToken: "",
+    whatsappNumber: "",
+  });
+  const [showTwilioAuthToken, setShowTwilioAuthToken] = useState(false);
+  const [isSavingTwilio, setIsSavingTwilio] = useState(false);
+  const [isTestingTwilio, setIsTestingTwilio] = useState(false);
 
   // Lead Import state
   const [showLeadApiKey, setShowLeadApiKey] = useState(false);
@@ -527,6 +537,21 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
+  // Twilio Centralized Settings query
+  const { data: twilioSettingsData, isLoading: isLoadingTwilioSettings } = useQuery({
+    queryKey: ["/api/consultant/twilio-settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/twilio-settings", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Failed to fetch Twilio settings");
+      }
+      if (response.status === 404) return null;
+      return response.json();
+    },
+  });
+
   // Lead Import queries and mutations
   const { data: leadImportConfigs } = useExternalApiConfigs();
   const { data: campaignsData, isLoading: campaignsLoading } = useCampaigns();
@@ -620,6 +645,17 @@ export default function ConsultantApiKeysUnified() {
       });
     }
   }, [turnConfigData]);
+
+  // Sync Twilio settings
+  useEffect(() => {
+    if (twilioSettingsData?.settings) {
+      setTwilioFormData({
+        accountSid: twilioSettingsData.settings.accountSid || "",
+        authToken: "", // Never sent back for security
+        whatsappNumber: twilioSettingsData.settings.whatsappNumber || "",
+      });
+    }
+  }, [twilioSettingsData]);
 
   // WhatsApp AI Configuration State
   const [whatsAppVertexFormData, setWhatsAppVertexFormData] = useState({
@@ -1091,6 +1127,99 @@ export default function ConsultantApiKeysUnified() {
     }
   };
 
+  const handleSaveTwilioSettings = async () => {
+    if (!twilioFormData.accountSid) {
+      toast({
+        title: "Errore",
+        description: "Account SID è obbligatorio",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingTwilio(true);
+    try {
+      const response = await fetch("/api/consultant/twilio-settings", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accountSid: twilioFormData.accountSid,
+          authToken: twilioFormData.authToken || undefined,
+          whatsappNumber: twilioFormData.whatsappNumber,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante il salvataggio");
+      }
+
+      toast({
+        title: "Successo",
+        description: "Configurazione Twilio salvata con successo",
+      });
+
+      setTwilioFormData(prev => ({ ...prev, authToken: "" }));
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/twilio-settings"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingTwilio(false);
+    }
+  };
+
+  const handleTestTwilioConnection = async () => {
+    if (!twilioFormData.accountSid) {
+      toast({
+        title: "Errore",
+        description: "Account SID è obbligatorio per il test",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingTwilio(true);
+    try {
+      const response = await fetch("/api/consultant/twilio-settings/test", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accountSid: twilioFormData.accountSid,
+          authToken: twilioFormData.authToken || undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Test connessione fallito");
+      }
+
+      toast({
+        title: "✅ Connessione riuscita",
+        description: result.message || "Le credenziali Twilio sono valide",
+      });
+    } catch (error: any) {
+      toast({
+        title: "❌ Test fallito",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingTwilio(false);
+    }
+  };
+
   const handleLeadInputChange = (field: string, value: any) => {
     setLeadImportFormData((prev) => ({
       ...prev,
@@ -1339,7 +1468,7 @@ export default function ConsultantApiKeysUnified() {
           {/* Tabs Container */}
           <div className="max-w-6xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-7 gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-8 gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg">
                 <TabsTrigger value="ai" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
                   <Bot className="h-4 w-4 mr-2" />
                   AI (Gemini)
@@ -1367,6 +1496,10 @@ export default function ConsultantApiKeysUnified() {
                 <TabsTrigger value="video-meeting" className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700">
                   <Video className="h-4 w-4 mr-2" />
                   Video Meeting
+                </TabsTrigger>
+                <TabsTrigger value="twilio" className="data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Twilio
                 </TabsTrigger>
               </TabsList>
 
@@ -3513,6 +3646,144 @@ export default function ConsultantApiKeysUnified() {
                           </>
                         )}
                       </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Twilio Centralized Settings Tab Content */}
+              <TabsContent value="twilio" className="space-y-6">
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-gradient-to-br from-emerald-100 to-green-100 rounded-xl">
+                        <MessageSquare className="h-6 w-6 text-emerald-600" />
+                      </div>
+                      <div>
+                        <CardTitle>Configurazione Twilio Centralizzata</CardTitle>
+                        <CardDescription>
+                          Configura le credenziali Twilio per tutti gli agenti WhatsApp
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <Alert className="bg-emerald-50 border-emerald-200">
+                      <AlertCircle className="h-4 w-4 text-emerald-600" />
+                      <AlertDescription className="text-sm text-emerald-800">
+                        <strong>Configurazione centralizzata:</strong> Queste credenziali Twilio verranno utilizzate 
+                        automaticamente da tutti i tuoi agenti WhatsApp. Puoi gestire un unico account Twilio 
+                        per semplificare la gestione.
+                      </AlertDescription>
+                    </Alert>
+
+                    {twilioSettingsData?.settings && (
+                      <Alert className="bg-green-50 border-green-200">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-sm">
+                          Twilio configurato. Account SID: {twilioSettingsData.settings.accountSid?.substring(0, 10)}...
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="space-y-4 pt-4 border-t">
+                      <div className="space-y-2">
+                        <Label htmlFor="twilioAccountSid">Account SID *</Label>
+                        <Input
+                          id="twilioAccountSid"
+                          type="text"
+                          placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                          value={twilioFormData.accountSid}
+                          onChange={(e) => setTwilioFormData(prev => ({ ...prev, accountSid: e.target.value }))}
+                        />
+                        <p className="text-xs text-gray-500">
+                          Trovi l'Account SID nella dashboard Twilio
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="twilioAuthToken">Auth Token *</Label>
+                        <div className="relative">
+                          <Input
+                            id="twilioAuthToken"
+                            type={showTwilioAuthToken ? "text" : "password"}
+                            placeholder="Il tuo Auth Token Twilio"
+                            value={twilioFormData.authToken}
+                            onChange={(e) => setTwilioFormData(prev => ({ ...prev, authToken: e.target.value }))}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-1/2 -translate-y-1/2"
+                            onClick={() => setShowTwilioAuthToken(!showTwilioAuthToken)}
+                          >
+                            {showTwilioAuthToken ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                        {twilioSettingsData?.settings && (
+                          <p className="text-xs text-gray-500">
+                            Auth Token già salvato. Lascia vuoto per mantenere quello esistente, oppure inserisci un nuovo token.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="twilioWhatsappNumber">Numero WhatsApp</Label>
+                        <Input
+                          id="twilioWhatsappNumber"
+                          type="text"
+                          placeholder="+393500220129"
+                          value={twilioFormData.whatsappNumber}
+                          onChange={(e) => setTwilioFormData(prev => ({ ...prev, whatsappNumber: e.target.value }))}
+                        />
+                        <p className="text-xs text-gray-500">
+                          Formato internazionale con prefisso (es: +393500220129)
+                        </p>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={handleTestTwilioConnection}
+                          disabled={isTestingTwilio || !twilioFormData.accountSid}
+                          className="w-full sm:w-auto"
+                        >
+                          {isTestingTwilio ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Test in corso...
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              Testa Connessione
+                            </>
+                          )}
+                        </Button>
+
+                        <Button
+                          onClick={handleSaveTwilioSettings}
+                          disabled={isSavingTwilio || !twilioFormData.accountSid || (!twilioFormData.authToken && !twilioSettingsData?.settings)}
+                          className="w-full sm:flex-1 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
+                        >
+                          {isSavingTwilio ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Salvataggio...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-2" />
+                              {twilioSettingsData?.settings ? "Aggiorna" : "Salva"} Configurazione
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

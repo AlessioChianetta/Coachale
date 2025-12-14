@@ -8277,6 +8277,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Twilio Centralized Settings Endpoints (stored in users table)
+  app.get("/api/consultant/twilio-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const [user] = await db
+        .select({
+          twilioAccountSid: schema.users.twilioAccountSid,
+          twilioAuthToken: schema.users.twilioAuthToken,
+          twilioWhatsappNumber: schema.users.twilioWhatsappNumber,
+        })
+        .from(schema.users)
+        .where(eq(schema.users.id, consultantId))
+        .limit(1);
+
+      if (!user || !user.twilioAccountSid) {
+        return res.status(404).json({ success: false, message: "Twilio settings not configured" });
+      }
+
+      res.json({
+        success: true,
+        settings: {
+          accountSid: user.twilioAccountSid,
+          whatsappNumber: user.twilioWhatsappNumber || "",
+          hasAuthToken: !!user.twilioAuthToken,
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ Error fetching Twilio settings:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  app.post("/api/consultant/twilio-settings", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { accountSid, authToken, whatsappNumber } = req.body;
+
+      if (!accountSid) {
+        return res.status(400).json({ success: false, message: "Account SID è obbligatorio" });
+      }
+
+      const updateData: any = {
+        twilioAccountSid: accountSid,
+        twilioWhatsappNumber: whatsappNumber || null,
+      };
+
+      // Only update auth token if provided (allows keeping existing token)
+      if (authToken) {
+        // Encrypt the auth token for storage
+        const encryptedToken = await encryptForConsultant(consultantId, authToken);
+        updateData.twilioAuthToken = encryptedToken;
+      }
+
+      await db
+        .update(schema.users)
+        .set(updateData)
+        .where(eq(schema.users.id, consultantId));
+
+      console.log(`✅ [Twilio Settings] Updated for consultant ${consultantId}`);
+
+      res.json({
+        success: true,
+        message: "Configurazione Twilio salvata con successo",
+      });
+    } catch (error: any) {
+      console.error("❌ Error saving Twilio settings:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  app.post("/api/consultant/twilio-settings/test", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { accountSid, authToken } = req.body;
+
+      let testAccountSid = accountSid;
+      let testAuthToken = authToken;
+
+      // If authToken not provided, try to get saved credentials
+      if (!testAuthToken) {
+        const [user] = await db
+          .select({
+            twilioAccountSid: schema.users.twilioAccountSid,
+            twilioAuthToken: schema.users.twilioAuthToken,
+          })
+          .from(schema.users)
+          .where(eq(schema.users.id, consultantId))
+          .limit(1);
+
+        if (!user?.twilioAuthToken) {
+          return res.status(400).json({ success: false, message: "Auth Token non trovato. Inserisci un Auth Token per testare." });
+        }
+
+        testAuthToken = await decryptForConsultant(consultantId, user.twilioAuthToken);
+        testAccountSid = testAccountSid || user.twilioAccountSid;
+      }
+
+      if (!testAccountSid || !testAuthToken) {
+        return res.status(400).json({ success: false, message: "Account SID e Auth Token sono obbligatori" });
+      }
+
+      // Test Twilio connection by fetching account info
+      const twilioClient = twilio(testAccountSid, testAuthToken);
+      const account = await twilioClient.api.v2010.accounts(testAccountSid).fetch();
+
+      res.json({
+        success: true,
+        message: `Connessione riuscita! Account: ${account.friendlyName}`,
+        accountName: account.friendlyName,
+        accountStatus: account.status,
+      });
+    } catch (error: any) {
+      console.error("❌ Twilio test connection failed:", error);
+      res.status(400).json({
+        success: false,
+        message: error.message || "Connessione fallita. Verifica le credenziali.",
+      });
+    }
+  });
+
   // WhatsApp configuration endpoints for consultants
   app.get("/api/whatsapp/config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
