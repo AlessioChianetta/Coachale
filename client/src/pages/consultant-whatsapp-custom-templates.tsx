@@ -35,16 +35,14 @@ export default function ConsultantWhatsAppCustomTemplates() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
 
-  // Get template ID from URL for edit mode
   const templateId = new URLSearchParams(window.location.search).get('id');
   const isEditMode = !!templateId;
 
   const [templateName, setTemplateName] = useState("");
-  const [templateType, setTemplateType] = useState<"opening" | "followup_gentle" | "followup_value" | "followup_final" | "">("");
+  const [useCase, setUseCase] = useState("");
   const [description, setDescription] = useState("");
   const [bodyText, setBodyText] = useState("");
 
-  // Fetch existing template for edit mode
   const { data: existingTemplateData, isLoading: loadingTemplate } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates", templateId],
     queryFn: async () => {
@@ -60,14 +58,13 @@ export default function ConsultantWhatsAppCustomTemplates() {
     enabled: !!templateId
   });
 
-  // Populate form fields when existing template is loaded
   useEffect(() => {
     if (existingTemplateData?.data) {
       const template = existingTemplateData.data;
       setTemplateName(template.templateName);
-      setTemplateType(template.templateType);
+      setUseCase(template.useCase || template.templateType || "");
       setDescription(template.description || "");
-      setBodyText(template.activeVersion?.bodyText || "");
+      setBodyText(template.activeVersion?.bodyText || template.body || "");
     }
   }, [existingTemplateData]);
 
@@ -131,7 +128,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
   const createTemplateMutation = useMutation({
     mutationFn: async (data: {
       templateName: string;
-      templateType: string;
+      useCase?: string;
       description?: string;
       bodyText: string;
       variables: Array<{ variableKey: string; position: number }>;
@@ -179,6 +176,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
   const updateTemplateMutation = useMutation({
     mutationFn: async (data: {
       templateId: string;
+      useCase?: string;
       description?: string;
       bodyText: string;
       variables: Array<{ variableKey: string; position: number }>;
@@ -190,6 +188,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          useCase: data.useCase,
           description: data.description,
           bodyText: data.bodyText,
           variables: data.variables
@@ -235,15 +234,6 @@ export default function ConsultantWhatsAppCustomTemplates() {
       return;
     }
 
-    if (!templateType) {
-      toast({
-        title: "⚠️ Tipo Richiesto",
-        description: "Seleziona il tipo di template.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (bodyText.trim().length < 10) {
       toast({
         title: "⚠️ Testo Troppo Corto",
@@ -277,6 +267,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
     if (isEditMode) {
       updateTemplateMutation.mutate({
         templateId: templateId!,
+        useCase: useCase || undefined,
         description: description || undefined,
         bodyText,
         variables: variableMappings.map(v => ({
@@ -287,7 +278,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
     } else {
       createTemplateMutation.mutate({
         templateName,
-        templateType,
+        useCase: useCase || undefined,
         description: description || undefined,
         bodyText,
         variables: variableMappings.map((v) => ({
@@ -303,13 +294,12 @@ export default function ConsultantWhatsAppCustomTemplates() {
       navigate("/consultant/whatsapp-templates");
     } else {
       setTemplateName("");
-      setTemplateType("");
+      setUseCase("");
       setDescription("");
       setBodyText("");
     }
   };
 
-  // Extract variables for preview panel
   const extractedVariables = useMemo(() => {
     return extractVariablesWithPositions(bodyText);
   }, [bodyText, catalog]);
@@ -325,7 +315,6 @@ export default function ConsultantWhatsAppCustomTemplates() {
         />
         <div className="flex-1 overflow-y-auto">
           <div className="container mx-auto p-4 md:p-6">
-          {/* Compact Header Section */}
           <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white rounded-lg shadow-lg p-4 mb-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -356,7 +345,6 @@ export default function ConsultantWhatsAppCustomTemplates() {
             </p>
           </div>
 
-          {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 animate-in fade-in-50 duration-300">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-200">
               <CardContent className="p-3 md:p-4 flex items-center gap-3">
@@ -395,16 +383,15 @@ export default function ConsultantWhatsAppCustomTemplates() {
             </Card>
           </div>
 
-          {/* Metadata Form - Full Width with Shadow */}
           <div className="mb-6 animate-in fade-in-50 duration-300">
             <Card className="shadow-lg hover:shadow-xl transition-shadow duration-200">
               <CardContent className="p-4 md:p-6">
                 <TemplateMetadataForm
                   templateName={templateName}
-                  templateType={templateType}
+                  useCase={useCase}
                   description={description}
                   onTemplateNameChange={setTemplateName}
-                  onTemplateTypeChange={setTemplateType}
+                  onUseCaseChange={setUseCase}
                   onDescriptionChange={setDescription}
                   disabled={isEditMode}
                 />
@@ -418,9 +405,7 @@ export default function ConsultantWhatsAppCustomTemplates() {
             </div>
           ) : (
             <>
-              {/* 2-Column Layout: Editor + Sticky Preview */}
               <div className={`grid gap-4 md:gap-6 mb-6 ${isMobile ? "grid-cols-1" : "grid-cols-2"}`}>
-                {/* Left Column: Editor */}
                 <div className="space-y-4 md:space-y-6 animate-in fade-in-50 duration-300">
                   <Card className="shadow-lg hover:shadow-xl transition-shadow duration-200">
                     <CardContent className="p-4 md:p-6">
@@ -439,7 +424,6 @@ export default function ConsultantWhatsAppCustomTemplates() {
                   </Card>
                 </div>
 
-                {/* Right Column: Sticky Preview Panel */}
                 <div className={`space-y-4 animate-in fade-in-50 duration-300 ${isMobile ? "" : "sticky top-20 self-start"}`}>
                   <Card className="shadow-lg hover:shadow-xl transition-shadow duration-200 border-2 border-blue-200">
                     <CardContent className="p-4 md:p-6">
@@ -460,7 +444,6 @@ export default function ConsultantWhatsAppCustomTemplates() {
 
           <Separator className="mb-6" />
 
-          {/* Action Buttons with Gradient */}
           <div className="flex items-center justify-end gap-3 animate-in fade-in-50 duration-300">
             <Button
               variant="outline"

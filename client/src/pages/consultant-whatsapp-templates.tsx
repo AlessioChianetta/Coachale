@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -39,7 +40,8 @@ import {
   HelpCircle,
   PenSquare,
   Zap,
-  Settings
+  Settings,
+  ListChecks
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -89,6 +91,308 @@ interface TemplateAssignment {
   configId: string;
   templateType: 'openingMessageContentSid' | 'followUpGentleContentSid' | 'followUpValueContentSid' | 'followUpFinalContentSid';
   templateSid: string;
+}
+
+interface CustomTemplate {
+  id: string;
+  templateName: string;
+  useCase?: string | null;
+  templateType?: string | null;
+  description?: string | null;
+  body?: string | null;
+  isActive: boolean;
+  activeVersion?: {
+    id: string;
+    versionNumber: number;
+    bodyText: string;
+    twilioStatus: string;
+  } | null;
+}
+
+interface TemplateAssignmentData {
+  assignmentId: string;
+  templateId: string;
+  templateName: string;
+  useCase: string;
+  priority: number;
+}
+
+function CustomTemplateAssignmentSection({ configs, configsLoading }: { configs: WhatsAppConfig[]; configsLoading: boolean }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedTemplates, setSelectedTemplates] = useState<Map<string, Set<string>>>(new Map());
+  const [initialAssignments, setInitialAssignments] = useState<Map<string, Set<string>>>(new Map());
+  const [loadingAssignments, setLoadingAssignments] = useState<Set<string>>(new Set());
+
+  const { data: customTemplatesData, isLoading: customTemplatesLoading } = useQuery({
+    queryKey: ["/api/whatsapp/custom-templates"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/custom-templates", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { data: [], count: 0 };
+      return response.json();
+    },
+  });
+
+  const customTemplates: CustomTemplate[] = customTemplatesData?.data || [];
+  const proactiveAgents = configs.filter(c => c.agentType === 'proactive_setter');
+
+  useEffect(() => {
+    const loadAssignments = async () => {
+      for (const config of proactiveAgents) {
+        if (loadingAssignments.has(config.id)) continue;
+        
+        setLoadingAssignments(prev => new Set([...prev, config.id]));
+        try {
+          const response = await fetch(`/api/whatsapp/template-assignments/${config.id}`, {
+            headers: getAuthHeaders(),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const assignedIds = new Set((data.assignments || []).map((a: TemplateAssignmentData) => a.templateId));
+            setSelectedTemplates(prev => new Map(prev).set(config.id, assignedIds));
+            setInitialAssignments(prev => new Map(prev).set(config.id, new Set(assignedIds)));
+          }
+        } catch (error) {
+          console.error("Failed to load assignments for", config.id, error);
+        } finally {
+          setLoadingAssignments(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(config.id);
+            return newSet;
+          });
+        }
+      }
+    };
+
+    if (proactiveAgents.length > 0 && customTemplates.length > 0) {
+      loadAssignments();
+    }
+  }, [proactiveAgents.length, customTemplates.length]);
+
+  const bulkAssignMutation = useMutation({
+    mutationFn: async ({ agentConfigId, templateIds }: { agentConfigId: string; templateIds: string[] }) => {
+      const response = await fetch("/api/whatsapp/template-assignments/bulk", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ agentConfigId, templateIds }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save assignments");
+      }
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      const currentSelected = selectedTemplates.get(variables.agentConfigId) || new Set();
+      setInitialAssignments(prev => new Map(prev).set(variables.agentConfigId, new Set(currentSelected)));
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/template-assignments"] });
+      toast({
+        title: "✅ Template Assegnati",
+        description: "I template sono stati assegnati correttamente all'agente.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleTemplateToggle = (configId: string, templateId: string, checked: boolean) => {
+    setSelectedTemplates(prev => {
+      const newMap = new Map(prev);
+      const currentSet = new Set(newMap.get(configId) || []);
+      if (checked) {
+        currentSet.add(templateId);
+      } else {
+        currentSet.delete(templateId);
+      }
+      newMap.set(configId, currentSet);
+      return newMap;
+    });
+  };
+
+  const handleSaveAssignments = (configId: string) => {
+    const templateIds = Array.from(selectedTemplates.get(configId) || []);
+    bulkAssignMutation.mutate({ agentConfigId: configId, templateIds });
+  };
+
+  const hasChanges = (configId: string): boolean => {
+    const current = selectedTemplates.get(configId) || new Set();
+    const initial = initialAssignments.get(configId) || new Set();
+    if (current.size !== initial.size) return true;
+    for (const id of current) {
+      if (!initial.has(id)) return true;
+    }
+    return false;
+  };
+
+  if (configsLoading || customTemplatesLoading) {
+    return (
+      <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm animate-in slide-in-from-bottom-4 duration-700">
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (proactiveAgents.length === 0) {
+    return null;
+  }
+
+  return (
+    <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm animate-in slide-in-from-bottom-4 duration-700">
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <CardTitle className="flex items-center gap-3 text-2xl mb-2">
+              <div className="p-2 rounded-lg bg-gradient-to-r from-emerald-500 to-blue-500">
+                <ListChecks className="h-6 w-6 text-white" />
+              </div>
+              Assegnazione Template Personalizzati
+              <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200">
+                {proactiveAgents.length} agenti
+              </Badge>
+              <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
+                {customTemplates.length} template
+              </Badge>
+            </CardTitle>
+            <CardDescription className="text-base">
+              Seleziona i template personalizzati da assegnare a ciascun agente. Puoi assegnare un numero illimitato di template.
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {customTemplates.length === 0 ? (
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-800">
+              Non hai ancora creato template personalizzati. <a href="/consultant/whatsapp/custom-templates" className="underline font-medium hover:text-amber-900">Crea il tuo primo template</a> per poterlo assegnare agli agenti.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="space-y-6">
+            {proactiveAgents.map((config) => {
+              const isLoading = loadingAssignments.has(config.id);
+              const configSelectedTemplates = selectedTemplates.get(config.id) || new Set();
+              
+              return (
+                <div
+                  key={config.id}
+                  className="border-2 border-gray-200 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 hover:shadow-xl hover:border-blue-300 transition-all duration-200"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
+                        <Bot className="h-5 w-5 text-blue-600" />
+                        {config.agentName}
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                          {configSelectedTemplates.size} assegnati
+                        </Badge>
+                      </h3>
+                      <div className="text-xs text-gray-500 mt-1">
+                        <span className="inline-flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3 text-green-600" />
+                          Agente Proattivo
+                        </span>
+                        {' • '}
+                        <span>{config.twilioWhatsappNumber}</span>
+                      </div>
+                    </div>
+                    {hasChanges(config.id) && (
+                      <Button
+                        onClick={() => handleSaveAssignments(config.id)}
+                        disabled={bulkAssignMutation.isPending}
+                        size="sm"
+                      >
+                        {bulkAssignMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Salva Modifiche
+                      </Button>
+                    )}
+                  </div>
+
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                      <span className="ml-2 text-gray-500">Caricamento assegnazioni...</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {customTemplates.map((template) => {
+                        const isSelected = configSelectedTemplates.has(template.id);
+                        const displayUseCase = template.useCase || template.templateType || "Generale";
+                        
+                        return (
+                          <label
+                            key={template.id}
+                            className={`flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                              isSelected
+                                ? "border-blue-400 bg-blue-50 shadow-md"
+                                : "border-gray-200 bg-white hover:border-blue-200 hover:bg-gray-50"
+                            }`}
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) =>
+                                handleTemplateToggle(config.id, template.id, checked === true)
+                              }
+                              className="mt-1"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-gray-900 truncate">
+                                {template.templateName}
+                              </div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-300">
+                                  {displayUseCase}
+                                </Badge>
+                                {template.activeVersion && (
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-xs ${
+                                      template.activeVersion.twilioStatus === "approved"
+                                        ? "bg-green-50 text-green-700 border-green-300"
+                                        : template.activeVersion.twilioStatus === "pending"
+                                        ? "bg-yellow-50 text-yellow-700 border-yellow-300"
+                                        : "bg-gray-50 text-gray-600 border-gray-300"
+                                    }`}
+                                  >
+                                    {template.activeVersion.twilioStatus}
+                                  </Badge>
+                                )}
+                              </div>
+                              {template.description && (
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                  {template.description}
+                                </p>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function ConsultantWhatsAppTemplatesPage() {
@@ -845,191 +1149,8 @@ export default function ConsultantWhatsAppTemplatesPage() {
               </Card>
             )}
 
-            {/* Agent Assignment */}
-            {!configsLoading && configs.length > 0 && templates.length > 0 && (
-              <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm animate-in slide-in-from-bottom-4 duration-700">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <CardTitle className="flex items-center gap-3 text-2xl mb-2">
-                        <div className="p-2 rounded-lg bg-gradient-to-r from-emerald-500 to-blue-500">
-                          <Bot className="h-6 w-6 text-white" />
-                        </div>
-                        Assegnazione Template agli Agenti
-                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200">
-                          {configs.filter(c => c.agentType === 'proactive_setter').length} agenti
-                        </Badge>
-                      </CardTitle>
-                      <CardDescription className="text-base">
-                        Assegna i template WhatsApp agli agenti proattivi (Setter). Solo questi agenti inviano messaggi automatici ai lead.
-                      </CardDescription>
-                    </div>
-                    <Button
-                      onClick={() => refreshApprovalStatusMutation.mutate()}
-                      disabled={refreshApprovalStatusMutation.isPending || configs.filter(c => c.agentType === 'proactive_setter').length === 0}
-                      variant="outline"
-                      className="shrink-0 border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-400"
-                    >
-                      {refreshApprovalStatusMutation.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Aggiornamento...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Aggiorna Status Template
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {configs.filter(c => c.agentType === 'proactive_setter').map((config) => (
-                      <div
-                        key={config.id}
-                        className="border-2 border-gray-200 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 hover:shadow-xl hover:border-blue-300 transition-all duration-200"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
-                              <Bot className="h-5 w-5 text-blue-600" />
-                              {config.agentName}
-                            </h3>
-                            <div className="text-xs text-gray-500 mt-1">
-                              <span className="inline-flex items-center gap-1">
-                                {config.agentType === 'proactive_setter' ? (
-                                  <>
-                                    <CheckCircle2 className="h-3 w-3 text-green-600" />
-                                    Agente Proattivo
-                                  </>
-                                ) : (
-                                  <>
-                                    <XCircle className="h-3 w-3 text-gray-400" />
-                                    Agente Reattivo
-                                  </>
-                                )}
-                              </span>
-                              {' • '}
-                              <span>{config.twilioWhatsappNumber}</span>
-                            </div>
-                          </div>
-                          {hasChanges(config.id) && (
-                            <Button
-                              onClick={() => handleSaveChanges(config.id)}
-                              disabled={updateTemplatesMutation.isPending}
-                              size="sm"
-                            >
-                              {updateTemplatesMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              ) : (
-                                <Save className="h-4 w-4 mr-2" />
-                              )}
-                              Salva Modifiche
-                            </Button>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Opening Message Template */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Template Messaggio di Apertura
-                            </label>
-                            <Select
-                              value={getAssignedTemplate(config.id, 'openingMessageContentSid') || 'none'}
-                              onValueChange={(value) => handleTemplateChange(config.id, 'openingMessageContentSid', value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleziona template..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nessuno</SelectItem>
-                                {templates.map((template) => (
-                                  <SelectItem key={template.sid} value={template.sid}>
-                                    {template.friendlyName || template.sid}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Gentle Follow-up Template */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Template Follow-up Gentile
-                            </label>
-                            <Select
-                              value={getAssignedTemplate(config.id, 'followUpGentleContentSid') || 'none'}
-                              onValueChange={(value) => handleTemplateChange(config.id, 'followUpGentleContentSid', value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleziona template..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nessuno</SelectItem>
-                                {templates.map((template) => (
-                                  <SelectItem key={template.sid} value={template.sid}>
-                                    {template.friendlyName || template.sid}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Value Follow-up Template */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Template Follow-up Valore
-                            </label>
-                            <Select
-                              value={getAssignedTemplate(config.id, 'followUpValueContentSid') || 'none'}
-                              onValueChange={(value) => handleTemplateChange(config.id, 'followUpValueContentSid', value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleziona template..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nessuno</SelectItem>
-                                {templates.map((template) => (
-                                  <SelectItem key={template.sid} value={template.sid}>
-                                    {template.friendlyName || template.sid}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Final Follow-up Template */}
-                          <div>
-                            <label className="text-sm font-medium text-gray-700 mb-2 block">
-                              Template Follow-up Finale
-                            </label>
-                            <Select
-                              value={getAssignedTemplate(config.id, 'followUpFinalContentSid') || 'none'}
-                              onValueChange={(value) => handleTemplateChange(config.id, 'followUpFinalContentSid', value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleziona template..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nessuno</SelectItem>
-                                {templates.map((template) => (
-                                  <SelectItem key={template.sid} value={template.sid}>
-                                    {template.friendlyName || template.sid}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Agent Assignment - Custom Templates with Checkbox Selection */}
+            <CustomTemplateAssignmentSection configs={configs} configsLoading={configsLoading} />
 
             {/* Default Values Configuration */}
             {!configsLoading && configs.filter(c => c.agentType === 'proactive_setter').length > 0 && (
