@@ -40,7 +40,9 @@ import { TopPerformers } from "@/components/TopPerformers";
 import { LeadPipelineView } from "@/components/LeadPipelineView";
 import { StatsOverview } from "@/components/StatsOverview";
 import { PageLoader } from "@/components/page-loader";
+import { InteractiveIntroBanner } from "@/components/onboarding/InteractiveIntroBanner";
 import { useClientPriorityScore } from "@/hooks/useClientPriorityScore";
+import { apiRequest } from "@/lib/queryClient";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -140,6 +142,16 @@ export default function ConsultantDashboard() {
     refetchInterval: 10000, // Refetch every 10 seconds
   });
 
+  // Check interactive intro onboarding status
+  const { data: interactiveIntroStatus } = useQuery<{
+    success: boolean;
+    data: { completed: boolean; completedAt: string | null; responses: any };
+  }>({
+    queryKey: ["/api/consultant/onboarding/interactive-intro/status"],
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+
+  const showInteractiveIntroBanner = interactiveIntroStatus?.data?.completed === false;
 
   // Create exercise mutation
   const createExerciseMutation = useMutation({
@@ -288,6 +300,9 @@ export default function ConsultantDashboard() {
               Monitora i progressi dei tuoi clienti e gestisci gli esercizi
             </p>
           </div>
+
+          {/* Interactive Intro Banner - Shows if onboarding not completed */}
+          {showInteractiveIntroBanner && <InteractiveIntroBanner />}
 
           {/* Main Dashboard Tabs */}
           <Tabs defaultValue="overview" className="w-full">

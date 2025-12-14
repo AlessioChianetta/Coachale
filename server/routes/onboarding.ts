@@ -1369,4 +1369,96 @@ router.get('/knowledge-documents', authenticateToken, requireRole('consultant'),
   }
 });
 
+// Interactive Intro Story - Complete onboarding story
+router.post('/interactive-intro/complete', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const { responses, suggestedPath } = req.body;
+    
+    // Validate responses
+    if (!responses || typeof responses !== 'object') {
+      return res.status(400).json({
+        success: false,
+        error: 'Responses are required',
+      });
+    }
+    
+    // Update onboarding status with interactive intro completion
+    const [updated] = await db.update(consultantOnboardingStatus)
+      .set({
+        interactiveIntroCompleted: true,
+        interactiveIntroCompletedAt: new Date(),
+        interactiveIntroResponses: {
+          businessType: responses.businessType,
+          mainChallenge: responses.mainChallenge,
+          clientCount: responses.clientCount,
+          whyHere: responses.whyHere,
+          suggestedPath: suggestedPath || [],
+        },
+        updatedAt: new Date(),
+      })
+      .where(eq(consultantOnboardingStatus.consultantId, consultantId))
+      .returning();
+    
+    // If no record exists, create one
+    if (!updated) {
+      await db.insert(consultantOnboardingStatus)
+        .values({
+          consultantId,
+          interactiveIntroCompleted: true,
+          interactiveIntroCompletedAt: new Date(),
+          interactiveIntroResponses: {
+            businessType: responses.businessType,
+            mainChallenge: responses.mainChallenge,
+            clientCount: responses.clientCount,
+            whyHere: responses.whyHere,
+            suggestedPath: suggestedPath || [],
+          },
+        });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Interactive intro completed successfully!',
+    });
+  } catch (error: any) {
+    console.error('Error completing interactive intro:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to complete interactive intro',
+    });
+  }
+});
+
+// Get interactive intro status
+router.get('/interactive-intro/status', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const status = await db.query.consultantOnboardingStatus.findFirst({
+      where: eq(consultantOnboardingStatus.consultantId, consultantId),
+      columns: {
+        interactiveIntroCompleted: true,
+        interactiveIntroCompletedAt: true,
+        interactiveIntroResponses: true,
+      },
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        completed: status?.interactiveIntroCompleted || false,
+        completedAt: status?.interactiveIntroCompletedAt || null,
+        responses: status?.interactiveIntroResponses || null,
+      },
+    });
+  } catch (error: any) {
+    console.error('Error fetching interactive intro status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch interactive intro status',
+    });
+  }
+});
+
 export default router;

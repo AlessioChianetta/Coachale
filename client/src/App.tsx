@@ -82,6 +82,7 @@ const GuideClients = lazy(() => import("@/pages/guide-clients"));
 const GuideCalendar = lazy(() => import("@/pages/guide-calendar"));
 const GuideAutomations = lazy(() => import("@/pages/guide-automations"));
 const ConsultantSetupWizard = lazy(() => import("@/pages/consultant-setup-wizard"));
+const OnboardingStory = lazy(() => import("@/pages/onboarding-story"));
 const PublicAgentShare = lazy(() => import("@/pages/public-agent-share"));
 const RealtimeTest = lazy(() => import("@/pages/realtime-test"));
 const ClientSalesAgentsList = lazy(() => import("@/pages/client-sales-agents-list"));
@@ -404,6 +405,12 @@ function Router() {
       <Route path="/consultant/setup-wizard">
         <AuthGuard requiredRole="consultant">
           <ConsultantSetupWizard />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/onboarding-story">
+        <AuthGuard requiredRole="consultant">
+          <OnboardingStory />
         </AuthGuard>
       </Route>
 

@@ -32,6 +32,15 @@ export interface ConsultantGuides {
   apiConfigurationGuide: Guide;
   libraryGuide: Guide;
   profileGuide: Guide;
+  dashboardGuide: Guide;
+  aiAssistantGuide: Guide;
+  setupWizardGuide: Guide;
+  knowledgeBaseGuide: Guide;
+  aiConsultationsGuide: Guide;
+  templateGuide: Guide;
+  proactiveLeadsGuide: Guide;
+  whatsappAgentsGuide: Guide;
+  apiKeysGuide: Guide;
 }
 
 export const consultantGuides: ConsultantGuides = {
@@ -1296,6 +1305,984 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Numero telefono opzionale",
             content: "Il numero di telefono è opzionale. Se non lo inserisci, il sistema funziona normalmente ma non potrai essere riconosciuto via WhatsApp."
+          }
+        ]
+      }
+    ]
+  },
+
+  dashboardGuide: {
+    title: "Dashboard Consulente",
+    path: "/consultant",
+    emoji: "📊",
+    description: "Panoramica completa delle metriche, clienti e appuntamenti del tuo business",
+    sections: [
+      {
+        title: "PANORAMICA METRICHE",
+        icon: "📈",
+        description: "Capire i numeri chiave del tuo business",
+        steps: [
+          {
+            title: "Accedi alla Dashboard",
+            content: "La Dashboard è la homepage quando accedi come consulente. Vai su PRINCIPALE → Dashboard (URL: /consultant)",
+            actionText: "Vai alla Dashboard",
+            actionHref: "/consultant"
+          },
+          {
+            title: "Clienti Attivi",
+            content: "In alto vedi il conteggio dei clienti attivi. Sono i clienti che stanno attualmente seguendo un percorso formativo."
+          },
+          {
+            title: "Appuntamenti Oggi/Settimana",
+            content: "Visualizza rapidamente quanti appuntamenti hai programmati oggi e questa settimana. Clicca per andare al calendario."
+          },
+          {
+            title: "Esercizi in Attesa",
+            content: "Numero di esercizi inviati dai clienti che aspettano la tua valutazione. Clicca per revisonarli."
+          },
+          {
+            title: "Lead Attivi",
+            content: "Conteggio dei lead in gestione tramite WhatsApp. Include lead pending, contacted e responded."
+          }
+        ]
+      },
+      {
+        title: "WIDGET STATISTICHE",
+        icon: "📉",
+        description: "Grafici e analytics del tuo lavoro",
+        steps: [
+          {
+            title: "Grafico Trend Clienti",
+            content: "Mostra l'andamento del numero di clienti negli ultimi mesi. Utile per capire la crescita del business."
+          },
+          {
+            title: "Tasso di Conversione Lead",
+            content: "Percentuale di lead che diventano clienti. Monitora l'efficacia delle tue campagne WhatsApp."
+          },
+          {
+            title: "Completamento Esercizi",
+            content: "Percentuale di esercizi completati vs assegnati. Indica quanto i clienti sono engaged nel percorso."
+          },
+          {
+            title: "Attività Recenti",
+            content: "Feed delle ultime azioni: nuovi clienti, esercizi inviati, appuntamenti completati."
+          }
+        ]
+      },
+      {
+        title: "OVERVIEW CLIENTI E APPUNTAMENTI",
+        icon: "👥",
+        description: "Accesso rapido alle informazioni più importanti",
+        steps: [
+          {
+            title: "Lista Clienti Prioritari",
+            content: "Vedi i clienti che richiedono attenzione immediata: quelli inattivi, con esercizi in ritardo, o che non rispondono."
+          },
+          {
+            title: "Prossimi Appuntamenti",
+            content: "Lista dei prossimi appuntamenti con data, ora e nome cliente. Clicca per vedere i dettagli."
+          },
+          {
+            title: "Quick Actions",
+            content: "Bottoni rapidi per le azioni più comuni:\n- Nuovo Cliente\n- Nuovo Appuntamento\n- Assegna Esercizio\n- Invia Email"
+          },
+          {
+            title: "Stato Sistema",
+            content: "Indicatori sullo stato delle integrazioni: WhatsApp connesso, SMTP configurato, AI attivo."
+          }
+        ]
+      }
+    ]
+  },
+
+  aiAssistantGuide: {
+    title: "AI Assistant",
+    path: "/consultant/ai-assistant",
+    emoji: "🤖",
+    description: "Il tuo assistente AI personale per gestire clienti, trovare informazioni e automatizzare task",
+    sections: [
+      {
+        title: "COME CHATTARE CON L'AI",
+        icon: "💬",
+        description: "Iniziare una conversazione con l'assistente",
+        steps: [
+          {
+            title: "Accedi all'AI Assistant",
+            content: "PRINCIPALE → AI Assistant (URL: /consultant/ai-assistant)",
+            actionText: "Apri AI Assistant",
+            actionHref: "/consultant/ai-assistant"
+          },
+          {
+            title: "Scrivi la tua domanda",
+            content: "Nella casella di testo in basso, scrivi quello che vuoi sapere o fare. Puoi usare linguaggio naturale, come se parlassi con un collega."
+          },
+          {
+            title: "Attendi la risposta",
+            content: "L'AI elabora la richiesta e risponde in pochi secondi. Se usa dati del sistema (clienti, appuntamenti, ecc.), li recupera automaticamente."
+          },
+          {
+            title: "Continua la conversazione",
+            content: "Puoi fare domande di follow-up. L'AI ricorda il contesto della conversazione corrente."
+          }
+        ]
+      },
+      {
+        title: "FUNZIONALITÀ DISPONIBILI",
+        icon: "⚡",
+        description: "Cosa può fare l'AI Assistant per te",
+        steps: [
+          {
+            title: "Informazioni Clienti",
+            content: "Chiedi info su qualsiasi cliente:\n- 'Come sta andando Mario Rossi?'\n- 'Quanti esercizi ha completato Laura?'\n- 'Qual è lo stato del cliente X?'"
+          },
+          {
+            title: "Gestione Appuntamenti",
+            content: "Chiedi informazioni sugli appuntamenti:\n- 'Che appuntamenti ho oggi?'\n- 'Chi devo vedere questa settimana?'\n- 'Quando è il prossimo appuntamento con Paolo?'"
+          },
+          {
+            title: "Analisi e Report",
+            content: "Richiedi analisi aggregate:\n- 'Quanti clienti attivi ho?'\n- 'Qual è il tasso di completamento esercizi?'\n- 'Chi sono i clienti meno attivi?'"
+          },
+          {
+            title: "Navigazione Assistita",
+            content: "Chiedi dove trovare le cose:\n- 'Come configuro WhatsApp?'\n- 'Dove imposto le email automatiche?'\n- 'Come creo un nuovo corso?'"
+          },
+          {
+            title: "Suggerimenti Proattivi",
+            content: "L'AI può suggerirti azioni:\n- 'Chi dovrei contattare oggi?'\n- 'Quali clienti hanno bisogno di attenzione?'\n- 'Cosa dovrei fare adesso?'"
+          }
+        ]
+      },
+      {
+        title: "COMANDI E SUGGERIMENTI",
+        icon: "💡",
+        description: "Come ottenere il massimo dall'AI",
+        steps: [
+          {
+            title: "Sii specifico",
+            content: "Più dettagli dai, migliore sarà la risposta. Invece di 'parlami del cliente', chiedi 'qual è lo stato degli esercizi di Mario Rossi?'"
+          },
+          {
+            title: "Usa nomi completi",
+            content: "Quando chiedi di un cliente specifico, usa nome e cognome per evitare ambiguità."
+          },
+          {
+            title: "Quick Actions",
+            content: "Usa i bottoni rapidi sotto la chat per azioni comuni senza dover scrivere:\n- 📅 Appuntamenti oggi\n- 👥 Clienti prioritari\n- 📝 Esercizi in attesa"
+          },
+          {
+            title: "Storico Conversazioni",
+            content: "Le conversazioni precedenti sono salvate. Puoi rivederle cliccando su 'Storico' nella barra laterale."
+          },
+          {
+            title: "Reset Conversazione",
+            content: "Clicca 'Nuova Chat' per iniziare una conversazione pulita senza contesto precedente."
+          }
+        ]
+      }
+    ]
+  },
+
+  setupWizardGuide: {
+    title: "Setup Iniziale",
+    path: "/consultant/setup-wizard",
+    emoji: "🚀",
+    description: "Wizard guidato per configurare tutte le integrazioni del sistema in 4 semplici fasi",
+    sections: [
+      {
+        title: "LE 4 FASI DI CONFIGURAZIONE",
+        icon: "📋",
+        description: "Panoramica del processo di setup",
+        steps: [
+          {
+            title: "Accedi al Setup Wizard",
+            content: "PRINCIPALE → Setup Iniziale (URL: /consultant/setup-wizard)",
+            actionText: "Avvia Setup",
+            actionHref: "/consultant/setup-wizard"
+          },
+          {
+            title: "Fase 1: Profilo Consulente",
+            content: "Configura le tue informazioni personali:\n- Nome e Cognome\n- Email di contatto\n- Numero WhatsApp (per essere riconosciuto)\n- Bio e descrizione servizi"
+          },
+          {
+            title: "Fase 2: Intelligenza Artificiale",
+            content: "Configura il provider AI:\n- Scegli tra Vertex AI o Google AI Studio\n- Inserisci le credenziali (Project ID, API Key)\n- Testa la connessione AI"
+          },
+          {
+            title: "Fase 3: Email & SMTP",
+            content: "Configura l'invio email automatico:\n- Server SMTP (Gmail, Outlook, altro)\n- Credenziali email\n- Firma e tono delle email\n- Test invio"
+          },
+          {
+            title: "Fase 4: WhatsApp & Twilio",
+            content: "Configura la messaggistica WhatsApp:\n- Account Twilio (SID e Token)\n- Numero WhatsApp Business\n- Webhook configurazione\n- Test invio messaggio"
+          }
+        ]
+      },
+      {
+        title: "PREREQUISITI E VERIFICHE",
+        icon: "✅",
+        description: "Cosa ti serve prima di iniziare",
+        steps: [
+          {
+            title: "Account Google Cloud (per Vertex AI)",
+            content: "Se vuoi usare Vertex AI:\n1. Crea progetto su Google Cloud Console\n2. Abilita Vertex AI API\n3. Crea Service Account con ruoli corretti\n4. Scarica JSON delle credenziali"
+          },
+          {
+            title: "API Key Google AI Studio (alternativa)",
+            content: "Per Google AI Studio (più semplice):\n1. Vai su aistudio.google.com\n2. Clicca 'Get API Key'\n3. Copia la chiave generata"
+          },
+          {
+            title: "Account Email con SMTP",
+            content: "Per Gmail:\n1. Attiva verifica in 2 passaggi\n2. Genera 'Password per le app'\n3. Usa quella password nel wizard"
+          },
+          {
+            title: "Account Twilio",
+            content: "Per WhatsApp:\n1. Registrati su twilio.com\n2. Dalla dashboard copia Account SID e Auth Token\n3. Acquista o configura numero WhatsApp\n4. (Opzionale) Usa sandbox per test"
+          }
+        ]
+      },
+      {
+        title: "TEST DELLE CONNESSIONI",
+        icon: "🔌",
+        description: "Verificare che tutto funzioni",
+        steps: [
+          {
+            title: "Test AI",
+            content: "Clicca 'Test Connessione' dopo aver inserito le credenziali AI. Deve mostrare ✅ verde con il messaggio 'Connessione riuscita'."
+          },
+          {
+            title: "Test Email",
+            content: "Clicca 'Invia Email di Test'. Riceverai un'email all'indirizzo configurato. Controlla anche la cartella spam."
+          },
+          {
+            title: "Test WhatsApp",
+            content: "Clicca 'Invia Messaggio Test'. Riceverai un messaggio WhatsApp al numero configurato. Se usi sandbox, assicurati di aver attivato il numero."
+          },
+          {
+            title: "Indicatori di Stato",
+            content: "Ogni fase mostra un indicatore:\n🔴 Rosso = Non configurato\n🟡 Giallo = Configurato ma non testato\n🟢 Verde = Configurato e funzionante"
+          },
+          {
+            title: "Completamento Setup",
+            content: "Quando tutte le fasi sono verdi, il setup è completo. Puoi sempre tornare per modificare le configurazioni."
+          }
+        ]
+      }
+    ]
+  },
+
+  knowledgeBaseGuide: {
+    title: "Knowledge Base",
+    path: "/consultant/knowledge-documents",
+    emoji: "📚",
+    description: "Carica documenti e configura API per arricchire le conoscenze dell'AI sui tuoi servizi",
+    sections: [
+      {
+        title: "CARICARE DOCUMENTI",
+        icon: "📄",
+        description: "Come aggiungere documenti alla knowledge base",
+        steps: [
+          {
+            title: "Vai su Knowledge Documenti",
+            content: "BASE DI CONOSCENZA → Documenti (URL: /consultant/knowledge-documents)",
+            actionText: "Gestisci Documenti",
+            actionHref: "/consultant/knowledge-documents"
+          },
+          {
+            title: "Clicca 'Carica Documento'",
+            content: "In alto a destra trovi il bottone per caricare nuovi documenti."
+          },
+          {
+            title: "Formati supportati",
+            content: "Puoi caricare:\n📄 PDF - Documenti, brochure, contratti\n📝 TXT - File di testo semplice\n📊 DOCX - Documenti Word\n📋 CSV/XLSX - Fogli di calcolo"
+          },
+          {
+            title: "Aggiungi titolo e descrizione",
+            content: "Dai un nome significativo al documento e una breve descrizione del contenuto. Questo aiuta l'AI a capire quando usarlo."
+          },
+          {
+            title: "Seleziona categoria",
+            content: "Organizza i documenti per categoria:\n- Servizi e Prodotti\n- FAQ e Obiezioni\n- Case Studies\n- Procedure Interne"
+          },
+          {
+            title: "Elaborazione automatica",
+            content: "Dopo il caricamento, il sistema estrae e indicizza il testo. L'AI potrà poi usare queste informazioni nelle risposte."
+          }
+        ]
+      },
+      {
+        title: "CONFIGURARE API ESTERNE",
+        icon: "🔗",
+        description: "Collegare fonti dati esterne all'AI",
+        steps: [
+          {
+            title: "Vai su Knowledge API",
+            content: "BASE DI CONOSCENZA → API Esterne (URL: /consultant/knowledge-apis)",
+            actionText: "Configura API",
+            actionHref: "/consultant/knowledge-apis"
+          },
+          {
+            title: "Clicca 'Nuova API'",
+            content: "Aggiungi una nuova fonte dati esterna che l'AI può interrogare."
+          },
+          {
+            title: "Configura endpoint",
+            content: "Inserisci:\n- Nome: Identificativo della fonte\n- URL: Endpoint dell'API\n- Metodo: GET o POST\n- Headers: Autenticazione (API Key, Bearer Token)"
+          },
+          {
+            title: "Mappa i campi",
+            content: "Indica quali campi della risposta JSON contengono le informazioni utili. Es: 'data.products[].name' per estrarre nomi prodotti."
+          },
+          {
+            title: "Imposta trigger",
+            content: "Definisci quando l'AI deve interrogare questa API:\n- Parole chiave nella domanda\n- Tipo di richiesta utente\n- Sempre (per dati in tempo reale)"
+          },
+          {
+            title: "Test API",
+            content: "Clicca 'Test' per verificare che l'API risponda correttamente e che i campi siano mappati bene."
+          }
+        ]
+      },
+      {
+        title: "COME L'AI USA I DOCUMENTI",
+        icon: "🧠",
+        description: "Capire come funziona la knowledge base",
+        steps: [
+          {
+            title: "Ricerca Semantica",
+            content: "Quando l'utente fa una domanda, l'AI cerca nei documenti le sezioni più rilevanti usando la comprensione del significato, non solo parole chiave."
+          },
+          {
+            title: "Contesto Automatico",
+            content: "I pezzi di documento rilevanti vengono automaticamente inclusi nel contesto dell'AI, permettendole di rispondere con informazioni accurate."
+          },
+          {
+            title: "Citazioni",
+            content: "Quando l'AI usa informazioni da un documento, può citare la fonte. Questo aumenta la trasparenza e l'affidabilità delle risposte."
+          },
+          {
+            title: "Priorità Documenti",
+            content: "Puoi impostare una priorità per ogni documento. Quelli con priorità alta vengono consultati prima."
+          },
+          {
+            title: "Aggiornamenti",
+            content: "Quando aggiorni un documento, la knowledge base si aggiorna automaticamente. Le nuove informazioni sono subito disponibili all'AI."
+          },
+          {
+            title: "Best Practices",
+            content: "Per risultati ottimali:\n- Documenti chiari e ben strutturati\n- Titoli descrittivi\n- Contenuto suddiviso in sezioni\n- Aggiornamenti regolari"
+          }
+        ]
+      }
+    ]
+  },
+
+  aiConsultationsGuide: {
+    title: "Consulenze AI",
+    path: "/consultant/ai-consultations",
+    emoji: "🎯",
+    description: "Sistema di consulenze automatiche AI per qualificare lead e fornire prime informazioni",
+    sections: [
+      {
+        title: "COSA SONO LE CONSULENZE AI",
+        icon: "💡",
+        description: "Capire il concetto di consulenza automatica",
+        steps: [
+          {
+            title: "Definizione",
+            content: "Le Consulenze AI sono conversazioni strutturate tra l'AI e potenziali clienti (lead). L'AI raccoglie informazioni, risponde a domande e qualifica il lead."
+          },
+          {
+            title: "Quando vengono attivate",
+            content: "Una consulenza AI si attiva quando:\n- Un lead clicca su un link di consulenza\n- Un visitatore interagisce con il chatbot sul sito\n- Un utente risponde a una campagna WhatsApp"
+          },
+          {
+            title: "Obiettivi della consulenza",
+            content: "L'AI mira a:\n- Capire le esigenze del lead\n- Fornire informazioni sui tuoi servizi\n- Rispondere a obiezioni comuni\n- Qualificare il lead (hot/warm/cold)\n- Prenotare un appuntamento se appropriato"
+          },
+          {
+            title: "Vantaggi",
+            content: "✅ Disponibilità 24/7\n✅ Risposte immediate\n✅ Qualificazione automatica\n✅ Risparmio tempo consulente\n✅ Scalabilità infinita"
+          }
+        ]
+      },
+      {
+        title: "COME FUNZIONANO",
+        icon: "⚙️",
+        description: "Il processo dietro le consulenze AI",
+        steps: [
+          {
+            title: "Accesso Consulenze",
+            content: "AI AVANZATO → Consulenze AI (URL: /consultant/ai-consultations)",
+            actionText: "Vai alle Consulenze",
+            actionHref: "/consultant/ai-consultations"
+          },
+          {
+            title: "Flusso della conversazione",
+            content: "1. Lead inizia la chat\n2. AI si presenta e chiede come può aiutare\n3. Lead espone esigenza/problema\n4. AI fa domande di approfondimento\n5. AI fornisce info rilevanti (dalla knowledge base)\n6. Se qualificato, propone appuntamento"
+          },
+          {
+            title: "Uso della Knowledge Base",
+            content: "L'AI usa automaticamente i documenti caricati per rispondere alle domande. Più documenti hai, più accurate saranno le risposte."
+          },
+          {
+            title: "Qualificazione Lead",
+            content: "Durante la consulenza, l'AI assegna un punteggio:\n🔥 Hot: Molto interessato, pronto all'azione\n🟠 Warm: Interessato ma ha dubbi\n🔵 Cold: Curioso ma non pronto"
+          },
+          {
+            title: "Handoff al Consulente",
+            content: "Se il lead è qualificato e vuole parlare con te, l'AI può:\n- Prenotare un appuntamento nel calendario\n- Inoltrarti la conversazione\n- Inviarti notifica immediata"
+          }
+        ]
+      },
+      {
+        title: "VISUALIZZARE LO STORICO",
+        icon: "📜",
+        description: "Accedere alle consulenze passate",
+        steps: [
+          {
+            title: "Lista Consulenze",
+            content: "Nella pagina Consulenze AI vedi la lista di tutte le consulenze effettuate, ordinate per data."
+          },
+          {
+            title: "Filtri disponibili",
+            content: "Filtra per:\n- Data (oggi, settimana, mese)\n- Stato qualificazione (Hot/Warm/Cold)\n- Esito (Appuntamento prenotato, Solo info, Abbandono)"
+          },
+          {
+            title: "Dettaglio Conversazione",
+            content: "Clicca su una consulenza per vedere l'intera conversazione tra AI e lead. Vedi ogni messaggio scambiato."
+          },
+          {
+            title: "Metriche Consulenza",
+            content: "Per ogni consulenza vedi:\n- Durata conversazione\n- Numero messaggi scambiati\n- Punteggio qualificazione\n- Documenti knowledge usati"
+          },
+          {
+            title: "Export Dati",
+            content: "Puoi esportare i dati delle consulenze in CSV per analisi esterne o reportistica."
+          },
+          {
+            title: "Insights Aggregati",
+            content: "Dashboard con metriche aggregate:\n- Consulenze totali\n- Tasso di qualificazione\n- Tempo medio conversazione\n- Top domande frequenti"
+          }
+        ]
+      }
+    ]
+  },
+
+  templateGuide: {
+    title: "Template WhatsApp",
+    path: "/consultant/whatsapp-templates",
+    emoji: "📝",
+    description: "Gestione template Twilio per messaggi proattivi e template custom personalizzati con variabili",
+    sections: [
+      {
+        title: "TEMPLATE TWILIO (PER MESSAGGI PROATTIVI)",
+        icon: "📤",
+        description: "Template approvati da Twilio per inviare il primo messaggio ai lead",
+        steps: [
+          {
+            title: "Vai su Template WhatsApp",
+            content: "COMUNICAZIONE → Template WhatsApp (URL: /consultant/whatsapp-templates)",
+            actionText: "Gestisci Template Twilio",
+            actionHref: "/consultant/whatsapp-templates"
+          },
+          {
+            title: "Cosa sono i Template Twilio",
+            content: "Per inviare il PRIMO messaggio a un lead su WhatsApp (messaggio proattivo), Twilio richiede l'uso di template pre-approvati. Questi template garantiscono che il contenuto rispetti le policy di WhatsApp Business."
+          },
+          {
+            title: "Creare un nuovo template",
+            content: "Clicca 'Nuovo Template' e compila:\n- Nome template: identificativo univoco\n- Categoria: Marketing, Utility, Authentication\n- Lingua: it, en, ecc.\n- Corpo del messaggio: testo con variabili {{1}}, {{2}}, ecc."
+          },
+          {
+            title: "Stati del template",
+            content: "🟡 Pending: Inviato a Twilio, in attesa di approvazione\n🟢 Approved: Approvato e pronto per l'uso\n🔴 Rejected: Rifiutato - modifica e reinvia"
+          },
+          {
+            title: "Tempo di approvazione",
+            content: "L'approvazione da parte di WhatsApp/Twilio può richiedere da pochi minuti a 24-48 ore. I template di tipo 'Utility' sono generalmente approvati più velocemente."
+          },
+          {
+            title: "Best Practices",
+            content: "✅ Usa un linguaggio chiaro e non spam\n✅ Evita promesse irrealistiche\n✅ Includi un modo per l'utente di cancellarsi\n✅ Non usare tutto maiuscolo\n❌ Evita contenuti promozionali aggressivi"
+          }
+        ]
+      },
+      {
+        title: "TEMPLATE CUSTOM (PERSONALIZZATI)",
+        icon: "✏️",
+        description: "Template interni con variabili dinamiche per follow-up e risposte",
+        steps: [
+          {
+            title: "Vai su Template Custom",
+            content: "COMUNICAZIONE → WhatsApp - Template Custom (URL: /consultant/whatsapp/custom-templates/list)",
+            actionText: "Gestisci Template Custom",
+            actionHref: "/consultant/whatsapp/custom-templates/list"
+          },
+          {
+            title: "Differenza con Template Twilio",
+            content: "I Template Custom sono per uso INTERNO nell'app:\n- Non richiedono approvazione Twilio\n- Usati per follow-up (dopo che il lead ha risposto)\n- Contengono variabili dinamiche come {nome_lead}, {uncino}, ecc."
+          },
+          {
+            title: "Creare template custom",
+            content: "Clicca 'Nuovo Template' e configura:\n- Nome: identificativo del template\n- Tipo: apertura, follow-up gentile, follow-up valore, finale\n- Corpo: messaggio con variabili"
+          },
+          {
+            title: "Variabili disponibili",
+            content: "Usa queste variabili nel testo:\n- {nome_lead} = Nome del contatto\n- {cognome_lead} = Cognome\n- {uncino} = Uncino della campagna\n- {obiettivi} = Obiettivi stato ideale\n- {desideri} = Desideri impliciti\n- {nome_consulente} = Il tuo nome"
+          },
+          {
+            title: "Preview template",
+            content: "Usa il bottone 'Preview' per vedere come apparirà il messaggio con dati di esempio prima di salvare."
+          }
+        ]
+      },
+      {
+        title: "ASSEGNAZIONE TEMPLATE AGLI AGENTI",
+        icon: "🤖",
+        description: "Come collegare template agli agenti WhatsApp",
+        steps: [
+          {
+            title: "Template di default agente",
+            content: "Ogni agente WhatsApp può avere template predefiniti che usa automaticamente per i messaggi di apertura e follow-up."
+          },
+          {
+            title: "Assegnare template a campagna",
+            content: "Quando crei una campagna marketing, puoi selezionare quali template usare. La campagna sovrascrive i template di default dell'agente."
+          },
+          {
+            title: "Priorità template",
+            content: "Ordine di priorità:\n1. Template specifico della campagna (se configurato)\n2. Template di default dell'agente\n3. Template generico del sistema"
+          },
+          {
+            title: "Verifica template attivo",
+            content: "Nel dettaglio della campagna o dell'agente, puoi vedere quale template è attualmente in uso per ogni tipo di messaggio."
+          }
+        ]
+      }
+    ]
+  },
+
+  proactiveLeadsGuide: {
+    title: "CRM Lead Proattivi",
+    path: "/consultant/proactive-leads",
+    emoji: "👥",
+    description: "Gestione completa dei lead per contatto proattivo: importazione, stati, tag e schedulazione",
+    sections: [
+      {
+        title: "IMPORTARE LEAD DA CSV",
+        icon: "📥",
+        description: "Come caricare una lista di lead da file",
+        steps: [
+          {
+            title: "Vai su Lead Proattivi",
+            content: "COMUNICAZIONE → Lead (URL: /consultant/proactive-leads)",
+            actionText: "Gestisci Lead",
+            actionHref: "/consultant/proactive-leads"
+          },
+          {
+            title: "Clicca 'Importa CSV'",
+            content: "In alto trovi il bottone 'Importa' o 'Importa CSV'. Clicca per aprire il dialogo di importazione."
+          },
+          {
+            title: "Formato CSV richiesto",
+            content: "Il file CSV deve avere queste colonne:\n- Nome (obbligatorio)\n- Cognome (opzionale)\n- Telefono (obbligatorio, formato: +39...)\n- Email (opzionale)\n- Note (opzionale)"
+          },
+          {
+            title: "Seleziona campagna",
+            content: "Durante l'import puoi assegnare tutti i lead a una campagna. I lead erediteranno automaticamente uncino, obiettivi e template della campagna."
+          },
+          {
+            title: "Verifica e conferma",
+            content: "Il sistema mostra un'anteprima dei lead che verranno importati. Verifica i dati e clicca 'Importa' per confermare."
+          },
+          {
+            title: "Duplicati",
+            content: "Il sistema rileva automaticamente lead duplicati (stesso numero di telefono) e ti chiede se sovrascriverli o saltarli."
+          }
+        ]
+      },
+      {
+        title: "AGGIUNGERE LEAD MANUALMENTE",
+        icon: "➕",
+        description: "Come inserire singoli lead uno alla volta",
+        steps: [
+          {
+            title: "Clicca 'Nuovo Lead'",
+            content: "Nella pagina Lead Proattivi, clicca il bottone 'Nuovo Lead' o '+' in alto a destra."
+          },
+          {
+            title: "Compila i campi",
+            content: "Inserisci:\n- Nome e Cognome\n- Numero telefono (formato internazionale)\n- Email (opzionale)\n- Campagna di appartenenza\n- Note aggiuntive"
+          },
+          {
+            title: "Programma contatto",
+            content: "Puoi impostare quando contattare il lead:\n- Subito: primo messaggio inviato immediatamente\n- Data/ora specifica: schedulato per il futuro\n- In attesa: manuale, quando vuoi tu"
+          },
+          {
+            title: "Salva lead",
+            content: "Clicca 'Salva'. Il lead appare nella lista con stato 'Pending' pronto per essere contattato."
+          }
+        ]
+      },
+      {
+        title: "GESTIONE STATI LEAD",
+        icon: "🔄",
+        description: "Capire e gestire i diversi stati dei lead",
+        steps: [
+          {
+            title: "Stati disponibili",
+            content: "🟡 Pending: Lead importato, non ancora contattato\n🔵 Contacted: Primo messaggio inviato, attesa risposta\n🟢 Responded: Il lead ha risposto\n✅ Converted: Lead diventato cliente\n❌ Disqualified: Lead non in target"
+          },
+          {
+            title: "Transizioni automatiche",
+            content: "Il sistema aggiorna automaticamente lo stato:\n- Pending → Contacted: quando invii il primo messaggio\n- Contacted → Responded: quando il lead risponde\n- Gli stati Converted e Disqualified sono manuali"
+          },
+          {
+            title: "Cambiare stato manualmente",
+            content: "Clicca sul lead, poi sul menu a tendina 'Stato' per cambiarlo manualmente. Utile per segnare conversioni offline o disqualificare lead."
+          },
+          {
+            title: "Filtri per stato",
+            content: "Usa i filtri in alto per vedere solo lead di un certo stato. Utile per concentrarti sui lead che hanno risposto."
+          }
+        ]
+      },
+      {
+        title: "TAG E FILTRI",
+        icon: "🏷️",
+        description: "Organizzare i lead con tag e filtri avanzati",
+        steps: [
+          {
+            title: "Aggiungere tag",
+            content: "Ogni lead può avere tag personalizzati. Clicca sul lead → 'Aggiungi Tag' e crea o seleziona tag esistenti (es: 'Facebook Ads', 'Hot Lead', 'Richiamato')."
+          },
+          {
+            title: "Filtro per tag",
+            content: "Usa il filtro 'Tag' per vedere solo lead con tag specifici. Puoi combinare più tag per ricerche avanzate."
+          },
+          {
+            title: "Filtro per campagna",
+            content: "Seleziona una campagna per vedere solo i lead associati. Utile per analizzare le performance per fonte."
+          },
+          {
+            title: "Ricerca testuale",
+            content: "La barra di ricerca cerca in nome, cognome, telefono e note. Trova rapidamente qualsiasi lead."
+          }
+        ]
+      },
+      {
+        title: "SCHEDULAZIONE CONTATTO",
+        icon: "📅",
+        description: "Programmare quando contattare i lead",
+        steps: [
+          {
+            title: "Contatto immediato",
+            content: "Per lead 'caldi' (appena arrivati da form), imposta contatto immediato. Il primo messaggio parte subito."
+          },
+          {
+            title: "Contatto programmato",
+            content: "Per lead 'freddi' o liste importate, schedula il contatto per data/ora specifica. Es: domani alle 10:00."
+          },
+          {
+            title: "Distribuzione temporale",
+            content: "Quando importi molti lead, il sistema può distribuirli nel tempo per evitare di inviare troppi messaggi insieme (es: 10 lead ogni ora)."
+          },
+          {
+            title: "Rispetto orari",
+            content: "Il sistema rispetta gli orari di lavoro dell'agente. Se programmi un contatto alle 23:00 ma l'agente lavora 9-18, il messaggio partirà alle 9:00 del giorno dopo."
+          },
+          {
+            title: "Follow-up automatici",
+            content: "Dopo il primo contatto, il sistema può inviare follow-up automatici a intervalli configurati (es: dopo 24h, dopo 3 giorni, dopo 1 settimana)."
+          }
+        ]
+      }
+    ]
+  },
+
+  whatsappAgentsGuide: {
+    title: "Setup Agenti WhatsApp",
+    path: "/consultant/whatsapp",
+    emoji: "🤖",
+    description: "Guida completa per creare e configurare agenti AI WhatsApp con wizard 4 step",
+    sections: [
+      {
+        title: "CREAZIONE NUOVO AGENTE (WIZARD)",
+        icon: "✨",
+        description: "Come creare un nuovo agente passo passo",
+        steps: [
+          {
+            title: "Vai su Setup Agenti",
+            content: "COMUNICAZIONE → Setup Agenti (URL: /consultant/whatsapp)",
+            actionText: "Configura Agenti",
+            actionHref: "/consultant/whatsapp"
+          },
+          {
+            title: "Clicca 'Nuovo Agente'",
+            content: "In alto a destra trovi il bottone 'Nuovo Agente' o '+'. Clicca per avviare il wizard guidato in 4 step."
+          },
+          {
+            title: "Step 1: Configurazione Base",
+            content: "Inserisci:\n- Nome agente (es: 'Receptionist Marco')\n- Tipo agente (Reattivo, Proattivo, Educativo)\n- Modalità integrazione (WhatsApp+AI o Solo AI)\n- Credenziali Twilio (se WhatsApp+AI)"
+          },
+          {
+            title: "Step 2: Disponibilità",
+            content: "Configura:\n- Orari di lavoro (es: Lun-Ven 9-18)\n- Messaggio fuori orario\n- Funzionalità abilitate (prenotazione, obiezioni, upselling)"
+          },
+          {
+            title: "Step 3: Brand Voice",
+            content: "Definisci:\n- Nome business e descrizione\n- Bio consulente\n- Mission, Vision, Valori\n- USP (Unique Selling Proposition)\n- Target e anti-target"
+          },
+          {
+            title: "Step 4: Istruzioni AI",
+            content: "Configura:\n- Template istruzioni (Receptionist, Setter, Educativo)\n- Personalità AI (Amico fidato, Consulente esperto, Coach)\n- Istruzioni custom aggiuntive"
+          }
+        ]
+      },
+      {
+        title: "TIPI DI AGENTE",
+        icon: "📋",
+        description: "Quando usare quale tipo di agente",
+        steps: [
+          {
+            title: "📱 Agente REATTIVO (Receptionist)",
+            content: "USO: Per rispondere a chi ti contatta spontaneamente\n\nCOMPORTAMENTO:\n- Aspetta messaggi in arrivo\n- Risponde automaticamente\n- Qualifica il lead con domande\n- Prenota appuntamenti nel calendario\n\nIDEALE PER: Landing page, QR code, campagne dove il lead inizia la conversazione"
+          },
+          {
+            title: "🚀 Agente PROATTIVO (Setter)",
+            content: "USO: Per contattare lead che hai importato\n\nCOMPORTAMENTO:\n- Invia primo messaggio programmato\n- Fa follow-up automatici\n- Usa template personalizzati\n- Persiste fino a risposta o disqualificazione\n\nIDEALE PER: Lead da form, Facebook Ads, liste importate"
+          },
+          {
+            title: "📚 Agente EDUCATIVO (Advisor)",
+            content: "USO: Per fornire informazioni senza vendere\n\nCOMPORTAMENTO:\n- Risponde a domande informative\n- Fornisce contenuti formativi\n- NON prenota appuntamenti\n- NON fa vendita aggressiva\n\nIDEALE PER: Supporto clienti esistenti, FAQ automatiche, contenuti educativi"
+          }
+        ]
+      },
+      {
+        title: "MODALITÀ INTEGRAZIONE",
+        icon: "🔌",
+        description: "WhatsApp+AI vs Solo AI",
+        steps: [
+          {
+            title: "🟢 WhatsApp + AI (Richiede Twilio)",
+            content: "Funzionalità:\n- Riceve messaggi WhatsApp reali\n- Invia risposte automatiche\n- Collegato a numero WhatsApp Business\n- Per comunicazione con clienti reali\n\nRequisiti:\n- Account Twilio attivo\n- Numero WhatsApp Business\n- Credenziali API configurate"
+          },
+          {
+            title: "🟣 Solo AI (Senza Twilio)",
+            content: "Funzionalità:\n- Chat interna solo nell'app\n- Per test e simulazioni\n- Per usare AI senza WhatsApp\n- Nessuna credenziale richiesta\n\nUSI:\n- Testare l'agente prima del lancio\n- Chat widget su sito web\n- Demo per clienti"
+          }
+        ]
+      },
+      {
+        title: "CONFIGURAZIONE TWILIO",
+        icon: "⚙️",
+        description: "Come ottenere e inserire le credenziali Twilio",
+        steps: [
+          {
+            title: "Creare account Twilio",
+            content: "1. Vai su twilio.com e registrati\n2. Completa la verifica email e telefono\n3. Accedi alla dashboard Twilio"
+          },
+          {
+            title: "Ottenere Account SID",
+            content: "Dashboard → Account Info → Account SID\nInizia con 'AC...' ed è lungo circa 34 caratteri. Copialo e incollalo nel campo 'Account SID'."
+          },
+          {
+            title: "Ottenere Auth Token",
+            content: "Dashboard → Account Info → Auth Token\nClicca 'Show' per vedere il token. È una stringa lunga segreta. Copialo e incollalo nel campo 'Auth Token'."
+          },
+          {
+            title: "Ottenere numero WhatsApp",
+            content: "Phone Numbers → Buy a Number → Seleziona 'WhatsApp Enabled'\nOppure usa il Sandbox WhatsApp per test gratuiti.\nFormato: +39xxxxxxxxxx"
+          },
+          {
+            title: "Configurare Webhook",
+            content: "Il sistema genera automaticamente un URL webhook. Copia l'URL e incollalo in:\nTwilio → Messaging → Settings → WhatsApp Sandbox → When a message comes in"
+          }
+        ]
+      },
+      {
+        title: "BRAND VOICE E ISTRUZIONI AI",
+        icon: "🎭",
+        description: "Personalizzare la voce e il comportamento dell'agente",
+        steps: [
+          {
+            title: "Informazioni Business",
+            content: "Compila tutti i campi del Brand Voice:\n- Nome business: Come ti chiami\n- Descrizione: Cosa fai in 1-2 frasi\n- Bio consulente: Chi sei e la tua esperienza"
+          },
+          {
+            title: "Mission e Valori",
+            content: "Definisci:\n- Mission: Perché esisti\n- Vision: Dove vuoi arrivare\n- Valori: Cosa ti guida\n- USP: Cosa ti rende unico"
+          },
+          {
+            title: "Target e Anti-Target",
+            content: "Specifica:\n- Chi aiuti: Il tuo cliente ideale\n- Chi NON aiuti: Chi non è in target\nL'AI userà queste info per qualificare i lead."
+          },
+          {
+            title: "Personalità AI",
+            content: "Scegli tra:\n- Amico fidato: Empatico, supportivo, usa 'tu'\n- Consulente esperto: Professionale, autorevole, usa 'Lei'\n- Coach motivazionale: Energico, positivo, ispiratore"
+          },
+          {
+            title: "Istruzioni Custom",
+            content: "Aggiungi istruzioni specifiche:\n- Frasi da usare sempre\n- Argomenti da evitare\n- Risposte a FAQ comuni\n- Tono specifico per situazioni"
+          }
+        ]
+      }
+    ]
+  },
+
+  apiKeysGuide: {
+    title: "Configurazione API Keys",
+    path: "/consultant/api-keys-unified",
+    emoji: "🔑",
+    description: "Guida completa per configurare tutte le API: Vertex AI, SMTP, Google Calendar, TURN/Metered",
+    sections: [
+      {
+        title: "VERTEX AI / GEMINI",
+        icon: "🧠",
+        description: "Configurare l'intelligenza artificiale",
+        steps: [
+          {
+            title: "Vai su API Keys",
+            content: "IMPOSTAZIONI → API Keys (URL: /consultant/api-keys-unified)",
+            actionText: "Configura API",
+            actionHref: "/consultant/api-keys-unified"
+          },
+          {
+            title: "Seleziona tab AI",
+            content: "Nella pagina API Keys, seleziona la tab 'AI / Gemini' per configurare il provider AI."
+          },
+          {
+            title: "Scegli provider",
+            content: "Due opzioni:\n🟢 Vertex AI (Google Cloud): Più potente, richiede progetto GCP\n🟡 Google AI Studio: Più semplice, API key diretta"
+          },
+          {
+            title: "Configurare Vertex AI",
+            content: "Se scegli Vertex AI:\n1. Crea progetto su Google Cloud Console\n2. Abilita Vertex AI API\n3. Crea Service Account con ruolo 'Vertex AI User'\n4. Scarica JSON delle credenziali\n5. Copia il contenuto nel campo 'Credenziali JSON'"
+          },
+          {
+            title: "Configurare Google AI Studio",
+            content: "Se scegli Google AI Studio:\n1. Vai su aistudio.google.com\n2. Crea API Key\n3. Copia la chiave nel campo 'API Key'"
+          },
+          {
+            title: "Test connessione",
+            content: "Clicca 'Test Connessione' per verificare che le credenziali funzionino. Vedrai un messaggio di conferma se tutto è OK."
+          }
+        ]
+      },
+      {
+        title: "SMTP PER EMAIL",
+        icon: "📧",
+        description: "Configurare l'invio email automatiche",
+        steps: [
+          {
+            title: "Seleziona tab Email SMTP",
+            content: "Nella pagina API Keys, seleziona la tab 'Email SMTP'."
+          },
+          {
+            title: "Configurazione Gmail (consigliata)",
+            content: "Per Gmail:\n1. Host: smtp.gmail.com\n2. Porta: 587\n3. Email: tua-email@gmail.com\n4. Password: genera 'App Password' da Google Account Security\n\nNOTA: Devi abilitare la verifica in 2 passaggi su Google Account."
+          },
+          {
+            title: "Generare App Password Gmail",
+            content: "1. Vai su myaccount.google.com\n2. Sicurezza → Verifica in 2 passaggi (attivala se non attiva)\n3. Sicurezza → Password per le app\n4. Crea nuova password per 'Posta'\n5. Copia la password generata (16 caratteri senza spazi)"
+          },
+          {
+            title: "Altri provider SMTP",
+            content: "Outlook: smtp-mail.outlook.com (587)\nYahoo: smtp.mail.yahoo.com (587)\nSendGrid: smtp.sendgrid.net (587)\nMailgun: smtp.mailgun.org (587)"
+          },
+          {
+            title: "From Email e Nome",
+            content: "Configura come appariranno le tue email:\n- From Email: indirizzo mittente\n- From Name: nome che vedranno i destinatari"
+          },
+          {
+            title: "Test invio email",
+            content: "Clicca 'Invia Email di Test' per verificare la configurazione. Riceverai un'email di prova all'indirizzo configurato."
+          }
+        ]
+      },
+      {
+        title: "GOOGLE CALENDAR",
+        icon: "📅",
+        description: "Collegare il calendario per appuntamenti automatici",
+        steps: [
+          {
+            title: "Seleziona tab Calendar",
+            content: "Nella pagina API Keys, seleziona la tab 'Google Calendar'."
+          },
+          {
+            title: "Creare credenziali OAuth",
+            content: "1. Vai su Google Cloud Console\n2. APIs & Services → Credentials\n3. Create Credentials → OAuth 2.0 Client ID\n4. Application type: Web application\n5. Authorized redirect URIs: aggiungi l'URL del tuo sistema"
+          },
+          {
+            title: "Inserire credenziali",
+            content: "Copia e incolla:\n- Client ID: termina con .apps.googleusercontent.com\n- Client Secret: stringa generata\n- Redirect URI: URL di callback del sistema"
+          },
+          {
+            title: "Autorizzare l'accesso",
+            content: "Clicca 'Connetti Google Calendar'. Si aprirà una finestra Google per autorizzare l'accesso al tuo calendario."
+          },
+          {
+            title: "Selezionare calendario",
+            content: "Dopo l'autorizzazione, seleziona quale calendario usare per gli appuntamenti. Puoi usare il calendario principale o crearne uno dedicato."
+          },
+          {
+            title: "Test prenotazione",
+            content: "Crea un appuntamento di test per verificare che venga sincronizzato correttamente con Google Calendar."
+          }
+        ]
+      },
+      {
+        title: "TURN/METERED PER VIDEO MEETING",
+        icon: "🎥",
+        description: "Configurare server TURN per video chiamate stabili",
+        steps: [
+          {
+            title: "Cos'è un server TURN",
+            content: "I server TURN aiutano a stabilire connessioni video quando i partecipanti sono dietro firewall o NAT restrittivi. Senza TURN, alcune chiamate potrebbero non connettersi."
+          },
+          {
+            title: "Seleziona tab Video/TURN",
+            content: "Nella pagina API Keys, seleziona la tab 'Video Meeting' o 'TURN Server'."
+          },
+          {
+            title: "Provider consigliato: Metered",
+            content: "Metered.ca offre server TURN affidabili:\n1. Registrati su metered.ca\n2. Crea un'applicazione\n3. Copia le credenziali TURN"
+          },
+          {
+            title: "Inserire credenziali TURN",
+            content: "Configura:\n- TURN URL: turn:xxx.metered.ca:443\n- Username: fornito da Metered\n- Credential: password fornita da Metered"
+          },
+          {
+            title: "Test connessione TURN",
+            content: "Clicca 'Test TURN' per verificare che il server sia raggiungibile. Il test verifica la connettività UDP e TCP."
+          },
+          {
+            title: "Quando è necessario",
+            content: "Il server TURN è opzionale ma consigliato se:\n- I tuoi clienti usano reti aziendali restrittive\n- Hai problemi di connessione nelle video chiamate\n- Vuoi massimizzare l'affidabilità"
+          }
+        ]
+      },
+      {
+        title: "VERIFICA STATO CONNESSIONI",
+        icon: "✅",
+        description: "Come verificare che tutto funzioni",
+        steps: [
+          {
+            title: "Badge stato AI",
+            content: "In alto nella pagina vedi un badge:\n🟢 Verde = Vertex AI attivo\n🟡 Giallo = Google AI Studio fallback\n🔴 Rosso = Nessun AI configurato"
+          },
+          {
+            title: "Stato per sezione",
+            content: "Ogni tab mostra lo stato della configurazione:\n✅ Configurato e funzionante\n⚠️ Configurato ma con problemi\n❌ Non configurato"
+          },
+          {
+            title: "Test completo",
+            content: "Usa i bottoni 'Test' in ogni sezione per verificare che le credenziali funzionino correttamente prima di salvare."
+          },
+          {
+            title: "Troubleshooting",
+            content: "Se un test fallisce:\n1. Verifica che le credenziali siano corrette (no spazi extra)\n2. Controlla che l'API/servizio sia abilitato\n3. Verifica i permessi dell'account\n4. Controlla eventuali limiti di quota"
           }
         ]
       }

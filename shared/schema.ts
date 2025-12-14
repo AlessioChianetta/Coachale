@@ -4962,6 +4962,17 @@ export const consultantOnboardingStatus = pgTable("consultant_onboarding_status"
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   lastUpdatedStep: text("last_updated_step"),
   
+  // Interactive Intro (Minigame AI Narrativo)
+  interactiveIntroCompleted: boolean("interactive_intro_completed").default(false).notNull(),
+  interactiveIntroCompletedAt: timestamp("interactive_intro_completed_at"),
+  interactiveIntroResponses: jsonb("interactive_intro_responses").$type<{
+    businessType?: string;
+    mainChallenge?: string;
+    clientCount?: string;
+    whyHere?: string;
+    suggestedPath?: string[];
+  }>(),
+  
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
