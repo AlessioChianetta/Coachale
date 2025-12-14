@@ -218,15 +218,33 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
       
       setLoadingAssignments(prev => new Set([...prev, selectedAgentId]));
       try {
+        // Load custom template assignments from DB
         const response = await fetch(`/api/whatsapp/template-assignments/${selectedAgentId}`, {
           headers: getAuthHeaders(),
         });
+        
+        const assignedIds = new Set<string>();
+        
         if (response.ok) {
           const data = await response.json();
-          const assignedIds = new Set((data.assignments || []).map((a: TemplateAssignmentData) => a.templateId));
-          setSelectedTemplates(prev => new Map(prev).set(selectedAgentId, assignedIds));
-          setInitialAssignments(prev => new Map(prev).set(selectedAgentId, new Set(assignedIds)));
+          (data.assignments || []).forEach((a: TemplateAssignmentData) => {
+            assignedIds.add(a.templateId);
+          });
         }
+        
+        // ALSO load Twilio template assignments from the config's whatsappTemplates field
+        const agent = configs.find(c => c.id === selectedAgentId);
+        if (agent?.whatsappTemplates) {
+          const twilioSids = Object.values(agent.whatsappTemplates).filter(Boolean) as string[];
+          twilioSids.forEach(sid => {
+            if (sid && sid.startsWith('HX')) {
+              assignedIds.add(sid);
+            }
+          });
+        }
+        
+        setSelectedTemplates(prev => new Map(prev).set(selectedAgentId, assignedIds));
+        setInitialAssignments(prev => new Map(prev).set(selectedAgentId, new Set(assignedIds)));
       } catch (error) {
         console.error("Failed to load assignments for", selectedAgentId, error);
       } finally {
@@ -241,28 +259,86 @@ function CustomTemplateAssignmentSection({ configs, configsLoading, selectedAgen
     if (selectedAgentId && isProactiveAgentSelected && customTemplates.length > 0) {
       loadAssignments();
     }
-  }, [selectedAgentId, isProactiveAgentSelected, customTemplates.length]);
+  }, [selectedAgentId, isProactiveAgentSelected, customTemplates.length, configs]);
 
   const bulkAssignMutation = useMutation({
     mutationFn: async ({ agentConfigId, templateIds }: { agentConfigId: string; templateIds: string[] }) => {
+      // Separate Twilio templates (SID starting with HX) from custom templates (UUID)
+      const twilioSids = templateIds.filter(id => id.startsWith('HX'));
+      const customTemplateIds = templateIds.filter(id => !id.startsWith('HX'));
+      
+      const results: any[] = [];
+      
+      // Always save custom template assignments to the assignments table
+      // This ensures stale records are cleared even when all custom templates are deselected
       const response = await fetch("/api/whatsapp/template-assignments/bulk", {
         method: "POST",
         headers: {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ agentConfigId, templateIds }),
+        body: JSON.stringify({ agentConfigId, templateIds: customTemplateIds }),
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Failed to save assignments");
+        throw new Error(error.message || "Failed to save custom template assignments");
       }
-      return response.json();
+      results.push(await response.json());
+      
+      // Save Twilio template assignments to the config's whatsappTemplates field
+      // Use deterministic slot-aware mapping instead of heuristics
+      const agent = configs.find(c => c.id === agentConfigId);
+      const existingWhatsappTemplates = agent?.whatsappTemplates || {};
+      
+      // Build inverse mapping: SID → slot
+      // This preserves the existing slot assignments from the config
+      const sidToSlot: Record<string, string> = {};
+      for (const [slot, sid] of Object.entries(existingWhatsappTemplates)) {
+        if (sid) sidToSlot[sid] = slot;
+      }
+      
+      // Build new whatsappTemplates based on current selections
+      const newWhatsappTemplates: Record<string, string | null> = {
+        openingMessageContentSid: null,
+        followUpGentleContentSid: null,
+        followUpValueContentSid: null,
+        followUpFinalContentSid: null,
+      };
+      
+      // Keep only the SIDs that are still selected in their original slots
+      for (const sid of twilioSids) {
+        const slot = sidToSlot[sid];
+        if (slot && slot in newWhatsappTemplates) {
+          // This SID was already assigned to a slot, keep it there
+          newWhatsappTemplates[slot] = sid;
+        }
+        // For new SIDs without existing slots, skip them
+        // The dropdown UI should be used for new slot assignments
+      }
+      
+      // Save the Twilio template assignments
+      const twilioResponse = await fetch(`/api/whatsapp/config/${agentConfigId}/templates`, {
+        method: "PATCH",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ whatsappTemplates: newWhatsappTemplates }),
+      });
+      
+      if (!twilioResponse.ok) {
+        const error = await twilioResponse.json();
+        throw new Error(error.message || "Failed to save Twilio template assignments");
+      }
+      results.push(await twilioResponse.json());
+      
+      return { results, twilioSidsCount: twilioSids.length, customCount: customTemplateIds.length };
     },
     onSuccess: (_, variables) => {
       const currentSelected = selectedTemplates.get(variables.agentConfigId) || new Set();
       setInitialAssignments(prev => new Map(prev).set(variables.agentConfigId, new Set(currentSelected)));
       queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/template-assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/config"] });
       toast({
         title: "✅ Template Assegnati",
         description: "I template sono stati assegnati correttamente all'agente.",
