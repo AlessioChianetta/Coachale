@@ -1,0 +1,29 @@
+cambiamo un attimo la logica, della pagin /consultant/whatsapp-templates   intanto riformattiamola a livello di layout. ci deve essere una sezione dove selezioniamo l'agente, e a quell'agente
+ci deve essere il messaggio predefinito di default di apertura FONDAMENTALE, CHE SENZA QUELLO NON POSSIAMO METTERNE ALTRI, DEVE ESSERE COLLEGATO AL NUMERO WHATSAPP ETC
+
+poi dobbiamo andare a inserire ed abilitare i template di riferimento, affinchè l'algoritmo decide quale usare rispetto allo stato della persona su whatsapp
+
+La sezione template disponibili dentro /consultant/whatsapp-templates dobbiamo modificarla bene, dobbiamo intanto cambiare il layout per far entrare anche 10+ agenti
+e poi per ogni agente, in base ai template assegnati, bisognerà visualizzare un anteprima di come saranno i messaggi se l'ai deciderà di inviarli, con la possibilità
+di cambiare i valori in tempo reale per testare l'anteprima e salvare, dentro invece la sezione  /consultant/whatsapp/custom-templates/list  dobbiamo migliorare il layout
+per far si che ne entrano anche 100 di template, e dobbiamo ordinarli per categoria di template, tipo customer care, venditori, setter, assitenza, etc etc etc
+
+quando entro dentro /consultant/whatsapp/custom-templates  questa pagina deve essere più semplice e con un wizard attivo, in questo momento è troppo complicata
+e non mi permette di creare template fatti bene, inoltre mi serve un pulsante con configura con ai, prendi di esempio la sezione IDEE AI dentro la pagina /consultant/whatsapp
+
+
+successivamente dobbiamo migliorare la pagina /consultant/proactive-leads a livello di ui e ux, e quando proviamo a fare Aggiungi Nuovo Lead c'è ancora la vecchia
+configurazione di frequenza follow up, e anche l'aggiunta di un lead va configurata meglio a livello di ui e ux per essere più semplice nell'utilizzo
+
+controlla anche la sezione import csv per funzionare bene e importare lead nel modo corretto,  aggiorniamo il template e aggiorniamo anche la pagina importa lead
+da csv per essere migliore e semplice
+
+
+anche la pagina /consultant/campaigns  deve migliorare a livello di layout e grafica ui e ux, inoltre, cerchiamo di dare un flusso a queste pagine per non lasciarle sparpagliate
+ma rendiamo semplice e intuitivo la gestione tipo step 1 fai questo, inutile che crei una nuova campagna se prima non hai fatto step 2   quindi le pagine
+devono avere un oridne cronologico
+
+
+
+
+
