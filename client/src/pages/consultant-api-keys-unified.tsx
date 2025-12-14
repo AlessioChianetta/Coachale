@@ -1468,38 +1468,44 @@ export default function ConsultantApiKeysUnified() {
           {/* Tabs Container */}
           <div className="max-w-6xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-8 gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg">
-                <TabsTrigger value="ai" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700">
-                  <Bot className="h-4 w-4 mr-2" />
-                  AI (Gemini)
+              <TabsList className="flex flex-wrap justify-start gap-2 bg-white/50 backdrop-blur-sm p-2 rounded-xl shadow-lg h-auto">
+                <TabsTrigger value="ai" className="data-[state=active]:bg-purple-100 data-[state=active]:text-purple-700 text-xs sm:text-sm">
+                  <Bot className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">AI (Gemini)</span>
+                  <span className="sm:hidden">AI</span>
                 </TabsTrigger>
-                <TabsTrigger value="client-ai" className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700">
-                  <Users className="h-4 w-4 mr-2" />
-                  API Clienti
+                <TabsTrigger value="client-ai" className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 text-xs sm:text-sm">
+                  <Users className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">API Clienti</span>
+                  <span className="sm:hidden">Clienti</span>
                 </TabsTrigger>
-                <TabsTrigger value="email" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Email SMTP
+                <TabsTrigger value="email" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700 text-xs sm:text-sm">
+                  <Mail className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Email SMTP</span>
+                  <span className="sm:hidden">Email</span>
                 </TabsTrigger>
-                <TabsTrigger value="whatsapp" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  WhatsApp
+                <TabsTrigger value="whatsapp" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 text-xs sm:text-sm">
+                  <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">WhatsApp AI</span>
+                  <span className="sm:hidden">WA AI</span>
                 </TabsTrigger>
-                <TabsTrigger value="calendar" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700">
-                  <Calendar className="h-4 w-4 mr-2" />
+                <TabsTrigger value="twilio" className="data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 text-xs sm:text-sm">
+                  <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
+                  Twilio
+                </TabsTrigger>
+                <TabsTrigger value="calendar" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700 text-xs sm:text-sm">
+                  <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
                   Calendar
                 </TabsTrigger>
-                <TabsTrigger value="lead-import" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700">
-                  <Server className="h-4 w-4 mr-2" />
-                  Lead Import
+                <TabsTrigger value="lead-import" className="data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700 text-xs sm:text-sm">
+                  <Server className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Lead Import</span>
+                  <span className="sm:hidden">Lead</span>
                 </TabsTrigger>
-                <TabsTrigger value="video-meeting" className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700">
-                  <Video className="h-4 w-4 mr-2" />
-                  Video Meeting
-                </TabsTrigger>
-                <TabsTrigger value="twilio" className="data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Twilio
+                <TabsTrigger value="video-meeting" className="data-[state=active]:bg-teal-100 data-[state=active]:text-teal-700 text-xs sm:text-sm">
+                  <Video className="h-4 w-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Video Meeting</span>
+                  <span className="sm:hidden">Video</span>
                 </TabsTrigger>
               </TabsList>
 

@@ -76,6 +76,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
   ArrowUpDown,
   RefreshCw,
   Zap,
@@ -88,7 +89,9 @@ import {
   UserPlus,
   TrendingUp,
   Bell,
+  Cloud,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 
 interface TemplateVersion {
@@ -282,6 +285,12 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const [twilioTemplatesDialogOpen, setTwilioTemplatesDialogOpen] = useState(false);
   const [twilioTemplatesData, setTwilioTemplatesData] = useState<any>(null);
   const [fetchTwilioAgentId, setFetchTwilioAgentId] = useState<string>("");
+  const [hasAutoSynced, setHasAutoSynced] = useState(false);
+  const [twilioSectionOpen, setTwilioSectionOpen] = useState(true);
+  const [approvedSectionOpen, setApprovedSectionOpen] = useState(true);
+  const [pendingSectionOpen, setPendingSectionOpen] = useState(true);
+  const [rejectedSectionOpen, setRejectedSectionOpen] = useState(true);
+  const [localDraftsSectionOpen, setLocalDraftsSectionOpen] = useState(true);
 
   const { data: templatesData, isLoading, error } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates"],
@@ -370,6 +379,25 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
 
     return result;
   }, [templates, selectedCategory, searchQuery, sortBy]);
+
+  const groupedTemplates = useMemo(() => {
+    const localDrafts = filteredAndSortedTemplates.filter(t => !t.activeVersion?.twilioContentSid);
+    const onTwilio = filteredAndSortedTemplates.filter(t => !!t.activeVersion?.twilioContentSid);
+    const approved = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'approved');
+    const pending = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'pending_approval');
+    const rejected = onTwilio.filter(t => t.activeVersion?.twilioStatus === 'rejected');
+    return { localDrafts, onTwilio, approved, pending, rejected };
+  }, [filteredAndSortedTemplates]);
+
+  useEffect(() => {
+    if (!hasAutoSynced && agents.length > 0 && templates.length > 0) {
+      const agentWithTwilio = agents.find((a: any) => a.twilioAccountSid && a.twilioAuthToken);
+      if (agentWithTwilio) {
+        syncTwilioMutation.mutate(agentWithTwilio.id);
+        setHasAutoSynced(true);
+      }
+    }
+  }, [agents, templates, hasAutoSynced]);
 
   const totalPages = Math.ceil(filteredAndSortedTemplates.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -1312,33 +1340,192 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
               </div>
             )}
 
-            {!isLoading && paginatedTemplates.length > 0 && (
-              <>
-                {viewMode === "grid" ? (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {paginatedTemplates.map(renderTemplateCard)}
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Template</TableHead>
-                          <TableHead>Categoria</TableHead>
-                          <TableHead>Stato</TableHead>
-                          <TableHead>Creato</TableHead>
-                          <TableHead className="w-[100px]">Azioni</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {paginatedTemplates.map(renderTemplateRow)}
-                      </TableBody>
-                    </Table>
-                  </div>
+            {!isLoading && filteredAndSortedTemplates.length > 0 && (
+              <div className="space-y-6">
+                {groupedTemplates.onTwilio.length > 0 && (
+                  <Collapsible open={twilioSectionOpen} onOpenChange={setTwilioSectionOpen}>
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl cursor-pointer hover:from-green-600 hover:to-emerald-700 transition-colors shadow-lg">
+                        <div className="flex items-center gap-3 text-white">
+                          <Cloud className="h-6 w-6" />
+                          <h2 className="text-lg font-bold">Su Twilio</h2>
+                          <Badge className="bg-white/20 text-white border-0">
+                            {groupedTemplates.onTwilio.length} template
+                          </Badge>
+                        </div>
+                        <ChevronDown className={`h-5 w-5 text-white transition-transform duration-200 ${twilioSectionOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-4 space-y-4">
+                      {groupedTemplates.approved.length > 0 && (
+                        <Collapsible open={approvedSectionOpen} onOpenChange={setApprovedSectionOpen}>
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg cursor-pointer hover:bg-green-100 transition-colors">
+                              <div className="flex items-center gap-2 text-green-700">
+                                <CheckCircle2 className="h-5 w-5" />
+                                <h3 className="font-semibold">Approvati</h3>
+                                <Badge className="bg-green-100 text-green-700 border-green-200">
+                                  {groupedTemplates.approved.length}
+                                </Badge>
+                              </div>
+                              <ChevronDown className={`h-4 w-4 text-green-600 transition-transform duration-200 ${approvedSectionOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-3">
+                            {viewMode === "grid" ? (
+                              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {groupedTemplates.approved.map(renderTemplateCard)}
+                              </div>
+                            ) : (
+                              <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Template</TableHead>
+                                      <TableHead>Categoria</TableHead>
+                                      <TableHead>Stato</TableHead>
+                                      <TableHead>Creato</TableHead>
+                                      <TableHead className="w-[100px]">Azioni</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {groupedTemplates.approved.map(renderTemplateRow)}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+
+                      {groupedTemplates.pending.length > 0 && (
+                        <Collapsible open={pendingSectionOpen} onOpenChange={setPendingSectionOpen}>
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg cursor-pointer hover:bg-yellow-100 transition-colors">
+                              <div className="flex items-center gap-2 text-yellow-700">
+                                <Clock className="h-5 w-5" />
+                                <h3 className="font-semibold">In Attesa</h3>
+                                <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
+                                  {groupedTemplates.pending.length}
+                                </Badge>
+                              </div>
+                              <ChevronDown className={`h-4 w-4 text-yellow-600 transition-transform duration-200 ${pendingSectionOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-3">
+                            {viewMode === "grid" ? (
+                              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {groupedTemplates.pending.map(renderTemplateCard)}
+                              </div>
+                            ) : (
+                              <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Template</TableHead>
+                                      <TableHead>Categoria</TableHead>
+                                      <TableHead>Stato</TableHead>
+                                      <TableHead>Creato</TableHead>
+                                      <TableHead className="w-[100px]">Azioni</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {groupedTemplates.pending.map(renderTemplateRow)}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+
+                      {groupedTemplates.rejected.length > 0 && (
+                        <Collapsible open={rejectedSectionOpen} onOpenChange={setRejectedSectionOpen}>
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg cursor-pointer hover:bg-red-100 transition-colors">
+                              <div className="flex items-center gap-2 text-red-700">
+                                <XCircle className="h-5 w-5" />
+                                <h3 className="font-semibold">Rifiutati</h3>
+                                <Badge className="bg-red-100 text-red-700 border-red-200">
+                                  {groupedTemplates.rejected.length}
+                                </Badge>
+                              </div>
+                              <ChevronDown className={`h-4 w-4 text-red-600 transition-transform duration-200 ${rejectedSectionOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-3">
+                            {viewMode === "grid" ? (
+                              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                {groupedTemplates.rejected.map(renderTemplateCard)}
+                              </div>
+                            ) : (
+                              <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Template</TableHead>
+                                      <TableHead>Categoria</TableHead>
+                                      <TableHead>Stato</TableHead>
+                                      <TableHead>Creato</TableHead>
+                                      <TableHead className="w-[100px]">Azioni</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {groupedTemplates.rejected.map(renderTemplateRow)}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
+                {groupedTemplates.localDrafts.length > 0 && (
+                  <Collapsible open={localDraftsSectionOpen} onOpenChange={setLocalDraftsSectionOpen}>
+                    <CollapsibleTrigger asChild>
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-500 to-slate-600 rounded-xl cursor-pointer hover:from-slate-600 hover:to-slate-700 transition-colors shadow-lg">
+                        <div className="flex items-center gap-3 text-white">
+                          <FileText className="h-6 w-6" />
+                          <h2 className="text-lg font-bold">Bozze Locali</h2>
+                          <Badge className="bg-white/20 text-white border-0">
+                            {groupedTemplates.localDrafts.length} template
+                          </Badge>
+                        </div>
+                        <ChevronDown className={`h-5 w-5 text-white transition-transform duration-200 ${localDraftsSectionOpen ? 'rotate-180' : ''}`} />
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-4">
+                      {viewMode === "grid" ? (
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                          {groupedTemplates.localDrafts.map(renderTemplateCard)}
+                        </div>
+                      ) : (
+                        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Template</TableHead>
+                                <TableHead>Categoria</TableHead>
+                                <TableHead>Stato</TableHead>
+                                <TableHead>Creato</TableHead>
+                                <TableHead className="w-[100px]">Azioni</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {groupedTemplates.localDrafts.map(renderTemplateRow)}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
                 )}
 
                 {renderPagination()}
-              </>
+              </div>
             )}
           </div>
         </div>

@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { 
   Bot, 
   Phone, 
@@ -19,9 +21,14 @@ import {
   Sparkles,
   GraduationCap,
   HeartHandshake,
-  ClipboardList
+  ClipboardList,
+  CheckCircle,
+  ExternalLink,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getAuthHeaders } from "@/lib/auth";
+import { Link } from "wouter";
 
 interface AgentBasicSetupProps {
   formData: any;
@@ -38,6 +45,32 @@ const agentNameSuggestions = [
 
 export default function AgentBasicSetup({ formData, onChange, errors, mode }: AgentBasicSetupProps) {
   const [showAuthToken, setShowAuthToken] = useState(false);
+
+  const { data: twilioSettings, isLoading: isLoadingTwilio } = useQuery({
+    queryKey: ["/api/consultant/twilio-settings"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/twilio-settings", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        return null;
+      }
+      return response.json();
+    },
+  });
+
+  const hasTwilioConfigured = !!(twilioSettings?.accountSid && twilioSettings?.authToken);
+
+  useEffect(() => {
+    if (twilioSettings && hasTwilioConfigured) {
+      if (twilioSettings.accountSid && formData.twilioAccountSid !== twilioSettings.accountSid) {
+        onChange("twilioAccountSid", twilioSettings.accountSid);
+      }
+      if (twilioSettings.authToken && !formData.twilioAuthToken) {
+        onChange("twilioAuthToken", twilioSettings.authToken);
+      }
+    }
+  }, [twilioSettings, hasTwilioConfigured]);
 
   return (
     <div className="space-y-6">
@@ -319,94 +352,79 @@ export default function AgentBasicSetup({ formData, onChange, errors, mode }: Ag
               <Key className="h-5 w-5 text-purple-500" />
               Credenziali Twilio
             </CardTitle>
-            <CardDescription>Inserisci le credenziali del tuo account Twilio</CardDescription>
+            <CardDescription>Account e Auth Token dalle impostazioni centralizzate, numero WhatsApp specifico per agente</CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-4">
-          <div>
-            <Label htmlFor="twilioAccountSid">
-              Account SID <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="twilioAccountSid"
-              value={formData.twilioAccountSid}
-              onChange={(e) => onChange("twilioAccountSid", e.target.value)}
-              placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-              className={cn(
-                "mt-2 font-mono text-sm",
-                errors.twilioAccountSid && "border-destructive focus-visible:ring-destructive"
-              )}
-            />
-            {errors.twilioAccountSid && (
-              <p className="text-sm text-destructive mt-1 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.twilioAccountSid}
-              </p>
+            {isLoadingTwilio ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Caricamento credenziali...</span>
+              </div>
+            ) : hasTwilioConfigured ? (
+              <Alert className="border-green-500/50 bg-green-50 dark:bg-green-950/20">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800 dark:text-green-200">
+                  <div className="space-y-2">
+                    <p className="font-medium">Account Twilio configurato</p>
+                    <div className="text-sm space-y-1">
+                      <p><span className="font-medium">Account SID:</span> {twilioSettings?.accountSid?.substring(0, 10)}...</p>
+                      <p><span className="font-medium">Auth Token:</span> ••••••••••••</p>
+                    </div>
+                    <Link href="/consultant/api-keys-unified?tab=twilio">
+                      <Button variant="outline" size="sm" className="mt-2 gap-2">
+                        <ExternalLink className="h-3 w-3" />
+                        Modifica Account Twilio
+                      </Button>
+                    </Link>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                  <div className="space-y-2">
+                    <p className="font-medium">Account Twilio non configurato</p>
+                    <p className="text-sm">
+                      Prima di poter utilizzare WhatsApp, devi configurare le credenziali Twilio nelle impostazioni centralizzate.
+                    </p>
+                    <Link href="/consultant/api-keys-unified?tab=twilio">
+                      <Button variant="default" size="sm" className="mt-2 gap-2">
+                        <ExternalLink className="h-3 w-3" />
+                        Configura Account Twilio
+                      </Button>
+                    </Link>
+                  </div>
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
 
-          <div>
-            <Label htmlFor="twilioAuthToken">
-              Auth Token <span className="text-destructive">*</span>
-            </Label>
-            <div className="relative mt-2">
+            <div>
+              <Label htmlFor="twilioWhatsappNumber">
+                Numero WhatsApp per questo Agente <span className="text-destructive">*</span>
+              </Label>
               <Input
-                id="twilioAuthToken"
-                type={showAuthToken ? "text" : "password"}
-                value={formData.twilioAuthToken}
-                onChange={(e) => onChange("twilioAuthToken", e.target.value)}
-                placeholder={mode === "edit" ? "••••••••••••••••" : "Inserisci Auth Token"}
+                id="twilioWhatsappNumber"
+                value={formData.twilioWhatsappNumber}
+                onChange={(e) => onChange("twilioWhatsappNumber", e.target.value)}
+                placeholder="whatsapp:+1234567890"
                 className={cn(
-                  "font-mono text-sm pr-10",
-                  errors.twilioAuthToken && "border-destructive focus-visible:ring-destructive"
+                  "mt-2 font-mono text-sm",
+                  errors.twilioWhatsappNumber && "border-destructive focus-visible:ring-destructive"
                 )}
               />
-              <button
-                type="button"
-                onClick={() => setShowAuthToken(!showAuthToken)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showAuthToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {errors.twilioAuthToken && (
-              <p className="text-sm text-destructive mt-1 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.twilioAuthToken}
-              </p>
-            )}
-            {mode === "edit" && !formData.twilioAuthToken && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Lascia vuoto per mantenere il token esistente
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Label htmlFor="twilioWhatsappNumber">
-              Numero WhatsApp <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="twilioWhatsappNumber"
-              value={formData.twilioWhatsappNumber}
-              onChange={(e) => onChange("twilioWhatsappNumber", e.target.value)}
-              placeholder="whatsapp:+1234567890"
-              className={cn(
-                "mt-2 font-mono text-sm",
-                errors.twilioWhatsappNumber && "border-destructive focus-visible:ring-destructive"
+              {errors.twilioWhatsappNumber && (
+                <p className="text-sm text-destructive mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.twilioWhatsappNumber}
+                </p>
               )}
-            />
-            {errors.twilioWhatsappNumber && (
-              <p className="text-sm text-destructive mt-1 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                {errors.twilioWhatsappNumber}
+              <p className="text-xs text-muted-foreground mt-1">
+                Formato: whatsapp:+prefisso numero (es: whatsapp:+393501234567)
               </p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              Formato: whatsapp:+prefisso numero (es: whatsapp:+393501234567)
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <Card className="border-2 border-amber-500/20 shadow-lg">
