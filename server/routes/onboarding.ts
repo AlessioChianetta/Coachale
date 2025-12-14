@@ -17,7 +17,8 @@ import {
   consultantAiIdeas,
   universityYears,
   exercises,
-  emailDrafts
+  emailDrafts,
+  whatsappCustomTemplates
 } from '@shared/schema';
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
@@ -140,6 +141,13 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
     const summaryEmailsCount = Number(summaryEmailsResult[0]?.count || 0);
     const hasFirstSummaryEmail = summaryEmailsCount > 0;
     
+    // Count custom WhatsApp templates
+    const customTemplatesResult = await db.select({ count: count() })
+      .from(whatsappCustomTemplates)
+      .where(eq(whatsappCustomTemplates.consultantId, consultantId));
+    const customTemplatesCount = Number(customTemplatesResult[0]?.count || 0);
+    const hasCustomTemplate = customTemplatesCount > 0;
+    
     // Update the status record with calculated values
     await db.update(consultantOnboardingStatus)
       .set({
@@ -180,6 +188,8 @@ router.get('/status', authenticateToken, requireRole('consultant'), async (req: 
       exercisesCount,
       hasFirstSummaryEmail,
       summaryEmailsCount,
+      hasCustomTemplate,
+      customTemplatesCount,
     };
     
     res.json({

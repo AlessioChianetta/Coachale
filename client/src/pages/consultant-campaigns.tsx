@@ -106,7 +106,7 @@ export default function ConsultantCampaignsPage() {
   });
 
   const agents: WhatsAppAgent[] = agentsData?.configs || [];
-  const templates: CustomTemplate[] = templatesData?.templates || [];
+  const templates: CustomTemplate[] = templatesData?.data || [];
 
   const hasActiveAgent = agents.length > 0;
   const hasTemplates = templates.length > 0;
