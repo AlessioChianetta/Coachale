@@ -9481,8 +9481,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return [...new Set(matches.map((m: string) => m.replace(/[{}]/g, '')))].sort();
           };
 
-          // Format templates for this agent
-          const agentTemplates = contents.map(content => {
+          // Format templates for this agent and fetch approval status via separate API call
+          const newApprovalStatuses: Record<string, { status: string; checkedAt: string }> = {};
+          
+          const agentTemplates = await Promise.all(contents.map(async (content) => {
             // Try WhatsApp template first (approved templates with components array)
             let bodyText = extractWhatsAppBody(content.types);
             
@@ -9494,8 +9496,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Extract variables from the body text
             const variables = extractVariables(bodyText);
             
-            // ✅ MERGE APPROVAL STATUS from cache
-            const approvalStatus = approvalStatusMap[content.sid] || undefined;
+            // ✅ FETCH APPROVAL STATUS VIA SEPARATE API CALL (approvalFetch)
+            let approvalStatus: string | undefined = undefined;
+            try {
+              // Use the dedicated approvalFetch endpoint for accurate status
+              const approvalFetch = await twilioClient.content.v1
+                .contents(content.sid)
+                .approvalFetch()
+                .fetch();
+              
+              const approvalData = approvalFetch as any;
+              if (approvalData.whatsapp?.status) {
+                approvalStatus = approvalData.whatsapp.status;
+                console.log(`✅ [APPROVAL FETCH] Template ${content.friendlyName} (${content.sid}): ${approvalStatus}`);
+                // Update cache with fresh status
+                newApprovalStatuses[content.sid] = {
+                  status: approvalStatus,
+                  checkedAt: new Date().toISOString()
+                };
+              }
+            } catch (approvalError: any) {
+              // ApprovalFetch might fail for draft templates - that's OK
+              console.log(`⚠️  [APPROVAL FETCH] Template ${content.friendlyName}: ${approvalError.message}`);
+              // Fallback to cache if API call fails
+              approvalStatus = approvalStatusMap[content.sid] || undefined;
+            }
+            
+            // If still no status, use cache
+            if (!approvalStatus) {
+              approvalStatus = approvalStatusMap[content.sid] || undefined;
+            }
             
             return {
               sid: content.sid,
@@ -9505,9 +9535,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
               variables,
               agentId: config.id,
               agentName: config.agentName,
-              approvalStatus, // ✅ Include approval status for UI badges
+              approvalStatus,
             };
-          });
+          }));
+
+          // Update cache in database if we got new statuses
+          if (Object.keys(newApprovalStatuses).length > 0) {
+            const mergedStatuses = { ...approvalStatusMap };
+            Object.entries(newApprovalStatuses).forEach(([sid, statusObj]) => {
+              mergedStatuses[sid] = statusObj.status;
+            });
+            
+            // Prepare merged cache object
+            const updatedCache: Record<string, { status: string; checkedAt: string }> = {};
+            Object.entries(mergedStatuses).forEach(([sid, status]) => {
+              const existingObj = newApprovalStatuses[sid];
+              updatedCache[sid] = existingObj || { status: status as string, checkedAt: new Date().toISOString() };
+            });
+            
+            // Save to database asynchronously (don't wait)
+            db.update(schema.consultantWhatsappConfig)
+              .set({ templateApprovalStatus: JSON.stringify(updatedCache) })
+              .where(eq(schema.consultantWhatsappConfig.id, config.id))
+              .execute()
+              .then(() => console.log(`✅ Updated approval status cache for ${config.agentName}`))
+              .catch(err => console.error(`❌ Failed to update approval cache:`, err));
+          }
 
           allTemplates.push(...agentTemplates);
         } catch (agentError: any) {

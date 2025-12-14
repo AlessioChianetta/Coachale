@@ -1114,20 +1114,6 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
 
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
-                      onClick={handleFetchTwilioTemplates}
-                      size="lg"
-                      variant="outline"
-                      disabled={fetchTwilioTemplatesMutation.isPending}
-                      className="bg-white/10 border-white/30 text-white hover:bg-white/20"
-                    >
-                      {fetchTwilioTemplatesMutation.isPending ? (
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                      ) : (
-                        <ExternalLink className="h-5 w-5 mr-2" />
-                      )}
-                      Vedi Template Twilio
-                    </Button>
-                    <Button
                       onClick={handleSyncTwilioStatus}
                       size="lg"
                       variant="outline"
