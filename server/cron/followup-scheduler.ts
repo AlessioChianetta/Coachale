@@ -29,6 +29,7 @@ import {
   createStudioProvider
 } from '../ai/followup-decision-engine';
 import { getAIProvider } from '../ai/provider-factory';
+import { sendWhatsAppMessage } from '../whatsapp/twilio-client';
 
 let evaluationJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
@@ -644,24 +645,21 @@ async function sendFollowupMessage(
     throw new Error('No message text available');
   }
 
-  /**
-   * TODO: Implementare l'invio effettivo via Twilio
-   * 
-   * Importare la funzione di invio esistente:
-   * import { sendWhatsAppMessage } from '../whatsapp/twilio-client';
-   * 
-   * Esempio di chiamata:
-   * await sendWhatsAppMessage({
-   *   to: phoneNumber,
-   *   body: messageText,
-   *   consultantId,
-   *   agentConfigId,
-   *   conversationId: message.conversationId,
-   * });
-   */
+  // Invia il messaggio via Twilio
+  console.log(`📱 [FOLLOWUP-SCHEDULER] Sending follow-up to ${phoneNumber}: "${messageText.substring(0, 50)}..."`);
   
-  console.log(`📱 [FOLLOWUP-SCHEDULER] Would send to ${phoneNumber}: "${messageText.substring(0, 50)}..."`);
-  console.log(`   (Twilio send placeholder - implement actual sending)`);
+  await sendWhatsAppMessage(
+    consultantId,
+    phoneNumber,
+    messageText,
+    undefined, // messageId
+    {
+      agentConfigId: agentConfigId || undefined,
+      conversationId: message.conversationId,
+    }
+  );
+  
+  console.log(`✅ [FOLLOWUP-SCHEDULER] Message sent successfully to ${phoneNumber}`);
 
   await updateConversationState(message.conversationId, {
     followupCount: sql`followup_count + 1` as any,

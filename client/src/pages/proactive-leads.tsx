@@ -59,6 +59,7 @@ import {
   FileSpreadsheet,
   Play,
   Megaphone,
+  Zap,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Papa from "papaparse";
@@ -931,6 +932,7 @@ export default function ProactiveLeadsPage() {
               tabs={[
                 { label: "Lead Proattivi", href: "/consultant/proactive-leads", icon: UserPlus },
                 { label: "Campagne", href: "/consultant/campaigns", icon: Megaphone },
+                { label: "Automazioni", href: "/consultant/automations", icon: Zap },
               ]}
             />
 

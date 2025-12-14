@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, UserPlus, Megaphone } from "lucide-react";
+import { Plus, Loader2, UserPlus, Megaphone, Zap } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { CampaignsList } from "@/components/campaigns/CampaignsList";
 import { CampaignForm } from "@/components/campaigns/CampaignForm";
@@ -95,6 +95,7 @@ export default function ConsultantCampaignsPage() {
               tabs={[
                 { label: "Lead Proattivi", href: "/consultant/proactive-leads", icon: UserPlus },
                 { label: "Campagne", href: "/consultant/campaigns", icon: Megaphone },
+                { label: "Automazioni", href: "/consultant/automations", icon: Zap },
               ]}
             />
 
