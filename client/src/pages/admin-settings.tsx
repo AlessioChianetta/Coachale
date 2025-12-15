@@ -74,7 +74,8 @@ interface ConsultantVertexAccess {
   firstName: string;
   lastName: string;
   email: string;
-  vertexAccessEnabled: boolean;
+  hasAccess: boolean;
+  vertexAccessEnabled?: boolean; // Mapped from hasAccess for UI compatibility
 }
 
 export default function AdminSettings() {
@@ -204,7 +205,10 @@ export default function AdminSettings() {
     },
   });
 
-  const consultantList: ConsultantVertexAccess[] = consultantAccessData?.consultants || [];
+  const consultantList: ConsultantVertexAccess[] = (consultantAccessData?.consultants || []).map((c: any) => ({
+    ...c,
+    vertexAccessEnabled: c.hasAccess ?? true, // Map hasAccess to vertexAccessEnabled for UI
+  }));
 
   useEffect(() => {
     if (videoMeetingOAuthData?.clientId) {
@@ -407,18 +411,18 @@ export default function AdminSettings() {
 
   const handleToggleConsultantAccess = async (consultantId: string, enabled: boolean) => {
     try {
-      const response = await fetch("/api/admin/superadmin/consultant-vertex-access", {
+      const response = await fetch(`/api/admin/superadmin/consultant-vertex-access/${consultantId}`, {
         method: "PUT",
         headers: {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ consultantId, vertexAccessEnabled: enabled }),
+        body: JSON.stringify({ hasAccess: enabled }),
       });
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Errore durante l'aggiornamento");
+        throw new Error(error.message || error.error || "Errore durante l'aggiornamento");
       }
 
       toast({

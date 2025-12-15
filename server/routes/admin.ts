@@ -837,6 +837,85 @@ router.post(
   }
 );
 
+// POST /api/admin/superadmin/vertex-config/test - Test Vertex AI connection
+router.post(
+  "/admin/superadmin/vertex-config/test",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      // Get the current config
+      const [config] = await db
+        .select()
+        .from(superadminVertexConfig)
+        .limit(1);
+
+      if (!config) {
+        return res.status(400).json({
+          success: false,
+          error: "Nessuna configurazione Vertex AI trovata. Salva prima le credenziali.",
+        });
+      }
+
+      if (!config.enabled) {
+        return res.status(400).json({
+          success: false,
+          error: "Vertex AI è disabilitato. Abilitalo prima di testare la connessione.",
+        });
+      }
+
+      // Try to parse and validate the service account JSON
+      let serviceAccountData;
+      try {
+        serviceAccountData = JSON.parse(config.serviceAccountJson);
+      } catch (parseError) {
+        return res.status(400).json({
+          success: false,
+          error: "Le credenziali del Service Account non sono in formato JSON valido.",
+        });
+      }
+
+      // Validate required fields
+      if (!serviceAccountData.project_id || !serviceAccountData.private_key || !serviceAccountData.client_email) {
+        return res.status(400).json({
+          success: false,
+          error: "Il Service Account JSON manca dei campi obbligatori (project_id, private_key, client_email).",
+        });
+      }
+
+      // Try to create a Google Auth client to validate credentials
+      const { GoogleAuth } = await import("google-auth-library");
+      
+      try {
+        const auth = new GoogleAuth({
+          credentials: serviceAccountData,
+          scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+        });
+
+        // Try to get an access token - this validates the credentials
+        const client = await auth.getClient();
+        await client.getAccessToken();
+
+        console.log(`✅ Vertex AI connection test successful for project: ${config.projectId}`);
+
+        res.json({
+          success: true,
+          message: `Connessione a Vertex AI riuscita! Project: ${config.projectId}, Location: ${config.location}`,
+        });
+      } catch (authError: any) {
+        console.error("Vertex AI auth test failed:", authError);
+        return res.status(400).json({
+          success: false,
+          error: `Errore di autenticazione Google Cloud: ${authError.message || "Credenziali non valide"}`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Vertex config test error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
 // ============================================
 // TASK 7: Consultant Vertex Access Management
 // ============================================
