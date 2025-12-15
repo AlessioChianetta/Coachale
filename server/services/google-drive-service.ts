@@ -739,3 +739,212 @@ export async function disconnectClientDrive(clientId: string): Promise<void> {
   
   console.log(`✅ [CLIENT GOOGLE DRIVE] Disconnected for client ${clientId}`);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED DRIVES & SHARED WITH ME - Extended Drive access
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * List all Shared Drives (Team Drives) accessible to the user
+ */
+export async function listSharedDrives(
+  consultantId: string
+): Promise<Array<{ id: string; name: string; kind: string }>> {
+  const drive = await getDriveClient(consultantId);
+  
+  try {
+    const response = await drive.drives.list({
+      pageSize: 100,
+      fields: 'drives(id, name, kind)'
+    });
+    
+    console.log(`✅ [GOOGLE DRIVE] Found ${response.data.drives?.length || 0} shared drives`);
+    
+    return (response.data.drives || []).map(d => ({
+      id: d.id!,
+      name: d.name!,
+      kind: 'shared_drive'
+    }));
+  } catch (error: any) {
+    console.error(`❌ [GOOGLE DRIVE] Error listing shared drives:`, error.message);
+    return [];
+  }
+}
+
+/**
+ * List folders in a Shared Drive
+ */
+export async function listSharedDriveFolders(
+  consultantId: string,
+  driveId: string,
+  parentId?: string
+): Promise<Array<{ id: string; name: string; mimeType: string }>> {
+  const drive = await getDriveClient(consultantId);
+  
+  let query = "mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+  if (parentId) {
+    query += ` and '${parentId}' in parents`;
+  }
+  
+  const response = await drive.files.list({
+    q: query,
+    driveId: driveId,
+    corpora: 'drive',
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+    fields: 'files(id, name, mimeType)',
+    orderBy: 'name',
+    pageSize: 100
+  });
+  
+  return (response.data.files || []).map(file => ({
+    id: file.id!,
+    name: file.name!,
+    mimeType: file.mimeType!
+  }));
+}
+
+/**
+ * List files in a Shared Drive
+ */
+export async function listSharedDriveFiles(
+  consultantId: string,
+  driveId: string,
+  parentId?: string,
+  mimeTypes?: string[]
+): Promise<Array<{ id: string; name: string; mimeType: string; size?: string; modifiedTime?: string }>> {
+  const drive = await getDriveClient(consultantId);
+  
+  const typesToFilter = mimeTypes || SUPPORTED_MIME_TYPES;
+  const mimeTypeQuery = typesToFilter.map(t => `mimeType = '${t}'`).join(' or ');
+  
+  let query = `(${mimeTypeQuery}) and trashed = false and mimeType != 'application/vnd.google-apps.folder'`;
+  if (parentId) {
+    query += ` and '${parentId}' in parents`;
+  }
+  
+  const response = await drive.files.list({
+    q: query,
+    driveId: driveId,
+    corpora: 'drive',
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+    fields: 'files(id, name, mimeType, size, modifiedTime)',
+    orderBy: 'modifiedTime desc',
+    pageSize: 100
+  });
+  
+  return (response.data.files || []).map(file => ({
+    id: file.id!,
+    name: file.name!,
+    mimeType: file.mimeType!,
+    size: file.size || undefined,
+    modifiedTime: file.modifiedTime || undefined
+  }));
+}
+
+/**
+ * List items shared with the user (sharedWithMe)
+ * Returns folders first for navigation, then files
+ */
+export async function listSharedWithMe(
+  consultantId: string,
+  onlyFolders: boolean = false
+): Promise<Array<{ id: string; name: string; mimeType: string; size?: string; modifiedTime?: string; sharedBy?: string }>> {
+  const drive = await getDriveClient(consultantId);
+  
+  let query = "sharedWithMe = true and trashed = false";
+  
+  if (onlyFolders) {
+    query += " and mimeType = 'application/vnd.google-apps.folder'";
+  }
+  
+  try {
+    const response = await drive.files.list({
+      q: query,
+      fields: 'files(id, name, mimeType, size, modifiedTime, sharingUser)',
+      orderBy: 'modifiedTime desc',
+      pageSize: 100,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
+    
+    console.log(`✅ [GOOGLE DRIVE] Found ${response.data.files?.length || 0} shared-with-me items`);
+    
+    return (response.data.files || []).map(file => ({
+      id: file.id!,
+      name: file.name!,
+      mimeType: file.mimeType!,
+      size: file.size || undefined,
+      modifiedTime: file.modifiedTime || undefined,
+      sharedBy: file.sharingUser?.displayName || file.sharingUser?.emailAddress || undefined
+    }));
+  } catch (error: any) {
+    console.error(`❌ [GOOGLE DRIVE] Error listing shared-with-me:`, error.message);
+    return [];
+  }
+}
+
+/**
+ * List items shared with the client (sharedWithMe) - Client version
+ */
+export async function listClientSharedWithMe(
+  clientId: string,
+  onlyFolders: boolean = false
+): Promise<Array<{ id: string; name: string; mimeType: string; size?: string; modifiedTime?: string; sharedBy?: string }>> {
+  const drive = await getClientDriveClient(clientId);
+  
+  let query = "sharedWithMe = true and trashed = false";
+  
+  if (onlyFolders) {
+    query += " and mimeType = 'application/vnd.google-apps.folder'";
+  }
+  
+  try {
+    const response = await drive.files.list({
+      q: query,
+      fields: 'files(id, name, mimeType, size, modifiedTime, sharingUser)',
+      orderBy: 'modifiedTime desc',
+      pageSize: 100,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
+    
+    return (response.data.files || []).map(file => ({
+      id: file.id!,
+      name: file.name!,
+      mimeType: file.mimeType!,
+      size: file.size || undefined,
+      modifiedTime: file.modifiedTime || undefined,
+      sharedBy: file.sharingUser?.displayName || file.sharingUser?.emailAddress || undefined
+    }));
+  } catch (error: any) {
+    console.error(`❌ [CLIENT GOOGLE DRIVE] Error listing shared-with-me:`, error.message);
+    return [];
+  }
+}
+
+/**
+ * List client Shared Drives
+ */
+export async function listClientSharedDrives(
+  clientId: string
+): Promise<Array<{ id: string; name: string; kind: string }>> {
+  const drive = await getClientDriveClient(clientId);
+  
+  try {
+    const response = await drive.drives.list({
+      pageSize: 100,
+      fields: 'drives(id, name, kind)'
+    });
+    
+    return (response.data.drives || []).map(d => ({
+      id: d.id!,
+      name: d.name!,
+      kind: 'shared_drive'
+    }));
+  } catch (error: any) {
+    console.error(`❌ [CLIENT GOOGLE DRIVE] Error listing shared drives:`, error.message);
+    return [];
+  }
+}

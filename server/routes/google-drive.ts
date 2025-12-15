@@ -17,7 +17,11 @@ import {
   downloadDriveFile,
   getDriveUserEmail,
   isDriveConnected,
-  disconnectDrive
+  disconnectDrive,
+  listSharedDrives,
+  listSharedDriveFolders,
+  listSharedDriveFiles,
+  listSharedWithMe
 } from "../services/google-drive-service";
 
 const router = Router();
@@ -249,6 +253,145 @@ router.get(
     }
   }
 );
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SHARED DRIVES & SHARED WITH ME - Extended Drive access endpoints
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get(
+  "/consultant/google-drive/shared-drives",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const connected = await isDriveConnected(consultantId);
+      if (!connected) {
+        return res.status(400).json({
+          success: false,
+          error: "Google Drive not connected"
+        });
+      }
+      
+      const sharedDrives = await listSharedDrives(consultantId);
+      
+      res.json({
+        success: true,
+        data: sharedDrives
+      });
+    } catch (error: any) {
+      console.error("❌ [GOOGLE DRIVE] Error listing shared drives:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to list shared drives"
+      });
+    }
+  }
+);
+
+router.get(
+  "/consultant/google-drive/shared-drive/:driveId/folders",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { driveId } = req.params;
+      const parentId = req.query.parentId as string | undefined;
+      
+      const connected = await isDriveConnected(consultantId);
+      if (!connected) {
+        return res.status(400).json({
+          success: false,
+          error: "Google Drive not connected"
+        });
+      }
+      
+      const folders = await listSharedDriveFolders(consultantId, driveId, parentId);
+      
+      res.json({
+        success: true,
+        data: folders
+      });
+    } catch (error: any) {
+      console.error("❌ [GOOGLE DRIVE] Error listing shared drive folders:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to list shared drive folders"
+      });
+    }
+  }
+);
+
+router.get(
+  "/consultant/google-drive/shared-drive/:driveId/files",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { driveId } = req.params;
+      const parentId = req.query.parentId as string | undefined;
+      
+      const connected = await isDriveConnected(consultantId);
+      if (!connected) {
+        return res.status(400).json({
+          success: false,
+          error: "Google Drive not connected"
+        });
+      }
+      
+      const files = await listSharedDriveFiles(consultantId, driveId, parentId);
+      
+      res.json({
+        success: true,
+        data: files
+      });
+    } catch (error: any) {
+      console.error("❌ [GOOGLE DRIVE] Error listing shared drive files:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to list shared drive files"
+      });
+    }
+  }
+);
+
+router.get(
+  "/consultant/google-drive/shared-with-me",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const onlyFolders = req.query.onlyFolders === "true";
+      
+      const connected = await isDriveConnected(consultantId);
+      if (!connected) {
+        return res.status(400).json({
+          success: false,
+          error: "Google Drive not connected"
+        });
+      }
+      
+      const items = await listSharedWithMe(consultantId, onlyFolders);
+      
+      res.json({
+        success: true,
+        data: items
+      });
+    } catch (error: any) {
+      console.error("❌ [GOOGLE DRIVE] Error listing shared-with-me:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to list shared items"
+      });
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
 
 router.post(
   "/consultant/google-drive/import",
