@@ -71,15 +71,16 @@ async function getGlobalOAuthCredentials() {
     .where(eq(systemSettings.key, "google_oauth_client_secret"))
     .limit(1);
 
-  const clientId = extractJsonbString(clientIdSetting?.value);
-  const clientSecret = extractJsonbString(clientSecretSetting?.value);
+  // Extract and trim values - treat empty strings as not configured
+  const clientId = extractJsonbString(clientIdSetting?.value)?.trim();
+  const clientSecret = extractJsonbString(clientSecretSetting?.value)?.trim();
 
   if (clientId && clientSecret) {
     console.log(`✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: ${clientId.substring(0, 20)}...`);
     return { clientId, clientSecret };
   }
   
-  console.log(`⚠️ [GOOGLE CALENDAR] No global OAuth credentials found in system_settings`);
+  console.log(`⚠️ [GOOGLE CALENDAR] No global OAuth credentials found in system_settings (or empty strings)`);
   return null;
 }
 
@@ -131,8 +132,12 @@ async function getConsultantOAuthCredentials(consultantId: string, redirectBaseU
     .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
     .limit(1);
 
-  if (!settings?.googleOAuthClientId || !settings?.googleOAuthClientSecret) {
-    throw new Error('Credenziali OAuth Google non configurate. Chiedi all\'amministratore di configurare le credenziali OAuth globali.');
+  // Check consultant credentials - treat empty strings as not configured
+  const consultantClientId = settings?.googleOAuthClientId?.trim();
+  const consultantClientSecret = settings?.googleOAuthClientSecret?.trim();
+
+  if (!consultantClientId || !consultantClientSecret) {
+    throw new Error('Credenziali OAuth Google non configurate. L\'amministratore deve configurare le credenziali globali OAuth nelle impostazioni.');
   }
 
   // ✅ Build correct redirect URI with fallback chain:

@@ -12744,11 +12744,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Initial sync failed:', syncError);
       }
 
-      // Redirect to calendar settings page with success message
-      res.redirect('/consultant/calendar-settings?oauth=success');
+      // Redirect to API settings page (Calendar tab) with success message
+      res.redirect('/consultant/api-keys-unified?tab=calendar&oauth=success');
     } catch (error: any) {
       console.error('OAuth callback error:', error);
-      res.redirect('/consultant/calendar-settings?oauth=error');
+      res.redirect('/consultant/api-keys-unified?tab=calendar&oauth=error');
     }
   });
 
