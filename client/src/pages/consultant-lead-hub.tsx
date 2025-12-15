@@ -2,17 +2,14 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getAuthHeaders } from "@/lib/auth";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Users,
   Megaphone,
@@ -21,19 +18,27 @@ import {
   Zap,
   ArrowRight,
   CheckCircle2,
-  Lock,
-  Play,
-  Sparkles,
   Target,
+  Lightbulb,
+  Settings,
+  Sparkles,
+  Send,
+  BookOpen,
+  HelpCircle,
   TrendingUp,
   Clock,
-  AlertCircle,
+  Star,
+  Bot,
   ChevronRight,
-  Lightbulb,
-  Rocket,
-  Settings,
-  Bot
+  Upload,
+  Filter,
+  BarChart3,
+  Calendar,
+  Wand2,
+  FileCheck,
+  Bell
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface FlowStep {
@@ -130,37 +135,244 @@ const FLOW_STEPS: FlowStep[] = [
   }
 ];
 
-function FlowConnector({ isActive, isCompleted }: { isActive: boolean; isCompleted: boolean }) {
+interface StepTip {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+  color: string;
+}
+
+const STEP_TIPS: Record<string, StepTip[]> = {
+  leads: [
+    { icon: Upload, title: "Importa da Excel/CSV", description: "Carica file con colonne: nome, telefono, email. Il sistema mappa automaticamente i campi.", color: "text-blue-500" },
+    { icon: Filter, title: "Segmenta i contatti", description: "Usa tag e filtri per organizzare i lead per interesse, fonte o priorità.", color: "text-green-500" },
+    { icon: TrendingUp, title: "Lead scoring", description: "Assegna punteggi ai lead per identificare i più promettenti.", color: "text-purple-500" },
+    { icon: Clock, title: "Timing ottimale", description: "I lead freschi convertono meglio. Contattali entro 24-48h dall'acquisizione.", color: "text-orange-500" }
+  ],
+  campaigns: [
+    { icon: Target, title: "Obiettivi chiari", description: "Definisci un obiettivo specifico: vendita, appuntamento, webinar.", color: "text-purple-500" },
+    { icon: Calendar, title: "Pianifica gli invii", description: "Programma le campagne nei giorni/orari migliori per il tuo target.", color: "text-blue-500" },
+    { icon: BarChart3, title: "Monitora le metriche", description: "Tasso di apertura, risposte, conversioni. Analizza e ottimizza.", color: "text-green-500" },
+    { icon: Users, title: "Segmenta il pubblico", description: "Campagne diverse per segmenti diversi = risultati migliori.", color: "text-indigo-500" }
+  ],
+  templates: [
+    { icon: FileCheck, title: "Approvazione Meta", description: "I template devono essere approvati da Meta prima dell'uso (24-48h).", color: "text-green-500" },
+    { icon: MessageSquare, title: "Personalizzazione", description: "Usa variabili {{nome}}, {{azienda}} per messaggi personalizzati.", color: "text-blue-500" },
+    { icon: Star, title: "Best practice", description: "Messaggi brevi, CTA chiara, tono professionale ma amichevole.", color: "text-yellow-500" },
+    { icon: Bell, title: "Template utility vs marketing", description: "Utility per conferme/info, Marketing per promozioni. Regole diverse.", color: "text-purple-500" }
+  ],
+  customTemplates: [
+    { icon: Wand2, title: "Crea con l'AI", description: "Usa l'assistente AI per generare template efficaci in pochi click.", color: "text-indigo-500" },
+    { icon: FileText, title: "Header e Footer", description: "Aggiungi header con immagine/video e footer con info azienda.", color: "text-blue-500" },
+    { icon: Zap, title: "Pulsanti interattivi", description: "Aggiungi CTA button per aumentare l'engagement e le conversioni.", color: "text-orange-500" },
+    { icon: Clock, title: "Tempi di approvazione", description: "Invia per approvazione e attendi 24-48h. Controlla lo stato qui.", color: "text-green-500" }
+  ],
+  automations: [
+    { icon: Zap, title: "Follow-up automatici", description: "Rispondi automaticamente ai lead che non rispondono dopo X giorni.", color: "text-orange-500" },
+    { icon: Bot, title: "AI Responder", description: "L'AI può rispondere alle domande frequenti in autonomia.", color: "text-purple-500" },
+    { icon: TrendingUp, title: "Pipeline automatica", description: "Sposta i lead tra gli stage in base alle loro azioni.", color: "text-green-500" },
+    { icon: Bell, title: "Notifiche smart", description: "Ricevi alert quando un lead compie azioni importanti.", color: "text-blue-500" }
+  ]
+};
+
+const DEFAULT_TIPS: StepTip[] = [
+  { icon: Lightbulb, title: "Inizia dai Lead", description: "Il primo passo è caricare i tuoi contatti. Clicca sulla card 'Lead Proattivi'.", color: "text-yellow-500" },
+  { icon: TrendingUp, title: "Segui il flusso", description: "Completa ogni step in ordine per configurare il tuo sistema di acquisizione.", color: "text-blue-500" },
+  { icon: Sparkles, title: "Chiedi all'AI", description: "Usa l'assistente a destra per domande e suggerimenti personalizzati.", color: "text-purple-500" },
+  { icon: BookOpen, title: "Guide disponibili", description: "Ogni sezione ha una guida dettagliata accessibile dal menu.", color: "text-green-500" }
+];
+
+const QUICK_SUGGESTIONS = [
+  "Come importo i lead da Excel?",
+  "Come creo una campagna efficace?",
+  "Quanto tempo per approvare un template?",
+  "Come funzionano le automazioni?"
+];
+
+function TipsPanel({ selectedStep }: { selectedStep: string | null }) {
+  const tips = selectedStep ? STEP_TIPS[selectedStep] || DEFAULT_TIPS : DEFAULT_TIPS;
+  const currentStep = FLOW_STEPS.find(s => s.id === selectedStep);
+  
   return (
-    <div className="flex items-center justify-center py-2 md:py-0 md:px-2">
-      <motion.div 
-        className="relative flex items-center justify-center"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="hidden md:flex items-center">
-          <div className={cn(
-            "h-1 w-12 rounded-full transition-all duration-500",
-            isCompleted ? "bg-green-500" : isActive ? "bg-blue-400" : "bg-gray-200 dark:bg-gray-700"
-          )} />
-          <motion.div
-            animate={isActive ? { x: [0, 8, 0] } : {}}
-            transition={{ duration: 1.5, repeat: Infinity }}
+    <div className="h-full flex flex-col bg-gradient-to-b from-slate-50 to-white dark:from-slate-900 dark:to-slate-950 border-r border-slate-200 dark:border-slate-800">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg shadow-sm">
+            <Lightbulb className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm text-foreground">Tips & Suggerimenti</h3>
+            <p className="text-xs text-muted-foreground">
+              {currentStep ? currentStep.title : "Panoramica generale"}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-3">
+          <AnimatePresence mode="wait">
+            {tips.map((tip, index) => (
+              <motion.div
+                key={`${selectedStep}-${index}`}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                transition={{ duration: 0.2, delay: index * 0.05 }}
+              >
+                <Card className="border-0 shadow-sm bg-white dark:bg-slate-800/50 hover:shadow-md transition-shadow">
+                  <CardContent className="p-3">
+                    <div className="flex items-start gap-3">
+                      <div className={cn("p-1.5 rounded-lg bg-slate-100 dark:bg-slate-700", tip.color)}>
+                        <tip.icon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-foreground mb-0.5">{tip.title}</h4>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{tip.description}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      </ScrollArea>
+      
+      {currentStep && (
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+          <Link href={currentStep.href}>
+            <Button size="sm" variant="outline" className="w-full gap-2 text-xs">
+              <BookOpen className="h-3.5 w-3.5" />
+              Guida completa {currentStep.title}
+            </Button>
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InlineAssistant() {
+  const [question, setQuestion] = useState("");
+  
+  const handleSuggestionClick = (suggestion: string) => {
+    setQuestion(suggestion);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (question.trim()) {
+      setQuestion("");
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col bg-gradient-to-b from-slate-900 via-slate-800 to-indigo-950 text-white border-l border-slate-700">
+      <div className="p-4 border-b border-slate-700/50">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg shadow-lg shadow-purple-500/20">
+            <Bot className="h-4 w-4 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">Assistente Lead Hub</h3>
+            <p className="text-xs text-slate-400">Chiedi qualsiasi cosa</p>
+          </div>
+        </div>
+      </div>
+      
+      <ScrollArea className="flex-1 p-4">
+        <div className="space-y-4">
+          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+            <div className="flex items-start gap-2">
+              <div className="p-1 bg-purple-500/20 rounded-full">
+                <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Ciao! Sono qui per aiutarti a configurare il tuo sistema di acquisizione lead. 
+                Seleziona uno step per avere tips specifici, oppure chiedimi qualsiasi cosa!
+              </p>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Domande frequenti</p>
+            <div className="flex flex-wrap gap-1.5">
+              {QUICK_SUGGESTIONS.map((suggestion, index) => (
+                <motion.button
+                  key={index}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className="text-xs px-2.5 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600/50 text-slate-300 hover:text-white transition-colors text-left"
+                >
+                  {suggestion}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Quick Actions</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Link href="/consultant/proactive-leads">
+                <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300">
+                  <Users className="h-3.5 w-3.5" />
+                  Vai ai Lead
+                </Button>
+              </Link>
+              <Link href="/consultant/campaigns">
+                <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300">
+                  <Megaphone className="h-3.5 w-3.5" />
+                  Campagne
+                </Button>
+              </Link>
+              <Link href="/consultant/whatsapp-templates">
+                <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Template
+                </Button>
+              </Link>
+              <Link href="/consultant/automations">
+                <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 hover:text-orange-300">
+                  <Zap className="h-3.5 w-3.5" />
+                  Automazioni
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <div className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-lg p-3 border border-purple-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <HelpCircle className="h-4 w-4 text-purple-400" />
+                <span className="text-xs font-medium text-purple-300">Hai bisogno di aiuto?</span>
+              </div>
+              <p className="text-xs text-slate-400">
+                L'assistente AI completo è disponibile in basso a destra per conversazioni più approfondite.
+              </p>
+            </div>
+          </div>
+        </div>
+      </ScrollArea>
+      
+      <div className="p-3 border-t border-slate-700/50 bg-slate-900/80">
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <Input
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Scrivi una domanda..."
+            className="flex-1 h-9 text-xs bg-slate-800 border-slate-600 text-white placeholder:text-slate-500 focus:ring-purple-500 focus:border-purple-500"
+          />
+          <Button 
+            type="submit" 
+            size="sm" 
+            className="h-9 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
           >
-            <ChevronRight className={cn(
-              "h-5 w-5 transition-colors duration-300",
-              isCompleted ? "text-green-500" : isActive ? "text-blue-500" : "text-gray-300 dark:text-gray-600"
-            )} />
-          </motion.div>
-        </div>
-        <div className="md:hidden flex flex-col items-center">
-          <div className={cn(
-            "w-1 h-8 rounded-full transition-all duration-500",
-            isCompleted ? "bg-green-500" : isActive ? "bg-blue-400" : "bg-gray-200 dark:bg-gray-700"
-          )} />
-        </div>
-      </motion.div>
+            <Send className="h-3.5 w-3.5" />
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -181,13 +393,13 @@ function StepCard({ step, status, count, index, isExpanded, onExpand }: StepCard
     completed: {
       badge: "Completato",
       badgeClass: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400",
-      cardClass: "border-green-300 dark:border-green-700 shadow-green-100 dark:shadow-green-900/20",
-      iconBg: "bg-green-100 dark:bg-green-900/50"
+      cardClass: "border-green-300 dark:border-green-700 shadow-lg shadow-green-100 dark:shadow-green-900/20",
+      iconBg: "bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/50 dark:to-green-800/50"
     },
     active: {
-      badge: "Da completare",
+      badge: "Disponibile",
       badgeClass: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400",
-      cardClass: "border-blue-300 dark:border-blue-700 shadow-blue-100 dark:shadow-blue-900/20 ring-2 ring-blue-200 dark:ring-blue-800",
+      cardClass: "border-blue-300 dark:border-blue-700 shadow-lg shadow-blue-100 dark:shadow-blue-900/20",
       iconBg: step.bgColor
     },
     locked: {
@@ -204,121 +416,97 @@ function StepCard({ step, status, count, index, isExpanded, onExpand }: StepCard
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.1 }}
-      className="w-full"
+      transition={{ duration: 0.4, delay: index * 0.08 }}
+      className="w-full h-full"
     >
       <Card 
         className={cn(
-          "relative overflow-hidden transition-all duration-300 cursor-pointer hover:shadow-lg",
+          "relative overflow-hidden transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-[1.02] h-full flex flex-col",
           config.cardClass,
-          isExpanded && "ring-2 ring-offset-2"
+          isExpanded && "ring-2 ring-offset-2 ring-primary"
         )}
         onClick={onExpand}
       >
         {status === "completed" && (
-          <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
-            <div className="absolute transform rotate-45 bg-green-500 text-white text-xs py-1 right-[-35px] top-[12px] w-[100px] text-center">
+          <div className="absolute top-0 right-0 w-20 h-20 overflow-hidden">
+            <div className="absolute transform rotate-45 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs py-1 right-[-40px] top-[14px] w-[110px] text-center shadow-lg">
               <CheckCircle2 className="h-3 w-3 inline" />
             </div>
           </div>
         )}
 
-        <CardContent className="p-5">
-          <div className="flex items-start gap-4">
+        <CardContent className="p-4 sm:p-5 lg:p-6 flex flex-col flex-1">
+          <div className="flex flex-col items-center text-center gap-3 flex-1">
             <motion.div 
-              className={cn("p-3 rounded-xl", config.iconBg)}
+              className={cn("p-4 sm:p-5 rounded-2xl shadow-inner", config.iconBg)}
               whileHover={{ scale: 1.1, rotate: 5 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
-              {status === "locked" ? (
-                <Lock className="h-6 w-6 text-gray-400" />
-              ) : status === "completed" ? (
-                <CheckCircle2 className={cn("h-6 w-6", step.color)} />
+              {status === "completed" ? (
+                <CheckCircle2 className={cn("h-8 w-8 sm:h-10 sm:w-10", step.color)} />
               ) : (
-                <Icon className={cn("h-6 w-6", step.color)} />
+                <Icon className={cn("h-8 w-8 sm:h-10 sm:w-10", step.color)} />
               )}
             </motion.div>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold text-muted-foreground">STEP {index + 1}</span>
-                <Badge className={config.badgeClass}>{config.badge}</Badge>
-              </div>
-              
-              <h3 className="text-lg font-bold text-foreground mb-1">
-                {step.title}
-              </h3>
-              
-              <p className="text-sm text-muted-foreground mb-3">
-                {step.description}
-              </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded-full">STEP {index + 1}</span>
+              <Badge className={cn("text-xs", config.badgeClass)}>{config.badge}</Badge>
+            </div>
+            
+            <h3 className="text-base sm:text-lg font-bold text-foreground leading-tight">
+              {step.title}
+            </h3>
+            
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed flex-1">
+              {step.description}
+            </p>
 
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mb-3"
-                  >
-                    <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                      <Lightbulb className="h-4 w-4 inline mr-2 text-yellow-500" />
-                      {step.detailedDescription}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="w-full"
+                >
+                  <p className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg text-left">
+                    <Lightbulb className="h-3 w-3 inline mr-1 text-yellow-500" />
+                    {step.detailedDescription}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {count > 0 && (
-                    <Badge variant="secondary" className="font-mono">
-                      {count} {count === 1 ? "elemento" : "elementi"}
-                    </Badge>
+            <div className="w-full space-y-2 mt-auto pt-3">
+              {count > 0 && (
+                <Badge variant="secondary" className="font-mono text-xs">
+                  {count} {count === 1 ? "elemento" : "elementi"}
+                </Badge>
+              )}
+
+              <Link href={step.href} onClick={(e) => e.stopPropagation()} className="block">
+                <Button 
+                  size="sm" 
+                  variant={status === "active" ? "default" : "outline"}
+                  className={cn(
+                    "w-full gap-2 transition-all",
+                    status === "active" && "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   )}
-                </div>
-
-                {status !== "locked" && (
-                  <Link href={step.href} onClick={(e) => e.stopPropagation()}>
-                    <Button 
-                      size="sm" 
-                      variant={status === "active" ? "default" : "outline"}
-                      className={cn(
-                        "gap-2 transition-all",
-                        status === "active" && "animate-pulse"
-                      )}
-                    >
-                      {status === "completed" ? (
-                        <>
-                          <Settings className="h-4 w-4" />
-                          Modifica
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-4 w-4" />
-                          {step.actionLabel}
-                        </>
-                      )}
-                    </Button>
-                  </Link>
-                )}
-
-                {status === "locked" && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button size="sm" variant="ghost" disabled className="gap-2">
-                          <Lock className="h-4 w-4" />
-                          Bloccato
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Completa prima lo step precedente</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
+                >
+                  {status === "completed" ? (
+                    <>
+                      <Settings className="h-4 w-4" />
+                      Modifica
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="h-4 w-4" />
+                      Vai
+                    </>
+                  )}
+                </Button>
+              </Link>
             </div>
           </div>
         </CardContent>
@@ -339,30 +527,49 @@ function ProgressSummary({
   const percentage = Math.round((completedSteps / totalSteps) * 100);
 
   return (
-    <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white border-0">
-      <CardContent className="p-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-white/10 rounded-lg">
-                <Rocket className="h-6 w-6 text-white" />
+    <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 text-white border-0 shadow-2xl overflow-hidden">
+      <CardContent className="p-5 md:p-6">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+                <Target className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Progresso Setup</h2>
-                <p className="text-sm text-slate-300">Completa tutti gli step per attivare le automazioni</p>
+                <h1 className="text-xl md:text-2xl font-bold">Lead Hub</h1>
+                <p className="text-xs md:text-sm text-slate-300">Sistema acquisizione clienti</p>
               </div>
             </div>
             
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>{completedSteps} di {totalSteps} step completati</span>
-                <span className="font-bold">{percentage}%</span>
+            <div className="flex items-center gap-3 bg-white/10 rounded-xl px-4 py-2">
+              <div className="text-right">
+                <div className="text-xs text-slate-400">Progresso</div>
+                <div className="text-lg font-bold">{completedSteps}/{totalSteps}</div>
               </div>
-              <Progress value={percentage} className="h-3 bg-slate-700" />
+              <div className="relative h-12 w-12">
+                <svg className="h-12 w-12 -rotate-90">
+                  <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="4" fill="none" className="text-slate-700" />
+                  <circle 
+                    cx="24" cy="24" r="20" 
+                    stroke="url(#progressGradient)" 
+                    strokeWidth="4" 
+                    fill="none" 
+                    strokeDasharray={`${percentage * 1.256} 125.6`}
+                    strokeLinecap="round"
+                  />
+                  <defs>
+                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#3B82F6" />
+                      <stop offset="100%" stopColor="#8B5CF6" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{percentage}%</span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-4 gap-2 md:gap-4">
             <StatBox icon={Users} label="Lead" value={stats.leads} color="text-blue-400" />
             <StatBox icon={Megaphone} label="Campagne" value={stats.campaigns} color="text-purple-400" />
             <StatBox icon={MessageSquare} label="Template" value={stats.templates} color="text-green-400" />
@@ -386,10 +593,10 @@ function StatBox({
   color: string;
 }) {
   return (
-    <div className="bg-white/5 rounded-lg p-3 text-center">
-      <Icon className={cn("h-5 w-5 mx-auto mb-1", color)} />
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="text-xs text-slate-400">{label}</div>
+    <div className="bg-white/10 hover:bg-white/15 transition-colors rounded-lg p-2.5 md:p-3 text-center">
+      <Icon className={cn("h-4 w-4 md:h-5 md:w-5 mx-auto mb-1", color)} />
+      <div className="text-lg md:text-xl font-bold">{value}</div>
+      <div className="text-[10px] md:text-xs text-slate-400">{label}</div>
     </div>
   );
 }
@@ -446,10 +653,10 @@ export default function ConsultantLeadHub() {
 
   const counts = useMemo(() => ({
     leads: leadsData?.leads?.length || 0,
-    campaigns: campaignsData?.campaigns?.length || 0,
+    campaigns: campaignsData?.data?.length || campaignsData?.campaigns?.length || 0,
     templates: templatesData?.templates?.length || 0,
-    customTemplates: customTemplatesData?.templates?.length || 0,
-    automations: automationsData?.rules?.length || 0
+    customTemplates: customTemplatesData?.data?.length || customTemplatesData?.templates?.length || 0,
+    automations: automationsData?.rules?.length || automationsData?.length || 0
   }), [leadsData, campaignsData, templatesData, customTemplatesData, automationsData]);
 
   const stepStatuses = useMemo(() => {
@@ -462,50 +669,25 @@ export default function ConsultantLeadHub() {
         ? count >= step.minRequired 
         : count > 0;
       
-      if (step.prerequisiteId === null) {
-        statuses[step.id] = isStepCompleted ? "completed" : "active";
-      } else {
-        const prereqStatus = statuses[step.prerequisiteId];
-        if (prereqStatus === "completed") {
-          statuses[step.id] = isStepCompleted ? "completed" : "active";
-        } else {
-          statuses[step.id] = "locked";
-        }
-      }
+      statuses[step.id] = isStepCompleted ? "completed" : "active";
     }
     
     return statuses;
   }, [counts]);
 
   const completedCount = Object.values(stepStatuses).filter(s => s === "completed").length;
-  const activeStepIndex = FLOW_STEPS.findIndex(s => stepStatuses[s.id] === "active");
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <div className="flex-1 flex flex-col min-w-0">
-        <Navbar onMenuClick={() => setSidebarOpen(true)} />
-        
-        <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-          <div className="max-w-6xl mx-auto space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-8"
-            >
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1.5 rounded-full text-sm font-medium mb-4">
-                <Target className="h-4 w-4" />
-                Centro di Comando Lead
-              </div>
-              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">
-                HUB Lead
-              </h1>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Segui il flusso passo dopo passo per configurare il tuo sistema di acquisizione clienti automatizzato
-              </p>
-            </motion.div>
+      <div className="flex-1 flex min-w-0">
+        <aside className="hidden lg:flex w-[280px] flex-shrink-0">
+          <TipsPanel selectedStep={expandedStep} />
+        </aside>
 
+        <main className="flex-1 p-4 md:p-6 overflow-auto">
+          <div className="max-w-6xl mx-auto space-y-6">
             <ProgressSummary 
               completedSteps={completedCount}
               totalSteps={FLOW_STEPS.length}
@@ -517,79 +699,25 @@ export default function ConsultantLeadHub() {
               }}
             />
 
-            {activeStepIndex >= 0 && (
-              <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
-                <Sparkles className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800 dark:text-blue-200">
-                  <strong>Prossimo passo:</strong> {FLOW_STEPS[activeStepIndex].title} - {FLOW_STEPS[activeStepIndex].description}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  Il Tuo Percorso
-                </CardTitle>
-                <CardDescription>
-                  Ogni step si sblocca completando quello precedente. Clicca su uno step per maggiori dettagli.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col md:flex-row md:items-start gap-0">
-                  {FLOW_STEPS.map((step, index) => (
-                    <div key={step.id} className="flex flex-col md:flex-row md:items-center flex-1">
-                      <StepCard
-                        step={step}
-                        status={stepStatuses[step.id]}
-                        count={counts[step.countKey as keyof typeof counts] || 0}
-                        index={index}
-                        isExpanded={expandedStep === step.id}
-                        onExpand={() => setExpandedStep(expandedStep === step.id ? null : step.id)}
-                      />
-                      {index < FLOW_STEPS.length - 1 && (
-                        <FlowConnector 
-                          isActive={index === activeStepIndex - 1 || index === activeStepIndex}
-                          isCompleted={stepStatuses[step.id] === "completed"}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-green-200 dark:border-green-800">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-xl">
-                    <Bot className="h-8 w-8 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-green-800 dark:text-green-200 mb-2">
-                      Hai bisogno di aiuto?
-                    </h3>
-                    <p className="text-green-700 dark:text-green-300 mb-4">
-                      L'assistente AI è sempre disponibile per guidarti in ogni step. 
-                      Chiedimi qualsiasi cosa sulla configurazione!
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline" className="border-green-300 text-green-700 dark:border-green-700 dark:text-green-300">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Supporto 24/7
-                      </Badge>
-                      <Badge variant="outline" className="border-green-300 text-green-700 dark:border-green-700 dark:text-green-300">
-                        <Lightbulb className="h-3 w-3 mr-1" />
-                        Suggerimenti personalizzati
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
+              {FLOW_STEPS.map((step, index) => (
+                <StepCard
+                  key={step.id}
+                  step={step}
+                  status={stepStatuses[step.id]}
+                  count={counts[step.countKey as keyof typeof counts] || 0}
+                  index={index}
+                  isExpanded={expandedStep === step.id}
+                  onExpand={() => setExpandedStep(expandedStep === step.id ? null : step.id)}
+                />
+              ))}
+            </div>
           </div>
         </main>
+
+        <aside className="hidden lg:flex w-[320px] flex-shrink-0">
+          <InlineAssistant />
+        </aside>
       </div>
 
       <ConsultantAIAssistant />
