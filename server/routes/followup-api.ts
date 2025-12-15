@@ -439,4 +439,67 @@ router.delete("/scheduled/:id", authenticateToken, requireRole("consultant"), as
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// AI EVALUATION LOGS
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/ai-logs", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+    const offset = parseInt(req.query.offset as string) || 0;
+    
+    // Get AI evaluation logs for this consultant's conversations
+    const logs = await db
+      .select({
+        log: schema.followupAiEvaluationLog,
+        conversation: {
+          id: schema.whatsappConversations.id,
+          contactNumber: schema.whatsappConversations.contactNumber,
+          contactName: schema.whatsappConversations.contactName,
+        },
+        agent: {
+          id: schema.consultantWhatsappConfig.id,
+          agentName: schema.consultantWhatsappConfig.agentName,
+        },
+      })
+      .from(schema.followupAiEvaluationLog)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.followupAiEvaluationLog.conversationId, schema.whatsappConversations.id)
+      )
+      .innerJoin(
+        schema.consultantWhatsappConfig,
+        eq(schema.whatsappConversations.agentConfigId, schema.consultantWhatsappConfig.id)
+      )
+      .where(eq(schema.consultantWhatsappConfig.consultantId, req.user!.id))
+      .orderBy(desc(schema.followupAiEvaluationLog.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    // Get total count
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(schema.followupAiEvaluationLog)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.followupAiEvaluationLog.conversationId, schema.whatsappConversations.id)
+      )
+      .innerJoin(
+        schema.consultantWhatsappConfig,
+        eq(schema.whatsappConversations.agentConfigId, schema.consultantWhatsappConfig.id)
+      )
+      .where(eq(schema.consultantWhatsappConfig.consultantId, req.user!.id));
+    
+    res.json({
+      logs,
+      total: countResult?.count || 0,
+      limit,
+      offset,
+    });
+  } catch (error: any) {
+    console.error("Error fetching AI evaluation logs:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getAuthHeaders } from "@/lib/auth";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -32,7 +36,12 @@ import {
   Phone,
   RefreshCw,
   Target,
-  TestTube
+  TestTube,
+  Brain,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Loader2
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { PipelineKanban } from "@/components/automations/PipelineKanban";
@@ -527,6 +536,143 @@ function FullFlowGuide() {
   );
 }
 
+function AILogsViewer() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["ai-evaluation-logs"],
+    queryFn: async () => {
+      const response = await fetch("/api/followup/ai-logs?limit=50", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch AI logs");
+      return response.json();
+    },
+  });
+
+  const decisionConfig: Record<string, { icon: any; color: string; label: string }> = {
+    send_now: { icon: Send, color: "text-green-600 bg-green-100", label: "Invia Ora" },
+    schedule: { icon: Clock, color: "text-blue-600 bg-blue-100", label: "Pianifica" },
+    skip: { icon: XCircle, color: "text-yellow-600 bg-yellow-100", label: "Salta" },
+    stop: { icon: AlertTriangle, color: "text-red-600 bg-red-100", label: "Stop" },
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-red-600">
+          Errore nel caricamento dei log AI
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Brain className="h-5 w-5 text-purple-600" />
+          Log Decisioni AI Follow-up
+        </CardTitle>
+        <CardDescription>
+          Visualizza le decisioni prese dall'AI per i follow-up automatici
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {data?.logs?.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Nessuna decisione AI registrata. I log appariranno quando l'AI valuterà le conversazioni per i follow-up.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {data?.logs?.map((item: any) => {
+              const log = item.log;
+              const conversation = item.conversation;
+              const agent = item.agent;
+              const config = decisionConfig[log.decision] || decisionConfig.skip;
+              const DecisionIcon = config.icon;
+              
+              return (
+                <div key={log.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${config.color}`}>
+                        <DecisionIcon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">
+                            {conversation?.contactName || conversation?.contactNumber || "Lead"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            via {agent?.agentName || "Agente"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+                            {config.label}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            Confidenza: {Math.round((log.confidenceScore || 0) * 100)}%
+                          </span>
+                          {log.wasExecuted && (
+                            <CheckCircle className="h-3 w-3 text-green-500" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground text-right">
+                      {format(new Date(log.createdAt), "dd MMM HH:mm", { locale: it })}
+                    </div>
+                  </div>
+                  
+                  <div className="mt-3 p-3 bg-white dark:bg-gray-800 rounded border">
+                    <p className="text-sm font-medium text-purple-700 dark:text-purple-400 mb-1">
+                      Ragionamento AI:
+                    </p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {log.reasoning}
+                    </p>
+                  </div>
+                  
+                  {log.conversationContext && (
+                    <Collapsible className="mt-2">
+                      <CollapsibleTrigger className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
+                        <ChevronDown className="h-3 w-3" />
+                        Contesto Conversazione
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div><strong>Stato:</strong> {log.conversationContext.currentState}</div>
+                          <div><strong>Giorni silenzio:</strong> {log.conversationContext.daysSilent}</div>
+                          <div><strong>Follow-up inviati:</strong> {log.conversationContext.followupCount}</div>
+                          <div><strong>Canale:</strong> {log.conversationContext.channel}</div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        
+        <div className="mt-4 text-center text-sm text-muted-foreground">
+          Totale: {data?.total || 0} valutazioni AI
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ConsultantAutomationsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -568,7 +714,7 @@ export default function ConsultantAutomationsPage() {
             <FullFlowGuide />
 
             <Tabs defaultValue="pipeline" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsList className="grid w-full grid-cols-5 mb-6">
                 <TabsTrigger value="pipeline" className="flex items-center gap-2">
                   <KanbanSquare className="h-4 w-4" />
                   <span className="hidden sm:inline">Conversazioni Attive</span>
@@ -584,6 +730,10 @@ export default function ConsultantAutomationsPage() {
                 <TabsTrigger value="analytics" className="flex items-center gap-2">
                   <BarChart className="h-4 w-4" />
                   <span className="hidden sm:inline">Analytics</span>
+                </TabsTrigger>
+                <TabsTrigger value="ai-logs" className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  <span className="hidden sm:inline">Log AI</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -601,6 +751,10 @@ export default function ConsultantAutomationsPage() {
 
               <TabsContent value="analytics">
                 <AnalyticsDashboard />
+              </TabsContent>
+
+              <TabsContent value="ai-logs">
+                <AILogsViewer />
               </TabsContent>
             </Tabs>
           </div>
