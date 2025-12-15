@@ -6924,11 +6924,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(schema.superadminVertexConfig.enabled, true))
         .limit(1);
 
+      // Combine: SuperAdmin config must exist AND consultant must have access
+      const hasAccessFromSuperAdmin = accessRecord?.hasAccess ?? true; // Default true if no record exists
+      const superAdminVertexAvailable = !!superadminConfig && hasAccessFromSuperAdmin;
+
       res.json({
         success: true,
-        useSuperadminVertex: consultant.useSuperadminVertex ?? true,
-        hasAccessFromSuperAdmin: accessRecord?.hasAccess ?? true, // Default true if no record
-        superadminConfigAvailable: !!superadminConfig,
+        useSuperAdminVertex: consultant.useSuperadminVertex ?? true,
+        hasOwnVertex: false, // Will be checked separately via vertexAiSettings
+        superAdminVertexAvailable: superAdminVertexAvailable,
+        hasAccessFromSuperAdmin: hasAccessFromSuperAdmin,
       });
     } catch (error: any) {
       console.error("Error fetching consultant vertex preference:", error);
