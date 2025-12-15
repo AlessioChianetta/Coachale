@@ -81,6 +81,11 @@ const GuideUniversity = lazy(() => import("@/pages/guide-university"));
 const GuideClients = lazy(() => import("@/pages/guide-clients"));
 const GuideCalendar = lazy(() => import("@/pages/guide-calendar"));
 const GuideAutomations = lazy(() => import("@/pages/guide-automations"));
+const GuideTemplates = lazy(() => import("@/pages/guide-templates"));
+const GuideLeads = lazy(() => import("@/pages/guide-leads"));
+const GuideAgents = lazy(() => import("@/pages/guide-agents"));
+const GuideApiKeys = lazy(() => import("@/pages/guide-api-keys"));
+const GuidesHub = lazy(() => import("@/pages/guides-hub"));
 const ConsultantSetupWizard = lazy(() => import("@/pages/consultant-setup-wizard"));
 const OnboardingStory = lazy(() => import("@/pages/onboarding-story"));
 const PublicAgentShare = lazy(() => import("@/pages/public-agent-share"));
@@ -399,6 +404,36 @@ function Router() {
       <Route path="/consultant/guide-automations">
         <AuthGuard requiredRole="consultant">
           <GuideAutomations />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/guide-templates">
+        <AuthGuard requiredRole="consultant">
+          <GuideTemplates />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/guide-leads">
+        <AuthGuard requiredRole="consultant">
+          <GuideLeads />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/guide-agents">
+        <AuthGuard requiredRole="consultant">
+          <GuideAgents />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/guide-api-keys">
+        <AuthGuard requiredRole="consultant">
+          <GuideApiKeys />
+        </AuthGuard>
+      </Route>
+
+      <Route path="/consultant/guides">
+        <AuthGuard requiredRole="consultant">
+          <GuidesHub />
         </AuthGuard>
       </Route>
 

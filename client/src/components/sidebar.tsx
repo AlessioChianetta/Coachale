@@ -157,6 +157,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: BookOpen,
     defaultExpanded: false,
     items: [
+      { name: "Centro Guide", href: "/consultant/guides", icon: BookOpen, color: "text-pink-500", badge: "HUB" },
       { name: "WhatsApp", href: "/consultant/guide-whatsapp", icon: MessageSquare, color: "text-green-500" },
       { name: "Email", href: "/consultant/guide-email", icon: Mail, color: "text-sky-500" },
       { name: "Automazioni", href: "/consultant/guide-automations", icon: Zap, color: "text-purple-500" },
