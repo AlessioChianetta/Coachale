@@ -199,6 +199,17 @@ export async function sendWhatsAppMessage(
     ? config.twilioWhatsappNumber 
     : `whatsapp:${config.twilioWhatsappNumber}`;
 
+  // Validate From number format
+  const fromNumberOnly = formattedFrom.replace('whatsapp:', '');
+  if (!fromNumberOnly.startsWith('+') || fromNumberOnly.length < 10) {
+    console.error(`❌ [TWILIO ERROR] Invalid From number format: ${formattedFrom}`);
+    console.error(`   Agent: ${config.agentName} (${config.id})`);
+    console.error(`   Expected format: whatsapp:+1234567890`);
+    throw new Error(`Numero WhatsApp business non valido: "${fromNumberOnly}". Deve iniziare con + e contenere almeno 10 cifre. Verifica la configurazione dell'agente "${config.agentName}".`);
+  }
+  
+  console.log(`📱 Using From number: ${formattedFrom} (Agent: ${config.agentName})`);
+
   // TEMPLATE MODE: If contentSid is provided, send with template (for proactive messages)
   if (options?.contentSid) {
     console.log(`📤 ${isDryRun ? '[DRY RUN] Would send' : 'Sending'} WhatsApp message with template: ${options.contentSid}`);
@@ -285,6 +296,25 @@ export async function sendWhatsAppMessage(
       return message.sid;
     } catch (error: any) {
       console.error(`❌ Template message failed: ${error.message}`);
+      
+      // Check if it's a "Channel not found" error (From number not configured in Twilio)
+      if (error.message?.includes('Channel with the specified From address') || error.code === 21608) {
+        console.error(`\n❌ ═══════════════════════════════════════════════════════════`);
+        console.error(`❌ TWILIO ERROR: Numero WhatsApp Business non trovato`);
+        console.error(`❌ ═══════════════════════════════════════════════════════════`);
+        console.error(`   From Number: ${formattedFrom}`);
+        console.error(`   Agent: ${config.agentName} (${config.id})`);
+        console.error(`\n📋 POSSIBILI CAUSE:`);
+        console.error(`   1. Il numero "${fromNumberOnly}" non è configurato come WhatsApp Sender in Twilio`);
+        console.error(`   2. Se usi Sandbox: devi usare il numero sandbox (+14155238886)`);
+        console.error(`   3. Se usi Business: il numero deve essere verificato su Twilio Console`);
+        console.error(`\n🔧 COME RISOLVERE:`);
+        console.error(`   - Vai su Twilio Console > Messaging > Try it out > Send a WhatsApp message`);
+        console.error(`   - Verifica quale numero è configurato come "From" nel tuo account`);
+        console.error(`   - Aggiorna la configurazione dell'agente con il numero corretto\n`);
+        
+        throw new Error(`Numero WhatsApp "${fromNumberOnly}" non configurato in Twilio. Verifica la configurazione dell'agente "${config.agentName}" e assicurati che il numero sia abilitato come WhatsApp Sender nella console Twilio.`);
+      }
       
       // Check if it's a template approval error
       if (error.code === 63016 || error.message?.includes('not approved') || error.message?.includes('pending')) {
