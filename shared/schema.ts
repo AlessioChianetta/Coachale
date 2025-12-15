@@ -2848,6 +2848,41 @@ export type ProactiveLead = typeof proactiveLeads.$inferSelect;
 export type InsertProactiveLead = z.infer<typeof insertProactiveLeadSchema>;
 export type UpdateProactiveLead = z.infer<typeof updateProactiveLeadSchema>;
 
+// Proactive Lead Activity Logs - Log delle attività dei lead proattivi
+export const proactiveLeadActivityLogs = pgTable("proactive_lead_activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").references(() => proactiveLeads.id, { onDelete: "cascade" }).notNull(),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "set null" }),
+  
+  // Event type
+  eventType: text("event_type").$type<
+    "created" | "scheduled" | "processing" | "sent" | "failed" | "skipped" | "responded" | "converted" | "manual_trigger"
+  >().notNull(),
+  
+  // Event details
+  eventMessage: text("event_message").notNull(),
+  eventDetails: jsonb("event_details").$type<{
+    templateSid?: string;
+    templateName?: string;
+    messageType?: string;
+    skipReason?: string;
+    errorMessage?: string;
+    twilioMessageSid?: string;
+    isDryRun?: boolean;
+    workingHoursCheck?: boolean;
+    templateVariables?: Record<string, string>;
+  }>().default(sql`'{}'::jsonb`),
+  
+  // Status at time of event
+  leadStatusAtEvent: text("lead_status_at_event").$type<"pending" | "contacted" | "responded" | "converted" | "inactive">(),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
+export type ProactiveLeadActivityLog = typeof proactiveLeadActivityLogs.$inferSelect;
+export type InsertProactiveLeadActivityLog = typeof proactiveLeadActivityLogs.$inferInsert;
+
 // WhatsApp Template System Tables
 
 // Variable catalog - defines all available variables for templates

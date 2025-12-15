@@ -5,7 +5,8 @@ import {
   users, 
   consultantWhatsappConfig, 
   whatsappConversations, 
-  whatsappMessages 
+  whatsappMessages,
+  proactiveLeadActivityLogs
 } from '../../shared/schema';
 import { eq, lte, and, sql, gte } from 'drizzle-orm';
 import { 
@@ -21,6 +22,34 @@ import { storage } from '../storage';
 import { checkTemplateApprovalStatus } from '../services/whatsapp/template-approval-checker';
 
 let schedulerTask: cron.ScheduledTask | null = null;
+
+/**
+ * Helper function to log lead activity to the database
+ */
+async function logLeadActivity(
+  leadId: string,
+  consultantId: string,
+  agentConfigId: string,
+  eventType: string,
+  eventMessage: string,
+  eventDetails: any = {},
+  leadStatusAtEvent?: string
+) {
+  try {
+    await db.insert(proactiveLeadActivityLogs).values({
+      leadId,
+      consultantId,
+      agentConfigId,
+      eventType: eventType as any,
+      eventMessage,
+      eventDetails,
+      leadStatusAtEvent: leadStatusAtEvent as any,
+    });
+    console.log(`📝 [ACTIVITY LOG] ${eventType}: ${eventMessage}`);
+  } catch (error) {
+    console.error(`❌ [ACTIVITY LOG] Failed to save log:`, error);
+  }
+}
 
 /**
  * Replace template variables {{1}}, {{2}}, etc. with actual values
@@ -227,9 +256,28 @@ async function processLead(
   try {
     console.log(`📤 Processing lead: ${lead.firstName} ${lead.lastName} (${lead.phoneNumber})`);
 
+    await logLeadActivity(
+      lead.id,
+      lead.consultantId,
+      lead.agentConfigId,
+      'processing',
+      `Inizio elaborazione lead ${lead.firstName} ${lead.lastName}`,
+      { phoneNumber: lead.phoneNumber },
+      lead.status
+    );
+
     // Check working hours
     if (!isWithinWorkingHours(agentConfig)) {
       console.log(`⏰ Skipping lead ${lead.id} - outside working hours`);
+      await logLeadActivity(
+        lead.id,
+        lead.consultantId,
+        lead.agentConfigId,
+        'skipped',
+        'Fuori orario lavorativo - lead non processato',
+        { skipReason: 'working_hours' },
+        lead.status
+      );
       return;
     }
 
@@ -336,6 +384,15 @@ async function processLead(
         console.error(`   Message Type: ${messageType}`);
         console.error(`   Reason: No template assigned in "Assegnazione Template agli Agenti"`);
         console.error(`   Action: Lead skipped, no message sent`);
+        await logLeadActivity(
+          lead.id,
+          lead.consultantId,
+          lead.agentConfigId,
+          'skipped',
+          'Template di apertura non assegnato',
+          { skipReason: 'no_opening_template', messageType: 'opening' },
+          lead.status
+        );
         return;
       }
       
@@ -358,6 +415,15 @@ async function processLead(
           console.error(`   Message Type: ${messageType} (${daysSinceContact} days since contact)`);
           console.error(`   Reason: No gentle follow-up template assigned`);
           console.error(`   Action: Lead skipped, no message sent`);
+          await logLeadActivity(
+            lead.id,
+            lead.consultantId,
+            lead.agentConfigId,
+            'skipped',
+            'Template gentle follow-up non assegnato',
+            { skipReason: 'no_gentle_followup_template', messageType: 'followup_gentle', daysSinceContact },
+            lead.status
+          );
           return;
         }
         
@@ -375,6 +441,15 @@ async function processLead(
           console.error(`   Message Type: ${messageType} (${daysSinceContact} days since contact)`);
           console.error(`   Reason: No value follow-up template assigned`);
           console.error(`   Action: Lead skipped, no message sent`);
+          await logLeadActivity(
+            lead.id,
+            lead.consultantId,
+            lead.agentConfigId,
+            'skipped',
+            'Template value follow-up non assegnato',
+            { skipReason: 'no_value_followup_template', messageType: 'followup_value', daysSinceContact },
+            lead.status
+          );
           return;
         }
         
@@ -392,6 +467,15 @@ async function processLead(
           console.error(`   Message Type: ${messageType} (${daysSinceContact} days since contact)`);
           console.error(`   Reason: No final follow-up template assigned`);
           console.error(`   Action: Lead skipped, no message sent`);
+          await logLeadActivity(
+            lead.id,
+            lead.consultantId,
+            lead.agentConfigId,
+            'skipped',
+            'Template final follow-up non assegnato',
+            { skipReason: 'no_final_followup_template', messageType: 'followup_final', daysSinceContact },
+            lead.status
+          );
           return;
         }
         
@@ -514,6 +598,20 @@ async function processLead(
           .where(eq(proactiveLeads.id, lead.id));
         
         console.log(`⏭️  Skipping lead ${lead.id} - template not approved, marked as 'lost'\n`);
+        await logLeadActivity(
+          lead.id,
+          lead.consultantId,
+          lead.agentConfigId,
+          'failed',
+          `Template non approvato: ${approvalCheck.reason}`,
+          { 
+            skipReason: 'template_not_approved', 
+            templateSid: contentSid,
+            templateStatus: approvalCheck.status,
+            errorMessage: approvalCheck.reason 
+          },
+          lead.status
+        );
         return; // Skip this lead
       }
       
@@ -797,6 +895,21 @@ async function processLead(
         .where(eq(proactiveLeads.id, lead.id));
       
       console.log(`🔒 [DRY RUN] Lead ${lead.id} status updated to 'contacted' (prevents duplicate sends)`);
+
+      await logLeadActivity(
+        lead.id,
+        lead.consultantId,
+        lead.agentConfigId,
+        'sent',
+        'Messaggio simulato (DRY RUN)',
+        { 
+          isDryRun: true,
+          templateSid: contentSid,
+          messageType,
+          templateVariables: contentVariables
+        },
+        'contacted'
+      );
     } else {
       console.log(`✅ Sent message to ${lead.firstName} ${lead.lastName}`);
       
@@ -816,11 +929,37 @@ async function processLead(
         .where(eq(proactiveLeads.id, lead.id));
 
       console.log(`✅ Updated lead ${lead.id} status to 'contacted'`);
+
+      await logLeadActivity(
+        lead.id,
+        lead.consultantId,
+        lead.agentConfigId,
+        'sent',
+        'Messaggio inviato con successo',
+        { 
+          isDryRun: false,
+          templateSid: contentSid,
+          messageType,
+          templateVariables: contentVariables
+        },
+        'contacted'
+      );
     }
 
   } catch (error: any) {
     console.error(`❌ Error processing lead ${lead.id}:`, error.message);
-    // Don't throw - continue processing other leads
+    await logLeadActivity(
+      lead.id,
+      lead.consultantId,
+      lead.agentConfigId,
+      'error',
+      `Errore durante elaborazione: ${error.message}`,
+      { 
+        errorMessage: error.message,
+        errorStack: error.stack
+      },
+      lead.status
+    );
   }
 }
 
