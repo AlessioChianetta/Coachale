@@ -5,7 +5,6 @@ import {
   whatsappMessages,
   whatsappConversations,
   whatsappGlobalApiKeys,
-  whatsappVertexAiSettings,
   consultantWhatsappConfig,
   users,
   appointmentBookings,
@@ -13,6 +12,9 @@ import {
   proposedAppointmentSlots,
   proactiveLeads,
   whatsappAgentKnowledgeItems,
+  superadminVertexConfig,
+  consultantVertexAccess,
+  vertexAiSettings,
 } from "../../shared/schema";
 import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
@@ -1794,25 +1796,69 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
           // Need to get Vertex AI credentials for TTS (Google AI Studio doesn't support TTS)
           console.log('⚠️  Current provider is Google AI Studio - fetching Vertex AI for TTS...');
           
-          const [vertexSettings] = await db
-            .select()
-            .from(whatsappVertexAiSettings)
-            .where(eq(whatsappVertexAiSettings.consultantId, conversation.consultantId))
+          // NEW UNIFIED APPROACH: Check SuperAdmin Vertex first, then consultant's own vertexAiSettings
+          let foundVertexSettings: { projectId: string; location: string; serviceAccountJson: string } | null = null;
+          
+          // 1. Check if consultant can use SuperAdmin Vertex
+          const [consultant] = await db
+            .select({ useSuperadminVertex: users.useSuperadminVertex })
+            .from(users)
+            .where(eq(users.id, conversation.consultantId))
             .limit(1);
+          
+          if (consultant?.useSuperadminVertex) {
+            const [accessRecord] = await db
+              .select({ hasAccess: consultantVertexAccess.hasAccess })
+              .from(consultantVertexAccess)
+              .where(eq(consultantVertexAccess.consultantId, conversation.consultantId))
+              .limit(1);
+            
+            const hasAccess = accessRecord?.hasAccess ?? true;
+            
+            if (hasAccess) {
+              const [superadminConfig] = await db
+                .select()
+                .from(superadminVertexConfig)
+                .where(eq(superadminVertexConfig.enabled, true))
+                .limit(1);
+              
+              if (superadminConfig) {
+                console.log('✅ Using SuperAdmin Vertex AI for TTS');
+                foundVertexSettings = superadminConfig;
+              }
+            }
+          }
+          
+          // 2. Fallback: Check consultant's own vertexAiSettings
+          if (!foundVertexSettings) {
+            const [consultantVertexSettings] = await db
+              .select()
+              .from(vertexAiSettings)
+              .where(and(
+                eq(vertexAiSettings.userId, conversation.consultantId),
+                eq(vertexAiSettings.enabled, true)
+              ))
+              .limit(1);
+            
+            if (consultantVertexSettings) {
+              console.log('✅ Using consultant Vertex AI for TTS');
+              foundVertexSettings = consultantVertexSettings;
+            }
+          }
 
-          if (!vertexSettings || !vertexSettings.serviceAccountJson) {
+          if (!foundVertexSettings || !foundVertexSettings.serviceAccountJson) {
             throw new Error('Vertex AI credentials not configured - TTS requires Vertex AI');
           }
 
-          const credentials = parseServiceAccountJson(vertexSettings.serviceAccountJson);
+          const credentials = await parseServiceAccountJson(foundVertexSettings.serviceAccountJson);
           vertexClient = createVertexGeminiClient(
-            vertexSettings.projectId,
-            vertexSettings.location,
+            foundVertexSettings.projectId,
+            foundVertexSettings.location,
             credentials,
             'gemini-2.5-pro-tts'
           );
-          vertexProjectId = vertexSettings.projectId;
-          vertexLocation = vertexSettings.location;
+          vertexProjectId = foundVertexSettings.projectId;
+          vertexLocation = foundVertexSettings.location;
         }
 
         // Generate TTS audio with Gemini 2.5 Pro TTS (Achernar voice)
@@ -3237,43 +3283,94 @@ const MAX_FAILURES_BEFORE_SKIP = 3; // Skip key if it has failed this many times
 /**
  * Select AI provider for WhatsApp (Vertex AI or Google AI Studio)
  * Returns either Vertex AI credentials or API key
+ * 
+ * NEW UNIFIED APPROACH:
+ * 1. Check SuperAdmin Vertex (if consultant has access via useSuperadminVertex + consultantVertexAccess)
+ * 2. Fallback to consultant's own vertexAiSettings
+ * 3. Fallback to Google AI Studio API keys
  */
 async function selectWhatsAppAIProvider(conversation: any): Promise<
   | { type: 'vertex'; projectId: string; location: string; credentials: any }
   | { type: 'studio'; apiKey: string; keyId: string }
 > {
-  // Try Vertex AI first
-  const [vertexSettings] = await db
+  // 1. Check if consultant can use SuperAdmin Vertex
+  const [consultant] = await db
+    .select({ useSuperadminVertex: users.useSuperadminVertex })
+    .from(users)
+    .where(eq(users.id, conversation.consultantId))
+    .limit(1);
+  
+  if (consultant?.useSuperadminVertex) {
+    // Check consultant_vertex_access (default = true if no record exists)
+    const [accessRecord] = await db
+      .select({ hasAccess: consultantVertexAccess.hasAccess })
+      .from(consultantVertexAccess)
+      .where(eq(consultantVertexAccess.consultantId, conversation.consultantId))
+      .limit(1);
+    
+    const hasAccess = accessRecord?.hasAccess ?? true;
+    
+    if (hasAccess) {
+      // Get SuperAdmin Vertex config
+      const [superadminConfig] = await db
+        .select()
+        .from(superadminVertexConfig)
+        .where(eq(superadminVertexConfig.enabled, true))
+        .limit(1);
+      
+      if (superadminConfig) {
+        try {
+          const credentials = await parseServiceAccountJson(superadminConfig.serviceAccountJson);
+          
+          if (credentials) {
+            console.log(`✅ Using SuperAdmin Vertex AI for WhatsApp`);
+            return {
+              type: 'vertex',
+              projectId: superadminConfig.projectId,
+              location: superadminConfig.location,
+              credentials
+            };
+          }
+        } catch (error: any) {
+          console.error(`❌ Failed to parse SuperAdmin Vertex AI credentials: ${error.message}`);
+          console.log(`   ↪ Trying consultant's own Vertex AI...`);
+        }
+      }
+    }
+  }
+  
+  // 2. Fallback: Check consultant's own vertexAiSettings
+  const [consultantVertexSettings] = await db
     .select()
-    .from(whatsappVertexAiSettings)
+    .from(vertexAiSettings)
     .where(
       and(
-        eq(whatsappVertexAiSettings.consultantId, conversation.consultantId),
-        eq(whatsappVertexAiSettings.enabled, true)
+        eq(vertexAiSettings.userId, conversation.consultantId),
+        eq(vertexAiSettings.enabled, true)
       )
     )
     .limit(1);
 
-  if (vertexSettings) {
+  if (consultantVertexSettings) {
     // Check expiration
     const now = new Date();
-    if (vertexSettings.expiresAt && vertexSettings.expiresAt < now) {
-      console.log(`⚠️  Vertex AI credentials expired on ${vertexSettings.expiresAt.toLocaleDateString()}`);
+    if (consultantVertexSettings.expiresAt && consultantVertexSettings.expiresAt < now) {
+      console.log(`⚠️  Consultant Vertex AI credentials expired on ${consultantVertexSettings.expiresAt.toLocaleDateString()}`);
       console.log(`   ↪ Falling back to API keys`);
     } else {
       // Parse Service Account JSON using shared helper with backward compatibility
       try {
-        const credentials = await parseServiceAccountJson(vertexSettings.serviceAccountJson);
+        const credentials = await parseServiceAccountJson(consultantVertexSettings.serviceAccountJson);
 
         if (!credentials) {
           throw new Error("Failed to parse service account credentials");
         }
 
-        console.log(`✅ Using Vertex AI for WhatsApp`);
+        console.log(`✅ Using consultant's Vertex AI for WhatsApp`);
         return {
           type: 'vertex',
-          projectId: vertexSettings.projectId,
-          location: vertexSettings.location,
+          projectId: consultantVertexSettings.projectId,
+          location: consultantVertexSettings.location,
           credentials
         };
       } catch (error: any) {
@@ -3283,7 +3380,7 @@ async function selectWhatsAppAIProvider(conversation: any): Promise<
     }
   }
 
-  // Fallback to Google AI Studio API keys
+  // 3. Fallback to Google AI Studio API keys
   console.log(`📍 No active Vertex AI - using Google AI Studio API keys`);
   const keyInfo = await selectApiKey(conversation);
   return {

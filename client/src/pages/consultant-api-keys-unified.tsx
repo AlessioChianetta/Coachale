@@ -585,6 +585,59 @@ export default function ConsultantApiKeysUnified() {
     refetchInterval: 30000
   });
 
+  // Vertex Preference query - determines if consultant uses SuperAdmin Vertex or own
+  const { data: vertexPreference, isLoading: isLoadingVertexPreference } = useQuery({
+    queryKey: ["/api/consultant/vertex-preference"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/vertex-preference", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Failed to fetch Vertex preference");
+      }
+      if (response.status === 404) return { useSuperAdminVertex: true, superAdminVertexAvailable: false, hasOwnVertex: false };
+      return response.json();
+    },
+  });
+
+  const [isSavingVertexPreference, setIsSavingVertexPreference] = useState(false);
+
+  const handleToggleVertexPreference = async (useSuperAdmin: boolean) => {
+    setIsSavingVertexPreference(true);
+    try {
+      const response = await fetch("/api/consultant/vertex-preference", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ useSuperAdminVertex: useSuperAdmin }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante l'aggiornamento");
+      }
+
+      toast({
+        title: "Preferenza salvata",
+        description: useSuperAdmin 
+          ? "Stai usando Vertex AI del SuperAdmin" 
+          : "Stai usando le tue credenziali Vertex AI",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/vertex-preference"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingVertexPreference(false);
+    }
+  };
+
   useEffect(() => {
     if (vertexAiData?.settings) {
       setVertexFormData({
@@ -664,29 +717,7 @@ export default function ConsultantApiKeysUnified() {
     }
   }, [twilioSettingsData]);
 
-  // WhatsApp AI Configuration State
-  const [whatsAppVertexFormData, setWhatsAppVertexFormData] = useState({
-    projectId: "",
-    location: "us-central1",
-    serviceAccountJson: "",
-  });
-
   const [newWhatsAppApiKey, setNewWhatsAppApiKey] = useState("");
-
-  // WhatsApp Vertex AI Settings Query
-  const { data: whatsAppVertexData, isLoading: isLoadingWhatsAppVertex } = useQuery({
-    queryKey: ["/api/whatsapp/vertex-ai/settings"],
-    queryFn: async () => {
-      const response = await fetch("/api/whatsapp/vertex-ai/settings", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok && response.status !== 404) {
-        throw new Error("Failed to fetch WhatsApp Vertex AI settings");
-      }
-      if (response.status === 404) return null;
-      return response.json();
-    },
-  });
 
   // WhatsApp API Keys Query
   const { data: whatsAppApiKeysData, isLoading: isLoadingWhatsAppKeys } = useQuery({
@@ -706,17 +737,6 @@ export default function ConsultantApiKeysUnified() {
   const whatsAppApiKeys = whatsAppApiKeysData?.keys || [];
   const whatsAppKeysCount = whatsAppApiKeysData?.count || 0;
   const whatsAppMaxKeys = whatsAppApiKeysData?.maxKeys || 50;
-
-  // Sync WhatsApp Vertex AI form data when loaded
-  useEffect(() => {
-    if (whatsAppVertexData?.settings) {
-      setWhatsAppVertexFormData({
-        projectId: whatsAppVertexData.settings.projectId || "",
-        location: whatsAppVertexData.settings.location || "us-central1",
-        serviceAccountJson: "",
-      });
-    }
-  }, [whatsAppVertexData]);
 
   const handleVertexSave = async () => {
     try {
@@ -899,83 +919,6 @@ export default function ConsultantApiKeysUnified() {
     } catch (error: any) {
       toast({
         title: "Errore",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  // WhatsApp AI Handler Functions
-  const handleSaveWhatsAppVertexAI = async () => {
-    try {
-      const method = whatsAppVertexData?.settings ? "PUT" : "POST";
-
-      const response = await fetch("/api/whatsapp/vertex-ai/settings", {
-        method,
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(whatsAppVertexFormData),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Errore durante il salvataggio");
-      }
-
-      toast({
-        title: "✅ Successo",
-        description: "Vertex AI per WhatsApp configurato con successo",
-      });
-
-      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/vertex-ai/settings"] });
-
-      // Clear JSON for security
-      setWhatsAppVertexFormData(prev => ({ ...prev, serviceAccountJson: "" }));
-    } catch (error: any) {
-      toast({
-        title: "❌ Errore",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteWhatsAppVertexAI = async () => {
-    if (!whatsAppVertexData?.settings?.id) return;
-
-    if (!confirm("Sei sicuro di voler rimuovere la configurazione Vertex AI per WhatsApp? Gli agenti useranno solo le Gemini API keys.")) {
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/whatsapp/vertex-ai/settings", {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Errore durante la rimozione");
-      }
-
-      toast({
-        title: "✅ Rimosso",
-        description: "Configurazione Vertex AI per WhatsApp rimossa",
-      });
-
-      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/vertex-ai/settings"] });
-
-      // Reset form
-      setWhatsAppVertexFormData({
-        projectId: "",
-        location: "us-central1",
-        serviceAccountJson: "",
-      });
-    } catch (error: any) {
-      toast({
-        title: "❌ Errore",
         description: error.message,
         variant: "destructive",
       });
@@ -1725,147 +1668,194 @@ export default function ConsultantApiKeysUnified() {
                           <Cloud className="h-6 w-6 text-purple-600" />
                         </div>
                         <div>
-                          <CardTitle>Vertex AI Settings (Consigliato)</CardTitle>
+                          <CardTitle>Configurazione Vertex AI</CardTitle>
                           <CardDescription>
-                            $300 gratuiti per 90 giorni · Migliori prestazioni
+                            Scegli se usare Vertex AI del SuperAdmin o configurare il tuo
                           </CardDescription>
                         </div>
                       </div>
-                      {vertexAiData?.settings && (
-                        <Switch
-                          checked={vertexAiData.settings.enabled}
-                          onCheckedChange={handleVertexToggle}
-                        />
-                      )}
+                      <Badge variant="outline" className={
+                        vertexPreference?.useSuperAdminVertex && vertexPreference?.superAdminVertexAvailable
+                          ? "bg-green-50 text-green-700 border-green-300"
+                          : !vertexPreference?.useSuperAdminVertex && vertexPreference?.hasOwnVertex
+                          ? "bg-blue-50 text-blue-700 border-blue-300"
+                          : "bg-gray-50 text-gray-700 border-gray-300"
+                      }>
+                        {vertexPreference?.useSuperAdminVertex && vertexPreference?.superAdminVertexAvailable
+                          ? "Vertex SuperAdmin"
+                          : !vertexPreference?.useSuperAdminVertex && vertexPreference?.hasOwnVertex
+                          ? "Vertex Proprietario"
+                          : "Non configurato"}
+                      </Badge>
                     </div>
                   </CardHeader>
 
                   <CardContent className="space-y-6">
-                    {vertexAiData?.settings && vertexAiData.settings.daysRemaining !== undefined && (
-                      <Alert className={vertexAiData.settings.daysRemaining < 7 ? "bg-red-50 border-red-200" : vertexAiData.settings.daysRemaining < 30 ? "bg-yellow-50 border-yellow-200" : "bg-blue-50 border-blue-200"}>
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertDescription>
-                          {vertexAiData.settings.daysRemaining < 0 ? (
-                            "⚠️ Vertex AI è scaduto! Aggiorna le credenziali."
-                          ) : vertexAiData.settings.daysRemaining < 7 ? (
-                            `⚠️ Vertex AI scade tra ${vertexAiData.settings.daysRemaining} giorni! Rinnova ora.`
-                          ) : vertexAiData.settings.daysRemaining < 30 ? (
-                            `Vertex AI scade tra ${vertexAiData.settings.daysRemaining} giorni.`
-                          ) : (
-                            `Attivo. Scade tra ${vertexAiData.settings.daysRemaining} giorni.`
-                          )}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="vertex-project-id">Project ID *</Label>
-                        <Input
-                          id="vertex-project-id"
-                          value={vertexFormData.projectId}
-                          onChange={(e) => setVertexFormData({ ...vertexFormData, projectId: e.target.value })}
-                          placeholder="my-gcp-project-123"
-                          className="mt-1.5"
+                    {vertexPreference?.superAdminVertexAvailable && (
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                        <div className="flex items-center gap-3">
+                          <Cloud className="h-5 w-5 text-green-600" />
+                          <div>
+                            <p className="font-medium text-green-800">Usa Vertex AI del SuperAdmin</p>
+                            <p className="text-sm text-green-600">
+                              Usa la configurazione centralizzata invece di configurare le tue credenziali
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={vertexPreference?.useSuperAdminVertex ?? true}
+                          onCheckedChange={handleToggleVertexPreference}
+                          disabled={isSavingVertexPreference}
                         />
                       </div>
+                    )}
 
-                      <div>
-                        <Label htmlFor="vertex-location">Location *</Label>
-                        <Select
-                          value={vertexFormData.location}
-                          onValueChange={(value) => setVertexFormData({ ...vertexFormData, location: value })}
-                        >
-                          <SelectTrigger id="vertex-location" className="mt-1.5">
-                            <SelectValue placeholder="Seleziona location" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="us-central1">US Central 1 (Iowa)</SelectItem>
-                            <SelectItem value="us-east1">US East 1 (South Carolina)</SelectItem>
-                            <SelectItem value="europe-west1">Europe West 1 (Belgium)</SelectItem>
-                            <SelectItem value="europe-west4">Europe West 4 (Netherlands)</SelectItem>
-                            <SelectItem value="asia-southeast1">Asia Southeast 1 (Singapore)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    {vertexPreference?.useSuperAdminVertex && vertexPreference?.superAdminVertexAvailable ? (
+                      <Alert className="bg-green-50 border-green-200">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <AlertDescription className="text-sm text-green-800">
+                          Stai usando la configurazione Vertex AI centralizzata del SuperAdmin. 
+                          Non è necessario configurare le tue credenziali.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <>
+                        {!vertexPreference?.superAdminVertexAvailable && (
+                          <Alert className="bg-yellow-50 border-yellow-200">
+                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertDescription className="text-sm text-yellow-800">
+                              Il SuperAdmin non ha configurato Vertex AI. Configura le tue credenziali qui sotto.
+                            </AlertDescription>
+                          </Alert>
+                        )}
 
-                      <div>
-                        <Label htmlFor="vertex-usage-scope">Chi può usare questa configurazione? *</Label>
-                        <Select
-                          value={vertexFormData.usageScope}
-                          onValueChange={(value: "both" | "consultant_only" | "clients_only" | "selective") => 
-                            setVertexFormData({ ...vertexFormData, usageScope: value })
-                          }
-                        >
-                          <SelectTrigger id="vertex-usage-scope" className="mt-1.5">
-                            <SelectValue placeholder="Seleziona chi può usare Vertex AI" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="both">Tutti (consultant e clienti)</SelectItem>
-                            <SelectItem value="consultant_only">Solo io (consultant)</SelectItem>
-                            <SelectItem value="clients_only">Solo i clienti</SelectItem>
-                            <SelectItem value="selective">Clienti selezionati (configurare dopo il salvataggio)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Controlla chi può usare questa configurazione Vertex AI
-                        </p>
-                      </div>
+                        {vertexAiData?.settings && vertexAiData.settings.daysRemaining !== undefined && (
+                          <Alert className={vertexAiData.settings.daysRemaining < 7 ? "bg-red-50 border-red-200" : vertexAiData.settings.daysRemaining < 30 ? "bg-yellow-50 border-yellow-200" : "bg-blue-50 border-blue-200"}>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription>
+                              {vertexAiData.settings.daysRemaining < 0 ? (
+                                "⚠️ Vertex AI è scaduto! Aggiorna le credenziali."
+                              ) : vertexAiData.settings.daysRemaining < 7 ? (
+                                `⚠️ Vertex AI scade tra ${vertexAiData.settings.daysRemaining} giorni! Rinnova ora.`
+                              ) : vertexAiData.settings.daysRemaining < 30 ? (
+                                `Vertex AI scade tra ${vertexAiData.settings.daysRemaining} giorni.`
+                              ) : (
+                                `Attivo. Scade tra ${vertexAiData.settings.daysRemaining} giorni.`
+                              )}
+                            </AlertDescription>
+                          </Alert>
+                        )}
 
-                      <div>
-                        <Label htmlFor="vertex-service-account">Service Account JSON *</Label>
-                        <div className="mt-1.5">
-                          <Input
-                            id="vertex-service-account"
-                            type="file"
-                            accept=".json"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                try {
-                                  const text = await file.text();
-                                  const json = JSON.parse(text);
-                                  setVertexFormData({ ...vertexFormData, serviceAccountJson: JSON.stringify(json) });
-                                  toast({
-                                    title: "✅ File caricato",
-                                    description: `Service Account JSON caricato con successo (${file.name})`,
-                                  });
-                                } catch (error) {
-                                  toast({
-                                    title: "❌ Errore",
-                                    description: "Il file non è un JSON valido",
-                                    variant: "destructive",
-                                  });
-                                }
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="vertex-project-id">Project ID *</Label>
+                            <Input
+                              id="vertex-project-id"
+                              value={vertexFormData.projectId}
+                              onChange={(e) => setVertexFormData({ ...vertexFormData, projectId: e.target.value })}
+                              placeholder="my-gcp-project-123"
+                              className="mt-1.5"
+                            />
+                          </div>
+
+                          <div>
+                            <Label htmlFor="vertex-location">Location *</Label>
+                            <Select
+                              value={vertexFormData.location}
+                              onValueChange={(value) => setVertexFormData({ ...vertexFormData, location: value })}
+                            >
+                              <SelectTrigger id="vertex-location" className="mt-1.5">
+                                <SelectValue placeholder="Seleziona location" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="us-central1">US Central 1 (Iowa)</SelectItem>
+                                <SelectItem value="us-east1">US East 1 (South Carolina)</SelectItem>
+                                <SelectItem value="europe-west1">Europe West 1 (Belgium)</SelectItem>
+                                <SelectItem value="europe-west4">Europe West 4 (Netherlands)</SelectItem>
+                                <SelectItem value="asia-southeast1">Asia Southeast 1 (Singapore)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="vertex-usage-scope">Chi può usare questa configurazione? *</Label>
+                            <Select
+                              value={vertexFormData.usageScope}
+                              onValueChange={(value: "both" | "consultant_only" | "clients_only" | "selective") => 
+                                setVertexFormData({ ...vertexFormData, usageScope: value })
                               }
-                            }}
-                            className="cursor-pointer"
-                          />
+                            >
+                              <SelectTrigger id="vertex-usage-scope" className="mt-1.5">
+                                <SelectValue placeholder="Seleziona chi può usare Vertex AI" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="both">Tutti (consultant e clienti)</SelectItem>
+                                <SelectItem value="consultant_only">Solo io (consultant)</SelectItem>
+                                <SelectItem value="clients_only">Solo i clienti</SelectItem>
+                                <SelectItem value="selective">Clienti selezionati (configurare dopo il salvataggio)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Controlla chi può usare questa configurazione Vertex AI
+                            </p>
+                          </div>
+
+                          <div>
+                            <Label htmlFor="vertex-service-account">Service Account JSON *</Label>
+                            <div className="mt-1.5">
+                              <Input
+                                id="vertex-service-account"
+                                type="file"
+                                accept=".json"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    try {
+                                      const text = await file.text();
+                                      const json = JSON.parse(text);
+                                      setVertexFormData({ ...vertexFormData, serviceAccountJson: JSON.stringify(json) });
+                                      toast({
+                                        title: "✅ File caricato",
+                                        description: `Service Account JSON caricato con successo (${file.name})`,
+                                      });
+                                    } catch (error) {
+                                      toast({
+                                        title: "❌ Errore",
+                                        description: "Il file non è un JSON valido",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }
+                                }}
+                                className="cursor-pointer"
+                              />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Carica il file JSON del Service Account di Google Cloud (salvato in chiaro nel database)
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Carica il file JSON del Service Account di Google Cloud (salvato in chiaro nel database)
-                        </p>
-                      </div>
-                    </div>
 
-                    <Alert className="bg-blue-50 border-blue-200">
-                      <CheckCircle className="h-4 w-4" />
-                      <AlertDescription className="text-sm text-blue-800">
-                        Vertex AI offre $300 gratuiti per 90 giorni, modelli più avanzati e migliori limiti di rate. 
-                        Configuralo per ottenere la migliore esperienza!
-                      </AlertDescription>
-                    </Alert>
+                        <Alert className="bg-blue-50 border-blue-200">
+                          <CheckCircle className="h-4 w-4" />
+                          <AlertDescription className="text-sm text-blue-800">
+                            Vertex AI offre $300 gratuiti per 90 giorni, modelli più avanzati e migliori limiti di rate. 
+                            Configuralo per ottenere la migliore esperienza!
+                          </AlertDescription>
+                        </Alert>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t">
-                      <Button
-                        onClick={handleVertexSave}
-                        disabled={!vertexFormData.projectId || !vertexFormData.location || !vertexFormData.serviceAccountJson}
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                      >
-                        <Save className="h-4 w-4 mr-2" />
-                        Salva Vertex AI
-                      </Button>
-                    </div>
+                        <div className="flex justify-end gap-3 pt-4 border-t">
+                          <Button
+                            onClick={handleVertexSave}
+                            disabled={!vertexFormData.projectId || !vertexFormData.location || !vertexFormData.serviceAccountJson}
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            Salva Vertex AI
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -2381,311 +2371,48 @@ export default function ConsultantApiKeysUnified() {
                 <Alert className="mb-6 bg-green-50 border-green-200">
                   <MessageSquare className="h-5 w-5" />
                   <AlertDescription className="text-sm">
-                    <strong>Sistema AI Separato per Agenti WhatsApp</strong>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>Pool AI completamente separato dalle credenziali generali del consultant</li>
-                      <li>Sistema a 3 livelli: Vertex AI WhatsApp → Gemini Keys WhatsApp → Errore</li>
-                      <li>NON usa mai le credenziali del consultant generale</li>
-                      <li>Configura Vertex AI WhatsApp per $300 free credit dedicati agli agenti</li>
-                    </ul>
+                    <strong>Configurazione AI per Agenti WhatsApp</strong>
+                    <p className="mt-2">
+                      Gli agenti WhatsApp utilizzano automaticamente le credenziali AI configurate nel tab "AI Gemini".
+                    </p>
                   </AlertDescription>
                 </Alert>
 
-                {/* WhatsApp Vertex AI Configuration Card */}
-                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm mt-6">
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl">
-                          <Cloud className="h-6 w-6 text-green-600" />
-                        </div>
-                        <div>
-                          <CardTitle>Vertex AI - Pool Agenti WhatsApp</CardTitle>
-                          <CardDescription>
-                            Sistema AI separato per agenti WhatsApp con $300 free credit
-                          </CardDescription>
-                        </div>
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl">
+                        <MessageSquare className="h-6 w-6 text-green-600" />
                       </div>
-                      <Badge variant="outline" className={
-                        whatsAppVertexData?.settings 
-                          ? "bg-green-50 text-green-700 border-green-300" 
-                          : "bg-gray-50 text-gray-700 border-gray-300"
-                      }>
-                        {whatsAppVertexData?.settings ? "Configurata" : "Non configurata"}
-                      </Badge>
+                      <div>
+                        <CardTitle>Credenziali AI WhatsApp</CardTitle>
+                        <CardDescription>
+                          Gli agenti WhatsApp usano le stesse credenziali AI del sistema principale
+                        </CardDescription>
+                      </div>
                     </div>
                   </CardHeader>
 
-                  <CardContent className="space-y-6">
+                  <CardContent className="space-y-4">
                     <Alert className="bg-blue-50 border-blue-200">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
                       <AlertDescription className="text-sm text-blue-800">
-                        <strong>Sistema AI separato per WhatsApp:</strong> Gli agenti WhatsApp useranno SOLO queste credenziali, 
-                        completamente separate da quelle del consultant. Offre $300 gratuiti per 90 giorni e migliori prestazioni.
-                      </AlertDescription>
-                    </Alert>
-
-                    {whatsAppVertexData?.settings && whatsAppVertexData.settings.daysRemaining !== undefined && (
-                      <Alert className={
-                        whatsAppVertexData.settings.daysRemaining < 7 ? "bg-red-50 border-red-200" : 
-                        whatsAppVertexData.settings.daysRemaining < 30 ? "bg-yellow-50 border-yellow-200" : 
-                        "bg-green-50 border-green-200"
-                      }>
-                        <Clock className="h-4 w-4" />
-                        <AlertDescription>
-                          {whatsAppVertexData.settings.daysRemaining < 0 ? (
-                            "⚠️ Vertex AI WhatsApp scaduto! Gli agenti useranno Gemini API keys."
-                          ) : whatsAppVertexData.settings.daysRemaining < 7 ? (
-                            `⚠️ Scade tra ${whatsAppVertexData.settings.daysRemaining} giorni! Rinnova ora.`
-                          ) : whatsAppVertexData.settings.daysRemaining < 30 ? (
-                            `Scade tra ${whatsAppVertexData.settings.daysRemaining} giorni.`
-                          ) : (
-                            `Attivo. Scade tra ${whatsAppVertexData.settings.daysRemaining} giorni.`
-                          )}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="whatsapp-vertex-project-id">Project ID *</Label>
-                        <Input
-                          id="whatsapp-vertex-project-id"
-                          value={whatsAppVertexFormData.projectId}
-                          onChange={(e) => setWhatsAppVertexFormData({ ...whatsAppVertexFormData, projectId: e.target.value })}
-                          placeholder="whatsapp-ai-project-123"
-                          className="mt-1.5"
-                        />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="whatsapp-vertex-location">Location *</Label>
-                        <Select
-                          value={whatsAppVertexFormData.location}
-                          onValueChange={(value) => setWhatsAppVertexFormData({ ...whatsAppVertexFormData, location: value })}
-                        >
-                          <SelectTrigger id="whatsapp-vertex-location" className="mt-1.5">
-                            <SelectValue placeholder="Seleziona location" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="us-central1">US Central 1 (Iowa)</SelectItem>
-                            <SelectItem value="us-east1">US East 1 (South Carolina)</SelectItem>
-                            <SelectItem value="europe-west1">Europe West 1 (Belgium)</SelectItem>
-                            <SelectItem value="europe-west4">Europe West 4 (Netherlands)</SelectItem>
-                            <SelectItem value="asia-southeast1">Asia Southeast 1 (Singapore)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="whatsapp-vertex-service-account">Service Account JSON *</Label>
-                        <div className="mt-1.5">
-                          <Input
-                            id="whatsapp-vertex-service-account"
-                            type="file"
-                            accept=".json"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                try {
-                                  const text = await file.text();
-                                  const json = JSON.parse(text);
-                                  setWhatsAppVertexFormData({ ...whatsAppVertexFormData, serviceAccountJson: JSON.stringify(json) });
-                                  toast({
-                                    title: "✅ File caricato",
-                                    description: `Service Account JSON caricato con successo (${file.name})`,
-                                  });
-                                } catch (error) {
-                                  toast({
-                                    title: "❌ Errore",
-                                    description: "Il file non è un JSON valido",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }
-                            }}
-                            className="cursor-pointer"
-                          />
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                          Carica il file JSON del Service Account Google Cloud per WhatsApp (salvato in chiaro nel database)
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4 border-t">
-                      {whatsAppVertexData?.settings && (
-                        <Button
-                          variant="outline"
-                          onClick={handleDeleteWhatsAppVertexAI}
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Rimuovi
-                        </Button>
-                      )}
-                      <Button
-                        onClick={handleSaveWhatsAppVertexAI}
-                        disabled={!whatsAppVertexFormData.projectId || !whatsAppVertexFormData.location || !whatsAppVertexFormData.serviceAccountJson}
-                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
-                      >
-                        <Save className="h-4 w-4 mr-2" />
-                        {whatsAppVertexData?.settings ? "Aggiorna" : "Salva"} Vertex AI
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* WhatsApp Gemini API Keys Card */}
-                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm mt-6">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-3 bg-gradient-to-br from-yellow-100 to-amber-100 rounded-xl">
-                          <Key className="h-6 w-6 text-yellow-600" />
-                        </div>
-                        <div>
-                          <CardTitle>Gemini API Keys - Fallback Agenti WhatsApp</CardTitle>
-                          <CardDescription>
-                            Usate automaticamente quando Vertex AI non è disponibile
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
-                        {whatsAppKeysCount} / {whatsAppMaxKeys} keys
-                      </Badge>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-6">
-                    <Alert className="bg-amber-50 border-amber-200">
-                      <AlertCircle className="h-4 w-4 text-amber-600" />
-                      <AlertDescription className="text-sm text-amber-800">
-                        <strong>Rotazione automatica LRU:</strong> Le keys vengono utilizzate a rotazione (Least Recently Used). 
-                        Sistema separato dal pool del consultant - gli agenti WhatsApp non useranno mai le credenziali generali.
-                      </AlertDescription>
-                    </Alert>
-
-                    {/* Progress Bar */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-slate-600">Utilizzo Pool</span>
-                        <span className="font-semibold text-slate-900">
-                          {whatsAppKeysCount} / {whatsAppMaxKeys}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div
-                          className={`h-2.5 rounded-full transition-all ${
-                            whatsAppKeysCount >= whatsAppMaxKeys 
-                              ? "bg-red-500" 
-                              : whatsAppKeysCount >= whatsAppMaxKeys * 0.8 
-                              ? "bg-yellow-500" 
-                              : "bg-green-500"
-                          }`}
-                          style={{ width: `${(whatsAppKeysCount / whatsAppMaxKeys) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Add New Key */}
-                    <div className="space-y-3">
-                      <Label htmlFor="new-whatsapp-api-key">Aggiungi Nuova API Key</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="new-whatsapp-api-key"
-                          type="password"
-                          value={newWhatsAppApiKey}
-                          onChange={(e) => setNewWhatsAppApiKey(e.target.value)}
-                          placeholder="AIza..."
-                          className="flex-1"
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                              handleAddWhatsAppGeminiKey();
-                            }
-                          }}
-                        />
-                        <Button
-                          onClick={handleAddWhatsAppGeminiKey}
-                          disabled={whatsAppKeysCount >= whatsAppMaxKeys || !newWhatsAppApiKey.trim()}
-                          className="bg-yellow-600 hover:bg-yellow-700"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Aggiungi
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Keys List */}
-                    {whatsAppApiKeys.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                        <Key className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                        <p className="text-sm">Nessuna API key configurata</p>
-                        <p className="text-xs mt-1">Aggiungi la prima key per abilitare il fallback</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3 max-h-96 overflow-y-auto">
-                        <Label className="text-sm font-medium">Le tue API Keys WhatsApp</Label>
-                        {whatsAppApiKeys.map((key: any, index: number) => (
-                          <div
-                            key={key.id}
-                            className={`p-3 rounded-lg border transition-all ${
-                              key.isActive 
-                                ? "border-green-200 bg-green-50/50" 
-                                : "border-gray-200 bg-gray-50/50"
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <Badge variant="outline" className="font-mono text-xs">
-                                #{index + 1}
-                              </Badge>
-
-                              <div className="flex-1 min-w-0">
-                                <p className="font-mono text-xs text-gray-700 truncate">
-                                  {key.keyPreview || "AIza..."}
-                                </p>
-                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                                  <span>Utilizzi: {key.usageCount || 0}</span>
-                                  {key.lastUsedAt && (
-                                    <>
-                                      <span>•</span>
-                                      <span>Ultimo: {new Date(key.lastUsedAt).toLocaleString('it-IT')}</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={key.isActive}
-                                  onCheckedChange={() => handleToggleWhatsAppApiKey(key.id)}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDeleteWhatsAppApiKey(key.id)}
-                                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <Alert className="bg-green-50 border-green-200">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <AlertDescription className="text-sm text-green-800">
-                        <strong>Sistema a 3 livelli per WhatsApp:</strong>
+                        <strong>Sistema unificato:</strong> Gli agenti WhatsApp utilizzano:
                         <ol className="list-decimal list-inside mt-2 space-y-1">
-                          <li>Vertex AI WhatsApp (priorità massima, $300 free credit)</li>
-                          <li>Gemini API Keys WhatsApp (fallback automatico con rotazione LRU)</li>
-                          <li>Errore (mai usare le credenziali del consultant)</li>
+                          <li><strong>Vertex AI</strong> (priorità massima - configurato nel tab AI Gemini)</li>
+                          <li><strong>Gemini API Keys</strong> (fallback automatico - configurate nel tab AI Gemini)</li>
                         </ol>
                       </AlertDescription>
                     </Alert>
+
+                    <div className="flex items-center justify-center py-4">
+                      <Link href="/consultant/api-keys-unified?tab=ai">
+                        <Button variant="outline" className="gap-2">
+                          <Key className="h-4 w-4" />
+                          Vai alle Impostazioni AI
+                        </Button>
+                      </Link>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>

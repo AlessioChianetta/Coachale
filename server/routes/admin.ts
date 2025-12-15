@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireSuperAdmin, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings } from "../../shared/schema";
+import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess } from "../../shared/schema";
 import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
@@ -695,6 +695,281 @@ router.post(
       });
     } catch (error: any) {
       console.error("Create user error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ============================================
+// TASK 6: SuperAdmin Vertex AI Configuration
+// ============================================
+
+// GET /api/admin/superadmin/vertex-config - Get current SuperAdmin Vertex AI config
+router.get(
+  "/admin/superadmin/vertex-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [config] = await db
+        .select({
+          id: superadminVertexConfig.id,
+          projectId: superadminVertexConfig.projectId,
+          location: superadminVertexConfig.location,
+          enabled: superadminVertexConfig.enabled,
+          createdAt: superadminVertexConfig.createdAt,
+          updatedAt: superadminVertexConfig.updatedAt,
+        })
+        .from(superadminVertexConfig)
+        .limit(1);
+
+      res.json({
+        success: true,
+        config: config || null,
+        hasConfig: !!config,
+      });
+    } catch (error: any) {
+      console.error("Get SuperAdmin Vertex config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// POST /api/admin/superadmin/vertex-config - Create or update SuperAdmin Vertex AI config
+router.post(
+  "/admin/superadmin/vertex-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { projectId, location, serviceAccountJson, enabled } = req.body;
+
+      if (!projectId || !serviceAccountJson) {
+        return res.status(400).json({
+          success: false,
+          error: "projectId and serviceAccountJson are required",
+        });
+      }
+
+      // Validate JSON format
+      try {
+        const parsed = JSON.parse(serviceAccountJson);
+        if (!parsed.project_id || !parsed.private_key || !parsed.client_email) {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid service account JSON: missing required fields (project_id, private_key, client_email)",
+          });
+        }
+      } catch (parseError) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid JSON format for serviceAccountJson",
+        });
+      }
+
+      // Check if config already exists
+      const [existingConfig] = await db
+        .select()
+        .from(superadminVertexConfig)
+        .limit(1);
+
+      let config;
+      if (existingConfig) {
+        // Update existing config
+        [config] = await db
+          .update(superadminVertexConfig)
+          .set({
+            projectId,
+            location: location || "us-central1",
+            serviceAccountJson,
+            enabled: enabled ?? true,
+            updatedAt: new Date(),
+          })
+          .where(eq(superadminVertexConfig.id, existingConfig.id))
+          .returning({
+            id: superadminVertexConfig.id,
+            projectId: superadminVertexConfig.projectId,
+            location: superadminVertexConfig.location,
+            enabled: superadminVertexConfig.enabled,
+            updatedAt: superadminVertexConfig.updatedAt,
+          });
+
+        console.log(`✅ Updated SuperAdmin Vertex AI config: project=${projectId}`);
+      } else {
+        // Create new config
+        [config] = await db
+          .insert(superadminVertexConfig)
+          .values({
+            projectId,
+            location: location || "us-central1",
+            serviceAccountJson,
+            enabled: enabled ?? true,
+          })
+          .returning({
+            id: superadminVertexConfig.id,
+            projectId: superadminVertexConfig.projectId,
+            location: superadminVertexConfig.location,
+            enabled: superadminVertexConfig.enabled,
+            createdAt: superadminVertexConfig.createdAt,
+          });
+
+        console.log(`✅ Created SuperAdmin Vertex AI config: project=${projectId}`);
+      }
+
+      // Audit log
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: existingConfig ? "update_superadmin_vertex_config" : "create_superadmin_vertex_config",
+        targetType: "superadmin_vertex_config",
+        targetId: config.id,
+        details: { projectId, location: location || "us-central1", enabled: enabled ?? true },
+      });
+
+      res.json({
+        success: true,
+        config,
+        isNew: !existingConfig,
+      });
+    } catch (error: any) {
+      console.error("Save SuperAdmin Vertex config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ============================================
+// TASK 7: Consultant Vertex Access Management
+// ============================================
+
+// GET /api/admin/superadmin/consultant-vertex-access - List all consultants with their Vertex access status
+router.get(
+  "/admin/superadmin/consultant-vertex-access",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      // Get all consultants
+      const consultants = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          useSuperadminVertex: users.useSuperadminVertex,
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.role, "consultant"))
+        .orderBy(users.firstName);
+
+      // Get all consultant vertex access records
+      const accessRecords = await db
+        .select()
+        .from(consultantVertexAccess);
+
+      // Map access records by consultantId
+      const accessMap = new Map(
+        accessRecords.map((record) => [record.consultantId, record])
+      );
+
+      // Combine data
+      const consultantsWithAccess = consultants.map((consultant) => {
+        const accessRecord = accessMap.get(consultant.id);
+        return {
+          ...consultant,
+          hasAccess: accessRecord?.hasAccess ?? true, // Default true if no record
+          accessRecordId: accessRecord?.id || null,
+        };
+      });
+
+      res.json({
+        success: true,
+        consultants: consultantsWithAccess,
+      });
+    } catch (error: any) {
+      console.error("Get consultant vertex access error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// PUT /api/admin/superadmin/consultant-vertex-access/:consultantId - Toggle consultant's Vertex access
+router.put(
+  "/admin/superadmin/consultant-vertex-access/:consultantId",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { consultantId } = req.params;
+      const { hasAccess } = req.body;
+
+      if (typeof hasAccess !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          error: "hasAccess must be a boolean",
+        });
+      }
+
+      // Verify consultant exists
+      const [consultant] = await db
+        .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(and(eq(users.id, consultantId), eq(users.role, "consultant")))
+        .limit(1);
+
+      if (!consultant) {
+        return res.status(404).json({
+          success: false,
+          error: "Consultant not found",
+        });
+      }
+
+      // Check if access record exists
+      const [existingRecord] = await db
+        .select()
+        .from(consultantVertexAccess)
+        .where(eq(consultantVertexAccess.consultantId, consultantId))
+        .limit(1);
+
+      let record;
+      if (existingRecord) {
+        // Update existing record
+        [record] = await db
+          .update(consultantVertexAccess)
+          .set({
+            hasAccess,
+            updatedAt: new Date(),
+          })
+          .where(eq(consultantVertexAccess.id, existingRecord.id))
+          .returning();
+      } else {
+        // Create new record
+        [record] = await db
+          .insert(consultantVertexAccess)
+          .values({
+            consultantId,
+            hasAccess,
+          })
+          .returning();
+      }
+
+      console.log(`✅ Updated Vertex access for consultant ${consultant.firstName} ${consultant.lastName}: hasAccess=${hasAccess}`);
+
+      // Audit log
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "update_consultant_vertex_access",
+        targetType: "consultant_vertex_access",
+        targetId: consultantId,
+        details: { hasAccess, consultantName: `${consultant.firstName} ${consultant.lastName}` },
+      });
+
+      res.json({
+        success: true,
+        record,
+      });
+    } catch (error: any) {
+      console.error("Update consultant vertex access error:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }

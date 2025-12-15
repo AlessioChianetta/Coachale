@@ -9,7 +9,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { VertexAI, GenerativeModel } from "@google-cloud/vertexai";
 import { db } from "../db";
-import { vertexAiSettings, vertexAiClientAccess, users } from "../../shared/schema";
+import { vertexAiSettings, vertexAiClientAccess, users, superadminVertexConfig, consultantVertexAccess } from "../../shared/schema";
 import { eq, and, gt, sql } from "drizzle-orm";
 import { AiProviderMetadata } from "./retry-manager";
 import fs from "fs";
@@ -19,7 +19,7 @@ import os from "os";
 /**
  * AI provider source (tier)
  */
-export type AiProviderSource = "client" | "admin" | "google";
+export type AiProviderSource = "superadmin" | "client" | "admin" | "google";
 
 /**
  * Gemini client interface wrapping AI operations
@@ -510,6 +510,118 @@ async function createVertexAIClient(
 }
 
 /**
+ * Create SuperAdmin Vertex AI client
+ * Uses the global superadmin_vertex_config table instead of per-consultant vertexAiSettings
+ */
+async function createSuperadminVertexClient(): Promise<{ 
+  client: GeminiClient; 
+  vertexClient?: VertexAI;
+  metadata: AiProviderMetadata 
+} | null> {
+  try {
+    console.log("🔍 Looking for SuperAdmin Vertex AI configuration...");
+    
+    // Get the SuperAdmin Vertex configuration (there should only be one)
+    const [config] = await db
+      .select()
+      .from(superadminVertexConfig)
+      .where(eq(superadminVertexConfig.enabled, true))
+      .limit(1);
+    
+    if (!config) {
+      console.log("⚠️ No enabled SuperAdmin Vertex AI configuration found");
+      return null;
+    }
+    
+    console.log(`📋 Found SuperAdmin Vertex AI config: project=${config.projectId}, location=${config.location}`);
+    
+    // Parse credentials
+    const credentials = await parseServiceAccountJson(config.serviceAccountJson);
+    
+    if (!credentials) {
+      console.error("❌ Failed to parse SuperAdmin Vertex AI credentials");
+      return null;
+    }
+    
+    // Validate credentials structure
+    if (!credentials.private_key || !credentials.client_email) {
+      console.error("❌ Invalid SuperAdmin Vertex AI credentials structure");
+      return null;
+    }
+    
+    // Create Vertex AI client using shared helper
+    const client = createVertexGeminiClient(
+      config.projectId,
+      config.location,
+      credentials
+    );
+    
+    // Extract the original VertexAI client for TTS
+    const vertexClient = (client as any).__vertexAI as VertexAI | undefined;
+    
+    // Create metadata
+    const metadata: AiProviderMetadata = {
+      name: "Vertex AI (SuperAdmin)",
+      managedBy: "admin",
+    };
+    
+    console.log("✅ Created SuperAdmin Vertex AI client successfully");
+    
+    return {
+      client,
+      vertexClient,
+      metadata,
+    };
+  } catch (error: any) {
+    console.error("❌ Failed to create SuperAdmin Vertex AI client:", error.message);
+    return null;
+  }
+}
+
+/**
+ * Check if a consultant can use SuperAdmin's Vertex AI
+ * Returns true if:
+ * 1. Consultant has useSuperadminVertex = true in users table
+ * 2. Consultant has access (consultant_vertex_access.has_access = true, or no record = default true)
+ */
+async function canUseSuperadminVertex(consultantId: string): Promise<boolean> {
+  try {
+    // 1. Check if consultant has useSuperadminVertex = true
+    const [consultant] = await db
+      .select({ useSuperadminVertex: users.useSuperadminVertex })
+      .from(users)
+      .where(eq(users.id, consultantId))
+      .limit(1);
+    
+    if (!consultant || !consultant.useSuperadminVertex) {
+      console.log(`⚠️ Consultant ${consultantId} has useSuperadminVertex = false`);
+      return false;
+    }
+    
+    // 2. Check consultant_vertex_access (default = true if no record exists)
+    const [accessRecord] = await db
+      .select({ hasAccess: consultantVertexAccess.hasAccess })
+      .from(consultantVertexAccess)
+      .where(eq(consultantVertexAccess.consultantId, consultantId))
+      .limit(1);
+    
+    // If no record exists, default to true (all consultants have access by default)
+    const hasAccess = accessRecord?.hasAccess ?? true;
+    
+    if (!hasAccess) {
+      console.log(`⚠️ Consultant ${consultantId} has been denied SuperAdmin Vertex access`);
+      return false;
+    }
+    
+    console.log(`✅ Consultant ${consultantId} can use SuperAdmin Vertex AI`);
+    return true;
+  } catch (error: any) {
+    console.error(`❌ Error checking SuperAdmin Vertex access for consultant ${consultantId}:`, error.message);
+    return false;
+  }
+}
+
+/**
  * Create Google AI Studio client (fallback)
  */
 async function createGoogleAIStudioClient(
@@ -836,6 +948,51 @@ export async function getAIProvider(
       metadata: result.metadata,
       source: "google",
     };
+  }
+
+  // TIER 0: Try SuperAdmin Vertex AI
+  // This is the highest priority - if consultant has opted in and has access, use SuperAdmin's Vertex
+  if (consultantId) {
+    try {
+      console.log(`🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...`);
+      
+      // Determine the consultant to check for SuperAdmin Vertex access
+      // If clientId !== consultantId, user is a client - need to get their consultant's settings
+      let consultantToCheck = consultantId;
+      
+      // Check if user is a client (has a different consultantId)
+      if (clientId !== consultantId) {
+        console.log(`📋 User ${clientId} is a client, checking their consultant ${consultantId}'s settings`);
+      } else {
+        console.log(`📋 User ${clientId} is the consultant themselves`);
+      }
+      
+      // Check if consultant can use SuperAdmin Vertex
+      const canUse = await canUseSuperadminVertex(consultantToCheck);
+      
+      if (canUse) {
+        const result = await createSuperadminVertexClient();
+        if (result) {
+          console.log(`✅ TIER 0: Successfully created SuperAdmin Vertex AI client`);
+          
+          return {
+            client: result.client,
+            vertexClient: result.vertexClient,
+            metadata: result.metadata,
+            source: "superadmin",
+          };
+        } else {
+          console.log(`⚠️ TIER 0: SuperAdmin Vertex AI config not available, falling back to TIER 1`);
+        }
+      } else {
+        console.log(`⚠️ TIER 0: Consultant ${consultantToCheck} cannot use SuperAdmin Vertex, falling back to TIER 1`);
+      }
+    } catch (error: any) {
+      console.error(`❌ TIER 0 Error:`, error.message);
+      // Continue to TIER 1
+    }
+  } else {
+    console.log(`⚠️ TIER 0: Skipped (no consultantId provided)`);
   }
 
   // TIER 1: Try client-managed Vertex AI (userId = clientId, managedBy = 'self')

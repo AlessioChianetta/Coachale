@@ -25,7 +25,15 @@ import {
   Copy,
   Check,
   Video,
+  Cloud,
+  Loader2,
+  Users,
+  RefreshCw,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
@@ -52,6 +60,23 @@ interface AuditLogEntry {
   adminName?: string;
 }
 
+interface VertexConfig {
+  id?: string;
+  projectId: string;
+  location: string;
+  enabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ConsultantVertexAccess {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  vertexAccessEnabled: boolean;
+}
+
 export default function AdminSettings() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -62,6 +87,15 @@ export default function AdminSettings() {
   const [copiedUri, setCopiedUri] = useState<string | null>(null);
   const [videoMeetingClientId, setVideoMeetingClientId] = useState("");
   const [videoMeetingGuideOpen, setVideoMeetingGuideOpen] = useState(false);
+
+  const [vertexFormData, setVertexFormData] = useState({
+    projectId: "",
+    location: "us-central1",
+    serviceAccountJson: "",
+    enabled: true,
+  });
+  const [isSavingVertex, setIsSavingVertex] = useState(false);
+  const [isTestingVertex, setIsTestingVertex] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -143,11 +177,51 @@ export default function AdminSettings() {
     },
   });
 
+  const { data: vertexConfigData, isLoading: isLoadingVertexConfig } = useQuery({
+    queryKey: ["/api/admin/superadmin/vertex-config"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/superadmin/vertex-config", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Errore nel caricamento configurazione Vertex");
+      }
+      if (response.status === 404) return null;
+      return response.json();
+    },
+  });
+
+  const { data: consultantAccessData, isLoading: isLoadingConsultantAccess } = useQuery({
+    queryKey: ["/api/admin/superadmin/consultant-vertex-access"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/superadmin/consultant-vertex-access", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error("Errore nel caricamento accessi consulenti");
+      }
+      return response.json();
+    },
+  });
+
+  const consultantList: ConsultantVertexAccess[] = consultantAccessData?.consultants || [];
+
   useEffect(() => {
     if (videoMeetingOAuthData?.clientId) {
       setVideoMeetingClientId(videoMeetingOAuthData.clientId);
     }
   }, [videoMeetingOAuthData]);
+
+  useEffect(() => {
+    if (vertexConfigData?.config) {
+      setVertexFormData({
+        projectId: vertexConfigData.config.projectId || "",
+        location: vertexConfigData.config.location || "us-central1",
+        serviceAccountJson: "",
+        enabled: vertexConfigData.config.enabled ?? true,
+      });
+    }
+  }, [vertexConfigData]);
 
   const oauthConfig: GoogleOAuthConfig = oauthData || {
     configured: false,
@@ -246,6 +320,120 @@ export default function AdminSettings() {
       return;
     }
     saveVideoMeetingOAuthMutation.mutate({ clientId: videoMeetingClientId });
+  };
+
+  const handleSaveVertexConfig = async () => {
+    if (!vertexFormData.projectId || !vertexFormData.location) {
+      toast({
+        title: "Campi obbligatori",
+        description: "Inserisci Project ID e Location.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!vertexConfigData?.config && !vertexFormData.serviceAccountJson) {
+      toast({
+        title: "Credenziali mancanti",
+        description: "Inserisci il Service Account JSON per la prima configurazione.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingVertex(true);
+    try {
+      const response = await fetch("/api/admin/superadmin/vertex-config", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(vertexFormData),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante il salvataggio");
+      }
+
+      toast({
+        title: "Configurazione salvata",
+        description: "Vertex AI configurato con successo per tutti i consulenti.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/superadmin/vertex-config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-log"] });
+      setVertexFormData(prev => ({ ...prev, serviceAccountJson: "" }));
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingVertex(false);
+    }
+  };
+
+  const handleTestVertexConnection = async () => {
+    setIsTestingVertex(true);
+    try {
+      const response = await fetch("/api/admin/superadmin/vertex-config/test", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Test fallito");
+      }
+
+      const result = await response.json();
+      toast({
+        title: "Connessione riuscita",
+        description: result.message || "Vertex AI è configurato correttamente.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Test fallito",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingVertex(false);
+    }
+  };
+
+  const handleToggleConsultantAccess = async (consultantId: string, enabled: boolean) => {
+    try {
+      const response = await fetch("/api/admin/superadmin/consultant-vertex-access", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ consultantId, vertexAccessEnabled: enabled }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante l'aggiornamento");
+      }
+
+      toast({
+        title: enabled ? "Accesso abilitato" : "Accesso disabilitato",
+        description: `Accesso Vertex AI ${enabled ? "abilitato" : "disabilitato"} per il consulente.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/superadmin/consultant-vertex-access"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const getActionLabel = (action: string) => {
@@ -767,6 +955,181 @@ export default function AdminSettings() {
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
+              </CardContent>
+            </Card>
+
+            {/* Vertex AI SuperAdmin Configuration */}
+            <Card className="border-0 shadow-lg lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Cloud className="w-5 h-5 text-indigo-500" />
+                  Configurazione Vertex AI (SuperAdmin)
+                </CardTitle>
+                <CardDescription>
+                  Configura Vertex AI per tutti i consulenti della piattaforma
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                  <div className={`p-2 rounded-lg ${vertexConfigData?.config ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                    {vertexConfigData?.config ? (
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {vertexConfigData?.config ? "Configurato" : "Non Configurato"}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {vertexConfigData?.config
+                        ? `Project: ${vertexConfigData.config.projectId} - Location: ${vertexConfigData.config.location}`
+                        : "Inserisci le credenziali per abilitare Vertex AI"}
+                    </p>
+                  </div>
+                  {vertexConfigData?.config && (
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="vertex-enabled" className="text-sm">Abilitato</Label>
+                      <Switch
+                        id="vertex-enabled"
+                        checked={vertexFormData.enabled}
+                        onCheckedChange={(checked) => setVertexFormData(prev => ({ ...prev, enabled: checked }))}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="vertex-project-id">Project ID *</Label>
+                    <Input
+                      id="vertex-project-id"
+                      placeholder="my-gcp-project-123"
+                      value={vertexFormData.projectId}
+                      onChange={(e) => setVertexFormData(prev => ({ ...prev, projectId: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="vertex-location">Location *</Label>
+                    <Select
+                      value={vertexFormData.location}
+                      onValueChange={(value) => setVertexFormData(prev => ({ ...prev, location: value }))}
+                    >
+                      <SelectTrigger id="vertex-location">
+                        <SelectValue placeholder="Seleziona location" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="us-central1">US Central 1 (Iowa)</SelectItem>
+                        <SelectItem value="us-east1">US East 1 (South Carolina)</SelectItem>
+                        <SelectItem value="europe-west1">Europe West 1 (Belgio)</SelectItem>
+                        <SelectItem value="europe-west4">Europe West 4 (Paesi Bassi)</SelectItem>
+                        <SelectItem value="asia-southeast1">Asia Southeast 1 (Singapore)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="vertex-service-account">Service Account JSON {!vertexConfigData?.config && "*"}</Label>
+                  <Textarea
+                    id="vertex-service-account"
+                    placeholder='{"type": "service_account", "project_id": "...", "private_key": "...", ...}'
+                    value={vertexFormData.serviceAccountJson}
+                    onChange={(e) => setVertexFormData(prev => ({ ...prev, serviceAccountJson: e.target.value }))}
+                    rows={5}
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-xs text-gray-500">
+                    {vertexConfigData?.config
+                      ? "Lascia vuoto per mantenere le credenziali esistenti, oppure incolla un nuovo JSON per aggiornarle."
+                      : "Incolla il JSON completo del Service Account Google Cloud."}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={handleSaveVertexConfig}
+                    disabled={isSavingVertex || !vertexFormData.projectId || !vertexFormData.location}
+                    className="bg-gradient-to-r from-indigo-500 to-purple-500"
+                  >
+                    {isSavingVertex ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvataggio...</>
+                    ) : (
+                      <><Save className="w-4 h-4 mr-2" /> Salva Configurazione</>
+                    )}
+                  </Button>
+
+                  {vertexConfigData?.config && (
+                    <Button
+                      variant="outline"
+                      onClick={handleTestVertexConnection}
+                      disabled={isTestingVertex}
+                    >
+                      {isTestingVertex ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Test in corso...</>
+                      ) : (
+                        <><RefreshCw className="w-4 h-4 mr-2" /> Test Connessione</>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Consultant Access List */}
+            <Card className="border-0 shadow-lg lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-green-500" />
+                  Accesso Consulenti a Vertex AI
+                </CardTitle>
+                <CardDescription>
+                  Gestisci quali consulenti possono utilizzare Vertex AI del SuperAdmin
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingConsultantAccess ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full mx-auto mb-4" />
+                    <p className="text-gray-500">Caricamento consulenti...</p>
+                  </div>
+                ) : consultantList.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Nessun consulente</h3>
+                    <p className="text-gray-500">Non ci sono consulenti registrati nella piattaforma.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nome</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead className="text-center">Accesso Vertex</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {consultantList.map((consultant) => (
+                          <TableRow key={consultant.id}>
+                            <TableCell className="font-medium">
+                              {consultant.firstName} {consultant.lastName}
+                            </TableCell>
+                            <TableCell className="text-gray-500">{consultant.email}</TableCell>
+                            <TableCell className="text-center">
+                              <Switch
+                                checked={consultant.vertexAccessEnabled}
+                                onCheckedChange={(checked) => handleToggleConsultantAccess(consultant.id, checked)}
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

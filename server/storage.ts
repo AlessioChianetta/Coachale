@@ -108,6 +108,8 @@ import {
   type UpdateVertexAiSettings,
   type WhatsappVertexAiSettings,
   type InsertWhatsappVertexAiSettings,
+  type SuperadminVertexConfig,
+  type ConsultantVertexAccess,
   type WhatsappGeminiApiKeys,
   type InsertWhatsappGeminiApiKeys,
   type ClientSalesAgent,
@@ -4632,19 +4634,79 @@ export class DatabaseStorage implements IStorage {
   }
 
   // WhatsApp Vertex AI Settings operations
+  // DEPRECATED: These functions now use the unified Vertex configuration
+  // instead of the separate whatsapp_vertex_ai_settings table.
+  // Priority: 1. SuperAdmin Vertex (if consultant has access) 2. Consultant's vertexAiSettings
+  
   async getWhatsAppVertexAISettings(consultantId: string): Promise<WhatsappVertexAiSettings | null> {
     try {
-      const [settings] = await db.select()
-        .from(schema.whatsappVertexAiSettings)
-        .where(eq(schema.whatsappVertexAiSettings.consultantId, consultantId))
+      // NEW UNIFIED APPROACH: Check SuperAdmin Vertex first, then consultant's own vertexAiSettings
+      
+      // 1. Check if consultant can use SuperAdmin Vertex
+      const [consultant] = await db.select({ useSuperadminVertex: schema.users.useSuperadminVertex })
+        .from(schema.users)
+        .where(eq(schema.users.id, consultantId))
         .limit(1);
-
-      if (!settings) {
-        return null;
+      
+      if (consultant?.useSuperadminVertex) {
+        // Check consultant_vertex_access (default = true if no record exists)
+        const [accessRecord] = await db.select({ hasAccess: schema.consultantVertexAccess.hasAccess })
+          .from(schema.consultantVertexAccess)
+          .where(eq(schema.consultantVertexAccess.consultantId, consultantId))
+          .limit(1);
+        
+        const hasAccess = accessRecord?.hasAccess ?? true;
+        
+        if (hasAccess) {
+          // Get SuperAdmin Vertex config
+          const [superadminConfig] = await db.select()
+            .from(schema.superadminVertexConfig)
+            .where(eq(schema.superadminVertexConfig.enabled, true))
+            .limit(1);
+          
+          if (superadminConfig) {
+            console.log(`✅ Using SuperAdmin Vertex AI for WhatsApp (consultant ${consultantId})`);
+            return {
+              id: superadminConfig.id,
+              consultantId: consultantId,
+              projectId: superadminConfig.projectId,
+              location: superadminConfig.location,
+              serviceAccountJson: superadminConfig.serviceAccountJson,
+              enabled: true,
+              expiresAt: null,
+              createdAt: superadminConfig.createdAt,
+              updatedAt: superadminConfig.updatedAt,
+            } as WhatsappVertexAiSettings;
+          }
+        }
       }
-
-      // Return settings as-is (no decryption needed)
-      return settings;
+      
+      // 2. Fallback: Check consultant's own vertexAiSettings
+      const [vertexSettings] = await db.select()
+        .from(schema.vertexAiSettings)
+        .where(and(
+          eq(schema.vertexAiSettings.userId, consultantId),
+          eq(schema.vertexAiSettings.enabled, true)
+        ))
+        .limit(1);
+      
+      if (vertexSettings) {
+        console.log(`✅ Using consultant's own Vertex AI for WhatsApp (consultant ${consultantId})`);
+        return {
+          id: vertexSettings.id,
+          consultantId: consultantId,
+          projectId: vertexSettings.projectId,
+          location: vertexSettings.location,
+          serviceAccountJson: vertexSettings.serviceAccountJson,
+          enabled: true,
+          expiresAt: vertexSettings.expiresAt,
+          createdAt: vertexSettings.createdAt,
+          updatedAt: vertexSettings.updatedAt,
+        } as WhatsappVertexAiSettings;
+      }
+      
+      console.log(`⚠️ No Vertex AI configuration found for WhatsApp (consultant ${consultantId})`);
+      return null;
     } catch (error: any) {
       console.error(`Error fetching WhatsApp Vertex AI settings for consultant ${consultantId}:`, error);
       return null;
@@ -4655,6 +4717,8 @@ export class DatabaseStorage implements IStorage {
     consultantId: string,
     settings: { projectId: string; location: string; serviceAccountJson: string; enabled: boolean }
   ): Promise<void> {
+    // DEPRECATED: WhatsApp now uses the unified Vertex configuration.
+    // This function now saves to vertexAiSettings instead of whatsappVertexAiSettings.
     // Validate JSON format
     try {
       JSON.parse(settings.serviceAccountJson);
@@ -4662,34 +4726,38 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Invalid service account JSON format');
     }
     
-    // Store as plain text (no encryption)
+    // Save to vertexAiSettings (unified config)
     await db
-      .insert(schema.whatsappVertexAiSettings)
+      .insert(schema.vertexAiSettings)
       .values({
-        consultantId,
+        userId: consultantId,
         projectId: settings.projectId,
         location: settings.location,
         serviceAccountJson: settings.serviceAccountJson,
         enabled: settings.enabled ?? true,
-        updatedAt: sql`now()`,
+        managedBy: 'self' as const,
+        activatedAt: new Date(),
+        updatedAt: new Date(),
       })
       .onConflictDoUpdate({
-        target: schema.whatsappVertexAiSettings.consultantId,
+        target: schema.vertexAiSettings.userId,
         set: {
           projectId: settings.projectId,
           location: settings.location,
           serviceAccountJson: settings.serviceAccountJson,
           enabled: settings.enabled ?? true,
-          updatedAt: sql`now()`,
+          updatedAt: new Date(),
         },
       });
+    
+    console.log(`✅ Saved WhatsApp Vertex AI settings to unified vertexAiSettings (consultant ${consultantId})`);
   }
 
   async deleteWhatsAppVertexAISettings(consultantId: string): Promise<boolean> {
-    await db
-      .delete(schema.whatsappVertexAiSettings)
-      .where(eq(schema.whatsappVertexAiSettings.consultantId, consultantId));
-    
+    // DEPRECATED: WhatsApp now uses the unified Vertex configuration.
+    // This function is a no-op since we don't want to delete the unified config
+    // which may be used by other features.
+    console.log(`⚠️ deleteWhatsAppVertexAISettings is deprecated. Use unified Vertex settings management instead.`);
     return true;
   }
 

@@ -8,7 +8,6 @@ import {
   consultantSmtpSettings, 
   consultantTurnConfig, 
   consultantKnowledgeDocuments, 
-  whatsappVertexAiSettings, 
   externalApiConfigs, 
   consultantAvailabilitySettings, 
   users,
@@ -18,7 +17,9 @@ import {
   universityYears,
   exercises,
   emailDrafts,
-  whatsappCustomTemplates
+  whatsappCustomTemplates,
+  superadminVertexConfig,
+  consultantVertexAccess,
 } from '@shared/schema';
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
@@ -628,24 +629,66 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
   try {
     const consultantId = req.user!.id;
     
-    const whatsappSettings = await db.query.whatsappVertexAiSettings.findFirst({
-      where: eq(whatsappVertexAiSettings.consultantId, consultantId),
-    });
+    // NEW UNIFIED APPROACH: Check SuperAdmin Vertex first, then consultant's own vertexAiSettings
+    let vertexSettings: { projectId: string; location: string; serviceAccountJson: string } | null = null;
+    let source = '';
     
-    if (!whatsappSettings) {
+    // 1. Check if consultant can use SuperAdmin Vertex
+    const [consultant] = await db.select({ useSuperadminVertex: users.useSuperadminVertex })
+      .from(users)
+      .where(eq(users.id, consultantId))
+      .limit(1);
+    
+    if (consultant?.useSuperadminVertex) {
+      const [accessRecord] = await db.select({ hasAccess: consultantVertexAccess.hasAccess })
+        .from(consultantVertexAccess)
+        .where(eq(consultantVertexAccess.consultantId, consultantId))
+        .limit(1);
+      
+      const hasAccess = accessRecord?.hasAccess ?? true;
+      
+      if (hasAccess) {
+        const [superadminConfig] = await db.select()
+          .from(superadminVertexConfig)
+          .where(eq(superadminVertexConfig.enabled, true))
+          .limit(1);
+        
+        if (superadminConfig) {
+          vertexSettings = superadminConfig;
+          source = 'SuperAdmin';
+        }
+      }
+    }
+    
+    // 2. Fallback: Check consultant's own vertexAiSettings
+    if (!vertexSettings) {
+      const [consultantVertex] = await db.select()
+        .from(vertexAiSettings)
+        .where(and(
+          eq(vertexAiSettings.userId, consultantId),
+          eq(vertexAiSettings.enabled, true)
+        ))
+        .limit(1);
+      
+      if (consultantVertex) {
+        vertexSettings = consultantVertex;
+        source = 'Consultant';
+      }
+    }
+    
+    if (!vertexSettings) {
       return res.status(400).json({
         success: false,
-        message: 'Vertex AI per WhatsApp non configurato. Vai su Impostazioni WhatsApp AI per configurarlo.',
+        message: 'Vertex AI per WhatsApp non configurato. Configura Vertex AI nelle impostazioni.',
       });
     }
     
     try {
-      // WhatsApp Vertex AI credentials are stored in plain text
-      const serviceAccountJson = JSON.parse(whatsappSettings.serviceAccountJson);
+      const serviceAccountJson = JSON.parse(vertexSettings.serviceAccountJson);
       
       const vertexAI = new VertexAI({
-        project: whatsappSettings.projectId,
-        location: whatsappSettings.location,
+        project: vertexSettings.projectId,
+        location: vertexSettings.location,
         googleAuthOptions: {
           credentials: serviceAccountJson,
         },
@@ -667,8 +710,8 @@ router.post('/test/whatsapp-ai', authenticateToken, requireRole('consultant'), a
       
       res.json({
         success: true,
-        message: 'Vertex AI per WhatsApp funziona correttamente!',
-        details: { response: text.substring(0, 100) },
+        message: `Vertex AI per WhatsApp funziona correttamente! (fonte: ${source})`,
+        details: { response: text.substring(0, 100), source },
       });
     } catch (vertexError: any) {
       await db.update(consultantOnboardingStatus)

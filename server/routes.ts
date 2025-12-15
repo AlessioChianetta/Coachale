@@ -6891,6 +6891,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // TASK 8: CONSULTANT VERTEX PREFERENCE
+  // ========================================
+
+  // GET /api/consultant/vertex-preference - Get consultant's useSuperadminVertex preference
+  app.get("/api/consultant/vertex-preference", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const [consultant] = await db
+        .select({
+          useSuperadminVertex: schema.users.useSuperadminVertex,
+        })
+        .from(schema.users)
+        .where(eq(schema.users.id, req.user!.id))
+        .limit(1);
+
+      if (!consultant) {
+        return res.status(404).json({ success: false, message: "Consultant not found" });
+      }
+
+      // Also check if SuperAdmin has given this consultant access
+      const [accessRecord] = await db
+        .select({ hasAccess: schema.consultantVertexAccess.hasAccess })
+        .from(schema.consultantVertexAccess)
+        .where(eq(schema.consultantVertexAccess.consultantId, req.user!.id))
+        .limit(1);
+
+      // Check if SuperAdmin Vertex config exists and is enabled
+      const [superadminConfig] = await db
+        .select({ enabled: schema.superadminVertexConfig.enabled })
+        .from(schema.superadminVertexConfig)
+        .where(eq(schema.superadminVertexConfig.enabled, true))
+        .limit(1);
+
+      res.json({
+        success: true,
+        useSuperadminVertex: consultant.useSuperadminVertex ?? true,
+        hasAccessFromSuperAdmin: accessRecord?.hasAccess ?? true, // Default true if no record
+        superadminConfigAvailable: !!superadminConfig,
+      });
+    } catch (error: any) {
+      console.error("Error fetching consultant vertex preference:", error);
+      res.status(500).json({ success: false, message: error.message || "Failed to fetch preference" });
+    }
+  });
+
+  // PUT /api/consultant/vertex-preference - Toggle consultant's useSuperadminVertex preference
+  app.put("/api/consultant/vertex-preference", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { useSuperadminVertex } = req.body;
+
+      if (typeof useSuperadminVertex !== "boolean") {
+        return res.status(400).json({ success: false, message: "useSuperadminVertex must be a boolean" });
+      }
+
+      // Update the consultant's preference
+      await db
+        .update(schema.users)
+        .set({ useSuperadminVertex })
+        .where(eq(schema.users.id, req.user!.id));
+
+      console.log(`✅ Consultant ${req.user!.id} updated useSuperadminVertex to ${useSuperadminVertex}`);
+
+      res.json({
+        success: true,
+        useSuperadminVertex,
+        message: useSuperadminVertex 
+          ? "Ora utilizzi Vertex AI del SuperAdmin" 
+          : "Ora utilizzi la tua configurazione Vertex AI personale",
+      });
+    } catch (error: any) {
+      console.error("Error updating consultant vertex preference:", error);
+      res.status(500).json({ success: false, message: error.message || "Failed to update preference" });
+    }
+  });
+
   // Web scraping endpoint - REMOVED for security (SSRF protection)
   // Scraping is only done internally for exercise platforms
 
