@@ -855,4 +855,116 @@ router.post("/proactive-leads/run", authenticateToken, requireRole("consultant")
   }
 });
 
+// GET /api/proactive-leads/:id/activity-logs - Get activity log timeline for a specific lead
+router.get("/proactive-leads/:id/activity-logs", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const leadId = req.params.id;
+    
+    // Verify lead belongs to consultant
+    const lead = await storage.getProactiveLead(leadId, consultantId);
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        error: "Lead not found"
+      });
+    }
+    
+    // Get activity logs for this lead
+    const { db } = await import('../db');
+    const { proactiveLeadActivityLogs } = await import('../../shared/schema');
+    const { eq, desc, and } = await import('drizzle-orm');
+    
+    const logs = await db
+      .select()
+      .from(proactiveLeadActivityLogs)
+      .where(and(
+        eq(proactiveLeadActivityLogs.leadId, leadId),
+        eq(proactiveLeadActivityLogs.consultantId, consultantId)
+      ))
+      .orderBy(desc(proactiveLeadActivityLogs.createdAt))
+      .limit(100);
+    
+    res.json({
+      success: true,
+      leadId,
+      leadName: `${lead.firstName} ${lead.lastName}`,
+      logs,
+      count: logs.length
+    });
+    
+  } catch (error: any) {
+    console.error("❌ [PROACTIVE LEADS] Error fetching activity logs:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to fetch activity logs"
+    });
+  }
+});
+
+// POST /api/proactive-leads/:id/trigger-now - Trigger immediate outreach for a specific lead
+router.post("/proactive-leads/:id/trigger-now", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const leadId = req.params.id;
+    const isDryRun = req.body.isDryRun ?? false;
+    
+    console.log(`🚀 [MANUAL TRIGGER] Consultant ${consultantId} triggered immediate outreach for lead ${leadId} (isDryRun: ${isDryRun})`);
+    
+    // Verify lead belongs to consultant
+    const lead = await storage.getProactiveLead(leadId, consultantId);
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        error: "Lead not found"
+      });
+    }
+    
+    // Check if lead is in valid status for outreach
+    if (!['pending'].includes(lead.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `Lead status "${lead.status}" non valido per outreach. Solo lead "pending" possono essere contattati manualmente.`
+      });
+    }
+    
+    // Log manual trigger
+    const { db } = await import('../db');
+    const { proactiveLeadActivityLogs } = await import('../../shared/schema');
+    
+    await db.insert(proactiveLeadActivityLogs).values({
+      leadId: lead.id,
+      consultantId: lead.consultantId,
+      agentConfigId: lead.agentConfigId,
+      eventType: 'manual_trigger',
+      eventMessage: `Trigger manuale avviato${isDryRun ? ' (DRY RUN)' : ''}`,
+      eventDetails: { 
+        triggeredBy: consultantId,
+        isDryRun,
+        originalSchedule: lead.contactSchedule?.toISOString()
+      },
+      leadStatusAtEvent: lead.status,
+    });
+    
+    // Process the lead immediately
+    const result = await processProactiveOutreach(consultantId, isDryRun);
+    
+    res.json({
+      success: true,
+      message: isDryRun 
+        ? `Simulazione completata per ${lead.firstName} ${lead.lastName}` 
+        : `Outreach inviato a ${lead.firstName} ${lead.lastName}`,
+      leadId,
+      result
+    });
+    
+  } catch (error: any) {
+    console.error("❌ [MANUAL TRIGGER] Error:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to trigger outreach"
+    });
+  }
+});
+
 export default router;
