@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { authenticateToken, requireRole, type AuthRequest } from "../../middleware/auth";
 import { db } from "../../db";
-import { clientKnowledgeDocuments, users, vertexAiSettings } from "../../../shared/schema";
-import { eq, inArray, and, isNotNull } from "drizzle-orm";
+import { clientKnowledgeDocuments, consultantKnowledgeDocuments, users, vertexAiSettings } from "../../../shared/schema";
+import { eq, inArray, and, isNotNull, desc } from "drizzle-orm";
 import { extractTextFromFile, type VertexAICredentials } from "../../services/document-processor";
 import fs from "fs/promises";
 import path from "path";
@@ -486,6 +486,208 @@ router.post(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to check import status"
+      });
+    }
+  }
+);
+
+// ============================================
+// CONSULTANT KNOWLEDGE BASE IMPORT FOR CLIENTS
+// ============================================
+
+// List consultant's knowledge documents available for import
+router.get(
+  "/client/consultant-knowledge-documents",
+  authenticateToken,
+  requireRole("client"),
+  async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user!.id;
+      
+      // Get client's consultant
+      const [client] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, clientId))
+        .limit(1);
+      
+      if (!client?.consultantId) {
+        return res.status(400).json({
+          success: false,
+          error: "Client is not assigned to a consultant"
+        });
+      }
+      
+      // Get all consultant's processed documents
+      const documents = await db
+        .select({
+          id: consultantKnowledgeDocuments.id,
+          title: consultantKnowledgeDocuments.title,
+          description: consultantKnowledgeDocuments.description,
+          category: consultantKnowledgeDocuments.category,
+          fileName: consultantKnowledgeDocuments.fileName,
+          fileType: consultantKnowledgeDocuments.fileType,
+          fileSize: consultantKnowledgeDocuments.fileSize,
+          createdAt: consultantKnowledgeDocuments.createdAt,
+        })
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.consultantId, client.consultantId),
+            eq(consultantKnowledgeDocuments.status, "processed")
+          )
+        )
+        .orderBy(desc(consultantKnowledgeDocuments.createdAt));
+      
+      // Get list of already imported document IDs
+      const importedDocs = await db
+        .select({ sourceConsultantDocId: clientKnowledgeDocuments.sourceConsultantDocId })
+        .from(clientKnowledgeDocuments)
+        .where(
+          and(
+            eq(clientKnowledgeDocuments.clientId, clientId),
+            isNotNull(clientKnowledgeDocuments.sourceConsultantDocId)
+          )
+        );
+      
+      const importedDocIds = new Set(importedDocs.map(d => d.sourceConsultantDocId));
+      
+      res.json({
+        success: true,
+        data: documents.map(doc => ({
+          ...doc,
+          isImported: importedDocIds.has(doc.id)
+        }))
+      });
+    } catch (error: any) {
+      console.error("❌ [CLIENT] Error listing consultant documents:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to list consultant documents"
+      });
+    }
+  }
+);
+
+// Import documents from consultant's knowledge base
+router.post(
+  "/client/consultant-knowledge-documents/import",
+  authenticateToken,
+  requireRole("client"),
+  async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user!.id;
+      const { documentIds } = req.body;
+      
+      if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "documentIds array is required"
+        });
+      }
+      
+      // Get client's consultant
+      const [client] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, clientId))
+        .limit(1);
+      
+      if (!client?.consultantId) {
+        return res.status(400).json({
+          success: false,
+          error: "Client is not assigned to a consultant"
+        });
+      }
+      
+      // Get the consultant documents
+      const consultantDocs = await db
+        .select()
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.consultantId, client.consultantId),
+            inArray(consultantKnowledgeDocuments.id, documentIds),
+            eq(consultantKnowledgeDocuments.status, "processed")
+          )
+        );
+      
+      if (consultantDocs.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "No valid documents found to import"
+        });
+      }
+      
+      // Check which are already imported
+      const existingImports = await db
+        .select({ sourceConsultantDocId: clientKnowledgeDocuments.sourceConsultantDocId })
+        .from(clientKnowledgeDocuments)
+        .where(
+          and(
+            eq(clientKnowledgeDocuments.clientId, clientId),
+            inArray(clientKnowledgeDocuments.sourceConsultantDocId, documentIds)
+          )
+        );
+      
+      const alreadyImportedIds = new Set(existingImports.map(d => d.sourceConsultantDocId));
+      const docsToImport = consultantDocs.filter(d => !alreadyImportedIds.has(d.id));
+      
+      if (docsToImport.length === 0) {
+        return res.json({
+          success: true,
+          message: "All documents already imported",
+          imported: 0,
+          skipped: consultantDocs.length
+        });
+      }
+      
+      // Import documents (copy content, not files - reference source)
+      const importedDocs = [];
+      for (const doc of docsToImport) {
+        const [newDoc] = await db
+          .insert(clientKnowledgeDocuments)
+          .values({
+            clientId,
+            title: doc.title,
+            description: doc.description ? `Importato da Knowledge Base consulente: ${doc.description}` : "Importato da Knowledge Base consulente",
+            category: doc.category,
+            fileName: doc.fileName,
+            fileType: doc.fileType,
+            fileSize: doc.fileSize,
+            filePath: doc.filePath, // Reference same file
+            extractedContent: doc.extractedContent,
+            contentSummary: doc.contentSummary,
+            summaryEnabled: doc.summaryEnabled,
+            keywords: doc.keywords,
+            tags: doc.tags,
+            priority: doc.priority,
+            sourceConsultantDocId: doc.id, // Track source
+            status: "processed",
+          })
+          .returning();
+        
+        importedDocs.push(newDoc);
+      }
+      
+      console.log(`✅ [CLIENT] Imported ${importedDocs.length} documents from consultant KB for client ${clientId}`);
+      
+      res.json({
+        success: true,
+        message: `Successfully imported ${importedDocs.length} documents`,
+        imported: importedDocs.length,
+        skipped: consultantDocs.length - docsToImport.length,
+        documents: importedDocs.map(d => ({
+          id: d.id,
+          title: d.title,
+          category: d.category
+        }))
+      });
+    } catch (error: any) {
+      console.error("❌ [CLIENT] Error importing consultant documents:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to import documents"
       });
     }
   }

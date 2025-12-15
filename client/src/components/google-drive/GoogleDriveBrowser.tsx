@@ -26,6 +26,11 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
+  Clock,
+  Star,
+  Trash2,
+  Users,
+  HardDrive,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +60,16 @@ interface BreadcrumbItem {
   name: string;
 }
 
+type DriveSection = 'my-drive' | 'shared-with-me' | 'recent' | 'starred' | 'trash';
+
+const DRIVE_SECTIONS: { id: DriveSection; label: string; icon: React.ReactNode }[] = [
+  { id: 'my-drive', label: 'Il mio Drive', icon: <HardDrive className="w-4 h-4" /> },
+  { id: 'shared-with-me', label: 'Condivisi con me', icon: <Users className="w-4 h-4" /> },
+  { id: 'recent', label: 'Recenti', icon: <Clock className="w-4 h-4" /> },
+  { id: 'starred', label: 'Speciali', icon: <Star className="w-4 h-4" /> },
+  { id: 'trash', label: 'Cestino', icon: <Trash2 className="w-4 h-4" /> },
+];
+
 const getFileIcon = (mimeType: string) => {
   if (mimeType.includes("pdf")) return <FileText className="w-5 h-5 text-red-500" />;
   if (mimeType.includes("word") || mimeType.includes("document")) return <FileText className="w-5 h-5 text-blue-500" />;
@@ -78,9 +93,23 @@ const formatFileSize = (size?: string) => {
 export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: GoogleDriveBrowserProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [currentSection, setCurrentSection] = useState<DriveSection>('my-drive');
   const [currentFolderId, setCurrentFolderId] = useState<string>("root");
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: "root", name: "La mia unità" }]);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [importedFileIds, setImportedFileIds] = useState<Set<string>>(new Set());
+  const [previewFile, setPreviewFile] = useState<DriveFile | null>(null);
+  const [isInSharedFolder, setIsInSharedFolder] = useState(false);
+
+  // Handle section change
+  const handleSectionChange = (section: DriveSection) => {
+    setCurrentSection(section);
+    setCurrentFolderId("root");
+    setBreadcrumbs([{ id: "root", name: DRIVE_SECTIONS.find(s => s.id === section)?.label || "La mia unità" }]);
+    setSelectedFiles(new Set());
+    setPreviewFile(null);
+    setIsInSharedFolder(false);
+  };
 
   const { data: statusData, isLoading: statusLoading, refetch: refetchStatus } = useQuery({
     queryKey: [`${apiPrefix}/google-drive/status`],
@@ -94,9 +123,14 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
     },
   });
 
+  // Folders query - for my-drive section OR when navigating inside a shared folder
   const { data: foldersData, isLoading: foldersLoading, refetch: refetchFolders } = useQuery({
-    queryKey: [`${apiPrefix}/google-drive/folders`, currentFolderId],
+    queryKey: [`${apiPrefix}/google-drive/folders`, currentFolderId, currentSection, isInSharedFolder],
     queryFn: async () => {
+      // Show folders if in my-drive OR navigating inside a shared folder
+      if (currentSection !== 'my-drive' && !isInSharedFolder) {
+        return { success: true, data: [] };
+      }
       const response = await fetch(`${apiPrefix}/google-drive/folders?parentId=${currentFolderId}`, {
         headers: getAuthHeaders(),
         credentials: 'include',
@@ -107,10 +141,35 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
     enabled: statusData?.connected === true,
   });
 
+  // Files query - different endpoint based on section (or standard if navigating inside shared folder)
   const { data: filesData, isLoading: filesLoading, refetch: refetchFiles } = useQuery({
-    queryKey: [`${apiPrefix}/google-drive/files`, currentFolderId],
+    queryKey: [`${apiPrefix}/google-drive/files`, currentFolderId, currentSection, isInSharedFolder],
     queryFn: async () => {
-      const response = await fetch(`${apiPrefix}/google-drive/files?parentId=${currentFolderId}`, {
+      let endpoint = `${apiPrefix}/google-drive/files?parentId=${currentFolderId}`;
+      
+      // If navigating inside a shared folder, use standard files endpoint
+      if (isInSharedFolder) {
+        endpoint = `${apiPrefix}/google-drive/files?parentId=${currentFolderId}`;
+      } else {
+        switch (currentSection) {
+          case 'shared-with-me':
+            endpoint = `${apiPrefix}/google-drive/shared-with-me`;
+            break;
+          case 'recent':
+            endpoint = `${apiPrefix}/google-drive/recent`;
+            break;
+          case 'starred':
+            endpoint = `${apiPrefix}/google-drive/starred`;
+            break;
+          case 'trash':
+            endpoint = `${apiPrefix}/google-drive/trash`;
+            break;
+          default:
+            endpoint = `${apiPrefix}/google-drive/files?parentId=${currentFolderId}`;
+        }
+      }
+      
+      const response = await fetch(endpoint, {
         headers: getAuthHeaders(),
         credentials: 'include',
       });
@@ -187,10 +246,16 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
         const error = await response.json();
         throw new Error(error.error || "Errore nell'importazione");
       }
-      return response.json();
+      return { ...await response.json(), importedFileIds: fileIds };
     },
     onSuccess: (data) => {
       const importedCount = data.imported || selectedFiles.size;
+      // Add imported file IDs to the set
+      setImportedFileIds(prev => {
+        const newSet = new Set(prev);
+        data.importedFileIds?.forEach((id: string) => newSet.add(id));
+        return newSet;
+      });
       setSelectedFiles(new Set());
       toast({
         title: "Importazione completata",
@@ -208,19 +273,31 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
   });
 
   const handleFolderClick = (folder: DriveFolder) => {
+    // If in a special section (not my-drive), mark that we're navigating into a shared folder
+    if (currentSection !== 'my-drive' && !isInSharedFolder) {
+      setIsInSharedFolder(true);
+    }
     setCurrentFolderId(folder.id);
     setBreadcrumbs((prev) => [...prev, { id: folder.id, name: folder.name }]);
     setSelectedFiles(new Set());
+    setPreviewFile(null);
   };
 
   const handleBreadcrumbClick = (index: number) => {
     const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
     setBreadcrumbs(newBreadcrumbs);
+    // If going back to root in a special section, exit shared folder mode
+    if (index === 0 && currentSection !== 'my-drive') {
+      setIsInSharedFolder(false);
+    }
     setCurrentFolderId(newBreadcrumbs[newBreadcrumbs.length - 1].id);
     setSelectedFiles(new Set());
   };
 
   const handleFileSelect = (fileId: string, checked: boolean) => {
+    // Don't allow selecting already imported files
+    if (importedFileIds.has(fileId)) return;
+    
     setSelectedFiles((prev) => {
       const newSet = new Set(prev);
       if (checked) {
@@ -234,10 +311,13 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
 
   const handleSelectAll = () => {
     const files: DriveFile[] = filesData?.data || [];
-    if (selectedFiles.size === files.length) {
+    const selectableFiles = files.filter(f => !importedFileIds.has(f.id));
+    const currentlySelected = Array.from(selectedFiles).filter(id => !importedFileIds.has(id));
+    
+    if (currentlySelected.length === selectableFiles.length && selectableFiles.length > 0) {
       setSelectedFiles(new Set());
     } else {
-      setSelectedFiles(new Set(files.map((f) => f.id)));
+      setSelectedFiles(new Set(selectableFiles.map((f) => f.id)));
     }
   };
 
@@ -270,6 +350,38 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [refetchStatus]);
+
+  // Check which files are already imported
+  useEffect(() => {
+    const checkImportStatus = async () => {
+      const files: DriveFile[] = filesData?.data || [];
+      if (files.length === 0) {
+        setImportedFileIds(new Set());
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${apiPrefix}/google-drive/import-status`, {
+          method: "POST",
+          headers: {
+            ...getAuthHeaders(),
+            "Content-Type": "application/json",
+          },
+          credentials: 'include',
+          body: JSON.stringify({ fileIds: files.map(f => f.id) }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setImportedFileIds(new Set(data.importedFileIds || []));
+        }
+      } catch (error) {
+        console.error("Error checking import status:", error);
+      }
+    };
+    
+    checkImportStatus();
+  }, [filesData, apiPrefix]);
 
   const isConnected = statusData?.connected === true;
   const connectedEmail = statusData?.email;
@@ -367,24 +479,64 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
         <>
           <Separator />
 
-          <div className="flex items-center gap-1 text-sm overflow-x-auto pb-2">
-            {breadcrumbs.map((crumb, index) => (
-              <div key={crumb.id} className="flex items-center shrink-0">
-                {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400 mx-1" />}
+          <div className="flex gap-4">
+            {/* Sidebar */}
+            <div className="w-48 shrink-0 space-y-1">
+              {DRIVE_SECTIONS.map((section) => (
                 <Button
-                  variant="ghost"
+                  key={section.id}
+                  variant={currentSection === section.id ? "secondary" : "ghost"}
                   size="sm"
-                  className="h-7 px-2"
-                  onClick={() => handleBreadcrumbClick(index)}
+                  className={`w-full justify-start gap-2 ${
+                    currentSection === section.id 
+                      ? "bg-primary/10 text-primary" 
+                      : ""
+                  }`}
+                  onClick={() => handleSectionChange(section.id)}
                 >
-                  {index === 0 ? <Home className="w-4 h-4 mr-1" /> : null}
-                  {crumb.name}
+                  {section.icon}
+                  {section.label}
                 </Button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          <ScrollArea className="h-[300px] border rounded-lg">
+            {/* Main content */}
+            <div className="flex-1 min-w-0">
+              {/* Breadcrumbs - show for my-drive OR when navigating inside shared folders */}
+              {(currentSection === 'my-drive' || isInSharedFolder || breadcrumbs.length > 1) && (
+                <div className="flex items-center gap-1 text-sm overflow-x-auto pb-2">
+                  {breadcrumbs.map((crumb, index) => (
+                    <div key={crumb.id} className="flex items-center shrink-0">
+                      {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400 mx-1" />}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2"
+                        onClick={() => handleBreadcrumbClick(index)}
+                      >
+                        {index === 0 ? (
+                          <>
+                            {DRIVE_SECTIONS.find(s => s.id === currentSection)?.icon}
+                            <span className="ml-1">{crumb.name}</span>
+                          </>
+                        ) : crumb.name}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Section title for non-folder views (only at root level) */}
+              {currentSection !== 'my-drive' && !isInSharedFolder && breadcrumbs.length === 1 && (
+                <div className="flex items-center gap-2 pb-2">
+                  {DRIVE_SECTIONS.find(s => s.id === currentSection)?.icon}
+                  <span className="text-sm font-medium">
+                    {DRIVE_SECTIONS.find(s => s.id === currentSection)?.label}
+                  </span>
+                </div>
+              )}
+
+              <ScrollArea className="h-[280px] border rounded-lg">
             {isLoadingContent ? (
               <div className="flex items-center justify-center h-full">
                 <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -411,57 +563,84 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
 
                 {files.length > 0 && folders.length > 0 && <Separator className="my-2" />}
 
-                {files.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <Checkbox
-                      checked={selectedFiles.has(file.id)}
-                      onCheckedChange={(checked) => handleFileSelect(file.id, checked as boolean)}
-                    />
-                    {getFileIcon(file.mimeType)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{file.name}</p>
-                      {file.size && (
-                        <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
-                      )}
+                {files.map((file) => {
+                  const isImported = importedFileIds.has(file.id);
+                  return (
+                    <div
+                      key={file.id}
+                      className={`flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                        isImported 
+                          ? "bg-green-50 dark:bg-green-900/20 opacity-75" 
+                          : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      <Checkbox
+                        checked={isImported || selectedFiles.has(file.id)}
+                        onCheckedChange={(checked) => handleFileSelect(file.id, checked as boolean)}
+                        disabled={isImported}
+                      />
+                      {getFileIcon(file.mimeType)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-medium truncate ${isImported ? "text-muted-foreground" : ""}`}>
+                            {file.name}
+                          </p>
+                          {isImported && (
+                            <Badge variant="secondary" className="shrink-0 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Già importato
+                            </Badge>
+                          )}
+                        </div>
+                        {file.size && (
+                          <p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
-          </ScrollArea>
+              </ScrollArea>
 
-          {files.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                  {selectedFiles.size === files.length ? "Deseleziona tutti" : "Seleziona tutti"}
-                </Button>
-                <span className="text-sm text-muted-foreground">
-                  {selectedFiles.size} file selezionati
-                </span>
-              </div>
+              {files.length > 0 && (() => {
+                const selectableFiles = files.filter(f => !importedFileIds.has(f.id));
+                const importedCount = files.length - selectableFiles.length;
+                return (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {selectableFiles.length > 0 && (
+                      <Button variant="outline" size="sm" onClick={handleSelectAll}>
+                        {selectedFiles.size === selectableFiles.length ? "Deseleziona tutti" : "Seleziona tutti"}
+                      </Button>
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      {selectedFiles.size} file selezionati
+                      {importedCount > 0 && ` • ${importedCount} già importati`}
+                    </span>
+                  </div>
 
-              <Button
-                onClick={handleImport}
-                disabled={selectedFiles.size === 0 || importMutation.isPending}
-              >
-                {importMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Importazione...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Importa selezionati ({selectedFiles.size})
-                  </>
-                )}
-              </Button>
+                  <Button
+                    onClick={handleImport}
+                    disabled={selectedFiles.size === 0 || importMutation.isPending}
+                  >
+                    {importMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Importazione...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Importa selezionati ({selectedFiles.size})
+                      </>
+                    )}
+                  </Button>
+                </div>
+                );
+              })()}
             </div>
-          )}
+          </div>
         </>
       )}
     </div>

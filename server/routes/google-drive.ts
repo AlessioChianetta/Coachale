@@ -21,7 +21,10 @@ import {
   listSharedDrives,
   listSharedDriveFolders,
   listSharedDriveFiles,
-  listSharedWithMe
+  listSharedWithMe,
+  listRecentFiles,
+  listStarredFiles,
+  listTrashedFiles
 } from "../services/google-drive-service";
 
 const router = Router();
@@ -631,6 +634,105 @@ router.post(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to check import status"
+      });
+    }
+  }
+);
+
+// List recent files
+router.get(
+  "/consultant/google-drive/recent",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const connected = await isDriveConnected(consultantId);
+      if (!connected) {
+        return res.status(400).json({
+          success: false,
+          error: "Google Drive not connected"
+        });
+      }
+      
+      const files = await listRecentFiles(consultantId);
+      
+      res.json({
+        success: true,
+        data: files
+      });
+    } catch (error: any) {
+      console.error("❌ [GOOGLE DRIVE] Error listing recent files:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to list recent files"
+      });
+    }
+  }
+);
+
+// List starred files
+router.get(
+  "/consultant/google-drive/starred",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const connected = await isDriveConnected(consultantId);
+      if (!connected) {
+        return res.status(400).json({
+          success: false,
+          error: "Google Drive not connected"
+        });
+      }
+      
+      const files = await listStarredFiles(consultantId);
+      
+      res.json({
+        success: true,
+        data: files
+      });
+    } catch (error: any) {
+      console.error("❌ [GOOGLE DRIVE] Error listing starred files:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to list starred files"
+      });
+    }
+  }
+);
+
+// List trashed files
+router.get(
+  "/consultant/google-drive/trash",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      const connected = await isDriveConnected(consultantId);
+      if (!connected) {
+        return res.status(400).json({
+          success: false,
+          error: "Google Drive not connected"
+        });
+      }
+      
+      const files = await listTrashedFiles(consultantId);
+      
+      res.json({
+        success: true,
+        data: files
+      });
+    } catch (error: any) {
+      console.error("❌ [GOOGLE DRIVE] Error listing trashed files:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to list trashed files"
       });
     }
   }

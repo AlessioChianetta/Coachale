@@ -948,3 +948,102 @@ export async function listClientSharedDrives(
     return [];
   }
 }
+
+/**
+ * List recent files (ordered by most recently modified/accessed)
+ */
+export async function listRecentFiles(
+  consultantId: string
+): Promise<Array<{ id: string; name: string; mimeType: string; size?: string; modifiedTime?: string }>> {
+  const drive = await getDriveClient(consultantId);
+  
+  try {
+    const response = await drive.files.list({
+      q: "trashed = false and mimeType != 'application/vnd.google-apps.folder'",
+      fields: 'files(id, name, mimeType, size, modifiedTime)',
+      orderBy: 'viewedByMeTime desc,modifiedTime desc',
+      pageSize: 50,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
+    
+    console.log(`✅ [GOOGLE DRIVE] Found ${response.data.files?.length || 0} recent files`);
+    
+    return (response.data.files || []).map(file => ({
+      id: file.id!,
+      name: file.name!,
+      mimeType: file.mimeType!,
+      size: file.size || undefined,
+      modifiedTime: file.modifiedTime || undefined
+    }));
+  } catch (error: any) {
+    console.error(`❌ [GOOGLE DRIVE] Error listing recent files:`, error.message);
+    return [];
+  }
+}
+
+/**
+ * List starred (speciali) files
+ */
+export async function listStarredFiles(
+  consultantId: string
+): Promise<Array<{ id: string; name: string; mimeType: string; size?: string; modifiedTime?: string }>> {
+  const drive = await getDriveClient(consultantId);
+  
+  try {
+    const response = await drive.files.list({
+      q: "starred = true and trashed = false",
+      fields: 'files(id, name, mimeType, size, modifiedTime)',
+      orderBy: 'modifiedTime desc',
+      pageSize: 100,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
+    
+    console.log(`✅ [GOOGLE DRIVE] Found ${response.data.files?.length || 0} starred files`);
+    
+    return (response.data.files || []).map(file => ({
+      id: file.id!,
+      name: file.name!,
+      mimeType: file.mimeType!,
+      size: file.size || undefined,
+      modifiedTime: file.modifiedTime || undefined
+    }));
+  } catch (error: any) {
+    console.error(`❌ [GOOGLE DRIVE] Error listing starred files:`, error.message);
+    return [];
+  }
+}
+
+/**
+ * List trashed files (cestino)
+ */
+export async function listTrashedFiles(
+  consultantId: string
+): Promise<Array<{ id: string; name: string; mimeType: string; size?: string; modifiedTime?: string }>> {
+  const drive = await getDriveClient(consultantId);
+  
+  try {
+    const response = await drive.files.list({
+      q: "trashed = true",
+      fields: 'files(id, name, mimeType, size, modifiedTime)',
+      orderBy: 'modifiedTime desc',
+      pageSize: 100,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
+    
+    console.log(`✅ [GOOGLE DRIVE] Found ${response.data.files?.length || 0} trashed files`);
+    
+    return (response.data.files || []).map(file => ({
+      id: file.id!,
+      name: file.name!,
+      mimeType: file.mimeType!,
+      size: file.size || undefined,
+      modifiedTime: file.modifiedTime || undefined
+    }));
+  } catch (error: any) {
+    console.error(`❌ [GOOGLE DRIVE] Error listing trashed files:`, error.message);
+    return [];
+  }
+}

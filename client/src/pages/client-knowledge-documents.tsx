@@ -63,6 +63,9 @@ import {
   Table2,
   Rows3,
   Columns3,
+  Library,
+  BookOpen,
+  Download,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -224,6 +227,8 @@ export default function ClientKnowledgeDocuments() {
   const ROWS_PER_PAGE = 50;
   const [showAskConfirmDialog, setShowAskConfirmDialog] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isConsultantKBOpen, setIsConsultantKBOpen] = useState(false);
+  const [selectedConsultantDocs, setSelectedConsultantDocs] = useState<Set<string>>(new Set());
 
   const [editForm, setEditForm] = useState({
     title: "",
@@ -266,6 +271,52 @@ export default function ClientKnowledgeDocuments() {
     },
   });
   const stats: KnowledgeStats | null = statsResponse?.data || null;
+
+  // Consultant's Knowledge Base documents available for import
+  const { data: consultantDocsResponse, isLoading: isLoadingConsultantDocs } = useQuery({
+    queryKey: ["/api/client/consultant-knowledge-documents"],
+    queryFn: async () => {
+      const response = await fetch("/api/client/consultant-knowledge-documents", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch consultant documents");
+      return response.json();
+    },
+  });
+  const consultantDocuments = consultantDocsResponse?.data || [];
+
+  // Import consultant documents mutation
+  const importConsultantDocsMutation = useMutation({
+    mutationFn: async (documentIds: string[]) => {
+      const response = await fetch("/api/client/consultant-knowledge-documents/import", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ documentIds }),
+      });
+      if (!response.ok) throw new Error("Failed to import documents");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Documenti importati",
+        description: `${data.imported} documenti importati con successo${data.skipped > 0 ? `, ${data.skipped} già presenti` : ""}`,
+      });
+      setSelectedConsultantDocs(new Set());
+      queryClient.invalidateQueries({ queryKey: ["/api/client/knowledge/documents"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/knowledge/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/client/consultant-knowledge-documents"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Errore importazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -687,6 +738,156 @@ export default function ClientKnowledgeDocuments() {
                       queryClient.invalidateQueries({ queryKey: ["/api/client/knowledge/stats"] });
                     }}
                   />
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+
+          {/* Import from Consultant's Knowledge Base */}
+          <Card className="mb-6">
+            <Collapsible open={isConsultantKBOpen} onOpenChange={setIsConsultantKBOpen}>
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                        <Library className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">Importa dalla Knowledge Base del Consulente</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          Importa documenti condivisi dal tuo consulente
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {consultantDocuments.length > 0 && (
+                        <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                          {consultantDocuments.filter((d: any) => !d.isImported).length} disponibili
+                        </Badge>
+                      )}
+                      <ChevronDown
+                        className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+                          isConsultantKBOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="pt-0">
+                  {isLoadingConsultantDocs ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                      <span className="ml-2 text-gray-500">Caricamento documenti...</span>
+                    </div>
+                  ) : consultantDocuments.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-gray-500">
+                      <BookOpen className="w-12 h-12 text-gray-300 mb-3" />
+                      <p>Il tuo consulente non ha ancora condiviso documenti</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <ScrollArea className="h-[280px] border rounded-lg">
+                        <div className="p-2 space-y-1">
+                          {consultantDocuments.map((doc: any) => (
+                            <div
+                              key={doc.id}
+                              className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                                doc.isImported
+                                  ? "bg-green-50 dark:bg-green-900/20 opacity-75"
+                                  : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={doc.isImported || selectedConsultantDocs.has(doc.id)}
+                                onChange={(e) => {
+                                  const newSelected = new Set(selectedConsultantDocs);
+                                  if (e.target.checked) {
+                                    newSelected.add(doc.id);
+                                  } else {
+                                    newSelected.delete(doc.id);
+                                  }
+                                  setSelectedConsultantDocs(newSelected);
+                                }}
+                                disabled={doc.isImported}
+                                className="h-4 w-4 rounded border-gray-300"
+                              />
+                              <FileText className={`w-5 h-5 ${FILE_TYPE_ICONS[doc.fileType as FileType]?.color || "text-gray-400"}`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className={`text-sm font-medium truncate ${doc.isImported ? "text-muted-foreground" : ""}`}>
+                                    {doc.title}
+                                  </p>
+                                  <Badge className={CATEGORY_COLORS[doc.category as DocumentCategory] || CATEGORY_COLORS.other}>
+                                    {CATEGORY_LABELS[doc.category as DocumentCategory] || doc.category}
+                                  </Badge>
+                                  {doc.isImported && (
+                                    <Badge variant="secondary" className="shrink-0 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                                      Già importato
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {doc.fileName} • {formatFileSize(doc.fileSize)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+
+                      {consultantDocuments.filter((d: any) => !d.isImported).length > 0 && (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const importable = consultantDocuments.filter((d: any) => !d.isImported);
+                                if (selectedConsultantDocs.size === importable.length) {
+                                  setSelectedConsultantDocs(new Set());
+                                } else {
+                                  setSelectedConsultantDocs(new Set(importable.map((d: any) => d.id)));
+                                }
+                              }}
+                            >
+                              {selectedConsultantDocs.size === consultantDocuments.filter((d: any) => !d.isImported).length
+                                ? "Deseleziona tutti"
+                                : "Seleziona tutti"}
+                            </Button>
+                            <span className="text-sm text-muted-foreground">
+                              {selectedConsultantDocs.size} documenti selezionati
+                            </span>
+                          </div>
+
+                          <Button
+                            onClick={() => {
+                              if (selectedConsultantDocs.size > 0) {
+                                importConsultantDocsMutation.mutate(Array.from(selectedConsultantDocs));
+                              }
+                            }}
+                            disabled={selectedConsultantDocs.size === 0 || importConsultantDocsMutation.isPending}
+                          >
+                            {importConsultantDocsMutation.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Importazione...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="w-4 h-4 mr-2" />
+                                Importa selezionati ({selectedConsultantDocs.size})
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </CollapsibleContent>
             </Collapsible>
