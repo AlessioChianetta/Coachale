@@ -2551,9 +2551,9 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
               top_k: 40,
               max_output_tokens: 8192  // Permetti risposte più lunghe per monologhi/spiegazioni dettagliate
             },
-            // 🧠 NOTE: thinking_config is NOT supported by gemini-live-2.5-flash-preview-native-audio models
-            // Error: "Unknown name 'thinking_config' at 'setup': Cannot find field"
-            // May be available in future API versions - check documentation before enabling
+            // 🧠 NOTE: thinking_config is NOT supported by Vertex AI Live API native audio models
+            // (gemini-live-2.5-flash-native-audio GA - December 2025)
+            // Thinking is only available on Gemini API (Google AI Studio), not Vertex AI
             input_audio_transcription: {},
             output_audio_transcription: {},
             // Conditionally include system_instruction ONLY on new sessions
@@ -2580,19 +2580,18 @@ Come ti senti oggi? Su cosa vuoi concentrarti in questa sessione?"
                 silence_duration_ms: 700       // 700ms silence = end of utterance (faster than 1000ms but still complete phrases)
               }
             },
-            // 🔊 PROACTIVE AUDIO: DISABLED - may not be supported by gemini-live-2.5-flash-preview-native-audio
-            // Error: "Invalid frame header" - testing if this parameter causes the issue
+            // 🔊 PROACTIVE AUDIO: Available in Preview on gemini-live-2.5-flash-native-audio (GA Dec 2025)
+            // Uncomment to enable - model responds only when relevant
             // proactivity: {
             //   proactive_audio: true
             // },
-            // 💚 NOTE: enable_affective_dialog is NOT supported by gemini-live-2.5-flash-preview-native-audio models
-            // Error: "Unknown name 'enable_affective_dialog' at 'setup': Cannot find field"
-            // Affective dialog may be built-in for native audio models without explicit config
+            // 💚 AFFECTIVE DIALOG: Built-in on gemini-live-2.5-flash-native-audio (GA Dec 2025)
+            // No explicit configuration needed - model automatically understands emotional expressions
             // Enable session resumption for unlimited session duration
             // CRITICAL: Always pass { handle: value } - null for new sessions, token for resuming
             session_resumption: { handle: validatedResumeHandle || null }
-            // 📦 CONTEXT WINDOW COMPRESSION: DISABLED - may not be supported by gemini-live-2.5-flash-preview-native-audio
-            // Error: "Invalid frame header" - testing if this parameter causes the issue
+            // 📦 CONTEXT WINDOW COMPRESSION: May be available on gemini-live-2.5-flash-native-audio (GA Dec 2025)
+            // Uncomment to test - enables sliding window for longer conversations
             // context_window_compression: {
             //   sliding_window: {}
             // }

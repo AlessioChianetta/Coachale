@@ -862,7 +862,7 @@ export async function getVertexAITokenForLive(
           accessToken: tokenResponse.token,
           projectId: settings.projectId,
           location: settings.location,
-          modelId: 'gemini-live-2.5-flash-preview-native-audio-09-2025',
+          modelId: 'gemini-live-2.5-flash-native-audio',
         };
       } catch (settingError: any) {
         console.error(`❌ Error generating token with setting:`, settingError.message);
