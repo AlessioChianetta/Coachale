@@ -41,6 +41,7 @@ export interface ConsultantGuides {
   proactiveLeadsGuide: Guide;
   whatsappAgentsGuide: Guide;
   apiKeysGuide: Guide;
+  automationsGuide: Guide;
 }
 
 export const consultantGuides: ConsultantGuides = {
@@ -1771,7 +1772,7 @@ export const consultantGuides: ConsultantGuides = {
 
   templateGuide: {
     title: "Template WhatsApp",
-    path: "/consultant/whatsapp-templates",
+    path: "/consultant/guide-templates",
     emoji: "📝",
     description: "Gestione template Twilio per messaggi proattivi e template custom personalizzati con variabili",
     sections: [
@@ -1865,7 +1866,7 @@ export const consultantGuides: ConsultantGuides = {
 
   proactiveLeadsGuide: {
     title: "CRM Lead Proattivi",
-    path: "/consultant/proactive-leads",
+    path: "/consultant/guide-leads",
     emoji: "👥",
     description: "Gestione completa dei lead per contatto proattivo: importazione, stati, tag e schedulazione",
     sections: [
@@ -2003,7 +2004,7 @@ export const consultantGuides: ConsultantGuides = {
 
   whatsappAgentsGuide: {
     title: "Setup Agenti WhatsApp",
-    path: "/consultant/whatsapp",
+    path: "/consultant/guide-agents",
     emoji: "🤖",
     description: "Guida completa per creare e configurare agenti AI WhatsApp con wizard 4 step",
     sections: [
@@ -2133,7 +2134,7 @@ export const consultantGuides: ConsultantGuides = {
 
   apiKeysGuide: {
     title: "Configurazione API Keys",
-    path: "/consultant/api-keys-unified",
+    path: "/consultant/guide-api-keys",
     emoji: "🔑",
     description: "Guida completa per configurare tutte le API: Vertex AI, SMTP, Google Calendar, TURN/Metered",
     sections: [
@@ -2283,6 +2284,171 @@ export const consultantGuides: ConsultantGuides = {
           {
             title: "Troubleshooting",
             content: "Se un test fallisce:\n1. Verifica che le credenziali siano corrette (no spazi extra)\n2. Controlla che l'API/servizio sia abilitato\n3. Verifica i permessi dell'account\n4. Controlla eventuali limiti di quota"
+          }
+        ]
+      }
+    ]
+  },
+
+  automationsGuide: {
+    title: "Sistema Automazioni",
+    path: "/consultant/guide-automations",
+    emoji: "⚡",
+    description: "Guida completa per configurare automazioni WhatsApp, follow-up e workflow automatici",
+    sections: [
+      {
+        title: "PREREQUISITI SISTEMA",
+        icon: "🔧",
+        description: "Cosa serve prima di iniziare con le automazioni",
+        steps: [
+          {
+            title: "Vai a Setup Agente",
+            content: "COMUNICAZIONE → Setup Agenti (URL: /consultant/whatsapp). Devi avere un agente WhatsApp configurato.",
+            actionText: "Configura Agente",
+            actionHref: "/consultant/whatsapp"
+          },
+          {
+            title: "Configura Twilio",
+            content: "L'agente deve avere credenziali Twilio attive: Account SID, Auth Token e numero WhatsApp Business."
+          },
+          {
+            title: "Template Approvati",
+            content: "Devi avere almeno un template Twilio approvato da Meta per inviare il primo messaggio ai lead.",
+            actionText: "Gestisci Template",
+            actionHref: "/consultant/whatsapp-templates"
+          }
+        ]
+      },
+      {
+        title: "IMPORTARE LEAD",
+        icon: "📥",
+        description: "Come caricare i contatti per le automazioni",
+        steps: [
+          {
+            title: "Vai a Lead Proattivi",
+            content: "COMUNICAZIONE → Lead (URL: /consultant/proactive-leads)",
+            actionText: "Gestisci Lead",
+            actionHref: "/consultant/proactive-leads"
+          },
+          {
+            title: "Importa CSV",
+            content: "Clicca 'Importa CSV'. Il file deve contenere: Nome, Cognome, Telefono (formato +39...)."
+          },
+          {
+            title: "Aggiungi Tag",
+            content: "Usa i tag per organizzare i lead: 'evento2024', 'newsletter', 'facebook-ads', ecc."
+          },
+          {
+            title: "Assegna a Campagna",
+            content: "Durante l'import puoi assegnare i lead a una campagna specifica per ereditare template e configurazioni."
+          }
+        ]
+      },
+      {
+        title: "CREARE CAMPAGNE",
+        icon: "📢",
+        description: "Come inviare messaggi massivi",
+        steps: [
+          {
+            title: "Vai a Campagne",
+            content: "COMUNICAZIONE → Campagne (URL: /consultant/campaigns)",
+            actionText: "Vai alle Campagne",
+            actionHref: "/consultant/campaigns"
+          },
+          {
+            title: "Nuova Campagna",
+            content: "Clicca 'Nuova Campagna'. Dai un nome descrittivo (es: 'Facebook Ads Gennaio 2025')."
+          },
+          {
+            title: "Seleziona Lead",
+            content: "Filtra per tag o stato per selezionare i lead da contattare."
+          },
+          {
+            title: "Scegli Template",
+            content: "Seleziona il template Twilio approvato da usare per il primo messaggio."
+          },
+          {
+            title: "Pianifica Invio",
+            content: "Scegli invio immediato o programmato. Consiglio: inizia con pochi lead per testare."
+          }
+        ]
+      },
+      {
+        title: "REGOLE DI AUTOMAZIONE",
+        icon: "⚡",
+        description: "Configura follow-up automatici",
+        steps: [
+          {
+            title: "Vai ad Automazioni",
+            content: "COMUNICAZIONE → Automazioni (URL: /consultant/automations)",
+            actionText: "Configura Automazioni",
+            actionHref: "/consultant/automations"
+          },
+          {
+            title: "Crea Regola",
+            content: "Clicca 'Nuova Regola' o usa 'Crea con AI' per regole complesse."
+          },
+          {
+            title: "Imposta Trigger",
+            content: "Esempio: 'Se nessuna risposta dopo 24h' → 'Invia reminder'."
+          },
+          {
+            title: "Scegli Azione",
+            content: "Seleziona il messaggio di follow-up da inviare."
+          },
+          {
+            title: "Limita Tentativi",
+            content: "Imposta un numero massimo di follow-up per evitare di essere troppo insistenti."
+          }
+        ]
+      },
+      {
+        title: "MONITORARE LA PIPELINE",
+        icon: "📊",
+        description: "Gestisci le conversazioni attive",
+        steps: [
+          {
+            title: "Visualizza Pipeline",
+            content: "La tab Pipeline in Automazioni mostra tutte le conversazioni organizzate per stato."
+          },
+          {
+            title: "Stati Conversazione",
+            content: "🟡 Pending: Non ancora contattato\n🔵 Contacted: Primo messaggio inviato\n🟢 Responded: Lead ha risposto\n✅ Converted: Diventato cliente"
+          },
+          {
+            title: "Sposta Lead",
+            content: "Puoi spostare manualmente i lead tra le colonne del kanban."
+          },
+          {
+            title: "Rispondi Direttamente",
+            content: "Clicca su una conversazione per rispondere manualmente se necessario."
+          }
+        ]
+      },
+      {
+        title: "TEST DEL SISTEMA",
+        icon: "🧪",
+        description: "Come testare prima di usare con clienti reali",
+        steps: [
+          {
+            title: "Aggiungi te stesso come Lead",
+            content: "Crea un lead con il tuo numero di telefono per i test."
+          },
+          {
+            title: "Crea Campagna di Test",
+            content: "Crea una campagna con solo il tuo lead di test."
+          },
+          {
+            title: "Invia e Verifica",
+            content: "Lancia la campagna e verifica di ricevere il messaggio sul tuo WhatsApp."
+          },
+          {
+            title: "Rispondi e Controlla",
+            content: "Rispondi al messaggio e verifica che la conversazione appaia nella pipeline."
+          },
+          {
+            title: "Testa Follow-up",
+            content: "Crea una regola di test e verifica che il follow-up automatico funzioni."
           }
         ]
       }
