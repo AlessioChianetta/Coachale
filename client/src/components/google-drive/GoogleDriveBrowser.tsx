@@ -233,7 +233,7 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
   };
 
   const handleSelectAll = () => {
-    const files: DriveFile[] = filesData?.files || [];
+    const files: DriveFile[] = filesData?.data || [];
     if (selectedFiles.size === files.length) {
       setSelectedFiles(new Set());
     } else {
@@ -273,8 +273,8 @@ export default function GoogleDriveBrowser({ apiPrefix, onImportSuccess }: Googl
 
   const isConnected = statusData?.connected === true;
   const connectedEmail = statusData?.email;
-  const folders: DriveFolder[] = foldersData?.folders || [];
-  const files: DriveFile[] = filesData?.files || [];
+  const folders: DriveFolder[] = foldersData?.data || [];
+  const files: DriveFile[] = filesData?.data || [];
   const isLoadingContent = foldersLoading || filesLoading;
 
   if (statusLoading) {

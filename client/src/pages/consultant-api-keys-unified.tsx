@@ -15,7 +15,7 @@ import {
   Bot, Key, Mail, MessageSquare, Server, Cloud, Sparkles, Save, 
   AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
   RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
-  BookOpen, ChevronDown
+  BookOpen, ChevronDown, Shield
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
@@ -3153,7 +3153,7 @@ export default function ConsultantApiKeysUnified() {
                       <div>
                         <CardTitle>Configurazione TURN Server per Video Meeting</CardTitle>
                         <CardDescription>
-                          Configura le credenziali TURN per garantire connessioni video stabili su tutte le reti
+                          Configurazione centralizzata gestita dal SuperAdmin
                         </CardDescription>
                       </div>
                     </div>
@@ -3168,143 +3168,65 @@ export default function ConsultantApiKeysUnified() {
                       </AlertDescription>
                     </Alert>
 
-                    {turnConfigData?.config && (
-                      <Alert className={turnConfigData.config.enabled ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}>
-                        {turnConfigData.config.enabled ? (
+                    {turnConfigData?.configured ? (
+                      <Alert className={turnConfigData.config?.enabled ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}>
+                        {turnConfigData.config?.enabled ? (
                           <CheckCircle className="h-4 w-4 text-green-600" />
                         ) : (
                           <AlertCircle className="h-4 w-4 text-yellow-600" />
                         )}
                         <AlertDescription className="text-sm">
-                          {turnConfigData.config.enabled 
-                            ? "TURN server configurato e attivo. Le videochiamate useranno il relay quando necessario."
-                            : "TURN server configurato ma disabilitato. Le videochiamate useranno solo connessioni dirette."}
+                          {turnConfigData.config?.enabled 
+                            ? "TURN server configurato e attivo dal SuperAdmin. Le videochiamate useranno il relay quando necessario."
+                            : "TURN server configurato dal SuperAdmin ma attualmente disabilitato."}
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <Alert className="bg-orange-50 border-orange-200">
+                        <AlertCircle className="h-4 w-4 text-orange-600" />
+                        <AlertDescription className="text-sm text-orange-800">
+                          <strong>TURN server non configurato.</strong> Il SuperAdmin non ha ancora configurato il server TURN. 
+                          Le videochiamate potrebbero non funzionare su reti restrittive. 
+                          Contatta l'amministratore per richiedere la configurazione.
                         </AlertDescription>
                       </Alert>
                     )}
 
-                    <div className="space-y-4 pl-4 border-l-4 border-teal-300">
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            1
+                    {turnConfigData?.configured && turnConfigData.config && (
+                      <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                        <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-teal-600" />
+                          Dettagli Configurazione (dal SuperAdmin)
+                        </h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-500">Provider:</span>
+                            <p className="font-medium">{turnConfigData.config.provider || "Metered"}</p>
                           </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-teal-900">Registrati su Metered.ca</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Vai su <a href="https://www.metered.ca/" target="_blank" rel="noopener" className="text-teal-600 hover:text-teal-800 underline font-medium">metered.ca</a> e crea un account gratuito
-                            </p>
-                            <p className="text-xs text-gray-600 mt-1">
-                              💡 Il piano gratuito include 50GB/mese di traffico TURN - sufficiente per molte videochiamate
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            2
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-teal-900">Copia le credenziali</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              • Nella dashboard Metered, vai su "TURN Server"<br/>
-                              • Copia <strong>Username</strong> e <strong>Password</strong> (Credential)
+                          <div>
+                            <span className="text-gray-500">Stato:</span>
+                            <p className={`font-medium ${turnConfigData.config.enabled ? 'text-green-600' : 'text-yellow-600'}`}>
+                              {turnConfigData.config.enabled ? 'Attivo' : 'Disabilitato'}
                             </p>
                           </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                            3
+                          <div>
+                            <span className="text-gray-500">Username:</span>
+                            <p className="font-medium font-mono text-xs">{turnConfigData.config.username}</p>
                           </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-green-900">Incolla qui sotto</p>
-                            <p className="text-sm text-gray-700 mt-1">
-                              Inserisci le credenziali e salva. Le videochiamate useranno automaticamente i server TURN di Metered.
-                            </p>
+                          <div>
+                            <span className="text-gray-500">Password:</span>
+                            <p className="font-medium font-mono text-xs">{turnConfigData.config.password}</p>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
-                    <div className="space-y-4 pt-4 border-t">
-                      <div className="space-y-2">
-                        <Label htmlFor="turnUsername">Username TURN *</Label>
-                        <Input
-                          id="turnUsername"
-                          type="text"
-                          placeholder="0bbb54d1704ff1c8da4fe5aa"
-                          value={turnConfigFormData.username}
-                          onChange={(e) => setTurnConfigFormData(prev => ({ ...prev, username: e.target.value }))}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="turnPassword">Password TURN *</Label>
-                        <div className="relative">
-                          <Input
-                            id="turnPassword"
-                            type={showTurnPassword ? "text" : "password"}
-                            placeholder="La tua password TURN"
-                            value={turnConfigFormData.password}
-                            onChange={(e) => setTurnConfigFormData(prev => ({ ...prev, password: e.target.value }))}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-2 top-1/2 -translate-y-1/2"
-                            onClick={() => setShowTurnPassword(!showTurnPassword)}
-                          >
-                            {showTurnPassword ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                        {turnConfigData?.config && (
-                          <p className="text-xs text-gray-500">
-                            Credenziali già salvate. Lascia vuoto per mantenere la password esistente, oppure inserisci una nuova password.
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="turnEnabled">Abilita TURN Server</Label>
-                          <p className="text-sm text-muted-foreground">
-                            Attiva il relay per le videochiamate
-                          </p>
-                        </div>
-                        <Switch
-                          id="turnEnabled"
-                          checked={turnConfigFormData.enabled}
-                          onCheckedChange={(checked) => setTurnConfigFormData(prev => ({ ...prev, enabled: checked }))}
-                        />
-                      </div>
-
-                      <Button
-                        onClick={handleSaveTurnConfig}
-                        disabled={isSavingTurnConfig || (!turnConfigFormData.username || (!turnConfigFormData.password && !turnConfigData?.config))}
-                        className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700"
-                      >
-                        {isSavingTurnConfig ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Salvataggio...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="h-4 w-4 mr-2" />
-                            {turnConfigData?.config ? "Aggiorna" : "Salva"} Configurazione TURN
-                          </>
-                        )}
-                      </Button>
+                    <div className="bg-teal-50 rounded-lg p-4">
+                      <p className="text-sm text-teal-800">
+                        <strong>Nota:</strong> La configurazione del server TURN è gestita centralmente dal SuperAdmin 
+                        per garantire stabilità e sicurezza su tutte le videochiamate della piattaforma. 
+                        Non è necessaria alcuna azione da parte tua.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>

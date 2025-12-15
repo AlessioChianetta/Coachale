@@ -8015,54 +8015,44 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // TURN Server Configuration - Per WebRTC Video Calls
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // GET /api/consultant/turn-config - Retrieve TURN configuration
+  // GET /api/consultant/turn-config - Retrieve TURN configuration (from SuperAdmin only)
   app.get("/api/consultant/turn-config", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
-      const consultantId = req.user!.id;
-
-      const [config] = await db
+      // Now consultants inherit TURN config from SuperAdmin only - no personal config allowed
+      const [adminConfig] = await db
         .select()
-        .from(schema.consultantTurnConfig)
-        .where(eq(schema.consultantTurnConfig.consultantId, consultantId))
+        .from(schema.adminTurnConfig)
         .limit(1);
 
-      if (!config) {
+      if (!adminConfig || !adminConfig.usernameEncrypted || !adminConfig.passwordEncrypted) {
         return res.json({
           configured: false,
-          config: null
+          config: null,
+          source: "admin",
+          message: "Il SuperAdmin non ha ancora configurato il server TURN. Contatta l'amministratore."
         });
       }
 
-      // Get consultant salt for decryption
-      const [consultant] = await db
-        .select({ encryptionSalt: schema.users.encryptionSalt })
-        .from(schema.users)
-        .where(eq(schema.users.id, consultantId))
-        .limit(1);
-
+      // Decrypt admin credentials
       let username = "";
-      let password = "";
-
-      if (consultant?.encryptionSalt && config.usernameEncrypted && config.passwordEncrypted) {
-        try {
-          username = decryptForConsultant(config.usernameEncrypted, consultant.encryptionSalt);
-          password = decryptForConsultant(config.passwordEncrypted, consultant.encryptionSalt);
-        } catch (decryptError) {
-          console.error("❌ Error decrypting TURN credentials:", decryptError);
-        }
+      try {
+        username = decrypt(adminConfig.usernameEncrypted);
+      } catch (decryptError) {
+        console.error("❌ Error decrypting admin TURN username:", decryptError);
       }
 
       res.json({
         configured: true,
+        source: "admin",
         config: {
-          id: config.id,
-          provider: config.provider,
+          id: adminConfig.id,
+          provider: adminConfig.provider,
           username,
-          password: password ? "••••••••" : "", // Mask password
-          turnUrls: config.turnUrls,
-          enabled: config.enabled,
-          createdAt: config.createdAt,
-          updatedAt: config.updatedAt
+          password: "••••••••", // Always mask password
+          turnUrls: adminConfig.turnUrls,
+          enabled: adminConfig.enabled,
+          createdAt: adminConfig.createdAt,
+          updatedAt: adminConfig.updatedAt
         }
       });
     } catch (error: any) {
