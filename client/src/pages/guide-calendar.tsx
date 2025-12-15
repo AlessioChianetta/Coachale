@@ -301,20 +301,24 @@ export default function GuideCalendar() {
               <StepCard
                 number={1}
                 title="Collega Google Calendar"
-                description="Autorizza l'accesso al tuo account Google per sincronizzare eventi bidirezionalmente."
+                description="La configurazione OAuth è gestita centralmente dall'amministratore della piattaforma. Tu devi semplicemente autorizzare l'accesso al tuo account Google."
                 icon={Link2}
                 iconColor="bg-blue-500"
                 badge="OBBLIGATORIO"
                 badgeVariant="destructive"
-                link="/consultant/calendar-settings"
-                linkText="Vai alle Impostazioni"
+                link="/consultant/api-settings"
+                linkText="Vai a Impostazioni API"
               >
                 <ul className="space-y-1.5 mb-3">
-                  <ChecklistItem>Clicca "Collega Google Calendar" nelle impostazioni</ChecklistItem>
-                  <ChecklistItem>Autorizza l'app con il tuo account Google</ChecklistItem>
-                  <ChecklistItem>Seleziona quale calendario usare per le consulenze</ChecklistItem>
-                  <ChecklistItem>Verifica che appaia il segno verde di connessione attiva</ChecklistItem>
+                  <ChecklistItem>Vai su Impostazioni API → tab Calendar</ChecklistItem>
+                  <ChecklistItem>Clicca "Connetti Google Calendar"</ChecklistItem>
+                  <ChecklistItem>Autorizza l'accesso al tuo account Google</ChecklistItem>
+                  <ChecklistItem>Fatto! Il calendario è connesso</ChecklistItem>
                 </ul>
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-800 text-sm">
+                  <strong>💡 Nota:</strong> Non devi configurare nulla su Google Cloud Console. 
+                  L'amministratore ha già configurato tutto centralmente per te.
+                </div>
               </StepCard>
 
               <StepCard
@@ -494,6 +498,12 @@ export default function GuideCalendar() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-3">
+                  <Link href="/consultant/api-settings">
+                    <Button variant="outline" className="gap-2">
+                      <Link2 className="h-4 w-4" />
+                      Connetti Google Calendar
+                    </Button>
+                  </Link>
                   <Link href="/consultant/calendar">
                     <Button variant="outline" className="gap-2">
                       <Calendar className="h-4 w-4" />
