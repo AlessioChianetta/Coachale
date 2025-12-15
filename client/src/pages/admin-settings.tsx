@@ -29,6 +29,7 @@ import {
   Loader2,
   Users,
   RefreshCw,
+  Link,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -78,6 +79,21 @@ interface ConsultantVertexAccess {
   vertexAccessEnabled?: boolean; // Mapped from hasAccess for UI compatibility
 }
 
+interface TurnConfig {
+  configured: boolean;
+  config: {
+    id: string;
+    provider: string;
+    username: string;
+    password: string;
+    apiKey?: string;
+    turnUrls?: string[];
+    enabled: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+  } | null;
+}
+
 export default function AdminSettings() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -97,6 +113,19 @@ export default function AdminSettings() {
   });
   const [isSavingVertex, setIsSavingVertex] = useState(false);
   const [isTestingVertex, setIsTestingVertex] = useState(false);
+
+  const [turnFormData, setTurnFormData] = useState({
+    provider: "metered" as "metered" | "twilio" | "custom",
+    username: "",
+    password: "",
+    apiKey: "",
+    turnUrls: "",
+    enabled: true,
+  });
+  const [showTurnPassword, setShowTurnPassword] = useState(false);
+  const [isSavingTurn, setIsSavingTurn] = useState(false);
+  const [isTestingTurn, setIsTestingTurn] = useState(false);
+  const [turnGuideOpen, setTurnGuideOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -206,6 +235,20 @@ export default function AdminSettings() {
     },
   });
 
+  const { data: turnConfigData, isLoading: isLoadingTurnConfig } = useQuery({
+    queryKey: ["/api/admin/turn-config"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/turn-config", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new Error("Errore nel caricamento configurazione TURN");
+      }
+      if (response.status === 404) return { configured: false, config: null };
+      return response.json();
+    },
+  });
+
   const consultantList: ConsultantVertexAccess[] = (consultantAccessData?.consultants || []).map((c: any) => ({
     ...c,
     vertexAccessEnabled: c.hasAccess ?? true, // Map hasAccess to vertexAccessEnabled for UI
@@ -227,6 +270,19 @@ export default function AdminSettings() {
       });
     }
   }, [vertexConfigData]);
+
+  useEffect(() => {
+    if (turnConfigData?.config) {
+      setTurnFormData({
+        provider: turnConfigData.config.provider || "metered",
+        username: turnConfigData.config.username || "",
+        password: turnConfigData.config.password || "",
+        apiKey: turnConfigData.config.apiKey || "",
+        turnUrls: (turnConfigData.config.turnUrls || []).join("\n"),
+        enabled: turnConfigData.config.enabled ?? true,
+      });
+    }
+  }, [turnConfigData]);
 
   const oauthConfig: GoogleOAuthConfig = oauthData || {
     configured: false,
@@ -438,6 +494,92 @@ export default function AdminSettings() {
         description: error.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleSaveTurnConfig = async () => {
+    if (!turnFormData.username || !turnFormData.password) {
+      toast({
+        title: "Campi obbligatori",
+        description: "Inserisci username e password TURN.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingTurn(true);
+    try {
+      const turnUrls = turnFormData.turnUrls
+        .split("\n")
+        .map(url => url.trim())
+        .filter(url => url.length > 0);
+
+      const response = await fetch("/api/admin/turn-config", {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: turnFormData.provider,
+          username: turnFormData.username,
+          password: turnFormData.password,
+          apiKey: turnFormData.apiKey || undefined,
+          turnUrls: turnUrls.length > 0 ? turnUrls : undefined,
+          enabled: turnFormData.enabled,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Errore durante il salvataggio");
+      }
+
+      toast({
+        title: "Configurazione salvata",
+        description: "TURN Server configurato con successo per tutti i consulenti.",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/turn-config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/audit-log"] });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingTurn(false);
+    }
+  };
+
+  const handleTestTurnConnection = async () => {
+    setIsTestingTurn(true);
+    try {
+      if (!turnFormData.username || !turnFormData.password) {
+        throw new Error("Inserisci username e password per testare");
+      }
+      
+      if (turnConfigData?.configured) {
+        toast({
+          title: "Configurazione valida",
+          description: "Le credenziali TURN sono configurate correttamente.",
+        });
+      } else {
+        toast({
+          title: "Non configurato",
+          description: "Salva prima la configurazione TURN.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Test fallito",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingTurn(false);
     }
   };
 
@@ -1110,6 +1252,225 @@ export default function AdminSettings() {
                     </Button>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* TURN Server Configuration */}
+            <Card className="border-0 shadow-lg lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link className="w-5 h-5 text-cyan-500" />
+                  TURN Server Configuration (SuperAdmin)
+                </CardTitle>
+                <CardDescription>
+                  Configura il server TURN centralizzato per tutti i video meeting
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+                  <div className={`p-2 rounded-lg ${turnConfigData?.configured ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                    {turnConfigData?.configured ? (
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {turnConfigData?.configured ? "Configurato" : "Non Configurato"}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {turnConfigData?.configured
+                        ? `Provider: ${turnConfigData.config?.provider} - ${turnFormData.enabled ? "Abilitato" : "Disabilitato"}`
+                        : "Inserisci le credenziali per abilitare TURN per tutti i meeting"}
+                    </p>
+                  </div>
+                  {turnConfigData?.configured && (
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="turn-enabled" className="text-sm">Abilitato</Label>
+                      <Switch
+                        id="turn-enabled"
+                        checked={turnFormData.enabled}
+                        onCheckedChange={(checked) => setTurnFormData(prev => ({ ...prev, enabled: checked }))}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 rounded-xl bg-cyan-50 dark:bg-cyan-900/20 border border-cyan-200 dark:border-cyan-800">
+                  <p className="text-sm text-cyan-800 dark:text-cyan-200">
+                    <strong>Benefici del TURN Server:</strong> Il server TURN consente connessioni video affidabili anche 
+                    quando i partecipanti sono dietro firewall restrittivi o NAT simmetrici. Con questa configurazione 
+                    centralizzata, tutti i consulenti potranno usufruire del servizio senza dover configurare nulla.
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="turn-provider">Provider *</Label>
+                    <Select
+                      value={turnFormData.provider}
+                      onValueChange={(value: "metered" | "twilio" | "custom") => setTurnFormData(prev => ({ ...prev, provider: value }))}
+                    >
+                      <SelectTrigger id="turn-provider">
+                        <SelectValue placeholder="Seleziona provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="metered">Metered TURN</SelectItem>
+                        <SelectItem value="twilio">Twilio</SelectItem>
+                        <SelectItem value="custom">Custom Server</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="turn-username">Username *</Label>
+                    <Input
+                      id="turn-username"
+                      placeholder="turn-username"
+                      value={turnFormData.username}
+                      onChange={(e) => setTurnFormData(prev => ({ ...prev, username: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="turn-password">Password *</Label>
+                    <div className="relative">
+                      <Input
+                        id="turn-password"
+                        type={showTurnPassword ? "text" : "password"}
+                        placeholder="turn-password"
+                        value={turnFormData.password}
+                        onChange={(e) => setTurnFormData(prev => ({ ...prev, password: e.target.value }))}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full"
+                        onClick={() => setShowTurnPassword(!showTurnPassword)}
+                      >
+                        {showTurnPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="turn-apikey">API Key (opzionale)</Label>
+                    <Input
+                      id="turn-apikey"
+                      placeholder="api-key (se richiesto dal provider)"
+                      value={turnFormData.apiKey}
+                      onChange={(e) => setTurnFormData(prev => ({ ...prev, apiKey: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {turnFormData.provider === "custom" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="turn-urls">Custom TURN URLs</Label>
+                    <Textarea
+                      id="turn-urls"
+                      placeholder={"turn:turn.example.com:3478\nturns:turn.example.com:5349"}
+                      value={turnFormData.turnUrls}
+                      onChange={(e) => setTurnFormData(prev => ({ ...prev, turnUrls: e.target.value }))}
+                      rows={3}
+                      className="font-mono text-xs"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Inserisci un URL per riga. Formati supportati: turn:host:port, turns:host:port
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    onClick={handleSaveTurnConfig}
+                    disabled={isSavingTurn || !turnFormData.username || !turnFormData.password}
+                    className="bg-gradient-to-r from-cyan-500 to-teal-500"
+                  >
+                    {isSavingTurn ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvataggio...</>
+                    ) : (
+                      <><Save className="w-4 h-4 mr-2" /> Salva Configurazione</>
+                    )}
+                  </Button>
+
+                  {turnConfigData?.configured && (
+                    <Button
+                      variant="outline"
+                      onClick={handleTestTurnConnection}
+                      disabled={isTestingTurn}
+                    >
+                      {isTestingTurn ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Test in corso...</>
+                      ) : (
+                        <><RefreshCw className="w-4 h-4 mr-2" /> Test Connessione</>
+                      )}
+                    </Button>
+                  )}
+                </div>
+
+                <Collapsible open={turnGuideOpen} onOpenChange={setTurnGuideOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-cyan-500" />
+                        <span>Guida alla configurazione TURN</span>
+                      </div>
+                      {turnGuideOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl mt-2">
+                    <div className="space-y-4">
+                      <div className="p-4 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                        <h4 className="font-semibold text-cyan-600 dark:text-cyan-400 mb-2">1. Metered TURN (Consigliato)</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          Servizio TURN gestito con prezzi basati sull'utilizzo.
+                        </p>
+                        <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc list-inside space-y-1">
+                          <li>Registrati su <a href="https://www.metered.ca/stun-turn" target="_blank" rel="noopener noreferrer" className="text-cyan-600 hover:underline">metered.ca/stun-turn</a></li>
+                          <li>Crea un progetto e ottieni le credenziali</li>
+                          <li>Inserisci Username e Password qui</li>
+                          <li>L'API Key è opzionale per statistiche avanzate</li>
+                        </ul>
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                        <h4 className="font-semibold text-purple-600 dark:text-purple-400 mb-2">2. Twilio</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          Servizio professionale con infrastruttura globale.
+                        </p>
+                        <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc list-inside space-y-1">
+                          <li>Vai su <a href="https://www.twilio.com/console" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">Twilio Console</a></li>
+                          <li>Usa Account SID come Username</li>
+                          <li>Usa Auth Token come Password</li>
+                          <li>Il sistema genererà automaticamente i TURN server</li>
+                        </ul>
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+                        <h4 className="font-semibold text-orange-600 dark:text-orange-400 mb-2">3. Custom Server</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          Configura il tuo server TURN self-hosted (es. coturn).
+                        </p>
+                        <ul className="text-sm text-gray-600 dark:text-gray-400 list-disc list-inside space-y-1">
+                          <li>Installa coturn sul tuo server</li>
+                          <li>Configura username e password nel server</li>
+                          <li>Inserisci gli URL TURN nella textarea dedicata</li>
+                          <li>Formato: turn:hostname:port o turns:hostname:port</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </CardContent>
             </Card>
 
