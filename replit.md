@@ -93,6 +93,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - Session resumption for unlimited duration
   - Proactive Audio (Preview - optional)
 - **Not Supported**: Thinking (only available on Gemini API, not Vertex AI)
+- **Post-Resume Silence**: After WebSocket reconnection with session resumption, AI audio output is blocked via `suppressAiOutputAfterResume` flag until the user speaks first. This prevents the AI from "inventing" responses when reconnecting at ~7 minutes.
 ## Video Copilot Turn-Taking System
 - Prevents API bombardment during video meetings via intelligent turn-taking using a state machine and `SpeakerTurnBuffer`.
 - Triggers transcription on silence detection and finalizes turns on speaker change.
