@@ -82,6 +82,17 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - 3-tier status system (VALIDATED, VAGUE, MISSING) with sticky validation logic (statuses never downgrade).
 - Supports manual checkpoint validation via UI and persistence of validated items.
 - AI skips already-validated items during its processing.
+## Gemini Live API Configuration
+- **Model**: `gemini-live-2.5-flash-native-audio` (GA - December 12, 2025)
+- **Platform**: Vertex AI
+- **Features**:
+  - Native audio with 30 HD voices in 24 languages
+  - Affective Dialog (built-in - understands emotional expressions)
+  - Improved barge-in for natural interruptions
+  - Robust function calling
+  - Session resumption for unlimited duration
+  - Proactive Audio (Preview - optional)
+- **Not Supported**: Thinking (only available on Gemini API, not Vertex AI)
 ## Video Copilot Turn-Taking System
 - Prevents API bombardment during video meetings via intelligent turn-taking using a state machine and `SpeakerTurnBuffer`.
 - Triggers transcription on silence detection and finalizes turns on speaker change.
