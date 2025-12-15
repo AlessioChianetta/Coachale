@@ -400,15 +400,15 @@ export interface ChatStreamChunk {
 export async function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
   const { clientId, message, conversationId, mode, consultantType, pageContext } = request;
 
-  // Verify user exists and is a client
+  // Verify user exists (role already verified by middleware - supports Email Condivisa profiles)
   const [user] = await db
     .select()
     .from(users)
     .where(eq(users.id, clientId))
     .limit(1);
 
-  if (!user || user.role !== 'client') {
-    throw new Error("Utente non autorizzato");
+  if (!user) {
+    throw new Error("Utente non trovato");
   }
 
   // Extract consultantId (from user.consultantId or fallback to clientId)
@@ -952,19 +952,19 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     totalEnd: 0,
   };
 
-  // Verify user exists and is a client
+  // Verify user exists (role already verified by middleware - supports Email Condivisa profiles)
   const [user] = await db
     .select()
     .from(users)
     .where(eq(users.id, clientId))
     .limit(1);
 
-  if (!user || user.role !== 'client') {
+  if (!user) {
     yield {
       type: "error",
       conversationId: conversationId || "",
-      error: "Utente non autorizzato",
-      content: "Utente non autorizzato",
+      error: "Utente non trovato",
+      content: "Utente non trovato",
     };
     return;
   }

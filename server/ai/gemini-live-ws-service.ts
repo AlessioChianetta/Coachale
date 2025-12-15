@@ -842,8 +842,17 @@ async function getUserIdFromRequest(req: any): Promise<{
       return null;
     }
 
-    // Verifica che sia un client (solo i client possono usare Live Mode)
-    if (user.role !== 'client') {
+    // Verifica che sia un client (supporta Email Condivisa profiles)
+    // Email Condivisa: if JWT has profileId, use profile's role instead of user's database role
+    let effectiveRole = user.role;
+    if (decoded.profileId) {
+      const profile = await storage.getUserRoleProfileById(decoded.profileId);
+      if (profile && profile.userId === user.id && profile.isActive) {
+        effectiveRole = profile.role;
+      }
+    }
+
+    if (effectiveRole !== 'client') {
       console.error('❌ Live Mode is only available for clients');
       return null;
     }
