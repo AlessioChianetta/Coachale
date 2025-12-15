@@ -597,8 +597,12 @@ function AILogsViewer() {
               const log = item.log;
               const conversation = item.conversation;
               const agent = item.agent;
+              const lead = item.lead;
               const config = decisionConfig[log.decision] || decisionConfig.skip;
               const DecisionIcon = config.icon;
+              const leadName = lead?.firstName || lead?.lastName 
+                ? `${lead.firstName || ''} ${lead.lastName || ''}`.trim()
+                : null;
               
               return (
                 <div key={log.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50">
@@ -610,7 +614,7 @@ function AILogsViewer() {
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium">
-                            {conversation?.contactName || conversation?.contactNumber || "Lead"}
+                            {leadName || conversation?.phoneNumber || "Lead"}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             via {agent?.agentName || "Agente"}

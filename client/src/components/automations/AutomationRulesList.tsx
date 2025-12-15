@@ -5,6 +5,7 @@ import {
   useDeleteFollowupRule,
   useGenerateRuleWithAI,
   useCreateFollowupRule,
+  useSeedDefaultRules,
 } from "@/hooks/useFollowupApi";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +41,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Clock, Zap, Brain, Pencil, Trash2, Settings, Sparkles, Loader2, CheckCircle2 } from "lucide-react";
+import { Plus, Clock, Zap, Brain, Pencil, Trash2, Settings, Sparkles, Loader2, CheckCircle2, PackagePlus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { RuleFormDialog } from "./RuleFormDialog";
 
 interface FollowupRule {
@@ -233,6 +235,25 @@ function LoadingSkeleton() {
 }
 
 function EmptyState({ onCreateNew, onCreateWithAI }: { onCreateNew: () => void; onCreateWithAI: () => void }) {
+  const { toast } = useToast();
+  const seedMutation = useSeedDefaultRules();
+  
+  const handleSeedDefaults = async () => {
+    try {
+      const result = await seedMutation.mutateAsync();
+      toast({
+        title: "Regole create!",
+        description: result.message || "Le regole predefinite sono state create con successo.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile creare le regole predefinite.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   return (
     <Card>
       <CardContent className="p-12">
@@ -240,10 +261,23 @@ function EmptyState({ onCreateNew, onCreateWithAI }: { onCreateNew: () => void; 
           <Settings className="h-16 w-16 text-muted-foreground mb-4" />
           <h3 className="text-xl font-semibold mb-2">Nessuna regola configurata</h3>
           <p className="text-muted-foreground mb-6">
-            Crea la tua prima regola di automazione!
+            Crea la tua prima regola di automazione o usa quelle predefinite!
           </p>
-          <div className="flex items-center gap-2">
-            <Button onClick={onCreateNew} className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button 
+              onClick={handleSeedDefaults} 
+              variant="default"
+              disabled={seedMutation.isPending}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              {seedMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <PackagePlus className="h-4 w-4" />
+              )}
+              Crea Regole Predefinite
+            </Button>
+            <Button onClick={onCreateNew} variant="outline" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Nuova Regola
             </Button>

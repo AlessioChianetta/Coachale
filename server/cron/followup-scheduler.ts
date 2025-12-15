@@ -877,6 +877,147 @@ function calculateScheduledTime(decision: FollowupDecision): Date {
   }
 }
 
+async function generateAIFollowupMessage(
+  conversationId: string,
+  consultantId: string,
+  agentConfigId: string | null,
+  reasoning?: string
+): Promise<string | null> {
+  console.log(`🤖 [FOLLOWUP-AI] Generating intelligent follow-up message for conversation ${conversationId}`);
+  
+  // Get agent configuration for context
+  let agentContext = {
+    agentName: 'Assistente',
+    instructions: '',
+    personality: '',
+    whoWeHelp: '',
+    whatWeDo: '',
+    usp: '',
+  };
+  
+  if (agentConfigId) {
+    const agentConfig = await db
+      .select({
+        agentName: consultantWhatsappConfig.agentName,
+        instructions: consultantWhatsappConfig.instructions,
+        personality: consultantWhatsappConfig.personality,
+        whoWeHelp: consultantWhatsappConfig.whoWeHelp,
+        whatWeDo: consultantWhatsappConfig.whatWeDo,
+        usp: consultantWhatsappConfig.usp,
+      })
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.id, agentConfigId))
+      .limit(1);
+    
+    if (agentConfig.length > 0) {
+      agentContext = {
+        agentName: agentConfig[0].agentName || 'Assistente',
+        instructions: agentConfig[0].instructions || '',
+        personality: agentConfig[0].personality || '',
+        whoWeHelp: agentConfig[0].whoWeHelp || '',
+        whatWeDo: agentConfig[0].whatWeDo || '',
+        usp: agentConfig[0].usp || '',
+      };
+    }
+  }
+  
+  // Get recent chat history
+  const chatHistory = await db
+    .select({
+      content: whatsappMessages.content,
+      sender: whatsappMessages.sender,
+      createdAt: whatsappMessages.createdAt,
+    })
+    .from(whatsappMessages)
+    .where(eq(whatsappMessages.conversationId, conversationId))
+    .orderBy(desc(whatsappMessages.createdAt))
+    .limit(15);
+  
+  if (chatHistory.length === 0) {
+    console.log(`⚠️ [FOLLOWUP-AI] No chat history found`);
+    return null;
+  }
+  
+  // Reverse to get chronological order
+  const orderedHistory = chatHistory.reverse();
+  
+  // Format chat history
+  const formattedChat = orderedHistory.map(msg => {
+    const role = msg.sender === 'client' ? 'LEAD' : 'AGENTE';
+    return `[${role}]: ${msg.content}`;
+  }).join('\n');
+  
+  // Get AI provider
+  const aiProvider = await getAIProvider(consultantId, 'consultant');
+  
+  if (!aiProvider) {
+    console.log(`⚠️ [FOLLOWUP-AI] No AI provider available`);
+    return null;
+  }
+  
+  const systemPrompt = `Sei ${agentContext.agentName}, un assistente AI professionale per follow-up WhatsApp.
+
+CONTESTO AGENTE:
+${agentContext.personality ? `- Personalità: ${agentContext.personality}` : ''}
+${agentContext.whoWeHelp ? `- Chi aiutiamo: ${agentContext.whoWeHelp}` : ''}
+${agentContext.whatWeDo ? `- Cosa facciamo: ${agentContext.whatWeDo}` : ''}
+${agentContext.usp ? `- Valore unico: ${agentContext.usp}` : ''}
+${agentContext.instructions ? `\nISTRUZIONI SPECIFICHE:\n${agentContext.instructions}` : ''}
+
+IL TUO COMPITO:
+Scrivi un messaggio di follow-up breve e naturale per ricontattare il lead che non ha risposto.
+Devi:
+1. Leggere la cronologia della chat per capire il contesto
+2. Scrivere un messaggio BREVE (max 2-3 frasi) che:
+   - Sia naturale e colloquiale
+   - Faccia riferimento alla conversazione precedente se pertinente
+   - Spinga gentilmente verso una risposta o azione
+   - NON sia invadente o aggressivo
+   - NON contenga emoji a meno che l'agente li usi normalmente
+
+IMPORTANTE:
+- Rispondi SOLO con il testo del messaggio da inviare
+- NESSUN prefisso, nessuna spiegazione, solo il messaggio`;
+
+  const userPrompt = `CRONOLOGIA CHAT:
+${formattedChat}
+
+${reasoning ? `CONTESTO DECISIONE: ${reasoning}` : ''}
+
+Genera il messaggio di follow-up:`;
+
+  try {
+    const result = await aiProvider.client.generateContent({
+      model: 'gemini-2.5-flash',
+      systemInstruction: systemPrompt,
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 200,
+      },
+    });
+    
+    const responseText = result.response?.text?.() || 
+      result.response?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    const cleanedMessage = responseText
+      .trim()
+      .replace(/^["']|["']$/g, '')
+      .replace(/^(Messaggio:|Risposta:|Follow-up:)\s*/i, '');
+    
+    if (cleanedMessage && cleanedMessage.length > 10 && cleanedMessage.length < 500) {
+      console.log(`✅ [FOLLOWUP-AI] Generated message: "${cleanedMessage.substring(0, 50)}..."`);
+      return cleanedMessage;
+    }
+    
+    console.log(`⚠️ [FOLLOWUP-AI] Generated message invalid or too short/long`);
+    return null;
+  } catch (error) {
+    console.error(`❌ [FOLLOWUP-AI] Error generating message:`, error);
+    return null;
+  }
+}
+
 async function checkIfShouldStillSend(conversationId: string): Promise<boolean> {
   const recentMessages = await db
     .select({
@@ -1025,10 +1166,28 @@ async function sendFollowupMessage(
       throw new Error('No approved template available for follow-up outside 24h window');
     }
   } else {
-    // Within 24h - can use free-form AI message or template
-    console.log(`💬 [FOLLOWUP-SCHEDULER] Within 24h window - can use free-form message`);
+    // Within 24h - use AI-generated intelligent message based on chat context
+    console.log(`💬 [FOLLOWUP-SCHEDULER] Within 24h window - generating AI message from chat context`);
     
-    if (message.templateId) {
+    // Try to generate AI message by reading the chat
+    try {
+      const aiMessage = await generateAIFollowupMessage(
+        message.conversationId,
+        consultantId,
+        agentConfigId,
+        message.aiDecisionReasoning || undefined
+      );
+      
+      if (aiMessage) {
+        messageText = aiMessage;
+        console.log(`🤖 [FOLLOWUP-SCHEDULER] AI generated follow-up: "${messageText.substring(0, 80)}..."`);
+      }
+    } catch (aiError) {
+      console.error(`⚠️ [FOLLOWUP-SCHEDULER] AI message generation failed:`, aiError);
+    }
+    
+    // Fall back to template if AI failed
+    if (!messageText && message.templateId) {
       const template = await db
         .select({ body: whatsappCustomTemplates.body })
         .from(whatsappCustomTemplates)
@@ -1037,12 +1196,14 @@ async function sendFollowupMessage(
       
       if (template.length > 0 && template[0].body) {
         messageText = template[0].body;
+        console.log(`📋 [FOLLOWUP-SCHEDULER] Using template as fallback`);
       }
     }
 
-    // Fall back to AI-generated message
+    // Final fallback to static message
     if (!messageText) {
       messageText = message.fallbackMessage || '';
+      console.log(`📝 [FOLLOWUP-SCHEDULER] Using fallback message`);
     }
   }
 

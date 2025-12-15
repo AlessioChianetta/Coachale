@@ -154,6 +154,117 @@ router.patch("/rules/:id/toggle", authenticateToken, requireRole("consultant"), 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SEED DEFAULT RULES
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.post("/rules/seed-defaults", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    // Check if user already has rules
+    const existingRules = await db
+      .select()
+      .from(schema.followupRules)
+      .where(eq(schema.followupRules.consultantId, req.user!.id))
+      .limit(1);
+    
+    if (existingRules.length > 0) {
+      return res.status(400).json({ 
+        message: "Hai già delle regole configurate. Elimina le regole esistenti prima di creare quelle predefinite." 
+      });
+    }
+    
+    // Default rules for WhatsApp follow-up scenarios
+    // Distinzione chiave: 
+    // - Entro 24h dall'ultimo messaggio lead: AI genera messaggio intelligente leggendo la chat
+    // - Oltre 24h: WhatsApp richiede template approvati
+    const defaultRules = [
+      // ═══════════════════════════════════════════════════════════════
+      // REGOLE ENTRO 24H - AI genera messaggi intelligenti
+      // ═══════════════════════════════════════════════════════════════
+      {
+        consultantId: req.user!.id,
+        name: "AI Follow-up Intelligente (entro 24h)",
+        description: "L'AI legge la cronologia della chat e genera un messaggio di follow-up personalizzato e contestuale. Attivo solo se il lead ha scritto nelle ultime 24h.",
+        triggerType: "ai_decision" as const,
+        triggerCondition: { hoursWithoutReply: 4, maxHoursSinceLeadMessage: 24 },
+        fallbackMessage: "Ciao! Hai avuto modo di leggere il mio ultimo messaggio?",
+        applicableToStates: ["new", "contacted", "interested", "qualified"],
+        applicableToAgentTypes: [],
+        applicableToChannels: ["whatsapp"],
+        maxAttempts: 2,
+        cooldownHours: 4,
+        priority: 10,
+        isActive: true,
+        isDefault: true,
+      },
+      {
+        consultantId: req.user!.id,
+        name: "AI Secondo Tentativo (entro 24h)",
+        description: "Secondo messaggio AI se il lead non risponde entro 8 ore. Sempre entro la finestra 24h.",
+        triggerType: "ai_decision" as const,
+        triggerCondition: { hoursWithoutReply: 8, maxHoursSinceLeadMessage: 24 },
+        fallbackMessage: "Ciao! Ti scrivo per un breve aggiornamento. Fammi sapere se hai domande!",
+        applicableToStates: ["contacted", "interested"],
+        applicableToAgentTypes: [],
+        applicableToChannels: ["whatsapp"],
+        maxAttempts: 1,
+        cooldownHours: 8,
+        priority: 8,
+        isActive: true,
+        isDefault: true,
+      },
+      // ═══════════════════════════════════════════════════════════════
+      // REGOLE OLTRE 24H - Richiedono template approvati WhatsApp
+      // ═══════════════════════════════════════════════════════════════
+      {
+        consultantId: req.user!.id,
+        name: "Template Follow-up 48h",
+        description: "Dopo 48h senza risposta usa un template approvato. Richiede template assegnato all'agente.",
+        triggerType: "time_based" as const,
+        triggerCondition: { hoursWithoutReply: 48 },
+        fallbackMessage: null,
+        applicableToStates: ["contacted", "interested"],
+        applicableToAgentTypes: [],
+        applicableToChannels: ["whatsapp"],
+        maxAttempts: 1,
+        cooldownHours: 48,
+        priority: 6,
+        isActive: true,
+        isDefault: true,
+      },
+      {
+        consultantId: req.user!.id,
+        name: "Template Ultimo Tentativo 7 giorni",
+        description: "Ultimo follow-up dopo una settimana con template finale. Richiede template assegnato.",
+        triggerType: "time_based" as const,
+        triggerCondition: { daysWithoutReply: 7 },
+        fallbackMessage: null,
+        applicableToStates: ["contacted", "interested", "qualified"],
+        applicableToAgentTypes: [],
+        applicableToChannels: ["whatsapp"],
+        maxAttempts: 1,
+        cooldownHours: 168,
+        priority: 4,
+        isActive: true,
+        isDefault: true,
+      },
+    ];
+    
+    const createdRules = await db
+      .insert(schema.followupRules)
+      .values(defaultRules)
+      .returning();
+    
+    res.status(201).json({
+      message: `Create ${createdRules.length} regole predefinite con successo!`,
+      rules: createdRules,
+    });
+  } catch (error: any) {
+    console.error("Error seeding default rules:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // AI RULE GENERATION
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -454,12 +565,16 @@ router.get("/ai-logs", authenticateToken, requireRole("consultant"), async (req,
         log: schema.followupAiEvaluationLog,
         conversation: {
           id: schema.whatsappConversations.id,
-          contactNumber: schema.whatsappConversations.contactNumber,
-          contactName: schema.whatsappConversations.contactName,
+          phoneNumber: schema.whatsappConversations.phoneNumber,
         },
         agent: {
           id: schema.consultantWhatsappConfig.id,
           agentName: schema.consultantWhatsappConfig.agentName,
+        },
+        lead: {
+          id: schema.proactiveLeads.id,
+          firstName: schema.proactiveLeads.firstName,
+          lastName: schema.proactiveLeads.lastName,
         },
       })
       .from(schema.followupAiEvaluationLog)
@@ -470,6 +585,10 @@ router.get("/ai-logs", authenticateToken, requireRole("consultant"), async (req,
       .innerJoin(
         schema.consultantWhatsappConfig,
         eq(schema.whatsappConversations.agentConfigId, schema.consultantWhatsappConfig.id)
+      )
+      .leftJoin(
+        schema.proactiveLeads,
+        eq(schema.whatsappConversations.proactiveLeadId, schema.proactiveLeads.id)
       )
       .where(eq(schema.consultantWhatsappConfig.consultantId, req.user!.id))
       .orderBy(desc(schema.followupAiEvaluationLog.createdAt))

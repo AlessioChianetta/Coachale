@@ -73,6 +73,25 @@ export function useDeleteFollowupRule() {
   });
 }
 
+export function useSeedDefaultRules() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/followup/rules/seed-defaults", {
+        method: "POST",
+        credentials: "include",
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to seed default rules");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["followup-rules"] });
+    },
+  });
+}
+
 export function useConversationStates() {
   return useQuery({
     queryKey: ["followup-conversations"],
