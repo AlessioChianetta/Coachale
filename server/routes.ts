@@ -12388,9 +12388,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if calendar is connected via OAuth
-      const hasOAuth = !!(settings.googleOAuthClientId && settings.googleOAuthClientSecret && settings.googleRefreshToken);
-      const googleCalendarConnected = hasOAuth;
+      // Check if calendar is connected via OAuth (supports global OAuth)
+      const googleCalendarConnected = await isGoogleCalendarConnected(req.user!.id);
+      
+      // Check if using global or personal OAuth
+      const hasGlobalOAuth = await googleCalendarService.isGlobalCalendarOAuthConfigured();
+      const hasPersonalOAuth = !!(settings.googleOAuthClientId && settings.googleOAuthClientSecret);
+      const hasOAuthCredentials = hasGlobalOAuth || hasPersonalOAuth;
 
       // Check OAuth token status (validity and whether reconnection is needed)
       let oauthTokenStatus = {
@@ -12399,7 +12403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: undefined as string | undefined
       };
 
-      if (hasOAuth) {
+      if (googleCalendarConnected) {
         try {
           oauthTokenStatus = await googleCalendarService.checkOAuthTokenStatus(req.user!.id);
         } catch (error: any) {
@@ -12417,7 +12421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         isConfigured: true,
         googleCalendarConnected, // indicates if calendar is connected via OAuth
-        hasOAuthCredentials: !!(settings.googleOAuthClientId && settings.googleOAuthClientSecret),
+        hasOAuthCredentials, // true if global or personal OAuth is configured
         googleOAuthClientId: settings.googleOAuthClientId,
         googleOAuthRedirectUri: settings.googleOAuthRedirectUri,
         googleCalendarId: settings.googleCalendarId,
@@ -12771,6 +12775,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Test Google Calendar connection - actually tries to fetch events
+  app.post("/api/calendar-settings/test-connection", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      
+      // Check if connected
+      const isConnected = await isGoogleCalendarConnected(consultantId);
+      if (!isConnected) {
+        return res.status(400).json({ 
+          success: false,
+          message: "Google Calendar non connesso. Effettua prima l'autenticazione OAuth."
+        });
+      }
+
+      // Get settings
+      const [settings] = await db
+        .select()
+        .from(schema.consultantAvailabilitySettings)
+        .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId))
+        .limit(1);
+
+      // Try to fetch events from Google Calendar (limit to next 7 days for test)
+      const calendarId = settings?.googleCalendarId || 'primary';
+      const now = new Date();
+      const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const events = await googleCalendarService.fetchGoogleCalendarEvents(
+        consultantId, 
+        now,
+        sevenDaysLater
+      );
+
+      // Get userinfo for email if not stored
+      let calendarEmail = (settings as any)?.googleCalendarEmail;
+      if (!calendarEmail) {
+        try {
+          const userInfo = await googleCalendarService.getGoogleUserInfo(consultantId);
+          calendarEmail = userInfo?.email;
+          
+          // Save email to settings
+          if (calendarEmail) {
+            await db
+              .update(schema.consultantAvailabilitySettings)
+              .set({ 
+                googleCalendarEmail: calendarEmail,
+                updatedAt: new Date() 
+              })
+              .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId));
+          }
+        } catch (e) {
+          console.error('Could not fetch Google user info:', e);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: "Connessione a Google Calendar verificata con successo!",
+        eventsFound: events?.length || 0,
+        calendarId,
+        calendarEmail,
+        lastSyncAt: settings?.lastSyncAt
+      });
+    } catch (error: any) {
+      console.error('Test connection error:', error);
+      
+      // Check for specific error types
+      let errorMessage = error.message || 'Errore durante il test di connessione';
+      if (error.message?.includes('API has not been used') || error.message?.includes('disabled')) {
+        errorMessage = 'L\'API Google Calendar non è abilitata nel progetto Google Cloud. Abilita l\'API dalla console Google Cloud.';
+      } else if (error.message?.includes('invalid_grant') || error.message?.includes('Token has been expired')) {
+        errorMessage = 'Il token OAuth è scaduto o revocato. Riconnetti Google Calendar.';
+      }
+      
+      res.status(500).json({ 
+        success: false,
+        message: errorMessage 
+      });
     }
   });
 

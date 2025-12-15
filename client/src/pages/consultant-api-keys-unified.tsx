@@ -2560,7 +2560,7 @@ export default function ConsultantApiKeysUnified() {
                             )}
 
                             {/* Buttons */}
-                            <div className="flex gap-3">
+                            <div className="flex flex-wrap gap-3">
                               <Button
                                 onClick={async () => {
                                   try {
@@ -2593,6 +2593,52 @@ export default function ConsultantApiKeysUnified() {
                                 <Calendar className="h-4 w-4 mr-2" />
                                 {calendarSettings?.googleCalendarConnected ? "Riconnetti Google Calendar" : "Connetti Google Calendar"}
                               </Button>
+
+                              {calendarSettings?.googleCalendarConnected && (
+                                <Button
+                                  onClick={async () => {
+                                    try {
+                                      toast({
+                                        title: "Test in corso...",
+                                        description: "Verifico la connessione a Google Calendar",
+                                      });
+                                      
+                                      const response = await fetch("/api/calendar-settings/test-connection", {
+                                        method: "POST",
+                                        headers: getAuthHeaders(),
+                                      });
+
+                                      const result = await response.json();
+
+                                      if (result.success) {
+                                        queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings"] });
+                                        queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings/connection-status"] });
+                                        toast({
+                                          title: "Connessione OK!",
+                                          description: `${result.message} Eventi trovati: ${result.eventsFound}${result.calendarEmail ? ` - Account: ${result.calendarEmail}` : ''}`,
+                                        });
+                                      } else {
+                                        toast({
+                                          title: "Errore Connessione",
+                                          description: result.message,
+                                          variant: "destructive",
+                                        });
+                                      }
+                                    } catch (error: any) {
+                                      toast({
+                                        title: "Errore",
+                                        description: error.message,
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                  variant="outline"
+                                  className="text-green-600 hover:bg-green-50 border-green-300"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Test Connessione
+                                </Button>
+                              )}
 
                               {calendarSettings?.googleCalendarConnected && (
                                 <Button

@@ -1030,6 +1030,7 @@ export async function syncGoogleCalendarToLocal(consultantId: string) {
 
 /**
  * Check if consultant has Google Calendar connected via OAuth
+ * Supports both global OAuth (SuperAdmin) and personal OAuth credentials
  */
 export async function isGoogleCalendarConnected(consultantId: string): Promise<boolean> {
   const [settings] = await db
@@ -1038,8 +1039,24 @@ export async function isGoogleCalendarConnected(consultantId: string): Promise<b
     .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
     .limit(1);
 
-  // Check OAuth credentials and refresh token
-  return !!(settings?.googleRefreshToken && settings?.googleOAuthClientId && settings?.googleOAuthClientSecret);
+  // Must have at least a refresh token OR a valid access token
+  const hasRefreshToken = !!settings?.googleRefreshToken;
+  const hasValidAccessToken = !!(settings?.googleAccessToken && 
+    settings?.googleTokenExpiresAt && 
+    new Date(settings.googleTokenExpiresAt) > new Date());
+  
+  if (!hasRefreshToken && !hasValidAccessToken) {
+    return false;
+  }
+
+  // Check if global OAuth is configured (SuperAdmin centralized)
+  const globalCredentials = await getGlobalOAuthCredentials();
+  if (globalCredentials) {
+    return true; // Connected via global OAuth
+  }
+
+  // Fallback: check personal OAuth credentials
+  return !!(settings?.googleOAuthClientId && settings?.googleOAuthClientSecret);
 }
 
 /**
@@ -1051,5 +1068,50 @@ export async function validateOAuthCredentials(consultantId: string): Promise<bo
     return true;
   } catch (error) {
     return false;
+  }
+}
+
+/**
+ * Get Google user info (email, name) from OAuth token
+ */
+export async function getGoogleUserInfo(consultantId: string): Promise<{ email: string; name?: string } | null> {
+  try {
+    const credentials = await getConsultantOAuthCredentials(consultantId);
+    
+    // Get tokens from database
+    const [settings] = await db
+      .select()
+      .from(consultantAvailabilitySettings)
+      .where(eq(consultantAvailabilitySettings.consultantId, consultantId))
+      .limit(1);
+
+    if (!settings?.googleRefreshToken) {
+      return null;
+    }
+
+    // Create OAuth client and set tokens
+    const oauth2Client = new google.auth.OAuth2(
+      credentials.clientId,
+      credentials.clientSecret,
+      credentials.redirectUri
+    );
+
+    oauth2Client.setCredentials({
+      access_token: settings.googleAccessToken,
+      refresh_token: settings.googleRefreshToken,
+      expiry_date: settings.googleTokenExpiresAt?.getTime()
+    });
+
+    // Fetch user info from Google
+    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+    const userInfoResponse = await oauth2.userinfo.get();
+
+    return {
+      email: userInfoResponse.data.email || '',
+      name: userInfoResponse.data.name || undefined
+    };
+  } catch (error) {
+    console.error('Error fetching Google user info:', error);
+    return null;
   }
 }
