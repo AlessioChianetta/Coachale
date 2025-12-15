@@ -70,6 +70,9 @@ import {
   Sparkles,
   FileText,
   Play,
+  History,
+  Send,
+  RefreshCw,
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import Papa from "papaparse";
@@ -109,6 +112,16 @@ interface ProactiveLead {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+interface ActivityLog {
+  id: string;
+  leadId: string;
+  eventType: string;
+  eventMessage: string;
+  eventDetails: Record<string, any>;
+  leadStatusAtEvent: string | null;
+  createdAt: string;
 }
 
 interface WhatsAppAgent {
@@ -221,6 +234,10 @@ export default function ProactiveLeadsPage() {
     errors: Array<{ row: number; phone?: string; error: string }>;
   } | null>(null);
 
+  const [activityLogsDialogOpen, setActivityLogsDialogOpen] = useState(false);
+  const [selectedLeadForLogs, setSelectedLeadForLogs] = useState<ProactiveLead | null>(null);
+  const [triggeringLeadId, setTriggeringLeadId] = useState<string | null>(null);
+
   // Fetch all leads
   const { data: leadsData, isLoading: leadsLoading } = useQuery({
     queryKey: ["/api/proactive-leads"],
@@ -267,6 +284,20 @@ export default function ProactiveLeadsPage() {
       const data = await response.json();
       return data.logs || [];
     },
+  });
+
+  // Fetch activity logs for selected lead
+  const { data: activityLogsData, isLoading: isLoadingLogs, refetch: refetchLogs } = useQuery({
+    queryKey: ["proactive-lead-activity-logs", selectedLeadForLogs?.id],
+    queryFn: async () => {
+      if (!selectedLeadForLogs?.id) return null;
+      const response = await fetch(`/api/proactive-leads/${selectedLeadForLogs.id}/activity-logs`, {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch activity logs");
+      return response.json();
+    },
+    enabled: !!selectedLeadForLogs?.id && activityLogsDialogOpen,
   });
 
   // Create lead mutation
@@ -501,6 +532,31 @@ export default function ProactiveLeadsPage() {
     },
   });
 
+  // Trigger outreach now mutation
+  const triggerNowMutation = useMutation({
+    mutationFn: async ({ leadId, isDryRun }: { leadId: string; isDryRun: boolean }) => {
+      const response = await fetch(`/api/proactive-leads/${leadId}/trigger-now`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ isDryRun }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to trigger outreach");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Successo", description: data.message });
+      queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
+      setTriggeringLeadId(null);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      setTriggeringLeadId(null);
+    },
+  });
+
   const handleAddNew = () => {
     setFormData(emptyFormData);
     setSelectedLead(null);
@@ -567,6 +623,16 @@ export default function ProactiveLeadsPage() {
     if (leadToDelete?.id) {
       deleteMutation.mutate(leadToDelete.id);
     }
+  };
+
+  const handleViewLogs = (lead: ProactiveLead) => {
+    setSelectedLeadForLogs(lead);
+    setActivityLogsDialogOpen(true);
+  };
+
+  const handleTriggerNow = (lead: ProactiveLead, isDryRun: boolean = false) => {
+    setTriggeringLeadId(lead.id);
+    triggerNowMutation.mutate({ leadId: lead.id, isDryRun });
   };
 
   const validateForm = (): boolean => {
@@ -1427,16 +1493,51 @@ export default function ProactiveLeadsPage() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <div className="flex justify-end gap-2">
+                                <div className="flex justify-end gap-1">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => handleViewLogs(lead)}
+                                        >
+                                          <History className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Vedi Log Attività</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  {lead.status === "pending" && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleTriggerNow(lead, false)}
+                                            disabled={triggeringLeadId === lead.id}
+                                          >
+                                            {triggeringLeadId === lead.id ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <Send className="h-4 w-4 text-green-600" />
+                                            )}
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Invia Ora</TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
                                   <Button
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => handleEdit(lead)}
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
                                   <Button
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => handleDelete(lead)}
                                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -2412,6 +2513,82 @@ export default function ProactiveLeadsPage() {
           </DialogContent>
         </Dialog>
       </>
+
+      {/* Activity Logs Dialog */}
+      <Dialog open={activityLogsDialogOpen} onOpenChange={setActivityLogsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-blue-600" />
+              Log Attività - {selectedLeadForLogs?.firstName} {selectedLeadForLogs?.lastName}
+            </DialogTitle>
+            <DialogDescription>
+              Timeline degli eventi per questo lead proattivo
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="mt-4">
+            {isLoadingLogs ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              </div>
+            ) : activityLogsData?.logs?.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Nessuna attività registrata per questo lead
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activityLogsData?.logs?.map((log: ActivityLog) => {
+                  const eventIcons: Record<string, { icon: any; color: string }> = {
+                    created: { icon: Plus, color: "text-green-600 bg-green-100" },
+                    processing: { icon: RefreshCw, color: "text-blue-600 bg-blue-100" },
+                    sent: { icon: Send, color: "text-green-600 bg-green-100" },
+                    failed: { icon: XCircle, color: "text-red-600 bg-red-100" },
+                    skipped: { icon: Clock, color: "text-yellow-600 bg-yellow-100" },
+                    manual_trigger: { icon: Zap, color: "text-purple-600 bg-purple-100" },
+                    responded: { icon: MessageCircle, color: "text-green-600 bg-green-100" },
+                    converted: { icon: Sparkles, color: "text-purple-600 bg-purple-100" },
+                  };
+                  const eventConfig = eventIcons[log.eventType] || { icon: Clock, color: "text-gray-600 bg-gray-100" };
+                  const EventIcon = eventConfig.icon;
+                  
+                  return (
+                    <div key={log.id} className="flex gap-3 p-3 rounded-lg border bg-gray-50 dark:bg-gray-900/50">
+                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${eventConfig.color}`}>
+                        <EventIcon className="h-4 w-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {log.eventType.replace(/_/g, " ")}
+                          </Badge>
+                          <span className="text-xs text-gray-500">
+                            {format(new Date(log.createdAt), "dd MMM yyyy HH:mm:ss", { locale: it })}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                          {log.eventMessage}
+                        </p>
+                        {log.eventDetails && Object.keys(log.eventDetails).length > 0 && (
+                          <Collapsible className="mt-2">
+                            <CollapsibleTrigger className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
+                              <ChevronDown className="h-3 w-3" />
+                              Dettagli
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs font-mono overflow-x-auto">
+                              <pre>{JSON.stringify(log.eventDetails, null, 2)}</pre>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
