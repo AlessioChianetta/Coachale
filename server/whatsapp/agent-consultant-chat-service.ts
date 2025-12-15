@@ -9,6 +9,7 @@ import { getAIProvider } from '../ai/provider-factory';
 import { db } from '../db';
 import * as schema from '@shared/schema';
 import { eq, and, asc } from 'drizzle-orm';
+import { getMandatoryBookingBlock } from './instruction-blocks';
 
 /**
  * Build system prompt for WhatsApp agent based on consultant configuration
@@ -255,6 +256,8 @@ ${customInstructions}
  * @param consultantId - ID of the consultant
  * @param conversationId - ID of the conversation
  * @param messageContent - Content of the message from consultant
+ * @param pendingModification - Context for pending booking modifications
+ * @param bookingContext - Context for available slots and existing appointment
  * @returns AsyncGenerator yielding text chunks from AI
  */
 export interface PendingModificationContext {
@@ -265,11 +268,24 @@ export interface PendingModificationContext {
   requiredConfirmations: number;
 }
 
+export interface BookingContext {
+  availableSlots?: any[];
+  existingAppointment?: {
+    id: string;
+    date: string;
+    time: string;
+    email: string;
+    phone: string;
+  };
+  timezone?: string;
+}
+
 export async function* processConsultantAgentMessage(
   consultantId: string,
   conversationId: string,
   messageContent: string,
-  pendingModification?: PendingModificationContext
+  pendingModification?: PendingModificationContext,
+  bookingContext?: BookingContext
 ): AsyncGenerator<string, void, unknown> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🤖 [CONSULTANT-AGENT CHAT] Processing message');
@@ -427,6 +443,40 @@ Confermi definitivamente la cancellazione?"
 `;
       }
       systemPrompt += pendingModificationPrompt;
+    }
+    
+    // Add booking context (available slots and/or existing appointment) if present
+    if (bookingContext && (bookingContext.availableSlots?.length || bookingContext.existingAppointment)) {
+      console.log(`\n📅 [BOOKING CONTEXT] Adding slot/appointment context to prompt...`);
+      if (bookingContext.availableSlots?.length) {
+        console.log(`   📅 Available slots: ${bookingContext.availableSlots.length}`);
+      }
+      if (bookingContext.existingAppointment) {
+        console.log(`   ✅ Existing appointment: ${bookingContext.existingAppointment.date} ${bookingContext.existingAppointment.time}`);
+      }
+      
+      // Format today's date for the slot context
+      const now = new Date();
+      const formatter = new Intl.DateTimeFormat('it-IT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: bookingContext.timezone || 'Europe/Rome',
+        hour12: false
+      });
+      const formattedToday = formatter.format(now);
+      
+      const bookingBlock = getMandatoryBookingBlock({
+        existingAppointment: bookingContext.existingAppointment,
+        availableSlots: bookingContext.availableSlots,
+        timezone: bookingContext.timezone || 'Europe/Rome',
+        formattedToday
+      });
+      
+      systemPrompt += bookingBlock;
     }
     
     const promptLength = systemPrompt.length;

@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { authenticateToken, requireSuperAdmin, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess } from "../../shared/schema";
+import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig } from "../../shared/schema";
 import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { getAdminTurnConfig, saveAdminTurnConfig } from "../services/turn-config-service";
 
 const router = Router();
 
@@ -1049,6 +1050,127 @@ router.put(
       });
     } catch (error: any) {
       console.error("Update consultant vertex access error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Admin TURN Server Configuration - Centralized TURN config with cascade to consultants
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get(
+  "/admin/turn-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const result = await getAdminTurnConfig();
+      res.json({
+        success: true,
+        ...result
+      });
+    } catch (error: any) {
+      console.error("Get admin TURN config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.put(
+  "/admin/turn-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { provider, username, password, apiKey, turnUrls, enabled } = req.body;
+
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          error: "Username and password are required"
+        });
+      }
+
+      if (provider && !["metered", "twilio", "custom"].includes(provider)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid provider. Must be 'metered', 'twilio', or 'custom'"
+        });
+      }
+
+      const result = await saveAdminTurnConfig({
+        provider: provider || "metered",
+        username,
+        password,
+        apiKey,
+        turnUrls,
+        enabled
+      });
+
+      if (!result.success) {
+        return res.status(500).json({
+          success: false,
+          error: result.error
+        });
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "update_admin_turn_config",
+        targetType: "setting",
+        targetId: result.config?.id,
+        details: { provider: provider || "metered", enabled: enabled ?? true },
+      });
+
+      res.json({
+        success: true,
+        message: "Admin TURN configuration saved successfully",
+        config: result.config
+      });
+    } catch (error: any) {
+      console.error("Save admin TURN config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.delete(
+  "/admin/turn-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [existingConfig] = await db
+        .select({ id: adminTurnConfig.id })
+        .from(adminTurnConfig)
+        .limit(1);
+
+      if (!existingConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "No admin TURN config found"
+        });
+      }
+
+      await db.delete(adminTurnConfig).where(eq(adminTurnConfig.id, existingConfig.id));
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "delete_admin_turn_config",
+        targetType: "setting",
+        targetId: existingConfig.id,
+        details: {},
+      });
+
+      console.log(`✅ Deleted admin TURN config`);
+
+      res.json({
+        success: true,
+        message: "Admin TURN configuration deleted successfully"
+      });
+    } catch (error: any) {
+      console.error("Delete admin TURN config error:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }

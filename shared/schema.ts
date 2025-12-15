@@ -558,6 +558,21 @@ export const consultantVertexAccess = pgTable("consultant_vertex_access", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// SuperAdmin TURN Config - Centralized TURN server configuration managed by SuperAdmin
+// Consultants without their own config will cascade/fallback to this config
+// Only one row allowed (singleton pattern)
+export const adminTurnConfig = pgTable("admin_turn_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: text("provider").$type<"metered" | "twilio" | "custom">().default("metered").notNull(),
+  usernameEncrypted: text("username_encrypted"), // Encrypted with master key
+  passwordEncrypted: text("password_encrypted"), // Encrypted with master key
+  apiKeyEncrypted: text("api_key_encrypted"), // For providers that need API key (optional)
+  turnUrls: jsonb("turn_urls").$type<string[]>(), // Custom TURN URLs (optional, for custom provider)
+  enabled: boolean("enabled").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 // Vertex AI Usage Tracking - Track all Vertex AI API calls with accurate cost breakdown
 // Supports Live API (audio/text) and standard API tracking
 export const vertexAiUsageTracking = pgTable("vertex_ai_usage_tracking", {
@@ -1899,6 +1914,10 @@ export type InsertWhatsappVertexAiSettings = typeof whatsappVertexAiSettings.$in
 // SuperAdmin Vertex Config types
 export type SuperadminVertexConfig = typeof superadminVertexConfig.$inferSelect;
 export type InsertSuperadminVertexConfig = typeof superadminVertexConfig.$inferInsert;
+
+// Admin TURN Config types
+export type AdminTurnConfig = typeof adminTurnConfig.$inferSelect;
+export type InsertAdminTurnConfig = typeof adminTurnConfig.$inferInsert;
 
 // Consultant Vertex Access types
 export type ConsultantVertexAccess = typeof consultantVertexAccess.$inferSelect;

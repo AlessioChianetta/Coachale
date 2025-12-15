@@ -6,7 +6,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import * as shareService from '../../whatsapp/share-service';
 import * as agentService from '../../whatsapp/agent-consultant-chat-service';
-import type { PendingModificationContext } from '../../whatsapp/agent-consultant-chat-service';
+import type { PendingModificationContext, BookingContext } from '../../whatsapp/agent-consultant-chat-service';
 import { db } from '../../db';
 import * as schema from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
@@ -860,6 +860,130 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
       }
       // ═══════════════════════════════════════════════════════════════════════
       
+      // ═══════════════════════════════════════════════════════════════════════
+      // SLOT FETCHING - Recupera slot disponibili REALI dal calendario
+      // Critico per evitare che l'AI proponga orari già occupati
+      // ═══════════════════════════════════════════════════════════════════════
+      let bookingContextForAI: BookingContext | undefined = undefined;
+      
+      if (agentConfig.bookingEnabled !== false && !bookingActionCompleted) {
+        try {
+          console.log(`\n📅 [PUBLIC-SLOTS] Fetching available slots for AI context...`);
+          
+          let availableSlots: any[] = [];
+          
+          // Step 1: Check for saved slots in database
+          const [savedSlots] = await db
+            .select()
+            .from(schema.proposedAppointmentSlots)
+            .where(
+              and(
+                eq(schema.proposedAppointmentSlots.conversationId, conversation.id),
+                eq(schema.proposedAppointmentSlots.usedForBooking, false),
+                sql`${schema.proposedAppointmentSlots.expiresAt} > NOW()`
+              )
+            )
+            .orderBy(desc(schema.proposedAppointmentSlots.proposedAt))
+            .limit(1);
+          
+          if (savedSlots && savedSlots.slots) {
+            availableSlots = savedSlots.slots as any[];
+            console.log(`   💾 [PUBLIC-SLOTS] Retrieved ${availableSlots.length} saved slots from database`);
+          } else {
+            // Step 2: Fetch fresh slots from calendar API
+            console.log(`   🌐 [PUBLIC-SLOTS] No saved slots found - fetching from calendar API...`);
+            
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + 7);
+            
+            try {
+              const slotsResponse = await fetch(
+                `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
+                `consultantId=${agentConfig.consultantId}&` +
+                `startDate=${startDate.toISOString()}&` +
+                `endDate=${endDate.toISOString()}`
+              );
+              
+              if (slotsResponse.ok) {
+                const slotsData = await slotsResponse.json();
+                availableSlots = slotsData.slots || [];
+                console.log(`   ✅ [PUBLIC-SLOTS] Fetched ${availableSlots.length} available slots from calendar`);
+                
+                // Step 3: Save slots to database for future context
+                if (availableSlots.length > 0) {
+                  const expiresAt = new Date();
+                  expiresAt.setHours(expiresAt.getHours() + 48);
+                  
+                  // Check if slots already exist for this conversation
+                  const [existing] = await db
+                    .select()
+                    .from(schema.proposedAppointmentSlots)
+                    .where(
+                      and(
+                        eq(schema.proposedAppointmentSlots.conversationId, conversation.id),
+                        eq(schema.proposedAppointmentSlots.consultantId, agentConfig.consultantId)
+                      )
+                    )
+                    .limit(1);
+                  
+                  if (existing) {
+                    await db
+                      .update(schema.proposedAppointmentSlots)
+                      .set({
+                        slots: availableSlots,
+                        proposedAt: new Date(),
+                        expiresAt,
+                        usedForBooking: false,
+                      })
+                      .where(eq(schema.proposedAppointmentSlots.id, existing.id));
+                    console.log(`   💾 [PUBLIC-SLOTS] Updated existing slots in database (expires in 48h)`);
+                  } else {
+                    await db
+                      .insert(schema.proposedAppointmentSlots)
+                      .values({
+                        conversationId: conversation.id,
+                        consultantId: agentConfig.consultantId,
+                        slots: availableSlots,
+                        proposedAt: new Date(),
+                        expiresAt,
+                        usedForBooking: false,
+                      });
+                    console.log(`   💾 [PUBLIC-SLOTS] Saved ${availableSlots.length} slots to database (expires in 48h)`);
+                  }
+                }
+              } else {
+                console.error(`   ⚠️ [PUBLIC-SLOTS] Failed to fetch slots: ${slotsResponse.status}`);
+              }
+            } catch (slotFetchError: any) {
+              console.error(`   ⚠️ [PUBLIC-SLOTS] Error fetching slots: ${slotFetchError.message}`);
+            }
+          }
+          
+          // Get consultant timezone for context
+          const [consultantSettings] = await db
+            .select()
+            .from(schema.consultantAvailabilitySettings)
+            .where(eq(schema.consultantAvailabilitySettings.consultantId, agentConfig.consultantId))
+            .limit(1);
+          
+          const timezone = consultantSettings?.timezone || 'Europe/Rome';
+          
+          // Build booking context for AI
+          if (availableSlots.length > 0) {
+            bookingContextForAI = {
+              availableSlots,
+              timezone
+            };
+            console.log(`   ✅ [PUBLIC-SLOTS] Booking context prepared with ${availableSlots.length} slots for AI`);
+          }
+          
+        } catch (slotError: any) {
+          console.error(`   ⚠️ [PUBLIC-SLOTS] Error in slot fetching: ${slotError.message}`);
+        }
+      }
+      // ═══════════════════════════════════════════════════════════════════════
+      
       try {
         // ═══════════════════════════════════════════════════════════════════════
         // STREAMING AI - SOLO se nessuna azione booking è stata completata
@@ -873,7 +997,8 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
             conversation.consultantId,
             conversation.id,
             message,
-            pendingModification
+            pendingModification,
+            bookingContextForAI
           )) {
             fullResponse += chunk;
             chunkCount++;

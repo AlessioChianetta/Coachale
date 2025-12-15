@@ -120,6 +120,7 @@ import {
   buildBaseUrlFromRequest
 } from "./google-calendar-service";
 import { encryptForConsultant, decryptForConsultant } from "./encryption";
+import { getTurnCredentialsForMeeting } from "./services/turn-config-service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -8164,6 +8165,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   });
 
   // GET /api/video-meeting/ice-servers - Get ICE servers for WebRTC (public for meeting participants)
+  // Uses cascade service: consultant config -> admin config fallback
   app.get("/api/video-meeting/ice-servers/:meetingIdOrToken", async (req, res) => {
     try {
       const { meetingIdOrToken } = req.params;
@@ -8190,8 +8192,13 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           .then(rows => rows[0]);
       }
 
-      if (!meeting) {
-        // Return default STUN servers if meeting not found
+      // Use the cascade service to get TURN credentials
+      // Falls back to admin config if consultant config not found
+      const credentials = await getTurnCredentialsForMeeting(meeting?.sellerId || null);
+
+      if (!credentials) {
+        // Return default STUN servers if no TURN config available
+        console.log(`⚠️ [ICE] No TURN config available, returning STUN only`);
         return res.json({
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -8200,102 +8207,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         });
       }
 
-      // Get the owner (clientId) from the humanSeller
-      const [seller] = await db
-        .select({ clientId: schema.humanSellers.clientId })
-        .from(schema.humanSellers)
-        .where(eq(schema.humanSellers.id, meeting.sellerId))
-        .limit(1);
-
-      if (!seller) {
-        return res.json({
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        });
-      }
-
-      // Check if the owner is a client or consultant
-      // If client, get their associated consultant's TURN config
-      const [owner] = await db
-        .select({ 
-          role: schema.users.role,
-          consultantId: schema.users.consultantId 
-        })
-        .from(schema.users)
-        .where(eq(schema.users.id, seller.clientId))
-        .limit(1);
-
-      // Determine which consultant's TURN config to use
-      let turnConfigOwnerId = seller.clientId;
-      
-      if (owner?.role === 'client' && owner.consultantId) {
-        // If owner is a client, use their consultant's TURN config
-        console.log(`🔗 [ICE] Owner ${seller.clientId} is a client, looking for consultant ${owner.consultantId}'s TURN config`);
-        turnConfigOwnerId = owner.consultantId;
-      }
-
-      // Get TURN config from the determined owner (consultant)
-      const [turnConfig] = await db
-        .select()
-        .from(schema.consultantTurnConfig)
-        .where(and(
-          eq(schema.consultantTurnConfig.consultantId, turnConfigOwnerId),
-          eq(schema.consultantTurnConfig.enabled, true)
-        ))
-        .limit(1);
-
-      let effectiveTurnConfig = turnConfig;
-      let effectiveConsultantId = turnConfigOwnerId;
-
-      // If no TURN config found, return error (no fallback)
-      if (!turnConfig || !turnConfig.usernameEncrypted || !turnConfig.passwordEncrypted) {
-        console.log(`❌ [ICE] No TURN config found for consultant ${turnConfigOwnerId}, returning STUN only`);
-        return res.json({
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        });
-      }
-      
-      console.log(`✅ [ICE] Using TURN config from consultant ${turnConfigOwnerId}`);
-
-      // Get consultant salt for decryption (use effective consultant)
-      const [consultant] = await db
-        .select({ encryptionSalt: schema.users.encryptionSalt })
-        .from(schema.users)
-        .where(eq(schema.users.id, effectiveConsultantId))
-        .limit(1);
-
-      if (!consultant?.encryptionSalt) {
-        return res.json({
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        });
-      }
-
-      // Decrypt credentials
-      let username = "";
-      let password = "";
-      try {
-        username = decryptForConsultant(effectiveTurnConfig.usernameEncrypted!, consultant.encryptionSalt);
-        password = decryptForConsultant(effectiveTurnConfig.passwordEncrypted!, consultant.encryptionSalt);
-        // DEBUG: Log credentials (REMOVE after testing)
-        console.log(`🔑 [ICE-DEBUG] TURN username: ${username.substring(0, 8)}...`);
-        console.log(`🔑 [ICE-DEBUG] TURN password: ${password.substring(0, 8)}...`);
-      } catch (decryptError) {
-        console.error("❌ Error decrypting TURN credentials for meeting:", decryptError);
-        return res.json({
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        });
-      }
+      console.log(`✅ [ICE] Using TURN config from ${credentials.source}`);
 
       // Build ICE servers array with STUN + TURN
       const iceServers: RTCIceServer[] = [
@@ -8304,8 +8216,10 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         { urls: 'stun:stun1.l.google.com:19302' }
       ];
 
+      const { username, password, provider, turnUrls } = credentials;
+
       // Add TURN servers based on provider
-      if (effectiveTurnConfig.provider === "metered") {
+      if (provider === "metered") {
         iceServers.push(
           // Standard relay servers (piano 20GB+)
           {
@@ -8350,9 +8264,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
             credential: password
           }
         );
-      } else if (effectiveTurnConfig.provider === "custom" && effectiveTurnConfig.turnUrls) {
+      } else if (provider === "custom" && turnUrls) {
         // Custom TURN URLs
-        for (const url of effectiveTurnConfig.turnUrls) {
+        for (const url of turnUrls) {
           iceServers.push({
             urls: url,
             username,
