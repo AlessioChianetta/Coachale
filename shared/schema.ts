@@ -4498,6 +4498,9 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
   usageCount: integer("usage_count").default(0).notNull(), // Times used in AI responses
   lastUsedAt: timestamp("last_used_at"),
   
+  // Import source tracking
+  googleDriveFileId: text("google_drive_file_id"), // Google Drive file ID if imported from Drive
+  
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -4505,6 +4508,7 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
   consultantIdx: index("knowledge_doc_consultant_idx").on(table.consultantId),
   categoryIdx: index("knowledge_doc_category_idx").on(table.category),
   statusIdx: index("knowledge_doc_status_idx").on(table.status),
+  googleDriveIdx: index("knowledge_doc_google_drive_idx").on(table.googleDriveFileId),
 }));
 
 // API esterne per Knowledge Base - configurazioni per interrogare servizi esterni
@@ -4732,6 +4736,10 @@ export const clientKnowledgeDocuments = pgTable("client_knowledge_documents", {
   usageCount: integer("usage_count").default(0).notNull(),
   lastUsedAt: timestamp("last_used_at"),
   
+  // Import source tracking
+  googleDriveFileId: text("google_drive_file_id"), // Google Drive file ID if imported from Drive
+  sourceConsultantDocId: varchar("source_consultant_doc_id").references(() => consultantKnowledgeDocuments.id, { onDelete: "set null" }), // Source consultant document if imported from consultant's KB
+  
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -4739,6 +4747,8 @@ export const clientKnowledgeDocuments = pgTable("client_knowledge_documents", {
   clientIdx: index("client_knowledge_doc_client_idx").on(table.clientId),
   categoryIdx: index("client_knowledge_doc_category_idx").on(table.category),
   statusIdx: index("client_knowledge_doc_status_idx").on(table.status),
+  googleDriveIdx: index("client_knowledge_doc_google_drive_idx").on(table.googleDriveFileId),
+  sourceConsultantDocIdx: index("client_knowledge_doc_source_consultant_idx").on(table.sourceConsultantDocId),
 }));
 
 // API esterne per Knowledge Base Client - configurazioni per interrogare servizi esterni

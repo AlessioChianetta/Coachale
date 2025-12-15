@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticateToken, requireRole, type AuthRequest } from "../../middleware/auth";
 import { db } from "../../db";
 import { clientKnowledgeDocuments, users, vertexAiSettings } from "../../../shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, inArray, and, isNotNull } from "drizzle-orm";
 import { extractTextFromFile, type VertexAICredentials } from "../../services/document-processor";
 import fs from "fs/promises";
 import path from "path";
@@ -356,7 +356,8 @@ router.post(
               fileSize,
               filePath: finalFilePath,
               priority: priority ? parseInt(priority, 10) : 5,
-              status: "processing"
+              status: "processing",
+              googleDriveFileId: currentFileId
             })
             .returning();
           
@@ -440,6 +441,51 @@ router.post(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to import files from Google Drive"
+      });
+    }
+  }
+);
+
+// Check import status of Drive files - returns which file IDs are already imported
+router.post(
+  "/client/google-drive/import-status",
+  authenticateToken,
+  requireRole("client"),
+  async (req: AuthRequest, res) => {
+    try {
+      const clientId = req.user!.id;
+      const { fileIds } = req.body;
+      
+      if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "fileIds array is required"
+        });
+      }
+      
+      // Find which Drive file IDs are already imported
+      const importedDocs = await db
+        .select({ googleDriveFileId: clientKnowledgeDocuments.googleDriveFileId })
+        .from(clientKnowledgeDocuments)
+        .where(
+          and(
+            eq(clientKnowledgeDocuments.clientId, clientId),
+            isNotNull(clientKnowledgeDocuments.googleDriveFileId),
+            inArray(clientKnowledgeDocuments.googleDriveFileId, fileIds)
+          )
+        );
+      
+      const importedIds = new Set(importedDocs.map(d => d.googleDriveFileId));
+      
+      res.json({
+        success: true,
+        importedFileIds: Array.from(importedIds)
+      });
+    } catch (error: any) {
+      console.error("❌ [CLIENT GOOGLE DRIVE] Error checking import status:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to check import status"
       });
     }
   }
