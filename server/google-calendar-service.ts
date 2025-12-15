@@ -5,9 +5,33 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { db } from './db';
-import { consultantAvailabilitySettings, consultantCalendarSync } from '../shared/schema';
+import { consultantAvailabilitySettings, consultantCalendarSync, systemSettings } from '../shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import type { Request } from 'express';
+
+function extractJsonbString(value: any): string | null {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    let cleaned = value;
+    while (cleaned.startsWith('"') && cleaned.endsWith('"') && cleaned.length > 2) {
+      try {
+        const parsed = JSON.parse(cleaned);
+        if (typeof parsed === 'string') {
+          cleaned = parsed;
+        } else {
+          break;
+        }
+      } catch {
+        break;
+      }
+    }
+    return cleaned;
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
 
 // Scopes needed for Google Calendar
 const SCOPES = [
@@ -32,11 +56,75 @@ export function buildBaseUrlFromRequest(req: Request): string {
 }
 
 /**
+ * Get global OAuth credentials from system_settings (SuperAdmin centralized credentials)
+ */
+async function getGlobalOAuthCredentials() {
+  const [clientIdSetting] = await db
+    .select()
+    .from(systemSettings)
+    .where(eq(systemSettings.key, "google_oauth_client_id"))
+    .limit(1);
+
+  const [clientSecretSetting] = await db
+    .select()
+    .from(systemSettings)
+    .where(eq(systemSettings.key, "google_oauth_client_secret"))
+    .limit(1);
+
+  const clientId = extractJsonbString(clientIdSetting?.value);
+  const clientSecret = extractJsonbString(clientSecretSetting?.value);
+
+  if (clientId && clientSecret) {
+    console.log(`✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: ${clientId.substring(0, 20)}...`);
+    return { clientId, clientSecret };
+  }
+  
+  console.log(`⚠️ [GOOGLE CALENDAR] No global OAuth credentials found in system_settings`);
+  return null;
+}
+
+/**
+ * Check if global OAuth credentials are configured
+ */
+export async function isGlobalCalendarOAuthConfigured(): Promise<boolean> {
+  const globalCredentials = await getGlobalOAuthCredentials();
+  return globalCredentials !== null;
+}
+
+/**
  * Get consultant's OAuth credentials from database
+ * Uses global (SuperAdmin) credentials first, falls back to consultant-specific credentials
  * @param consultantId - The consultant's ID
  * @param redirectBaseUrl - Optional base URL from current request (e.g., 'https://coachale.replit.app')
  */
 async function getConsultantOAuthCredentials(consultantId: string, redirectBaseUrl?: string) {
+  // Try global OAuth credentials first (SuperAdmin centralized)
+  const globalCredentials = await getGlobalOAuthCredentials();
+  
+  if (globalCredentials) {
+    let baseUrl = 'http://localhost:5000';
+    
+    if (process.env.REPLIT_DOMAINS) {
+      const domains = process.env.REPLIT_DOMAINS.split(',');
+      baseUrl = `https://${domains[0]}`;
+    }
+    
+    if (redirectBaseUrl) {
+      baseUrl = redirectBaseUrl;
+    }
+    
+    const finalRedirectUri = `${baseUrl}/api/calendar-settings/oauth/callback`;
+    
+    console.log(`🔗 [GOOGLE CALENDAR] Using GLOBAL OAuth credentials. Redirect URI: ${finalRedirectUri}`);
+    
+    return {
+      clientId: globalCredentials.clientId,
+      clientSecret: globalCredentials.clientSecret,
+      redirectUri: finalRedirectUri
+    };
+  }
+
+  // Fallback to consultant-specific credentials (legacy behavior)
   const [settings] = await db
     .select()
     .from(consultantAvailabilitySettings)
@@ -44,7 +132,7 @@ async function getConsultantOAuthCredentials(consultantId: string, redirectBaseU
     .limit(1);
 
   if (!settings?.googleOAuthClientId || !settings?.googleOAuthClientSecret) {
-    throw new Error('Credenziali OAuth Google non configurate. Inserisci Client ID e Client Secret nelle impostazioni.');
+    throw new Error('Credenziali OAuth Google non configurate. Chiedi all\'amministratore di configurare le credenziali OAuth globali.');
   }
 
   // ✅ Build correct redirect URI with fallback chain:
@@ -70,7 +158,7 @@ async function getConsultantOAuthCredentials(consultantId: string, redirectBaseU
   // Priority 1: Manual override always wins (if consultant configured it)
   const finalRedirectUri = settings.googleOAuthRedirectUri || `${baseUrl}/api/calendar-settings/oauth/callback`;
   
-  console.log(`🔗 [OAUTH] Redirect URI for consultant ${consultantId}: ${finalRedirectUri}`);
+  console.log(`🔗 [GOOGLE CALENDAR] Using consultant-specific OAuth. Redirect URI for consultant ${consultantId}: ${finalRedirectUri}`);
   
   return {
     clientId: settings.googleOAuthClientId,

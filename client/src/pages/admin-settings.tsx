@@ -106,6 +106,7 @@ export default function AdminSettings() {
   const allRedirectUris = {
     consultantDrive: `${baseUrl}/api/consultant/google-drive/callback`,
     clientDrive: `${baseUrl}/api/client/google-drive/callback`,
+    consultantCalendar: `${baseUrl}/api/calendar-settings/oauth/callback`,
   };
 
   const copyToClipboard = async (text: string, uriKey: string) => {
@@ -584,6 +585,13 @@ export default function AdminSettings() {
                       </Button>
                     </div>
                     <div className="flex items-center gap-2">
+                      <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Calendar Consulenti:</span>
+                      <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{allRedirectUris.consultantCalendar}</code>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(allRedirectUris.consultantCalendar, 'consultantCalendar')}>
+                        {copiedUri === 'consultantCalendar' ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
                       <span className="text-amber-700 dark:text-amber-300 font-medium min-w-[140px]">Origine JS:</span>
                       <code className="flex-1 bg-white dark:bg-gray-900 px-2 py-1 rounded text-amber-900 dark:text-amber-100 break-all">{baseUrl}</code>
                       <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => copyToClipboard(baseUrl, 'origin2')}>
@@ -762,6 +770,29 @@ export default function AdminSettings() {
                                 className="shrink-0 h-8 w-8 p-0"
                               >
                                 {copiedUri === 'clientDrive' ? (
+                                  <Check className="w-4 h-4 text-green-500" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">
+                              Google Calendar - Consulenti:
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <code className="flex-1 text-xs bg-white dark:bg-gray-900 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 break-all">
+                                {allRedirectUris.consultantCalendar}
+                              </code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyToClipboard(allRedirectUris.consultantCalendar, 'consultantCalendar2')}
+                                className="shrink-0 h-8 w-8 p-0"
+                              >
+                                {copiedUri === 'consultantCalendar2' ? (
                                   <Check className="w-4 h-4 text-green-500" />
                                 ) : (
                                   <Copy className="w-4 h-4" />
