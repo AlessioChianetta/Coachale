@@ -26,7 +26,7 @@ import {
   Zap
 } from "lucide-react";
 import { Link } from "wouter";
-import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
+import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -554,6 +554,14 @@ export default function GuideCalendar() {
           </div>
         </main>
       </div>
+      <GuideFloatingAssistant 
+        guideContext={{
+          guideId: "guide-calendar",
+          guideTitle: "Guida Google Calendar",
+          guideDescription: "Configura e sincronizza Google Calendar per gestire appuntamenti e disponibilità automaticamente.",
+          guideSections: ["Connessione Google", "Configurazione Slot", "Prenotazione Automatica"]
+        }}
+      />
     </div>
   );
 }

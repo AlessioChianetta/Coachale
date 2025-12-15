@@ -23,7 +23,7 @@ import {
   Plug
 } from "lucide-react";
 import { Link } from "wouter";
-import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
+import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -531,6 +531,14 @@ export default function GuideAgents() {
           </div>
         </main>
       </div>
+      <GuideFloatingAssistant 
+        guideContext={{
+          guideId: "guide-agents",
+          guideTitle: "Guida Setup Agenti WhatsApp",
+          guideDescription: "Configura agenti AI WhatsApp per automatizzare le conversazioni. Impara a creare receptionist, setter e advisor.",
+          guideSections: ["Prerequisiti", "Tipi di Agente", "Configurazione", "Modalità Integrazione"]
+        }}
+      />
     </div>
   );
 }

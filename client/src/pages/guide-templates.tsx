@@ -20,7 +20,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import { Link } from "wouter";
-import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
+import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -412,6 +412,14 @@ export default function GuideTemplates() {
           </div>
         </main>
       </div>
+      <GuideFloatingAssistant 
+        guideContext={{
+          guideId: "guide-templates",
+          guideTitle: "Guida Template WhatsApp",
+          guideDescription: "Crea e gestisci template WhatsApp per messaggi automatici e campagne.",
+          guideSections: ["Template Twilio", "Template Custom", "Variabili Dinamiche"]
+        }}
+      />
     </div>
   );
 }

@@ -22,7 +22,7 @@ import {
   Users
 } from "lucide-react";
 import { Link } from "wouter";
-import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
+import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -496,6 +496,14 @@ export default function GuideLeads() {
           </div>
         </main>
       </div>
+      <GuideFloatingAssistant 
+        guideContext={{
+          guideId: "guide-leads",
+          guideTitle: "Guida CRM Lead Proattivi",
+          guideDescription: "Importa e gestisci lead proattivi, crea campagne e monitora le conversioni.",
+          guideSections: ["Importazione Lead", "Pipeline Lead", "Campagne", "Conversioni"]
+        }}
+      />
     </div>
   );
 }

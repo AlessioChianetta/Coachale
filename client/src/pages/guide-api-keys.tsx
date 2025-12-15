@@ -21,7 +21,7 @@ import {
   Zap
 } from "lucide-react";
 import { Link } from "wouter";
-import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
+import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -532,6 +532,14 @@ export default function GuideApiKeys() {
           </div>
         </main>
       </div>
+      <GuideFloatingAssistant 
+        guideContext={{
+          guideId: "guide-api-keys",
+          guideTitle: "Guida Configurazione API Keys",
+          guideDescription: "Configura tutte le API necessarie: Vertex AI, SMTP, Twilio e altre integrazioni.",
+          guideSections: ["Vertex AI", "SMTP Email", "Twilio WhatsApp", "Altre API"]
+        }}
+      />
     </div>
   );
 }

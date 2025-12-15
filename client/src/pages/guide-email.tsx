@@ -25,7 +25,7 @@ import {
   Zap
 } from "lucide-react";
 import { Link } from "wouter";
-import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
+import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -533,6 +533,14 @@ export default function GuideEmail() {
           </div>
         </main>
       </div>
+      <GuideFloatingAssistant 
+        guideContext={{
+          guideId: "guide-email",
+          guideTitle: "Guida Email Marketing",
+          guideDescription: "Configura email automatiche, journey personalizzati e monitora le performance delle tue campagne.",
+          guideSections: ["Configurazione SMTP", "Email Journey", "Template Email", "Analytics"]
+        }}
+      />
     </div>
   );
 }

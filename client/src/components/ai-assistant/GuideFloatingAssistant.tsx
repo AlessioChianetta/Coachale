@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FloatingButton } from "./FloatingButton";
 import { ChatPanel } from "./ChatPanel";
-import { OpenAndAskPayload } from "@/hooks/use-document-focus";
 
 export interface GuideContext {
   guideId: string;
@@ -40,16 +39,8 @@ export function GuideFloatingAssistant({ guideContext }: GuideFloatingAssistantP
     
     const contextMessage = `Sono nella guida "${guideContext.guideTitle}". ${guideContext.guideDescription}${sectionsInfo}\n\nHo bisogno di aiuto per capire meglio questa guida. Puoi darmi una panoramica e aiutarmi con qualsiasi domanda?`;
     
-    window.dispatchEvent(new CustomEvent('ai:open-and-ask', {
-      detail: {
-        document: { 
-          id: guideContext.guideId, 
-          title: guideContext.guideTitle,
-          content: guideContext.guideDescription
-        },
-        autoMessage: contextMessage
-      }
-    }));
+    setAutoMessage(contextMessage);
+    setIsOpen(true);
   };
 
   const handleCloseMainAI = () => {

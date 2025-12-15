@@ -28,7 +28,7 @@ import {
   ListChecks
 } from "lucide-react";
 import { Link } from "wouter";
-import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
+import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -593,6 +593,14 @@ export default function GuideUniversity() {
           </div>
         </main>
       </div>
+      <GuideFloatingAssistant 
+        guideContext={{
+          guideId: "guide-university",
+          guideTitle: "Guida La Mia Università",
+          guideDescription: "Crea corsi, esercizi e materiali formativi per i tuoi clienti.",
+          guideSections: ["Creazione Corsi", "Esercizi", "Assegnazione Clienti"]
+        }}
+      />
     </div>
   );
 }

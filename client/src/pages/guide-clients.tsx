@@ -31,7 +31,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { Link } from "wouter";
-import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
+import { GuideFloatingAssistant } from "@/components/ai-assistant/GuideFloatingAssistant";
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -536,6 +536,14 @@ export default function GuideClients() {
           </div>
         </main>
       </div>
+      <GuideFloatingAssistant 
+        guideContext={{
+          guideId: "guide-clients",
+          guideTitle: "Guida Gestione Clienti",
+          guideDescription: "Gestisci i tuoi clienti, traccia il loro stato e monitora le attività quotidiane.",
+          guideSections: ["Aggiunta Clienti", "Stato Clienti", "Daily Feedback", "Roadmap"]
+        }}
+      />
     </div>
   );
 }
