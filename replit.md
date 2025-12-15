@@ -23,6 +23,11 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - APIs: `/api/admin/*` (stats, hierarchy, users, settings, audit-log)
   - Global Google Drive/Calendar OAuth configuration stored in `systemSettings` table
   - Global Video Meeting OAuth configuration stored in `systemSettings` table (centralized for scalability)
+  - **Global TURN Server Configuration** stored in `adminTurnConfig` table (centralized for WebRTC)
+    - Supports providers: Metered.ca, Twilio, Custom
+    - Zero-config for consultants: they automatically inherit admin TURN settings
+    - Fallback chain: Consultant config → Admin config → STUN only
+    - APIs: `GET/PUT/DELETE /api/admin/turn-config`
   - All admin actions logged in `adminAuditLog` table
   - Consultants receive read-only access to global OAuth settings via `/api/consultant/google-oauth`
 ## UI/UX Decisions
