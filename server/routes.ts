@@ -6924,14 +6924,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(schema.superadminVertexConfig.enabled, true))
         .limit(1);
 
+      // Check if consultant has their own Vertex AI settings
+      const [ownVertexSettings] = await db
+        .select({ id: schema.vertexAiSettings.id, enabled: schema.vertexAiSettings.enabled })
+        .from(schema.vertexAiSettings)
+        .where(eq(schema.vertexAiSettings.userId, req.user!.id))
+        .limit(1);
+
       // Combine: SuperAdmin config must exist AND consultant must have access
       const hasAccessFromSuperAdmin = accessRecord?.hasAccess ?? true; // Default true if no record exists
       const superAdminVertexAvailable = !!superadminConfig && hasAccessFromSuperAdmin;
+      const hasOwnVertex = !!ownVertexSettings && ownVertexSettings.enabled !== false;
 
       res.json({
         success: true,
         useSuperAdminVertex: consultant.useSuperadminVertex ?? true,
-        hasOwnVertex: false, // Will be checked separately via vertexAiSettings
+        hasOwnVertex: hasOwnVertex,
         superAdminVertexAvailable: superAdminVertexAvailable,
         hasAccessFromSuperAdmin: hasAccessFromSuperAdmin,
       });
