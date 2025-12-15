@@ -116,11 +116,9 @@ const consultantCategories: SidebarCategoryExtended[] = [
     icon: Megaphone,
     defaultExpanded: true,
     items: [
+      { name: "HUB Lead", href: "/consultant/lead-hub", icon: Target, color: "text-blue-600", badge: "HUB" },
       { name: "Setup Agenti", href: "/consultant/whatsapp", icon: Settings, color: "text-gray-500" },
       { name: "WhatsApp", href: "/consultant/whatsapp-conversations", icon: MessageSquare, color: "text-green-500" },
-      { name: "Lead", href: "/consultant/proactive-leads", icon: UserPlus, color: "text-emerald-500" },
-      { name: "Automazioni", href: "/consultant/automations", icon: Zap, color: "text-purple-500" },
-      { name: "Template", href: "/consultant/whatsapp-templates", icon: FileText, color: "text-blue-500" },
     ]
   },
   {
