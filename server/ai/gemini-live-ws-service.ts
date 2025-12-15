@@ -1599,6 +1599,10 @@ export function setupGeminiLiveWSService(): WebSocketServer {
     let prospectHasSpoken = false; 
     let aiOutputBuffered = 0; // Contatore chunk audio bufferizzati quando prospect non ha ancora parlato
     
+    // 🔇 POST-RESUME SILENCE: Block AI output until user speaks after session resume
+    // This prevents AI from "inventing" things when WebSocket reconnects
+    let suppressAiOutputAfterResume = false; // Set to true after resume, reset when user speaks
+    
     // Pattern matching per saluti italiani (case-insensitive)
     const GREETING_PATTERNS = [
       /\barrivederci\b/i,
@@ -2928,36 +2932,18 @@ MA NON iniziare con lo script completo finché il cliente non risponde!`;
               console.log(`║ 📊 Database loaded: ${conversationHistory.length} messages (needed for prompt/persistence)${' '.repeat(15 - String(conversationHistory.length).length)} ║`);
               console.log(`╚${'═'.repeat(78)}╝\n`);
               
-              // 🆕 TASK 7 & 8: After resume, tell AI to WAIT for client and NOT speak first
-              // This prevents double questions/greetings after resume
-              const resumeInstruction = `
-🔄 SESSIONE RIPRESA - ISTRUZIONI POST-RESUME:
-La connessione è stata ripresa dopo un'interruzione.
-⚠️ NON iniziare a parlare subito!
-⚠️ NON fare il benvenuto di nuovo - lo hai già fatto prima.
-⚠️ ASPETTA che il cliente dica qualcosa.
-Solo quando il cliente parla, rispondi brevemente e continua da dove eri rimasto.
-Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'interruzione. Dove eravamo rimasti?"
-`;
+              // 🔧 FIX: After resume, AI should STAY SILENT and wait for prospect
+              // DO NOT send any clientContent with turnComplete:true - that triggers AI response!
+              // The session resumption already restores context, AI just needs to wait.
+              console.log(`🔇 [${connectionId}] RESUME: AI will stay SILENT until prospect speaks`);
+              console.log(`   → NO greeting, NO turnComplete:true message sent`);
+              console.log(`   → AI waits for prospect to speak first after reconnection`);
+              console.log(`   → suppressAiOutputAfterResume = true (blocking AI audio output)`);
               
-              const resumeMessage = {
-                clientContent: {
-                  turns: [{
-                    role: 'user',
-                    parts: [{ text: resumeInstruction }]
-                  }],
-                  turnComplete: true
-                }
-              };
-              geminiSession.send(JSON.stringify(resumeMessage));
-              console.log(`🚨 [${connectionId}] Post-resume instruction sent: WAIT for client, no double greeting`);
-              
-              // 🔧 FIX: Dopo resume, permetti all'AI di parlare subito
-              // Se l'ultimo messaggio era dell'utente, l'AI risponderà immediatamente
-              // senza aspettare che l'utente dica "pronto?"
-              prospectHasSpoken = true;
-              aiOutputBuffered = 0;
-              console.log(`🔄 [${connectionId}] RESUME: prospectHasSpoken = true (AI allowed to speak immediately)`);
+              // 🔇 CRITICAL: Activate post-resume silence mode
+              // This will block ALL AI audio output until the user speaks
+              suppressAiOutputAfterResume = true;
+              prospectHasSpoken = false;
             }
             
             if (shouldReplayHistory) {
@@ -3509,12 +3495,18 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
               }
               
               if (part.inlineData?.data) {
-                // Log ridotto - solo primo chunk o ogni 30 secondi
-                // (non logghiamo ogni singolo chunk)
-                
-                // ❌ DISABILITATO: Il blocco prospectHasSpoken causava problemi di interazione
-                // L'AI non poteva parlare anche quando l'utente era in attesa
-                // TODO: Risolvere il problema con un approccio diverso (prompt-based invece di blocco audio)
+                // 🔇 POST-RESUME SILENCE: Block AI audio output until user speaks after resume
+                // This prevents AI from "inventing" things when WebSocket reconnects
+                if (suppressAiOutputAfterResume) {
+                  aiOutputBuffered++;
+                  // Log only first few blocked chunks to avoid log spam
+                  if (aiOutputBuffered <= 3) {
+                    console.log(`🔇 [${connectionId}] POST-RESUME: Blocking AI audio chunk #${aiOutputBuffered} (waiting for user to speak)`);
+                  } else if (aiOutputBuffered === 10) {
+                    console.log(`🔇 [${connectionId}] POST-RESUME: Still blocking AI audio... (${aiOutputBuffered} chunks blocked so far)`);
+                  }
+                  continue; // Skip sending audio to client
+                }
                 
                 // 🔒 Track AI speaking (audio streaming) - MANTIENI true su OGNI chunk
                 if (!isAiSpeaking) {
@@ -3641,6 +3633,16 @@ Se il cliente dice "pronto?" o "ci sei?", rispondi "Sì, sono qui! Scusa per l'i
                 console.log(`   → AI can now speak freely`);
                 console.log(`✅ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
                 aiOutputBuffered = 0; // Reset counter
+              }
+              
+              // 🔇 POST-RESUME SILENCE: User spoke, disable silence mode
+              if (suppressAiOutputAfterResume) {
+                console.log(`\n🔊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.log(`🔊 [${connectionId}] POST-RESUME SILENCE ENDED - User spoke!`);
+                console.log(`   → User transcript: "${userTranscriptText}"`);
+                console.log(`   → AI output is now ENABLED`);
+                console.log(`🔊 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+                suppressAiOutputAfterResume = false;
               }
               
               // 🔧 VAD CONCATENATION FIX: Handle both cumulative AND fragmented speech
