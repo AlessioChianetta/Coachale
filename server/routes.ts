@@ -6616,6 +6616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.write(`data: ${JSON.stringify({
             type: "error",
             conversationId: conversationId || "",
+            error: "Mi dispiace, si è verificato un errore. Riprova.",
             content: "Mi dispiace, si è verificato un errore. Riprova.",
           })}\n\n`);
           res.end();
@@ -6632,6 +6633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.write(`data: ${JSON.stringify({
           type: "error",
           conversationId: "",
+          error: error.message || "Error processing chat request",
           content: error.message || "Error processing chat request",
         })}\n\n`);
         res.end();

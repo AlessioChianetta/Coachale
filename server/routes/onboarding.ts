@@ -272,6 +272,83 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
   try {
     const consultantId = req.user!.id;
     
+    // Check if consultant uses SuperAdmin Vertex AI
+    const consultant = await db.query.users.findFirst({
+      where: eq(users.id, consultantId),
+      columns: { useSuperadminVertex: true },
+    });
+    
+    if (consultant?.useSuperadminVertex) {
+      // Test SuperAdmin Vertex AI configuration
+      const superadminConfig = await db.query.superadminVertexConfig.findFirst({
+        where: eq(superadminVertexConfig.enabled, true),
+      });
+      
+      if (!superadminConfig) {
+        return res.status(400).json({
+          success: false,
+          error: 'SuperAdmin Vertex AI non configurato. Contatta il supporto.',
+        });
+      }
+      
+      let serviceAccountJson;
+      try {
+        serviceAccountJson = JSON.parse(superadminConfig.serviceAccountJson);
+      } catch (e) {
+        return res.status(400).json({
+          success: false,
+          error: 'Errore nel parsing delle credenziali SuperAdmin Vertex AI.',
+        });
+      }
+      
+      try {
+        const vertexAI = new VertexAI({
+          project: superadminConfig.projectId,
+          location: superadminConfig.location,
+          googleAuthOptions: {
+            credentials: serviceAccountJson,
+          },
+        });
+        
+        const model = vertexAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const result = await model.generateContent('Rispondi solo "OK" se funziona.');
+        const response = result.response;
+        const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        await db.update(consultantOnboardingStatus)
+          .set({
+            vertexAiStatus: 'verified',
+            vertexAiTestedAt: new Date(),
+            vertexAiErrorMessage: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(consultantOnboardingStatus.consultantId, consultantId));
+        
+        res.json({
+          success: true,
+          message: 'SuperAdmin Vertex AI funziona correttamente!',
+          response: text.substring(0, 100),
+          source: 'superadmin',
+        });
+      } catch (vertexError: any) {
+        await db.update(consultantOnboardingStatus)
+          .set({
+            vertexAiStatus: 'error',
+            vertexAiTestedAt: new Date(),
+            vertexAiErrorMessage: vertexError.message,
+            updatedAt: new Date(),
+          })
+          .where(eq(consultantOnboardingStatus.consultantId, consultantId));
+        
+        res.status(400).json({
+          success: false,
+          error: `Test SuperAdmin Vertex AI fallito: ${vertexError.message}`,
+        });
+      }
+      return;
+    }
+    
+    // Test consultant's own Vertex AI configuration
     const vertexSettings = await db.query.vertexAiSettings.findFirst({
       where: eq(vertexAiSettings.userId, consultantId),
     });
@@ -321,6 +398,7 @@ router.post('/test/vertex-ai', authenticateToken, requireRole('consultant'), asy
         success: true,
         message: 'Vertex AI funziona correttamente!',
         response: text.substring(0, 100),
+        source: 'own',
       });
     } catch (vertexError: any) {
       await db.update(consultantOnboardingStatus)

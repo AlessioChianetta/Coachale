@@ -301,7 +301,7 @@ export default function ClientAIAssistant() {
                 }
                 setSafetyTimeoutActive(false);
                 setIsRetrying(false);
-                throw new Error(data.error);
+                throw new Error(data.error || data.content || "Errore durante la comunicazione con l'AI");
               }
             } catch (parseError) {
               console.error("Error parsing SSE data:", parseError);

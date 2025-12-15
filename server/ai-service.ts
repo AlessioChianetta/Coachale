@@ -963,6 +963,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     yield {
       type: "error",
       conversationId: conversationId || "",
+      error: "Utente non autorizzato",
       content: "Utente non autorizzato",
     };
     return;
@@ -1012,6 +1013,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
         yield {
           type: "error",
           conversationId: conversationId || "",
+          error: "Conversazione non trovata",
           content: "Conversazione non trovata",
         };
         return;
@@ -1564,6 +1566,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
         type: "error",
         conversationId: conversation.id,
         messageId: savedErrorMessage.id,
+        error: errorMessage,
         content: errorMessage,
       };
     } else {
@@ -1571,6 +1574,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
       yield {
         type: "error",
         conversationId: conversationId || "",
+        error: errorMessage,
         content: errorMessage,
       };
     }
@@ -2315,6 +2319,7 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
         type: "error",
         conversationId: conversation.id,
         messageId: savedErrorMessage.id,
+        error: errorMessage,
         content: errorMessage,
       };
     } else {
@@ -2322,6 +2327,7 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       yield {
         type: "error",
         conversationId: conversationId || "",
+        error: errorMessage,
         content: errorMessage,
       };
     }
