@@ -648,28 +648,28 @@ export default function ConsultantWhatsAppConversationsPage() {
 
   return (
     <WhatsAppLayout showHeader={false}>
-      <div className="w-full max-w-7xl mx-auto">
+      <div className="w-full h-full px-4 lg:px-6">
             {/* Header */}
-            <div className="mb-8">
+            <div className="mb-6">
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-teal-500/10 blur-3xl -z-10"></div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent flex items-center gap-3">
-                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-2.5 rounded-xl shadow-lg">
-                    <MessageSquare className="h-8 w-8 text-white" />
+                <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 bg-clip-text text-transparent flex items-center gap-3">
+                  <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-2 lg:p-2.5 rounded-xl shadow-lg shadow-green-500/20">
+                    <MessageSquare className="h-6 w-6 lg:h-8 lg:w-8 text-white" />
                   </div>
                   Conversazioni WhatsApp
                 </h1>
-                <p className="mt-3 text-base text-gray-600 dark:text-gray-400 ml-[60px]">
+                <p className="mt-2 text-sm lg:text-base text-gray-600 dark:text-gray-400 ml-[52px] lg:ml-[60px]">
                   Gestisci le conversazioni WhatsApp con i tuoi clienti e lead
                 </p>
               </div>
             </div>
 
             {/* Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-250px)] w-full overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 h-[calc(100vh-180px)] w-full overflow-hidden">
               {/* Conversations List - Hidden on mobile when chat is open */}
               {(!isMobile || !selectedConversationId) && (
-              <Card className="lg:col-span-1 overflow-hidden border-2 border-gray-100 dark:border-gray-800 shadow-xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+              <Card className="lg:col-span-4 overflow-hidden border-2 border-gray-100 dark:border-gray-800 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-2xl">
                 <CardHeader className="pb-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-br from-green-50/50 to-emerald-50/50 dark:from-green-900/10 dark:to-emerald-900/10">
                   <CardTitle className="flex items-center justify-between text-lg font-bold">
                     <span className="flex items-center gap-2">
@@ -759,7 +759,7 @@ export default function ConsultantWhatsAppConversationsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <ScrollArea className="h-[calc(100vh-400px)]">
+                  <ScrollArea className="h-[calc(100vh-350px)]">
                     {conversations.length === 0 ? (
                       <div className="flex flex-col items-center justify-center p-8 text-center">
                         <MessageSquare className="h-12 w-12 text-gray-400 mb-3" />
@@ -903,7 +903,7 @@ export default function ConsultantWhatsAppConversationsPage() {
 
               {/* Chat View - Hidden on mobile when no conversation selected */}
               {(!isMobile || selectedConversationId) && (
-              <Card className="lg:col-span-2 flex flex-col overflow-hidden border-2 border-gray-100 dark:border-gray-800 shadow-xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
+              <Card className="lg:col-span-8 flex flex-col overflow-hidden border-2 border-gray-100 dark:border-gray-800 shadow-xl bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-2xl">
                 {selectedConversation ? (
                   <>
                     {/* Mobile Back Button */}

@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
+import confetti from "canvas-confetti";
 import { getAuthHeaders } from "@/lib/auth";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -130,22 +132,71 @@ const statusConfig = {
 function StatusBadge({ status }: { status: StepStatus }) {
   const config = statusConfig[status];
   const Icon = config.icon;
+  
+  const isPulsing = status === "configured";
+  
   return (
-    <Badge variant="outline" className={`${config.bg} ${config.color} border-0`}>
-      <Icon className="h-3 w-3 mr-1" />
-      {config.label}
-    </Badge>
+    <motion.div
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.2 }}
+    >
+      <Badge 
+        variant="outline" 
+        className={`${config.bg} ${config.color} border-0 ${isPulsing ? 'animate-pulse' : ''}`}
+      >
+        <motion.span
+          animate={isPulsing ? { scale: [1, 1.2, 1] } : {}}
+          transition={{ duration: 1.5, repeat: Infinity }}
+        >
+          <Icon className="h-3 w-3 mr-1" />
+        </motion.span>
+        {config.label}
+      </Badge>
+    </motion.div>
   );
 }
 
 function StepNumberBadge({ number, status }: { number: number; status: StepStatus }) {
-  const bgColor = status === "verified" ? "bg-green-500" : status === "configured" ? "bg-blue-500" : "bg-gray-300";
+  const bgColor = status === "verified" ? "bg-gradient-to-br from-green-400 to-emerald-600" : status === "configured" ? "bg-gradient-to-br from-blue-400 to-indigo-600" : "bg-gradient-to-br from-gray-300 to-gray-400";
   const textColor = status === "pending" ? "text-gray-600" : "text-white";
   
   return (
-    <div className={`w-6 h-6 rounded-full ${bgColor} ${textColor} flex items-center justify-center text-xs font-bold flex-shrink-0`}>
-      {status === "verified" ? <Check className="h-3 w-3" /> : number}
-    </div>
+    <motion.div 
+      className={`w-6 h-6 rounded-full ${bgColor} ${textColor} flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-md`}
+      initial={{ scale: 0.8 }}
+      animate={{ 
+        scale: status === "verified" ? [1, 1.2, 1] : 1,
+        rotate: status === "verified" ? [0, 10, -10, 0] : 0
+      }}
+      transition={{ 
+        duration: status === "verified" ? 0.5 : 0.2,
+        ease: "easeOut"
+      }}
+    >
+      <AnimatePresence mode="wait">
+        {status === "verified" ? (
+          <motion.div
+            key="check"
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            exit={{ scale: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          >
+            <Check className="h-3 w-3" />
+          </motion.div>
+        ) : (
+          <motion.span
+            key="number"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            {number}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -161,13 +212,22 @@ function StepCard({
   const config = statusConfig[step.status];
 
   return (
-    <div
-      className={`cursor-pointer transition-all duration-200 p-3 rounded-lg border ${
+    <motion.div
+      className={`cursor-pointer p-3 rounded-lg border ${
         isActive
-          ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-sm"
+          ? "border-emerald-500 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/30 dark:to-teal-900/30 shadow-md"
           : "border-transparent hover:bg-gray-50 dark:hover:bg-slate-800"
       }`}
       onClick={onClick}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      whileHover={{ 
+        scale: 1.02, 
+        x: 4,
+        transition: { duration: 0.2 }
+      }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ duration: 0.3 }}
     >
       <div className="flex items-center gap-3">
         <StepNumberBadge number={step.stepNumber} status={step.status} />
@@ -175,19 +235,43 @@ function StepCard({
           <div className="flex items-center gap-2">
             <h3 className="font-medium text-sm truncate">{step.title}</h3>
             {step.count !== undefined && step.count > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {step.count} {step.countLabel}
-              </Badge>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              >
+                <Badge variant="secondary" className="text-xs bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30">
+                  {step.count} {step.countLabel}
+                </Badge>
+              </motion.div>
             )}
           </div>
         </div>
-        <div className={`p-1.5 rounded ${config.bg}`}>
+        <motion.div 
+          className={`p-1.5 rounded-lg ${config.bg} shadow-sm`}
+          whileHover={{ rotate: 5, scale: 1.1 }}
+          transition={{ type: "spring", stiffness: 400 }}
+        >
           <div className={config.color}>{step.icon}</div>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }
+
+const phaseGradients = {
+  infrastructure: "from-blue-500 via-cyan-500 to-teal-500",
+  whatsapp_agents: "from-green-500 via-emerald-500 to-teal-500",
+  content: "from-purple-500 via-violet-500 to-indigo-500",
+  advanced: "from-orange-500 via-amber-500 to-yellow-500",
+};
+
+const phaseBgGradients = {
+  infrastructure: "from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30",
+  whatsapp_agents: "from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30",
+  content: "from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30",
+  advanced: "from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30",
+};
 
 function PhaseSection({
   phase,
@@ -204,45 +288,124 @@ function PhaseSection({
   const completedCount = phase.steps.filter(s => s.status === "verified").length;
   const totalCount = phase.steps.length;
   const phaseProgress = Math.round((completedCount / totalCount) * 100);
+  const isComplete = phaseProgress === 100;
+  
+  const gradient = phaseGradients[phase.id as keyof typeof phaseGradients] || phaseGradients.infrastructure;
+  const bgGradient = phaseBgGradients[phase.id as keyof typeof phaseBgGradients] || phaseBgGradients.infrastructure;
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-2">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mb-3">
       <CollapsibleTrigger className="w-full">
-        <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+        <motion.div 
+          className={`flex items-center justify-between p-3 rounded-xl bg-gradient-to-r ${bgGradient} border border-gray-200 dark:border-gray-700 shadow-sm`}
+          whileHover={{ scale: 1.01, y: -1 }}
+          transition={{ type: "spring", stiffness: 400 }}
+        >
           <div className="flex items-center gap-2">
-            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            <motion.div
+              animate={{ rotate: isOpen ? 90 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </motion.div>
             <span className="font-semibold text-sm">{phase.title}</span>
+            {isComplete && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="text-lg"
+              >
+                🎉
+              </motion.span>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{completedCount}/{totalCount}</span>
-            <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-green-500 transition-all duration-300" 
-                style={{ width: `${phaseProgress}%` }}
+          <div className="flex items-center gap-3">
+            <motion.span 
+              className="text-xs font-medium px-2 py-0.5 rounded-full bg-white/80 dark:bg-gray-800/80 shadow-sm"
+              key={completedCount}
+              initial={{ scale: 1.3 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 500 }}
+            >
+              {completedCount}/{totalCount}
+            </motion.span>
+            <div className="w-20 h-2 bg-gray-200/80 dark:bg-gray-700/80 rounded-full overflow-hidden shadow-inner">
+              <motion.div 
+                className={`h-full bg-gradient-to-r ${gradient} rounded-full`}
+                initial={{ width: 0 }}
+                animate={{ width: `${phaseProgress}%` }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
               />
             </div>
           </div>
-        </div>
+        </motion.div>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-1 space-y-1 pl-2">
-          {phase.steps.map((step) => (
-            <StepCard
+        <motion.div 
+          className="mt-2 space-y-1 pl-3"
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {phase.steps.map((step, index) => (
+            <motion.div
               key={step.id}
-              step={step}
-              isActive={activeStep === step.id}
-              onClick={() => onStepClick(step.id)}
-            />
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <StepCard
+                step={step}
+                isActive={activeStep === step.id}
+                onClick={() => onStepClick(step.id)}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </CollapsibleContent>
     </Collapsible>
   );
 }
 
+const triggerConfetti = () => {
+  const count = 200;
+  const defaults = {
+    origin: { y: 0.7 }
+  };
+
+  function fire(particleRatio: number, opts: confetti.Options) {
+    confetti({
+      ...defaults,
+      ...opts,
+      particleCount: Math.floor(count * particleRatio),
+      spread: 90,
+      startVelocity: 30,
+    });
+  }
+
+  fire(0.25, { spread: 26, startVelocity: 55 });
+  fire(0.2, { spread: 60 });
+  fire(0.35, { spread: 100, decay: 0.91, scalar: 0.8 });
+  fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.2 });
+  fire(0.1, { spread: 120, startVelocity: 45 });
+};
+
+const triggerMiniConfetti = () => {
+  confetti({
+    particleCount: 50,
+    spread: 60,
+    origin: { y: 0.6 },
+    colors: ['#10b981', '#14b8a6', '#06b6d4', '#3b82f6'],
+    ticks: 100,
+    gravity: 1.2,
+    scalar: 0.8,
+  });
+};
+
 export default function ConsultantSetupWizard() {
   const [activeStep, setActiveStep] = useState<string>("vertex_ai");
   const [testingStep, setTestingStep] = useState<string | null>(null);
+  const previousCompletedRef = useRef<number>(0);
   const { toast } = useToast();
 
   const { data: onboardingData, isLoading, refetch } = useQuery<{ success: boolean; data: OnboardingStatus }>({
@@ -267,8 +430,9 @@ export default function ConsultantSetupWizard() {
       return { ...data, stepName };
     },
     onSuccess: (data) => {
+      triggerMiniConfetti();
       toast({
-        title: `${data.stepName} Verificato`,
+        title: `🎉 ${data.stepName} Verificato`,
         description: data.message,
       });
       refetch();
@@ -511,6 +675,16 @@ export default function ConsultantSetupWizard() {
 
   const activeStepData = allSteps.find(s => s.id === activeStep);
 
+  useEffect(() => {
+    if (completedSteps > previousCompletedRef.current && previousCompletedRef.current > 0) {
+      triggerMiniConfetti();
+    }
+    if (completedSteps === totalSteps && previousCompletedRef.current < totalSteps) {
+      setTimeout(() => triggerConfetti(), 300);
+    }
+    previousCompletedRef.current = completedSteps;
+  }, [completedSteps, totalSteps]);
+
   const stepNameMap: Record<string, string> = {
     vertex_ai: "Vertex AI",
     smtp: "Email SMTP",
@@ -551,34 +725,133 @@ export default function ConsultantSetupWizard() {
       
       <main className="flex-1 overflow-hidden">
         <div className="h-full flex flex-col">
-          <header className="bg-white dark:bg-slate-900 border-b px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl">
-                  <Rocket className="h-6 w-6 text-white" />
-                </div>
+          <motion.header 
+            className="relative overflow-hidden border-b px-6 py-5"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 dark:from-emerald-500/20 dark:via-teal-500/20 dark:to-cyan-500/20" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-200/30 via-transparent to-transparent dark:from-purple-500/10" />
+            
+            <div className="relative flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <motion.div 
+                  className="relative p-3 bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 rounded-2xl shadow-lg shadow-emerald-500/30"
+                  animate={{ 
+                    y: [0, -4, 0],
+                    rotate: [0, 5, -5, 0]
+                  }}
+                  transition={{ 
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <Rocket className="h-7 w-7 text-white" />
+                  <motion.div
+                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 bg-gradient-to-b from-orange-400 to-red-500 rounded-full blur-sm"
+                    animate={{
+                      opacity: [0.5, 1, 0.5],
+                      scale: [0.8, 1.2, 0.8],
+                    }}
+                    transition={{
+                      duration: 0.8,
+                      repeat: Infinity,
+                    }}
+                  />
+                </motion.div>
                 <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  <motion.h1 
+                    className="text-2xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
                     Setup Iniziale Piattaforma
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    Completa tutti i 17 step per sbloccare le funzionalità complete
-                  </p>
+                  </motion.h1>
+                  <motion.p 
+                    className="text-sm text-muted-foreground"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    Completa tutti i 17 step per sbloccare le funzionalità complete ✨
+                  </motion.p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
+              <motion.div 
+                className="flex items-center gap-6"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.4 }}
+              >
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-emerald-600">{progressPercent}%</div>
+                  <motion.div 
+                    className="text-3xl font-bold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent"
+                    key={progressPercent}
+                    initial={{ scale: 1.2 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  >
+                    {progressPercent}%
+                  </motion.div>
                   <div className="text-xs text-muted-foreground">
-                    {completedSteps}/{totalSteps} step completati
+                    <motion.span
+                      key={completedSteps}
+                      initial={{ color: '#10b981' }}
+                      animate={{ color: 'inherit' }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      {completedSteps}/{totalSteps}
+                    </motion.span> step completati
                   </div>
                 </div>
-                <div className="w-40">
-                  <Progress value={progressPercent} className="h-3" />
+                <div className="relative w-16 h-16">
+                  <svg className="w-16 h-16 transform -rotate-90">
+                    <circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                      className="text-gray-200 dark:text-gray-700"
+                    />
+                    <motion.circle
+                      cx="32"
+                      cy="32"
+                      r="28"
+                      stroke="url(#progressGradient)"
+                      strokeWidth="4"
+                      fill="none"
+                      strokeLinecap="round"
+                      initial={{ strokeDasharray: "0 176" }}
+                      animate={{ strokeDasharray: `${(progressPercent / 100) * 176} 176` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                    />
+                    <defs>
+                      <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#10b981" />
+                        <stop offset="50%" stopColor="#14b8a6" />
+                        <stop offset="100%" stopColor="#06b6d4" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <motion.span 
+                      className="text-xs font-semibold"
+                      key={completedSteps}
+                      initial={{ scale: 1.3 }}
+                      animate={{ scale: 1 }}
+                    >
+                      {completedSteps}
+                    </motion.span>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
-          </header>
+          </motion.header>
 
           <div className="flex-1 grid grid-cols-12 gap-0 overflow-hidden">
             <aside className="col-span-4 border-r bg-white dark:bg-slate-900 overflow-hidden flex flex-col">
@@ -601,53 +874,96 @@ export default function ConsultantSetupWizard() {
               </ScrollArea>
             </aside>
 
-            <section className="col-span-5 overflow-auto bg-slate-50 dark:bg-slate-800/50">
+            <section className="col-span-5 overflow-auto bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-800/50 dark:via-slate-900 dark:to-slate-800/50">
               <div className="p-6">
-                {activeStepData && (
-                  <Card className="border-0 shadow-xl">
-                    <CardHeader className="pb-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <StepNumberBadge number={activeStepData.stepNumber} status={activeStepData.status} />
-                          <div className={`p-3 rounded-xl ${statusConfig[activeStepData.status].bg}`}>
-                            <div className={statusConfig[activeStepData.status].color}>
-                              {activeStepData.icon}
+                <AnimatePresence mode="wait">
+                  {activeStepData && (
+                    <motion.div
+                      key={activeStepData.id}
+                      initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -20, scale: 0.98 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Card className="border-0 shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-emerald-500/10 to-transparent rounded-bl-full" />
+                        <CardHeader className="pb-4 relative">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <StepNumberBadge number={activeStepData.stepNumber} status={activeStepData.status} />
+                              <motion.div 
+                                className={`p-3 rounded-xl ${statusConfig[activeStepData.status].bg} shadow-md`}
+                                whileHover={{ scale: 1.1, rotate: 5 }}
+                                transition={{ type: "spring", stiffness: 400 }}
+                              >
+                                <div className={statusConfig[activeStepData.status].color}>
+                                  {activeStepData.icon}
+                                </div>
+                              </motion.div>
+                              <div>
+                                <CardTitle className="text-xl">{activeStepData.title}</CardTitle>
+                                <CardDescription>{activeStepData.description}</CardDescription>
+                              </div>
                             </div>
+                            <StatusBadge status={activeStepData.status} />
                           </div>
-                          <div>
-                            <CardTitle className="text-xl">{activeStepData.title}</CardTitle>
-                            <CardDescription>{activeStepData.description}</CardDescription>
-                          </div>
-                        </div>
-                        <StatusBadge status={activeStepData.status} />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {activeStepData.status === "error" && activeStepData.errorMessage && (
-                        <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>{activeStepData.errorMessage}</AlertDescription>
-                        </Alert>
-                      )}
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <AnimatePresence>
+                            {activeStepData.status === "error" && activeStepData.errorMessage && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                              >
+                                <Alert variant="destructive">
+                                  <AlertCircle className="h-4 w-4" />
+                                  <AlertDescription>{activeStepData.errorMessage}</AlertDescription>
+                                </Alert>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
 
-                      {activeStepData.status === "verified" && (
-                        <Alert className="bg-green-50 border-green-200">
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          <AlertDescription className="text-green-800">
-                            Configurazione verificata e funzionante!
-                            {activeStepData.testedAt && (
-                              <span className="block text-xs mt-1">
-                                Ultimo test: {new Date(activeStepData.testedAt).toLocaleString('it-IT')}
-                              </span>
+                          <AnimatePresence>
+                            {activeStepData.status === "verified" && (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                              >
+                                <Alert className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-800">
+                                  <motion.div
+                                    animate={{ rotate: [0, 10, -10, 0] }}
+                                    transition={{ duration: 0.5, delay: 0.2 }}
+                                  >
+                                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                  </motion.div>
+                                  <AlertDescription className="text-green-800 dark:text-green-200">
+                                    <span className="flex items-center gap-2">
+                                      Configurazione verificata e funzionante! 
+                                      <motion.span
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        transition={{ delay: 0.3, type: "spring" }}
+                                      >
+                                        🎉
+                                      </motion.span>
+                                    </span>
+                                    {activeStepData.testedAt && (
+                                      <span className="block text-xs mt-1">
+                                        Ultimo test: {new Date(activeStepData.testedAt).toLocaleString('it-IT')}
+                                      </span>
+                                    )}
+                                    {activeStepData.count !== undefined && activeStepData.count > 0 && (
+                                      <span className="block text-xs mt-1">
+                                        Hai {activeStepData.count} {activeStepData.countLabel}
+                                      </span>
+                                    )}
+                                  </AlertDescription>
+                                </Alert>
+                              </motion.div>
                             )}
-                            {activeStepData.count !== undefined && activeStepData.count > 0 && (
-                              <span className="block text-xs mt-1">
-                                Hai {activeStepData.count} {activeStepData.countLabel}
-                              </span>
-                            )}
-                          </AlertDescription>
-                        </Alert>
-                      )}
+                          </AnimatePresence>
 
                       <div className="space-y-3">
                         <h4 className="font-medium text-sm">Azioni Disponibili</h4>
@@ -970,9 +1286,11 @@ export default function ConsultantSetupWizard() {
                           </div>
                         </div>
                       )}
-                    </CardContent>
-                  </Card>
-                )}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </section>
 
