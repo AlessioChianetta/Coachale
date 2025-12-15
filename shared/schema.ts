@@ -39,6 +39,9 @@ export const users = pgTable("users", {
   twilioAuthToken: text("twilio_auth_token"),
   twilioWhatsappNumber: text("twilio_whatsapp_number"),
   
+  // Vertex AI Inheritance - consultants can use SuperAdmin's Vertex or their own
+  useSuperadminVertex: boolean("use_superadmin_vertex").default(true), // If true, consultant uses SuperAdmin's Vertex; if false, uses their own
+  
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -531,6 +534,28 @@ export const vertexAiClientAccess = pgTable("vertex_ai_client_access", {
   return {
     uniqueSettingsClient: unique().on(table.vertexSettingsId, table.clientId),
   }
+});
+
+// SuperAdmin Vertex Config - Centralized Vertex AI configuration managed by SuperAdmin
+// Consultants inherit this by default, clients inherit from their consultant
+export const superadminVertexConfig = pgTable("superadmin_vertex_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: text("project_id").notNull(), // Google Cloud Project ID
+  location: text("location").notNull().default("us-central1"), // Vertex AI location
+  serviceAccountJson: text("service_account_json").notNull(), // Service account credentials (JSON)
+  enabled: boolean("enabled").notNull().default(true), // Enable/disable SuperAdmin Vertex AI
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Consultant Vertex Access - Controls which consultants can use SuperAdmin's Vertex AI
+// By default all consultants have access (has_access = true)
+export const consultantVertexAccess = pgTable("consultant_vertex_access", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  hasAccess: boolean("has_access").notNull().default(true), // Whether this consultant can use SuperAdmin's Vertex AI
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
 // Vertex AI Usage Tracking - Track all Vertex AI API calls with accurate cost breakdown
@@ -1870,6 +1895,14 @@ export type UpdateVertexAiSettings = z.infer<typeof updateVertexAiSettingsSchema
 // WhatsApp Vertex AI Settings types
 export type WhatsappVertexAiSettings = typeof whatsappVertexAiSettings.$inferSelect;
 export type InsertWhatsappVertexAiSettings = typeof whatsappVertexAiSettings.$inferInsert;
+
+// SuperAdmin Vertex Config types
+export type SuperadminVertexConfig = typeof superadminVertexConfig.$inferSelect;
+export type InsertSuperadminVertexConfig = typeof superadminVertexConfig.$inferInsert;
+
+// Consultant Vertex Access types
+export type ConsultantVertexAccess = typeof consultantVertexAccess.$inferSelect;
+export type InsertConsultantVertexAccess = typeof consultantVertexAccess.$inferInsert;
 
 // WhatsApp Gemini API Keys types
 export type WhatsappGeminiApiKeys = typeof whatsappGeminiApiKeys.$inferSelect;
