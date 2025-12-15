@@ -253,17 +253,58 @@ function TipsPanel({ selectedStep }: { selectedStep: string | null }) {
   );
 }
 
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 function InlineAssistant() {
   const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
   const handleSuggestionClick = (suggestion: string) => {
     setQuestion(suggestion);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (question.trim()) {
-      setQuestion("");
+    if (!question.trim() || isLoading) return;
+
+    const userMessage = question.trim();
+    setQuestion("");
+    
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/ai/lead-hub-assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ question: userMessage }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.response) {
+        setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
+      } else {
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: data.message || 'Mi dispiace, si è verificato un errore. Riprova.' 
+        }]);
+      }
+    } catch (error) {
+      console.error('Error calling Lead Hub Assistant:', error);
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Errore di connessione. Verifica la tua connessione e riprova.' 
+      }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -283,76 +324,130 @@ function InlineAssistant() {
       
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
-            <div className="flex items-start gap-2">
-              <div className="p-1 bg-purple-500/20 rounded-full">
-                <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+          {messages.length === 0 ? (
+            <>
+              <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+                <div className="flex items-start gap-2">
+                  <div className="p-1 bg-purple-500/20 rounded-full">
+                    <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Ciao! Sono qui per aiutarti a configurare il tuo sistema di acquisizione lead. 
+                    Seleziona uno step per avere tips specifici, oppure chiedimi qualsiasi cosa!
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Ciao! Sono qui per aiutarti a configurare il tuo sistema di acquisizione lead. 
-                Seleziona uno step per avere tips specifici, oppure chiedimi qualsiasi cosa!
-              </p>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Domande frequenti</p>
-            <div className="flex flex-wrap gap-1.5">
-              {QUICK_SUGGESTIONS.map((suggestion, index) => (
-                <motion.button
+              
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Domande frequenti</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {QUICK_SUGGESTIONS.map((suggestion, index) => (
+                    <motion.button
+                      key={index}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="text-xs px-2.5 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600/50 text-slate-300 hover:text-white transition-colors text-left"
+                    >
+                      {suggestion}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Quick Actions</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link href="/consultant/proactive-leads">
+                    <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300">
+                      <Users className="h-3.5 w-3.5" />
+                      Vai ai Lead
+                    </Button>
+                  </Link>
+                  <Link href="/consultant/campaigns">
+                    <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300">
+                      <Megaphone className="h-3.5 w-3.5" />
+                      Campagne
+                    </Button>
+                  </Link>
+                  <Link href="/consultant/whatsapp-templates">
+                    <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Template
+                    </Button>
+                  </Link>
+                  <Link href="/consultant/automations">
+                    <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 hover:text-orange-300">
+                      <Zap className="h-3.5 w-3.5" />
+                      Automazioni
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <div className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-lg p-3 border border-purple-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <HelpCircle className="h-4 w-4 text-purple-400" />
+                    <span className="text-xs font-medium text-purple-300">Hai bisogno di aiuto?</span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    L'assistente AI completo è disponibile in basso a destra per conversazioni più approfondite.
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              {messages.map((msg, index) => (
+                <motion.div
                   key={index}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className="text-xs px-2.5 py-1.5 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600/50 text-slate-300 hover:text-white transition-colors text-left"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={cn(
+                    "rounded-lg p-3 text-xs leading-relaxed",
+                    msg.role === 'user'
+                      ? "bg-purple-600/30 border border-purple-500/30 ml-4"
+                      : "bg-slate-800/50 border border-slate-700/50 mr-4"
+                  )}
                 >
-                  {suggestion}
-                </motion.button>
+                  <div className="flex items-start gap-2">
+                    <div className={cn(
+                      "p-1 rounded-full shrink-0",
+                      msg.role === 'user' ? "bg-purple-500/30" : "bg-indigo-500/30"
+                    )}>
+                      {msg.role === 'user' ? (
+                        <Send className="h-3 w-3 text-purple-300" />
+                      ) : (
+                        <Bot className="h-3 w-3 text-indigo-300" />
+                      )}
+                    </div>
+                    <p className="text-slate-200 whitespace-pre-wrap">{msg.content}</p>
+                  </div>
+                </motion.div>
               ))}
+              
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 mr-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 bg-indigo-500/30 rounded-full">
+                      <Bot className="h-3 w-3 text-indigo-300" />
+                    </div>
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Quick Actions</p>
-            <div className="grid grid-cols-2 gap-2">
-              <Link href="/consultant/proactive-leads">
-                <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300">
-                  <Users className="h-3.5 w-3.5" />
-                  Vai ai Lead
-                </Button>
-              </Link>
-              <Link href="/consultant/campaigns">
-                <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 hover:text-purple-300">
-                  <Megaphone className="h-3.5 w-3.5" />
-                  Campagne
-                </Button>
-              </Link>
-              <Link href="/consultant/whatsapp-templates">
-                <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-green-500/10 hover:bg-green-500/20 text-green-400 hover:text-green-300">
-                  <MessageSquare className="h-3.5 w-3.5" />
-                  Template
-                </Button>
-              </Link>
-              <Link href="/consultant/automations">
-                <Button size="sm" variant="ghost" className="w-full justify-start gap-2 text-xs h-8 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 hover:text-orange-300">
-                  <Zap className="h-3.5 w-3.5" />
-                  Automazioni
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <div className="bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-lg p-3 border border-purple-500/20">
-              <div className="flex items-center gap-2 mb-2">
-                <HelpCircle className="h-4 w-4 text-purple-400" />
-                <span className="text-xs font-medium text-purple-300">Hai bisogno di aiuto?</span>
-              </div>
-              <p className="text-xs text-slate-400">
-                L'assistente AI completo è disponibile in basso a destra per conversazioni più approfondite.
-              </p>
-            </div>
-          </div>
+          )}
         </div>
       </ScrollArea>
       
@@ -367,9 +462,14 @@ function InlineAssistant() {
           <Button 
             type="submit" 
             size="sm" 
-            className="h-9 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+            disabled={isLoading || !question.trim()}
+            className="h-9 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50"
           >
-            <Send className="h-3.5 w-3.5" />
+            {isLoading ? (
+              <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Send className="h-3.5 w-3.5" />
+            )}
           </Button>
         </form>
       </div>

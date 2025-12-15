@@ -2429,257 +2429,245 @@ export default function ConsultantApiKeysUnified() {
                 </Card>
               </TabsContent>
 
-              {/* Calendar Tab Content */}
+              {/* Calendar Tab Content - Unified View */}
               <TabsContent value="calendar" className="space-y-6">
-                <Alert className="mb-6 bg-cyan-50 border-cyan-200">
-                  <CalendarDays className="h-5 w-5" />
-                  <AlertDescription className="text-sm">
-                    <strong>Gestione Completa Calendar</strong>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>Visualizza il tuo Google Calendar integrato</li>
-                      <li>Configura disponibilità AI per risposte automatiche</li>
-                      <li>Imposta slot disponibili per prenotazioni appuntamenti</li>
-                      <li>Connetti OAuth per sincronizzazione automatica</li>
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-
-                <Tabs defaultValue={new URLSearchParams(searchParams).get('subtab') || "view"} className="space-y-6">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="view">
-                      <CalendarDays className="h-4 w-4 mr-2" />
-                      Google Calendar
-                    </TabsTrigger>
-                    <TabsTrigger value="availability">
-                      <Clock className="h-4 w-4 mr-2" />
-                      Disponibilità
-                    </TabsTrigger>
-                    <TabsTrigger value="oauth">
-                      <Key className="h-4 w-4 mr-2" />
-                      Connessione OAuth
-                    </TabsTrigger>
-                  </TabsList>
-
-                  {/* Tab 1: Google Calendar View */}
-                  <TabsContent value="view">
-                    <CalendarView />
-                  </TabsContent>
-
-                  {/* Tab 2: Availability Settings */}
-                  <TabsContent value="availability">
-                    <CalendarSettingsContent />
-                  </TabsContent>
-
-                  {/* Tab 3: OAuth Setup - Simplified */}
-                  <TabsContent value="oauth">
-                    <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-3 bg-gradient-to-br from-cyan-100 to-blue-100 rounded-xl">
-                              <Calendar className="h-6 w-6 text-cyan-600" />
-                            </div>
-                            <div>
-                              <CardTitle>Google Calendar</CardTitle>
-                              <CardDescription>
-                                Collega il tuo Google Calendar per sincronizzare gli appuntamenti
-                              </CardDescription>
-                            </div>
-                          </div>
-                          {calendarSettings?.googleCalendarConnected && !calendarSettings?.oauthNeedsReconnection && (
-                            <Badge variant="default" className="bg-green-500">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Connesso
-                            </Badge>
-                          )}
-                          {calendarSettings?.oauthNeedsReconnection && (
-                            <Badge variant="destructive" className="bg-red-500">
-                              <XCircle className="h-3 w-3 mr-1" />
-                              Riconnessione necessaria
-                            </Badge>
-                          )}
+                {/* Section 1: Connection Status Header */}
+                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-gradient-to-br from-cyan-100 to-blue-100 rounded-xl">
+                          <Calendar className="h-6 w-6 text-cyan-600" />
                         </div>
-                      </CardHeader>
+                        <div>
+                          <CardTitle>Stato Connessione Google Calendar</CardTitle>
+                          <CardDescription>
+                            Gestisci la connessione al tuo Google Calendar per sincronizzare gli appuntamenti
+                          </CardDescription>
+                        </div>
+                      </div>
+                      {calendarSettings?.googleCalendarConnected && !calendarSettings?.oauthNeedsReconnection && (
+                        <Badge variant="default" className="bg-green-500">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Connesso
+                        </Badge>
+                      )}
+                      {calendarSettings?.oauthNeedsReconnection && (
+                        <Badge variant="destructive" className="bg-red-500">
+                          <XCircle className="h-3 w-3 mr-1" />
+                          Riconnessione necessaria
+                        </Badge>
+                      )}
+                      {!calendarSettings?.googleCalendarConnected && !calendarSettings?.oauthNeedsReconnection && (
+                        <Badge variant="secondary">
+                          <XCircle className="h-3 w-3 mr-1" />
+                          Non connesso
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
 
-                      <CardContent className="space-y-6">
-                        {/* Check if global OAuth is configured */}
-                        {!calendarGlobalOAuth?.globalOAuthConfigured ? (
-                          <Alert className="bg-yellow-50 border-yellow-200">
-                            <AlertCircle className="h-4 w-4 text-yellow-600" />
-                            <AlertDescription className="text-sm text-yellow-800">
-                              <strong>Configurazione in attesa</strong>
-                              <p className="mt-2">
-                                L'amministratore non ha ancora configurato le credenziali Google OAuth.
-                                Contatta il tuo amministratore per abilitare la connessione a Google Calendar.
+                  <CardContent className="space-y-4">
+                    {/* Check if global OAuth is configured */}
+                    {!calendarGlobalOAuth?.globalOAuthConfigured ? (
+                      <Alert className="bg-yellow-50 border-yellow-200">
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        <AlertDescription className="text-sm text-yellow-800">
+                          <strong>Configurazione in attesa</strong>
+                          <p className="mt-2">
+                            L'amministratore non ha ancora configurato le credenziali Google OAuth.
+                            Contatta il tuo amministratore per abilitare la connessione a Google Calendar.
+                          </p>
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <>
+                        {/* Connection Status Messages */}
+                        {calendarSettings?.oauthNeedsReconnection && (
+                          <Alert className="bg-red-50 border-red-200">
+                            <XCircle className="h-4 w-4 text-red-600" />
+                            <AlertDescription className="text-sm text-red-800">
+                              <strong>Riconnessione necessaria</strong>
+                              <p className="mt-1">
+                                {calendarSettings.oauthError || 'Il token OAuth è scaduto o revocato. Clicca "Connetti" per ripristinare la connessione.'}
                               </p>
                             </AlertDescription>
                           </Alert>
-                        ) : (
-                          <>
-                            {/* Connection Status Messages */}
-                            {calendarSettings?.oauthNeedsReconnection && (
-                              <Alert className="bg-red-50 border-red-200">
-                                <XCircle className="h-4 w-4 text-red-600" />
-                                <AlertDescription className="text-sm text-red-800">
-                                  <strong>Riconnessione necessaria</strong>
-                                  <p className="mt-1">
-                                    {calendarSettings.oauthError || 'Il token OAuth è scaduto o revocato. Clicca "Connetti" per ripristinare la connessione.'}
-                                  </p>
-                                </AlertDescription>
-                              </Alert>
-                            )}
+                        )}
 
-                            {calendarSettings?.googleCalendarConnected && !calendarSettings?.oauthNeedsReconnection && (
-                              <Alert className="bg-green-50 border-green-200">
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                <AlertDescription className="text-sm text-green-800">
-                                  <strong>Google Calendar connesso!</strong>
-                                  <p className="mt-1">
-                                    I tuoi appuntamenti vengono sincronizzati automaticamente.
-                                    {calendarSettings.googleCalendarEmail && (
-                                      <span className="block mt-1 text-green-700">
-                                        Account: <strong>{calendarSettings.googleCalendarEmail}</strong>
-                                      </span>
-                                    )}
-                                  </p>
-                                </AlertDescription>
-                              </Alert>
-                            )}
+                        {calendarSettings?.googleCalendarConnected && !calendarSettings?.oauthNeedsReconnection && (
+                          <Alert className="bg-green-50 border-green-200">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <AlertDescription className="text-sm text-green-800">
+                              <strong>Google Calendar connesso!</strong>
+                              <p className="mt-1">
+                                I tuoi appuntamenti vengono sincronizzati automaticamente.
+                                {calendarSettings.googleCalendarEmail && (
+                                  <span className="block mt-1 text-green-700">
+                                    Account: <strong>{calendarSettings.googleCalendarEmail}</strong>
+                                  </span>
+                                )}
+                              </p>
+                            </AlertDescription>
+                          </Alert>
+                        )}
 
-                            {!calendarSettings?.googleCalendarConnected && (
-                              <Alert className="bg-blue-50 border-blue-200">
-                                <Calendar className="h-4 w-4 text-blue-600" />
-                                <AlertDescription className="text-sm text-blue-800">
-                                  <strong>Collega il tuo Google Calendar</strong>
-                                  <p className="mt-1">
-                                    Clicca il pulsante qui sotto per autorizzare l'accesso al tuo calendario.
-                                    Questo permetterà di sincronizzare automaticamente gli appuntamenti.
-                                  </p>
-                                </AlertDescription>
-                              </Alert>
-                            )}
+                        {!calendarSettings?.googleCalendarConnected && (
+                          <Alert className="bg-blue-50 border-blue-200">
+                            <Calendar className="h-4 w-4 text-blue-600" />
+                            <AlertDescription className="text-sm text-blue-800">
+                              <strong>Collega il tuo Google Calendar</strong>
+                              <p className="mt-1">
+                                Clicca il pulsante qui sotto per autorizzare l'accesso al tuo calendario.
+                                Questo permetterà di sincronizzare automaticamente gli appuntamenti.
+                              </p>
+                            </AlertDescription>
+                          </Alert>
+                        )}
 
-                            {/* Buttons */}
-                            <div className="flex flex-wrap gap-3">
-                              <Button
-                                onClick={async () => {
-                                  try {
-                                    const response = await fetch("/api/calendar-settings/oauth/start", {
-                                      headers: getAuthHeaders(),
-                                    });
+                        {/* Buttons */}
+                        <div className="flex flex-wrap gap-3">
+                          <Button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch("/api/calendar-settings/oauth/start", {
+                                  headers: getAuthHeaders(),
+                                });
 
-                                    if (!response.ok) {
-                                      const error = await response.json();
-                                      throw new Error(error.message || "Errore durante l'avvio dell'autenticazione");
-                                    }
+                                if (!response.ok) {
+                                  const error = await response.json();
+                                  throw new Error(error.message || "Errore durante l'avvio dell'autenticazione");
+                                }
 
-                                    const { authUrl } = await response.json();
-                                    window.open(authUrl, "_blank");
+                                const { authUrl } = await response.json();
+                                window.open(authUrl, "_blank");
 
+                                toast({
+                                  title: "Autenticazione avviata",
+                                  description: "Completa l'autorizzazione nella finestra aperta, poi torna qui e aggiorna la pagina.",
+                                });
+                              } catch (error: any) {
+                                toast({
+                                  title: "Errore",
+                                  description: error.message,
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                          >
+                            <Calendar className="h-4 w-4 mr-2" />
+                            {calendarSettings?.googleCalendarConnected ? "Riconnetti Google Calendar" : "Connetti Google Calendar"}
+                          </Button>
+
+                          {calendarSettings?.googleCalendarConnected && (
+                            <Button
+                              onClick={async () => {
+                                try {
+                                  toast({
+                                    title: "Test in corso...",
+                                    description: "Verifico la connessione a Google Calendar",
+                                  });
+                                  
+                                  const response = await fetch("/api/calendar-settings/test-connection", {
+                                    method: "POST",
+                                    headers: getAuthHeaders(),
+                                  });
+
+                                  const result = await response.json();
+
+                                  if (result.success) {
+                                    queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings"] });
+                                    queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings/connection-status"] });
                                     toast({
-                                      title: "Autenticazione avviata",
-                                      description: "Completa l'autorizzazione nella finestra aperta, poi torna qui e aggiorna la pagina.",
+                                      title: "Connessione OK!",
+                                      description: `${result.message} Eventi trovati: ${result.eventsFound}${result.calendarEmail ? ` - Account: ${result.calendarEmail}` : ''}`,
                                     });
-                                  } catch (error: any) {
+                                  } else {
                                     toast({
-                                      title: "Errore",
-                                      description: error.message,
+                                      title: "Errore Connessione",
+                                      description: result.message,
                                       variant: "destructive",
                                     });
                                   }
-                                }}
-                                className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
-                              >
-                                <Calendar className="h-4 w-4 mr-2" />
-                                {calendarSettings?.googleCalendarConnected ? "Riconnetti Google Calendar" : "Connetti Google Calendar"}
-                              </Button>
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Errore",
+                                    description: error.message,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              variant="outline"
+                              className="text-green-600 hover:bg-green-50 border-green-300"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Test Connessione
+                            </Button>
+                          )}
 
-                              {calendarSettings?.googleCalendarConnected && (
-                                <Button
-                                  onClick={async () => {
-                                    try {
-                                      toast({
-                                        title: "Test in corso...",
-                                        description: "Verifico la connessione a Google Calendar",
-                                      });
-                                      
-                                      const response = await fetch("/api/calendar-settings/test-connection", {
-                                        method: "POST",
-                                        headers: getAuthHeaders(),
-                                      });
+                          {calendarSettings?.googleCalendarConnected && (
+                            <Button
+                              onClick={async () => {
+                                if (!confirm("Vuoi disconnettere Google Calendar? Gli appuntamenti non saranno più sincronizzati.")) return;
 
-                                      const result = await response.json();
+                                try {
+                                  const response = await fetch("/api/calendar-settings/disconnect", {
+                                    method: "POST",
+                                    headers: getAuthHeaders(),
+                                  });
 
-                                      if (result.success) {
-                                        queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings"] });
-                                        queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings/connection-status"] });
-                                        toast({
-                                          title: "Connessione OK!",
-                                          description: `${result.message} Eventi trovati: ${result.eventsFound}${result.calendarEmail ? ` - Account: ${result.calendarEmail}` : ''}`,
-                                        });
-                                      } else {
-                                        toast({
-                                          title: "Errore Connessione",
-                                          description: result.message,
-                                          variant: "destructive",
-                                        });
-                                      }
-                                    } catch (error: any) {
-                                      toast({
-                                        title: "Errore",
-                                        description: error.message,
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                  variant="outline"
-                                  className="text-green-600 hover:bg-green-50 border-green-300"
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Test Connessione
-                                </Button>
-                              )}
+                                  if (!response.ok) throw new Error("Errore durante la disconnessione");
 
-                              {calendarSettings?.googleCalendarConnected && (
-                                <Button
-                                  onClick={async () => {
-                                    if (!confirm("Vuoi disconnettere Google Calendar? Gli appuntamenti non saranno più sincronizzati.")) return;
+                                  queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings"] });
+                                  toast({
+                                    title: "Disconnesso",
+                                    description: "Google Calendar disconnesso con successo",
+                                  });
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Errore",
+                                    description: error.message,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              variant="outline"
+                              className="text-red-600 hover:bg-red-50"
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Disconnetti
+                            </Button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
 
-                                    try {
-                                      const response = await fetch("/api/calendar-settings/disconnect", {
-                                        method: "POST",
-                                        headers: getAuthHeaders(),
-                                      });
+                {/* Section 2: Calendar View */}
+                {calendarSettings?.googleCalendarConnected ? (
+                  <CalendarView />
+                ) : (
+                  <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                    <CardContent className="py-12 text-center">
+                      <CalendarDays className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-600 mb-2">Calendario non disponibile</h3>
+                      <p className="text-muted-foreground">
+                        Connetti il tuo Google Calendar nella sezione sopra per visualizzare i tuoi appuntamenti qui.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
 
-                                      if (!response.ok) throw new Error("Errore durante la disconnessione");
-
-                                      queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings"] });
-                                      toast({
-                                        title: "Disconnesso",
-                                        description: "Google Calendar disconnesso con successo",
-                                      });
-                                    } catch (error: any) {
-                                      toast({
-                                        title: "Errore",
-                                        description: error.message,
-                                        variant: "destructive",
-                                      });
-                                    }
-                                  }}
-                                  variant="outline"
-                                  className="text-red-600 hover:bg-red-50"
-                                >
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Disconnetti
-                                </Button>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
+                {/* Section 3: Availability Settings */}
+                <div className="pt-4">
+                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-cyan-600" />
+                    Configurazione Disponibilità
+                  </h2>
+                  <CalendarSettingsContent />
+                </div>
               </TabsContent>
 
               {/* Lead Import Tab Content */}

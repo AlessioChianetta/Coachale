@@ -6641,6 +6641,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Lead Hub Assistant endpoint for consultants
+  app.post("/api/ai/lead-hub-assistant", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { question } = req.body;
+      
+      if (!question || typeof question !== 'string') {
+        return res.status(400).json({ success: false, message: "Question is required" });
+      }
+
+      const consultantId = req.user!.id;
+      
+      // Get AI provider for the consultant
+      const aiProvider = await getAIProvider(consultantId, consultantId);
+      
+      if (!aiProvider.client) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "AI provider not available. Please configure your AI settings." 
+        });
+      }
+
+      const systemPrompt = `Sei un assistente AI specializzato nel Lead Hub di Orbitale CRM.
+Il tuo ruolo è aiutare i consulenti finanziari a:
+
+1. **Gestione Lead Proattivi**: Importazione contatti da Excel/CSV, segmentazione, tagging, lead scoring
+2. **Campagne**: Creazione campagne marketing, pianificazione invii, segmentazione pubblico, analisi metriche
+3. **Template WhatsApp**: Selezione template approvati Meta, personalizzazione con variabili, best practice messaggistica
+4. **Template Personalizzati**: Creazione template custom, processo approvazione Meta, header/footer/pulsanti
+5. **Automazioni**: Follow-up automatici, AI responder, regole pipeline, notifiche intelligenti
+
+Rispondi in italiano, in modo conciso e pratico. Fornisci suggerimenti actionable.
+Se non conosci una risposta specifica, suggerisci dove trovare più informazioni nella piattaforma.`;
+
+      const result = await aiProvider.client.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          { role: 'user', parts: [{ text: question }] }
+        ],
+        generationConfig: {
+          systemInstruction: systemPrompt,
+          maxOutputTokens: 1024,
+          temperature: 0.7,
+        }
+      });
+
+      const response = result.response.text();
+
+      res.json({ 
+        success: true, 
+        response: response 
+      });
+
+    } catch (error: any) {
+      console.error("Error in Lead Hub Assistant:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || "Error processing request" 
+      });
+    }
+  });
+
   app.get("/api/ai/conversations", authenticateToken, requireRole("client"), async (req: AuthRequest, res) => {
     try {
       const conversations = await aiService.getConversations(req.user!.id);
