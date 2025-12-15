@@ -12646,6 +12646,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if global OAuth is configured for Calendar
+  app.get("/api/calendar-settings/oauth/global-status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { isGlobalCalendarOAuthConfigured } = await import('./google-calendar-service');
+      const isConfigured = await isGlobalCalendarOAuthConfigured();
+      
+      res.json({ 
+        globalOAuthConfigured: isConfigured,
+        message: isConfigured 
+          ? "Credenziali OAuth globali configurate dall'amministratore"
+          : "Credenziali OAuth globali non configurate. Contatta l'amministratore."
+      });
+    } catch (error: any) {
+      console.error('Error checking global OAuth status:', error);
+      res.status(500).json({ message: error.message, globalOAuthConfigured: false });
+    }
+  });
+
   // Google Calendar OAuth endpoints
   app.get("/api/calendar-settings/oauth/start", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {
@@ -12692,6 +12710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (existing) {
         // Update existing settings with OAuth tokens
+        // Also clear legacy consultant-specific OAuth credentials (migration to global OAuth)
         await db
           .update(schema.consultantAvailabilitySettings)
           .set({
@@ -12699,6 +12718,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             googleAccessToken: accessToken,
             googleRefreshToken: refreshToken,
             googleTokenExpiresAt: expiresAt,
+            googleOAuthClientId: null,
+            googleOAuthClientSecret: null,
+            googleOAuthRedirectUri: null,
             updatedAt: new Date()
           })
           .where(eq(schema.consultantAvailabilitySettings.consultantId, consultantId));
