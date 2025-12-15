@@ -28,6 +28,7 @@ import {
   ListChecks
 } from "lucide-react";
 import { Link } from "wouter";
+import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
 
 function ProgressIndicator({ current, total }: { current: number; total: number }) {
   return (

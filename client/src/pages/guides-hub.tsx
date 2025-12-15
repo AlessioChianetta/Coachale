@@ -23,6 +23,7 @@ import {
   Star
 } from "lucide-react";
 import { Link } from "wouter";
+import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
 
 interface GuideCardProps {
   title: string;
