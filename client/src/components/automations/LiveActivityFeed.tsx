@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getAuthHeaders } from "@/lib/auth";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Activity,
   User,
@@ -24,11 +24,15 @@ import {
   RefreshCw,
   Brain,
   Loader2,
-  Zap
+  Zap,
+  Search,
+  Calendar,
+  Filter
 } from "lucide-react";
 import { Link } from "wouter";
-import { useSendMessageNow } from "@/hooks/useFollowupApi";
+import { useSendMessageNow, useFollowupAgents, useActivityLog, type ActivityLogFilters } from "@/hooks/useFollowupApi";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TimelineEvent {
@@ -51,6 +55,7 @@ interface TimelineEvent {
   canSendFreeform?: boolean;
   templateId?: string;
   templateName?: string;
+  templateTwilioStatus?: 'not_synced' | 'pending' | 'approved' | 'rejected' | null;
   messagePreview?: string;
   temperatureLevel?: 'hot' | 'warm' | 'cold' | 'ghost';
 }
@@ -102,6 +107,24 @@ function getTemperatureConfig(temperature?: string) {
       return { emoji: '👻', label: 'Ghost', color: 'bg-gray-100 text-gray-500 border-gray-300' };
     default:
       return { emoji: '🟡', label: 'Warm', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
+  }
+}
+
+function getTemplateStatusConfig(twilioStatus?: string | null, hasTemplate?: boolean) {
+  if (!hasTemplate) {
+    return { icon: '❌', label: 'Nessun template', color: 'text-gray-500', tooltip: 'Messaggio AI senza template' };
+  }
+  switch (twilioStatus) {
+    case 'approved':
+      return { icon: '✅', label: 'Approvato', color: 'text-green-600', tooltip: 'Template approvato da WhatsApp' };
+    case 'pending':
+      return { icon: '⏳', label: 'In attesa', color: 'text-yellow-600', tooltip: 'Template in attesa di approvazione WhatsApp' };
+    case 'rejected':
+      return { icon: '🚫', label: 'Rifiutato', color: 'text-red-600', tooltip: 'Template rifiutato da WhatsApp' };
+    case 'not_synced':
+      return { icon: '🔄', label: 'Non sincronizzato', color: 'text-blue-500', tooltip: 'Template non ancora sincronizzato con Twilio' };
+    default:
+      return { icon: '❓', label: 'Sconosciuto', color: 'text-gray-500', tooltip: 'Stato template sconosciuto' };
   }
 }
 
@@ -215,6 +238,59 @@ function SendNowButton({ messageId, canSendFreeform }: { messageId: string; canS
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+}
+
+function RetryButton({ messageId }: { messageId: string }) {
+  const { toast } = useToast();
+  const [isRetrying, setIsRetrying] = useState(false);
+  const queryClient = useQueryClient();
+  
+  const handleRetry = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsRetrying(true);
+    try {
+      const response = await fetch(`/api/followup/messages/${messageId}/retry`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: "Ritentativo schedulato",
+          description: "Il messaggio verrà rinviato a breve",
+        });
+        queryClient.invalidateQueries({ queryKey: ['activity-log'] });
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante il ritentativo",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+  
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleRetry}
+      disabled={isRetrying}
+      className="gap-1 text-orange-600 border-orange-300 hover:bg-orange-50"
+    >
+      {isRetrying ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <RefreshCw className="h-3 w-3" />
+      )}
+      Riprova
+    </Button>
   );
 }
 
@@ -347,10 +423,30 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                       
                       {event.messagePreview && (
                         <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-                          <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                            <MessageSquare className="h-3 w-3" />
-                            {event.templateName ? `Template: ${event.templateName}` : 'Messaggio AI'}
-                          </p>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <MessageSquare className="h-3 w-3" />
+                              {event.templateName ? `Template: ${event.templateName}` : 'Messaggio AI'}
+                            </p>
+                            {(() => {
+                              const templateStatus = getTemplateStatusConfig(event.templateTwilioStatus, !!event.templateId);
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className={`text-xs flex items-center gap-1 ${templateStatus.color}`}>
+                                        <span>{templateStatus.icon}</span>
+                                        <span className="hidden sm:inline">{templateStatus.label}</span>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{templateStatus.tooltip}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            })()}
+                          </div>
                           <p className={`text-xs italic ${showFullMessagePreview[event.id] ? '' : 'line-clamp-3'}`}>"{event.messagePreview}"</p>
                           {event.messagePreview.length > 150 && (
                             <button 
@@ -367,9 +463,16 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                       )}
                       
                       {event.errorMessage && (
-                        <p className="text-xs text-red-600 mt-0.5">
-                          Errore: {event.errorMessage}
-                        </p>
+                        <div className="mt-0.5">
+                          <p className="text-xs text-red-600">
+                            Errore: {event.errorMessage}
+                          </p>
+                          {event.type === 'message_failed' && (
+                            <div className="mt-1.5">
+                              <RetryButton messageId={event.id.replace('msg-', '')} />
+                            </div>
+                          )}
+                        </div>
                       )}
 
                       {event.confidenceScore !== undefined && (
@@ -402,11 +505,10 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                   canSendFreeform={conversation.events.find(e => e.type === 'message_scheduled')?.canSendFreeform}
                 />
               )}
-              {conversation.currentStatus === 'error' && (
-                <Button variant="outline" size="sm" className="gap-1 text-orange-600 border-orange-300">
-                  <AlertTriangle className="h-3 w-3" />
-                  Risolvi
-                </Button>
+              {conversation.currentStatus === 'error' && conversation.events.some(e => e.type === 'message_failed') && (
+                <RetryButton 
+                  messageId={conversation.events.find(e => e.type === 'message_failed')!.id.replace('msg-', '')} 
+                />
               )}
             </div>
           </CardContent>
@@ -441,18 +543,32 @@ function LoadingSkeleton() {
 
 export function LiveActivityFeed() {
   const [filter, setFilter] = useState<string>('all');
+  const [agentId, setAgentId] = useState<string>('');
+  const [search, setSearch] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  const { data, isLoading, error, refetch, isFetching } = useQuery<ActivityLogResponse>({
-    queryKey: ["activity-log", filter],
-    queryFn: async () => {
-      const response = await fetch(`/api/followup/activity-log?filter=${filter}&limit=50`, {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch activity log");
-      return response.json();
-    },
-    refetchInterval: 30000,
-  });
+  const filters: ActivityLogFilters = useMemo(() => ({
+    filter: filter !== 'all' ? filter : undefined,
+    agentId: agentId || undefined,
+    search: search || undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  }), [filter, agentId, search, dateFrom, dateTo]);
+
+  const { data, isLoading, error, refetch, isFetching } = useActivityLog(filters);
+  const { data: agents } = useFollowupAgents();
+
+  const clearAllFilters = () => {
+    setFilter('all');
+    setAgentId('');
+    setSearch('');
+    setDateFrom('');
+    setDateTo('');
+  };
+
+  const hasActiveFilters = agentId || search || dateFrom || dateTo;
 
   return (
     <div className="space-y-4">
@@ -467,17 +583,102 @@ export function LiveActivityFeed() {
           </TabsList>
         </Tabs>
 
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="gap-1"
-        >
-          <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
-          Aggiorna
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showAdvancedFilters ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className="gap-1"
+          >
+            <Filter className="h-3 w-3" />
+            Filtri
+            {hasActiveFilters && (
+              <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 text-[10px] rounded-full">
+                !
+              </Badge>
+            )}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-1"
+          >
+            <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
+            Aggiorna
+          </Button>
+        </div>
       </div>
+
+      {showAdvancedFilters && (
+        <Card className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Search className="h-3 w-3" /> Cerca lead
+              </label>
+              <Input
+                placeholder="Nome o telefono..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <User className="h-3 w-3" /> Agente
+              </label>
+              <Select value={agentId} onValueChange={setAgentId}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Tutti gli agenti" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tutti gli agenti</SelectItem>
+                  {agents?.map((agent: { id: string; agentName: string }) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.agentName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Calendar className="h-3 w-3" /> Da data
+              </label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Calendar className="h-3 w-3" /> A data
+              </label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+          
+          {hasActiveFilters && (
+            <div className="mt-3 pt-3 border-t flex justify-end">
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs">
+                Rimuovi tutti i filtri
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
 
       {isLoading && <LoadingSkeleton />}
 
@@ -494,7 +695,10 @@ export function LiveActivityFeed() {
           <CardContent className="py-12 text-center">
             <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">
-              Nessuna attività trovata. Le attività appariranno quando il sistema valuterà le conversazioni.
+              {hasActiveFilters 
+                ? "Nessuna attività trovata con i filtri selezionati. Prova a modificare i criteri di ricerca."
+                : "Nessuna attività trovata. Le attività appariranno quando il sistema valuterà le conversazioni."
+              }
             </p>
           </CardContent>
         </Card>
@@ -502,7 +706,7 @@ export function LiveActivityFeed() {
 
       {!isLoading && !error && data?.timeline && data.timeline.length > 0 && (
         <div className="space-y-3">
-          {data.timeline.map((conversation) => (
+          {data.timeline.map((conversation: ConversationTimeline) => (
             <ConversationCard key={conversation.conversationId} conversation={conversation} />
           ))}
         </div>

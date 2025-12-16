@@ -550,6 +550,106 @@ router.delete("/scheduled/:id", authenticateToken, requireRole("consultant"), as
   }
 });
 
+router.post("/messages/:id/retry", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const consultantId = req.user!.id;
+    
+    console.log(`🔄 [FOLLOWUP-API] Retry requested for message ${id} by consultant ${consultantId}`);
+    
+    const [messageWithConversation] = await db
+      .select({
+        message: schema.scheduledFollowupMessages,
+        conversation: schema.whatsappConversations,
+      })
+      .from(schema.scheduledFollowupMessages)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.scheduledFollowupMessages.conversationId, schema.whatsappConversations.id)
+      )
+      .where(eq(schema.scheduledFollowupMessages.id, id))
+      .limit(1);
+    
+    if (!messageWithConversation) {
+      return res.status(404).json({ success: false, message: "Messaggio non trovato" });
+    }
+    
+    if (messageWithConversation.conversation.consultantId !== consultantId) {
+      return res.status(403).json({ success: false, message: "Non autorizzato" });
+    }
+    
+    if (messageWithConversation.message.status !== 'failed') {
+      return res.status(400).json({ success: false, message: "Solo i messaggi falliti possono essere ritentati" });
+    }
+    
+    const now = new Date();
+    const retryIn5Min = new Date(now.getTime() + 5 * 60 * 1000);
+    
+    await db
+      .update(schema.scheduledFollowupMessages)
+      .set({
+        status: 'pending',
+        scheduledFor: retryIn5Min,
+        nextRetryAt: retryIn5Min,
+        attemptCount: 0,
+        errorMessage: null,
+        lastErrorCode: null,
+        failureReason: null,
+      })
+      .where(eq(schema.scheduledFollowupMessages.id, id));
+    
+    console.log(`✅ [FOLLOWUP-API] Message ${id} queued for retry at ${retryIn5Min.toISOString()}`);
+    
+    res.json({ 
+      success: true, 
+      message: "Messaggio schedulato per ritentativo", 
+      retryAt: retryIn5Min.toISOString() 
+    });
+  } catch (error: any) {
+    console.error("Error retrying message:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.get("/failed-messages", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const failedMessages = await db
+      .select({
+        id: schema.scheduledFollowupMessages.id,
+        conversationId: schema.scheduledFollowupMessages.conversationId,
+        status: schema.scheduledFollowupMessages.status,
+        errorMessage: schema.scheduledFollowupMessages.errorMessage,
+        lastErrorCode: schema.scheduledFollowupMessages.lastErrorCode,
+        failureReason: schema.scheduledFollowupMessages.failureReason,
+        attemptCount: schema.scheduledFollowupMessages.attemptCount,
+        maxAttempts: schema.scheduledFollowupMessages.maxAttempts,
+        lastAttemptAt: schema.scheduledFollowupMessages.lastAttemptAt,
+        createdAt: schema.scheduledFollowupMessages.createdAt,
+        phoneNumber: schema.whatsappConversations.phoneNumber,
+      })
+      .from(schema.scheduledFollowupMessages)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.scheduledFollowupMessages.conversationId, schema.whatsappConversations.id)
+      )
+      .where(
+        and(
+          eq(schema.whatsappConversations.consultantId, consultantId),
+          eq(schema.scheduledFollowupMessages.status, 'failed')
+        )
+      )
+      .orderBy(desc(schema.scheduledFollowupMessages.lastAttemptAt))
+      .limit(50);
+    
+    res.json(failedMessages);
+  } catch (error: any) {
+    console.error("Error fetching failed messages:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.post("/messages/:id/send-now", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { id } = req.params;
@@ -813,6 +913,160 @@ router.get("/dashboard-stats", authenticateToken, requireRole("consultant"), asy
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// WEEKLY STATS (For dashboard charts)
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/stats/weekly", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Daily stats for last 7 days
+    const dailyStats = await db
+      .select({
+        date: sql<string>`DATE(${schema.scheduledFollowupMessages.createdAt})`,
+        sent: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'sent')`,
+        pending: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'pending')`,
+        failed: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'failed')`,
+        cancelled: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'cancelled')`,
+      })
+      .from(schema.scheduledFollowupMessages)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.scheduledFollowupMessages.conversationId, schema.whatsappConversations.id)
+      )
+      .where(
+        and(
+          eq(schema.whatsappConversations.consultantId, consultantId),
+          gte(schema.scheduledFollowupMessages.createdAt, sevenDaysAgo)
+        )
+      )
+      .groupBy(sql`DATE(${schema.scheduledFollowupMessages.createdAt})`)
+      .orderBy(sql`DATE(${schema.scheduledFollowupMessages.createdAt})`);
+
+    // Response rate: AI-generated vs Template messages
+    const responseRates = await db
+      .select({
+        messageType: sql<string>`CASE WHEN ${schema.scheduledFollowupMessages.templateId} IS NOT NULL THEN 'template' ELSE 'ai' END`,
+        totalSent: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'sent')`,
+        gotReply: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'sent' AND EXISTS (
+          SELECT 1 FROM ${schema.whatsappMessages} m 
+          WHERE m.conversation_id = ${schema.scheduledFollowupMessages.conversationId}
+          AND m.sender = 'client'
+          AND m.created_at > ${schema.scheduledFollowupMessages.sentAt}
+          AND m.created_at < ${schema.scheduledFollowupMessages.sentAt} + INTERVAL '24 hours'
+        ))`,
+      })
+      .from(schema.scheduledFollowupMessages)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.scheduledFollowupMessages.conversationId, schema.whatsappConversations.id)
+      )
+      .where(
+        and(
+          eq(schema.whatsappConversations.consultantId, consultantId),
+          gte(schema.scheduledFollowupMessages.createdAt, sevenDaysAgo)
+        )
+      )
+      .groupBy(sql`CASE WHEN ${schema.scheduledFollowupMessages.templateId} IS NOT NULL THEN 'template' ELSE 'ai' END`);
+
+    // Top 5 error messages
+    const topErrors = await db
+      .select({
+        errorMessage: schema.scheduledFollowupMessages.errorMessage,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(schema.scheduledFollowupMessages)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.scheduledFollowupMessages.conversationId, schema.whatsappConversations.id)
+      )
+      .where(
+        and(
+          eq(schema.whatsappConversations.consultantId, consultantId),
+          eq(schema.scheduledFollowupMessages.status, 'failed'),
+          sql`${schema.scheduledFollowupMessages.errorMessage} IS NOT NULL`
+        )
+      )
+      .groupBy(schema.scheduledFollowupMessages.errorMessage)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(5);
+
+    // Fill in missing days with zeros
+    const chartData = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const dateStr = date.toISOString().split('T')[0];
+      const dayData = dailyStats.find(d => d.date === dateStr);
+      chartData.push({
+        date: dateStr,
+        day: date.toLocaleDateString('it-IT', { weekday: 'short' }),
+        sent: Number(dayData?.sent) || 0,
+        pending: Number(dayData?.pending) || 0,
+        failed: Number(dayData?.failed) || 0,
+      });
+    }
+
+    // Format response rates with null safety
+    const aiStats = responseRates.find(r => r.messageType === 'ai') || { totalSent: 0, gotReply: 0 };
+    const templateStats = responseRates.find(r => r.messageType === 'template') || { totalSent: 0, gotReply: 0 };
+
+    const aiSent = Number(aiStats.totalSent) || 0;
+    const aiReplied = Number(aiStats.gotReply) || 0;
+    const templateSent = Number(templateStats.totalSent) || 0;
+    const templateReplied = Number(templateStats.gotReply) || 0;
+
+    res.json({
+      dailyChart: chartData,
+      responseRates: {
+        ai: {
+          sent: aiSent,
+          replied: aiReplied,
+          rate: aiSent > 0 ? Math.round((aiReplied / aiSent) * 100) : 0,
+        },
+        template: {
+          sent: templateSent,
+          replied: templateReplied,
+          rate: templateSent > 0 ? Math.round((templateReplied / templateSent) * 100) : 0,
+        },
+      },
+      topErrors: topErrors.map(e => ({
+        message: e.errorMessage || 'Errore sconosciuto',
+        count: Number(e.count) || 0,
+      })),
+    });
+  } catch (error: any) {
+    console.error("Error fetching weekly stats:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENTS LIST (For activity log filters)
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/agents", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const agents = await db
+      .select({
+        id: schema.consultantWhatsappConfig.id,
+        agentName: schema.consultantWhatsappConfig.agentName,
+      })
+      .from(schema.consultantWhatsappConfig)
+      .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
+      .orderBy(schema.consultantWhatsappConfig.agentName);
+    
+    res.json(agents);
+  } catch (error: any) {
+    console.error("Error fetching agents:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ACTIVITY LOG (Timeline aggregata per lead)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -821,6 +1075,29 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     const consultantId = req.user!.id;
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const filter = req.query.filter as string || 'all';
+    const agentIdFilter = req.query.agentId as string || null;
+    const searchQuery = req.query.search as string || null;
+    const dateFrom = req.query.dateFrom as string || null;
+    const dateTo = req.query.dateTo as string || null;
+
+    // Build dynamic where conditions
+    const buildWhereConditions = (baseCondition: any, createdAtField: any) => {
+      const conditions = [baseCondition];
+      
+      if (agentIdFilter) {
+        conditions.push(eq(schema.consultantWhatsappConfig.id, agentIdFilter));
+      }
+      if (dateFrom) {
+        conditions.push(sql`${createdAtField} >= ${new Date(dateFrom)}`);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        conditions.push(sql`${createdAtField} <= ${endDate}`);
+      }
+      
+      return and(...conditions);
+    };
 
     // Get recent activity combining AI logs, scheduled messages, and proactive lead logs
     const aiLogs = await db
@@ -858,7 +1135,10 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         schema.conversationStates,
         eq(schema.whatsappConversations.id, schema.conversationStates.conversationId)
       )
-      .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
+      .where(buildWhereConditions(
+        eq(schema.consultantWhatsappConfig.consultantId, consultantId),
+        schema.followupAiEvaluationLog.createdAt
+      ))
       .orderBy(desc(schema.followupAiEvaluationLog.createdAt))
       .limit(limit);
 
@@ -889,7 +1169,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       };
     }));
 
-    // Get scheduled/sent messages with template info and temperature
+    // Get scheduled/sent messages with template info, temperature, and template approval status
     const scheduledMessages = await db
       .select({
         id: schema.scheduledFollowupMessages.id,
@@ -909,6 +1189,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         fallbackMessage: schema.scheduledFollowupMessages.fallbackMessage,
         templateName: schema.whatsappCustomTemplates.templateName,
         templateBody: schema.whatsappCustomTemplates.body,
+        templateTwilioStatus: schema.whatsappTemplateVersions.twilioStatus,
         temperatureLevel: schema.conversationStates.temperatureLevel,
         currentState: schema.conversationStates.currentState,
       })
@@ -930,10 +1211,20 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         eq(schema.scheduledFollowupMessages.templateId, schema.whatsappCustomTemplates.id)
       )
       .leftJoin(
+        schema.whatsappTemplateVersions,
+        and(
+          eq(schema.whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id),
+          eq(schema.whatsappTemplateVersions.isActive, true)
+        )
+      )
+      .leftJoin(
         schema.conversationStates,
         eq(schema.whatsappConversations.id, schema.conversationStates.conversationId)
       )
-      .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
+      .where(buildWhereConditions(
+        eq(schema.consultantWhatsappConfig.consultantId, consultantId),
+        schema.scheduledFollowupMessages.createdAt
+      ))
       .orderBy(desc(schema.scheduledFollowupMessages.createdAt))
       .limit(limit);
 
@@ -976,6 +1267,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         leadName: log.leadFirstName || log.leadLastName 
           ? `${log.leadFirstName || ''} ${log.leadLastName || ''}`.trim()
           : log.phoneNumber,
+        phoneNumber: log.phoneNumber,
         agentName: log.agentName || 'Agente',
         agentId: log.agentId,
         timestamp: log.createdAt,
@@ -1005,6 +1297,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         leadName: msg.leadFirstName || msg.leadLastName 
           ? `${msg.leadFirstName || ''} ${msg.leadLastName || ''}`.trim()
           : msg.phoneNumber,
+        phoneNumber: msg.phoneNumber,
         agentName: msg.agentName || 'Agente',
         agentId: msg.agentId,
         timestamp: msg.sentAt || msg.scheduledFor || msg.createdAt,
@@ -1017,6 +1310,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         canSendFreeform: msg.canSendFreeform,
         templateId: msg.templateId,
         templateName: msg.templateName,
+        templateTwilioStatus: msg.templateTwilioStatus || (msg.templateId ? 'not_synced' : null),
         messagePreview: messagePreview,
         temperatureLevel: msg.temperatureLevel || 'warm',
         currentState: msg.currentState,
@@ -1026,16 +1320,25 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     // Sort by timestamp descending
     events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    // Filter if needed
+    // Filter by search query (name/phone)
     let filteredEvents = events;
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      filteredEvents = filteredEvents.filter(e => 
+        e.leadName?.toLowerCase().includes(searchLower) ||
+        e.phoneNumber?.includes(searchQuery)
+      );
+    }
+    
+    // Filter by status/type
     if (filter === 'errors') {
-      filteredEvents = events.filter(e => e.status === 'error' || e.type === 'message_failed');
+      filteredEvents = filteredEvents.filter(e => e.status === 'error' || e.type === 'message_failed');
     } else if (filter === 'sent') {
-      filteredEvents = events.filter(e => e.type === 'message_sent');
+      filteredEvents = filteredEvents.filter(e => e.type === 'message_sent');
     } else if (filter === 'stopped') {
-      filteredEvents = events.filter(e => e.decision === 'stop' || e.status === 'stopped');
+      filteredEvents = filteredEvents.filter(e => e.decision === 'stop' || e.status === 'stopped');
     } else if (filter === 'scheduled') {
-      filteredEvents = events.filter(e => e.type === 'message_scheduled');
+      filteredEvents = filteredEvents.filter(e => e.type === 'message_scheduled');
     }
 
     // Group by conversation for timeline view
@@ -1064,6 +1367,200 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     });
   } catch (error: any) {
     console.error("Error fetching activity log:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONVERSATION TIMELINE (Detailed timeline for a single conversation)
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/conversation/:conversationId/timeline", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { conversationId } = req.params;
+
+    // Verify conversation belongs to consultant
+    const [conversation] = await db
+      .select()
+      .from(schema.whatsappConversations)
+      .where(
+        and(
+          eq(schema.whatsappConversations.id, conversationId),
+          eq(schema.whatsappConversations.consultantId, consultantId)
+        )
+      );
+
+    if (!conversation) {
+      return res.status(404).json({ message: "Conversazione non trovata" });
+    }
+
+    // Get all AI evaluations for this conversation
+    const aiLogs = await db
+      .select()
+      .from(schema.followupAiEvaluationLog)
+      .where(eq(schema.followupAiEvaluationLog.conversationId, conversationId))
+      .orderBy(desc(schema.followupAiEvaluationLog.createdAt));
+
+    // Get all scheduled/sent messages
+    const messages = await db
+      .select({
+        id: schema.scheduledFollowupMessages.id,
+        status: schema.scheduledFollowupMessages.status,
+        scheduledFor: schema.scheduledFollowupMessages.scheduledFor,
+        sentAt: schema.scheduledFollowupMessages.sentAt,
+        errorMessage: schema.scheduledFollowupMessages.errorMessage,
+        aiDecisionReasoning: schema.scheduledFollowupMessages.aiDecisionReasoning,
+        fallbackMessage: schema.scheduledFollowupMessages.fallbackMessage,
+        createdAt: schema.scheduledFollowupMessages.createdAt,
+        templateName: schema.whatsappCustomTemplates.templateName,
+        templateBody: schema.whatsappCustomTemplates.body,
+      })
+      .from(schema.scheduledFollowupMessages)
+      .leftJoin(
+        schema.whatsappCustomTemplates,
+        eq(schema.scheduledFollowupMessages.templateId, schema.whatsappCustomTemplates.id)
+      )
+      .where(eq(schema.scheduledFollowupMessages.conversationId, conversationId))
+      .orderBy(desc(schema.scheduledFollowupMessages.createdAt));
+
+    // Get conversation state
+    const [state] = await db
+      .select()
+      .from(schema.conversationStates)
+      .where(eq(schema.conversationStates.conversationId, conversationId));
+
+    // Get lead info
+    const [lead] = await db
+      .select({
+        firstName: schema.proactiveLeads.firstName,
+        lastName: schema.proactiveLeads.lastName,
+        phoneNumber: schema.whatsappConversations.phoneNumber,
+        agentName: schema.consultantWhatsappConfig.agentName,
+      })
+      .from(schema.whatsappConversations)
+      .leftJoin(
+        schema.proactiveLeads,
+        eq(schema.whatsappConversations.proactiveLeadId, schema.proactiveLeads.id)
+      )
+      .leftJoin(
+        schema.consultantWhatsappConfig,
+        eq(schema.whatsappConversations.agentConfigId, schema.consultantWhatsappConfig.id)
+      )
+      .where(eq(schema.whatsappConversations.id, conversationId));
+
+    // Combine into timeline
+    const timeline: any[] = [];
+
+    for (const log of aiLogs) {
+      timeline.push({
+        id: log.id,
+        type: 'ai_evaluation',
+        timestamp: log.createdAt,
+        decision: log.decision,
+        reasoning: log.reasoning,
+        confidenceScore: log.confidenceScore,
+        matchedRuleId: log.matchedRuleId,
+        matchedRuleReason: log.matchedRuleReason,
+      });
+    }
+
+    for (const msg of messages) {
+      timeline.push({
+        id: msg.id,
+        type: msg.status === 'sent' ? 'message_sent' : 
+              msg.status === 'failed' ? 'message_failed' :
+              msg.status === 'pending' ? 'message_scheduled' : 'message_cancelled',
+        timestamp: msg.sentAt || msg.scheduledFor || msg.createdAt,
+        status: msg.status,
+        errorMessage: msg.errorMessage,
+        reasoning: msg.aiDecisionReasoning,
+        templateName: msg.templateName,
+        messagePreview: msg.fallbackMessage || msg.templateBody,
+      });
+    }
+
+    // Sort by timestamp descending
+    timeline.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    res.json({
+      conversationId,
+      leadName: lead?.firstName || lead?.lastName 
+        ? `${lead?.firstName || ''} ${lead?.lastName || ''}`.trim()
+        : lead?.phoneNumber,
+      phoneNumber: lead?.phoneNumber,
+      agentName: lead?.agentName,
+      currentState: state?.currentState,
+      temperatureLevel: state?.temperatureLevel,
+      engagementScore: state?.engagementScore,
+      conversionProbability: state?.conversionProbability,
+      timeline,
+      totalEvents: timeline.length,
+    });
+  } catch (error: any) {
+    console.error("Error fetching conversation timeline:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DAILY STATS (Aggregated stats for specific date range)
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/stats/daily", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const days = Math.min(parseInt(req.query.days as string) || 30, 90);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const dailyStats = await db
+      .select({
+        date: sql<string>`DATE(${schema.scheduledFollowupMessages.createdAt})`,
+        sent: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'sent')`,
+        failed: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'failed')`,
+        cancelled: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'cancelled')`,
+        pending: sql<number>`COUNT(*) FILTER (WHERE ${schema.scheduledFollowupMessages.status} = 'pending')`,
+      })
+      .from(schema.scheduledFollowupMessages)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.scheduledFollowupMessages.conversationId, schema.whatsappConversations.id)
+      )
+      .where(
+        and(
+          eq(schema.whatsappConversations.consultantId, consultantId),
+          gte(schema.scheduledFollowupMessages.createdAt, startDate)
+        )
+      )
+      .groupBy(sql`DATE(${schema.scheduledFollowupMessages.createdAt})`)
+      .orderBy(sql`DATE(${schema.scheduledFollowupMessages.createdAt})`);
+
+    // Calculate totals
+    const totals = {
+      sent: dailyStats.reduce((sum, d) => sum + Number(d.sent), 0),
+      failed: dailyStats.reduce((sum, d) => sum + Number(d.failed), 0),
+      cancelled: dailyStats.reduce((sum, d) => sum + Number(d.cancelled), 0),
+      pending: dailyStats.reduce((sum, d) => sum + Number(d.pending), 0),
+    };
+
+    res.json({
+      days,
+      startDate: startDate.toISOString(),
+      dailyStats: dailyStats.map(d => ({
+        date: d.date,
+        sent: Number(d.sent),
+        failed: Number(d.failed),
+        cancelled: Number(d.cancelled),
+        pending: Number(d.pending),
+      })),
+      totals,
+      successRate: totals.sent + totals.failed > 0 
+        ? Math.round((totals.sent / (totals.sent + totals.failed)) * 100) 
+        : 100,
+    });
+  } catch (error: any) {
+    console.error("Error fetching daily stats:", error);
     res.status(500).json({ message: error.message });
   }
 });

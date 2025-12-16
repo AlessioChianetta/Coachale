@@ -289,3 +289,77 @@ export function useSendMessageNow() {
     },
   });
 }
+
+export function useFollowupAgents() {
+  return useQuery({
+    queryKey: ["followup-agents"],
+    queryFn: async () => {
+      const res = await fetch("/api/followup/agents", { 
+        credentials: "include",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch agents");
+      return res.json();
+    },
+  });
+}
+
+export interface ActivityLogFilters {
+  filter?: string;
+  agentId?: string;
+  search?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export function useActivityLog(filters: ActivityLogFilters = {}) {
+  const params = new URLSearchParams();
+  if (filters.filter) params.set("filter", filters.filter);
+  if (filters.agentId) params.set("agentId", filters.agentId);
+  if (filters.search) params.set("search", filters.search);
+  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+  if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  params.set("limit", "50");
+  
+  return useQuery({
+    queryKey: ["activity-log", filters],
+    queryFn: async () => {
+      const res = await fetch(`/api/followup/activity-log?${params.toString()}`, { 
+        credentials: "include",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch activity log");
+      return res.json();
+    },
+    refetchInterval: 30000,
+  });
+}
+
+export interface WeeklyStats {
+  dailyChart: Array<{
+    date: string;
+    day: string;
+    sent: number;
+    pending: number;
+    failed: number;
+  }>;
+  responseRates: {
+    ai: { sent: number; replied: number; rate: number };
+    template: { sent: number; replied: number; rate: number };
+  };
+  topErrors: Array<{ message: string; count: number }>;
+}
+
+export function useWeeklyStats() {
+  return useQuery<WeeklyStats>({
+    queryKey: ["followup-weekly-stats"],
+    queryFn: async () => {
+      const res = await fetch("/api/followup/stats/weekly", { 
+        credentials: "include",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch weekly stats");
+      return res.json();
+    },
+  });
+}

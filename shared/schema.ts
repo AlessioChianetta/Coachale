@@ -5265,12 +5265,19 @@ export const scheduledFollowupMessages = pgTable("scheduled_followup_messages", 
   attemptCount: integer("attempt_count").default(0).notNull(),
   maxAttempts: integer("max_attempts").default(3).notNull(),
   lastAttemptAt: timestamp("last_attempt_at"),
+  nextRetryAt: timestamp("next_retry_at"),
+  lastErrorCode: text("last_error_code").$type<"rate_limit" | "network" | "timeout" | "invalid_number" | "blocked" | "template_rejected" | "unknown">(),
+  failureReason: text("failure_reason").$type<"max_retries_exceeded" | "permanent_error" | "user_blocked" | "invalid_recipient">(),
   
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
 export type ScheduledFollowupMessage = typeof scheduledFollowupMessages.$inferSelect;
 export type InsertScheduledFollowupMessage = typeof scheduledFollowupMessages.$inferInsert;
+
+// Error codes that allow retry vs permanent failures
+export const RETRYABLE_ERROR_CODES = ["rate_limit", "network", "timeout", "unknown"] as const;
+export const PERMANENT_ERROR_CODES = ["invalid_number", "blocked", "template_rejected"] as const;
 
 // Follow-up Analytics - Track performance metrics
 export const followupAnalytics = pgTable("followup_analytics", {

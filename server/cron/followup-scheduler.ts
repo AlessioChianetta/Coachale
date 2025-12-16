@@ -48,6 +48,169 @@ const COLD_LEADS_INTERVAL = '0 */2 * * *'; // Every 2 hours - COLD leads
 const GHOST_LEADS_INTERVAL = '0 10 * * *'; // Daily at 10:00 - GHOST leads
 const TIMEZONE = 'Europe/Rome';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Rate Limiting Configuration
+// ═══════════════════════════════════════════════════════════════════════════
+
+const RATE_LIMIT_MAX_MESSAGES_PER_HOUR = 50;
+
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
+
+const rateLimitMap = new Map<string, RateLimitEntry>();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Error Classification & Retry Configuration
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PERMANENT_ERROR_CODES = ["invalid_number", "blocked", "template_rejected"] as const;
+const RETRYABLE_ERROR_CODES = ["rate_limit", "network", "timeout", "unknown"] as const;
+
+/**
+ * Classify error message to error code
+ */
+function classifyErrorCode(errorMessage: string): string {
+  const msg = errorMessage.toLowerCase();
+  
+  if (msg.includes('invalid') && msg.includes('number')) return 'invalid_number';
+  if (msg.includes('blocked') || msg.includes('unsubscribed') || msg.includes('opt-out')) return 'blocked';
+  if (msg.includes('template') && (msg.includes('reject') || msg.includes('not approved'))) return 'template_rejected';
+  if (msg.includes('rate') || msg.includes('limit') || msg.includes('throttl')) return 'rate_limit';
+  if (msg.includes('network') || msg.includes('connection') || msg.includes('econnrefused')) return 'network';
+  if (msg.includes('timeout') || msg.includes('timed out')) return 'timeout';
+  
+  return 'unknown';
+}
+
+/**
+ * Get retry backoff in minutes using exponential backoff
+ * Attempt 1: 5 min, Attempt 2: 15 min, Attempt 3+: 60 min
+ */
+function getRetryBackoffMinutes(attemptCount: number): number {
+  if (attemptCount <= 1) return 5;
+  if (attemptCount === 2) return 15;
+  return 60;
+}
+
+/**
+ * Controlla se il consulente può inviare un messaggio (rate limit)
+ * @param consultantId - ID del consulente
+ * @returns true se può inviare, false se ha raggiunto il limite
+ */
+export function canSendMessage(consultantId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(consultantId);
+  
+  if (!entry) {
+    return true;
+  }
+  
+  if (now > entry.resetAt) {
+    rateLimitMap.delete(consultantId);
+    return true;
+  }
+  
+  return entry.count < RATE_LIMIT_MAX_MESSAGES_PER_HOUR;
+}
+
+/**
+ * Registra un messaggio inviato per il rate limiting
+ * @param consultantId - ID del consulente
+ */
+function recordMessageSent(consultantId: string): void {
+  const now = Date.now();
+  const oneHourFromNow = now + 60 * 60 * 1000;
+  
+  const entry = rateLimitMap.get(consultantId);
+  
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(consultantId, {
+      count: 1,
+      resetAt: oneHourFromNow
+    });
+  } else {
+    entry.count++;
+  }
+}
+
+/**
+ * Ottiene informazioni sul rate limit per un consulente
+ * @param consultantId - ID del consulente
+ */
+export function getRateLimitInfo(consultantId: string): { remaining: number; resetAt: Date | null } {
+  const now = Date.now();
+  const entry = rateLimitMap.get(consultantId);
+  
+  if (!entry || now > entry.resetAt) {
+    return { remaining: RATE_LIMIT_MAX_MESSAGES_PER_HOUR, resetAt: null };
+  }
+  
+  return {
+    remaining: Math.max(0, RATE_LIMIT_MAX_MESSAGES_PER_HOUR - entry.count),
+    resetAt: new Date(entry.resetAt)
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Monitoring & Metrics
+// ═══════════════════════════════════════════════════════════════════════════
+
+const EXECUTION_WARNING_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
+const ERROR_RATE_ALERT_THRESHOLD = 0.10; // 10%
+
+interface CycleMetrics {
+  cycleId: string;
+  type: string;
+  startTime: Date;
+  endTime?: Date;
+  durationMs?: number;
+  processed: number;
+  success: number;
+  errors: number;
+  skipped: number;
+  rateLimited: number;
+}
+
+/**
+ * Log strutturato per l'esecuzione di un ciclo CRON
+ */
+function logCycleMetrics(metrics: CycleMetrics): void {
+  const timestamp = new Date().toISOString();
+  const errorRate = metrics.processed > 0 ? metrics.errors / metrics.processed : 0;
+  
+  console.log(`📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Cycle Metrics Report`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] ───────────────────────────────────────`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Timestamp: ${timestamp}`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Cycle ID: ${metrics.cycleId}`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Type: ${metrics.type}`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Duration: ${metrics.durationMs}ms`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Processed: ${metrics.processed}`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Success: ${metrics.success}`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Errors: ${metrics.errors}`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Skipped: ${metrics.skipped}`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Rate Limited: ${metrics.rateLimited}`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Error Rate: ${(errorRate * 100).toFixed(1)}%`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════`);
+  
+  if (metrics.durationMs && metrics.durationMs > EXECUTION_WARNING_THRESHOLD_MS) {
+    console.log(`[FOLLOWUP-SCHEDULER] WARNING: Execution exceeded 2 minutes (${(metrics.durationMs / 1000 / 60).toFixed(1)} min)`);
+  }
+  
+  if (errorRate > ERROR_RATE_ALERT_THRESHOLD) {
+    console.log(`[FOLLOWUP-SCHEDULER] ALERT: Error rate exceeded 10% (${(errorRate * 100).toFixed(1)}%)`);
+  }
+}
+
+/**
+ * Genera un ID univoco per il ciclo
+ */
+function generateCycleId(): string {
+  return `cycle_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+}
+
 export type TemperatureLevel = "hot" | "warm" | "cold" | "ghost";
 
 /**
@@ -166,8 +329,21 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
   }
 
   isEvaluationRunning = true;
+  const cycleId = generateCycleId();
   const startTime = Date.now();
   const filterLabel = temperatureFilter ? temperatureFilter.join('/').toUpperCase() : 'ALL';
+  console.time(`[FOLLOWUP-SCHEDULER] Evaluation Cycle ${cycleId}`);
+  
+  const metrics: CycleMetrics = {
+    cycleId,
+    type: `evaluation_${filterLabel.toLowerCase()}`,
+    startTime: new Date(),
+    processed: 0,
+    success: 0,
+    errors: 0,
+    skipped: 0,
+    rateLimited: 0
+  };
   
   try {
     console.log(`🔍 [FOLLOWUP-SCHEDULER] Starting ${filterLabel} follow-up evaluation cycle...`);
@@ -190,6 +366,8 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
 
     for (const conversation of candidateConversations) {
       try {
+        metrics.processed++;
+        
         // Calculate and update temperature if changed
         const newTemperature = calculateTemperature(conversation.hoursSinceLastInbound);
         if (conversation.temperatureLevel !== newTemperature) {
@@ -213,21 +391,30 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
         switch (result) {
           case 'scheduled':
             scheduled++;
+            metrics.success++;
             break;
           case 'skipped':
             skipped++;
+            metrics.skipped++;
             break;
           case 'stopped':
             stopped++;
+            metrics.success++;
             break;
         }
       } catch (error) {
         errors++;
+        metrics.errors++;
         console.error(`❌ [FOLLOWUP-SCHEDULER] Error evaluating conversation ${conversation.conversationId}:`, error);
       }
     }
 
     const duration = Date.now() - startTime;
+    metrics.endTime = new Date();
+    metrics.durationMs = duration;
+    
+    console.timeEnd(`[FOLLOWUP-SCHEDULER] Evaluation Cycle ${cycleId}`);
+    
     console.log(`📈 [FOLLOWUP-SCHEDULER] ${filterLabel} evaluation cycle completed`);
     console.log(`   ⏱️  Duration: ${duration}ms`);
     console.log(`   📊 Processed: ${processed}/${candidateConversations.length}`);
@@ -236,6 +423,8 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
     console.log(`   ⏭️  Skipped: ${skipped}`);
     console.log(`   🛑 Stopped: ${stopped}`);
     console.log(`   ❌ Errors: ${errors}`);
+    
+    logCycleMetrics(metrics);
     
   } finally {
     isEvaluationRunning = false;
@@ -358,7 +547,20 @@ export async function processScheduledMessages(messageIds?: string[]): Promise<v
   }
 
   isProcessingRunning = true;
+  const cycleId = generateCycleId();
   const startTime = Date.now();
+  console.time(`[FOLLOWUP-SCHEDULER] Processing Cycle ${cycleId}`);
+  
+  const metrics: CycleMetrics = {
+    cycleId,
+    type: 'message_processing',
+    startTime: new Date(),
+    processed: 0,
+    success: 0,
+    errors: 0,
+    skipped: 0,
+    rateLimited: 0
+  };
   
   try {
     const isManualSend = messageIds && messageIds.length > 0;
@@ -401,9 +603,36 @@ export async function processScheduledMessages(messageIds?: string[]): Promise<v
     let sent = 0;
     let failed = 0;
     let cancelled = 0;
+    let rateLimited = 0;
 
     for (const message of pendingMessages) {
       try {
+        metrics.processed++;
+        
+        const conversation = await db
+          .select({ consultantId: whatsappConversations.consultantId })
+          .from(whatsappConversations)
+          .where(eq(whatsappConversations.id, message.conversationId))
+          .limit(1);
+        
+        const consultantId = conversation[0]?.consultantId;
+        
+        if (consultantId && !canSendMessage(consultantId)) {
+          const rescheduleTime = new Date(Date.now() + 60 * 60 * 1000);
+          await db
+            .update(scheduledFollowupMessages)
+            .set({
+              scheduledFor: rescheduleTime
+            })
+            .where(eq(scheduledFollowupMessages.id, message.id));
+          
+          rateLimited++;
+          metrics.rateLimited++;
+          const info = getRateLimitInfo(consultantId);
+          console.log(`⏳ [FOLLOWUP-SCHEDULER] Message ${message.id} rate limited - rescheduled (${info.remaining} remaining, resets ${info.resetAt?.toISOString()})`);
+          continue;
+        }
+        
         const shouldSend = await checkIfShouldStillSend(message.conversationId);
         
         if (!shouldSend) {
@@ -417,11 +646,16 @@ export async function processScheduledMessages(messageIds?: string[]): Promise<v
             .where(eq(scheduledFollowupMessages.id, message.id));
           
           cancelled++;
+          metrics.skipped++;
           console.log(`⏭️ [FOLLOWUP-SCHEDULER] Message ${message.id} cancelled - user replied`);
           continue;
         }
 
         await sendFollowupMessage(message);
+        
+        if (consultantId) {
+          recordMessageSent(consultantId);
+        }
         
         await db
           .update(scheduledFollowupMessages)
@@ -434,47 +668,87 @@ export async function processScheduledMessages(messageIds?: string[]): Promise<v
           .where(eq(scheduledFollowupMessages.id, message.id));
         
         sent++;
+        metrics.success++;
         console.log(`✅ [FOLLOWUP-SCHEDULER] Message ${message.id} sent successfully`);
         
       } catch (error: any) {
         const attemptCount = (message.attemptCount || 0) + 1;
         const maxAttempts = message.maxAttempts || 3;
         
-        if (attemptCount >= maxAttempts) {
+        // Classify error type
+        const errorCode = classifyErrorCode(error.message);
+        const isPermanent = PERMANENT_ERROR_CODES.includes(errorCode as any);
+        
+        if (isPermanent) {
+          // Permanent error - mark as failed immediately
           await db
             .update(scheduledFollowupMessages)
             .set({
               status: 'failed',
               attemptCount,
               lastAttemptAt: new Date(),
-              errorMessage: error.message
+              errorMessage: error.message,
+              lastErrorCode: errorCode,
+              failureReason: errorCode === 'blocked' ? 'user_blocked' : 
+                            errorCode === 'invalid_number' ? 'invalid_recipient' : 'permanent_error'
             })
             .where(eq(scheduledFollowupMessages.id, message.id));
           
-          console.error(`❌ [FOLLOWUP-SCHEDULER] Message ${message.id} failed permanently after ${attemptCount} attempts:`, error.message);
+          console.error(`❌ [FOLLOWUP-SCHEDULER] Message ${message.id} failed permanently (${errorCode}):`, error.message);
+        } else if (attemptCount >= maxAttempts) {
+          // Max retries exceeded
+          await db
+            .update(scheduledFollowupMessages)
+            .set({
+              status: 'failed',
+              attemptCount,
+              lastAttemptAt: new Date(),
+              errorMessage: error.message,
+              lastErrorCode: errorCode,
+              failureReason: 'max_retries_exceeded'
+            })
+            .where(eq(scheduledFollowupMessages.id, message.id));
+          
+          console.error(`❌ [FOLLOWUP-SCHEDULER] Message ${message.id} failed after ${attemptCount} attempts:`, error.message);
         } else {
+          // Retryable error - schedule retry with exponential backoff
+          const backoffMinutes = getRetryBackoffMinutes(attemptCount);
+          const nextRetryAt = new Date(Date.now() + backoffMinutes * 60 * 1000);
+          
           await db
             .update(scheduledFollowupMessages)
             .set({
               attemptCount,
               lastAttemptAt: new Date(),
-              errorMessage: error.message
+              errorMessage: error.message,
+              lastErrorCode: errorCode,
+              nextRetryAt,
+              scheduledFor: nextRetryAt // Update scheduledFor so it gets picked up
             })
             .where(eq(scheduledFollowupMessages.id, message.id));
           
-          console.warn(`⚠️ [FOLLOWUP-SCHEDULER] Message ${message.id} failed (attempt ${attemptCount}/${maxAttempts}):`, error.message);
+          console.warn(`⚠️ [FOLLOWUP-SCHEDULER] Message ${message.id} will retry in ${backoffMinutes}min (attempt ${attemptCount}/${maxAttempts}):`, error.message);
         }
         
         failed++;
+        metrics.errors++;
       }
     }
 
     const duration = Date.now() - startTime;
+    metrics.endTime = new Date();
+    metrics.durationMs = duration;
+    
+    console.timeEnd(`[FOLLOWUP-SCHEDULER] Processing Cycle ${cycleId}`);
+    
     console.log('📈 [FOLLOWUP-SCHEDULER] Message processing completed');
     console.log(`   ⏱️  Duration: ${duration}ms`);
     console.log(`   ✅ Sent: ${sent}`);
     console.log(`   ⏭️  Cancelled: ${cancelled}`);
+    console.log(`   ⏳ Rate Limited: ${rateLimited}`);
     console.log(`   ❌ Failed: ${failed}`);
+    
+    logCycleMetrics(metrics);
     
   } finally {
     isProcessingRunning = false;

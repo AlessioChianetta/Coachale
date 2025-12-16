@@ -62,6 +62,24 @@ export interface FollowupDecision {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Interfaces for Batch Evaluation
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ConversationForEvaluation {
+  conversationId: string;
+  context: FollowupContext;
+  consultantId: string;
+  temperatureLevel?: string;
+  currentState: string;
+}
+
+export interface BatchEvaluationResult {
+  conversationId: string;
+  decision: FollowupDecision;
+  processingTimeMs: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Function: evaluateFollowup
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -387,6 +405,311 @@ export async function updateConversationState(
     console.error("❌ [FOLLOWUP-ENGINE] Error updating conversation state:", error);
     throw error;
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Batch Evaluation Function
+// ═══════════════════════════════════════════════════════════════════════════
+
+const BATCH_SIZE = 15;
+
+/**
+ * Raggruppa conversazioni per stato e temperatura
+ */
+function groupConversationsByStateAndTemperature(
+  conversations: ConversationForEvaluation[]
+): Map<string, ConversationForEvaluation[]> {
+  const groups = new Map<string, ConversationForEvaluation[]>();
+  
+  for (const conv of conversations) {
+    const key = `${conv.currentState}:${conv.temperatureLevel || 'unknown'}`;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key)!.push(conv);
+  }
+  
+  return groups;
+}
+
+/**
+ * Costruisce un prompt batch per valutare multiple conversazioni
+ */
+function buildBatchPrompt(conversations: ConversationForEvaluation[]): string {
+  const conversationsData = conversations.map((conv, index) => {
+    const ctx = conv.context;
+    const templatesInfo = ctx.availableTemplates.length > 0
+      ? ctx.availableTemplates.slice(0, 3).map(t => `${t.id}: ${t.name}`).join(', ')
+      : "Nessuno";
+    
+    const lastMsgs = ctx.lastMessages.slice(-3).map(m => `[${m.role}]: ${m.content.substring(0, 100)}`).join(' | ');
+    
+    return `
+[CONV_${index + 1}] ID: ${conv.conversationId}
+- Lead: ${ctx.leadName || "N/D"}
+- Stato: ${ctx.currentState}, Temp: ${conv.temperatureLevel || 'N/D'}
+- Silenzio: ${ctx.daysSilent}gg (${ctx.hoursSinceLastInbound}h)
+- Follow-up: ${ctx.followupCount}/${ctx.maxFollowupsAllowed}
+- Segnali: Prezzo=${ctx.signals.hasAskedPrice ? 'Sì' : 'No'}, Urgenza=${ctx.signals.hasMentionedUrgency ? 'Sì' : 'No'}, No=${ctx.signals.hasSaidNoExplicitly ? 'Sì' : 'No'}
+- Engagement: ${ctx.engagementScore}/100, Conv: ${(ctx.conversionProbability * 100).toFixed(0)}%
+- Templates: ${templatesInfo}
+- Ultimi msg: ${lastMsgs}`;
+  }).join('\n');
+
+  return `Sei un esperto consulente di vendita italiano. Analizza TUTTE le conversazioni seguenti e decidi per ognuna se e come fare follow-up.
+
+${conversationsData}
+
+REGOLE DECISIONE:
+- "send_now": Lead caldo con segnali positivi, momento ottimale
+- "schedule": Troppo presto ma potenziale, programma per dopo
+- "skip": Serve più tempo, dubbi, aspetta
+- "stop": Lead non interessato, ferma definitivamente
+
+RISPONDI IN JSON ARRAY (un oggetto per conversazione, IN ORDINE):
+[
+  {
+    "conversationId": "id della conversazione",
+    "decision": "send_now" | "schedule" | "skip" | "stop",
+    "urgency": "now" | "tomorrow" | "next_week" | "never",
+    "suggestedTemplateId": "id template o null",
+    "suggestedMessage": "messaggio personalizzato se non usi template",
+    "reasoning": "spiegazione breve in italiano",
+    "confidenceScore": 0.0-1.0
+  }
+]`;
+}
+
+/**
+ * Valuta un batch di conversazioni con una singola chiamata AI
+ * Raggruppa per stato/temperatura e processa in batch di max 15 conversazioni
+ */
+export async function evaluateConversationsBatch(
+  conversations: ConversationForEvaluation[]
+): Promise<BatchEvaluationResult[]> {
+  const startTime = Date.now();
+  const results: BatchEvaluationResult[] = [];
+  
+  if (conversations.length === 0) {
+    return results;
+  }
+
+  console.log(`🤖 [FOLLOWUP-ENGINE-BATCH] Evaluating ${conversations.length} conversations in batch mode`);
+
+  // Pre-check: applica regole deterministiche prima dell'AI per ogni conversazione
+  const needsAiEvaluation: ConversationForEvaluation[] = [];
+  
+  for (const conv of conversations) {
+    const ruleContext: RuleEvaluationContext = {
+      daysSilent: conv.context.daysSilent,
+      hoursSinceLastInbound: conv.context.hoursSinceLastInbound,
+      followupCount: conv.context.followupCount,
+      maxFollowupsAllowed: conv.context.maxFollowupsAllowed,
+      currentState: conv.context.currentState,
+      lastMessageDirection: conv.context.lastMessageDirection,
+      signals: {
+        hasSaidNoExplicitly: conv.context.signals.hasSaidNoExplicitly
+      }
+    };
+    
+    const ruleResult = evaluateSystemRules(ruleContext);
+    if (ruleResult.matched && ruleResult.decision) {
+      if (ruleResult.decision === "stop") {
+        results.push({
+          conversationId: conv.conversationId,
+          decision: {
+            decision: "stop",
+            urgency: "never",
+            reasoning: ruleResult.reasoningIt,
+            confidenceScore: 1.0,
+            matchedSystemRule: ruleResult.rule?.id
+          },
+          processingTimeMs: Date.now() - startTime
+        });
+        continue;
+      }
+      
+      if (ruleResult.decision === "skip") {
+        results.push({
+          conversationId: conv.conversationId,
+          decision: {
+            decision: "skip",
+            urgency: undefined,
+            reasoning: ruleResult.reasoningIt,
+            confidenceScore: 0.9,
+            matchedSystemRule: ruleResult.rule?.id
+          },
+          processingTimeMs: Date.now() - startTime
+        });
+        continue;
+      }
+      
+      if (ruleResult.decision === "send_now" && ruleResult.allowFreeformMessage) {
+        results.push({
+          conversationId: conv.conversationId,
+          decision: {
+            decision: "send_now",
+            urgency: "now",
+            reasoning: ruleResult.reasoningIt,
+            confidenceScore: 0.95,
+            allowFreeformMessage: true,
+            matchedSystemRule: ruleResult.rule?.id
+          },
+          processingTimeMs: Date.now() - startTime
+        });
+        continue;
+      }
+    }
+    
+    needsAiEvaluation.push(conv);
+  }
+
+  console.log(`⚡ [FOLLOWUP-ENGINE-BATCH] ${results.length} resolved by system rules, ${needsAiEvaluation.length} need AI evaluation`);
+
+  if (needsAiEvaluation.length === 0) {
+    return results;
+  }
+
+  // Raggruppa per stato/temperatura
+  const groups = groupConversationsByStateAndTemperature(needsAiEvaluation);
+  console.log(`📊 [FOLLOWUP-ENGINE-BATCH] Grouped into ${groups.size} state/temperature groups`);
+
+  // Processa ogni gruppo (o batch all'interno del gruppo)
+  const consultantId = needsAiEvaluation[0].consultantId;
+  
+  try {
+    const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    console.log(`🚀 [FOLLOWUP-ENGINE-BATCH] Using ${aiProviderResult.metadata.name} for batch evaluation`);
+
+    for (const [groupKey, groupConversations] of groups) {
+      console.log(`📦 [FOLLOWUP-ENGINE-BATCH] Processing group "${groupKey}" with ${groupConversations.length} conversations`);
+      
+      // Process in batches of BATCH_SIZE
+      for (let i = 0; i < groupConversations.length; i += BATCH_SIZE) {
+        const batch = groupConversations.slice(i, i + BATCH_SIZE);
+        const batchStartTime = Date.now();
+        
+        try {
+          const prompt = buildBatchPrompt(batch);
+          
+          const response = await aiProviderResult.client.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+            },
+          });
+
+          const resultText = response.response.text();
+          
+          if (!resultText || resultText === 'undefined' || typeof resultText !== 'string') {
+            console.warn(`⚠️ [FOLLOWUP-ENGINE-BATCH] Invalid AI response for batch`);
+            for (const conv of batch) {
+              results.push({
+                conversationId: conv.conversationId,
+                decision: createDefaultSkipDecision("Risposta AI batch non valida"),
+                processingTimeMs: Date.now() - batchStartTime
+              });
+            }
+            continue;
+          }
+          
+          const batchResults = JSON.parse(resultText);
+          const batchProcessingTime = Date.now() - batchStartTime;
+          
+          // Map results back to conversation IDs
+          const resultMap = new Map<string, any>();
+          for (const r of batchResults) {
+            if (r.conversationId) {
+              resultMap.set(r.conversationId, r);
+            }
+          }
+          
+          for (const conv of batch) {
+            const aiResult = resultMap.get(conv.conversationId);
+            if (aiResult) {
+              results.push({
+                conversationId: conv.conversationId,
+                decision: {
+                  decision: aiResult.decision || "skip",
+                  urgency: aiResult.urgency || undefined,
+                  suggestedTemplateId: aiResult.suggestedTemplateId || undefined,
+                  suggestedMessage: aiResult.suggestedMessage || undefined,
+                  reasoning: aiResult.reasoning || "Nessun reasoning fornito",
+                  confidenceScore: aiResult.confidenceScore || 0.5,
+                },
+                processingTimeMs: batchProcessingTime / batch.length
+              });
+            } else {
+              results.push({
+                conversationId: conv.conversationId,
+                decision: createDefaultSkipDecision("Risultato AI non trovato per questa conversazione"),
+                processingTimeMs: batchProcessingTime / batch.length
+              });
+            }
+          }
+          
+          console.log(`✅ [FOLLOWUP-ENGINE-BATCH] Batch processed: ${batch.length} conversations in ${batchProcessingTime}ms`);
+          
+        } catch (error) {
+          console.error(`❌ [FOLLOWUP-ENGINE-BATCH] Error processing batch:`, error);
+          for (const conv of batch) {
+            results.push({
+              conversationId: conv.conversationId,
+              decision: createDefaultSkipDecision(`Errore batch: ${error}`),
+              processingTimeMs: Date.now() - batchStartTime
+            });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`❌ [FOLLOWUP-ENGINE-BATCH] Error getting AI provider:`, error);
+    for (const conv of needsAiEvaluation) {
+      results.push({
+        conversationId: conv.conversationId,
+        decision: createDefaultSkipDecision(`Errore provider AI: ${error}`),
+        processingTimeMs: Date.now() - startTime
+      });
+    }
+  }
+
+  const totalTime = Date.now() - startTime;
+  console.log(`📈 [FOLLOWUP-ENGINE-BATCH] Batch evaluation completed: ${results.length} results in ${totalTime}ms (avg ${(totalTime / results.length).toFixed(1)}ms/conv)`);
+
+  // Persist evaluation logs for all batch results
+  for (const result of results) {
+    if (!result.conversationId || !result.decision) continue;
+    
+    const conv = conversations.find(c => c.conversationId === result.conversationId);
+    if (!conv) continue;
+    
+    try {
+      await db.insert(followupAiEvaluationLog).values({
+        conversationId: result.conversationId,
+        consultantId: conv.consultantId,
+        decision: result.decision.decision,
+        reasoning: result.decision.reasoning || "Batch evaluation",
+        confidenceScore: String(result.decision.confidenceScore || 0.5),
+        suggestedTemplateId: result.decision.suggestedTemplateId || null,
+        suggestedMessage: result.decision.suggestedMessage || null,
+        matchedRuleId: result.decision.matchedSystemRule || null,
+        matchedRuleReason: result.decision.matchedSystemRule ? result.decision.reasoning : null,
+        stateTransition: result.decision.stateTransition || null,
+        inputContext: JSON.stringify({
+          currentState: conv.context.currentState,
+          daysSilent: conv.context.daysSilent,
+          followupCount: conv.context.followupCount,
+          engagementScore: conv.context.engagementScore,
+          batchMode: true
+        }),
+      });
+    } catch (logError) {
+      console.warn(`⚠️ [FOLLOWUP-ENGINE-BATCH] Failed to persist log for ${result.conversationId}:`, logError);
+    }
+  }
+
+  return results;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

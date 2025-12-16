@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FloatingButton } from "./FloatingButton";
 import { ChatPanel } from "./ChatPanel";
+
+interface OpenAndAskPayload {
+  autoMessage?: string;
+}
 
 export interface GuideContext {
   guideId: string;

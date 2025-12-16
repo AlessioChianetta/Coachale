@@ -1,0 +1,64 @@
+Alessio Chianetta
+via Marco setter
+🟡 Warm
+50 eventi recenti
+Errore
+Messaggio FALLITO
+16 dic 18:20
+Il lead è in stato 'new' e ha ricevuto il primo messaggio (o più messaggi identici) solo oggi (0 giorni senza risposta). Invio immediato di un altro messaggio sarebbe troppo aggressivo e rischioso di essere percepito come spam, specialmente su WhatsApp. Non ci sono segnali negativi che indichino disinteresse, né segnali di urgenza. L'Engagement Score e la Probabilità di Conversione sono neutrali. È opportuno dare al lead un po' di tempo per leggere il messaggio iniziale. Programmare un follow-up per domani è la strategia migliore per mantenere l'engagement senza essere invadenti. Suggerisco un messaggio personalizzato per rompere la monotonia dei template e mostrare un tocco più umano, facendo riferimento al messaggio precedente e invitando alla conversazione.
+
+Mostra tutto
+Messaggio AI
+
+❌
+Nessun template
+"Ciao! Hai avuto modo di leggere il mio ultimo messaggio?"
+
+Errore: No approved template available for follow-up outside 24h window
+
+Valutazione AI
+16 dic 18:14
+Il lead è in stato 'new' e ha ricevuto il primo messaggio (o più messaggi identici) solo oggi (0 giorni senza risposta). Invio immediato di un altro messaggio sarebbe troppo aggressivo e rischioso di essere percepito come spam, specialmente su WhatsApp. Non ci sono segnali negativi che indichino disinteresse, né segnali di urgenza. L'Engagement Score e la Probabilità di Conversione sono neutrali. È opportuno dare al lead un po' di tempo per leggere il messaggio iniziale. Programmare un follow-up per domani è la strategia migliore per mantenere l'engagement senza essere invadenti. Suggerisco un messaggio personalizzato per rompere la monotonia dei template e mostrare un tocco più umano, facendo riferimento al messaggio precedente e invitando alla conversazione.
+
+Mostra tutto
+Confidenza: 90%
+Valutazione AI: ATTENDI
+16 dic 18:10
+Errore durante la valutazione: Error: No API key available for fallback to Google AI Studio
+
+Confidenza: 0%
+Valutazione AI: ATTENDI
+16 dic 18:10
+Il lead ha risposto di recente. Attendiamo prima di fare follow-up.
+
+Confidenza: 90%
+Valutazione AI: INVIA
+16 dic 18:10
+Entro finestra 24h, in attesa risposta. L'AI genera messaggio di follow-up libero.
+
+Confidenza: 95%
+Valutazione AI: ATTENDI
+16 dic 18:10
+Il lead ha risposto di recente. Attendiamo prima di fare follow-up.
+
+Confidenza: 90%
+Valutazione AI: ATTENDI
+16 dic 18:05
+Errore durante la valutazione: Error: No API key available for fallback to Google AI Studio
+
+Confidenza: 0%
+Valutazione AI: INVIA
+16 dic 18:05
+Entro finestra 24h, in attesa risposta. L'AI genera messaggio di follow-up libero.
+
+Confidenza: 95%
+Valutazione AI: ATTENDI
+16 dic 18:05
+Il lead ha risposto di recente. Attendiamo prima di fare follow-up.
+
+Confidenza: 90%
+Valutazione AI: ATTENDI
+16 dic 18:05
+Il lead ha risposto di recente. Attendiamo prima di fare follow-up.
+
+Confidenza: 90%
