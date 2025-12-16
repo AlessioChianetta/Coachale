@@ -1,0 +1,163 @@
+
+🆕🆕🆕 [CONVERSATION CREATE] Creating NEW conversation at 2025-12-16T20:47:33.164Z 🆕🆕🆕
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+👨‍💼 [PARTICIPANT] Recognized CONSULTANT: alessio chianetta
+👤 [PARTICIPANT] Type: consultant, isLead: false, userId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [CONVERSATION CREATED] id=adbdde03-ed2e-4e4c-ae70-bfe503805caf for +393890566422 (Type: consultant, Known User - PROACTIVE) assigned to agent: 760bb513-098f-4722-b02a-a700160c2fc3
+📊 [CONVERSATION STATE] Created initial state for conversation adbdde03-ed2e-4e4c-ae70-bfe503805caf
+💾 [INSERT] Inserting message for lead d610e2a4-5e8d-4241-b9e3-de12d7395078 (Alessio) to conversation adbdde03-ed2e-4e4c-ae70-bfe503805caf
+   Message text preview: "🧪 DRY RUN - Anteprima Messaggio
+
+Ciao Alessio! 👋 Sono Marco di Orbitale.
+
+Ti scrivo riguardo alla ..."
+   Dry run: true, Template SID: HX922112cd9b1d531c5be56772acd50034
+✅ [INSERT] Message saved with ID: 26856f27-f5df-40f7-80af-ab6b6c98c8ba
+🔒 [DRY RUN] Saved simulated message to database: 26856f27-f5df-40f7-80af-ab6b6c98c8ba
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ Using explicitly specified agent: Marco setter (760bb513-098f-4722-b02a-a700160c2fc3)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Marco setter
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Marco setter)
+📤 [DRY RUN] Would send WhatsApp message with template: HX922112cd9b1d531c5be56772acd50034
+📋 Template Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393890566422
+   Template SID: HX922112cd9b1d531c5be56772acd50034
+   Variables: {
+  "1": "Alessio",
+  "2": "Marco",
+  "3": "Orbitale",
+  "4": "Ho visto che ti sei iscritto ai nostri contenuti per capire come riuscire a gestire al meglio i tuoi risparmi e incrementare il tuo patrimonio dai 100.000 ai 500.000 euro nei prossimi 6-12 mesi",
+  "5": "la libertà finanziaria con un patrimonio che lavora al posto tuo"
+}
+   Message Text (fallback): TEMPLATE:HX922112cd9b1d531c5be56772acd50034
+✅ [DRY RUN] Simulated template message: DRY_RUN_TEMPLATE_1765918053990_yqw7l
+🔒 [DRY RUN] Simulated message to Alessio Chianetta - updating status to prevent duplicates
+🔒 [DRY RUN] Lead d610e2a4-5e8d-4241-b9e3-de12d7395078 status updated to 'contacted' (prevents duplicate sends)
+📝 [ACTIVITY LOG] sent: Messaggio simulato (DRY RUN)
+
+✅ [PROACTIVE OUTREACH] Completed in 1953ms
+   📊 Results: 1 success, 0 errors, 0 skipped, 1 pending leads total
+8:47:34 PM [express] POST /api/proactive-leads/d610e2a4-5e8d-4241-b9e3-de12d7395078/trigger-now 200 …
+8:47:34 PM [express] POST /api/activity/session/heartbeat 200 in 306ms :: {"success":true,"lastActiv…
+8:47:34 PM [express] GET /api/proactive-leads 200 in 302ms :: {"success":true,"leads":[{"id":"d610e2…
+8:47:38 PM [express] GET /api/whatsapp/conversations/stats 200 in 8ms
+8:47:38 PM [express] GET /api/auth/my-profiles 304 in 302ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+8:47:44 PM [express] GET /api/whatsapp/conversations 200 in 500ms :: {"conversations":[{"id":"adbdde…
+8:47:45 PM [express] GET /api/whatsapp/conversations/adbdde03-ed2e-4e4c-ae70-bfe503805caf/messages 2…
+8:47:46 PM [express] PATCH /api/whatsapp/conversations/adbdde03-ed2e-4e4c-ae70-bfe503805caf/mark-rea…
+8:47:46 PM [express] GET /api/whatsapp/conversations/adbdde03-ed2e-4e4c-ae70-bfe503805caf/messages 3…
+8:47:46 PM [express] GET /api/whatsapp/conversations 200 in 505ms :: {"conversations":[{"id":"adbdde…
+8:47:47 PM [express] GET /api/automation-rules 200 in 7ms
+8:47:47 PM [express] GET /api/auth/my-profiles 304 in 305ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+8:47:49 PM [express] GET /api/auth/my-profiles 304 in 305ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+8:47:50 PM [express] GET /api/followup/activity-log 200 in 411ms :: {"timeline":[],"allEvents":[],"t…
+🔄 [FOLLOWUP-API] Manual trigger requested by consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [FOLLOWUP-SCHEDULER] Starting ALL follow-up evaluation cycle...
+👥 [FOLLOWUP-SCHEDULER] Found 1 consultants with active follow-up rules
+📊 [FOLLOWUP-SCHEDULER] Found 1 ALL candidate conversations
+🌡️ [TEMPERATURE] Conversazione adbdde03-ed2e-4e4c-ae70-bfe503805caf: warm → ghost
+🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation adbdde03-ed2e-4e4c-ae70-bfe503805caf
+   State: new, Days silent: 0, Hours silent: 0.0, Follow-ups: 0/5
+   📋 Applicable rules: 1
+🤖 [FOLLOWUP-SCHEDULER] Using AI decision for rule: "AI Follow-up Intelligente (entro 24h)"
+🤖 [FOLLOWUP-ENGINE] Evaluating follow-up for conversation adbdde03-ed2e-4e4c-ae70-bfe503805caf
+   State: new, Days silent: 0, Follow-ups: 0/5
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is the consultant themselves
+✅ Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b can use SuperAdmin Vertex AI
+🔍 Looking for SuperAdmin Vertex AI configuration...
+📋 Found SuperAdmin Vertex AI config: project=gen-lang-client-0278434337, location=us-central1
+✅ Parsed credentials as plaintext JSON
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created SuperAdmin Vertex AI client successfully
+✅ TIER 0: Successfully created SuperAdmin Vertex AI client
+🚀 [FOLLOWUP-ENGINE] Using Vertex AI (SuperAdmin) for evaluation
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 4 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [FOLLOWUP-ENGINE] Decision: schedule (confidence: 1)
+   Reasoning: L'agente ha appena inviato il messaggio iniziale oggi (0 giorni fa) e il lead non ha ancora avuto il tempo di leggerlo o di rispondere. Inviare un follow-up immediatamente oggi stesso sarebbe troppo aggressivo e controproducente. È fondamentale concedere al lead il tempo necessario per elaborare il primo messaggio. Programmare il follow-up per domani è l'approccio migliore per mantenere un tono professionale e non pressante, dando al contempo seguito all'iniziale contatto.
+   Latency: 9691ms
+📝 [FOLLOWUP-ENGINE] Logging decision for conversation adbdde03-ed2e-4e4c-ae70-bfe503805caf
+✅ [FOLLOWUP-ENGINE] Decision logged successfully
+🔍 [TEMPLATE-TRACE] ═══ CHIAMATA 2: AI decision ═══
+🔍 [TEMPLATE-TRACE] candidate.agentConfigId: 760bb513-098f-4722-b02a-a700160c2fc3
+🔍 [TEMPLATE-TRACE] candidate.conversationId: adbdde03-ed2e-4e4c-ae70-bfe503805caf
+🔍 [TEMPLATE-TRACE] candidate.leadName: undefined
+🔍 [TEMPLATE-TRACE] decision.decision: schedule
+⚠️ [FOLLOWUP-SCHEDULER] Lead mai risposto - finestra 24h non ancora aperta, richiesto template approvato
+🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════
+🔍 [TEMPLATE-DEBUG] Cercando template per agentConfigId: 760bb513-098f-4722-b02a-a700160c2fc3
+🔍 [TEMPLATE-DEBUG] Conversation: adbdde03-ed2e-4e4c-ae70-bfe503805caf
+🔍 [TEMPLATE-DEBUG] Template TROVATI dalla query (tutti): 2
+🔍 [TEMPLATE-DEBUG]   1. templateId: HX922112cd9b1d531c5be56772acd50034, type: twilio, priority: 2
+🔍 [TEMPLATE-DEBUG]      - Inizia con HX? true
+🔍 [TEMPLATE-DEBUG]      - templateType === 'twilio'? true
+🔍 [TEMPLATE-DEBUG]   2. templateId: HX5e6d27c6d82026f3620247262ef67340, type: twilio, priority: 1
+🔍 [TEMPLATE-DEBUG]      - Inizia con HX? true
+🔍 [TEMPLATE-DEBUG]      - templateType === 'twilio'? true
+🔍 [TEMPLATE-DEBUG] Template DOPO filtro (HX + twilio): 2
+🔍 [TEMPLATE-DEBUG]   1. HX922112cd9b1d531c5be56772acd50034 (priority: 2)
+🔍 [TEMPLATE-DEBUG]   2. HX5e6d27c6d82026f3620247262ef67340 (priority: 1)
+🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════
+✅ [FOLLOWUP-SCHEDULER] Template Twilio approvato SELEZIONATO: HX922112cd9b1d531c5be56772acd50034 (priority: 2, type: twilio)
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [FOLLOWUP-ENGINE] Updating conversation state for adbdde03-ed2e-4e4c-ae70-bfe503805caf
+   Updates: {
+  "nextFollowupScheduledAt": "2025-12-17T10:00:00.000Z",
+  "lastAiEvaluationAt": "2025-12-16T20:48:03.910Z",
+  "aiRecommendation": "L'agente ha appena inviato il messaggio iniziale oggi (0 giorni fa) e il lead non ha ancora avuto il tempo di leggerlo o di rispondere. Inviare un follow-up immediatamente oggi stesso sarebbe troppo aggressivo e controproducente. È fondamentale concedere al lead il tempo necessario per elaborare il primo messaggio. Programmare il follow-up per domani è l'approccio migliore per mantenere un tono professionale e non pressante, dando al contempo seguito all'iniziale contatto."
+}
+✅ [FOLLOWUP-ENGINE] Conversation state updated successfully
+📅 [FOLLOWUP-SCHEDULER] Scheduled follow-up for adbdde03-ed2e-4e4c-ae70-bfe503805caf at 2025-12-17T10:00:00.000Z (AI decision with rule "AI Follow-up Intelligente (entro 24h)")
+[FOLLOWUP-SCHEDULER] Evaluation Cycle cycle_1765918072889_oteiyv: 11.225s
+📈 [FOLLOWUP-SCHEDULER] ALL evaluation cycle completed
+   ⏱️  Duration: 11224ms
+   📊 Processed: 1/1
+   🌡️  Temperature updates: 1
+   📅 Scheduled: 1
+   ⏭️  Skipped: 0
+   🛑 Stopped: 0
+   ❌ Errors: 0
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+📊 [FOLLOWUP-SCHEDULER] Cycle Metrics Report
+📊 [FOLLOWUP-SCHEDULER] ───────────────────────────────────────
+📊 [FOLLOWUP-SCHEDULER] Timestamp: 2025-12-16T20:48:04.114Z
+📊 [FOLLOWUP-SCHEDULER] Cycle ID: cycle_1765918072889_oteiyv
+📊 [FOLLOWUP-SCHEDULER] Type: evaluation_all
+📊 [FOLLOWUP-SCHEDULER] Duration: 11224ms
+📊 [FOLLOWUP-SCHEDULER] Processed: 1
+📊 [FOLLOWUP-SCHEDULER] Success: 1
+📊 [FOLLOWUP-SCHEDULER] Errors: 0
+📊 [FOLLOWUP-SCHEDULER] Skipped: 0
+📊 [FOLLOWUP-SCHEDULER] Rate Limited: 0
+📊 [FOLLOWUP-SCHEDULER] Error Rate: 0.0%
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+8:48:04 PM [express] POST /api/followup/trigger-evaluation 200 in 11430ms :: {"success":true,"messag…
+8:48:05 PM [express] GET /api/followup/activity-log 200 in 608ms :: {"timeline":[{"conversationId":"…
+8:48:20 PM [express] GET /api/followup/dashboard-stats 304 in 1416ms :: {"awaitingFollowup":1,"sentT…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
