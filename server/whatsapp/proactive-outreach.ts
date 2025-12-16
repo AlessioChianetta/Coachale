@@ -23,6 +23,12 @@ import { checkTemplateApprovalStatus } from '../services/whatsapp/template-appro
 
 let schedulerTask: cron.ScheduledTask | null = null;
 
+// Lock to prevent concurrent execution (race condition protection)
+let isProcessingOutreach = false;
+
+// Set to track leads currently being processed (to avoid duplicates within same cycle)
+const processingLeadIds = new Set<string>();
+
 /**
  * Helper function to log lead activity to the database
  */
@@ -853,8 +859,16 @@ async function processLead(
 
 /**
  * Main cron job function - processes all leads
+ * Protected against concurrent execution (race condition fix)
  */
 export async function processProactiveOutreach(): Promise<void> {
+  // RACE CONDITION PROTECTION: Prevent concurrent execution
+  if (isProcessingOutreach) {
+    console.log(`⏳ [PROACTIVE OUTREACH] Already processing - skipping this cycle`);
+    return;
+  }
+  
+  isProcessingOutreach = true;
   const startTime = Date.now();
   console.log(`\n🚀 [PROACTIVE OUTREACH] Starting scheduled run at ${new Date().toISOString()}`);
 
@@ -883,23 +897,65 @@ export async function processProactiveOutreach(): Promise<void> {
 
     if (pendingLeads.length === 0) {
       console.log(`✅ No pending leads to process at this time`);
-      return;
+      return; // Lock will be released in finally block
     }
 
     // Process each pending lead (first opening message only)
     let successCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
 
     for (const { lead, consultant, agentConfig } of pendingLeads) {
+      // DUPLICATE PROTECTION (in-memory): Skip if lead is already being processed in this instance
+      if (processingLeadIds.has(lead.id)) {
+        console.log(`⏭️ Skipping lead ${lead.id} - already being processed in this instance`);
+        skippedCount++;
+        continue;
+      }
+      
+      // Mark lead as being processed locally
+      processingLeadIds.add(lead.id);
+      
+      // DATABASE-LEVEL ATOMIC LOCK: Try to claim this lead by updating status from 'pending' to 'processing'
+      // Only one instance/process can succeed - this prevents race conditions across multiple server instances
+      const claimedLeads = await db
+        .update(proactiveLeads)
+        .set({ 
+          status: 'processing', // Temporary status during processing
+          updatedAt: new Date()
+        })
+        .where(
+          and(
+            eq(proactiveLeads.id, lead.id),
+            eq(proactiveLeads.status, 'pending') // CRITICAL: Only claim if still pending
+          )
+        )
+        .returning({ id: proactiveLeads.id });
+      
+      if (claimedLeads.length === 0) {
+        // Another instance already claimed this lead
+        console.log(`⏭️ Skipping lead ${lead.id} - already claimed by another instance (status changed)`);
+        processingLeadIds.delete(lead.id);
+        skippedCount++;
+        continue;
+      }
+      
+      console.log(`🔒 [LOCK ACQUIRED] Claimed lead ${lead.id} for processing`);
+      
       // Validate that we have all required data
       if (!consultant) {
         console.error(`❌ Skipping lead ${lead.id} - consultant not found`);
+        // Revert status back to pending since we didn't process it
+        await db.update(proactiveLeads).set({ status: 'pending' }).where(eq(proactiveLeads.id, lead.id));
+        processingLeadIds.delete(lead.id);
         errorCount++;
         continue;
       }
 
       if (!agentConfig) {
         console.error(`❌ Skipping lead ${lead.id} - agent config not found`);
+        await db.update(proactiveLeads).set({ status: 'pending' }).where(eq(proactiveLeads.id, lead.id));
+        processingLeadIds.delete(lead.id);
         errorCount++;
         continue;
       }
@@ -908,6 +964,8 @@ export async function processProactiveOutreach(): Promise<void> {
       if (agentConfig.agentType !== 'proactive_setter') {
         console.error(`❌ Skipping lead ${lead.id} - agent "${agentConfig.agentName}" is type "${agentConfig.agentType}" not "proactive_setter"`);
         console.error(`   This should not happen - check database query filters!`);
+        await db.update(proactiveLeads).set({ status: 'pending' }).where(eq(proactiveLeads.id, lead.id));
+        processingLeadIds.delete(lead.id);
         errorCount++;
         continue;
       }
@@ -915,21 +973,41 @@ export async function processProactiveOutreach(): Promise<void> {
       try {
         await processLead(lead, consultant, agentConfig);
         successCount++;
+        // Note: processLead already updates status to 'contacted' on success
       } catch (error: any) {
         console.error(`❌ Failed to process lead ${lead.id}:`, error.message);
         errorCount++;
+      } finally {
+        // Always remove from local processing set
+        processingLeadIds.delete(lead.id);
+        
+        // SAFETY: Verify status was updated - if still 'processing', revert to 'pending'
+        // This handles any early returns in processLead that don't update status
+        const [finalStatus] = await db
+          .select({ status: proactiveLeads.status })
+          .from(proactiveLeads)
+          .where(eq(proactiveLeads.id, lead.id))
+          .limit(1);
+        
+        if (finalStatus?.status === 'processing') {
+          console.log(`⚠️ [LOCK RELEASE] Lead ${lead.id} still in 'processing' state - reverting to 'pending'`);
+          await db.update(proactiveLeads).set({ status: 'pending' }).where(eq(proactiveLeads.id, lead.id));
+        }
       }
     }
 
     const duration = Date.now() - startTime;
     console.log(`\n✅ [PROACTIVE OUTREACH] Completed in ${duration}ms`);
-    console.log(`   📊 Results: ${successCount} success, ${errorCount} errors, ${pendingLeads.length} pending leads processed`);
+    console.log(`   📊 Results: ${successCount} success, ${errorCount} errors, ${skippedCount} skipped, ${pendingLeads.length} pending leads total`);
 
   } catch (error: any) {
     console.error(`❌ [PROACTIVE OUTREACH] Fatal error:`, error.message);
     if (error.stack) {
       console.error(error.stack);
     }
+  } finally {
+    // ALWAYS release lock
+    isProcessingOutreach = false;
   }
 }
 

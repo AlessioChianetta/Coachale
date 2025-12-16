@@ -2786,7 +2786,9 @@ export const proactiveLeads = pgTable("proactive_leads", {
   lastMessageSent: text("last_message_sent"),
   
   // Status tracking
-  status: text("status").$type<"pending" | "contacted" | "responded" | "converted" | "inactive">().default("pending").notNull(),
+  // 'processing' = temporary lock during message send (race condition protection)
+  // 'lost' = lead marked as uncontactable (template error, etc)
+  status: text("status").$type<"pending" | "processing" | "contacted" | "responded" | "converted" | "inactive" | "lost">().default("pending").notNull(),
   
   // Metadata
   metadata: jsonb("metadata").$type<{
