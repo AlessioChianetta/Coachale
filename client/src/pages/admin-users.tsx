@@ -414,7 +414,8 @@ export default function AdminUsers() {
                           <AlertCircle className="h-4 w-4 text-amber-600" />
                           <AlertDescription className="text-sm">
                             Questo utente esiste già come <strong>{existingUserInfo.role === 'consultant' ? 'Consulente' : existingUserInfo.role === 'client' ? 'Cliente' : 'Super Admin'}</strong>. 
-                            Il ruolo verrà aggiornato senza richiedere una nuova password.
+                            Verrà aggiunto un nuovo profilo come <strong>{newUser.role === 'consultant' ? 'Consulente' : newUser.role === 'client' ? 'Cliente' : 'Super Admin'}</strong>.
+                            L'utente potrà scegliere il profilo al login.
                           </AlertDescription>
                         </Alert>
                       )}
@@ -468,7 +469,7 @@ export default function AdminUsers() {
                         {createUserMutation.isPending 
                           ? "Elaborazione..." 
                           : existingUserInfo && existingUserInfo.role !== newUser.role 
-                            ? "Aggiorna Ruolo" 
+                            ? "Aggiungi Profilo" 
                             : "Crea Utente"}
                       </Button>
                     </DialogFooter>

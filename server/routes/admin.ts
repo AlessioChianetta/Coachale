@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authenticateToken, requireSuperAdmin, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig } from "../../shared/schema";
+import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles } from "../../shared/schema";
 import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { getAdminTurnConfig, saveAdminTurnConfig } from "../services/turn-config-service";
@@ -587,24 +587,37 @@ router.post(
         .limit(1);
 
       if (existing) {
-        if (existing.role === role) {
+        const existingProfiles = await db
+          .select()
+          .from(userRoleProfiles)
+          .where(eq(userRoleProfiles.userId, existing.id));
+
+        const profileConsultantId = role === "client" ? consultantId : null;
+        const existingProfileForRole = existingProfiles.find(p => 
+          p.role === role && 
+          (role !== "client" || p.consultantId === profileConsultantId)
+        );
+
+        if (existingProfileForRole) {
           return res.status(400).json({ 
             success: false, 
-            error: `Un utente con questa email è già registrato come ${role === 'consultant' ? 'Consulente' : role === 'client' ? 'Cliente' : 'Super Admin'}` 
+            error: role === "client" 
+              ? `Questo utente ha già un profilo come Cliente per questo consulente` 
+              : `Questo utente ha già un profilo come ${role === 'consultant' ? 'Consulente' : 'Super Admin'}` 
           });
         }
 
-        if (existing.role === "super_admin") {
+        if (role === "super_admin" && existing.role !== "super_admin") {
           return res.status(400).json({ 
             success: false, 
-            error: "Non è possibile modificare il ruolo di un Super Admin. Contatta l'amministratore di sistema." 
+            error: "Non è possibile aggiungere il ruolo Super Admin. Contatta l'amministratore di sistema." 
           });
         }
 
         if (!updateExistingRole) {
           return res.status(400).json({ 
             success: false, 
-            error: "È necessario confermare esplicitamente l'aggiornamento del ruolo per un utente esistente.",
+            error: "È necessario confermare esplicitamente l'aggiunta del nuovo ruolo per un utente esistente.",
             requiresConfirmation: true,
             existingUser: {
               id: existing.id,
@@ -616,37 +629,45 @@ router.post(
           });
         }
 
-        const [updatedUser] = await db
+        await db
           .update(users)
           .set({ 
-            role,
             firstName: firstName || existing.firstName,
             lastName: lastName || existing.lastName,
-            consultantId: role === "client" ? consultantId : null,
             phoneNumber: phoneNumber || existing.phoneNumber
           })
-          .where(eq(users.id, existing.id))
+          .where(eq(users.id, existing.id));
+
+        const [newProfile] = await db
+          .insert(userRoleProfiles)
+          .values({
+            userId: existing.id,
+            role,
+            consultantId: profileConsultantId,
+            isDefault: existingProfiles.length === 0,
+            isActive: true
+          })
           .returning();
 
         await db.insert(adminAuditLog).values({
           adminId: req.user!.id,
-          action: "update_user_role",
+          action: "add_user_role_profile",
           targetType: "user",
           targetId: existing.id,
-          details: { email, previousRole: existing.role, newRole: role }
+          details: { email, newRole: role, existingRole: existing.role, profileId: newProfile.id }
         });
 
         return res.json({
           success: true,
           existed: true,
           user: {
-            id: updatedUser.id,
-            email: updatedUser.email,
-            firstName: updatedUser.firstName,
-            lastName: updatedUser.lastName,
-            role: updatedUser.role
+            id: existing.id,
+            email: existing.email,
+            firstName: firstName || existing.firstName,
+            lastName: lastName || existing.lastName,
+            role: existing.role
           },
-          message: `Ruolo aggiornato da ${existing.role} a ${role}`
+          message: `Aggiunto profilo ${role === 'consultant' ? 'Consulente' : role === 'client' ? 'Cliente' : 'Super Admin'}. L'utente ora può scegliere il profilo al login.`
         });
       }
 
@@ -674,6 +695,16 @@ router.post(
           isActive: true
         })
         .returning();
+
+      await db
+        .insert(userRoleProfiles)
+        .values({
+          userId: newUser.id,
+          role,
+          consultantId: role === "client" ? consultantId : null,
+          isDefault: true,
+          isActive: true
+        });
 
       await db.insert(adminAuditLog).values({
         adminId: req.user!.id,
