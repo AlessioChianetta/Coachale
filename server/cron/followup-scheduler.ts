@@ -1178,12 +1178,16 @@ async function evaluateConversation(
         availableTemplates: [],
       };
       
+      const reasoningMessage = windowCheck.leadNeverResponded
+        ? `Il lead non ha ancora risposto - finestra 24h non aperta. Nessun template Twilio approvato assegnato a questo agente. Configura template nella sezione Template WhatsApp.`
+        : `Impossibile schedulare: saremo fuori finestra 24h (scade ${windowCheck.window24hExpiresAt.toISOString()}) e nessun template approvato disponibile. Configura template per questo agente.`;
+      
       await logFollowupDecision(
         candidate.conversationId,
         skipContext,
         {
           decision: 'skip',
-          reasoning: `Impossibile schedulare: saremo fuori finestra 24h (scade ${windowCheck.window24hExpiresAt.toISOString()}) e nessun template approvato disponibile. Configura template per questo agente.`,
+          reasoning: reasoningMessage,
           confidenceScore: 1.0,
           matchedSystemRule: 'no_template_outside_24h'
         },
@@ -1197,7 +1201,7 @@ async function evaluateConversation(
     await db.insert(scheduledFollowupMessages).values({
       conversationId: candidate.conversationId,
       ruleId: timeBasedRule.id,
-      templateId: timeBasedRule.templateId,
+      templateId: windowCheck.selectedTemplateId || timeBasedRule.templateId,
       scheduledFor,
       status: 'pending',
       templateVariables: {},
@@ -1235,9 +1239,11 @@ async function evaluateConversation(
   const lastMessages = await getLastMessages(candidate.conversationId, 10);
   const availableTemplates = await getAvailableTemplates(candidate.consultantId, candidate.agentConfigId);
 
+  // FIX: Use the LAST message (most recent) not the first one
+  const lastMessage = lastMessages.length > 0 ? lastMessages[lastMessages.length - 1] : null;
   const lastMessageDirection: "inbound" | "outbound" | null = 
-    lastMessages.length > 0 
-      ? (lastMessages[0].role === 'lead' ? 'inbound' : 'outbound')
+    lastMessage 
+      ? (lastMessage.role === 'lead' ? 'inbound' : 'outbound')
       : null;
 
   const context: FollowupContext = {
@@ -1277,12 +1283,16 @@ async function evaluateConversation(
     );
     
     if (!windowCheck.canSchedule) {
+      const aiDecisionReasoningMessage = windowCheck.leadNeverResponded
+        ? `Il lead non ha ancora risposto - finestra 24h non aperta. Nessun template Twilio approvato assegnato a questo agente. Configura template nella sezione Template WhatsApp.`
+        : `Impossibile schedulare: saremo fuori finestra 24h (scade ${windowCheck.window24hExpiresAt.toISOString()}) e nessun template approvato disponibile. Configura template per questo agente.`;
+      
       await logFollowupDecision(
         candidate.conversationId,
         context,
         {
           decision: 'skip',
-          reasoning: `Impossibile schedulare: saremo fuori finestra 24h (scade ${windowCheck.window24hExpiresAt.toISOString()}) e nessun template approvato disponibile. Configura template per questo agente.`,
+          reasoning: aiDecisionReasoningMessage,
           confidenceScore: 1.0,
           matchedSystemRule: 'no_template_outside_24h'
         },
@@ -1293,7 +1303,8 @@ async function evaluateConversation(
       return 'skipped';
     }
     
-    let templateIdToUse: string | null = null;
+    // Use the template found during validation, or fall back to rule template
+    let templateIdToUse: string | null = windowCheck.selectedTemplateId || null;
     let fallbackMessageToUse: string | null = null;
     
     if (decision.allowFreeformMessage) {
@@ -1566,7 +1577,7 @@ async function validate24hWindowForScheduling(
   conversationId: string,
   scheduledFor: Date,
   agentConfigId: string | null
-): Promise<{ canSchedule: boolean; window24hExpiresAt: Date; willBeOutside24h: boolean }> {
+): Promise<{ canSchedule: boolean; window24hExpiresAt: Date; willBeOutside24h: boolean; leadNeverResponded: boolean; selectedTemplateId?: string }> {
   const lastLeadMessage = await db
     .select({ createdAt: whatsappMessages.createdAt })
     .from(whatsappMessages)
@@ -1579,6 +1590,7 @@ async function validate24hWindowForScheduling(
     .orderBy(desc(whatsappMessages.createdAt))
     .limit(1);
 
+  const leadNeverResponded = lastLeadMessage.length === 0;
   const window24hExpiresAt = lastLeadMessage.length > 0 && lastLeadMessage[0].createdAt
     ? new Date(new Date(lastLeadMessage[0].createdAt).getTime() + 24 * 60 * 60 * 1000)
     : new Date(0);
@@ -1586,18 +1598,52 @@ async function validate24hWindowForScheduling(
   const willBeOutside24h = scheduledFor > window24hExpiresAt;
 
   if (!willBeOutside24h) {
-    return { canSchedule: true, window24hExpiresAt, willBeOutside24h };
+    return { canSchedule: true, window24hExpiresAt, willBeOutside24h, leadNeverResponded };
   }
 
-  console.log(`⚠️ [FOLLOWUP-SCHEDULER] Messaggio schedulato per ${scheduledFor.toISOString()} sarà FUORI finestra 24h (scade ${window24hExpiresAt.toISOString()})`);
+  if (leadNeverResponded) {
+    console.log(`⚠️ [FOLLOWUP-SCHEDULER] Lead mai risposto - finestra 24h non ancora aperta, richiesto template approvato`);
+  } else {
+    console.log(`⚠️ [FOLLOWUP-SCHEDULER] Messaggio schedulato per ${scheduledFor.toISOString()} sarà FUORI finestra 24h (scade ${window24hExpiresAt.toISOString()})`);
+  }
 
   if (!agentConfigId) {
     console.log(`❌ [FOLLOWUP-SCHEDULER] Nessun agentConfigId - impossibile verificare template approvati`);
-    return { canSchedule: false, window24hExpiresAt, willBeOutside24h };
+    return { canSchedule: false, window24hExpiresAt, willBeOutside24h, leadNeverResponded };
   }
 
-  const approvedTemplate = await db
-    .select({ id: whatsappTemplateVersions.id })
+  // STEP 1: Check for Twilio templates (HX prefix) assigned to this agent
+  // Twilio templates with HX prefix that are assigned are considered pre-approved
+  // They go through Twilio's approval process before being available in the Content API
+  const twilioTemplates = await db
+    .select({ 
+      templateId: whatsappTemplateAssignments.templateId,
+      priority: whatsappTemplateAssignments.priority,
+      templateType: whatsappTemplateAssignments.templateType
+    })
+    .from(whatsappTemplateAssignments)
+    .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId))
+    .orderBy(desc(whatsappTemplateAssignments.priority));
+
+  // Filter for Twilio templates (HX prefix) - these are pre-approved by Twilio when they have the HX ContentSID format
+  // Only templates that have been synced to Twilio and approved will have an HX prefix
+  const approvedTwilioTemplates = twilioTemplates.filter(t => 
+    t.templateId.startsWith('HX') && t.templateType === 'twilio'
+  );
+  
+  if (approvedTwilioTemplates.length > 0) {
+    const selectedTemplate = approvedTwilioTemplates[0];
+    console.log(`✅ [FOLLOWUP-SCHEDULER] Template Twilio approvato trovato: ${selectedTemplate.templateId} (priority: ${selectedTemplate.priority}, type: ${selectedTemplate.templateType})`);
+    return { canSchedule: true, window24hExpiresAt, willBeOutside24h, leadNeverResponded, selectedTemplateId: selectedTemplate.templateId };
+  }
+
+  // STEP 2: Check for custom templates with approved status
+  const approvedCustomTemplate = await db
+    .select({ 
+      id: whatsappTemplateVersions.id,
+      templateId: whatsappTemplateVersions.templateId,
+      twilioContentSid: whatsappTemplateVersions.twilioContentSid
+    })
     .from(whatsappTemplateVersions)
     .innerJoin(
       whatsappTemplateAssignments,
@@ -1610,15 +1656,18 @@ async function validate24hWindowForScheduling(
         eq(whatsappTemplateVersions.twilioStatus, 'approved')
       )
     )
+    .orderBy(desc(whatsappTemplateAssignments.priority))
     .limit(1);
 
-  if (approvedTemplate.length === 0) {
-    console.log(`❌ [FOLLOWUP-SCHEDULER] NESSUN template approvato disponibile per fuori 24h - NON schedulo`);
-    return { canSchedule: false, window24hExpiresAt, willBeOutside24h };
+  if (approvedCustomTemplate.length > 0) {
+    const selectedTemplate = approvedCustomTemplate[0];
+    const templateIdToUse = selectedTemplate.twilioContentSid || selectedTemplate.templateId;
+    console.log(`✅ [FOLLOWUP-SCHEDULER] Template custom approvato trovato: ${templateIdToUse}`);
+    return { canSchedule: true, window24hExpiresAt, willBeOutside24h, leadNeverResponded, selectedTemplateId: templateIdToUse };
   }
 
-  console.log(`✅ [FOLLOWUP-SCHEDULER] Template approvato trovato, procedo con scheduling fuori 24h`);
-  return { canSchedule: true, window24hExpiresAt, willBeOutside24h };
+  console.log(`❌ [FOLLOWUP-SCHEDULER] NESSUN template approvato disponibile (né Twilio né custom) per fuori 24h - NON schedulo`);
+  return { canSchedule: false, window24hExpiresAt, willBeOutside24h, leadNeverResponded };
 }
 
 async function generateAIFollowupMessage(
