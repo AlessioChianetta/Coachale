@@ -451,6 +451,7 @@ export default function ConsultantApiKeysUnified() {
     configName: "",
     agentConfigId: "",
     targetCampaignId: "",
+    defaultSource: "",
     isActive: true,
   });
   const [selectedWebhookConfigId, setSelectedWebhookConfigId] = useState<string | null>(null);
@@ -668,7 +669,7 @@ export default function ConsultantApiKeysUnified() {
       queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
       setIsCreatingNewConfig(false);
       setIsDuplicating(false);
-      setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
+      setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
     },
     onError: (error: any) => {
       toast({
@@ -707,7 +708,7 @@ export default function ConsultantApiKeysUnified() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
       setSelectedWebhookConfigId(null);
-      setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
+      setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
     },
     onError: (error: any) => {
       toast({
@@ -782,6 +783,9 @@ export default function ConsultantApiKeysUnified() {
     phone: "+39 333 1234567",
     companyName: "Test SRL",
     source: "hubdigital-test",
+    customFieldKey: "",
+    customFieldValue: "",
+    customFields: [] as Array<{id: string, value: string}>,
   });
   const [hubdigitalTestResult, setHubdigitalTestResult] = useState<{
     success: boolean;
@@ -814,7 +818,7 @@ export default function ConsultantApiKeysUnified() {
         companyName: hubdigitalTestData.companyName,
         source: hubdigitalTestData.source,
         dateAdded: new Date().toISOString(),
-        customFields: [],
+        customFields: hubdigitalTestData.customFields,
       };
 
       const response = await fetch(`/api/webhook/hubdigital/${testConfig.secretKey}`, {
@@ -3474,55 +3478,163 @@ export default function ConsultantApiKeysUnified() {
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2">
                         <Card className="border-blue-200 bg-blue-50/50">
-                          <CardContent className="pt-4">
-                            <p className="text-sm text-blue-800 mb-3">
-                              Questi sono i campi che Hubdigital.io può inviare e come vengono salvati nel sistema:
+                          <CardContent className="pt-4 space-y-4">
+                            <p className="text-sm text-blue-800">
+                              Tabella completa dei campi che Hubdigital.io invia via webhook:
                             </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 shrink-0">phone *</Badge>
-                                <span className="text-gray-700">Numero di telefono del lead (obbligatorio)</span>
-                              </div>
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">firstName</Badge>
-                                <span className="text-gray-700">Nome del lead</span>
-                              </div>
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">lastName</Badge>
-                                <span className="text-gray-700">Cognome del lead</span>
-                              </div>
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">name</Badge>
-                                <span className="text-gray-700">Nome completo (diviso automaticamente in nome/cognome)</span>
-                              </div>
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">email</Badge>
-                                <span className="text-gray-700">Email del lead → salvato in leadInfo.email</span>
-                              </div>
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">companyName</Badge>
-                                <span className="text-gray-700">Nome azienda → salvato in leadInfo.companyName</span>
-                              </div>
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">source</Badge>
-                                <span className="text-gray-700">Fonte del lead → salvato in leadInfo.fonte</span>
-                              </div>
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">customFields</Badge>
-                                <span className="text-gray-700">Campi personalizzati → salvati in leadInfo.customFields</span>
-                              </div>
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-300 shrink-0">dateAdded</Badge>
-                                <span className="text-gray-700">Data di aggiunta → salvata in leadInfo.dateAdded</span>
-                              </div>
-                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
-                                <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300 shrink-0">type</Badge>
-                                <span className="text-gray-700">Solo "ContactCreate" viene processato, altri tipi ignorati</span>
+                            
+                            {/* Metadati Evento */}
+                            <div>
+                              <h4 className="text-xs font-semibold text-blue-700 uppercase mb-2">Metadati Evento</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300 shrink-0">type</Badge>
+                                  <span className="text-gray-700">Tipo evento - Solo "ContactCreate" viene processato</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">locationId</Badge>
+                                  <span className="text-gray-500">ID location GHL - Non salvato</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">id</Badge>
+                                  <span className="text-gray-500">ID univoco contatto GHL - Non salvato</span>
+                                </div>
                               </div>
                             </div>
-                            <p className="text-xs text-blue-600 mt-3 italic">
-                              * Campo obbligatorio. La campagna viene assegnata automaticamente in base alla configurazione webhook.
-                            </p>
+
+                            {/* Dati Anagrafici */}
+                            <div>
+                              <h4 className="text-xs font-semibold text-blue-700 uppercase mb-2">Dati Anagrafici</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">firstName</Badge>
+                                  <span className="text-gray-700">Nome del lead</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">lastName</Badge>
+                                  <span className="text-gray-700">Cognome del lead</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">name</Badge>
+                                  <span className="text-gray-700">Nome completo (diviso in nome/cognome)</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">dateOfBirth</Badge>
+                                  <span className="text-gray-500">Data di nascita - Non salvato</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Dati Contatto */}
+                            <div>
+                              <h4 className="text-xs font-semibold text-blue-700 uppercase mb-2">Dati Contatto</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border border-green-300">
+                                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 shrink-0">phone *</Badge>
+                                  <span className="text-gray-700">Telefono (obbligatorio) → phoneNumber</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">email</Badge>
+                                  <span className="text-gray-700">Email → leadInfo.email</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">address1</Badge>
+                                  <span className="text-gray-500">Indirizzo - Non salvato</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">city</Badge>
+                                  <span className="text-gray-500">Città - Non salvato</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">state</Badge>
+                                  <span className="text-gray-500">Provincia - Non salvato</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">postalCode</Badge>
+                                  <span className="text-gray-500">CAP - Non salvato</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">country</Badge>
+                                  <span className="text-gray-500">Paese - Non salvato</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Dati Aziendali */}
+                            <div>
+                              <h4 className="text-xs font-semibold text-blue-700 uppercase mb-2">Dati Aziendali (B2B)</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">companyName</Badge>
+                                  <span className="text-gray-700">Nome azienda → leadInfo.companyName</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">website</Badge>
+                                  <span className="text-gray-500">Sito web - Non salvato</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Metadati CRM */}
+                            <div>
+                              <h4 className="text-xs font-semibold text-blue-700 uppercase mb-2">Metadati CRM</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">source</Badge>
+                                  <span className="text-gray-700">Fonte → leadInfo.fonte (sovrascrivibile)</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">dateAdded</Badge>
+                                  <span className="text-gray-700">Data aggiunta → leadInfo.dateAdded</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">customFields</Badge>
+                                  <span className="text-gray-700">Campi personalizzati → leadInfo.customFields</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">assignedTo</Badge>
+                                  <span className="text-gray-500">ID utente assegnato - Non salvato</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">tags</Badge>
+                                  <span className="text-gray-500">Tag associati - Non salvato</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">attachments</Badge>
+                                  <span className="text-gray-500">Allegati - Non salvato</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* DND */}
+                            <div>
+                              <h4 className="text-xs font-semibold text-blue-700 uppercase mb-2">Privacy - DND (Do Not Disturb)</h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">dnd</Badge>
+                                  <span className="text-gray-500">Flag DND globale - Non salvato</span>
+                                </div>
+                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
+                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">dndSettings</Badge>
+                                  <span className="text-gray-500">Impostazioni DND per canale - Non salvato</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 text-xs pt-2 border-t">
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 bg-white border rounded"></div>
+                                <span className="text-gray-600">Mappato</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <div className="w-3 h-3 bg-gray-50 border border-dashed rounded"></div>
+                                <span className="text-gray-500">Non salvato</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 text-[10px] px-1">*</Badge>
+                                <span className="text-gray-600">Obbligatorio</span>
+                              </div>
+                            </div>
                           </CardContent>
                         </Card>
                       </CollapsibleContent>
@@ -3536,7 +3648,7 @@ export default function ConsultantApiKeysUnified() {
                           setIsCreatingNewConfig(true);
                           setSelectedWebhookConfigId(null);
                           setIsDuplicating(false);
-                          setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
+                          setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
                         }}
                         className="bg-green-600 hover:bg-green-700"
                       >
@@ -3570,7 +3682,7 @@ export default function ConsultantApiKeysUnified() {
                                 setIsCreatingNewConfig(false);
                                 setSelectedWebhookConfigId(null);
                                 setIsDuplicating(false);
-                                setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
+                                setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
                               }}
                             >
                               <XCircle className="h-5 w-5" />
@@ -3665,6 +3777,19 @@ export default function ConsultantApiKeysUnified() {
                               </Select>
                             </div>
 
+                            <div className="space-y-2">
+                              <Label htmlFor="hubdigitalSource">Fonte Lead (opzionale)</Label>
+                              <Input
+                                id="hubdigitalSource"
+                                value={hubdigitalFormData.defaultSource}
+                                onChange={(e) => setHubdigitalFormData({ ...hubdigitalFormData, defaultSource: e.target.value })}
+                                placeholder="es. facebook-ads, google-ads, landing-page"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Se impostato, sovrascrive la fonte inviata da Hubdigital
+                              </p>
+                            </div>
+
                             <div className="flex items-center gap-3 pt-6">
                               <Switch
                                 id="hubdigitalIsActive"
@@ -3682,7 +3807,7 @@ export default function ConsultantApiKeysUnified() {
                                 setIsCreatingNewConfig(false);
                                 setSelectedWebhookConfigId(null);
                                 setIsDuplicating(false);
-                                setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
+                                setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", defaultSource: "", isActive: true });
                               }}
                               className="flex-1"
                             >
@@ -3696,6 +3821,7 @@ export default function ConsultantApiKeysUnified() {
                                     configName: hubdigitalFormData.configName,
                                     agentConfigId: hubdigitalFormData.agentConfigId,
                                     targetCampaignId: hubdigitalFormData.targetCampaignId,
+                                    defaultSource: hubdigitalFormData.defaultSource || null,
                                     isActive: hubdigitalFormData.isActive,
                                   });
                                 } else {
@@ -3703,6 +3829,7 @@ export default function ConsultantApiKeysUnified() {
                                     configName: hubdigitalFormData.configName || "Nuova Configurazione",
                                     agentConfigId: hubdigitalFormData.agentConfigId,
                                     targetCampaignId: hubdigitalFormData.targetCampaignId,
+                                    defaultSource: hubdigitalFormData.defaultSource || null,
                                     isActive: hubdigitalFormData.isActive,
                                   });
                                 }
@@ -3829,6 +3956,7 @@ export default function ConsultantApiKeysUnified() {
                                               configName: config.configName || config.displayName || "",
                                               agentConfigId: config.agentConfigId || "",
                                               targetCampaignId: config.targetCampaignId || "",
+                                              defaultSource: config.defaultSource || "",
                                               isActive: config.isActive,
                                             });
                                           }}
@@ -3847,6 +3975,7 @@ export default function ConsultantApiKeysUnified() {
                                               configName: (config.configName || config.displayName || "Config") + " (Copia)",
                                               agentConfigId: config.agentConfigId || "",
                                               targetCampaignId: config.targetCampaignId || "",
+                                              defaultSource: config.defaultSource || "",
                                               isActive: true,
                                             });
                                           }}
@@ -3943,10 +4072,28 @@ export default function ConsultantApiKeysUnified() {
                             </Select>
                           </div>
 
+                          {/* Source Override Warning */}
+                          {(() => {
+                            const testConfig = selectedTestConfigId 
+                              ? hubdigitalConfigs.find((c: any) => c.id === selectedTestConfigId)
+                              : hubdigitalConfigs[0];
+                            if (testConfig?.defaultSource) {
+                              return (
+                                <Alert className="bg-purple-50 border-purple-200">
+                                  <AlertCircle className="h-4 w-4 text-purple-600" />
+                                  <AlertDescription className="text-sm text-purple-800">
+                                    <strong>Nota:</strong> Questa configurazione ha una fonte predefinita "{testConfig.defaultSource}" che sovrascriverà il campo Fonte del test.
+                                  </AlertDescription>
+                                </Alert>
+                              );
+                            }
+                            return null;
+                          })()}
+
                           <Alert className="bg-orange-50 border-orange-200">
                             <AlertCircle className="h-4 w-4 text-orange-600" />
                             <AlertDescription className="text-sm text-orange-800">
-                              Usa questo form per inviare un lead di test. Il lead verrà creato esattamente come se provenisse da Hubdigital.io
+                              Simula l'invio di un lead da Hubdigital.io. Il lead verrà creato esattamente come se provenisse dal CRM esterno.
                             </AlertDescription>
                           </Alert>
 
@@ -4005,7 +4152,7 @@ export default function ConsultantApiKeysUnified() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="testSource">Fonte</Label>
+                              <Label htmlFor="testSource">Fonte (payload)</Label>
                               <Input
                                 id="testSource"
                                 value={hubdigitalTestData.source}
@@ -4013,6 +4160,65 @@ export default function ConsultantApiKeysUnified() {
                                 placeholder="hubdigital-test"
                               />
                             </div>
+                          </div>
+
+                          {/* Custom Fields Editor */}
+                          <div className="space-y-3 pt-2 border-t">
+                            <Label className="text-sm font-medium">Custom Fields (opzionale)</Label>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="ID Campo (es. campo_xyz123)"
+                                value={hubdigitalTestData.customFieldKey}
+                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, customFieldKey: e.target.value }))}
+                                className="flex-1"
+                              />
+                              <Input
+                                placeholder="Valore"
+                                value={hubdigitalTestData.customFieldValue}
+                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, customFieldValue: e.target.value }))}
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (hubdigitalTestData.customFieldKey.trim() && hubdigitalTestData.customFieldValue.trim()) {
+                                    setHubdigitalTestData(prev => ({
+                                      ...prev,
+                                      customFields: [...prev.customFields, { id: prev.customFieldKey.trim(), value: prev.customFieldValue.trim() }],
+                                      customFieldKey: "",
+                                      customFieldValue: "",
+                                    }));
+                                  }
+                                }}
+                                disabled={!hubdigitalTestData.customFieldKey.trim() || !hubdigitalTestData.customFieldValue.trim()}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            {hubdigitalTestData.customFields.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {hubdigitalTestData.customFields.map((cf, idx) => (
+                                  <Badge 
+                                    key={idx} 
+                                    variant="secondary" 
+                                    className="bg-purple-100 text-purple-800 cursor-pointer hover:bg-red-100 hover:text-red-800"
+                                    onClick={() => {
+                                      setHubdigitalTestData(prev => ({
+                                        ...prev,
+                                        customFields: prev.customFields.filter((_, i) => i !== idx)
+                                      }));
+                                    }}
+                                  >
+                                    {cf.id}: {cf.value} ✕
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Aggiungi campi personalizzati come li invierebbe Hubdigital. Clicca su un badge per rimuoverlo.
+                            </p>
                           </div>
 
                           <Button

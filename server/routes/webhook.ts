@@ -120,7 +120,8 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     } else {
       console.log(`✅ [WEBHOOK] Using configured agent: ${agentConfigId}`);
     }
-    const source = payload.source || 'hubdigital';
+    // Use configured defaultSource if set, otherwise use payload source or default to 'hubdigital'
+    const source = webhookConfig.defaultSource || payload.source || 'hubdigital';
 
     const leadInfo: {
       obiettivi?: string;

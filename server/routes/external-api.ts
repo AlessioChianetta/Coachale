@@ -455,11 +455,21 @@ router.patch('/webhook-configs/:id', authenticateToken, requireRole('consultant'
     const consultantId = req.user!.id;
     const configId = req.params.id;
 
-    const { displayName, targetCampaignId, isActive } = req.body;
-    const updates: { displayName?: string; targetCampaignId?: string; isActive?: boolean } = {};
+    const { displayName, configName, agentConfigId, targetCampaignId, defaultSource, isActive } = req.body;
+    const updates: { 
+      displayName?: string; 
+      configName?: string;
+      agentConfigId?: string | null;
+      targetCampaignId?: string | null; 
+      defaultSource?: string | null;
+      isActive?: boolean 
+    } = {};
     
     if (displayName !== undefined) updates.displayName = displayName;
+    if (configName !== undefined) updates.configName = configName;
+    if (agentConfigId !== undefined) updates.agentConfigId = agentConfigId;
     if (targetCampaignId !== undefined) updates.targetCampaignId = targetCampaignId;
+    if (defaultSource !== undefined) updates.defaultSource = defaultSource;
     if (isActive !== undefined) updates.isActive = isActive;
 
     const config = await storage.updateWebhookConfig(configId, consultantId, updates);

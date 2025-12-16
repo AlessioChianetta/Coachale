@@ -1,0 +1,204 @@
+Dati comunicati via Webhook da Hubdigital.io
+STRUTTURA GENERALE DEL PAYLOAD
+{
+  "type": "",
+  "locationId": "",
+  "id": "",
+  "firstName": "",
+  "lastName": "",
+  "name": "",
+  "email": "",
+  "phone": "",
+  "address1": "",
+  "city": "",
+  "state": "",
+  "postalCode": "",
+  "country": "",
+  "companyName": "",
+  "website": "",
+  "dateOfBirth": "",
+  "source": "",
+  "assignedTo": "",
+  "dateAdded": "",
+  "tags": [],
+  "customFields": [],
+  "attachments": [],
+  "dnd": false,
+  "dndSettings": {}
+}
+
+
+
+1. METADATI DELL’EVENTO
+Campo
+Tipo
+Descrizione
+type
+string
+Tipo evento (ContactCreate, ContactUpdate, ContactDelete, ContactTagUpdate, ContactDndUpdate)
+locationId
+string
+ID della location (sub-account GHL)
+id
+string
+ID univoco del contatto
+
+
+2. DATI ANAGRAFICI CONTATTO
+Campo
+Tipo
+Descrizione
+firstName
+string
+Nome
+lastName
+string
+Cognome
+name
+string
+Nome completo (quando disponibile)
+dateOfBirth
+string (ISO)
+Data di nascita
+
+
+3. DATI DI CONTATTO
+Campo
+Tipo
+Descrizione
+email
+string
+Email principale
+phone
+string
+Numero di telefono
+address1
+string
+Indirizzo
+city
+string
+Città
+state
+string
+Provincia / Stato
+postalCode
+string
+CAP
+country
+string
+Paese (es. IT, DE)
+
+
+4. DATI AZIENDALI (B2B)
+Campo
+Tipo
+Descrizione
+companyName
+string
+Nome azienda
+website
+string
+Sito web
+
+
+5. METADATI CRM
+Campo
+Tipo
+Descrizione
+source
+string
+Origine contatto (form, funnel, import, ecc.)
+assignedTo
+string
+ID utente assegnato
+dateAdded
+string (ISO)
+Data creazione contatto
+tags
+array[string]
+Tag associati
+attachments
+array
+Allegati (quasi sempre array vuoto)
+
+
+6. CUSTOM FIELDS (FONDAMENTALE)
+"customFields": [
+  {
+    "id": "xxxx",
+    "value": "yyyy"
+  }
+]
+
+Campo
+Tipo
+Descrizione
+customFields[].id
+string
+ID del campo personalizzato
+customFields[].value
+any
+Valore del campo (string, numero, boolean, array)
+
+Non viene mai passato il nome del campo, solo l’ID.
+
+7. PRIVACY – DND (Do Not Disturb)
+Campo base (sempre presente)
+Campo
+Tipo
+Descrizione
+dnd
+boolean
+True se almeno un canale è in DND
+
+
+SOLO PER EVENTO ContactDndUpdate
+"dndSettings": {
+  "SMS": {
+    "status": "active",
+    "message": "User unsubscribed",
+    "code": "UNSUBSCRIBED"
+  },
+  "Email": {...},
+  "WhatsApp": {...},
+  "Call": {...},
+  "FB": {...},
+  "GMB": {...}
+}
+
+Campo
+Tipo
+dndSettings.SMS.status
+string
+dndSettings.SMS.message
+string
+dndSettings.SMS.code
+string
+dndSettings.Email.status
+string
+dndSettings.WhatsApp.status
+string
+dndSettings.Call.status
+string
+dndSettings.FB.status
+string
+dndSettings.GMB.status
+string
+
+(stessa struttura per ogni canale)
+
+8. CAMPI NON INCLUSI (IMPORTANTE)
+Questi NON vengono mai passati via webhook:
+pipeline
+stage
+opportunity
+conversationId
+messaggi
+appointment
+eventi calendario
+note
+owner name (solo ID)
+nome custom field
+Per questi serve API call successiva.
+
+

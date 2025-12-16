@@ -3214,6 +3214,9 @@ export const webhookConfigs = pgTable("webhook_configs", {
   // Mapping to Marketing Campaign (optional)
   targetCampaignId: varchar("target_campaign_id").references(() => marketingCampaigns.id, { onDelete: "set null" }),
   
+  // Default source to override payload source (if set, ignores payload.source)
+  defaultSource: text("default_source"),
+  
   // Status & Tracking
   isActive: boolean("is_active").default(true).notNull(),
   lastWebhookAt: timestamp("last_webhook_at"), // Last webhook received timestamp
