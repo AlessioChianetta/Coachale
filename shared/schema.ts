@@ -5325,6 +5325,10 @@ export const followupAiEvaluationLog = pgTable("followup_ai_evaluation_log", {
   reasoning: text("reasoning").notNull(),
   confidenceScore: real("confidence_score").notNull(),
   
+  // System rule matching (if a deterministic rule was applied instead of AI)
+  matchedRuleId: varchar("matched_rule_id"),
+  matchedRuleReason: text("matched_rule_reason"),
+  
   // Outcome tracking (filled later)
   wasExecuted: boolean("was_executed").default(false).notNull(),
   leadReplied: boolean("lead_replied"),

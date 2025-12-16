@@ -49,6 +49,9 @@ import { AutomationRulesList } from "@/components/automations/AutomationRulesLis
 import { TemplatesGrid } from "@/components/automations/TemplatesGrid";
 import { AnalyticsDashboard } from "@/components/automations/AnalyticsDashboard";
 import { SystemRulesViewer } from "@/components/automations/SystemRulesViewer";
+import { AutomationDashboard } from "@/components/automations/AutomationDashboard";
+import { DecisionFlowDiagram } from "@/components/automations/DecisionFlowDiagram";
+import { LiveActivityFeed } from "@/components/automations/LiveActivityFeed";
 import { Link } from "wouter";
 
 function AutomationFlowVisual() {
@@ -715,14 +718,45 @@ export default function ConsultantAutomationsPage() {
               </p>
             </div>
 
-            <ContextualGuide />
-            <FullFlowGuide />
+            {/* Dashboard Statistiche - Sempre visibile */}
+            <div className="mb-6">
+              <AutomationDashboard />
+            </div>
 
-            <Tabs defaultValue="pipeline" className="w-full">
+            {/* Flusso Decisionale - Collassabile */}
+            <Collapsible className="mb-6">
+              <Card className="border-blue-200 bg-blue-50/30 dark:bg-blue-950/20 dark:border-blue-800">
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="cursor-pointer hover:bg-blue-100/50 dark:hover:bg-blue-900/30 transition-colors pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Zap className="h-5 w-5 text-blue-600" />
+                        <CardTitle className="text-lg">Come Funziona il Sistema</CardTitle>
+                      </div>
+                      <Button variant="ghost" size="sm" className="gap-1">
+                        <ChevronDown className="h-4 w-4" />
+                        <span className="text-sm">Mostra flusso</span>
+                      </Button>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <DecisionFlowDiagram />
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+
+            <Tabs defaultValue="monitoraggio" className="w-full">
               <TabsList className="flex flex-wrap justify-start gap-1 h-auto p-1 mb-6 bg-muted/50">
+                <TabsTrigger value="monitoraggio" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Target className="h-4 w-4" />
+                  <span className="hidden sm:inline">Monitoraggio Live</span>
+                </TabsTrigger>
                 <TabsTrigger value="pipeline" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <KanbanSquare className="h-4 w-4" />
-                  <span className="hidden sm:inline">Conversazioni</span>
+                  <span className="hidden sm:inline">Pipeline</span>
                 </TabsTrigger>
                 <TabsTrigger value="regole" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <Settings className="h-4 w-4" />
@@ -736,11 +770,24 @@ export default function ConsultantAutomationsPage() {
                   <BarChart className="h-4 w-4" />
                   <span className="hidden sm:inline">Analytics</span>
                 </TabsTrigger>
-                <TabsTrigger value="ai-logs" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <Brain className="h-4 w-4" />
-                  <span className="hidden sm:inline">Log AI</span>
-                </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="monitoraggio">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-green-600" />
+                      Attività in Tempo Reale
+                    </CardTitle>
+                    <CardDescription>
+                      Monitora cosa sta succedendo con ogni lead: valutazioni AI, messaggi inviati, errori e decisioni
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <LiveActivityFeed />
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
               <TabsContent value="pipeline">
                 <PipelineKanban />
@@ -759,10 +806,6 @@ export default function ConsultantAutomationsPage() {
 
               <TabsContent value="analytics">
                 <AnalyticsDashboard />
-              </TabsContent>
-
-              <TabsContent value="ai-logs">
-                <AILogsViewer />
               </TabsContent>
             </Tabs>
           </div>

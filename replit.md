@@ -117,3 +117,14 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Fathom**: AI-powered consultation recording and transcription.
 - **Driver.js**: Interactive guided tours and onboarding.
 - **Twilio API**: WhatsApp Business messaging.
+
+# Recent Changes
+## December 16, 2025 - Automations Page Restructure
+- **New Dashboard Component** (`AutomationDashboard.tsx`): 5-card stats display showing conversations awaiting follow-up, sent today, scheduled 24h, blocked leads, and errors.
+- **Decision Flow Diagram** (`DecisionFlowDiagram.tsx`): Visual representation of the 6-rule priority system (P100-P95) with AI fallback decision making.
+- **Live Activity Feed** (`LiveActivityFeed.tsx`): Real-time timeline of AI evaluations and message events, grouped by conversation with filtering.
+- **New Backend Endpoints**:
+  - `GET /api/followup/dashboard-stats`: Aggregated consultant-scoped statistics
+  - `GET /api/followup/activity-log`: Combined AI logs and message events with timeline grouping
+- **Schema Update**: Added `matchedRuleId` and `matchedRuleReason` to `followup_ai_evaluation_log` table for rule-tracking
+- **UI Reorganization**: Default tab changed to "Monitoraggio Live", added collapsible system flow diagram
