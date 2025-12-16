@@ -134,6 +134,19 @@ export default function ConsultantCampaignsPage() {
 
   const { data: externalApiConfigs } = useExternalApiConfigs();
 
+  const { data: webhookConfigs } = useQuery({
+    queryKey: ["/api/external-api/webhook-configs"],
+    queryFn: async () => {
+      const response = await fetch("/api/external-api/webhook-configs", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data.data || [];
+    },
+  });
+  const hubdigitalConfig = webhookConfigs?.find((c: any) => c.providerName === "hubdigital");
+
   const agents: WhatsAppAgent[] = agentsData?.configs || [];
   const templates: CustomTemplate[] = templatesData?.data || [];
 
@@ -240,12 +253,6 @@ export default function ConsultantCampaignsPage() {
   const isSetupComplete = hasActiveAgent && hasTemplates;
 
   const externalSources = [
-    { 
-      name: "HubSpot", 
-      icon: "🟠", 
-      status: "coming_soon" as const,
-      description: "CRM e Marketing Automation"
-    },
     { 
       name: "Pipedrive", 
       icon: "🟢", 
@@ -557,7 +564,9 @@ export default function ConsultantCampaignsPage() {
                           <Database className="h-5 w-5" />
                         </div>
                         <div className="flex-1 min-w-0 space-y-1">
-                          <p className="font-medium text-sm truncate">{config.configName}</p>
+                          <p className="font-medium text-sm truncate">
+                            {config.configName && config.configName !== "API CRM Personalizzata" ? config.configName : "CrmAle"}
+                          </p>
                           <div className="flex items-center gap-2 flex-wrap text-xs">
                             <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
                               <CheckCircle2 className="h-3 w-3" />
@@ -620,10 +629,70 @@ export default function ConsultantCampaignsPage() {
                         <Database className="h-5 w-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm">API CRM Personalizzata</p>
-                        <p className="text-xs text-muted-foreground">Non configurato</p>
+                        <p className="font-medium text-sm">CrmAle</p>
+                        <p className="text-xs text-muted-foreground">Polling non configurato</p>
                       </div>
                       <Link href="/consultant/knowledge/apis">
+                        <Button variant="outline" size="sm">
+                          Configura
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+
+                  {hubdigitalConfig?.isActive ? (
+                    <div className="flex items-start gap-3 p-4 rounded-lg border bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800/30">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500 text-white shrink-0">
+                        <Plug className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <p className="font-medium text-sm truncate">Hubdigital.io</p>
+                        <div className="flex items-center gap-2 flex-wrap text-xs">
+                          <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Connesso
+                          </span>
+                          <span className="text-muted-foreground">|</span>
+                          <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                            <Zap className="h-3 w-3" />
+                            Webhook Push
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>Lead ricevuti: {hubdigitalConfig.totalLeadsReceived || 0}</span>
+                          {hubdigitalConfig.lastLeadReceivedAt && (
+                            <>
+                              <span className="text-muted-foreground">|</span>
+                              <span>
+                                Ultimo:{" "}
+                                {new Date(hubdigitalConfig.lastLeadReceivedAt).toLocaleString("it-IT", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Link href="/consultant/knowledge/apis?tab=lead-import">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <Plug className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">Hubdigital.io</p>
+                        <p className="text-xs text-muted-foreground">Webhook non configurato</p>
+                      </div>
+                      <Link href="/consultant/knowledge/apis?tab=lead-import">
                         <Button variant="outline" size="sm">
                           Configura
                         </Button>

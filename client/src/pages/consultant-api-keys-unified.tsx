@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   Bot, Key, Mail, MessageSquare, Server, Cloud, Sparkles, Save, 
   AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
   RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
-  BookOpen, ChevronDown, Shield
+  BookOpen, ChevronDown, Shield, Database, Plug, Copy, Check
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
@@ -431,6 +431,7 @@ export default function ConsultantApiKeysUnified() {
   const [showLeadApiKey, setShowLeadApiKey] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [leadImportConfigId, setLeadImportConfigId] = useState<string | null>(null);
+  const [selectedIntegration, setSelectedIntegration] = useState<"crmale" | "hubdigital">("crmale");
   const [leadImportFormData, setLeadImportFormData] = useState({
     configName: "Importazione Lead",
     apiKey: "",
@@ -444,6 +445,13 @@ export default function ConsultantApiKeysUnified() {
     pollingEnabled: false,
     isActive: true,
   });
+
+  // Hubdigital Webhook state
+  const [hubdigitalFormData, setHubdigitalFormData] = useState({
+    displayName: "Hubdigital.io",
+    targetCampaignId: "",
+  });
+  const [hubdigitalCopied, setHubdigitalCopied] = useState(false);
 
   const { data: vertexAiData, isLoading: isLoadingVertex } = useQuery({
     queryKey: ["/api/vertex-ai/settings"],
@@ -585,6 +593,147 @@ export default function ConsultantApiKeysUnified() {
 
   const campaigns = campaignsData?.campaigns || [];
   const existingLeadConfig = leadImportConfigs && leadImportConfigs.length > 0 ? leadImportConfigs[0] : null;
+
+  const { data: webhookConfigs } = useQuery({
+    queryKey: ["/api/external-api/webhook-configs"],
+    queryFn: async () => {
+      const response = await fetch("/api/external-api/webhook-configs", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return data.data || [];
+    },
+  });
+  const hubdigitalConfig = webhookConfigs?.find((c: any) => c.providerName === "hubdigital");
+
+  // Hubdigital Webhook mutations
+  const createHubdigitalMutation = useMutation({
+    mutationFn: async (data: { displayName: string; targetCampaignId: string }) => {
+      const response = await fetch("/api/external-api/webhook-configs", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          providerName: "hubdigital",
+          displayName: data.displayName,
+          targetCampaignId: data.targetCampaignId,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante la creazione del webhook");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Webhook Attivato",
+        description: "La configurazione Hubdigital.io è stata creata con successo",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateHubdigitalMutation = useMutation({
+    mutationFn: async (data: { id: string; targetCampaignId?: string; isActive?: boolean }) => {
+      const response = await fetch(`/api/external-api/webhook-configs/${data.id}`, {
+        method: "PUT",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          targetCampaignId: data.targetCampaignId,
+          isActive: data.isActive,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante l'aggiornamento");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Configurazione Aggiornata",
+        description: "Le modifiche sono state salvate",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const regenerateHubdigitalKeyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/external-api/webhook-configs/${id}/regenerate-key`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante la rigenerazione della chiave");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Chiave Rigenerata",
+        description: "La nuova chiave webhook è stata generata. Aggiorna l'URL nel tuo sistema esterno.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteHubdigitalMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/external-api/webhook-configs/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Errore durante l'eliminazione");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Webhook Eliminato",
+        description: "La configurazione Hubdigital.io è stata rimossa",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: pendingLeads, isLoading: pendingLeadsLoading } = useQuery({
     queryKey: ['/api/proactive-leads', { status: 'pending' }],
@@ -2619,20 +2768,100 @@ export default function ConsultantApiKeysUnified() {
 
               {/* Lead Import Tab Content */}
               <TabsContent value="lead-import">
-                <Alert className="mb-6 bg-orange-50 border-orange-200">
-                  <Server className="h-5 w-5" />
-                  <AlertDescription className="text-sm">
-                    <strong>Importazione Automatica Lead da API Esterna</strong>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>Connetti il tuo CRM/sistema esterno per importare lead automaticamente</li>
-                      <li>Polling automatico: controlla nuovi lead ogni X minuti</li>
-                      <li>Lead vengono schedulati per contatto WhatsApp proattivo</li>
-                      <li>Filtra per tipo, sorgente, campagna per importare solo lead rilevanti</li>
-                    </ul>
-                  </AlertDescription>
-                </Alert>
+                {/* Integration Selector Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  {/* CrmAle Card */}
+                  <Card 
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                      selectedIntegration === "crmale" 
+                        ? "border-2 border-blue-500 bg-blue-50/50 shadow-md" 
+                        : "border border-gray-200 bg-white hover:border-blue-300"
+                    }`}
+                    onClick={() => setSelectedIntegration("crmale")}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${selectedIntegration === "crmale" ? "bg-blue-100" : "bg-blue-50"}`}>
+                            <Database className="h-6 w-6 text-blue-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">CrmAle</h3>
+                            <p className="text-sm text-gray-500">Importazione automatica via API</p>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={existingLeadConfig 
+                            ? "bg-green-50 text-green-700 border-green-300" 
+                            : "bg-gray-50 text-gray-500 border-gray-300"
+                          }
+                        >
+                          {existingLeadConfig ? "Connesso" : "Da configurare"}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                        <Clock className="h-3 w-3" />
+                        <span>Polling ogni {leadImportFormData.pollingIntervalMinutes} minuti</span>
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                <div className="space-y-4 sm:space-y-6">
+                  {/* Hubdigital.io Card */}
+                  <Card 
+                    className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                      selectedIntegration === "hubdigital" 
+                        ? "border-2 border-green-500 bg-green-50/50 shadow-md" 
+                        : "border border-gray-200 bg-white hover:border-green-300"
+                    }`}
+                    onClick={() => setSelectedIntegration("hubdigital")}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${selectedIntegration === "hubdigital" ? "bg-green-100" : "bg-green-50"}`}>
+                            <Plug className="h-6 w-6 text-green-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">Hubdigital.io</h3>
+                            <p className="text-sm text-gray-500">Ricezione lead via Webhook</p>
+                          </div>
+                        </div>
+                        <Badge 
+                          variant="outline" 
+                          className={hubdigitalConfig 
+                            ? "bg-green-50 text-green-700 border-green-300" 
+                            : "bg-gray-50 text-gray-500 border-gray-300"
+                          }
+                        >
+                          {hubdigitalConfig ? "Connesso" : "Da configurare"}
+                        </Badge>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+                        <Sparkles className="h-3 w-3" />
+                        <span>Push istantaneo</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* CrmAle Configuration */}
+                {selectedIntegration === "crmale" && (
+                  <>
+                    <Alert className="mb-6 bg-orange-50 border-orange-200">
+                      <Server className="h-5 w-5" />
+                      <AlertDescription className="text-sm">
+                        <strong>Importazione Automatica Lead da API Esterna</strong>
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>Connetti il tuo CRM/sistema esterno per importare lead automaticamente</li>
+                          <li>Polling automatico: controlla nuovi lead ogni X minuti</li>
+                          <li>Lead vengono schedulati per contatto WhatsApp proattivo</li>
+                          <li>Filtra per tipo, sorgente, campagna per importare solo lead rilevanti</li>
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="space-y-4 sm:space-y-6">
                   {/* Sezione 1: Stato Importazione */}
                   <Card className="border-0 shadow-xl bg-gradient-to-br from-blue-50 to-cyan-50 backdrop-blur-sm">
                     <CardHeader>
@@ -3086,7 +3315,299 @@ export default function ConsultantApiKeysUnified() {
                       )}
                     </CardContent>
                   </Card>
-                </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Hubdigital.io Configuration */}
+                {selectedIntegration === "hubdigital" && (
+                  <>
+                    <Alert className="mb-6 bg-green-50 border-green-200">
+                      <Sparkles className="h-5 w-5 text-green-600" />
+                      <AlertDescription className="text-sm text-green-800">
+                        <strong>Webhook Push Istantaneo</strong> - I lead vengono ricevuti in tempo reale non appena Hubdigital.io li invia, senza necessità di polling periodico.
+                      </AlertDescription>
+                    </Alert>
+
+                    {!hubdigitalConfig ? (
+                      <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 backdrop-blur-sm">
+                        <CardHeader>
+                          <div className="flex items-center gap-3">
+                            <div className="p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl">
+                              <Plug className="h-6 w-6 text-green-600" />
+                            </div>
+                            <div>
+                              <CardTitle>Configura Webhook Hubdigital.io</CardTitle>
+                              <CardDescription>
+                                Crea un endpoint webhook per ricevere lead da Hubdigital.io
+                              </CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="hubdigitalDisplayName">Nome visualizzato</Label>
+                            <Input
+                              id="hubdigitalDisplayName"
+                              value={hubdigitalFormData.displayName}
+                              onChange={(e) => setHubdigitalFormData({ ...hubdigitalFormData, displayName: e.target.value })}
+                              placeholder="Hubdigital.io"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="hubdigitalCampaign">Campagna di destinazione *</Label>
+                            <Select
+                              value={hubdigitalFormData.targetCampaignId}
+                              onValueChange={(value) => setHubdigitalFormData({ ...hubdigitalFormData, targetCampaignId: value })}
+                            >
+                              <SelectTrigger id="hubdigitalCampaign">
+                                <SelectValue placeholder="Seleziona una campagna" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {campaignsLoading ? (
+                                  <div className="p-2 text-sm text-muted-foreground">Caricamento...</div>
+                                ) : campaigns.length === 0 ? (
+                                  <div className="p-2 text-sm text-muted-foreground">
+                                    Nessuna campagna disponibile
+                                  </div>
+                                ) : (
+                                  campaigns.map((campaign: any) => (
+                                    <SelectItem key={campaign.id} value={campaign.id}>
+                                      {campaign.campaignName}
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Button
+                            onClick={() => createHubdigitalMutation.mutate({
+                              displayName: hubdigitalFormData.displayName || "Hubdigital.io",
+                              targetCampaignId: hubdigitalFormData.targetCampaignId,
+                            })}
+                            disabled={!hubdigitalFormData.targetCampaignId || createHubdigitalMutation.isPending}
+                            className="w-full bg-green-600 hover:bg-green-700"
+                          >
+                            {createHubdigitalMutation.isPending ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Attivazione in corso...
+                              </>
+                            ) : (
+                              <>
+                                <Plug className="h-4 w-4 mr-2" />
+                                Attiva Webhook
+                              </>
+                            )}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="space-y-4 sm:space-y-6">
+                        <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 backdrop-blur-sm">
+                          <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                              Stato Webhook
+                            </CardTitle>
+                            <CardDescription>Stato attuale del webhook Hubdigital.io</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <Label className="text-sm font-medium">Stato:</Label>
+                                <Badge
+                                  variant={hubdigitalConfig.isActive ? "default" : "secondary"}
+                                  className={
+                                    hubdigitalConfig.isActive
+                                      ? "bg-green-500 hover:bg-green-600"
+                                      : "bg-gray-500 hover:bg-gray-600"
+                                  }
+                                >
+                                  {hubdigitalConfig.isActive ? "Webhook Attivo" : "Webhook Inattivo"}
+                                </Badge>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                              <div className="bg-white/60 rounded-lg p-4">
+                                <p className="text-sm text-gray-500">Lead ricevuti totali</p>
+                                <p className="text-2xl font-bold text-green-700">
+                                  {hubdigitalConfig.totalLeadsReceived || 0}
+                                </p>
+                              </div>
+                              <div className="bg-white/60 rounded-lg p-4">
+                                <p className="text-sm text-gray-500">Ultimo lead ricevuto</p>
+                                <p className="text-lg font-medium text-gray-700">
+                                  {hubdigitalConfig.lastWebhookAt
+                                    ? new Date(hubdigitalConfig.lastWebhookAt).toLocaleString('it-IT', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })
+                                    : 'Nessun lead ricevuto'}
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                          <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <ExternalLink className="h-5 w-5 text-blue-600" />
+                              URL Webhook
+                            </CardTitle>
+                            <CardDescription>Endpoint per ricevere i lead da Hubdigital.io</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <Alert className="bg-blue-50 border-blue-200">
+                              <AlertCircle className="h-4 w-4 text-blue-600" />
+                              <AlertDescription className="text-sm text-blue-800">
+                                Fornisci questo URL al tuo cliente per ricevere i lead automaticamente da Hubdigital.io
+                              </AlertDescription>
+                            </Alert>
+
+                            <div className="space-y-2">
+                              <Label>URL Webhook</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  readOnly
+                                  value={`https://${window.location.host}/api/webhook/hubdigital/${hubdigitalConfig.secretKey}`}
+                                  className="font-mono text-sm bg-gray-50"
+                                />
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(
+                                      `https://${window.location.host}/api/webhook/hubdigital/${hubdigitalConfig.secretKey}`
+                                    );
+                                    setHubdigitalCopied(true);
+                                    setTimeout(() => setHubdigitalCopied(false), 2000);
+                                    toast({
+                                      title: "URL Copiato",
+                                      description: "L'URL webhook è stato copiato negli appunti",
+                                    });
+                                  }}
+                                  className="shrink-0"
+                                >
+                                  {hubdigitalCopied ? (
+                                    <Check className="h-4 w-4 text-green-600" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+
+                            <p className="text-sm text-muted-foreground">
+                              Il tuo cliente deve configurare questo URL su Hubdigital.io per l'evento <strong>ContactCreate</strong>
+                            </p>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                          <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <Server className="h-5 w-5 text-indigo-600" />
+                              Configurazione
+                            </CardTitle>
+                            <CardDescription>Modifica le impostazioni del webhook</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-6">
+                            <div className="space-y-2">
+                              <Label htmlFor="hubdigitalCampaignEdit">Campagna di destinazione</Label>
+                              <Select
+                                value={hubdigitalConfig.targetCampaignId}
+                                onValueChange={(value) => updateHubdigitalMutation.mutate({
+                                  id: hubdigitalConfig.id,
+                                  targetCampaignId: value,
+                                })}
+                              >
+                                <SelectTrigger id="hubdigitalCampaignEdit">
+                                  <SelectValue placeholder="Seleziona una campagna" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {campaignsLoading ? (
+                                    <div className="p-2 text-sm text-muted-foreground">Caricamento...</div>
+                                  ) : campaigns.length === 0 ? (
+                                    <div className="p-2 text-sm text-muted-foreground">
+                                      Nessuna campagna disponibile
+                                    </div>
+                                  ) : (
+                                    campaigns.map((campaign: any) => (
+                                      <SelectItem key={campaign.id} value={campaign.id}>
+                                        {campaign.campaignName}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="flex items-center justify-between py-3 border-t border-b">
+                              <div>
+                                <Label className="text-base">Webhook Attivo</Label>
+                                <p className="text-sm text-muted-foreground">
+                                  Attiva o disattiva la ricezione dei lead
+                                </p>
+                              </div>
+                              <Switch
+                                checked={hubdigitalConfig.isActive}
+                                onCheckedChange={(checked) => updateHubdigitalMutation.mutate({
+                                  id: hubdigitalConfig.id,
+                                  isActive: checked,
+                                })}
+                                disabled={updateHubdigitalMutation.isPending}
+                              />
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  if (confirm("Sei sicuro di voler rigenerare la chiave? Dovrai aggiornare l'URL nel sistema esterno.")) {
+                                    regenerateHubdigitalKeyMutation.mutate(hubdigitalConfig.id);
+                                  }
+                                }}
+                                disabled={regenerateHubdigitalKeyMutation.isPending}
+                                className="flex-1"
+                              >
+                                {regenerateHubdigitalKeyMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                )}
+                                Rigenera Chiave
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                onClick={() => {
+                                  if (confirm("Sei sicuro di voler eliminare questa configurazione webhook? I lead non verranno più ricevuti.")) {
+                                    deleteHubdigitalMutation.mutate(hubdigitalConfig.id);
+                                  }
+                                }}
+                                disabled={deleteHubdigitalMutation.isPending}
+                                className="flex-1"
+                              >
+                                {deleteHubdigitalMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                )}
+                                Elimina Webhook
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    )}
+                  </>
+                )}
               </TabsContent>
 
               {/* Video Meeting Tab Content */}
