@@ -1325,8 +1325,12 @@ async function evaluateConversation(
       fallbackMessageToUse = await generateFreeformFollowupMessage(context, candidate.consultantId);
       templateIdToUse = null;
     } else {
-      templateIdToUse = aiDecisionRule.templateId || decision.suggestedTemplateId || null;
+      // IMPORTANT: Preserve windowCheck.selectedTemplateId as FIRST priority - it contains the approved template found during validation
+      // Only fall back to rule/AI suggested templates if no approved template was found
+      templateIdToUse = windowCheck.selectedTemplateId || aiDecisionRule.templateId || decision.suggestedTemplateId || null;
       fallbackMessageToUse = aiDecisionRule.fallbackMessage || decision.suggestedMessage || null;
+      
+      console.log(`📋 [FOLLOWUP-SCHEDULER] Template selection: windowCheck=${windowCheck.selectedTemplateId || 'null'}, rule=${aiDecisionRule.templateId || 'null'}, ai=${decision.suggestedTemplateId || 'null'} → using: ${templateIdToUse || 'null (fallback)'}`);
     }
     
     await db.insert(scheduledFollowupMessages).values({
