@@ -25,9 +25,11 @@ import {
   evaluateFollowup, 
   logFollowupDecision, 
   updateConversationState,
+  selectBestTemplateWithAI,
   type FollowupContext,
   type FollowupDecision,
   type AIProvider,
+  type TemplateForSelection,
   createStudioProvider
 } from '../ai/followup-decision-engine';
 import { getAIProvider } from '../ai/provider-factory';
@@ -1324,13 +1326,53 @@ async function evaluateConversation(
       console.log(`⚡ [FOLLOWUP-SCHEDULER] Freeform message mode (pending short-window rule)`);
       fallbackMessageToUse = await generateFreeformFollowupMessage(context, candidate.consultantId);
       templateIdToUse = null;
-    } else {
-      // IMPORTANT: Preserve windowCheck.selectedTemplateId as FIRST priority - it contains the approved template found during validation
-      // Only fall back to rule/AI suggested templates if no approved template was found
-      templateIdToUse = windowCheck.selectedTemplateId || aiDecisionRule.templateId || decision.suggestedTemplateId || null;
+    } else if (windowCheck.willBeOutside24h && windowCheck.selectedTemplateId) {
+      // CRITICAL: Outside 24h window - MUST use the pre-validated approved template from windowCheck
+      // This template was already validated for 24h compliance, do not override with AI
+      templateIdToUse = windowCheck.selectedTemplateId;
       fallbackMessageToUse = aiDecisionRule.fallbackMessage || decision.suggestedMessage || null;
+      console.log(`🔒 [FOLLOWUP-SCHEDULER] Outside 24h window - using pre-validated template: ${templateIdToUse}`);
+    } else {
+      // Inside 24h window - use AI to select best template from all available approved templates
+      console.log(`🎯 [FOLLOWUP-SCHEDULER] Inside 24h window - using AI to select best template`);
       
-      console.log(`📋 [FOLLOWUP-SCHEDULER] Template selection: windowCheck=${windowCheck.selectedTemplateId || 'null'}, rule=${aiDecisionRule.templateId || 'null'}, ai=${decision.suggestedTemplateId || 'null'} → using: ${templateIdToUse || 'null (fallback)'}`);
+      try {
+        // Get all available approved templates for this agent
+        const allTemplates = await getAllApprovedTemplatesForAgent(candidate.agentConfigId);
+        
+        if (allTemplates.length === 0) {
+          // No templates available - this shouldn't happen as validate24hWindow already checked
+          throw new Error("No approved templates available for AI selection");
+        }
+        
+        // Use AI to select the best template based on conversation context
+        const aiSelection = await selectBestTemplateWithAI(
+          {
+            leadName: candidate.leadName || 'Lead',
+            currentState: candidate.currentState,
+            daysSilent: candidate.daysSilent,
+            lastMessages: context.lastMessages
+          },
+          allTemplates,
+          candidate.consultantId
+        );
+        
+        if (aiSelection.selectedTemplateId) {
+          templateIdToUse = aiSelection.selectedTemplateId;
+          console.log(`🤖 [FOLLOWUP-SCHEDULER] AI selected template: ${templateIdToUse}`);
+          console.log(`   Reasoning: ${aiSelection.reasoning}`);
+          console.log(`   Confidence: ${(aiSelection.confidence * 100).toFixed(0)}%`);
+        } else {
+          throw new Error("AI returned no template selection");
+        }
+        
+        fallbackMessageToUse = aiDecisionRule.fallbackMessage || decision.suggestedMessage || null;
+        
+      } catch (aiError) {
+        // AI selection failed - throw error (no fallback to priority as requested)
+        console.error(`❌ [FOLLOWUP-SCHEDULER] AI template selection failed:`, aiError);
+        throw aiError;
+      }
     }
     
     await db.insert(scheduledFollowupMessages).values({
@@ -1405,6 +1447,99 @@ async function getLastMessages(
     content: m.messageText,
     timestamp: m.createdAt?.toISOString() || new Date().toISOString(),
   }));
+}
+
+/**
+ * Gets all approved templates for an agent with full details for AI selection.
+ * Returns templates with name, goal, tone, and body text for context-aware selection.
+ */
+async function getAllApprovedTemplatesForAgent(
+  agentConfigId: string | null
+): Promise<TemplateForSelection[]> {
+  if (!agentConfigId) {
+    console.log(`⚠️ [TEMPLATE-AI] No agentConfigId provided`);
+    return [];
+  }
+  
+  console.log(`📋 [TEMPLATE-AI] Fetching all approved templates for agent: ${agentConfigId}`);
+  
+  const templates: TemplateForSelection[] = [];
+  
+  // STEP 1: Get Twilio templates (HX prefix) assigned to this agent
+  const twilioTemplates = await db
+    .select({ 
+      templateId: whatsappTemplateAssignments.templateId,
+      priority: whatsappTemplateAssignments.priority,
+      templateType: whatsappTemplateAssignments.templateType,
+      templateName: whatsappTemplateAssignments.templateName
+    })
+    .from(whatsappTemplateAssignments)
+    .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId))
+    .orderBy(desc(whatsappTemplateAssignments.priority));
+  
+  // Filter for Twilio templates (HX prefix)
+  const approvedTwilioTemplates = twilioTemplates.filter(t => 
+    t.templateId.startsWith('HX') && t.templateType === 'twilio'
+  );
+  
+  for (const t of approvedTwilioTemplates) {
+    templates.push({
+      id: t.templateId,
+      name: t.templateName || `Template ${t.templateId.substring(0, 8)}`,
+      goal: 'Follow-up WhatsApp', // Default goal for Twilio templates
+      tone: 'Professionale',
+      bodyText: `Template Twilio pre-approvato (Priority: ${t.priority})`,
+      priority: t.priority
+    });
+  }
+  
+  // STEP 2: Get custom templates with full details
+  const customTemplates = await db
+    .select({
+      templateId: whatsappCustomTemplates.id,
+      name: whatsappCustomTemplates.name,
+      description: whatsappCustomTemplates.description,
+      bodyText: whatsappCustomTemplates.bodyText,
+      useCase: whatsappCustomTemplates.useCase,
+      priority: whatsappTemplateAssignments.priority,
+      twilioStatus: whatsappTemplateVersions.twilioStatus,
+      twilioContentSid: whatsappTemplateVersions.twilioContentSid
+    })
+    .from(whatsappCustomTemplates)
+    .innerJoin(
+      whatsappTemplateAssignments,
+      eq(whatsappCustomTemplates.id, whatsappTemplateAssignments.templateId)
+    )
+    .leftJoin(
+      whatsappTemplateVersions,
+      and(
+        eq(whatsappTemplateVersions.templateId, whatsappCustomTemplates.id),
+        eq(whatsappTemplateVersions.isActive, true)
+      )
+    )
+    .where(
+      and(
+        eq(whatsappTemplateAssignments.agentConfigId, agentConfigId),
+        eq(whatsappTemplateVersions.twilioStatus, 'approved')
+      )
+    )
+    .orderBy(desc(whatsappTemplateAssignments.priority));
+  
+  for (const t of customTemplates) {
+    const templateIdToUse = t.twilioContentSid || t.templateId;
+    templates.push({
+      id: templateIdToUse,
+      name: t.name || 'Template personalizzato',
+      goal: t.useCase || t.description || 'Follow-up',
+      tone: 'Personalizzato',
+      bodyText: t.bodyText || '',
+      priority: t.priority || 0
+    });
+  }
+  
+  console.log(`📋 [TEMPLATE-AI] Found ${templates.length} templates for AI selection`);
+  
+  return templates;
 }
 
 async function generateFreeformFollowupMessage(

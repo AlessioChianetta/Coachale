@@ -170,9 +170,14 @@ function checkRuleCondition(rule: SystemRule, context: RuleEvaluationContext): {
       };
     
     case "recent_response_24h":
+      // IMPORTANT: Only match if the lead has ACTUALLY responded (hoursSinceLastInbound < 500 means there was a real inbound message)
+      // If hoursSinceLastInbound >= 500 (default is 999 when no inbound exists), the lead has NEVER responded
+      const leadHasActuallyResponded = context.hoursSinceLastInbound < 500 && context.lastMessageDirection === "inbound";
+      if (leadHasActuallyResponded) {
+        console.log(`🔍 [SYSTEM-RULES] recent_response_24h CHECK: hoursSinceLastInbound=${context.hoursSinceLastInbound.toFixed(1)}h, lastMessageDirection=${context.lastMessageDirection} → MATCHED`);
+      }
       return { 
-        matched: context.hoursSinceLastInbound < 24 && 
-                 context.lastMessageDirection === "inbound"
+        matched: leadHasActuallyResponded
       };
     
     default:

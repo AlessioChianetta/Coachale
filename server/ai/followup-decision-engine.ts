@@ -241,10 +241,12 @@ ISTRUZIONI:
 4. Se decidi di inviare, scegli il template più appropriato o suggerisci un messaggio personalizzato
 
 REGOLE DI DECISIONE:
-- "send_now": Invia subito se il momento è ottimale (lead caldo, segnali positivi)
-- "schedule": Programma per dopo se è troppo presto ma c'è potenziale
-- "skip": Salta questo ciclo se serve più tempo o ci sono dubbi
-- "stop": Ferma definitivamente i follow-up se il lead non è interessato
+- "send_now": Invia SUBITO se il momento è ottimale (lead caldo, segnali positivi, urgenza)
+- "schedule": PROGRAMMA per dopo (domani/settimana prossima). USA QUESTO quando vuoi mandare un follow-up ma NON ORA. Esempio: "oggi è troppo presto, programmo per domani" = schedule con urgency "tomorrow"
+- "skip": NON programmare nulla. USA SOLO se il lead sta già rispondendo attivamente, o se la conversazione è in corso e non serve follow-up. NON usare skip per "aspettare" - usa schedule invece!
+- "stop": Ferma DEFINITIVAMENTE i follow-up se il lead non è interessato, ha detto no, o è perso
+
+⚠️ IMPORTANTE: Se il primo messaggio è stato inviato oggi e vuoi aspettare prima di fare follow-up, USA "schedule" con urgency "tomorrow", MAI "skip". Skip significa che NON vuoi programmare affatto.
 
 RISPONDI IN FORMATO JSON:
 {
@@ -323,6 +325,187 @@ export async function logFollowupDecision(
     console.error("❌ [FOLLOWUP-ENGINE] Error logging decision:", error);
     // Non rilanciare l'errore - il logging non deve bloccare il flusso principale
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Function: selectBestTemplateWithAI
+// AI-powered template selection based on conversation context
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface TemplateForSelection {
+  id: string;
+  name: string;
+  goal: string;
+  tone: string;
+  bodyText: string;
+  priority: number;
+}
+
+export interface TemplateSelectionResult {
+  selectedTemplateId: string | null;
+  reasoning: string;
+  confidence: number;
+}
+
+/**
+ * Uses AI to select the best template based on conversation context.
+ * Analyzes the conversation history and available templates to pick the most appropriate one.
+ * 
+ * @param conversationContext - Summary of the conversation
+ * @param templates - Available templates for selection
+ * @param consultantId - The consultant ID for AI provider lookup
+ * @param maxRetries - Maximum retry attempts on error
+ */
+export async function selectBestTemplateWithAI(
+  conversationContext: {
+    leadName: string;
+    currentState: string;
+    daysSilent: number;
+    lastMessages: Array<{ role: string; content: string }>;
+  },
+  templates: TemplateForSelection[],
+  consultantId: string,
+  maxRetries: number = 3
+): Promise<TemplateSelectionResult> {
+  console.log(`🎯 [TEMPLATE-AI] Selecting best template for conversation with ${templates.length} options`);
+  
+  if (templates.length === 0) {
+    console.log(`⚠️ [TEMPLATE-AI] No templates available for selection`);
+    return {
+      selectedTemplateId: null,
+      reasoning: "Nessun template disponibile per la selezione",
+      confidence: 0
+    };
+  }
+  
+  if (templates.length === 1) {
+    console.log(`✅ [TEMPLATE-AI] Only one template available, using it directly: ${templates[0].id}`);
+    return {
+      selectedTemplateId: templates[0].id,
+      reasoning: "Unico template disponibile",
+      confidence: 1.0
+    };
+  }
+  
+  // Build template summaries for the prompt (optimized for tokens)
+  const templateSummaries = templates.map((t, index) => 
+    `${index + 1}. ID: "${t.id}"
+   Nome: "${t.name}"
+   Obiettivo: ${t.goal || 'Non specificato'}
+   Tono: ${t.tone || 'Professionale'}
+   Anteprima: "${t.bodyText.substring(0, 150)}..."`
+  ).join('\n\n');
+  
+  // Build conversation summary
+  const recentMessages = conversationContext.lastMessages
+    .slice(-5) // Only last 5 messages
+    .map(m => `[${m.role}]: ${m.content.substring(0, 200)}`)
+    .join('\n');
+  
+  const prompt = `Sei un esperto di vendita. Devi scegliere il MIGLIOR template per fare follow-up con questo lead.
+
+CONTESTO LEAD:
+- Nome: ${conversationContext.leadName || 'Non specificato'}
+- Stato: ${conversationContext.currentState}
+- Giorni senza risposta: ${conversationContext.daysSilent}
+
+ULTIMI MESSAGGI:
+${recentMessages || 'Nessun messaggio precedente'}
+
+TEMPLATE DISPONIBILI:
+${templateSummaries}
+
+ISTRUZIONI:
+1. Analizza il contesto della conversazione
+2. Valuta quale template è più appropriato per la situazione attuale
+3. Considera il tono, l'obiettivo e il momento della conversazione
+
+RISPONDI SOLO IN JSON:
+{
+  "selectedTemplateId": "ID del template scelto",
+  "reasoning": "Breve spiegazione in italiano del perché hai scelto questo template",
+  "confidence": 0.0-1.0
+}`;
+
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 [TEMPLATE-AI] Attempt ${attempt}/${maxRetries}`);
+      
+      const aiProvider = await getAIProvider(consultantId, consultantId);
+      
+      if (!aiProvider) {
+        throw new Error("No AI provider available");
+      }
+      
+      let responseText: string;
+      
+      if (aiProvider.type === 'vertex') {
+        const client = await createVertexGeminiClient(
+          aiProvider.projectId!,
+          aiProvider.location!,
+          aiProvider.credentials
+        );
+        
+        if (!client) {
+          throw new Error("Failed to create Vertex AI client");
+        }
+        
+        const result = await client.generateContent(prompt);
+        responseText = result.response?.text() || "";
+      } else {
+        const genAI = new GoogleGenAI({ apiKey: aiProvider.apiKey! });
+        const response = await genAI.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: prompt
+        });
+        responseText = response.text || "";
+      }
+      
+      // Parse JSON response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("No JSON found in AI response");
+      }
+      
+      const result = JSON.parse(jsonMatch[0]);
+      
+      // Validate the selected template exists
+      const selectedTemplate = templates.find(t => t.id === result.selectedTemplateId);
+      if (!selectedTemplate) {
+        console.warn(`⚠️ [TEMPLATE-AI] AI selected unknown template ID: ${result.selectedTemplateId}, falling back to first`);
+        return {
+          selectedTemplateId: templates[0].id,
+          reasoning: `AI ha suggerito un template non valido. Usando il template prioritario: ${templates[0].name}`,
+          confidence: 0.5
+        };
+      }
+      
+      console.log(`✅ [TEMPLATE-AI] Selected template: ${result.selectedTemplateId} (confidence: ${result.confidence})`);
+      console.log(`   Reasoning: ${result.reasoning}`);
+      
+      return {
+        selectedTemplateId: result.selectedTemplateId,
+        reasoning: result.reasoning || "Template selezionato dall'AI",
+        confidence: result.confidence || 0.8
+      };
+      
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`❌ [TEMPLATE-AI] Attempt ${attempt} failed:`, error);
+      
+      if (attempt < maxRetries) {
+        // Wait before retry with exponential backoff
+        const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`⏳ [TEMPLATE-AI] Waiting ${waitMs}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitMs));
+      }
+    }
+  }
+  
+  // All retries failed - throw error (no fallback to priority as requested)
+  throw new Error(`Template AI selection failed after ${maxRetries} attempts: ${lastError?.message}`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -461,10 +644,12 @@ function buildBatchPrompt(conversations: ConversationForEvaluation[]): string {
 ${conversationsData}
 
 REGOLE DECISIONE:
-- "send_now": Lead caldo con segnali positivi, momento ottimale
-- "schedule": Troppo presto ma potenziale, programma per dopo
-- "skip": Serve più tempo, dubbi, aspetta
-- "stop": Lead non interessato, ferma definitivamente
+- "send_now": Lead caldo con segnali positivi, momento ottimale per inviare ORA
+- "schedule": PROGRAMMA per dopo (domani/settimana). USA QUESTO quando vuoi mandare follow-up ma NON ora (es: "oggi è troppo presto" = schedule + tomorrow)
+- "skip": NON programmare nulla. USA SOLO se lead sta rispondendo attivamente o non serve follow-up
+- "stop": Lead non interessato, ferma DEFINITIVAMENTE
+
+⚠️ Se primo messaggio inviato oggi e vuoi aspettare = USA "schedule" + "tomorrow", MAI "skip"!
 
 RISPONDI IN JSON ARRAY (un oggetto per conversazione, IN ORDINE):
 [
