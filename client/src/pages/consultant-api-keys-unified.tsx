@@ -735,6 +735,90 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
+  // State per il test del webhook Hubdigital
+  const [hubdigitalTestData, setHubdigitalTestData] = useState({
+    firstName: "Mario",
+    lastName: "Rossi",
+    email: "mario.rossi@test.com",
+    phone: "+39 333 1234567",
+    companyName: "Test SRL",
+    source: "hubdigital-test",
+  });
+  const [hubdigitalTestResult, setHubdigitalTestResult] = useState<{
+    success: boolean;
+    message: string;
+    details?: any;
+  } | null>(null);
+  const [isTestingHubdigital, setIsTestingHubdigital] = useState(false);
+
+  const handleTestHubdigitalWebhook = async () => {
+    if (!hubdigitalConfig?.secretKey) return;
+    
+    setIsTestingHubdigital(true);
+    setHubdigitalTestResult(null);
+
+    try {
+      const payload = {
+        type: "ContactCreate",
+        firstName: hubdigitalTestData.firstName,
+        lastName: hubdigitalTestData.lastName,
+        email: hubdigitalTestData.email,
+        phone: hubdigitalTestData.phone,
+        companyName: hubdigitalTestData.companyName,
+        source: hubdigitalTestData.source,
+        dateAdded: new Date().toISOString(),
+        customFields: [],
+      };
+
+      const response = await fetch(`/api/webhook/hubdigital/${hubdigitalConfig.secretKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setHubdigitalTestResult({
+          success: true,
+          message: "Lead creato con successo!",
+          details: data,
+        });
+        toast({
+          title: "Test Riuscito",
+          description: `Lead di test creato con ID: ${data.leadId}`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/proactive-leads"] });
+      } else {
+        setHubdigitalTestResult({
+          success: false,
+          message: data.error || "Errore durante il test",
+          details: data,
+        });
+        toast({
+          title: "Test Fallito",
+          description: data.error || "Errore sconosciuto",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      setHubdigitalTestResult({
+        success: false,
+        message: error.message || "Errore di connessione",
+      });
+      toast({
+        title: "Errore",
+        description: "Impossibile contattare il webhook",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingHubdigital(false);
+    }
+  };
+
   const { data: pendingLeads, isLoading: pendingLeadsLoading } = useQuery({
     queryKey: ['/api/proactive-leads', { status: 'pending' }],
     queryFn: async () => {
@@ -3602,6 +3686,125 @@ export default function ConsultantApiKeysUnified() {
                                 Elimina Webhook
                               </Button>
                             </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card className="border-2 border-orange-200 shadow-xl bg-gradient-to-br from-orange-50 to-amber-50">
+                          <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <Sparkles className="h-5 w-5 text-orange-600" />
+                              Test Webhook
+                            </CardTitle>
+                            <CardDescription>Simula l'invio di un lead da Hubdigital.io per testare il webhook</CardDescription>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            <Alert className="bg-orange-50 border-orange-200">
+                              <AlertCircle className="h-4 w-4 text-orange-600" />
+                              <AlertDescription className="text-sm text-orange-800">
+                                Usa questo form per inviare un lead di test. Il lead verra creato esattamente come se provenisse da Hubdigital.io
+                              </AlertDescription>
+                            </Alert>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="testFirstName">Nome</Label>
+                                <Input
+                                  id="testFirstName"
+                                  value={hubdigitalTestData.firstName}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, firstName: e.target.value }))}
+                                  placeholder="Mario"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="testLastName">Cognome</Label>
+                                <Input
+                                  id="testLastName"
+                                  value={hubdigitalTestData.lastName}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, lastName: e.target.value }))}
+                                  placeholder="Rossi"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="testPhone" className="text-orange-700 font-medium">Telefono *</Label>
+                                <Input
+                                  id="testPhone"
+                                  value={hubdigitalTestData.phone}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, phone: e.target.value }))}
+                                  placeholder="+39 333 1234567"
+                                  className={!hubdigitalTestData.phone.trim() ? "border-red-400 focus:border-red-500" : ""}
+                                  required
+                                />
+                                {!hubdigitalTestData.phone.trim() ? (
+                                  <p className="text-xs text-red-500 font-medium">Campo obbligatorio</p>
+                                ) : (
+                                  <p className="text-xs text-gray-500">Cambia il numero per ogni test per evitare duplicati.</p>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="testEmail">Email</Label>
+                                <Input
+                                  id="testEmail"
+                                  type="email"
+                                  value={hubdigitalTestData.email}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, email: e.target.value }))}
+                                  placeholder="mario.rossi@test.com"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="testCompany">Azienda</Label>
+                                <Input
+                                  id="testCompany"
+                                  value={hubdigitalTestData.companyName}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, companyName: e.target.value }))}
+                                  placeholder="Test SRL"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="testSource">Fonte</Label>
+                                <Input
+                                  id="testSource"
+                                  value={hubdigitalTestData.source}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, source: e.target.value }))}
+                                  placeholder="hubdigital-test"
+                                />
+                              </div>
+                            </div>
+
+                            <Button
+                              onClick={handleTestHubdigitalWebhook}
+                              disabled={isTestingHubdigital || !hubdigitalTestData.phone.trim()}
+                              className="w-full bg-orange-600 hover:bg-orange-700"
+                            >
+                              {isTestingHubdigital ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Invio in corso...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-4 w-4 mr-2" />
+                                  Invia Lead di Test
+                                </>
+                              )}
+                            </Button>
+
+                            {hubdigitalTestResult && (
+                              <Alert className={hubdigitalTestResult.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}>
+                                {hubdigitalTestResult.success ? (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <XCircle className="h-4 w-4 text-red-600" />
+                                )}
+                                <AlertDescription className="text-sm">
+                                  <strong>{hubdigitalTestResult.success ? "Successo!" : "Errore:"}</strong> {hubdigitalTestResult.message}
+                                  {hubdigitalTestResult.details && (
+                                    <pre className="mt-2 p-2 bg-white/50 rounded text-xs overflow-auto max-h-32">
+                                      {JSON.stringify(hubdigitalTestResult.details, null, 2)}
+                                    </pre>
+                                  )}
+                                </AlertDescription>
+                              </Alert>
+                            )}
                           </CardContent>
                         </Card>
                       </div>
