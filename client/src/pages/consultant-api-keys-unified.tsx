@@ -360,8 +360,10 @@ export default function ConsultantApiKeysUnified() {
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     const tabParam = params.get('tab');
-    const validTabs = ['ai', 'client-ai', 'email', 'whatsapp', 'calendar', 'lead-import', 'video-meeting', 'twilio'];
-    if (tabParam && validTabs.includes(tabParam)) {
+    const validTabs = ['ai', 'client-ai', 'email', 'calendar', 'lead-import', 'video-meeting', 'twilio'];
+    if (tabParam === 'whatsapp') {
+      setActiveTab('twilio');
+    } else if (tabParam && validTabs.includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [searchParams]);
@@ -1471,14 +1473,10 @@ export default function ConsultantApiKeysUnified() {
                   <span className="hidden sm:inline">Email SMTP</span>
                   <span className="sm:hidden">Email</span>
                 </TabsTrigger>
-                <TabsTrigger value="whatsapp" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 text-xs sm:text-sm">
+                <TabsTrigger value="twilio" className="data-[state=active]:bg-green-100 data-[state=active]:text-green-700 text-xs sm:text-sm">
                   <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
-                  <span className="hidden sm:inline">WhatsApp AI</span>
-                  <span className="sm:hidden">WA AI</span>
-                </TabsTrigger>
-                <TabsTrigger value="twilio" className="data-[state=active]:bg-emerald-100 data-[state=active]:text-emerald-700 text-xs sm:text-sm">
-                  <MessageSquare className="h-4 w-4 mr-1 sm:mr-2" />
-                  Twilio
+                  <span className="hidden sm:inline">WhatsApp Twilio</span>
+                  <span className="sm:hidden">Twilio</span>
                 </TabsTrigger>
                 <TabsTrigger value="calendar" className="data-[state=active]:bg-cyan-100 data-[state=active]:text-cyan-700 text-xs sm:text-sm">
                   <Calendar className="h-4 w-4 mr-1 sm:mr-2" />
@@ -2378,57 +2376,6 @@ export default function ConsultantApiKeysUnified() {
                 </Card>
               </TabsContent>
 
-              {/* WhatsApp Tab Content */}
-              <TabsContent value="whatsapp">
-                <Alert className="mb-6 bg-green-50 border-green-200">
-                  <MessageSquare className="h-5 w-5" />
-                  <AlertDescription className="text-sm">
-                    <strong>Configurazione AI per Agenti WhatsApp</strong>
-                    <p className="mt-2">
-                      Gli agenti WhatsApp utilizzano automaticamente le credenziali AI configurate nel tab "AI Gemini".
-                    </p>
-                  </AlertDescription>
-                </Alert>
-
-                <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl">
-                        <MessageSquare className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div>
-                        <CardTitle>Credenziali AI WhatsApp</CardTitle>
-                        <CardDescription>
-                          Gli agenti WhatsApp usano le stesse credenziali AI del sistema principale
-                        </CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    <Alert className="bg-blue-50 border-blue-200">
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-sm text-blue-800">
-                        <strong>Sistema unificato:</strong> Gli agenti WhatsApp utilizzano:
-                        <ol className="list-decimal list-inside mt-2 space-y-1">
-                          <li><strong>Vertex AI</strong> (priorità massima - configurato nel tab AI Gemini)</li>
-                          <li><strong>Gemini API Keys</strong> (fallback automatico - configurate nel tab AI Gemini)</li>
-                        </ol>
-                      </AlertDescription>
-                    </Alert>
-
-                    <div className="flex items-center justify-center py-4">
-                      <Link href="/consultant/api-keys-unified?tab=ai">
-                        <Button variant="outline" className="gap-2">
-                          <Key className="h-4 w-4" />
-                          Vai alle Impostazioni AI
-                        </Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
               {/* Calendar Tab Content - Unified View */}
               <TabsContent value="calendar" className="space-y-6">
                 {/* Section 1: Connection Status Header */}
@@ -3234,6 +3181,138 @@ export default function ConsultantApiKeysUnified() {
 
               {/* Twilio Centralized Settings Tab Content */}
               <TabsContent value="twilio" className="space-y-6">
+                {/* Guida Setup Twilio + WhatsApp */}
+                <Card className="border-2 border-green-200 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-green-600 rounded-xl">
+                        <MessageSquare className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-green-900">📖 Guida Setup Twilio + WhatsApp Business</CardTitle>
+                        <CardDescription className="text-green-700">
+                          Collega il tuo numero di telefono italiano a WhatsApp Business tramite Twilio
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        <strong>Importante:</strong> Usa un numero di telefono italiano (TIM, Vodafone, Wind, Kena, Iliad, etc.) 
+                        da collegare a WhatsApp Business tramite Twilio. Non è necessario acquistare un numero virtuale su Twilio.
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="space-y-4 pl-4 border-l-4 border-green-300">
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            1
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-green-900">Crea un account Twilio</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Vai su <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">twilio.com/try-twilio</a> e registrati gratuitamente.
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">💡 L'account di prova include crediti gratuiti per iniziare</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            2
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-green-900">Ricarica il tuo account (consigliato: 20€)</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Vai su <a href="https://console.twilio.com/us1/billing/manage-billing/billing-overview" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Billing → Overview</a> e aggiungi credito
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">💰 Puoi iniziare con 20€ per testare il servizio</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            3
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-green-900">Registra il tuo numero WhatsApp</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Nel menu Twilio vai su: <a href="https://console.twilio.com/us1/develop/sms/senders/whatsapp-senders" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Messaging → Senders → WhatsApp Senders</a>
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              📱 Inserisci il tuo numero italiano (es: +39 350 xxx xxxx) e segui la procedura di verifica
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            4
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-green-900">Collega a Meta Business Manager (se richiesto)</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Se richiesto, vai su <a href="https://business.facebook.com/settings/" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Meta Business Suite</a> e verifica la tua azienda
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">⏳ La verifica aziendale può richiedere 1-3 giorni lavorativi</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            5
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-blue-900">Copia le credenziali API</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Vai su <a href="https://console.twilio.com/" target="_blank" rel="noopener" className="text-green-600 hover:text-green-800 underline font-medium">Console Twilio (Home)</a> e copia:
+                            </p>
+                            <div className="bg-slate-100 p-3 rounded-lg font-mono text-xs space-y-1 mt-2">
+                              <p><strong>Account SID:</strong> ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p>
+                              <p><strong>Auth Token:</strong> (clicca "Show" per visualizzarlo)</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                            6
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-emerald-900">Configura qui sotto</p>
+                            <p className="text-sm text-gray-700 mt-1">
+                              Incolla le credenziali nei campi qui sotto e salva la configurazione
+                            </p>
+                            <p className="text-xs text-emerald-700 mt-2 font-semibold">✅ Clicca "Salva Configurazione" e il sistema è pronto!</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Alert className="bg-yellow-50 border-yellow-200 mt-4">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-sm text-yellow-800">
+                        <strong>⚠️ Costi indicativi:</strong> Twilio addebita circa 0,005€ per messaggio WhatsApp inviato/ricevuto. 
+                        Con 20€ puoi gestire circa 4.000 messaggi.
+                      </AlertDescription>
+                    </Alert>
+                  </CardContent>
+                </Card>
+
+                {/* Form di configurazione */}
                 <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
                   <CardHeader>
                     <div className="flex items-center gap-3">
@@ -3241,23 +3320,14 @@ export default function ConsultantApiKeysUnified() {
                         <MessageSquare className="h-6 w-6 text-emerald-600" />
                       </div>
                       <div>
-                        <CardTitle>Configurazione Twilio Centralizzata</CardTitle>
+                        <CardTitle>Inserisci le tue Credenziali Twilio</CardTitle>
                         <CardDescription>
-                          Configura le credenziali Twilio per tutti gli agenti WhatsApp
+                          Queste credenziali saranno usate da tutti i tuoi agenti WhatsApp
                         </CardDescription>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <Alert className="bg-emerald-50 border-emerald-200">
-                      <AlertCircle className="h-4 w-4 text-emerald-600" />
-                      <AlertDescription className="text-sm text-emerald-800">
-                        <strong>Configurazione centralizzata:</strong> Queste credenziali Twilio verranno utilizzate 
-                        automaticamente da tutti i tuoi agenti WhatsApp. Puoi gestire un unico account Twilio 
-                        per semplificare la gestione.
-                      </AlertDescription>
-                    </Alert>
-
                     {twilioSettingsData?.settings && (
                       <Alert className="bg-green-50 border-green-200">
                         <CheckCircle className="h-4 w-4 text-green-600" />

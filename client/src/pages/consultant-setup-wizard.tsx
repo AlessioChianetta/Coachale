@@ -500,32 +500,20 @@ export default function ConsultantSetupWizard() {
       title: "FASE 2: WhatsApp & Agenti",
       steps: [
         {
-          id: "whatsapp_ai",
+          id: "twilio_config",
           stepNumber: 4,
-          title: "WhatsApp AI Credentials",
-          description: "Configura le credenziali AI separate per gli agenti WhatsApp automatici",
+          title: "Configurazione Twilio + WhatsApp",
+          description: "Collega il tuo numero italiano a WhatsApp Business tramite Twilio",
           icon: <MessageSquare className="h-4 w-4" />,
-          status: status?.whatsappAiStatus || "pending",
-          testedAt: status?.whatsappAiTestedAt,
-          errorMessage: status?.whatsappAiErrorMessage,
-          configLink: "/consultant/api-keys-unified?tab=whatsapp",
-          testEndpoint: "/api/consultant/onboarding/test/whatsapp-ai",
-        },
-        {
-          id: "twilio_agent_config",
-          stepNumber: 5,
-          title: "Configurazione Twilio Agente",
-          description: "Configura le credenziali Twilio in almeno uno dei tuoi agenti WhatsApp",
-          icon: <Phone className="h-4 w-4" />,
-          status: status?.hasTwilioConfiguredAgent ? "verified" : "pending",
-          testedAt: status?.twilioAgentTestedAt,
-          errorMessage: status?.twilioAgentErrorMessage,
-          configLink: "/consultant/whatsapp",
+          status: status?.hasTwilioConfiguredAgent ? "verified" : (status?.whatsappAiStatus || "pending"),
+          testedAt: status?.twilioAgentTestedAt || status?.whatsappAiTestedAt,
+          errorMessage: status?.twilioAgentErrorMessage || status?.whatsappAiErrorMessage,
+          configLink: "/consultant/api-keys-unified?tab=twilio",
           testEndpoint: "/api/consultant/onboarding/test/twilio-agent",
         },
         {
           id: "inbound_agent",
-          stepNumber: 6,
+          stepNumber: 5,
           title: "Agente Inbound",
           description: "Crea un agente per gestire le richieste in entrata dei clienti",
           icon: <ArrowDownToLine className="h-4 w-4" />,
@@ -534,7 +522,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "outbound_agent",
-          stepNumber: 7,
+          stepNumber: 6,
           title: "Agente Outbound",
           description: "Crea un agente per le campagne di contatto proattivo",
           icon: <ArrowUpFromLine className="h-4 w-4" />,
@@ -543,7 +531,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "consultative_agent",
-          stepNumber: 8,
+          stepNumber: 7,
           title: "Agente Consulenziale",
           description: "Crea un agente specializzato per consulenze e supporto avanzato",
           icon: <Briefcase className="h-4 w-4" />,
@@ -552,7 +540,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "public_agent_link",
-          stepNumber: 9,
+          stepNumber: 8,
           title: "Link Pubblico Agente",
           description: "Genera un link pubblico per permettere ai clienti di contattare i tuoi agenti",
           icon: <LinkIcon className="h-4 w-4" />,
@@ -563,7 +551,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "ai_ideas",
-          stepNumber: 10,
+          stepNumber: 9,
           title: "Idee AI Generate",
           description: "Genera idee creative per gli agenti usando l'intelligenza artificiale",
           icon: <Lightbulb className="h-4 w-4" />,
@@ -574,7 +562,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "whatsapp_template",
-          stepNumber: 11,
+          stepNumber: 10,
           title: "Template WhatsApp",
           description: "Crea almeno un template WhatsApp per i tuoi messaggi automatici",
           icon: <MessageSquare className="h-4 w-4" />,
@@ -591,7 +579,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_course",
-          stepNumber: 12,
+          stepNumber: 11,
           title: "Primo Corso",
           description: "Crea il tuo primo corso formativo per i clienti",
           icon: <BookOpen className="h-4 w-4" />,
@@ -602,7 +590,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "first_exercise",
-          stepNumber: 13,
+          stepNumber: 12,
           title: "Primo Esercizio",
           description: "Crea il tuo primo esercizio pratico per i clienti",
           icon: <ClipboardList className="h-4 w-4" />,
@@ -613,7 +601,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "knowledge_base",
-          stepNumber: 14,
+          stepNumber: 13,
           title: "Base di Conoscenza",
           description: "Carica documenti per permettere all'AI di rispondere con informazioni specifiche",
           icon: <FileText className="h-4 w-4" />,
@@ -631,7 +619,7 @@ export default function ConsultantSetupWizard() {
       steps: [
         {
           id: "first_summary_email",
-          stepNumber: 15,
+          stepNumber: 14,
           title: "Prima Email Riassuntiva",
           description: "Invia la tua prima email riassuntiva dopo una consulenza",
           icon: <MailCheck className="h-4 w-4" />,
@@ -642,7 +630,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "video_meeting",
-          stepNumber: 16,
+          stepNumber: 15,
           title: "Video Meeting (TURN)",
           description: "Configura Metered.ca per videochiamate WebRTC affidabili con i tuoi clienti",
           icon: <Video className="h-4 w-4" />,
@@ -654,7 +642,7 @@ export default function ConsultantSetupWizard() {
         },
         {
           id: "lead_import",
-          stepNumber: 17,
+          stepNumber: 16,
           title: "Import Lead",
           description: "Configura API esterne per importare lead automaticamente nel sistema",
           icon: <UserPlus className="h-4 w-4" />,
@@ -689,8 +677,7 @@ export default function ConsultantSetupWizard() {
     vertex_ai: "Vertex AI",
     smtp: "Email SMTP",
     google_calendar: "Google Calendar",
-    whatsapp_ai: "WhatsApp AI",
-    twilio_agent_config: "Configurazione Twilio Agente",
+    twilio_config: "Configurazione Twilio + WhatsApp",
     inbound_agent: "Agente Inbound",
     outbound_agent: "Agente Outbound",
     consultative_agent: "Agente Consulenziale",
