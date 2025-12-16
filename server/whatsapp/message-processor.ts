@@ -236,6 +236,10 @@ function isWithinWorkingHours(settings: any): boolean {
   return currentTime >= startTime && currentTime <= endTime;
 }
 
+/**
+ * @deprecated Use isWithinAgentWorkingHours instead - this function uses the old aiAvailability format
+ * from calendar settings. The new approach uses WhatsApp agent config directly.
+ */
 function isWithinAiWorkingHours(aiAvailability: any, timezone: string = "Europe/Rome"): boolean {
   // If AI is explicitly disabled, return false
   if (aiAvailability.enabled === false) {
@@ -281,6 +285,72 @@ function isWithinAiWorkingHours(aiAvailability: any, timezone: string = "Europe/
   const isWithin = currentTime >= startTime && currentTime <= endTime;
 
   console.log(`🕐 AI Hours Check [${effectiveTimezone}]: Day=${currentDay}, Time=${now.getHours()}:${now.getMinutes()}, Range=${dayConfig.start}-${dayConfig.end}, Within=${isWithin}`);
+
+  return isWithin;
+}
+
+/**
+ * Check if current time is within the WhatsApp agent's configured working hours.
+ * Uses the agent config format: workingHoursEnabled, workingHoursStart, workingHoursEnd, workingDays
+ * 
+ * @param config - WhatsApp agent config object
+ * @param timezone - Timezone to use for time calculations (default: "Europe/Rome")
+ * @returns true if AI should respond, false if outside working hours
+ */
+function isWithinAgentWorkingHours(config: any, timezone: string = "Europe/Rome"): boolean {
+  // If workingHoursEnabled is false, agent is available 24/7
+  if (config?.workingHoursEnabled === false) {
+    console.log(`🕐 Agent Working Hours: 24/7 mode (workingHoursEnabled=false)`);
+    return true;
+  }
+
+  // If working hours config is incomplete, default to 24/7 availability
+  if (!config?.workingHoursStart || !config?.workingHoursEnd || !config?.workingDays) {
+    console.log(`🕐 Agent Working Hours: 24/7 mode (missing config: start=${config?.workingHoursStart}, end=${config?.workingHoursEnd}, days=${config?.workingDays})`);
+    return true;
+  }
+
+  // If workingDays is empty array, default to 24/7
+  if (Array.isArray(config.workingDays) && config.workingDays.length === 0) {
+    console.log(`🕐 Agent Working Hours: 24/7 mode (empty workingDays array)`);
+    return true;
+  }
+
+  // Get current time in specified timezone
+  let now: Date;
+  let effectiveTimezone = timezone;
+
+  try {
+    now = new Date(new Date().toLocaleString("en-US", { timeZone: timezone }));
+  } catch (error) {
+    console.warn(`⚠️ Invalid timezone "${timezone}" - falling back to Europe/Rome. Error: ${error}`);
+    effectiveTimezone = "Europe/Rome";
+    now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Rome" }));
+  }
+
+  // Check if current day is in workingDays
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDay = dayNames[now.getDay()];
+
+  // workingDays is an array of lowercase day names: ["monday", "tuesday", ...]
+  const isWorkingDay = config.workingDays.includes(currentDay);
+  if (!isWorkingDay) {
+    console.log(`🕐 Agent Working Hours [${effectiveTimezone}]: Day=${currentDay} NOT in workingDays=${JSON.stringify(config.workingDays)} → Outside hours`);
+    return false;
+  }
+
+  // Check if current time is within working hours
+  const currentTime = now.getHours() * 60 + now.getMinutes();
+
+  const [startHour, startMin] = config.workingHoursStart.split(':').map(Number);
+  const [endHour, endMin] = config.workingHoursEnd.split(':').map(Number);
+
+  const startTime = startHour * 60 + startMin;
+  const endTime = endHour * 60 + endMin;
+
+  const isWithin = currentTime >= startTime && currentTime <= endTime;
+
+  console.log(`🕐 Agent Working Hours [${effectiveTimezone}]: Day=${currentDay}, Time=${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}, Range=${config.workingHoursStart}-${config.workingHoursEnd}, Within=${isWithin}`);
 
   return isWithin;
 }
@@ -535,9 +605,9 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
     const isProactiveAgent = consultantConfig?.agentType === 'proactive_setter';
     console.log(`🎯 [AGENT TYPE] Agent type: ${consultantConfig?.agentType}, isProactive: ${isProactiveAgent}`);
 
-    // Check if AI is enabled
-    if (calendarSettings?.aiAvailability?.enabled === false) {
-      console.log(`🤖 AI is DISABLED for consultant ${consultantId} - storing messages but not responding`);
+    // Check if AI auto-response is enabled for this agent
+    if (consultantConfig && consultantConfig.autoResponseEnabled === false) {
+      console.log(`🤖 AI auto-response is DISABLED for agent ${consultantConfig.agentName} - storing messages but not responding`);
 
       // STEP 1: Save inbound messages to conversation history (with atomic duplicate prevention)
       for (const msg of pending) {
@@ -570,11 +640,11 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       return;
     }
 
-    // Check if within AI working hours
+    // Check if within agent working hours
     // Guard against null/undefined timezone - use Europe/Rome as fallback
-    const consultantTimezone = calendarSettings.timezone || "Europe/Rome";
-    if (calendarSettings?.aiAvailability && !isWithinAiWorkingHours(calendarSettings.aiAvailability, consultantTimezone)) {
-      console.log(`⏰ Outside AI working hours for consultant ${consultantId}`);
+    const consultantTimezone = calendarSettings?.timezone || "Europe/Rome";
+    if (consultantConfig?.workingHoursEnabled && !isWithinAgentWorkingHours(consultantConfig, consultantTimezone)) {
+      console.log(`⏰ Outside agent working hours for ${consultantConfig.agentName}`);
 
       // STEP 1: Save inbound messages to conversation history (with atomic duplicate prevention)
       for (const msg of pending) {

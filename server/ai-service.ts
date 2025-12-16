@@ -2838,15 +2838,9 @@ ${!context.calendarSettings.googleCalendarConnected ? `
 6. Completa l'autorizzazione nella finestra popup
 ` : ''}
 
-🤖 Disponibilità Assistente AI (quando l'AI risponde su WhatsApp):
-${context.calendarSettings.aiAvailability?.enabled ? `
-Stato: ✅ ATTIVO
-Giorni configurati:
-${Object.entries(context.calendarSettings.aiAvailability.workingDays || {})
-  .filter(([_, day]: [string, any]) => day?.enabled)
-  .map(([dayName, day]: [string, any]) => `   - ${dayName}: ${day.start} - ${day.end}`)
-  .join('\n') || '   Nessun giorno configurato'}
-` : 'Stato: ❌ DISATTIVO'}
+🤖 Disponibilità Assistente AI WhatsApp:
+La disponibilità dell'assistente AI è configurata individualmente per ogni agente WhatsApp.
+Per vedere o modificare gli orari di lavoro, vai su Impostazioni → WhatsApp e seleziona l'agente desiderato.
 
 📆 Disponibilità Appuntamenti (quando i clienti possono prenotare):
 ${context.calendarSettings.appointmentAvailability?.enabled ? `
