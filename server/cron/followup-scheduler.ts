@@ -1153,6 +1153,12 @@ async function evaluateConversation(
 
     const scheduledFor = new Date();
     
+    // 🔍 DEBUG LOG: Traccia agentConfigId passato alla validazione
+    console.log(`🔍 [TEMPLATE-TRACE] ═══ CHIAMATA 1: time_based rule ═══`);
+    console.log(`🔍 [TEMPLATE-TRACE] candidate.agentConfigId: ${candidate.agentConfigId || 'NULL/UNDEFINED'}`);
+    console.log(`🔍 [TEMPLATE-TRACE] candidate.conversationId: ${candidate.conversationId}`);
+    console.log(`🔍 [TEMPLATE-TRACE] candidate.leadName: ${candidate.leadName}`);
+    
     const windowCheck = await validate24hWindowForScheduling(
       candidate.conversationId,
       scheduledFor,
@@ -1275,6 +1281,13 @@ async function evaluateConversation(
 
   if (decision.decision === 'send_now' || decision.decision === 'schedule') {
     const scheduledFor = calculateScheduledTime(decision);
+    
+    // 🔍 DEBUG LOG: Traccia agentConfigId passato alla validazione
+    console.log(`🔍 [TEMPLATE-TRACE] ═══ CHIAMATA 2: AI decision ═══`);
+    console.log(`🔍 [TEMPLATE-TRACE] candidate.agentConfigId: ${candidate.agentConfigId || 'NULL/UNDEFINED'}`);
+    console.log(`🔍 [TEMPLATE-TRACE] candidate.conversationId: ${candidate.conversationId}`);
+    console.log(`🔍 [TEMPLATE-TRACE] candidate.leadName: ${candidate.leadName}`);
+    console.log(`🔍 [TEMPLATE-TRACE] decision.decision: ${decision.decision}`);
     
     const windowCheck = await validate24hWindowForScheduling(
       candidate.conversationId,
@@ -1612,6 +1625,11 @@ async function validate24hWindowForScheduling(
     return { canSchedule: false, window24hExpiresAt, willBeOutside24h, leadNeverResponded };
   }
 
+  // 🔍 DEBUG LOG: Mostra quale agentConfigId stiamo cercando
+  console.log(`🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════`);
+  console.log(`🔍 [TEMPLATE-DEBUG] Cercando template per agentConfigId: ${agentConfigId}`);
+  console.log(`🔍 [TEMPLATE-DEBUG] Conversation: ${conversationId}`);
+
   // STEP 1: Check for Twilio templates (HX prefix) assigned to this agent
   // Twilio templates with HX prefix that are assigned are considered pre-approved
   // They go through Twilio's approval process before being available in the Content API
@@ -1625,15 +1643,30 @@ async function validate24hWindowForScheduling(
     .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId))
     .orderBy(desc(whatsappTemplateAssignments.priority));
 
+  // 🔍 DEBUG LOG: Mostra TUTTI i template trovati dalla query (PRIMA del filtro)
+  console.log(`🔍 [TEMPLATE-DEBUG] Template TROVATI dalla query (tutti): ${twilioTemplates.length}`);
+  twilioTemplates.forEach((t, i) => {
+    console.log(`🔍 [TEMPLATE-DEBUG]   ${i + 1}. templateId: ${t.templateId}, type: ${t.templateType}, priority: ${t.priority}`);
+    console.log(`🔍 [TEMPLATE-DEBUG]      - Inizia con HX? ${t.templateId.startsWith('HX')}`);
+    console.log(`🔍 [TEMPLATE-DEBUG]      - templateType === 'twilio'? ${t.templateType === 'twilio'}`);
+  });
+
   // Filter for Twilio templates (HX prefix) - these are pre-approved by Twilio when they have the HX ContentSID format
   // Only templates that have been synced to Twilio and approved will have an HX prefix
   const approvedTwilioTemplates = twilioTemplates.filter(t => 
     t.templateId.startsWith('HX') && t.templateType === 'twilio'
   );
+
+  // 🔍 DEBUG LOG: Mostra template DOPO il filtro
+  console.log(`🔍 [TEMPLATE-DEBUG] Template DOPO filtro (HX + twilio): ${approvedTwilioTemplates.length}`);
+  approvedTwilioTemplates.forEach((t, i) => {
+    console.log(`🔍 [TEMPLATE-DEBUG]   ${i + 1}. ${t.templateId} (priority: ${t.priority})`);
+  });
+  console.log(`🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════`);
   
   if (approvedTwilioTemplates.length > 0) {
     const selectedTemplate = approvedTwilioTemplates[0];
-    console.log(`✅ [FOLLOWUP-SCHEDULER] Template Twilio approvato trovato: ${selectedTemplate.templateId} (priority: ${selectedTemplate.priority}, type: ${selectedTemplate.templateType})`);
+    console.log(`✅ [FOLLOWUP-SCHEDULER] Template Twilio approvato SELEZIONATO: ${selectedTemplate.templateId} (priority: ${selectedTemplate.priority}, type: ${selectedTemplate.templateType})`);
     return { canSchedule: true, window24hExpiresAt, willBeOutside24h, leadNeverResponded, selectedTemplateId: selectedTemplate.templateId };
   }
 
