@@ -48,6 +48,7 @@ import { PipelineKanban } from "@/components/automations/PipelineKanban";
 import { AutomationRulesList } from "@/components/automations/AutomationRulesList";
 import { TemplatesGrid } from "@/components/automations/TemplatesGrid";
 import { AnalyticsDashboard } from "@/components/automations/AnalyticsDashboard";
+import { SystemRulesViewer } from "@/components/automations/SystemRulesViewer";
 import { Link } from "wouter";
 
 function AutomationFlowVisual() {
@@ -746,7 +747,10 @@ export default function ConsultantAutomationsPage() {
               </TabsContent>
 
               <TabsContent value="regole">
-                <AutomationRulesList />
+                <div className="space-y-6">
+                  <SystemRulesViewer />
+                  <AutomationRulesList />
+                </div>
               </TabsContent>
 
               <TabsContent value="template">

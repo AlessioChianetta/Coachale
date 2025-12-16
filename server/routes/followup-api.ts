@@ -621,4 +621,25 @@ router.get("/ai-logs", authenticateToken, requireRole("consultant"), async (req,
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SYSTEM RULES (Read-only)
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { getSystemRulesForDisplay } from "../ai/system-rules-config";
+
+router.get("/system-rules", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const rules = getSystemRulesForDisplay();
+    res.json({
+      success: true,
+      rules,
+      description: "Regole di sistema applicate automaticamente prima della valutazione AI. Non modificabili.",
+      descriptionEn: "System rules applied automatically before AI evaluation. Read-only.",
+    });
+  } catch (error: any) {
+    console.error("Error fetching system rules:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
