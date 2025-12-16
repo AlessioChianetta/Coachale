@@ -1287,7 +1287,31 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     }
 
     for (const msg of enrichedMessages) {
-      const messagePreview = msg.fallbackMessage || msg.templateBody || null;
+      let templateName = msg.templateName;
+      let templateTwilioStatus = msg.templateTwilioStatus;
+      let messagePreview = msg.fallbackMessage || msg.templateBody || null;
+      
+      // Se il templateId inizia con HX, cerca nella tabella whatsappTemplates (template Twilio)
+      if (msg.templateId && msg.templateId.startsWith('HX') && !templateName) {
+        const twilioTemplate = await db
+          .select({
+            friendlyName: schema.whatsappTemplates.friendlyName,
+            twilioStatus: schema.whatsappTemplates.twilioStatus,
+            bodyText: schema.whatsappTemplates.bodyText,
+          })
+          .from(schema.whatsappTemplates)
+          .where(eq(schema.whatsappTemplates.sid, msg.templateId))
+          .limit(1);
+        
+        if (twilioTemplate.length > 0) {
+          templateName = twilioTemplate[0].friendlyName;
+          templateTwilioStatus = twilioTemplate[0].twilioStatus as any || 'approved';
+          if (!messagePreview && twilioTemplate[0].bodyText) {
+            messagePreview = twilioTemplate[0].bodyText;
+          }
+        }
+      }
+      
       events.push({
         id: `msg-${msg.id}`,
         type: msg.status === 'sent' ? 'message_sent' : 
@@ -1309,8 +1333,8 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         window24hExpiresAt: msg.window24hExpiresAt,
         canSendFreeform: msg.canSendFreeform,
         templateId: msg.templateId,
-        templateName: msg.templateName,
-        templateTwilioStatus: msg.templateTwilioStatus || (msg.templateId ? 'not_synced' : null),
+        templateName: templateName || (msg.templateId?.startsWith('HX') ? msg.templateId : null),
+        templateTwilioStatus: templateTwilioStatus || (msg.templateId ? 'not_synced' : null),
         messagePreview: messagePreview,
         temperatureLevel: msg.temperatureLevel || 'warm',
         currentState: msg.currentState,
