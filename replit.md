@@ -119,6 +119,13 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Twilio API**: WhatsApp Business messaging.
 
 # Recent Changes
+## December 16, 2025 - AI-Powered Template Selection
+- **New AI Template Selection** (`selectBestTemplateWithAI` in `followup-decision-engine.ts`): AI analyzes conversation context and all available templates to choose the most appropriate one based on lead state, silence days, and conversation history.
+- **Enhanced AI Prompt**: Clarified distinction between "schedule" (program follow-up for later) vs "skip" (wait without scheduling) to fix confusion.
+- **System Rule Fix**: Fixed `recent_response_24h` rule to properly check if lead has ever responded, preventing false positives.
+- **24h Window Compliance**: Pre-validated Twilio templates are always used when outside 24h window; AI selection only applies inside 24h window.
+- **No Fallback Design**: AI template selection must succeed or fail with retry (3 attempts) - no silent fallback to priority-based selection.
+
 ## December 16, 2025 - Automations Page Restructure
 - **New Dashboard Component** (`AutomationDashboard.tsx`): 5-card stats display showing conversations awaiting follow-up, sent today, scheduled 24h, blocked leads, and errors.
 - **Decision Flow Diagram** (`DecisionFlowDiagram.tsx`): Visual representation of the 6-rule priority system (P100-P95) with AI fallback decision making.
