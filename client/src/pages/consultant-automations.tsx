@@ -797,6 +797,55 @@ function AILogsViewer() {
   );
 }
 
+function TriggerEvaluationButton() {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  
+  const handleTrigger = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/followup/trigger-evaluation", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "Valutazione eseguita",
+          description: "Il sistema ha valutato tutte le conversazioni in attesa",
+        });
+      } else {
+        throw new Error(data.message || "Errore durante la valutazione");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Impossibile eseguire la valutazione",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <Button 
+      onClick={handleTrigger}
+      disabled={isLoading}
+      className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+    >
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Play className="h-4 w-4" />
+      )}
+      {isLoading ? "Esecuzione..." : "Esegui Ora"}
+    </Button>
+  );
+}
+
 export default function ConsultantAutomationsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -825,13 +874,16 @@ export default function ConsultantAutomationsPage() {
               ]}
             />
 
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Sistema Automazioni Follow-up
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                Gestisci le regole di follow-up automatico e monitora la pipeline lead
-              </p>
+            <div className="mb-6 flex items-start justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Sistema Automazioni Follow-up
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Gestisci le regole di follow-up automatico e monitora la pipeline lead
+                </p>
+              </div>
+              <TriggerEvaluationButton />
             </div>
 
             {/* Intervallo Follow-up */}

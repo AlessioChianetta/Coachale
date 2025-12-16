@@ -996,4 +996,30 @@ router.get("/system-rules", authenticateToken, requireRole("consultant"), async 
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MANUAL TRIGGER - Run evaluation immediately
+// ═══════════════════════════════════════════════════════════════════════════
+
+import { runFollowupEvaluation } from "../cron/followup-scheduler";
+
+router.post("/trigger-evaluation", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    console.log(`🔄 [FOLLOWUP-API] Manual trigger requested by consultant ${req.user!.id}`);
+    
+    await runFollowupEvaluation();
+    
+    res.json({
+      success: true,
+      message: "Valutazione follow-up eseguita con successo",
+      triggeredAt: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error("Error triggering followup evaluation:", error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
 export default router;

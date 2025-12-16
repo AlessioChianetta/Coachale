@@ -8,7 +8,7 @@ import { db } from "../db";
 import { conversationStates, followupAiEvaluationLog } from "../../shared/schema";
 import { eq } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson } from "./provider-factory";
+import { createVertexGeminiClient, parseServiceAccountJson, getAIProvider } from "./provider-factory";
 import { evaluateSystemRules, RuleEvaluationContext } from "./system-rules-config";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -28,6 +28,7 @@ export interface FollowupContext {
   leadName?: string;
   currentState: string;
   daysSilent: number;
+  hoursSinceLastInbound: number;
   followupCount: number;
   maxFollowupsAllowed: number;
   channel: string;
@@ -69,7 +70,7 @@ export interface FollowupDecision {
  */
 export async function evaluateFollowup(
   context: FollowupContext,
-  provider: AIProvider
+  consultantId: string
 ): Promise<FollowupDecision> {
   const startTime = Date.now();
   
@@ -80,6 +81,7 @@ export async function evaluateFollowup(
     // Pre-check: regole deterministiche di sistema prima dell'AI
     const ruleContext: RuleEvaluationContext = {
       daysSilent: context.daysSilent,
+      hoursSinceLastInbound: context.hoursSinceLastInbound,
       followupCount: context.followupCount,
       maxFollowupsAllowed: context.maxFollowupsAllowed,
       currentState: context.currentState,
@@ -129,76 +131,19 @@ export async function evaluateFollowup(
     // Costruisci il prompt per l'AI
     const prompt = buildFollowupPrompt(context);
     
-    let response: any;
+    // Get AI provider using the unified provider factory
+    const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    console.log(`🚀 [FOLLOWUP-ENGINE] Using ${aiProviderResult.metadata.name} for evaluation`);
     
-    // Validate Vertex AI credentials if vertex provider
-    const hasVertexCredentials = provider.type === 'vertex' && 
-                                  provider.projectId && 
-                                  provider.location && 
-                                  provider.credentials;
-    
-    if (provider.type === 'vertex' && hasVertexCredentials) {
-      console.log(`🚀 [FOLLOWUP-ENGINE] Using Vertex AI`);
-      
-      // Parse credentials if they are a string (encrypted or JSON)
-      let parsedCredentials = provider.credentials;
-      if (typeof provider.credentials === 'string') {
-        parsedCredentials = await parseServiceAccountJson(provider.credentials);
-        if (!parsedCredentials) {
-          console.warn(`⚠️ [FOLLOWUP-ENGINE] Failed to parse Vertex credentials, falling back to AI Studio`);
-          // Fall through to else block by setting hasVertexCredentials to false
-          if (provider.apiKey) {
-            const ai = new GoogleGenAI({ apiKey: provider.apiKey });
-            response = await ai.models.generateContent({
-              model: "gemini-2.5-flash",
-              config: { responseMimeType: "application/json" },
-              contents: [{ role: "user", parts: [{ text: prompt }] }],
-            });
-          } else {
-            return createDefaultSkipDecision("Credenziali Vertex non valide e nessuna API key di fallback");
-          }
-        }
-      }
-      
-      if (parsedCredentials) {
-        const vertexClient = createVertexGeminiClient(
-          provider.projectId!,
-          provider.location!,
-          parsedCredentials
-        );
-        
-        response = await vertexClient.generateContent({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-          },
-        });
-      }
-    } else {
-      console.log(`🌐 [FOLLOWUP-ENGINE] Using Google AI Studio`);
-      if (provider.type === 'vertex' && !hasVertexCredentials) {
-        console.warn('⚠️ [FOLLOWUP-ENGINE] Vertex AI requested but credentials missing');
-        if (!provider.apiKey) {
-          throw new Error('No API key available for fallback to Google AI Studio');
-        }
-      }
-      
-      const ai = new GoogleGenAI({ apiKey: provider.apiKey! });
-      response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        config: {
-          responseMimeType: "application/json",
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-      });
-    }
+    const response = await aiProviderResult.client.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
 
-    const resultText = typeof response.text === 'function' ? response.text() : response.text;
+    const resultText = response.response.text();
     
     // Validate response before parsing
     if (!resultText || resultText === 'undefined' || typeof resultText !== 'string') {

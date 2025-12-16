@@ -102,6 +102,7 @@ export const SYSTEM_RULES: SystemRule[] = [
 
 export interface RuleEvaluationContext {
   daysSilent: number;
+  hoursSinceLastInbound: number;
   followupCount: number;
   maxFollowupsAllowed: number;
   currentState: string;
@@ -164,13 +165,13 @@ function checkRuleCondition(rule: SystemRule, context: RuleEvaluationContext): {
     
     case "pending_short_window":
       return { 
-        matched: context.daysSilent < 1 && 
+        matched: context.hoursSinceLastInbound < 24 && 
                  context.lastMessageDirection === "outbound"
       };
     
     case "recent_response_24h":
       return { 
-        matched: context.daysSilent < 1 && 
+        matched: context.hoursSinceLastInbound < 24 && 
                  context.lastMessageDirection === "inbound"
       };
     

@@ -291,6 +291,7 @@ interface CandidateConversation {
   currentState: string;
   daysSilent: number;
   hoursSilent: number;
+  hoursSinceLastInbound: number;
   followupCount: number;
   maxFollowupsAllowed: number;
   engagementScore: number;
@@ -476,6 +477,22 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
     const hoursSilent = msSilent / (1000 * 60 * 60);
     const daysSilent = Math.floor(hoursSilent / 24);
 
+    const lastInboundMessage = await db
+      .select({ createdAt: whatsappMessages.createdAt })
+      .from(whatsappMessages)
+      .where(
+        and(
+          eq(whatsappMessages.conversationId, state.conversationId),
+          eq(whatsappMessages.sender, 'client')
+        )
+      )
+      .orderBy(desc(whatsappMessages.createdAt))
+      .limit(1);
+
+    const hoursSinceLastInbound = lastInboundMessage.length > 0 && lastInboundMessage[0].createdAt
+      ? (now.getTime() - new Date(lastInboundMessage[0].createdAt).getTime()) / (1000 * 60 * 60)
+      : 999;
+
     if (state.nextFollowupScheduledAt && new Date(state.nextFollowupScheduledAt) > now) {
       continue;
     }
@@ -513,6 +530,7 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
       currentState: state.currentState,
       daysSilent,
       hoursSilent,
+      hoursSinceLastInbound,
       followupCount: state.followupCount,
       maxFollowupsAllowed: state.maxFollowupsAllowed,
       engagementScore: state.engagementScore,
@@ -560,6 +578,7 @@ async function evaluateConversation(
       leadName: candidate.leadName,
       currentState: candidate.currentState,
       daysSilent: candidate.daysSilent,
+      hoursSinceLastInbound: candidate.hoursSinceLastInbound,
       followupCount: candidate.followupCount,
       maxFollowupsAllowed: candidate.maxFollowupsAllowed,
       channel: 'whatsapp',
@@ -680,6 +699,7 @@ async function evaluateConversation(
     leadName: candidate.leadName,
     currentState: candidate.currentState,
     daysSilent: candidate.daysSilent,
+    hoursSinceLastInbound: candidate.hoursSinceLastInbound,
     followupCount: candidate.followupCount,
     maxFollowupsAllowed: candidate.maxFollowupsAllowed,
     channel: 'whatsapp',
@@ -692,19 +712,7 @@ async function evaluateConversation(
     availableTemplates,
   };
 
-  let provider: AIProvider;
-  try {
-    const aiProviderResult = await getAIProvider(candidate.consultantId, candidate.consultantId);
-    provider = {
-      type: aiProviderResult.source === 'google' ? 'studio' : 'vertex',
-      apiKey: process.env.GEMINI_API_KEY,
-    };
-  } catch (error) {
-    console.warn(`⚠️ [FOLLOWUP-SCHEDULER] Failed to get AI provider for consultant ${candidate.consultantId}, using fallback`);
-    provider = createStudioProvider(process.env.GEMINI_API_KEY || '');
-  }
-
-  const decision = await evaluateFollowup(context, provider);
+  const decision = await evaluateFollowup(context, candidate.consultantId);
 
   await logFollowupDecision(
     candidate.conversationId,
@@ -721,7 +729,7 @@ async function evaluateConversation(
     
     if (decision.allowFreeformMessage) {
       console.log(`⚡ [FOLLOWUP-SCHEDULER] Freeform message mode (pending short-window rule)`);
-      fallbackMessageToUse = await generateFreeformFollowupMessage(context, provider);
+      fallbackMessageToUse = await generateFreeformFollowupMessage(context, candidate.consultantId);
       templateIdToUse = null;
     } else {
       templateIdToUse = aiDecisionRule.templateId || decision.suggestedTemplateId || null;
@@ -804,7 +812,7 @@ async function getLastMessages(
 
 async function generateFreeformFollowupMessage(
   context: FollowupContext, 
-  provider: AIProvider
+  consultantId: string
 ): Promise<string> {
   console.log(`🤖 [FOLLOWUP-SCHEDULER] Generating freeform follow-up message for ${context.conversationId}`);
   
@@ -834,15 +842,15 @@ ISTRUZIONI:
 RISPONDI CON SOLO IL TESTO DEL MESSAGGIO (niente JSON, niente formattazione, solo il testo pronto per essere inviato).`;
 
   try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: provider.apiKey! });
+    const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    console.log(`🚀 [FOLLOWUP-SCHEDULER] Using ${aiProviderResult.metadata.name} for freeform message generation`);
     
-    const response = await ai.models.generateContent({
+    const response = await aiProviderResult.client.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
     
-    const messageText = typeof response.text === 'function' ? response.text() : response.text;
+    const messageText = response.response.text();
     
     if (!messageText || typeof messageText !== 'string') {
       console.warn(`⚠️ [FOLLOWUP-SCHEDULER] Invalid AI response for freeform message`);
