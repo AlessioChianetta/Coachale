@@ -634,6 +634,11 @@ async function evaluateConversation(
   const lastMessages = await getLastMessages(candidate.conversationId, 10);
   const availableTemplates = await getAvailableTemplates(candidate.consultantId, candidate.agentConfigId);
 
+  const lastMessageDirection: "inbound" | "outbound" | null = 
+    lastMessages.length > 0 
+      ? (lastMessages[0].role === 'lead' ? 'inbound' : 'outbound')
+      : null;
+
   const context: FollowupContext = {
     conversationId: candidate.conversationId,
     leadName: candidate.leadName,
@@ -644,6 +649,7 @@ async function evaluateConversation(
     channel: 'whatsapp',
     agentType: candidate.agentType,
     lastMessages,
+    lastMessageDirection,
     signals: candidate.signals,
     engagementScore: candidate.engagementScore,
     conversionProbability: candidate.conversionProbability,
@@ -674,8 +680,17 @@ async function evaluateConversation(
   if (decision.decision === 'send_now' || decision.decision === 'schedule') {
     const scheduledFor = calculateScheduledTime(decision);
     
-    const templateIdToUse = aiDecisionRule.templateId || decision.suggestedTemplateId || null;
-    const fallbackMessageToUse = aiDecisionRule.fallbackMessage || decision.suggestedMessage || null;
+    let templateIdToUse: string | null = null;
+    let fallbackMessageToUse: string | null = null;
+    
+    if (decision.allowFreeformMessage) {
+      console.log(`⚡ [FOLLOWUP-SCHEDULER] Freeform message mode (pending short-window rule)`);
+      fallbackMessageToUse = await generateFreeformFollowupMessage(context, provider);
+      templateIdToUse = null;
+    } else {
+      templateIdToUse = aiDecisionRule.templateId || decision.suggestedTemplateId || null;
+      fallbackMessageToUse = aiDecisionRule.fallbackMessage || decision.suggestedMessage || null;
+    }
     
     await db.insert(scheduledFollowupMessages).values({
       conversationId: candidate.conversationId,
@@ -685,7 +700,9 @@ async function evaluateConversation(
       status: 'pending',
       templateVariables: {},
       fallbackMessage: fallbackMessageToUse,
-      aiDecisionReasoning: decision.reasoning,
+      aiDecisionReasoning: decision.allowFreeformMessage 
+        ? `Pending short-window: AI generated freeform message` 
+        : decision.reasoning,
       aiConfidenceScore: decision.confidenceScore,
       attemptCount: 0,
       maxAttempts: aiDecisionRule.maxAttempts,
@@ -747,6 +764,61 @@ async function getLastMessages(
     content: m.messageText,
     timestamp: m.createdAt?.toISOString() || new Date().toISOString(),
   }));
+}
+
+async function generateFreeformFollowupMessage(
+  context: FollowupContext, 
+  provider: AIProvider
+): Promise<string> {
+  console.log(`🤖 [FOLLOWUP-SCHEDULER] Generating freeform follow-up message for ${context.conversationId}`);
+  
+  const messagesHistory = context.lastMessages
+    .map(m => `[${m.role}]: ${m.content}`)
+    .join('\n');
+  
+  const prompt = `Sei un consulente esperto italiano. Devi generare un messaggio di follow-up WhatsApp per continuare questa conversazione.
+
+CONTESTO:
+- Nome Lead: ${context.leadName || "Cliente"}
+- Stato: ${context.currentState}
+- Giorni silenzio: ${context.daysSilent}
+
+CRONOLOGIA MESSAGGI (più recenti alla fine):
+${messagesHistory}
+
+ISTRUZIONI:
+1. L'ultimo messaggio è stato inviato da noi e stiamo aspettando una risposta
+2. Genera un messaggio breve, cordiale e professionale
+3. Non essere invadente, ma mantieni l'interesse vivo
+4. Il messaggio deve sembrare naturale, non un template
+5. Adatta il tono in base al contesto della conversazione
+6. NON usare formule tipo "Gentile Cliente" - usa il nome se disponibile
+7. Massimo 2-3 frasi
+
+RISPONDI CON SOLO IL TESTO DEL MESSAGGIO (niente JSON, niente formattazione, solo il testo pronto per essere inviato).`;
+
+  try {
+    const { GoogleGenAI } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey: provider.apiKey! });
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+    
+    const messageText = typeof response.text === 'function' ? response.text() : response.text;
+    
+    if (!messageText || typeof messageText !== 'string') {
+      console.warn(`⚠️ [FOLLOWUP-SCHEDULER] Invalid AI response for freeform message`);
+      return `Ciao${context.leadName ? ` ${context.leadName}` : ''}, volevo solo assicurarmi che avessi ricevuto il mio ultimo messaggio. Fammi sapere se hai domande!`;
+    }
+    
+    console.log(`✅ [FOLLOWUP-SCHEDULER] Generated freeform message: "${messageText.substring(0, 50)}..."`);
+    return messageText.trim();
+  } catch (error) {
+    console.error(`❌ [FOLLOWUP-SCHEDULER] Error generating freeform message:`, error);
+    return `Ciao${context.leadName ? ` ${context.leadName}` : ''}, volevo solo assicurarmi che avessi ricevuto il mio ultimo messaggio. Fammi sapere se hai domande!`;
+  }
 }
 
 async function getAvailableTemplates(
