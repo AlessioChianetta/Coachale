@@ -1687,4 +1687,88 @@ router.post("/trigger-evaluation", authenticateToken, requireRole("consultant"),
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// AGENT ASSIGNED TEMPLATES - Template approvati assegnati per agente
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/agent-templates", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    // Get all agents for this consultant
+    const agents = await db
+      .select({
+        id: schema.consultantWhatsappConfig.id,
+        agentName: schema.consultantWhatsappConfig.agentName,
+        agentType: schema.consultantWhatsappConfig.agentType,
+        isActive: schema.consultantWhatsappConfig.isActive,
+      })
+      .from(schema.consultantWhatsappConfig)
+      .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId));
+    
+    // Get template assignments for each agent
+    const agentTemplates = await Promise.all(agents.map(async (agent) => {
+      const assignments = await db
+        .select({
+          templateId: schema.whatsappTemplateAssignments.templateId,
+          templateType: schema.whatsappTemplateAssignments.templateType,
+          priority: schema.whatsappTemplateAssignments.priority,
+        })
+        .from(schema.whatsappTemplateAssignments)
+        .where(eq(schema.whatsappTemplateAssignments.agentConfigId, agent.id))
+        .orderBy(desc(schema.whatsappTemplateAssignments.priority));
+      
+      // Filter only approved Twilio templates (HX prefix)
+      const approvedTemplates = assignments.filter(t => 
+        t.templateId.startsWith('HX') && t.templateType === 'twilio'
+      );
+      
+      // Get template details from Twilio templates if available
+      const templateDetails = await Promise.all(approvedTemplates.map(async (t) => {
+        // Try to find the template name from whatsapp_templates or cache
+        const templateInfo = await db
+          .select({
+            friendlyName: schema.whatsappTemplates.friendlyName,
+            twilioStatus: schema.whatsappTemplates.twilioStatus,
+            bodyText: schema.whatsappTemplates.bodyText,
+          })
+          .from(schema.whatsappTemplates)
+          .where(eq(schema.whatsappTemplates.sid, t.templateId))
+          .limit(1);
+        
+        return {
+          templateId: t.templateId,
+          templateType: t.templateType,
+          priority: t.priority,
+          friendlyName: templateInfo[0]?.friendlyName || t.templateId,
+          twilioStatus: templateInfo[0]?.twilioStatus || 'unknown',
+          bodyText: templateInfo[0]?.bodyText || null,
+        };
+      }));
+      
+      return {
+        agentId: agent.id,
+        agentName: agent.agentName,
+        agentType: agent.agentType,
+        isActive: agent.isActive,
+        assignedTemplates: templateDetails,
+        hasApprovedTemplates: templateDetails.length > 0,
+      };
+    }));
+    
+    res.json({
+      success: true,
+      agents: agentTemplates,
+      totalAgents: agents.length,
+      agentsWithTemplates: agentTemplates.filter(a => a.hasApprovedTemplates).length,
+    });
+  } catch (error: any) {
+    console.error("Error fetching agent templates:", error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message 
+    });
+  }
+});
+
 export default router;

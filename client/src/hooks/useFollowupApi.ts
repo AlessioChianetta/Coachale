@@ -180,6 +180,20 @@ export function useWhatsAppTemplates() {
   });
 }
 
+export function useAgentAssignedTemplates() {
+  return useQuery({
+    queryKey: ["agent-assigned-templates"],
+    queryFn: async () => {
+      const res = await fetch("/api/followup/agent-templates", { 
+        credentials: "include",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch agent templates");
+      return res.json();
+    },
+  });
+}
+
 export function useFollowupAnalytics() {
   return useQuery({
     queryKey: ["followup-analytics"],

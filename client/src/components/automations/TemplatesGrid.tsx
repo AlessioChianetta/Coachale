@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useWhatsAppTemplates, useGenerateTemplateWithAI, useCreateWhatsAppTemplate } from "@/hooks/useFollowupApi";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useWhatsAppTemplates, useGenerateTemplateWithAI, useCreateWhatsAppTemplate, useAgentAssignedTemplates } from "@/hooks/useFollowupApi";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, ExternalLink, Check, AlertCircle, Clock, Sparkles, Loader2, Save, Eye } from "lucide-react";
+import { FileText, ExternalLink, Check, AlertCircle, Clock, Sparkles, Loader2, Save, Eye, Bot, CheckCircle2, XCircle } from "lucide-react";
 import { Link } from "wouter";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface WhatsAppTemplate {
   id: string;
@@ -406,6 +407,143 @@ function AITemplateWizard() {
   );
 }
 
+interface AgentTemplate {
+  templateId: string;
+  templateType: string;
+  priority: number;
+  friendlyName: string;
+  twilioStatus: string;
+  bodyText: string | null;
+}
+
+interface AgentWithTemplates {
+  agentId: string;
+  agentName: string;
+  agentType: string;
+  isActive: boolean;
+  assignedTemplates: AgentTemplate[];
+  hasApprovedTemplates: boolean;
+}
+
+function AgentTemplatesSection() {
+  const { data, isLoading } = useAgentAssignedTemplates();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2].map((i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-60" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const agents = (data?.agents as AgentWithTemplates[]) || [];
+
+  if (agents.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-12">
+          <div className="flex flex-col items-center justify-center text-center">
+            <Bot className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Nessun agente configurato</h3>
+            <p className="text-muted-foreground mb-6">
+              Configura un agente WhatsApp per assegnare template.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Badge variant="outline" className="text-sm">
+          {data?.agentsWithTemplates || 0} / {data?.totalAgents || 0} agenti con template
+        </Badge>
+      </div>
+
+      {agents.map((agent) => (
+        <Card key={agent.agentId} className={!agent.hasApprovedTemplates ? "border-orange-200 bg-orange-50/30 dark:bg-orange-950/20" : ""}>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">{agent.agentName}</CardTitle>
+                {agent.isActive ? (
+                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Attivo</Badge>
+                ) : (
+                  <Badge variant="secondary">Inattivo</Badge>
+                )}
+              </div>
+              {agent.hasApprovedTemplates ? (
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+              ) : (
+                <XCircle className="h-5 w-5 text-orange-500" />
+              )}
+            </div>
+            <CardDescription>
+              {agent.agentType === 'proactive' ? 'Agente Proattivo' : 'Agente Reattivo'} - {agent.assignedTemplates.length} template approvati
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {agent.assignedTemplates.length === 0 ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-orange-100/50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm">Nessun template Twilio approvato assegnato. Il follow-up fuori finestra 24h non funzionerà.</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {agent.assignedTemplates.map((template, idx) => (
+                  <div 
+                    key={template.templateId} 
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">P{template.priority}</Badge>
+                        <span className="font-medium truncate">{template.friendlyName}</span>
+                      </div>
+                      {template.bodyText && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {template.bodyText}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 ml-2">
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100 flex items-center gap-1">
+                        <Check className="h-3 w-3" />
+                        Approvato
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-3">
+              <Link href="/consultant/whatsapp-templates">
+                <Button variant="outline" size="sm" className="w-full flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  Gestisci Assegnazioni
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export function TemplatesGrid() {
   const { data, isLoading } = useWhatsAppTemplates();
 
@@ -435,15 +573,34 @@ export function TemplatesGrid() {
         </Link>
       </div>
 
-      {templates.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {templates.map((template) => (
-            <TemplateCard key={template.id} template={template} />
-          ))}
-        </div>
-      )}
+      <Tabs defaultValue="per-agente" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="per-agente" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            Per Agente
+          </TabsTrigger>
+          <TabsTrigger value="tutti" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Tutti i Template
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="per-agente">
+          <AgentTemplatesSection />
+        </TabsContent>
+
+        <TabsContent value="tutti">
+          {templates.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {templates.map((template) => (
+                <TemplateCard key={template.id} template={template} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
