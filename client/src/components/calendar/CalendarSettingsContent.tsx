@@ -22,24 +22,9 @@ import {
   Calendar,
   Loader2,
   Save,
-  Bot,
-  CalendarDays,
 } from "lucide-react";
 import { getAuthHeaders } from "@/lib/auth";
 import { Switch } from "@/components/ui/switch";
-
-const aiAvailabilitySchema = z.object({
-  enabled: z.boolean(),
-  workingDays: z.object({
-    monday: z.object({ enabled: z.boolean(), start: z.string(), end: z.string() }).optional(),
-    tuesday: z.object({ enabled: z.boolean(), start: z.string(), end: z.string() }).optional(),
-    wednesday: z.object({ enabled: z.boolean(), start: z.string(), end: z.string() }).optional(),
-    thursday: z.object({ enabled: z.boolean(), start: z.string(), end: z.string() }).optional(),
-    friday: z.object({ enabled: z.boolean(), start: z.string(), end: z.string() }).optional(),
-    saturday: z.object({ enabled: z.boolean(), start: z.string(), end: z.string() }).optional(),
-    sunday: z.object({ enabled: z.boolean(), start: z.string(), end: z.string() }).optional(),
-  }),
-});
 
 const appointmentAvailabilitySchema = z.object({
   enabled: z.boolean(),
@@ -61,7 +46,6 @@ const appointmentAvailabilitySchema = z.object({
   minNoticeHours: z.coerce.number().min(1).max(168),
 });
 
-type AIAvailabilityFormData = z.infer<typeof aiAvailabilitySchema>;
 type AppointmentAvailabilityFormData = z.infer<typeof appointmentAvailabilitySchema>;
 
 const WEEKDAYS = [
@@ -77,22 +61,6 @@ const WEEKDAYS = [
 export default function CalendarSettingsContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  const aiForm = useForm<AIAvailabilityFormData>({
-    resolver: zodResolver(aiAvailabilitySchema),
-    defaultValues: {
-      enabled: true,
-      workingDays: {
-        monday: { enabled: true, start: "09:00", end: "18:00" },
-        tuesday: { enabled: true, start: "09:00", end: "18:00" },
-        wednesday: { enabled: true, start: "09:00", end: "18:00" },
-        thursday: { enabled: true, start: "09:00", end: "18:00" },
-        friday: { enabled: true, start: "09:00", end: "18:00" },
-        saturday: { enabled: false, start: "09:00", end: "18:00" },
-        sunday: { enabled: false, start: "09:00", end: "18:00" },
-      },
-    },
-  });
 
   const appointmentForm = useForm<AppointmentAvailabilityFormData>({
     resolver: zodResolver(appointmentAvailabilitySchema),
@@ -134,18 +102,14 @@ export default function CalendarSettingsContent() {
 
   useEffect(() => {
     if (existingConfig) {
-      if (existingConfig.aiAvailability) {
-        aiForm.reset(existingConfig.aiAvailability);
-      }
-
       if (existingConfig.appointmentAvailability) {
         appointmentForm.reset(existingConfig.appointmentAvailability);
       }
     }
-  }, [existingConfig, aiForm, appointmentForm]);
+  }, [existingConfig, appointmentForm]);
 
   const saveMutation = useMutation({
-    mutationFn: async (data: { aiAvailability: AIAvailabilityFormData; appointmentAvailability: AppointmentAvailabilityFormData }) => {
+    mutationFn: async (data: { appointmentAvailability: AppointmentAvailabilityFormData }) => {
       console.log('🚀 Submitting calendar settings:', data);
 
       const response = await fetch("/api/calendar-settings", {
@@ -181,10 +145,9 @@ export default function CalendarSettingsContent() {
   });
 
   const handleSaveAll = async () => {
-    const aiValid = await aiForm.trigger();
     const appointmentValid = await appointmentForm.trigger();
 
-    if (!aiValid || !appointmentValid) {
+    if (!appointmentValid) {
       toast({
         title: "❌ Errore di validazione",
         description: "Controlla i campi evidenziati in rosso",
@@ -193,14 +156,11 @@ export default function CalendarSettingsContent() {
       return;
     }
 
-    const aiData = aiForm.getValues();
     const appointmentData = appointmentForm.getValues();
 
-    console.log('📋 AI Availability Data (validated):', aiData);
     console.log('📋 Appointment Availability Data (validated):', appointmentData);
 
     saveMutation.mutate({
-      aiAvailability: aiData,
       appointmentAvailability: appointmentData,
     });
   };
@@ -215,109 +175,7 @@ export default function CalendarSettingsContent() {
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* CARD 1: AI Availability */}
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Bot className="h-5 w-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div className="flex-1">
-                <CardTitle>Disponibilità Assistente AI</CardTitle>
-                <CardDescription>
-                  Quando l'AI risponde automaticamente ai messaggi WhatsApp
-                </CardDescription>
-              </div>
-              <Badge variant={aiForm.watch("enabled") ? "default" : "secondary"} className={aiForm.watch("enabled") ? "bg-green-500" : ""}>
-                {aiForm.watch("enabled") ? "Attivo" : "Disattivo"}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Form {...aiForm}>
-              <FormField
-                control={aiForm.control}
-                name="enabled"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-green-50/50 dark:bg-green-950/20">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Abilita Assistente AI</FormLabel>
-                      <FormDescription>
-                        L'AI risponderà ai messaggi durante gli orari configurati
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={aiForm.control}
-                name="workingDays"
-                render={() => (
-                  <FormItem>
-                    <div className="mb-4">
-                      <FormLabel className="text-base">Giorni di Disponibilità AI</FormLabel>
-                      <FormDescription>
-                        Seleziona i giorni in cui l'AI è attiva
-                      </FormDescription>
-                    </div>
-                    <div className="space-y-3">
-                      {WEEKDAYS.map((day) => {
-                        const dayData = aiForm.watch(`workingDays.${day.value as keyof typeof aiForm.watch.workingDays}`);
-                        return (
-                          <div key={day.value} className="flex items-center gap-4 p-3 border rounded-lg">
-                            <FormField
-                              control={aiForm.control}
-                              name={`workingDays.${day.value}.enabled` as any}
-                              render={({ field }) => (
-                                <FormItem className="flex items-center space-x-2 space-y-0">
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="font-medium min-w-[100px]">
-                                    {day.label}
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                            {dayData?.enabled && (
-                              <div className="flex items-center gap-2">
-                                <FormField
-                                  control={aiForm.control}
-                                  name={`workingDays.${day.value}.start` as any}
-                                  render={({ field }) => (
-                                    <Input type="time" {...field} className="w-32" />
-                                  )}
-                                />
-                                <span>-</span>
-                                <FormField
-                                  control={aiForm.control}
-                                  name={`workingDays.${day.value}.end` as any}
-                                  render={({ field }) => (
-                                    <Input type="time" {...field} className="w-32" />
-                                  )}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </FormItem>
-                )}
-              />
-            </Form>
-          </CardContent>
-        </Card>
-
-        {/* CARD 2: Appointment Availability */}
+      <div className="max-w-3xl mx-auto">
         <Card className="border-l-4 border-l-blue-500">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -516,7 +374,7 @@ export default function CalendarSettingsContent() {
         </Card>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end max-w-3xl mx-auto">
         <Button
           onClick={handleSaveAll}
           disabled={saveMutation.isPending}
@@ -531,7 +389,7 @@ export default function CalendarSettingsContent() {
           ) : (
             <>
               <Save className="h-4 w-4" />
-              Salva Tutte le Configurazioni
+              Salva Configurazione
             </>
           )}
         </Button>
