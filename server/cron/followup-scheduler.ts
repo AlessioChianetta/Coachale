@@ -664,6 +664,47 @@ async function evaluateConversation(
 
     const scheduledFor = new Date();
     
+    const windowCheck = await validate24hWindowForScheduling(
+      candidate.conversationId,
+      scheduledFor,
+      candidate.agentConfigId
+    );
+    
+    if (!windowCheck.canSchedule) {
+      const skipContext: FollowupContext = {
+        conversationId: candidate.conversationId,
+        leadName: candidate.leadName,
+        currentState: candidate.currentState,
+        daysSilent: candidate.daysSilent,
+        hoursSinceLastInbound: candidate.hoursSinceLastInbound,
+        followupCount: candidate.followupCount,
+        maxFollowupsAllowed: candidate.maxFollowupsAllowed,
+        channel: 'whatsapp',
+        agentType: candidate.agentType,
+        lastMessages: [],
+        lastMessageDirection: null,
+        signals: candidate.signals,
+        engagementScore: candidate.engagementScore,
+        conversionProbability: candidate.conversionProbability,
+        availableTemplates: [],
+      };
+      
+      await logFollowupDecision(
+        candidate.conversationId,
+        skipContext,
+        {
+          decision: 'skip',
+          reasoning: `Impossibile schedulare: saremo fuori finestra 24h (scade ${windowCheck.window24hExpiresAt.toISOString()}) e nessun template approvato disponibile. Configura template per questo agente.`,
+          confidenceScore: 1.0,
+          matchedSystemRule: 'no_template_outside_24h'
+        },
+        'system-validation',
+        0, 0
+      );
+      
+      return 'skipped';
+    }
+    
     await db.insert(scheduledFollowupMessages).values({
       conversationId: candidate.conversationId,
       ruleId: timeBasedRule.id,
@@ -739,6 +780,29 @@ async function evaluateConversation(
 
   if (decision.decision === 'send_now' || decision.decision === 'schedule') {
     const scheduledFor = calculateScheduledTime(decision);
+    
+    const windowCheck = await validate24hWindowForScheduling(
+      candidate.conversationId,
+      scheduledFor,
+      candidate.agentConfigId
+    );
+    
+    if (!windowCheck.canSchedule) {
+      await logFollowupDecision(
+        candidate.conversationId,
+        context,
+        {
+          decision: 'skip',
+          reasoning: `Impossibile schedulare: saremo fuori finestra 24h (scade ${windowCheck.window24hExpiresAt.toISOString()}) e nessun template approvato disponibile. Configura template per questo agente.`,
+          confidenceScore: 1.0,
+          matchedSystemRule: 'no_template_outside_24h'
+        },
+        'system-validation',
+        0, 0
+      );
+      
+      return 'skipped';
+    }
     
     let templateIdToUse: string | null = null;
     let fallbackMessageToUse: string | null = null;
@@ -1007,6 +1071,65 @@ function calculateScheduledTime(decision: FollowupDecision): Date {
     default:
       return now;
   }
+}
+
+async function validate24hWindowForScheduling(
+  conversationId: string,
+  scheduledFor: Date,
+  agentConfigId: string | null
+): Promise<{ canSchedule: boolean; window24hExpiresAt: Date; willBeOutside24h: boolean }> {
+  const lastLeadMessage = await db
+    .select({ createdAt: whatsappMessages.createdAt })
+    .from(whatsappMessages)
+    .where(
+      and(
+        eq(whatsappMessages.conversationId, conversationId),
+        eq(whatsappMessages.sender, 'client')
+      )
+    )
+    .orderBy(desc(whatsappMessages.createdAt))
+    .limit(1);
+
+  const window24hExpiresAt = lastLeadMessage.length > 0 && lastLeadMessage[0].createdAt
+    ? new Date(new Date(lastLeadMessage[0].createdAt).getTime() + 24 * 60 * 60 * 1000)
+    : new Date(0);
+
+  const willBeOutside24h = scheduledFor > window24hExpiresAt;
+
+  if (!willBeOutside24h) {
+    return { canSchedule: true, window24hExpiresAt, willBeOutside24h };
+  }
+
+  console.log(`⚠️ [FOLLOWUP-SCHEDULER] Messaggio schedulato per ${scheduledFor.toISOString()} sarà FUORI finestra 24h (scade ${window24hExpiresAt.toISOString()})`);
+
+  if (!agentConfigId) {
+    console.log(`❌ [FOLLOWUP-SCHEDULER] Nessun agentConfigId - impossibile verificare template approvati`);
+    return { canSchedule: false, window24hExpiresAt, willBeOutside24h };
+  }
+
+  const approvedTemplate = await db
+    .select({ id: whatsappTemplateVersions.id })
+    .from(whatsappTemplateVersions)
+    .innerJoin(
+      whatsappTemplateAssignments,
+      eq(whatsappTemplateVersions.templateId, whatsappTemplateAssignments.templateId)
+    )
+    .where(
+      and(
+        eq(whatsappTemplateAssignments.agentConfigId, agentConfigId),
+        eq(whatsappTemplateVersions.isActive, true),
+        eq(whatsappTemplateVersions.twilioStatus, 'approved')
+      )
+    )
+    .limit(1);
+
+  if (approvedTemplate.length === 0) {
+    console.log(`❌ [FOLLOWUP-SCHEDULER] NESSUN template approvato disponibile per fuori 24h - NON schedulo`);
+    return { canSchedule: false, window24hExpiresAt, willBeOutside24h };
+  }
+
+  console.log(`✅ [FOLLOWUP-SCHEDULER] Template approvato trovato, procedo con scheduling fuori 24h`);
+  return { canSchedule: true, window24hExpiresAt, willBeOutside24h };
 }
 
 async function generateAIFollowupMessage(

@@ -894,6 +894,34 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       .orderBy(desc(schema.scheduledFollowupMessages.createdAt))
       .limit(limit);
 
+    // Enrich scheduled messages with 24h window info
+    const enrichedMessages = await Promise.all(scheduledMessages.map(async (msg) => {
+      // Find last lead message to calculate 24h window
+      const lastLeadMsg = await db
+        .select({ createdAt: schema.whatsappMessages.createdAt })
+        .from(schema.whatsappMessages)
+        .where(
+          and(
+            eq(schema.whatsappMessages.conversationId, msg.conversationId),
+            eq(schema.whatsappMessages.sender, 'client')
+          )
+        )
+        .orderBy(desc(schema.whatsappMessages.createdAt))
+        .limit(1);
+      
+      const window24hExpiresAt = lastLeadMsg.length > 0 && lastLeadMsg[0].createdAt
+        ? new Date(new Date(lastLeadMsg[0].createdAt).getTime() + 24 * 60 * 60 * 1000)
+        : null;
+      
+      const canSendFreeform = window24hExpiresAt ? new Date() < window24hExpiresAt : false;
+      
+      return {
+        ...msg,
+        window24hExpiresAt,
+        canSendFreeform,
+      };
+    }));
+
     // Combine and format timeline events
     const events: any[] = [];
 
@@ -919,7 +947,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       });
     }
 
-    for (const msg of scheduledMessages) {
+    for (const msg of enrichedMessages) {
       events.push({
         id: `msg-${msg.id}`,
         type: msg.status === 'sent' ? 'message_sent' : 
@@ -936,6 +964,8 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         status: msg.status === 'sent' ? 'active' :
                 msg.status === 'failed' ? 'error' :
                 msg.status === 'pending' ? 'scheduled' : 'cancelled',
+        window24hExpiresAt: msg.window24hExpiresAt,
+        canSendFreeform: msg.canSendFreeform,
       });
     }
 

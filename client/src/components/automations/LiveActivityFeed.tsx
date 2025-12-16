@@ -29,6 +29,7 @@ import {
 import { Link } from "wouter";
 import { useSendMessageNow } from "@/hooks/useFollowupApi";
 import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TimelineEvent {
   id: string;
@@ -45,6 +46,8 @@ interface TimelineEvent {
   currentState?: string;
   status: string;
   errorMessage?: string;
+  window24hExpiresAt?: string;
+  canSendFreeform?: boolean;
 }
 
 interface ConversationTimeline {
@@ -113,12 +116,13 @@ function getEventLabel(type: string, decision?: string) {
   }
 }
 
-function SendNowButton({ messageId }: { messageId: string }) {
+function SendNowButton({ messageId, canSendFreeform }: { messageId: string; canSendFreeform?: boolean }) {
   const { toast } = useToast();
   const sendNow = useSendMessageNow();
   
   const handleSendNow = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!canSendFreeform) return;
     try {
       const result = await sendNow.mutateAsync(messageId);
       toast({
@@ -134,21 +138,37 @@ function SendNowButton({ messageId }: { messageId: string }) {
     }
   };
   
+  const isDisabled = sendNow.isPending || !canSendFreeform;
+  const tooltipText = !canSendFreeform 
+    ? "Fuori finestra 24h - serve template approvato" 
+    : "Invia subito";
+  
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleSendNow}
-      disabled={sendNow.isPending}
-      className="gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
-    >
-      {sendNow.isPending ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
-      ) : (
-        <Zap className="h-3 w-3" />
-      )}
-      Invia subito
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSendNow}
+              disabled={isDisabled}
+              className={`gap-1 ${!canSendFreeform ? 'opacity-50 cursor-not-allowed' : 'text-blue-600 border-blue-300 hover:bg-blue-50'}`}
+            >
+              {sendNow.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Zap className="h-3 w-3" />
+              )}
+              Invia Ora
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{tooltipText}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -240,7 +260,7 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                       
                       {event.type === 'message_scheduled' && event.status === 'scheduled' && (
                         <div className="mt-2">
-                          <SendNowButton messageId={event.id.replace('msg-', '')} />
+                          <SendNowButton messageId={event.id.replace('msg-', '')} canSendFreeform={event.canSendFreeform} />
                         </div>
                       )}
                     </div>
@@ -257,7 +277,10 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                 </Button>
               </Link>
               {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (
-                <SendNowButton messageId={conversation.events.find(e => e.type === 'message_scheduled')!.id.replace('msg-', '')} />
+                <SendNowButton 
+                  messageId={conversation.events.find(e => e.type === 'message_scheduled')!.id.replace('msg-', '')} 
+                  canSendFreeform={conversation.events.find(e => e.type === 'message_scheduled')?.canSendFreeform}
+                />
               )}
               {conversation.currentStatus === 'error' && (
                 <Button variant="outline" size="sm" className="gap-1 text-orange-600 border-orange-300">
