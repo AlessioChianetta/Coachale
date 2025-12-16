@@ -37,6 +37,7 @@ interface TimelineEvent {
   conversationId: string;
   leadName: string;
   agentName: string;
+  agentId?: string;
   timestamp: string;
   decision?: string;
   reasoning?: string;
@@ -48,13 +49,21 @@ interface TimelineEvent {
   errorMessage?: string;
   window24hExpiresAt?: string;
   canSendFreeform?: boolean;
+  templateId?: string;
+  templateName?: string;
+  messagePreview?: string;
+  temperatureLevel?: 'hot' | 'warm' | 'cold' | 'ghost';
 }
 
 interface ConversationTimeline {
   conversationId: string;
   leadName: string;
   agentName: string;
+  agentId?: string;
   currentStatus: string;
+  temperatureLevel?: 'hot' | 'warm' | 'cold' | 'ghost';
+  currentState?: string;
+  window24hExpiresAt?: string;
   events: TimelineEvent[];
 }
 
@@ -79,6 +88,43 @@ function getStatusConfig(status: string) {
     default:
       return { color: 'bg-gray-100 text-gray-700', icon: Activity, label: status };
   }
+}
+
+function getTemperatureConfig(temperature?: string) {
+  switch (temperature) {
+    case 'hot':
+      return { emoji: '🔥', label: 'Hot', color: 'bg-red-100 text-red-700 border-red-300' };
+    case 'warm':
+      return { emoji: '🟡', label: 'Warm', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
+    case 'cold':
+      return { emoji: '❄️', label: 'Cold', color: 'bg-blue-100 text-blue-700 border-blue-300' };
+    case 'ghost':
+      return { emoji: '👻', label: 'Ghost', color: 'bg-gray-100 text-gray-500 border-gray-300' };
+    default:
+      return { emoji: '🟡', label: 'Warm', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
+  }
+}
+
+function formatCountdown(expiresAt?: string): { text: string; isExpired: boolean; isUrgent: boolean } | null {
+  if (!expiresAt) return null;
+  
+  const now = new Date();
+  const expires = new Date(expiresAt);
+  const diffMs = expires.getTime() - now.getTime();
+  
+  if (diffMs <= 0) {
+    return { text: 'Scaduta', isExpired: true, isUrgent: false };
+  }
+  
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  
+  const isUrgent = hours < 2;
+  
+  if (hours > 0) {
+    return { text: `${hours}h ${minutes}m`, isExpired: false, isUrgent };
+  }
+  return { text: `${minutes}m`, isExpired: false, isUrgent };
 }
 
 function getEventIcon(type: string) {
@@ -174,8 +220,12 @@ function SendNowButton({ messageId, canSendFreeform }: { messageId: string; canS
 
 function ConversationCard({ conversation }: { conversation: ConversationTimeline }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showFullReasoning, setShowFullReasoning] = useState<Record<string, boolean>>({});
+  const [showFullMessagePreview, setShowFullMessagePreview] = useState<Record<string, boolean>>({});
   const statusConfig = getStatusConfig(conversation.currentStatus);
   const StatusIcon = statusConfig.icon;
+  const tempConfig = getTemperatureConfig(conversation.temperatureLevel);
+  const countdown = formatCountdown(conversation.window24hExpiresAt);
 
   return (
     <Card className="overflow-hidden">
@@ -188,14 +238,50 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                   <User className="h-5 w-5 text-gray-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                     {conversation.leadName}
                     <Badge variant="outline" className="text-xs font-normal">
                       via {conversation.agentName}
                     </Badge>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className={`text-xs font-normal border ${tempConfig.color}`}>
+                            {tempConfig.emoji} {tempConfig.label}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Temperatura lead: {tempConfig.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </CardTitle>
-                  <CardDescription className="text-xs">
+                  <CardDescription className="text-xs flex items-center gap-2 flex-wrap">
                     {conversation.events.length} eventi recenti
+                    {countdown && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
+                              countdown.isExpired 
+                                ? 'bg-red-100 text-red-700' 
+                                : countdown.isUrgent 
+                                  ? 'bg-orange-100 text-orange-700' 
+                                  : 'bg-green-100 text-green-700'
+                            }`}>
+                              <Clock className="h-3 w-3" />
+                              {countdown.isExpired ? '24h scaduta' : `24h: ${countdown.text}`}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{countdown.isExpired 
+                              ? 'Finestra 24h scaduta - serve template approvato' 
+                              : `Finestra 24h scade tra ${countdown.text}`}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </CardDescription>
                 </div>
               </div>
@@ -241,9 +327,43 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                       )}
                       
                       {event.reasoning && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {event.reasoning}
-                        </p>
+                        <div className="mt-0.5">
+                          <p className={`text-xs text-muted-foreground ${showFullReasoning[event.id] ? '' : 'line-clamp-2'}`}>
+                            {event.reasoning}
+                          </p>
+                          {event.reasoning.length > 100 && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowFullReasoning(prev => ({...prev, [event.id]: !prev[event.id]}));
+                              }}
+                              className="text-xs text-blue-600 hover:underline mt-0.5"
+                            >
+                              {showFullReasoning[event.id] ? 'Mostra meno' : 'Mostra tutto'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      
+                      {event.messagePreview && (
+                        <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                          <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                            <MessageSquare className="h-3 w-3" />
+                            {event.templateName ? `Template: ${event.templateName}` : 'Messaggio AI'}
+                          </p>
+                          <p className={`text-xs italic ${showFullMessagePreview[event.id] ? '' : 'line-clamp-3'}`}>"{event.messagePreview}"</p>
+                          {event.messagePreview.length > 150 && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowFullMessagePreview(prev => ({...prev, [event.id]: !prev[event.id]}));
+                              }}
+                              className="text-xs text-blue-600 hover:underline mt-1"
+                            >
+                              {showFullMessagePreview[event.id] ? 'Mostra meno' : 'Mostra tutto'}
+                            </button>
+                          )}
+                        </div>
                       )}
                       
                       {event.errorMessage && (

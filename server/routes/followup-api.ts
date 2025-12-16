@@ -839,6 +839,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         leadFirstName: schema.proactiveLeads.firstName,
         leadLastName: schema.proactiveLeads.lastName,
         currentState: schema.conversationStates.currentState,
+        temperatureLevel: schema.conversationStates.temperatureLevel,
       })
       .from(schema.followupAiEvaluationLog)
       .innerJoin(
@@ -861,7 +862,34 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       .orderBy(desc(schema.followupAiEvaluationLog.createdAt))
       .limit(limit);
 
-    // Get scheduled/sent messages
+    // Enrich AI logs with 24h window info
+    const enrichedAiLogs = await Promise.all(aiLogs.map(async (log) => {
+      const lastLeadMsg = await db
+        .select({ createdAt: schema.whatsappMessages.createdAt })
+        .from(schema.whatsappMessages)
+        .where(
+          and(
+            eq(schema.whatsappMessages.conversationId, log.conversationId),
+            eq(schema.whatsappMessages.sender, 'client')
+          )
+        )
+        .orderBy(desc(schema.whatsappMessages.createdAt))
+        .limit(1);
+      
+      const window24hExpiresAt = lastLeadMsg.length > 0 && lastLeadMsg[0].createdAt
+        ? new Date(new Date(lastLeadMsg[0].createdAt).getTime() + 24 * 60 * 60 * 1000)
+        : null;
+      
+      const canSendFreeform = window24hExpiresAt ? new Date() < window24hExpiresAt : false;
+      
+      return {
+        ...log,
+        window24hExpiresAt,
+        canSendFreeform,
+      };
+    }));
+
+    // Get scheduled/sent messages with template info and temperature
     const scheduledMessages = await db
       .select({
         id: schema.scheduledFollowupMessages.id,
@@ -874,8 +902,15 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         createdAt: schema.scheduledFollowupMessages.createdAt,
         phoneNumber: schema.whatsappConversations.phoneNumber,
         agentName: schema.consultantWhatsappConfig.agentName,
+        agentId: schema.consultantWhatsappConfig.id,
         leadFirstName: schema.proactiveLeads.firstName,
         leadLastName: schema.proactiveLeads.lastName,
+        templateId: schema.scheduledFollowupMessages.templateId,
+        fallbackMessage: schema.scheduledFollowupMessages.fallbackMessage,
+        templateName: schema.whatsappCustomTemplates.templateName,
+        templateBody: schema.whatsappCustomTemplates.body,
+        temperatureLevel: schema.conversationStates.temperatureLevel,
+        currentState: schema.conversationStates.currentState,
       })
       .from(schema.scheduledFollowupMessages)
       .innerJoin(
@@ -889,6 +924,14 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       .leftJoin(
         schema.proactiveLeads,
         eq(schema.whatsappConversations.proactiveLeadId, schema.proactiveLeads.id)
+      )
+      .leftJoin(
+        schema.whatsappCustomTemplates,
+        eq(schema.scheduledFollowupMessages.templateId, schema.whatsappCustomTemplates.id)
+      )
+      .leftJoin(
+        schema.conversationStates,
+        eq(schema.whatsappConversations.id, schema.conversationStates.conversationId)
       )
       .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
       .orderBy(desc(schema.scheduledFollowupMessages.createdAt))
@@ -925,7 +968,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     // Combine and format timeline events
     const events: any[] = [];
 
-    for (const log of aiLogs) {
+    for (const log of enrichedAiLogs) {
       events.push({
         id: `ai-${log.id}`,
         type: 'ai_evaluation',
@@ -934,6 +977,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
           ? `${log.leadFirstName || ''} ${log.leadLastName || ''}`.trim()
           : log.phoneNumber,
         agentName: log.agentName || 'Agente',
+        agentId: log.agentId,
         timestamp: log.createdAt,
         decision: log.decision,
         reasoning: log.reasoning,
@@ -941,6 +985,9 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         matchedRuleId: log.matchedRuleId,
         matchedRuleReason: log.matchedRuleReason,
         currentState: log.currentState,
+        temperatureLevel: log.temperatureLevel || 'warm',
+        window24hExpiresAt: log.window24hExpiresAt,
+        canSendFreeform: log.canSendFreeform,
         status: log.decision === 'stop' ? 'stopped' : 
                 log.decision === 'skip' ? 'waiting' : 
                 log.decision === 'send_now' ? 'active' : 'active',
@@ -948,6 +995,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     }
 
     for (const msg of enrichedMessages) {
+      const messagePreview = msg.fallbackMessage || msg.templateBody || null;
       events.push({
         id: `msg-${msg.id}`,
         type: msg.status === 'sent' ? 'message_sent' : 
@@ -958,6 +1006,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
           ? `${msg.leadFirstName || ''} ${msg.leadLastName || ''}`.trim()
           : msg.phoneNumber,
         agentName: msg.agentName || 'Agente',
+        agentId: msg.agentId,
         timestamp: msg.sentAt || msg.scheduledFor || msg.createdAt,
         reasoning: msg.aiDecisionReasoning,
         errorMessage: msg.errorMessage,
@@ -966,6 +1015,11 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
                 msg.status === 'pending' ? 'scheduled' : 'cancelled',
         window24hExpiresAt: msg.window24hExpiresAt,
         canSendFreeform: msg.canSendFreeform,
+        templateId: msg.templateId,
+        templateName: msg.templateName,
+        messagePreview: messagePreview,
+        temperatureLevel: msg.temperatureLevel || 'warm',
+        currentState: msg.currentState,
       });
     }
 
@@ -992,7 +1046,11 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
           conversationId: event.conversationId,
           leadName: event.leadName,
           agentName: event.agentName,
+          agentId: event.agentId,
           currentStatus: event.status,
+          temperatureLevel: event.temperatureLevel || 'warm',
+          currentState: event.currentState,
+          window24hExpiresAt: event.window24hExpiresAt,
           events: [],
         };
       }
