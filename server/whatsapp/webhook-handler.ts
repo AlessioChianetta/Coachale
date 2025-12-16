@@ -9,6 +9,7 @@ import {
   users,
   whatsappGlobalApiKeys,
   conversationStates,
+  scheduledFollowupMessages,
 } from "../../shared/schema";
 import { eq, and, isNull, asc, sql } from "drizzle-orm";
 import { scheduleMessageProcessing } from "./message-processor";
@@ -271,6 +272,28 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
   if (!conversation) {
     console.log(`🆕 Conversation not found for ${phoneNumber}, creating new one...`);
     conversation = await findOrCreateConversation(phoneNumber, config.consultantId, config.id);
+  }
+
+  // FASE 1.1: Cancellazione immediata messaggi schedulati quando lead risponde
+  if (conversation) {
+    const cancelledMessages = await db
+      .update(scheduledFollowupMessages)
+      .set({
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        cancelReason: 'user_replied'
+      })
+      .where(
+        and(
+          eq(scheduledFollowupMessages.conversationId, conversation.id),
+          eq(scheduledFollowupMessages.status, 'pending')
+        )
+      )
+      .returning({ id: scheduledFollowupMessages.id });
+    
+    if (cancelledMessages.length > 0) {
+      console.log(`🛑 [FOLLOWUP-CANCEL] Lead ha risposto! Cancellati ${cancelledMessages.length} messaggi programmati per conversazione ${conversation.id}`);
+    }
   }
 
   if (!conversation.aiEnabled) {
