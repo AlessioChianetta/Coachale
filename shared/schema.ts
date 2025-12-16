@@ -3195,6 +3195,54 @@ export type UpdateExternalApiConfig = z.infer<typeof updateExternalApiConfigSche
 export type ExternalLeadImportLog = typeof externalLeadImportLogs.$inferSelect;
 export type InsertExternalLeadImportLog = z.infer<typeof insertExternalLeadImportLogSchema>;
 
+// Webhook Configurations - Hubdigital.io and other webhook providers
+export const webhookConfigs = pgTable("webhook_configs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  
+  // Provider identification
+  providerName: text("provider_name").notNull(), // "hubdigital", "altro_webhook"
+  displayName: text("display_name").notNull(), // "Hubdigital.io"
+  
+  // Security
+  secretKey: text("secret_key").notNull(), // Unique secret key for webhook authentication
+  
+  // Mapping to Marketing Campaign (optional)
+  targetCampaignId: varchar("target_campaign_id").references(() => marketingCampaigns.id, { onDelete: "set null" }),
+  
+  // Status & Tracking
+  isActive: boolean("is_active").default(true).notNull(),
+  lastWebhookAt: timestamp("last_webhook_at"), // Last webhook received timestamp
+  totalLeadsReceived: integer("total_leads_received").default(0).notNull(),
+  
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  uniqueProviderName: unique().on(table.consultantId, table.providerName),
+}));
+
+// Webhook Config validation schemas
+export const insertWebhookConfigSchema = createInsertSchema(webhookConfigs).omit({
+  id: true,
+  lastWebhookAt: true,
+  totalLeadsReceived: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  providerName: z.string().min(1, "Il nome del provider è obbligatorio"),
+  displayName: z.string().min(1, "Il nome visualizzato è obbligatorio"),
+  secretKey: z.string().min(16, "La chiave segreta deve essere almeno 16 caratteri"),
+});
+
+export const updateWebhookConfigSchema = insertWebhookConfigSchema.partial().omit({
+  consultantId: true,
+});
+
+// Webhook Config types
+export type WebhookConfig = typeof webhookConfigs.$inferSelect;
+export type InsertWebhookConfig = z.infer<typeof insertWebhookConfigSchema>;
+export type UpdateWebhookConfig = z.infer<typeof updateWebhookConfigSchema>;
+
 // System Errors (centralized error tracking)
 export const systemErrors = pgTable("system_errors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

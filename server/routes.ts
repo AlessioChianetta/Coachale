@@ -77,6 +77,7 @@ import agentKnowledgeRouter from "./routes/whatsapp/agent-knowledge-router";
 import agentShareRouter from "./routes/whatsapp/agent-share-router";
 import publicShareRouter from "./routes/whatsapp/public-share-router";
 import externalApiRouter from "./routes/external-api";
+import webhookRouter from "./routes/webhook";
 import livePromptsRouter from "./routes/live-prompts";
 import aiConsultationsRouter from "./routes/ai-consultations";
 import salesAgentConfigRouter from "./routes/client/sales-agent-config";
@@ -7113,6 +7114,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // External API Lead Import routes
   app.use("/api/external-api", externalApiRouter);
+
+  // Webhook routes (public endpoints for receiving leads from external systems)
+  app.use("/api/webhook", webhookRouter);
 
   // Training Assistant routes
   app.use("/api/training", trainingAssistantRouter);

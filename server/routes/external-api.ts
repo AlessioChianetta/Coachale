@@ -4,8 +4,9 @@ import { storage } from '../storage';
 import { ExternalLeadApiClient } from '../services/external-api-client';
 import { LeadImportService } from '../services/lead-import-service';
 import { pollingScheduler } from '../services/lead-polling-scheduler';
-import { insertExternalApiConfigSchema, updateExternalApiConfigSchema } from '@shared/schema';
+import { insertExternalApiConfigSchema, updateExternalApiConfigSchema, insertWebhookConfigSchema } from '@shared/schema';
 import { z } from 'zod';
+import { nanoid } from 'nanoid';
 
 const router = Router();
 
@@ -392,6 +393,150 @@ router.get('/configs/:id/logs', authenticateToken, requireRole('consultant'), as
     res.status(500).json({
       success: false,
       error: 'Failed to fetch import logs',
+    });
+  }
+});
+
+router.get('/webhook-configs', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const configs = await storage.getAllWebhookConfigs(consultantId);
+
+    res.json({
+      success: true,
+      data: configs,
+    });
+  } catch (error: any) {
+    console.error('Error fetching webhook configs:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch webhook configurations',
+    });
+  }
+});
+
+router.post('/webhook-configs', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+
+    const validatedData = insertWebhookConfigSchema.parse({
+      ...req.body,
+      consultantId,
+      secretKey: nanoid(32),
+    });
+
+    const config = await storage.createWebhookConfig(validatedData);
+
+    res.status(201).json({
+      success: true,
+      data: config,
+      message: 'Webhook configuration created successfully',
+    });
+  } catch (error: any) {
+    console.error('Error creating webhook config:', error);
+
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: error.errors,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create webhook configuration',
+    });
+  }
+});
+
+router.patch('/webhook-configs/:id', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const configId = req.params.id;
+
+    const { displayName, targetCampaignId, isActive } = req.body;
+    const updates: { displayName?: string; targetCampaignId?: string; isActive?: boolean } = {};
+    
+    if (displayName !== undefined) updates.displayName = displayName;
+    if (targetCampaignId !== undefined) updates.targetCampaignId = targetCampaignId;
+    if (isActive !== undefined) updates.isActive = isActive;
+
+    const config = await storage.updateWebhookConfig(configId, consultantId, updates);
+
+    if (!config) {
+      return res.status(404).json({
+        success: false,
+        error: 'Webhook configuration not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: config,
+      message: 'Webhook configuration updated successfully',
+    });
+  } catch (error: any) {
+    console.error('Error updating webhook config:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update webhook configuration',
+    });
+  }
+});
+
+router.delete('/webhook-configs/:id', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const configId = req.params.id;
+
+    const success = await storage.deleteWebhookConfig(configId, consultantId);
+
+    if (!success) {
+      return res.status(404).json({
+        success: false,
+        error: 'Webhook configuration not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Webhook configuration deleted successfully',
+    });
+  } catch (error: any) {
+    console.error('Error deleting webhook config:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete webhook configuration',
+    });
+  }
+});
+
+router.post('/webhook-configs/:id/regenerate-key', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res: Response) => {
+  try {
+    const consultantId = req.user!.id;
+    const configId = req.params.id;
+
+    const newSecretKey = nanoid(32);
+    const config = await storage.updateWebhookConfig(configId, consultantId, { secretKey: newSecretKey });
+
+    if (!config) {
+      return res.status(404).json({
+        success: false,
+        error: 'Webhook configuration not found',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: config,
+      message: 'Secret key regenerated successfully',
+    });
+  } catch (error: any) {
+    console.error('Error regenerating webhook secret key:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to regenerate secret key',
     });
   }
 });

@@ -103,6 +103,9 @@ import {
   type UpdateExternalApiConfig,
   type ExternalLeadImportLog,
   type InsertExternalLeadImportLog,
+  type WebhookConfig,
+  type InsertWebhookConfig,
+  type UpdateWebhookConfig,
   type VertexAiSettings,
   type InsertVertexAiSettings,
   type UpdateVertexAiSettings,
@@ -592,6 +595,15 @@ export interface IStorage {
   createExternalApiConfig(data: InsertExternalApiConfig): Promise<ExternalApiConfig>;
   updateExternalApiConfig(configId: string, consultantId: string, data: Partial<UpdateExternalApiConfig>): Promise<ExternalApiConfig | null>;
   deleteExternalApiConfig(configId: string, consultantId: string): Promise<boolean>;
+
+  // Webhook Configuration operations
+  getWebhookConfig(consultantId: string, id: string): Promise<WebhookConfig | null>;
+  getWebhookConfigBySecret(secretKey: string): Promise<WebhookConfig | null>;
+  getAllWebhookConfigs(consultantId: string): Promise<WebhookConfig[]>;
+  createWebhookConfig(data: InsertWebhookConfig): Promise<WebhookConfig>;
+  updateWebhookConfig(id: string, consultantId: string, data: UpdateWebhookConfig): Promise<WebhookConfig | null>;
+  deleteWebhookConfig(id: string, consultantId: string): Promise<boolean>;
+  incrementWebhookLeadsCount(id: string): Promise<void>;
 
   // External Lead Import Log operations
   createExternalLeadImportLog(data: InsertExternalLeadImportLog): Promise<ExternalLeadImportLog>;
@@ -4601,6 +4613,117 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       console.error(`Error deleting external API config ${configId}:`, error);
       return false;
+    }
+  }
+
+  // Webhook Configuration operations
+  async getWebhookConfig(consultantId: string, id: string): Promise<WebhookConfig | null> {
+    try {
+      const [config] = await db.select()
+        .from(schema.webhookConfigs)
+        .where(
+          and(
+            eq(schema.webhookConfigs.id, id),
+            eq(schema.webhookConfigs.consultantId, consultantId)
+          )
+        );
+      
+      return config || null;
+    } catch (error: any) {
+      console.error(`Error fetching webhook config ${id}:`, error);
+      return null;
+    }
+  }
+
+  async getWebhookConfigBySecret(secretKey: string): Promise<WebhookConfig | null> {
+    try {
+      const [config] = await db.select()
+        .from(schema.webhookConfigs)
+        .where(eq(schema.webhookConfigs.secretKey, secretKey));
+      
+      return config || null;
+    } catch (error: any) {
+      console.error(`Error fetching webhook config by secret:`, error);
+      return null;
+    }
+  }
+
+  async getAllWebhookConfigs(consultantId: string): Promise<WebhookConfig[]> {
+    try {
+      const configs = await db.select()
+        .from(schema.webhookConfigs)
+        .where(eq(schema.webhookConfigs.consultantId, consultantId))
+        .orderBy(desc(schema.webhookConfigs.createdAt));
+
+      return configs;
+    } catch (error: any) {
+      console.error(`Error fetching webhook configs for consultant ${consultantId}:`, error);
+      return [];
+    }
+  }
+
+  async createWebhookConfig(data: InsertWebhookConfig): Promise<WebhookConfig> {
+    try {
+      const [config] = await db.insert(schema.webhookConfigs)
+        .values(data)
+        .returning();
+
+      return config;
+    } catch (error: any) {
+      console.error('Error creating webhook config:', error);
+      throw error;
+    }
+  }
+
+  async updateWebhookConfig(id: string, consultantId: string, data: UpdateWebhookConfig): Promise<WebhookConfig | null> {
+    try {
+      const updateData: any = { ...data, updatedAt: new Date() };
+
+      const [config] = await db.update(schema.webhookConfigs)
+        .set(updateData)
+        .where(
+          and(
+            eq(schema.webhookConfigs.id, id),
+            eq(schema.webhookConfigs.consultantId, consultantId)
+          )
+        )
+        .returning();
+
+      return config || null;
+    } catch (error: any) {
+      console.error(`Error updating webhook config ${id}:`, error);
+      return null;
+    }
+  }
+
+  async deleteWebhookConfig(id: string, consultantId: string): Promise<boolean> {
+    try {
+      await db.delete(schema.webhookConfigs)
+        .where(
+          and(
+            eq(schema.webhookConfigs.id, id),
+            eq(schema.webhookConfigs.consultantId, consultantId)
+          )
+        );
+      
+      return true;
+    } catch (error: any) {
+      console.error(`Error deleting webhook config ${id}:`, error);
+      return false;
+    }
+  }
+
+  async incrementWebhookLeadsCount(id: string): Promise<void> {
+    try {
+      await db.update(schema.webhookConfigs)
+        .set({
+          totalLeadsReceived: sql`${schema.webhookConfigs.totalLeadsReceived} + 1`,
+          lastWebhookAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(schema.webhookConfigs.id, id));
+    } catch (error: any) {
+      console.error(`Error incrementing webhook leads count for ${id}:`, error);
     }
   }
 
