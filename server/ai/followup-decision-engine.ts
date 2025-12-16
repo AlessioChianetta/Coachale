@@ -9,6 +9,7 @@ import { conversationStates, followupAiEvaluationLog } from "../../shared/schema
 import { eq } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { createVertexGeminiClient, parseServiceAccountJson } from "./provider-factory";
+import { evaluateSystemRules, RuleEvaluationContext } from "./system-rules-config";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Interfaces
@@ -32,6 +33,7 @@ export interface FollowupContext {
   channel: string;
   agentType: string;
   lastMessages: Array<{ role: string; content: string; timestamp: string }>;
+  lastMessageDirection: "inbound" | "outbound" | null;
   signals: {
     hasAskedPrice: boolean;
     hasMentionedUrgency: boolean;
@@ -54,6 +56,8 @@ export interface FollowupDecision {
   updatedEngagementScore?: number;
   updatedConversionProbability?: number;
   stateTransition?: string;
+  allowFreeformMessage?: boolean;
+  matchedSystemRule?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -73,11 +77,53 @@ export async function evaluateFollowup(
     console.log(`🤖 [FOLLOWUP-ENGINE] Evaluating follow-up for conversation ${context.conversationId}`);
     console.log(`   State: ${context.currentState}, Days silent: ${context.daysSilent}, Follow-ups: ${context.followupCount}/${context.maxFollowupsAllowed}`);
 
-    // Pre-check: regole deterministiche prima dell'AI
-    const preCheck = checkDeterministicRules(context);
-    if (preCheck) {
-      console.log(`⚡ [FOLLOWUP-ENGINE] Deterministic decision: ${preCheck.decision} - ${preCheck.reasoning}`);
-      return preCheck;
+    // Pre-check: regole deterministiche di sistema prima dell'AI
+    const ruleContext: RuleEvaluationContext = {
+      daysSilent: context.daysSilent,
+      followupCount: context.followupCount,
+      maxFollowupsAllowed: context.maxFollowupsAllowed,
+      currentState: context.currentState,
+      lastMessageDirection: context.lastMessageDirection,
+      signals: {
+        hasSaidNoExplicitly: context.signals.hasSaidNoExplicitly
+      }
+    };
+    
+    const ruleResult = evaluateSystemRules(ruleContext);
+    if (ruleResult.matched && ruleResult.decision) {
+      console.log(`⚡ [FOLLOWUP-ENGINE] System rule matched: ${ruleResult.rule?.id} - ${ruleResult.reasoningIt}`);
+      
+      if (ruleResult.decision === "stop") {
+        return {
+          decision: "stop",
+          urgency: "never",
+          reasoning: ruleResult.reasoningIt,
+          confidenceScore: 1.0,
+          matchedSystemRule: ruleResult.rule?.id
+        };
+      }
+      
+      if (ruleResult.decision === "skip") {
+        return {
+          decision: "skip",
+          urgency: undefined,
+          reasoning: ruleResult.reasoningIt,
+          confidenceScore: 0.9,
+          matchedSystemRule: ruleResult.rule?.id
+        };
+      }
+      
+      if (ruleResult.decision === "send_now" && ruleResult.allowFreeformMessage) {
+        console.log(`⚡ [FOLLOWUP-ENGINE] Pending short-window: AI will generate freeform message`);
+        return {
+          decision: "send_now",
+          urgency: "now",
+          reasoning: ruleResult.reasoningIt,
+          confidenceScore: 0.95,
+          allowFreeformMessage: true,
+          matchedSystemRule: ruleResult.rule?.id
+        };
+      }
     }
 
     // Costruisci il prompt per l'AI
@@ -182,65 +228,6 @@ export async function evaluateFollowup(
     console.error("❌ [FOLLOWUP-ENGINE] Error evaluating follow-up:", error);
     return createDefaultSkipDecision(`Errore durante la valutazione: ${error}`);
   }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Helper: Deterministic Rules Check
-// ═══════════════════════════════════════════════════════════════════════════
-
-function checkDeterministicRules(context: FollowupContext): FollowupDecision | null {
-  // Regola 1: Se il lead ha detto esplicitamente NO → STOP
-  if (context.signals.hasSaidNoExplicitly) {
-    return {
-      decision: "stop",
-      urgency: "never",
-      reasoning: "Il lead ha espresso un rifiuto esplicito. Rispettiamo la sua decisione.",
-      confidenceScore: 1.0,
-    };
-  }
-
-  // Regola 2: Se raggiunto il massimo di follow-up → STOP
-  if (context.followupCount >= context.maxFollowupsAllowed) {
-    return {
-      decision: "stop",
-      urgency: "never",
-      reasoning: `Raggiunto il limite massimo di follow-up (${context.maxFollowupsAllowed}). Non inviamo ulteriori messaggi.`,
-      confidenceScore: 1.0,
-    };
-  }
-
-  // Regola 3: Se conversazione conclusa positivamente → STOP
-  if (context.currentState === "closed_won") {
-    return {
-      decision: "stop",
-      urgency: "never",
-      reasoning: "Conversazione conclusa con successo. Non serve follow-up.",
-      confidenceScore: 1.0,
-    };
-  }
-
-  // Regola 4: Se conversazione persa → STOP
-  if (context.currentState === "closed_lost") {
-    return {
-      decision: "stop",
-      urgency: "never",
-      reasoning: "Lead perso. Non inviamo ulteriori messaggi.",
-      confidenceScore: 1.0,
-    };
-  }
-
-  // Regola 5: Se risposta recente (meno di 24h) → SKIP
-  if (context.daysSilent < 1) {
-    return {
-      decision: "skip",
-      urgency: undefined,
-      reasoning: "Il lead ha risposto di recente. Attendiamo prima di fare follow-up.",
-      confidenceScore: 0.9,
-    };
-  }
-
-  // Nessuna regola deterministica applicata, passare all'AI
-  return null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
