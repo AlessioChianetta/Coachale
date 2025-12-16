@@ -1,3 +1,7 @@
+// PROACTIVE OUTREACH - Responsabilità UNICA: Primo messaggio di apertura
+// I follow-up dopo il primo contatto sono gestiti dal followup-scheduler
+// (server/cron/followup-scheduler.ts)
+
 import cron from 'node-cron';
 import { db } from '../db';
 import { 
@@ -8,13 +12,9 @@ import {
   whatsappMessages,
   proactiveLeadActivityLogs
 } from '../../shared/schema';
-import { eq, lte, and, sql, gte } from 'drizzle-orm';
+import { eq, lte, and } from 'drizzle-orm';
 import { 
-  getDaysSinceLastContact,
-  buildOpeningTemplateVariables,
-  buildGentleFollowUpTemplateVariables,
-  buildValueFollowUpTemplateVariables,
-  buildFinalFollowUpTemplateVariables
+  buildOpeningTemplateVariables
 } from './proactive-message-builder';
 import { sendWhatsAppMessage } from './twilio-client';
 import { findOrCreateConversation, normalizePhoneNumber } from './webhook-handler';
@@ -100,9 +100,6 @@ function isWithinWorkingHours(config: any): boolean {
 
   return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
 }
-
-// Import shared template approval checker
-import { checkTemplateApprovalStatus } from '../services/whatsapp/template-approval-checker';
 
 /**
  * DEPRECATED: Moved to shared service module
@@ -322,33 +319,16 @@ async function processLead(
       followUpFinalContentSid?: string;
     } | null;
 
-    console.log(`\n🎯 [TEMPLATE PRECEDENCE] Resolving template assignment`);
-    console.log(`   Agent Templates (defaults):`);
-    console.log(`     - Opening: ${agentTemplates?.openingMessageContentSid || 'NOT SET'}`);
-    console.log(`     - Gentle: ${agentTemplates?.followUpGentleContentSid || 'NOT SET'}`);
-    console.log(`     - Value: ${agentTemplates?.followUpValueContentSid || 'NOT SET'}`);
-    console.log(`     - Final: ${agentTemplates?.followUpFinalContentSid || 'NOT SET'}`);
+    console.log(`\n🎯 [TEMPLATE PRECEDENCE] Resolving opening template assignment`);
+    console.log(`   Agent Template (default): ${agentTemplates?.openingMessageContentSid || 'NOT SET'}`);
     
     if (campaign) {
-      console.log(`   Campaign Templates (override if set):`);
-      console.log(`     - Opening: ${campaign.openingTemplateId || 'NOT SET'}`);
-      console.log(`     - Gentle: ${campaign.followupGentleTemplateId || 'NOT SET'}`);
-      console.log(`     - Value: ${campaign.followupValueTemplateId || 'NOT SET'}`);
-      console.log(`     - Final: ${campaign.followupFinalTemplateId || 'NOT SET'}`);
+      console.log(`   Campaign Template (override): ${campaign.openingTemplateId || 'NOT SET'}`);
     }
 
-    const templates = {
-      openingMessageContentSid: campaign?.openingTemplateId || agentTemplates?.openingMessageContentSid,
-      followUpGentleContentSid: campaign?.followupGentleTemplateId || agentTemplates?.followUpGentleContentSid,
-      followUpValueContentSid: campaign?.followupValueTemplateId || agentTemplates?.followUpValueContentSid,
-      followUpFinalContentSid: campaign?.followupFinalTemplateId || agentTemplates?.followUpFinalContentSid,
-    };
+    const openingTemplateContentSid = campaign?.openingTemplateId || agentTemplates?.openingMessageContentSid;
     
-    console.log(`   Final Templates (after precedence):`);
-    console.log(`     - Opening: ${templates.openingMessageContentSid || 'NOT SET'}`);
-    console.log(`     - Gentle: ${templates.followUpGentleContentSid || 'NOT SET'}`);
-    console.log(`     - Value: ${templates.followUpValueContentSid || 'NOT SET'}`);
-    console.log(`     - Final: ${templates.followUpFinalContentSid || 'NOT SET'}\n`);
+    console.log(`   Final Opening Template: ${openingTemplateContentSid || 'NOT SET'}\n`);
 
     const consultantInfo = {
       id: consultant.id,
@@ -363,127 +343,35 @@ async function processLead(
       businessName: agentConfig.businessName
     };
 
-    // Determine message type and required template
-    const isFirstContact = lead.status === 'pending';
-    let messageType: string;
-    let contentSid: string | undefined;
-    let contentVariables: Record<string, string>;
-    let message: string;
-
-    if (isFirstContact) {
-      messageType = 'opening';
-      contentSid = templates?.openingMessageContentSid;
-      
-      // STRICT VALIDATION: Template MUST be assigned
-      if (!contentSid) {
-        console.error(`❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD`);
-        console.error(`   Agent ID: ${agentConfig.id}`);
-        console.error(`   Agent Name: ${agentConfig.agentName}`);
-        console.error(`   Lead ID: ${lead.id}`);
-        console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
-        console.error(`   Message Type: ${messageType}`);
-        console.error(`   Reason: No template assigned in "Assegnazione Template agli Agenti"`);
-        console.error(`   Action: Lead skipped, no message sent`);
-        await logLeadActivity(
-          lead.id,
-          lead.consultantId,
-          lead.agentConfigId,
-          'skipped',
-          'Template di apertura non assegnato',
-          { skipReason: 'no_opening_template', messageType: 'opening' },
-          lead.status
-        );
-        return;
-      }
-      
-      contentVariables = buildOpeningTemplateVariables(lead, consultantInfo, agentInfo);
-      message = `TEMPLATE:${contentSid}`;
-    } else {
-      // Follow-up message
-      const daysSinceContact = getDaysSinceLastContact(lead);
-      
-      if (daysSinceContact <= 3) {
-        messageType = 'followup_gentle';
-        contentSid = templates?.followUpGentleContentSid;
-        
-        if (!contentSid) {
-          console.error(`❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD`);
-          console.error(`   Agent ID: ${agentConfig.id}`);
-          console.error(`   Agent Name: ${agentConfig.agentName}`);
-          console.error(`   Lead ID: ${lead.id}`);
-          console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
-          console.error(`   Message Type: ${messageType} (${daysSinceContact} days since contact)`);
-          console.error(`   Reason: No gentle follow-up template assigned`);
-          console.error(`   Action: Lead skipped, no message sent`);
-          await logLeadActivity(
-            lead.id,
-            lead.consultantId,
-            lead.agentConfigId,
-            'skipped',
-            'Template gentle follow-up non assegnato',
-            { skipReason: 'no_gentle_followup_template', messageType: 'followup_gentle', daysSinceContact },
-            lead.status
-          );
-          return;
-        }
-        
-        contentVariables = buildGentleFollowUpTemplateVariables(lead, consultantInfo, agentInfo);
-      } else if (daysSinceContact <= 7) {
-        messageType = 'followup_value';
-        contentSid = templates?.followUpValueContentSid;
-        
-        if (!contentSid) {
-          console.error(`❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD`);
-          console.error(`   Agent ID: ${agentConfig.id}`);
-          console.error(`   Agent Name: ${agentConfig.agentName}`);
-          console.error(`   Lead ID: ${lead.id}`);
-          console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
-          console.error(`   Message Type: ${messageType} (${daysSinceContact} days since contact)`);
-          console.error(`   Reason: No value follow-up template assigned`);
-          console.error(`   Action: Lead skipped, no message sent`);
-          await logLeadActivity(
-            lead.id,
-            lead.consultantId,
-            lead.agentConfigId,
-            'skipped',
-            'Template value follow-up non assegnato',
-            { skipReason: 'no_value_followup_template', messageType: 'followup_value', daysSinceContact },
-            lead.status
-          );
-          return;
-        }
-        
-        contentVariables = buildValueFollowUpTemplateVariables(lead, consultantInfo, agentInfo);
-      } else {
-        messageType = 'followup_final';
-        contentSid = templates?.followUpFinalContentSid;
-        
-        if (!contentSid) {
-          console.error(`❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD`);
-          console.error(`   Agent ID: ${agentConfig.id}`);
-          console.error(`   Agent Name: ${agentConfig.agentName}`);
-          console.error(`   Lead ID: ${lead.id}`);
-          console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
-          console.error(`   Message Type: ${messageType} (${daysSinceContact} days since contact)`);
-          console.error(`   Reason: No final follow-up template assigned`);
-          console.error(`   Action: Lead skipped, no message sent`);
-          await logLeadActivity(
-            lead.id,
-            lead.consultantId,
-            lead.agentConfigId,
-            'skipped',
-            'Template final follow-up non assegnato',
-            { skipReason: 'no_final_followup_template', messageType: 'followup_final', daysSinceContact },
-            lead.status
-          );
-          return;
-        }
-        
-        contentVariables = buildFinalFollowUpTemplateVariables(lead);
-      }
-      
-      message = `TEMPLATE:${contentSid}`;
+    // PROACTIVE OUTREACH: Solo primo messaggio di apertura (status = 'pending')
+    // I follow-up sono gestiti dal followup-scheduler
+    const messageType = 'opening';
+    const contentSid = openingTemplateContentSid;
+    
+    // STRICT VALIDATION: Template MUST be assigned
+    if (!contentSid) {
+      console.error(`❌ [PROACTIVE OUTREACH] Template validation failed - SKIPPING LEAD`);
+      console.error(`   Agent ID: ${agentConfig.id}`);
+      console.error(`   Agent Name: ${agentConfig.agentName}`);
+      console.error(`   Lead ID: ${lead.id}`);
+      console.error(`   Lead Name: ${lead.firstName} ${lead.lastName}`);
+      console.error(`   Message Type: ${messageType}`);
+      console.error(`   Reason: No template assigned in "Assegnazione Template agli Agenti"`);
+      console.error(`   Action: Lead skipped, no message sent`);
+      await logLeadActivity(
+        lead.id,
+        lead.consultantId,
+        lead.agentConfigId,
+        'skipped',
+        'Template di apertura non assegnato',
+        { skipReason: 'no_opening_template', messageType: 'opening' },
+        lead.status
+      );
+      return;
     }
+    
+    const contentVariables = buildOpeningTemplateVariables(lead, consultantInfo, agentInfo);
+    const message = `TEMPLATE:${contentSid}`;
 
     // Detailed logging before sending
     console.log(`\n📋 [PROACTIVE OUTREACH] Sending template message:`);
@@ -971,7 +859,8 @@ export async function processProactiveOutreach(): Promise<void> {
   console.log(`\n🚀 [PROACTIVE OUTREACH] Starting scheduled run at ${new Date().toISOString()}`);
 
   try {
-    // Query 1: Pending leads whose contact schedule has passed
+    // Query: Pending leads whose contact schedule has passed
+    // NOTA: I follow-up sono gestiti dal followup-scheduler (server/cron/followup-scheduler.ts)
     // CRITICAL: Only process leads with proactive_setter agents
     const pendingLeads = await db
       .select({
@@ -990,44 +879,18 @@ export async function processProactiveOutreach(): Promise<void> {
         )
       );
 
-    console.log(`📋 Found ${pendingLeads.length} pending leads to contact`);
+    console.log(`📋 Found ${pendingLeads.length} pending leads to contact (first message only)`);
 
-    // Query 2: Contacted leads ready for follow-up
-    // (NOW() - last_contacted_at) >= contact_frequency days
-    // CRITICAL: Only process leads with proactive_setter agents
-    const followUpLeads = await db
-      .select({
-        lead: proactiveLeads,
-        consultant: users,
-        agentConfig: consultantWhatsappConfig
-      })
-      .from(proactiveLeads)
-      .innerJoin(users, eq(proactiveLeads.consultantId, users.id))
-      .innerJoin(consultantWhatsappConfig, eq(proactiveLeads.agentConfigId, consultantWhatsappConfig.id))
-      .where(
-        and(
-          eq(proactiveLeads.status, 'contacted'),
-          sql`${proactiveLeads.lastContactedAt} IS NOT NULL`,
-          sql`EXTRACT(EPOCH FROM (NOW() - ${proactiveLeads.lastContactedAt})) / 86400 >= ${proactiveLeads.contactFrequency}`,
-          eq(consultantWhatsappConfig.agentType, 'proactive_setter') // CRITICAL: Only proactive agents
-        )
-      );
-
-    console.log(`📋 Found ${followUpLeads.length} leads ready for follow-up`);
-
-    // Combine both lists
-    const allLeads = [...pendingLeads, ...followUpLeads];
-
-    if (allLeads.length === 0) {
-      console.log(`✅ No leads to process at this time`);
+    if (pendingLeads.length === 0) {
+      console.log(`✅ No pending leads to process at this time`);
       return;
     }
 
-    // Process each lead
+    // Process each pending lead (first opening message only)
     let successCount = 0;
     let errorCount = 0;
 
-    for (const { lead, consultant, agentConfig } of allLeads) {
+    for (const { lead, consultant, agentConfig } of pendingLeads) {
       // Validate that we have all required data
       if (!consultant) {
         console.error(`❌ Skipping lead ${lead.id} - consultant not found`);
@@ -1060,7 +923,7 @@ export async function processProactiveOutreach(): Promise<void> {
 
     const duration = Date.now() - startTime;
     console.log(`\n✅ [PROACTIVE OUTREACH] Completed in ${duration}ms`);
-    console.log(`   📊 Results: ${successCount} success, ${errorCount} errors, ${allLeads.length} total`);
+    console.log(`   📊 Results: ${successCount} success, ${errorCount} errors, ${pendingLeads.length} pending leads processed`);
 
   } catch (error: any) {
     console.error(`❌ [PROACTIVE OUTREACH] Fatal error:`, error.message);
