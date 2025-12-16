@@ -35,33 +35,55 @@ import { sendWhatsAppMessage } from '../whatsapp/twilio-client';
 
 let evaluationJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
+let coldLeadsJob: cron.ScheduledTask | null = null;
+let ghostLeadsJob: cron.ScheduledTask | null = null;
 let isEvaluationRunning = false;
 let isProcessingRunning = false;
+let isColdLeadsRunning = false;
+let isGhostLeadsRunning = false;
 
-const EVALUATION_INTERVAL = '*/5 * * * *'; // Every 5 minutes
+const EVALUATION_INTERVAL = '*/5 * * * *'; // Every 5 minutes - HOT/WARM leads
 const PROCESSING_INTERVAL = '* * * * *';   // Every minute
+const COLD_LEADS_INTERVAL = '0 */2 * * *'; // Every 2 hours - COLD leads
+const GHOST_LEADS_INTERVAL = '0 10 * * *'; // Daily at 10:00 - GHOST leads
 const TIMEZONE = 'Europe/Rome';
+
+export type TemperatureLevel = "hot" | "warm" | "cold" | "ghost";
+
+/**
+ * Calcola la temperatura del lead basata sulle ore dall'ultimo messaggio inbound
+ * @param hoursSinceLastInbound - Ore trascorse dall'ultimo messaggio del lead
+ * @returns TemperatureLevel - hot, warm, cold, o ghost
+ */
+export function calculateTemperature(hoursSinceLastInbound: number): TemperatureLevel {
+  if (hoursSinceLastInbound < 2) return "hot";        // < 2 ore: lead molto attivo
+  if (hoursSinceLastInbound < 24) return "warm";      // < 24 ore: ancora dentro finestra WhatsApp
+  if (hoursSinceLastInbound < 168) return "cold";     // < 7 giorni: lead freddo
+  return "ghost";                                      // > 7 giorni: fantasma
+}
 
 export function initFollowupScheduler(): void {
   console.log('🚀 [FOLLOWUP-SCHEDULER] Initializing follow-up scheduler...');
   
-  if (evaluationJob || processingJob) {
+  if (evaluationJob || processingJob || coldLeadsJob || ghostLeadsJob) {
     console.log('⚠️ [FOLLOWUP-SCHEDULER] Scheduler already initialized, stopping existing jobs first...');
     stopFollowupScheduler();
   }
 
+  // HOT/WARM leads evaluation - every 5 minutes
   evaluationJob = cron.schedule(EVALUATION_INTERVAL, async () => {
-    console.log('⏰ [FOLLOWUP-SCHEDULER] Evaluation cycle triggered');
+    console.log('⏰ [FOLLOWUP-SCHEDULER] HOT/WARM evaluation cycle triggered');
     try {
-      await runFollowupEvaluation();
+      await runFollowupEvaluation(['hot', 'warm']);
     } catch (error) {
-      console.error('❌ [FOLLOWUP-SCHEDULER] Error in evaluation cycle:', error);
+      console.error('❌ [FOLLOWUP-SCHEDULER] Error in HOT/WARM evaluation cycle:', error);
     }
   }, {
     scheduled: true,
     timezone: TIMEZONE
   });
 
+  // Message processing - every minute
   processingJob = cron.schedule(PROCESSING_INTERVAL, async () => {
     console.log('⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered');
     try {
@@ -74,8 +96,36 @@ export function initFollowupScheduler(): void {
     timezone: TIMEZONE
   });
 
+  // COLD leads evaluation - every 2 hours
+  coldLeadsJob = cron.schedule(COLD_LEADS_INTERVAL, async () => {
+    console.log('⏰ [FOLLOWUP-SCHEDULER] COLD leads evaluation cycle triggered');
+    try {
+      await runColdLeadsEvaluation();
+    } catch (error) {
+      console.error('❌ [FOLLOWUP-SCHEDULER] Error in COLD leads evaluation cycle:', error);
+    }
+  }, {
+    scheduled: true,
+    timezone: TIMEZONE
+  });
+
+  // GHOST leads evaluation - daily at 10:00
+  ghostLeadsJob = cron.schedule(GHOST_LEADS_INTERVAL, async () => {
+    console.log('⏰ [FOLLOWUP-SCHEDULER] GHOST leads evaluation cycle triggered');
+    try {
+      await runGhostLeadsEvaluation();
+    } catch (error) {
+      console.error('❌ [FOLLOWUP-SCHEDULER] Error in GHOST leads evaluation cycle:', error);
+    }
+  }, {
+    scheduled: true,
+    timezone: TIMEZONE
+  });
+
   console.log('✅ [FOLLOWUP-SCHEDULER] Scheduler initialized successfully');
-  console.log(`   📋 Evaluation: ${EVALUATION_INTERVAL} (every 5 minutes)`);
+  console.log(`   🔥 HOT/WARM: ${EVALUATION_INTERVAL} (every 5 minutes)`);
+  console.log(`   ❄️  COLD: ${COLD_LEADS_INTERVAL} (every 2 hours)`);
+  console.log(`   👻 GHOST: ${GHOST_LEADS_INTERVAL} (daily at 10:00)`);
   console.log(`   📋 Processing: ${PROCESSING_INTERVAL} (every minute)`);
 }
 
@@ -85,7 +135,7 @@ export function stopFollowupScheduler(): void {
   if (evaluationJob) {
     evaluationJob.stop();
     evaluationJob = null;
-    console.log('   ✅ Evaluation job stopped');
+    console.log('   ✅ HOT/WARM evaluation job stopped');
   }
   
   if (processingJob) {
@@ -94,10 +144,22 @@ export function stopFollowupScheduler(): void {
     console.log('   ✅ Processing job stopped');
   }
   
+  if (coldLeadsJob) {
+    coldLeadsJob.stop();
+    coldLeadsJob = null;
+    console.log('   ✅ COLD leads job stopped');
+  }
+  
+  if (ghostLeadsJob) {
+    ghostLeadsJob.stop();
+    ghostLeadsJob = null;
+    console.log('   ✅ GHOST leads job stopped');
+  }
+  
   console.log('✅ [FOLLOWUP-SCHEDULER] Scheduler stopped');
 }
 
-export async function runFollowupEvaluation(): Promise<void> {
+export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel[]): Promise<void> {
   if (isEvaluationRunning) {
     console.log('⚠️ [FOLLOWUP-SCHEDULER] Evaluation already running, skipping...');
     return;
@@ -105,16 +167,17 @@ export async function runFollowupEvaluation(): Promise<void> {
 
   isEvaluationRunning = true;
   const startTime = Date.now();
+  const filterLabel = temperatureFilter ? temperatureFilter.join('/').toUpperCase() : 'ALL';
   
   try {
-    console.log('🔍 [FOLLOWUP-SCHEDULER] Starting follow-up evaluation cycle...');
+    console.log(`🔍 [FOLLOWUP-SCHEDULER] Starting ${filterLabel} follow-up evaluation cycle...`);
     
-    const candidateConversations = await findCandidateConversations();
+    const candidateConversations = await findCandidateConversations(undefined, temperatureFilter);
     
-    console.log(`📊 [FOLLOWUP-SCHEDULER] Found ${candidateConversations.length} candidate conversations`);
+    console.log(`📊 [FOLLOWUP-SCHEDULER] Found ${candidateConversations.length} ${filterLabel} candidate conversations`);
     
     if (candidateConversations.length === 0) {
-      console.log('💤 [FOLLOWUP-SCHEDULER] No conversations to evaluate');
+      console.log(`💤 [FOLLOWUP-SCHEDULER] No ${filterLabel} conversations to evaluate`);
       return;
     }
 
@@ -123,9 +186,27 @@ export async function runFollowupEvaluation(): Promise<void> {
     let skipped = 0;
     let stopped = 0;
     let errors = 0;
+    let temperatureUpdates = 0;
 
     for (const conversation of candidateConversations) {
       try {
+        // Calculate and update temperature if changed
+        const newTemperature = calculateTemperature(conversation.hoursSinceLastInbound);
+        if (conversation.temperatureLevel !== newTemperature) {
+          await db.update(conversationStates)
+            .set({ 
+              temperatureLevel: newTemperature,
+              updatedAt: new Date()
+            })
+            .where(eq(conversationStates.conversationId, conversation.conversationId));
+          
+          console.log(`🌡️ [TEMPERATURE] Conversazione ${conversation.conversationId}: ${conversation.temperatureLevel || 'N/A'} → ${newTemperature}`);
+          temperatureUpdates++;
+          
+          // Update the candidate object for accurate processing
+          conversation.temperatureLevel = newTemperature;
+        }
+
         const result = await evaluateConversation(conversation);
         processed++;
         
@@ -147,9 +228,10 @@ export async function runFollowupEvaluation(): Promise<void> {
     }
 
     const duration = Date.now() - startTime;
-    console.log('📈 [FOLLOWUP-SCHEDULER] Evaluation cycle completed');
+    console.log(`📈 [FOLLOWUP-SCHEDULER] ${filterLabel} evaluation cycle completed`);
     console.log(`   ⏱️  Duration: ${duration}ms`);
     console.log(`   📊 Processed: ${processed}/${candidateConversations.length}`);
+    console.log(`   🌡️  Temperature updates: ${temperatureUpdates}`);
     console.log(`   📅 Scheduled: ${scheduled}`);
     console.log(`   ⏭️  Skipped: ${skipped}`);
     console.log(`   🛑 Stopped: ${stopped}`);
@@ -157,6 +239,115 @@ export async function runFollowupEvaluation(): Promise<void> {
     
   } finally {
     isEvaluationRunning = false;
+  }
+}
+
+/**
+ * Run evaluation for COLD leads only (every 2 hours)
+ */
+export async function runColdLeadsEvaluation(): Promise<void> {
+  if (isColdLeadsRunning) {
+    console.log('⚠️ [FOLLOWUP-SCHEDULER] Cold leads evaluation already running, skipping...');
+    return;
+  }
+
+  isColdLeadsRunning = true;
+  const startTime = Date.now();
+  
+  try {
+    console.log('❄️ [FOLLOWUP-SCHEDULER] Starting COLD leads evaluation cycle...');
+    
+    const candidateConversations = await findCandidateConversations(undefined, ['cold']);
+    
+    console.log(`📊 [FOLLOWUP-SCHEDULER] Found ${candidateConversations.length} COLD candidate conversations`);
+    
+    if (candidateConversations.length === 0) {
+      console.log('💤 [FOLLOWUP-SCHEDULER] No COLD conversations to evaluate');
+      return;
+    }
+
+    let processed = 0;
+    let scheduled = 0;
+    let temperatureUpdates = 0;
+
+    for (const conversation of candidateConversations) {
+      try {
+        // Calculate and update temperature if changed
+        const newTemperature = calculateTemperature(conversation.hoursSinceLastInbound);
+        if (conversation.temperatureLevel !== newTemperature) {
+          await db.update(conversationStates)
+            .set({ 
+              temperatureLevel: newTemperature,
+              updatedAt: new Date()
+            })
+            .where(eq(conversationStates.conversationId, conversation.conversationId));
+          
+          console.log(`🌡️ [TEMPERATURE] Cold lead ${conversation.conversationId}: ${conversation.temperatureLevel || 'cold'} → ${newTemperature}`);
+          temperatureUpdates++;
+          conversation.temperatureLevel = newTemperature;
+        }
+
+        const result = await evaluateConversation(conversation);
+        processed++;
+        if (result === 'scheduled') scheduled++;
+      } catch (error) {
+        console.error(`❌ [FOLLOWUP-SCHEDULER] Error evaluating cold conversation ${conversation.conversationId}:`, error);
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`📈 [FOLLOWUP-SCHEDULER] COLD leads evaluation completed in ${duration}ms`);
+    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}, Temp updates: ${temperatureUpdates}`);
+    
+  } finally {
+    isColdLeadsRunning = false;
+  }
+}
+
+/**
+ * Run evaluation for GHOST leads only (daily at 10:00)
+ */
+export async function runGhostLeadsEvaluation(): Promise<void> {
+  if (isGhostLeadsRunning) {
+    console.log('⚠️ [FOLLOWUP-SCHEDULER] Ghost leads evaluation already running, skipping...');
+    return;
+  }
+
+  isGhostLeadsRunning = true;
+  const startTime = Date.now();
+  
+  try {
+    console.log('👻 [FOLLOWUP-SCHEDULER] Starting GHOST leads evaluation cycle...');
+    
+    const candidateConversations = await findCandidateConversations(undefined, ['ghost']);
+    
+    console.log(`📊 [FOLLOWUP-SCHEDULER] Found ${candidateConversations.length} GHOST candidate conversations`);
+    
+    if (candidateConversations.length === 0) {
+      console.log('💤 [FOLLOWUP-SCHEDULER] No GHOST conversations to evaluate');
+      return;
+    }
+
+    let processed = 0;
+    let scheduled = 0;
+
+    for (const conversation of candidateConversations) {
+      try {
+        // For ghost leads, we primarily want to mark them or attempt reactivation
+        const result = await evaluateConversation(conversation);
+        processed++;
+        if (result === 'scheduled') scheduled++;
+      } catch (error) {
+        console.error(`❌ [FOLLOWUP-SCHEDULER] Error evaluating ghost conversation ${conversation.conversationId}:`, error);
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`📈 [FOLLOWUP-SCHEDULER] GHOST leads evaluation completed in ${duration}ms`);
+    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}`);
+    
+  } finally {
+    isGhostLeadsRunning = false;
   }
 }
 
@@ -326,6 +517,7 @@ interface CandidateConversation {
   leadName?: string;
   applicableRules: ApplicableRule[];
   lastFollowupAt?: Date | null;
+  temperatureLevel?: TemperatureLevel;
 }
 
 async function findApplicableRules(
@@ -429,7 +621,10 @@ async function findApplicableRules(
   return applicable;
 }
 
-async function findCandidateConversations(): Promise<CandidateConversation[]> {
+export async function findCandidateConversations(
+  consultantId?: string,
+  temperatureFilter?: TemperatureLevel[]
+): Promise<CandidateConversation[]> {
   const closedStates = ['closed_won', 'closed_lost'];
   
   const consultantsWithActiveRules = await db
@@ -442,8 +637,32 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
     return [];
   }
   
-  const consultantIds = consultantsWithActiveRules.map(c => c.consultantId);
+  let consultantIds = consultantsWithActiveRules.map(c => c.consultantId);
+  
+  // Filter by specific consultant if provided
+  if (consultantId) {
+    consultantIds = consultantIds.filter(id => id === consultantId);
+  }
+  
+  if (consultantIds.length === 0) {
+    console.log('⚠️ [FOLLOWUP-SCHEDULER] No consultants match the filter');
+    return [];
+  }
+  
   console.log(`👥 [FOLLOWUP-SCHEDULER] Found ${consultantIds.length} consultants with active follow-up rules`);
+
+  // Build dynamic where conditions
+  const whereConditions = [
+    sql`${conversationStates.currentState} NOT IN ('closed_won', 'closed_lost')`,
+    inArray(whatsappConversations.consultantId, consultantIds),
+    eq(whatsappConversations.isActive, true)
+  ];
+
+  // Add temperature filter if specified
+  if (temperatureFilter && temperatureFilter.length > 0) {
+    whereConditions.push(inArray(conversationStates.temperatureLevel, temperatureFilter));
+    console.log(`🌡️ [FOLLOWUP-SCHEDULER] Filtering by temperature: ${temperatureFilter.join(', ')}`);
+  }
 
   const candidateStates = await db
     .select({
@@ -461,6 +680,7 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
       demoPresented: conversationStates.demoPresented,
       nextFollowupScheduledAt: conversationStates.nextFollowupScheduledAt,
       lastFollowupAt: conversationStates.lastFollowupAt,
+      temperatureLevel: conversationStates.temperatureLevel,
       conversation: {
         consultantId: whatsappConversations.consultantId,
         agentConfigId: whatsappConversations.agentConfigId,
@@ -474,13 +694,7 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
       whatsappConversations,
       eq(conversationStates.conversationId, whatsappConversations.id)
     )
-    .where(
-      and(
-        sql`${conversationStates.currentState} NOT IN ('closed_won', 'closed_lost')`,
-        inArray(whatsappConversations.consultantId, consultantIds),
-        eq(whatsappConversations.isActive, true)
-      )
-    );
+    .where(and(...whereConditions));
 
   const now = new Date();
   const candidates: CandidateConversation[] = [];
@@ -564,6 +778,7 @@ async function findCandidateConversations(): Promise<CandidateConversation[]> {
       phoneNumber: state.conversation.phoneNumber,
       applicableRules,
       lastFollowupAt: state.lastFollowupAt,
+      temperatureLevel: state.temperatureLevel as TemperatureLevel | undefined,
     });
   }
 

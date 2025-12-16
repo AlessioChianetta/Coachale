@@ -5182,6 +5182,9 @@ export const conversationStates = pgTable("conversation_states", {
   lastAiEvaluationAt: timestamp("last_ai_evaluation_at"),
   aiRecommendation: text("ai_recommendation"), // Last AI decision reasoning
   
+  // Temperature segmentation for scalability (hot=<2h, warm=<24h, cold=<7d, ghost=>7d)
+  temperatureLevel: text("temperature_level").$type<"hot" | "warm" | "cold" | "ghost">().default("warm"),
+  
   stateChangedAt: timestamp("state_changed_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
