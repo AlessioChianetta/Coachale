@@ -135,3 +135,17 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - `GET /api/followup/activity-log`: Combined AI logs and message events with timeline grouping
 - **Schema Update**: Added `matchedRuleId` and `matchedRuleReason` to `followup_ai_evaluation_log` table for rule-tracking
 - **UI Reorganization**: Default tab changed to "Monitoraggio Live", added collapsible system flow diagram
+
+## December 16, 2025 - Enhanced Hubdigital Webhook Integration
+- **Multi-Config Support**: Removed UNIQUE constraint on (consultantId, providerName) to allow multiple webhook configurations per consultant
+- **Agent Association**: Added `agentConfigId` FK to `webhook_configs` table - each config can specify which proactive WhatsApp agent handles incoming leads
+- **Config Naming**: Added `configName` field to distinguish multiple configurations (e.g., "Campagna Facebook", "Campagna Google")
+- **Secret Key Uniqueness**: Moved UNIQUE constraint to `secretKey` column for security
+- **Backend Logic**: `server/routes/webhook.ts` now uses configured agent if specified, falls back to first available agent
+- **UI Overhaul** (`consultant-api-keys-unified.tsx`):
+  - Transformed from single config view to multi-config list with table
+  - Create/Edit/Duplicate functionality with agent selector
+  - Uses `/api/whatsapp/config/proactive` endpoint to show only proactive-eligible agents
+  - Conflict warning for duplicate (agent + campaign) combinations
+  - Collapsible field mapping legend showing all Hubdigital payload fields
+- **Field Mapping Documentation**: phone*, firstName, lastName, name, email, companyName, source, customFields, dateAdded, type

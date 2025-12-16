@@ -446,12 +446,17 @@ export default function ConsultantApiKeysUnified() {
     isActive: true,
   });
 
-  // Hubdigital Webhook state
+  // Hubdigital Webhook state - Multi-config support
   const [hubdigitalFormData, setHubdigitalFormData] = useState({
-    displayName: "Hubdigital.io",
+    configName: "",
+    agentConfigId: "",
     targetCampaignId: "",
+    isActive: true,
   });
-  const [hubdigitalCopied, setHubdigitalCopied] = useState(false);
+  const [selectedWebhookConfigId, setSelectedWebhookConfigId] = useState<string | null>(null);
+  const [isCreatingNewConfig, setIsCreatingNewConfig] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  const [hubdigitalCopied, setHubdigitalCopied] = useState<string | null>(null);
 
   const { data: vertexAiData, isLoading: isLoadingVertex } = useQuery({
     queryKey: ["/api/vertex-ai/settings"],
@@ -605,11 +610,36 @@ export default function ConsultantApiKeysUnified() {
       return data.data || [];
     },
   });
-  const hubdigitalConfig = webhookConfigs?.find((c: any) => c.providerName === "hubdigital");
+  
+  // Filter all hubdigital configs from webhook configs
+  const hubdigitalConfigs = webhookConfigs?.filter((c: any) => c.providerName === "hubdigital") || [];
+  
+  // Query for proactive WhatsApp agents (only agents with isProactiveAgent=true AND Twilio configured)
+  const { data: proactiveAgentsData } = useQuery({
+    queryKey: ["/api/whatsapp/config/proactive"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/config/proactive", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        if (response.status === 404) return { configs: [] };
+        return { configs: [] };
+      }
+      return response.json();
+    },
+  });
+  
+  const proactiveAgents = proactiveAgentsData?.configs || [];
+  
+  // Helper function to get agent name by ID
+  const getAgentName = (agentId: string) => {
+    const agent = proactiveAgents?.find((a: any) => a.id === agentId);
+    return agent?.agentName || agent?.whatsappNumber || "Agente non trovato";
+  };
 
   // Hubdigital Webhook mutations
   const createHubdigitalMutation = useMutation({
-    mutationFn: async (data: { displayName: string; targetCampaignId: string }) => {
+    mutationFn: async (data: { configName: string; agentConfigId: string; targetCampaignId: string; isActive: boolean }) => {
       const response = await fetch("/api/external-api/webhook-configs", {
         method: "POST",
         headers: {
@@ -618,8 +648,10 @@ export default function ConsultantApiKeysUnified() {
         },
         body: JSON.stringify({
           providerName: "hubdigital",
-          displayName: data.displayName,
+          configName: data.configName,
+          agentConfigId: data.agentConfigId,
           targetCampaignId: data.targetCampaignId,
+          isActive: data.isActive,
         }),
       });
       if (!response.ok) {
@@ -630,10 +662,13 @@ export default function ConsultantApiKeysUnified() {
     },
     onSuccess: () => {
       toast({
-        title: "Webhook Attivato",
+        title: "Webhook Creato",
         description: "La configurazione Hubdigital.io è stata creata con successo",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+      setIsCreatingNewConfig(false);
+      setIsDuplicating(false);
+      setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
     },
     onError: (error: any) => {
       toast({
@@ -645,7 +680,7 @@ export default function ConsultantApiKeysUnified() {
   });
 
   const updateHubdigitalMutation = useMutation({
-    mutationFn: async (data: { id: string; targetCampaignId?: string; isActive?: boolean }) => {
+    mutationFn: async (data: { id: string; configName?: string; agentConfigId?: string; targetCampaignId?: string; isActive?: boolean }) => {
       const response = await fetch(`/api/external-api/webhook-configs/${data.id}`, {
         method: "PUT",
         headers: {
@@ -653,6 +688,8 @@ export default function ConsultantApiKeysUnified() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          configName: data.configName,
+          agentConfigId: data.agentConfigId,
           targetCampaignId: data.targetCampaignId,
           isActive: data.isActive,
         }),
@@ -669,6 +706,8 @@ export default function ConsultantApiKeysUnified() {
         description: "Le modifiche sono state salvate",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/external-api/webhook-configs"] });
+      setSelectedWebhookConfigId(null);
+      setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
     },
     onError: (error: any) => {
       toast({
@@ -751,8 +790,16 @@ export default function ConsultantApiKeysUnified() {
   } | null>(null);
   const [isTestingHubdigital, setIsTestingHubdigital] = useState(false);
 
+  // State for selected test config
+  const [selectedTestConfigId, setSelectedTestConfigId] = useState<string | null>(null);
+
   const handleTestHubdigitalWebhook = async () => {
-    if (!hubdigitalConfig?.secretKey) return;
+    // Use the selected test config or the first available one
+    const testConfig = selectedTestConfigId 
+      ? hubdigitalConfigs.find((c: any) => c.id === selectedTestConfigId)
+      : hubdigitalConfigs[0];
+    
+    if (!testConfig?.secretKey) return;
     
     setIsTestingHubdigital(true);
     setHubdigitalTestResult(null);
@@ -770,7 +817,7 @@ export default function ConsultantApiKeysUnified() {
         customFields: [],
       };
 
-      const response = await fetch(`/api/webhook/hubdigital/${hubdigitalConfig.secretKey}`, {
+      const response = await fetch(`/api/webhook/hubdigital/${testConfig.secretKey}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -783,7 +830,7 @@ export default function ConsultantApiKeysUnified() {
       if (response.ok) {
         setHubdigitalTestResult({
           success: true,
-          message: "Lead creato con successo!",
+          message: `Lead creato con successo nella configurazione "${testConfig.configName || testConfig.displayName || 'Hubdigital.io'}"!`,
           details: data,
         });
         toast({
@@ -823,13 +870,14 @@ export default function ConsultantApiKeysUnified() {
     queryKey: ['/api/proactive-leads', { status: 'pending' }],
     queryFn: async () => {
       const response = await fetch('/api/proactive-leads?status=pending', {
-        credentials: 'include'
+        headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error('Failed to fetch pending leads');
       const data = await response.json();
       return data.leads || [];
     },
-    refetchInterval: 30000
+    refetchInterval: 30000,
+    enabled: false, // Disabled - not needed in this page
   });
 
   // Vertex Preference query - determines if consultant uses SuperAdmin Vertex or own
@@ -2913,12 +2961,12 @@ export default function ConsultantApiKeysUnified() {
                         </div>
                         <Badge 
                           variant="outline" 
-                          className={hubdigitalConfig 
+                          className={hubdigitalConfigs.length > 0 
                             ? "bg-green-50 text-green-700 border-green-300" 
                             : "bg-gray-50 text-gray-500 border-gray-300"
                           }
                         >
-                          {hubdigitalConfig ? "Connesso" : "Da configurare"}
+                          {hubdigitalConfigs.length > 0 ? `${hubdigitalConfigs.length} Config.` : "Da configurare"}
                         </Badge>
                       </div>
                       <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
@@ -3403,216 +3451,200 @@ export default function ConsultantApiKeysUnified() {
                   </>
                 )}
 
-                {/* Hubdigital.io Configuration */}
+                {/* Hubdigital.io Configuration - Multi-config support */}
                 {selectedIntegration === "hubdigital" && (
                   <>
-                    <Alert className="mb-6 bg-green-50 border-green-200">
+                    <Alert className="mb-4 bg-green-50 border-green-200">
                       <Sparkles className="h-5 w-5 text-green-600" />
                       <AlertDescription className="text-sm text-green-800">
-                        <strong>Webhook Push Istantaneo</strong> - I lead vengono ricevuti in tempo reale non appena Hubdigital.io li invia, senza necessità di polling periodico.
+                        <strong>Webhook Push Istantaneo</strong> - I lead vengono ricevuti in tempo reale non appena Hubdigital.io li invia, senza necessità di polling periodico. Puoi configurare più webhook per diverse campagne e agenti.
                       </AlertDescription>
                     </Alert>
 
-                    {!hubdigitalConfig ? (
-                      <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 backdrop-blur-sm">
-                        <CardHeader>
-                          <div className="flex items-center gap-3">
-                            <div className="p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl">
-                              <Plug className="h-6 w-6 text-green-600" />
-                            </div>
-                            <div>
-                              <CardTitle>Configura Webhook Hubdigital.io</CardTitle>
-                              <CardDescription>
-                                Crea un endpoint webhook per ricevere lead da Hubdigital.io
-                              </CardDescription>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                          <div className="space-y-2">
-                            <Label htmlFor="hubdigitalDisplayName">Nome visualizzato</Label>
-                            <Input
-                              id="hubdigitalDisplayName"
-                              value={hubdigitalFormData.displayName}
-                              onChange={(e) => setHubdigitalFormData({ ...hubdigitalFormData, displayName: e.target.value })}
-                              placeholder="Hubdigital.io"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="hubdigitalCampaign">Campagna di destinazione *</Label>
-                            <Select
-                              value={hubdigitalFormData.targetCampaignId}
-                              onValueChange={(value) => setHubdigitalFormData({ ...hubdigitalFormData, targetCampaignId: value })}
-                            >
-                              <SelectTrigger id="hubdigitalCampaign">
-                                <SelectValue placeholder="Seleziona una campagna" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {campaignsLoading ? (
-                                  <div className="p-2 text-sm text-muted-foreground">Caricamento...</div>
-                                ) : campaigns.length === 0 ? (
-                                  <div className="p-2 text-sm text-muted-foreground">
-                                    Nessuna campagna disponibile
-                                  </div>
-                                ) : (
-                                  campaigns.map((campaign: any) => (
-                                    <SelectItem key={campaign.id} value={campaign.id}>
-                                      {campaign.campaignName}
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <Button
-                            onClick={() => createHubdigitalMutation.mutate({
-                              displayName: hubdigitalFormData.displayName || "Hubdigital.io",
-                              targetCampaignId: hubdigitalFormData.targetCampaignId,
-                            })}
-                            disabled={!hubdigitalFormData.targetCampaignId || createHubdigitalMutation.isPending}
-                            className="w-full bg-green-600 hover:bg-green-700"
-                          >
-                            {createHubdigitalMutation.isPending ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Attivazione in corso...
-                              </>
-                            ) : (
-                              <>
-                                <Plug className="h-4 w-4 mr-2" />
-                                Attiva Webhook
-                              </>
-                            )}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <div className="space-y-4 sm:space-y-6">
-                        <Card className="border-0 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 backdrop-blur-sm">
-                          <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <CheckCircle className="h-5 w-5 text-green-600" />
-                              Stato Webhook
-                            </CardTitle>
-                            <CardDescription>Stato attuale del webhook Hubdigital.io</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                              <div className="flex items-center gap-3">
-                                <Label className="text-sm font-medium">Stato:</Label>
-                                <Badge
-                                  variant={hubdigitalConfig.isActive ? "default" : "secondary"}
-                                  className={
-                                    hubdigitalConfig.isActive
-                                      ? "bg-green-500 hover:bg-green-600"
-                                      : "bg-gray-500 hover:bg-gray-600"
-                                  }
-                                >
-                                  {hubdigitalConfig.isActive ? "Webhook Attivo" : "Webhook Inattivo"}
-                                </Badge>
+                    {/* Field Mapping Legend */}
+                    <Collapsible className="mb-6">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full justify-between bg-blue-50 border-blue-200 hover:bg-blue-100">
+                          <span className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-blue-600" />
+                            <span className="text-blue-800">Legenda Campi Mappati da Hubdigital</span>
+                          </span>
+                          <ChevronDown className="h-4 w-4 text-blue-600" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <Card className="border-blue-200 bg-blue-50/50">
+                          <CardContent className="pt-4">
+                            <p className="text-sm text-blue-800 mb-3">
+                              Questi sono i campi che Hubdigital.io può inviare e come vengono salvati nel sistema:
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 shrink-0">phone *</Badge>
+                                <span className="text-gray-700">Numero di telefono del lead (obbligatorio)</span>
+                              </div>
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">firstName</Badge>
+                                <span className="text-gray-700">Nome del lead</span>
+                              </div>
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">lastName</Badge>
+                                <span className="text-gray-700">Cognome del lead</span>
+                              </div>
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">name</Badge>
+                                <span className="text-gray-700">Nome completo (diviso automaticamente in nome/cognome)</span>
+                              </div>
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">email</Badge>
+                                <span className="text-gray-700">Email del lead → salvato in leadInfo.email</span>
+                              </div>
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">companyName</Badge>
+                                <span className="text-gray-700">Nome azienda → salvato in leadInfo.companyName</span>
+                              </div>
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">source</Badge>
+                                <span className="text-gray-700">Fonte del lead → salvato in leadInfo.fonte</span>
+                              </div>
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-300 shrink-0">customFields</Badge>
+                                <span className="text-gray-700">Campi personalizzati → salvati in leadInfo.customFields</span>
+                              </div>
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-300 shrink-0">dateAdded</Badge>
+                                <span className="text-gray-700">Data di aggiunta → salvata in leadInfo.dateAdded</span>
+                              </div>
+                              <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300 shrink-0">type</Badge>
+                                <span className="text-gray-700">Solo "ContactCreate" viene processato, altri tipi ignorati</span>
                               </div>
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                              <div className="bg-white/60 rounded-lg p-4">
-                                <p className="text-sm text-gray-500">Lead ricevuti totali</p>
-                                <p className="text-2xl font-bold text-green-700">
-                                  {hubdigitalConfig.totalLeadsReceived || 0}
-                                </p>
-                              </div>
-                              <div className="bg-white/60 rounded-lg p-4">
-                                <p className="text-sm text-gray-500">Ultimo lead ricevuto</p>
-                                <p className="text-lg font-medium text-gray-700">
-                                  {hubdigitalConfig.lastWebhookAt
-                                    ? new Date(hubdigitalConfig.lastWebhookAt).toLocaleString('it-IT', {
-                                        day: '2-digit',
-                                        month: '2-digit',
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                      })
-                                    : 'Nessun lead ricevuto'}
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                          <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <ExternalLink className="h-5 w-5 text-blue-600" />
-                              URL Webhook
-                            </CardTitle>
-                            <CardDescription>Endpoint per ricevere i lead da Hubdigital.io</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <Alert className="bg-blue-50 border-blue-200">
-                              <AlertCircle className="h-4 w-4 text-blue-600" />
-                              <AlertDescription className="text-sm text-blue-800">
-                                Fornisci questo URL al tuo cliente per ricevere i lead automaticamente da Hubdigital.io
-                              </AlertDescription>
-                            </Alert>
-
-                            <div className="space-y-2">
-                              <Label>URL Webhook</Label>
-                              <div className="flex gap-2">
-                                <Input
-                                  readOnly
-                                  value={`https://${window.location.host}/api/webhook/hubdigital/${hubdigitalConfig.secretKey}`}
-                                  className="font-mono text-sm bg-gray-50"
-                                />
-                                <Button
-                                  variant="outline"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(
-                                      `https://${window.location.host}/api/webhook/hubdigital/${hubdigitalConfig.secretKey}`
-                                    );
-                                    setHubdigitalCopied(true);
-                                    setTimeout(() => setHubdigitalCopied(false), 2000);
-                                    toast({
-                                      title: "URL Copiato",
-                                      description: "L'URL webhook è stato copiato negli appunti",
-                                    });
-                                  }}
-                                  className="shrink-0"
-                                >
-                                  {hubdigitalCopied ? (
-                                    <Check className="h-4 w-4 text-green-600" />
-                                  ) : (
-                                    <Copy className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </div>
-                            </div>
-
-                            <p className="text-sm text-muted-foreground">
-                              Il tuo cliente deve configurare questo URL su Hubdigital.io per l'evento <strong>ContactCreate</strong>
+                            <p className="text-xs text-blue-600 mt-3 italic">
+                              * Campo obbligatorio. La campagna viene assegnata automaticamente in base alla configurazione webhook.
                             </p>
                           </CardContent>
                         </Card>
+                      </CollapsibleContent>
+                    </Collapsible>
 
-                        <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                          <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <Server className="h-5 w-5 text-indigo-600" />
-                              Configurazione
-                            </CardTitle>
-                            <CardDescription>Modifica le impostazioni del webhook</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-6">
+                    {/* Header with New Config Button */}
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Configurazioni Webhook</h3>
+                      <Button
+                        onClick={() => {
+                          setIsCreatingNewConfig(true);
+                          setSelectedWebhookConfigId(null);
+                          setIsDuplicating(false);
+                          setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
+                        }}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Nuova Configurazione
+                      </Button>
+                    </div>
+
+                    {/* Create/Edit Form Collapsible */}
+                    {(isCreatingNewConfig || selectedWebhookConfigId) && (
+                      <Card className="border-2 border-green-300 shadow-xl bg-gradient-to-br from-green-50 to-emerald-50 mb-6">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl">
+                                <Plug className="h-6 w-6 text-green-600" />
+                              </div>
+                              <div>
+                                <CardTitle>
+                                  {isDuplicating ? "Duplica Configurazione" : selectedWebhookConfigId ? "Modifica Configurazione" : "Nuova Configurazione"}
+                                </CardTitle>
+                                <CardDescription>
+                                  {isDuplicating ? "Crea una copia con una nuova chiave segreta" : selectedWebhookConfigId ? "Modifica i dettagli del webhook" : "Crea un nuovo endpoint webhook per ricevere lead"}
+                                </CardDescription>
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setIsCreatingNewConfig(false);
+                                setSelectedWebhookConfigId(null);
+                                setIsDuplicating(false);
+                                setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
+                              }}
+                            >
+                              <XCircle className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {/* Validation Warning */}
+                          {hubdigitalFormData.agentConfigId && hubdigitalFormData.targetCampaignId && (
+                            (() => {
+                              const duplicate = hubdigitalConfigs.find((c: any) => 
+                                c.id !== selectedWebhookConfigId &&
+                                c.agentConfigId === hubdigitalFormData.agentConfigId &&
+                                c.targetCampaignId === hubdigitalFormData.targetCampaignId &&
+                                c.isActive
+                              );
+                              if (duplicate) {
+                                return (
+                                  <Alert className="bg-yellow-50 border-yellow-300">
+                                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                                    <AlertDescription className="text-sm text-yellow-800">
+                                      <strong>Attenzione:</strong> Esiste già una configurazione ATTIVA con lo stesso agente e campagna. I lead potrebbero essere duplicati.
+                                    </AlertDescription>
+                                  </Alert>
+                                );
+                              }
+                              return null;
+                            })()
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label htmlFor="hubdigitalCampaignEdit">Campagna di destinazione</Label>
+                              <Label htmlFor="hubdigitalConfigName">Nome Configurazione *</Label>
+                              <Input
+                                id="hubdigitalConfigName"
+                                value={hubdigitalFormData.configName}
+                                onChange={(e) => setHubdigitalFormData({ ...hubdigitalFormData, configName: e.target.value })}
+                                placeholder="es. Campagna Facebook Gennaio"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="hubdigitalAgent">Agente WhatsApp Proattivo *</Label>
                               <Select
-                                value={hubdigitalConfig.targetCampaignId}
-                                onValueChange={(value) => updateHubdigitalMutation.mutate({
-                                  id: hubdigitalConfig.id,
-                                  targetCampaignId: value,
-                                })}
+                                value={hubdigitalFormData.agentConfigId}
+                                onValueChange={(value) => setHubdigitalFormData({ ...hubdigitalFormData, agentConfigId: value })}
                               >
-                                <SelectTrigger id="hubdigitalCampaignEdit">
+                                <SelectTrigger id="hubdigitalAgent">
+                                  <SelectValue placeholder="Seleziona un agente proattivo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {!proactiveAgents || proactiveAgents.length === 0 ? (
+                                    <div className="p-3 text-sm text-muted-foreground space-y-1">
+                                      <p className="font-medium">Nessun agente proattivo configurato</p>
+                                      <p className="text-xs">Per usare questa funzione, crea un agente WhatsApp e abilita la modalità proattiva nelle sue impostazioni.</p>
+                                    </div>
+                                  ) : (
+                                    proactiveAgents.map((agent: any) => (
+                                      <SelectItem key={agent.id} value={agent.id}>
+                                        {agent.agentName || agent.whatsappNumber}
+                                      </SelectItem>
+                                    ))
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="hubdigitalCampaign">Campagna di destinazione *</Label>
+                              <Select
+                                value={hubdigitalFormData.targetCampaignId}
+                                onValueChange={(value) => setHubdigitalFormData({ ...hubdigitalFormData, targetCampaignId: value })}
+                              >
+                                <SelectTrigger id="hubdigitalCampaign">
                                   <SelectValue placeholder="Seleziona una campagna" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -3633,181 +3665,393 @@ export default function ConsultantApiKeysUnified() {
                               </Select>
                             </div>
 
-                            <div className="flex items-center justify-between py-3 border-t border-b">
-                              <div>
-                                <Label className="text-base">Webhook Attivo</Label>
-                                <p className="text-sm text-muted-foreground">
-                                  Attiva o disattiva la ricezione dei lead
-                                </p>
-                              </div>
+                            <div className="flex items-center gap-3 pt-6">
                               <Switch
-                                checked={hubdigitalConfig.isActive}
-                                onCheckedChange={(checked) => updateHubdigitalMutation.mutate({
-                                  id: hubdigitalConfig.id,
-                                  isActive: checked,
-                                })}
-                                disabled={updateHubdigitalMutation.isPending}
+                                id="hubdigitalIsActive"
+                                checked={hubdigitalFormData.isActive}
+                                onCheckedChange={(checked) => setHubdigitalFormData({ ...hubdigitalFormData, isActive: checked })}
                               />
+                              <Label htmlFor="hubdigitalIsActive">Webhook Attivo</Label>
                             </div>
+                          </div>
 
-                            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                              <Button
-                                variant="outline"
-                                onClick={() => {
-                                  if (confirm("Sei sicuro di voler rigenerare la chiave? Dovrai aggiornare l'URL nel sistema esterno.")) {
-                                    regenerateHubdigitalKeyMutation.mutate(hubdigitalConfig.id);
-                                  }
-                                }}
-                                disabled={regenerateHubdigitalKeyMutation.isPending}
-                                className="flex-1"
-                              >
-                                {regenerateHubdigitalKeyMutation.isPending ? (
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                ) : (
-                                  <RefreshCw className="h-4 w-4 mr-2" />
-                                )}
-                                Rigenera Chiave
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                onClick={() => {
-                                  if (confirm("Sei sicuro di voler eliminare questa configurazione webhook? I lead non verranno più ricevuti.")) {
-                                    deleteHubdigitalMutation.mutate(hubdigitalConfig.id);
-                                  }
-                                }}
-                                disabled={deleteHubdigitalMutation.isPending}
-                                className="flex-1"
-                              >
-                                {deleteHubdigitalMutation.isPending ? (
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                )}
-                                Elimina Webhook
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="border-2 border-orange-200 shadow-xl bg-gradient-to-br from-orange-50 to-amber-50">
-                          <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <Sparkles className="h-5 w-5 text-orange-600" />
-                              Test Webhook
-                            </CardTitle>
-                            <CardDescription>Simula l'invio di un lead da Hubdigital.io per testare il webhook</CardDescription>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            <Alert className="bg-orange-50 border-orange-200">
-                              <AlertCircle className="h-4 w-4 text-orange-600" />
-                              <AlertDescription className="text-sm text-orange-800">
-                                Usa questo form per inviare un lead di test. Il lead verra creato esattamente come se provenisse da Hubdigital.io
-                              </AlertDescription>
-                            </Alert>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="testFirstName">Nome</Label>
-                                <Input
-                                  id="testFirstName"
-                                  value={hubdigitalTestData.firstName}
-                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, firstName: e.target.value }))}
-                                  placeholder="Mario"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="testLastName">Cognome</Label>
-                                <Input
-                                  id="testLastName"
-                                  value={hubdigitalTestData.lastName}
-                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, lastName: e.target.value }))}
-                                  placeholder="Rossi"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="testPhone" className="text-orange-700 font-medium">Telefono *</Label>
-                                <Input
-                                  id="testPhone"
-                                  value={hubdigitalTestData.phone}
-                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, phone: e.target.value }))}
-                                  placeholder="+39 333 1234567"
-                                  className={!hubdigitalTestData.phone.trim() ? "border-red-400 focus:border-red-500" : ""}
-                                  required
-                                />
-                                {!hubdigitalTestData.phone.trim() ? (
-                                  <p className="text-xs text-red-500 font-medium">Campo obbligatorio</p>
-                                ) : (
-                                  <p className="text-xs text-gray-500">Cambia il numero per ogni test per evitare duplicati.</p>
-                                )}
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="testEmail">Email</Label>
-                                <Input
-                                  id="testEmail"
-                                  type="email"
-                                  value={hubdigitalTestData.email}
-                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, email: e.target.value }))}
-                                  placeholder="mario.rossi@test.com"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="testCompany">Azienda</Label>
-                                <Input
-                                  id="testCompany"
-                                  value={hubdigitalTestData.companyName}
-                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, companyName: e.target.value }))}
-                                  placeholder="Test SRL"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="testSource">Fonte</Label>
-                                <Input
-                                  id="testSource"
-                                  value={hubdigitalTestData.source}
-                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, source: e.target.value }))}
-                                  placeholder="hubdigital-test"
-                                />
-                              </div>
-                            </div>
-
+                          <div className="flex gap-3 pt-4">
                             <Button
-                              onClick={handleTestHubdigitalWebhook}
-                              disabled={isTestingHubdigital || !hubdigitalTestData.phone.trim()}
-                              className="w-full bg-orange-600 hover:bg-orange-700"
+                              variant="outline"
+                              onClick={() => {
+                                setIsCreatingNewConfig(false);
+                                setSelectedWebhookConfigId(null);
+                                setIsDuplicating(false);
+                                setHubdigitalFormData({ configName: "", agentConfigId: "", targetCampaignId: "", isActive: true });
+                              }}
+                              className="flex-1"
                             >
-                              {isTestingHubdigital ? (
+                              Annulla
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                if (selectedWebhookConfigId && !isDuplicating) {
+                                  updateHubdigitalMutation.mutate({
+                                    id: selectedWebhookConfigId,
+                                    configName: hubdigitalFormData.configName,
+                                    agentConfigId: hubdigitalFormData.agentConfigId,
+                                    targetCampaignId: hubdigitalFormData.targetCampaignId,
+                                    isActive: hubdigitalFormData.isActive,
+                                  });
+                                } else {
+                                  createHubdigitalMutation.mutate({
+                                    configName: hubdigitalFormData.configName || "Nuova Configurazione",
+                                    agentConfigId: hubdigitalFormData.agentConfigId,
+                                    targetCampaignId: hubdigitalFormData.targetCampaignId,
+                                    isActive: hubdigitalFormData.isActive,
+                                  });
+                                }
+                              }}
+                              disabled={
+                                !hubdigitalFormData.agentConfigId ||
+                                !hubdigitalFormData.targetCampaignId ||
+                                createHubdigitalMutation.isPending ||
+                                updateHubdigitalMutation.isPending
+                              }
+                              className="flex-1 bg-green-600 hover:bg-green-700"
+                            >
+                              {createHubdigitalMutation.isPending || updateHubdigitalMutation.isPending ? (
                                 <>
                                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Invio in corso...
+                                  Salvataggio...
                                 </>
                               ) : (
                                 <>
-                                  <Sparkles className="h-4 w-4 mr-2" />
-                                  Invia Lead di Test
+                                  <Save className="h-4 w-4 mr-2" />
+                                  {selectedWebhookConfigId && !isDuplicating ? "Salva Modifiche" : "Crea Webhook"}
                                 </>
                               )}
                             </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
 
-                            {hubdigitalTestResult && (
-                              <Alert className={hubdigitalTestResult.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}>
-                                {hubdigitalTestResult.success ? (
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
-                                ) : (
-                                  <XCircle className="h-4 w-4 text-red-600" />
-                                )}
-                                <AlertDescription className="text-sm">
-                                  <strong>{hubdigitalTestResult.success ? "Successo!" : "Errore:"}</strong> {hubdigitalTestResult.message}
-                                  {hubdigitalTestResult.details && (
-                                    <pre className="mt-2 p-2 bg-white/50 rounded text-xs overflow-auto max-h-32">
-                                      {JSON.stringify(hubdigitalTestResult.details, null, 2)}
-                                    </pre>
-                                  )}
-                                </AlertDescription>
-                              </Alert>
+                    {/* Configs List */}
+                    {hubdigitalConfigs.length === 0 && !isCreatingNewConfig ? (
+                      <Card className="border-0 shadow-xl bg-gradient-to-br from-gray-50 to-slate-50 backdrop-blur-sm">
+                        <CardContent className="py-12 text-center">
+                          <Plug className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                          <p className="text-lg font-medium text-gray-600">Nessuna configurazione webhook</p>
+                          <p className="text-sm text-gray-500 mt-1">Clicca "Nuova Configurazione" per iniziare a ricevere lead</p>
+                        </CardContent>
+                      </Card>
+                    ) : hubdigitalConfigs.length > 0 && (
+                      <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Plug className="h-5 w-5 text-green-600" />
+                            Configurazioni Attive ({hubdigitalConfigs.length})
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Nome</TableHead>
+                                  <TableHead>Agente</TableHead>
+                                  <TableHead>Campagna</TableHead>
+                                  <TableHead>Stato</TableHead>
+                                  <TableHead className="text-center">Lead</TableHead>
+                                  <TableHead>URL Webhook</TableHead>
+                                  <TableHead className="text-right">Azioni</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {hubdigitalConfigs.map((config: any) => (
+                                  <TableRow key={config.id}>
+                                    <TableCell className="font-medium">
+                                      {config.configName || config.displayName || "Hubdigital.io"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300">
+                                        {getAgentName(config.agentConfigId)}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      {campaigns.find((c: any) => c.id === config.targetCampaignId)?.campaignName || "-"}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        variant={config.isActive ? "default" : "secondary"}
+                                        className={config.isActive ? "bg-green-500" : "bg-gray-400"}
+                                      >
+                                        {config.isActive ? "Attivo" : "Inattivo"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-center font-bold text-green-700">
+                                      {config.totalLeadsReceived || 0}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-2">
+                                        <code className="text-xs bg-gray-100 px-2 py-1 rounded truncate max-w-[200px]">
+                                          .../{config.secretKey?.substring(0, 8)}...
+                                        </code>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(
+                                              `https://${window.location.host}/api/webhook/hubdigital/${config.secretKey}`
+                                            );
+                                            setHubdigitalCopied(config.id);
+                                            setTimeout(() => setHubdigitalCopied(null), 2000);
+                                            toast({
+                                              title: "URL Copiato",
+                                              description: "L'URL webhook è stato copiato negli appunti",
+                                            });
+                                          }}
+                                        >
+                                          {hubdigitalCopied === config.id ? (
+                                            <Check className="h-4 w-4 text-green-600" />
+                                          ) : (
+                                            <Copy className="h-4 w-4" />
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            setSelectedWebhookConfigId(config.id);
+                                            setIsCreatingNewConfig(false);
+                                            setIsDuplicating(false);
+                                            setHubdigitalFormData({
+                                              configName: config.configName || config.displayName || "",
+                                              agentConfigId: config.agentConfigId || "",
+                                              targetCampaignId: config.targetCampaignId || "",
+                                              isActive: config.isActive,
+                                            });
+                                          }}
+                                          title="Modifica"
+                                        >
+                                          <Server className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            setIsCreatingNewConfig(true);
+                                            setSelectedWebhookConfigId(null);
+                                            setIsDuplicating(true);
+                                            setHubdigitalFormData({
+                                              configName: (config.configName || config.displayName || "Config") + " (Copia)",
+                                              agentConfigId: config.agentConfigId || "",
+                                              targetCampaignId: config.targetCampaignId || "",
+                                              isActive: true,
+                                            });
+                                          }}
+                                          title="Duplica"
+                                        >
+                                          <Copy className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => updateHubdigitalMutation.mutate({
+                                            id: config.id,
+                                            isActive: !config.isActive,
+                                          })}
+                                          title={config.isActive ? "Disattiva" : "Attiva"}
+                                        >
+                                          {config.isActive ? (
+                                            <XCircle className="h-4 w-4 text-yellow-600" />
+                                          ) : (
+                                            <CheckCircle className="h-4 w-4 text-green-600" />
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            if (confirm("Sei sicuro di voler rigenerare la chiave? Dovrai aggiornare l'URL nel sistema esterno.")) {
+                                              regenerateHubdigitalKeyMutation.mutate(config.id);
+                                            }
+                                          }}
+                                          title="Rigenera Chiave"
+                                        >
+                                          <RefreshCw className="h-4 w-4 text-blue-600" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            if (confirm("Sei sicuro di voler eliminare questa configurazione? I lead non verranno più ricevuti.")) {
+                                              deleteHubdigitalMutation.mutate(config.id);
+                                            }
+                                          }}
+                                          title="Elimina"
+                                        >
+                                          <Trash2 className="h-4 w-4 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Test Webhook Section - Only show if there are configs */}
+                    {hubdigitalConfigs.length > 0 && (
+                      <Card className="border-2 border-orange-200 shadow-xl bg-gradient-to-br from-orange-50 to-amber-50 mt-6">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-orange-600" />
+                            Test Webhook
+                          </CardTitle>
+                          <CardDescription>Simula l'invio di un lead da Hubdigital.io per testare il webhook</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Seleziona configurazione da testare</Label>
+                            <Select
+                              value={selectedTestConfigId || hubdigitalConfigs[0]?.id || ""}
+                              onValueChange={(configId) => {
+                                setSelectedTestConfigId(configId);
+                                const config = hubdigitalConfigs.find((c: any) => c.id === configId);
+                                if (config) {
+                                  setHubdigitalTestData(prev => ({
+                                    ...prev,
+                                    source: `hubdigital-test-${config.configName || config.displayName || "hubdigital"}`
+                                  }));
+                                }
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleziona una configurazione" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {hubdigitalConfigs.map((config: any) => (
+                                  <SelectItem key={config.id} value={config.id}>
+                                    {config.configName || config.displayName || "Hubdigital.io"} {config.isActive ? "(Attivo)" : "(Inattivo)"}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <Alert className="bg-orange-50 border-orange-200">
+                            <AlertCircle className="h-4 w-4 text-orange-600" />
+                            <AlertDescription className="text-sm text-orange-800">
+                              Usa questo form per inviare un lead di test. Il lead verrà creato esattamente come se provenisse da Hubdigital.io
+                            </AlertDescription>
+                          </Alert>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="testFirstName">Nome</Label>
+                              <Input
+                                id="testFirstName"
+                                value={hubdigitalTestData.firstName}
+                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, firstName: e.target.value }))}
+                                placeholder="Mario"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="testLastName">Cognome</Label>
+                              <Input
+                                id="testLastName"
+                                value={hubdigitalTestData.lastName}
+                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, lastName: e.target.value }))}
+                                placeholder="Rossi"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="testPhone" className="text-orange-700 font-medium">Telefono *</Label>
+                              <Input
+                                id="testPhone"
+                                value={hubdigitalTestData.phone}
+                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, phone: e.target.value }))}
+                                placeholder="+39 333 1234567"
+                                className={!hubdigitalTestData.phone.trim() ? "border-red-400 focus:border-red-500" : ""}
+                                required
+                              />
+                              {!hubdigitalTestData.phone.trim() ? (
+                                <p className="text-xs text-red-500 font-medium">Campo obbligatorio</p>
+                              ) : (
+                                <p className="text-xs text-gray-500">Cambia il numero per ogni test per evitare duplicati.</p>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="testEmail">Email</Label>
+                              <Input
+                                id="testEmail"
+                                type="email"
+                                value={hubdigitalTestData.email}
+                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, email: e.target.value }))}
+                                placeholder="mario.rossi@test.com"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="testCompany">Azienda</Label>
+                              <Input
+                                id="testCompany"
+                                value={hubdigitalTestData.companyName}
+                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, companyName: e.target.value }))}
+                                placeholder="Test SRL"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="testSource">Fonte</Label>
+                              <Input
+                                id="testSource"
+                                value={hubdigitalTestData.source}
+                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, source: e.target.value }))}
+                                placeholder="hubdigital-test"
+                              />
+                            </div>
+                          </div>
+
+                          <Button
+                            onClick={handleTestHubdigitalWebhook}
+                            disabled={isTestingHubdigital || !hubdigitalTestData.phone.trim() || hubdigitalConfigs.length === 0}
+                            className="w-full bg-orange-600 hover:bg-orange-700"
+                          >
+                            {isTestingHubdigital ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Invio in corso...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Invia Lead di Test
+                              </>
                             )}
-                          </CardContent>
-                        </Card>
-                      </div>
+                          </Button>
+
+                          {hubdigitalTestResult && (
+                            <Alert className={hubdigitalTestResult.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}>
+                              {hubdigitalTestResult.success ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-red-600" />
+                              )}
+                              <AlertDescription className="text-sm">
+                                <strong>{hubdigitalTestResult.success ? "Successo!" : "Errore:"}</strong> {hubdigitalTestResult.message}
+                                {hubdigitalTestResult.details && (
+                                  <pre className="mt-2 p-2 bg-white/50 rounded text-xs overflow-auto max-h-32">
+                                    {JSON.stringify(hubdigitalTestResult.details, null, 2)}
+                                  </pre>
+                                )}
+                              </AlertDescription>
+                            </Alert>
+                          )}
+                        </CardContent>
+                      </Card>
                     )}
                   </>
                 )}
