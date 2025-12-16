@@ -719,24 +719,24 @@ export default function ConsultantAutomationsPage() {
             <FullFlowGuide />
 
             <Tabs defaultValue="pipeline" className="w-full">
-              <TabsList className="grid w-full grid-cols-5 mb-6">
-                <TabsTrigger value="pipeline" className="flex items-center gap-2">
+              <TabsList className="flex flex-wrap justify-start gap-1 h-auto p-1 mb-6 bg-muted/50">
+                <TabsTrigger value="pipeline" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <KanbanSquare className="h-4 w-4" />
-                  <span className="hidden sm:inline">Conversazioni Attive</span>
+                  <span className="hidden sm:inline">Conversazioni</span>
                 </TabsTrigger>
-                <TabsTrigger value="regole" className="flex items-center gap-2">
+                <TabsTrigger value="regole" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <Settings className="h-4 w-4" />
                   <span className="hidden sm:inline">Regole</span>
                 </TabsTrigger>
-                <TabsTrigger value="template" className="flex items-center gap-2">
+                <TabsTrigger value="template" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <FileText className="h-4 w-4" />
                   <span className="hidden sm:inline">Template</span>
                 </TabsTrigger>
-                <TabsTrigger value="analytics" className="flex items-center gap-2">
+                <TabsTrigger value="analytics" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <BarChart className="h-4 w-4" />
                   <span className="hidden sm:inline">Analytics</span>
                 </TabsTrigger>
-                <TabsTrigger value="ai-logs" className="flex items-center gap-2">
+                <TabsTrigger value="ai-logs" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <Brain className="h-4 w-4" />
                   <span className="hidden sm:inline">Log AI</span>
                 </TabsTrigger>
