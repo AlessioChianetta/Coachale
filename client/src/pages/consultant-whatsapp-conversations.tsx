@@ -138,6 +138,17 @@ export default function ConsultantWhatsAppConversationsPage() {
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isMobile = useIsMobile();
 
+  // Handle URL parameter for direct conversation selection
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const conversationParam = urlParams.get('conversation');
+    if (conversationParam && !selectedConversationId) {
+      setSelectedConversationId(conversationParam);
+      // Clean URL after setting
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   // Fetch conversations with polling
   const { data: conversationsData } = useQuery({
     queryKey: ["/api/whatsapp/conversations", filter, selectedAgentId],

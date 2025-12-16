@@ -201,7 +201,7 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
             </div>
 
             <div className="flex gap-2 mt-4 pt-3 border-t">
-              <Link href={`/consultant/whatsapp?conversation=${conversation.conversationId}`}>
+              <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
                 <Button variant="outline" size="sm" className="gap-1">
                   <MessageSquare className="h-3 w-3" />
                   Vedi Chat

@@ -552,7 +552,43 @@ async function evaluateConversation(
   console.log(`   📋 Applicable rules: ${applicableRules.length}`);
 
   if (applicableRules.length === 0) {
-    console.log(`⏭️ [FOLLOWUP-SCHEDULER] No applicable rules for ${candidate.conversationId}, skipping`);
+    console.log(`⏭️ [FOLLOWUP-SCHEDULER] No applicable rules for ${candidate.conversationId}, logging evaluation and skipping`);
+    
+    // Log the evaluation even when no rules apply - so user can see what's happening
+    const noRulesContext: FollowupContext = {
+      conversationId: candidate.conversationId,
+      leadName: candidate.leadName,
+      currentState: candidate.currentState,
+      daysSilent: candidate.daysSilent,
+      followupCount: candidate.followupCount,
+      maxFollowupsAllowed: candidate.maxFollowupsAllowed,
+      channel: 'whatsapp',
+      agentType: candidate.agentType,
+      lastMessages: [],
+      lastMessageDirection: null,
+      signals: candidate.signals,
+      engagementScore: candidate.engagementScore,
+      conversionProbability: candidate.conversionProbability,
+      availableTemplates: [],
+    };
+    
+    const waitingHours = Math.max(4 - candidate.hoursSilent, 0).toFixed(1);
+    const noRulesDecision: FollowupDecision = {
+      decision: 'skip',
+      reasoning: `In attesa - nessuna regola applicabile. Le regole richiedono almeno 4h di silenzio, mancano circa ${waitingHours}h. Stato: ${candidate.currentState}, Ore silenzio: ${candidate.hoursSilent.toFixed(1)}h`,
+      confidenceScore: 1.0,
+      matchedSystemRule: 'waiting_for_rules'
+    };
+    
+    await logFollowupDecision(
+      candidate.conversationId,
+      noRulesContext,
+      noRulesDecision,
+      'system-rule-check',
+      0,
+      0
+    );
+    
     return 'skipped';
   }
   

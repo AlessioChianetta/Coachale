@@ -901,6 +901,81 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// FOLLOWUP SETTINGS (Global hoursWithoutReply config)
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/settings", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const rules = await db
+      .select()
+      .from(schema.followupRules)
+      .where(eq(schema.followupRules.consultantId, req.user!.id))
+      .limit(1);
+    
+    let hoursWithoutReply = 4;
+    if (rules.length > 0 && rules[0].triggerCondition) {
+      const condition = rules[0].triggerCondition as Record<string, any>;
+      if (typeof condition.hoursWithoutReply === 'number') {
+        hoursWithoutReply = condition.hoursWithoutReply;
+      }
+    }
+    
+    res.json({
+      hoursWithoutReply,
+      rulesCount: rules.length
+    });
+  } catch (error: any) {
+    console.error("Error fetching followup settings:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put("/settings", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const { hoursWithoutReply } = req.body;
+    
+    if (typeof hoursWithoutReply !== 'number' || hoursWithoutReply < 0 || hoursWithoutReply > 168) {
+      return res.status(400).json({ 
+        message: "hoursWithoutReply deve essere un numero tra 0 e 168 (1 settimana)" 
+      });
+    }
+    
+    const rules = await db
+      .select()
+      .from(schema.followupRules)
+      .where(eq(schema.followupRules.consultantId, req.user!.id));
+    
+    let updatedCount = 0;
+    for (const rule of rules) {
+      const currentCondition = (rule.triggerCondition || {}) as Record<string, any>;
+      const newCondition = {
+        ...currentCondition,
+        hoursWithoutReply
+      };
+      
+      await db
+        .update(schema.followupRules)
+        .set({ 
+          triggerCondition: newCondition,
+          updatedAt: new Date() 
+        })
+        .where(eq(schema.followupRules.id, rule.id));
+      updatedCount++;
+    }
+    
+    res.json({
+      success: true,
+      message: `Aggiornate ${updatedCount} regole con hoursWithoutReply = ${hoursWithoutReply}`,
+      hoursWithoutReply,
+      updatedRulesCount: updatedCount
+    });
+  } catch (error: any) {
+    console.error("Error updating followup settings:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // SYSTEM RULES (Read-only)
 // ═══════════════════════════════════════════════════════════════════════════
 

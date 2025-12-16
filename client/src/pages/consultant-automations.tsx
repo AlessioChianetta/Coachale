@@ -1,6 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAuthHeaders } from "@/lib/auth";
+import { useFollowupSettings, useUpdateFollowupSettings } from "@/hooks/useFollowupApi";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import Navbar from "@/components/navbar";
@@ -91,6 +96,117 @@ function AutomationFlowVisual() {
         </div>
       ))}
     </div>
+  );
+}
+
+function FollowupIntervalCard() {
+  const { toast } = useToast();
+  const { data: settings, isLoading } = useFollowupSettings();
+  const updateSettings = useUpdateFollowupSettings();
+  const [hours, setHours] = useState<string>("4");
+  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    if (settings?.hoursWithoutReply !== undefined) {
+      setHours(settings.hoursWithoutReply.toString());
+      setHasChanges(false);
+    }
+  }, [settings?.hoursWithoutReply]);
+
+  const handleSave = () => {
+    const value = parseFloat(hours);
+    if (isNaN(value) || value < 0 || value > 168) {
+      toast({
+        title: "Valore non valido",
+        description: "Inserisci un valore tra 0 e 168 ore",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    updateSettings.mutate(value, {
+      onSuccess: (data) => {
+        toast({
+          title: "Impostazioni salvate",
+          description: data.message
+        });
+        setHasChanges(false);
+      },
+      onError: (error: any) => {
+        toast({
+          title: "Errore",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
+    });
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setHours(e.target.value);
+    setHasChanges(e.target.value !== settings?.hoursWithoutReply?.toString());
+  };
+
+  return (
+    <Card className="mb-6 border-gray-200 dark:border-gray-700">
+      <CardContent className="py-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Label htmlFor="followup-hours" className="text-sm font-medium cursor-help flex items-center gap-1">
+                    Tempo minimo attesa
+                    <HelpCircle className="h-3 w-3 text-muted-foreground" />
+                  </Label>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs">
+                  <p className="text-sm">
+                    Indica dopo quante ore senza risposta dal lead il sistema inizierà a valutare 
+                    la conversazione per un follow-up automatico. Es: 0.5 = 30 min, 1 = 1 ora, 4 = 4 ore.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Input
+              id="followup-hours"
+              type="number"
+              step="0.5"
+              min="0"
+              max="168"
+              value={hours}
+              onChange={handleChange}
+              className="w-20 h-8"
+              disabled={isLoading || updateSettings.isPending}
+            />
+            <span className="text-sm text-muted-foreground">ore</span>
+          </div>
+          
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!hasChanges || updateSettings.isPending || isLoading}
+            className="h-8"
+          >
+            {updateSettings.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Salva"
+            )}
+          </Button>
+          
+          {settings?.rulesCount === 0 && (
+            <span className="text-xs text-amber-600 dark:text-amber-400">
+              Nessuna regola configurata
+            </span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -717,6 +833,9 @@ export default function ConsultantAutomationsPage() {
                 Gestisci le regole di follow-up automatico e monitora la pipeline lead
               </p>
             </div>
+
+            {/* Intervallo Follow-up */}
+            <FollowupIntervalCard />
 
             {/* Dashboard Statistiche - Sempre visibile */}
             <div className="mb-6">

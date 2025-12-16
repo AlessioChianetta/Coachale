@@ -1,6 +1,44 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getAuthHeaders } from "@/lib/auth";
 
+export function useFollowupSettings() {
+  return useQuery({
+    queryKey: ["followup-settings"],
+    queryFn: async () => {
+      const res = await fetch("/api/followup/settings", { 
+        credentials: "include",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch settings");
+      return res.json();
+    },
+  });
+}
+
+export function useUpdateFollowupSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (hoursWithoutReply: number) => {
+      const res = await fetch("/api/followup/settings", {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        credentials: "include",
+        body: JSON.stringify({ hoursWithoutReply }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update settings");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["followup-settings"] });
+      queryClient.invalidateQueries({ queryKey: ["followup-rules"] });
+    },
+  });
+}
+
 export function useFollowupRules() {
   return useQuery({
     queryKey: ["followup-rules"],
