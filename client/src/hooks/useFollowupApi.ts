@@ -266,3 +266,26 @@ export function useCreateWhatsAppTemplate() {
     },
   });
 }
+
+export function useSendMessageNow() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (messageId: string) => {
+      const res = await fetch(`/api/followup/messages/${messageId}/send-now`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Errore durante l'invio del messaggio");
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["activity-log"] });
+      queryClient.invalidateQueries({ queryKey: ["followup-scheduled"] });
+      queryClient.invalidateQueries({ queryKey: ["followup-dashboard-stats"] });
+    },
+  });
+}

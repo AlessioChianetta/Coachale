@@ -160,7 +160,7 @@ export async function runFollowupEvaluation(): Promise<void> {
   }
 }
 
-export async function processScheduledMessages(): Promise<void> {
+export async function processScheduledMessages(messageIds?: string[]): Promise<void> {
   if (isProcessingRunning) {
     console.log('⚠️ [FOLLOWUP-SCHEDULER] Message processing already running, skipping...');
     return;
@@ -170,19 +170,35 @@ export async function processScheduledMessages(): Promise<void> {
   const startTime = Date.now();
   
   try {
-    console.log('📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...');
+    const isManualSend = messageIds && messageIds.length > 0;
+    console.log(`📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...${isManualSend ? ' (MANUAL SEND NOW)' : ''}`);
     
     const now = new Date();
-    const pendingMessages = await db
-      .select()
-      .from(scheduledFollowupMessages)
-      .where(
-        and(
-          eq(scheduledFollowupMessages.status, 'pending'),
-          lte(scheduledFollowupMessages.scheduledFor, now)
+    let pendingMessages;
+    
+    if (isManualSend) {
+      pendingMessages = await db
+        .select()
+        .from(scheduledFollowupMessages)
+        .where(
+          and(
+            eq(scheduledFollowupMessages.status, 'pending'),
+            inArray(scheduledFollowupMessages.id, messageIds)
+          )
         )
-      )
-      .limit(50);
+        .limit(50);
+    } else {
+      pendingMessages = await db
+        .select()
+        .from(scheduledFollowupMessages)
+        .where(
+          and(
+            eq(scheduledFollowupMessages.status, 'pending'),
+            lte(scheduledFollowupMessages.scheduledFor, now)
+          )
+        )
+        .limit(50);
+    }
 
     console.log(`📬 [FOLLOWUP-SCHEDULER] Found ${pendingMessages.length} pending messages to send`);
 

@@ -22,9 +22,13 @@ import {
   MessageSquare,
   ExternalLink,
   RefreshCw,
-  Brain
+  Brain,
+  Loader2,
+  Zap
 } from "lucide-react";
 import { Link } from "wouter";
+import { useSendMessageNow } from "@/hooks/useFollowupApi";
+import { useToast } from "@/hooks/use-toast";
 
 interface TimelineEvent {
   id: string;
@@ -107,6 +111,45 @@ function getEventLabel(type: string, decision?: string) {
     default:
       return type;
   }
+}
+
+function SendNowButton({ messageId }: { messageId: string }) {
+  const { toast } = useToast();
+  const sendNow = useSendMessageNow();
+  
+  const handleSendNow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const result = await sendNow.mutateAsync(messageId);
+      toast({
+        title: "Messaggio inviato",
+        description: result.message || "Il messaggio è stato inviato con successo!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'invio del messaggio",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleSendNow}
+      disabled={sendNow.isPending}
+      className="gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+    >
+      {sendNow.isPending ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <Zap className="h-3 w-3" />
+      )}
+      Invia subito
+    </Button>
+  );
 }
 
 function ConversationCard({ conversation }: { conversation: ConversationTimeline }) {
@@ -194,6 +237,12 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                           Confidenza: {Math.round(event.confidenceScore * 100)}%
                         </span>
                       )}
+                      
+                      {event.type === 'message_scheduled' && event.status === 'scheduled' && (
+                        <div className="mt-2">
+                          <SendNowButton messageId={event.id.replace('msg-', '')} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -207,6 +256,9 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                   Vedi Chat
                 </Button>
               </Link>
+              {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (
+                <SendNowButton messageId={conversation.events.find(e => e.type === 'message_scheduled')!.id.replace('msg-', '')} />
+              )}
               {conversation.currentStatus === 'error' && (
                 <Button variant="outline" size="sm" className="gap-1 text-orange-600 border-orange-300">
                   <AlertTriangle className="h-3 w-3" />

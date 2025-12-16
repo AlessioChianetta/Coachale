@@ -550,6 +550,86 @@ router.delete("/scheduled/:id", authenticateToken, requireRole("consultant"), as
   }
 });
 
+router.post("/messages/:id/send-now", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const consultantId = req.user!.id;
+    
+    console.log(`🚀 [FOLLOWUP-API] Send-now requested for message ${id} by consultant ${consultantId}`);
+    
+    const [messageWithConversation] = await db
+      .select({
+        message: schema.scheduledFollowupMessages,
+        conversation: schema.whatsappConversations,
+        agent: schema.consultantWhatsappConfig,
+      })
+      .from(schema.scheduledFollowupMessages)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.scheduledFollowupMessages.conversationId, schema.whatsappConversations.id)
+      )
+      .innerJoin(
+        schema.consultantWhatsappConfig,
+        eq(schema.whatsappConversations.agentConfigId, schema.consultantWhatsappConfig.id)
+      )
+      .where(eq(schema.scheduledFollowupMessages.id, id))
+      .limit(1);
+    
+    if (!messageWithConversation) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Messaggio non trovato" 
+      });
+    }
+    
+    if (messageWithConversation.agent.consultantId !== consultantId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Non hai i permessi per inviare questo messaggio" 
+      });
+    }
+    
+    if (messageWithConversation.message.status !== 'pending') {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Il messaggio non è in stato pending (stato attuale: ${messageWithConversation.message.status})` 
+      });
+    }
+    
+    await db
+      .update(schema.scheduledFollowupMessages)
+      .set({ scheduledFor: new Date() })
+      .where(eq(schema.scheduledFollowupMessages.id, id));
+    
+    console.log(`📤 [FOLLOWUP-API] Processing message ${id} immediately...`);
+    
+    await processScheduledMessages([id]);
+    
+    const [updatedMessage] = await db
+      .select()
+      .from(schema.scheduledFollowupMessages)
+      .where(eq(schema.scheduledFollowupMessages.id, id))
+      .limit(1);
+    
+    console.log(`✅ [FOLLOWUP-API] Send-now completed for message ${id}, new status: ${updatedMessage?.status}`);
+    
+    res.json({
+      success: true,
+      message: updatedMessage?.status === 'sent' 
+        ? "Messaggio inviato con successo!" 
+        : `Messaggio elaborato (stato: ${updatedMessage?.status})`,
+      status: updatedMessage?.status,
+      sentAt: updatedMessage?.sentAt,
+    });
+  } catch (error: any) {
+    console.error("Error sending message now:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Errore durante l'invio del messaggio"
+    });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // AI EVALUATION LOGS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1000,7 +1080,7 @@ router.get("/system-rules", authenticateToken, requireRole("consultant"), async 
 // MANUAL TRIGGER - Run evaluation immediately
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { runFollowupEvaluation } from "../cron/followup-scheduler";
+import { runFollowupEvaluation, processScheduledMessages } from "../cron/followup-scheduler";
 
 router.post("/trigger-evaluation", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
