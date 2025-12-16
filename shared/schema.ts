@@ -3203,9 +3203,13 @@ export const webhookConfigs = pgTable("webhook_configs", {
   // Provider identification
   providerName: text("provider_name").notNull(), // "hubdigital", "altro_webhook"
   displayName: text("display_name").notNull(), // "Hubdigital.io"
+  configName: text("config_name"), // Custom name to distinguish multiple configs (e.g., "Campagna Facebook", "Campagna Google")
   
   // Security
   secretKey: text("secret_key").notNull(), // Unique secret key for webhook authentication
+  
+  // Agent Association - which WhatsApp agent should handle leads from this webhook
+  agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "set null" }),
   
   // Mapping to Marketing Campaign (optional)
   targetCampaignId: varchar("target_campaign_id").references(() => marketingCampaigns.id, { onDelete: "set null" }),
@@ -3218,7 +3222,8 @@ export const webhookConfigs = pgTable("webhook_configs", {
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
-  uniqueProviderName: unique().on(table.consultantId, table.providerName),
+  // Unique secret key for security
+  uniqueSecretKey: unique().on(table.secretKey),
 }));
 
 // Webhook Config validation schemas
@@ -3231,7 +3236,9 @@ export const insertWebhookConfigSchema = createInsertSchema(webhookConfigs).omit
 }).extend({
   providerName: z.string().min(1, "Il nome del provider è obbligatorio"),
   displayName: z.string().min(1, "Il nome visualizzato è obbligatorio"),
+  configName: z.string().optional(),
   secretKey: z.string().min(16, "La chiave segreta deve essere almeno 16 caratteri"),
+  agentConfigId: z.string().optional().nullable(),
 });
 
 export const updateWebhookConfigSchema = insertWebhookConfigSchema.partial().omit({

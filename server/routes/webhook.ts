@@ -99,19 +99,27 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       });
     }
 
-    const agents = await db.select()
-      .from(schema.consultantWhatsappConfig)
-      .where(eq(schema.consultantWhatsappConfig.consultantId, webhookConfig.consultantId));
+    // Use the configured agent if specified, otherwise fall back to first available
+    let agentConfigId = webhookConfig.agentConfigId;
+    
+    if (!agentConfigId) {
+      // Fallback: get first available agent for this consultant
+      const agents = await db.select()
+        .from(schema.consultantWhatsappConfig)
+        .where(eq(schema.consultantWhatsappConfig.consultantId, webhookConfig.consultantId));
 
-    if (agents.length === 0) {
-      console.log(`❌ [WEBHOOK] No WhatsApp agent configured for consultant: ${webhookConfig.consultantId}`);
-      return res.status(500).json({
-        success: false,
-        error: 'No WhatsApp agent configured',
-      });
+      if (agents.length === 0) {
+        console.log(`❌ [WEBHOOK] No WhatsApp agent configured for consultant: ${webhookConfig.consultantId}`);
+        return res.status(500).json({
+          success: false,
+          error: 'No WhatsApp agent configured',
+        });
+      }
+      agentConfigId = agents[0].id;
+      console.log(`ℹ️ [WEBHOOK] Using fallback agent: ${agentConfigId}`);
+    } else {
+      console.log(`✅ [WEBHOOK] Using configured agent: ${agentConfigId}`);
     }
-
-    const agentConfigId = agents[0].id;
     const source = payload.source || 'hubdigital';
 
     const leadInfo: {
