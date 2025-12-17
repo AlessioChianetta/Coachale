@@ -1111,53 +1111,10 @@ async function evaluateConversation(
     return 'skipped';
   }
   
-  console.log(`   📋 Applicable rules: ${applicableRules.length}`);
+  console.log(`   📋 Applicable rules: ${applicableRules.length} (Sistema AI attivo - le regole sono opzionali)`);
 
-  if (applicableRules.length === 0) {
-    console.log(`⏭️ [FOLLOWUP-SCHEDULER] No applicable rules for ${candidate.conversationId}, logging evaluation and skipping`);
-    
-    // Log the evaluation even when no rules apply - so user can see what's happening
-    const noRulesContext: FollowupContext = {
-      conversationId: candidate.conversationId,
-      leadName: candidate.leadName,
-      currentState: candidate.currentState,
-      daysSilent: candidate.daysSilent,
-      hoursSinceLastInbound: candidate.hoursSinceLastInbound,
-      followupCount: candidate.followupCount,
-      maxFollowupsAllowed: candidate.maxFollowupsAllowed,
-      channel: 'whatsapp',
-      agentType: candidate.agentType,
-      lastMessages: [],
-      lastMessageDirection: null,
-      signals: candidate.signals,
-      engagementScore: candidate.engagementScore,
-      conversionProbability: candidate.conversionProbability,
-      availableTemplates: [],
-      hoursSilent: candidate.hoursSilent,
-      minutesSilent: candidate.minutesSilent,
-      secondsSilent: candidate.secondsSilent,
-      leadNeverResponded: candidate.leadNeverResponded,
-    };
-    
-    const waitingHours = Math.max(4 - candidate.hoursSilent, 0).toFixed(1);
-    const noRulesDecision: FollowupDecision = {
-      decision: 'skip',
-      reasoning: `In attesa - nessuna regola applicabile. Le regole richiedono almeno 4h di silenzio, mancano circa ${waitingHours}h. Stato: ${candidate.currentState}, Ore silenzio: ${candidate.hoursSilent.toFixed(1)}h`,
-      confidenceScore: 1.0,
-      matchedSystemRule: 'waiting_for_rules'
-    };
-    
-    await logFollowupDecision(
-      candidate.conversationId,
-      noRulesContext,
-      noRulesDecision,
-      'system-rule-check',
-      0,
-      0
-    );
-    
-    return 'skipped';
-  }
+  // NUOVO: Invece di saltare quando non ci sono regole, passiamo direttamente all'AI
+  // Il sistema AI "Marco" decide autonomamente senza bisogno di regole predefinite
   
   // Bug 1 Fix: Check for existing pending messages before scheduling
   const existingPending = await db
@@ -1277,17 +1234,22 @@ async function evaluateConversation(
 
   const aiDecisionRule = applicableRules.find(r => r.triggerType === 'ai_decision');
   
+  // NUOVO: Creiamo una regola virtuale AI se non esiste una regola esplicita
+  // Il sistema AI "Marco" funziona autonomamente senza regole predefinite
+  const effectiveAiRule = aiDecisionRule || {
+    id: 'ai-virtual-rule',
+    name: 'Sistema AI Marco',
+    triggerType: 'ai_decision' as const,
+    maxAttempts: candidate.maxFollowupsAllowed,
+    fallbackMessage: null,
+    priority: 100,
+  };
+  
   if (!aiDecisionRule) {
-    const eventBasedRule = applicableRules.find(r => r.triggerType === 'event_based');
-    if (eventBasedRule) {
-      console.log(`⏭️ [FOLLOWUP-SCHEDULER] Only event_based rules available for ${candidate.conversationId}, waiting for trigger event`);
-    } else {
-      console.log(`⏭️ [FOLLOWUP-SCHEDULER] No time_based or ai_decision rules for ${candidate.conversationId}, skipping`);
-    }
-    return 'skipped';
+    console.log(`🤖 [FOLLOWUP-SCHEDULER] Nessuna regola esplicita - Sistema AI "Marco" attivo per ${candidate.conversationId}`);
+  } else {
+    console.log(`🤖 [FOLLOWUP-SCHEDULER] Using AI decision for rule: "${aiDecisionRule.name}"`);
   }
-
-  console.log(`🤖 [FOLLOWUP-SCHEDULER] Using AI decision for rule: "${aiDecisionRule.name}"`);
 
   const lastMessages = await getLastMessages(candidate.conversationId, 10);
   const availableTemplates = await getAvailableTemplates(candidate.consultantId, candidate.agentConfigId);
@@ -1445,7 +1407,7 @@ async function evaluateConversation(
       // CRITICAL: Outside 24h window - MUST use the pre-validated approved template from windowCheck
       // This template was already validated for 24h compliance, do not override with AI
       templateIdToUse = windowCheck.selectedTemplateId;
-      fallbackMessageToUse = aiDecisionRule.fallbackMessage || decision.suggestedMessage || null;
+      fallbackMessageToUse = effectiveAiRule.fallbackMessage || decision.suggestedMessage || null;
       console.log(`🔒 [FOLLOWUP-SCHEDULER] Outside 24h window - using pre-validated template: ${templateIdToUse}`);
     } else {
       // Inside 24h window - use AI to select best template from all available approved templates
@@ -1481,7 +1443,7 @@ async function evaluateConversation(
           throw new Error("AI returned no template selection");
         }
         
-        fallbackMessageToUse = aiDecisionRule.fallbackMessage || decision.suggestedMessage || null;
+        fallbackMessageToUse = effectiveAiRule.fallbackMessage || decision.suggestedMessage || null;
         
       } catch (aiError) {
         // AI selection failed - throw error (no fallback to priority as requested)
@@ -1505,7 +1467,7 @@ async function evaluateConversation(
     
     await db.insert(scheduledFollowupMessages).values({
       conversationId: candidate.conversationId,
-      ruleId: aiDecisionRule.id,
+      ruleId: effectiveAiRule.id,
       templateId: templateIdToUse,
       scheduledFor,
       status: 'pending',
@@ -1516,7 +1478,7 @@ async function evaluateConversation(
         : decision.reasoning,
       aiConfidenceScore: decision.confidenceScore,
       attemptCount: 0,
-      maxAttempts: aiDecisionRule.maxAttempts,
+      maxAttempts: effectiveAiRule.maxAttempts,
     });
 
     await updateConversationState(candidate.conversationId, {
@@ -1527,7 +1489,7 @@ async function evaluateConversation(
       ...(decision.updatedConversionProbability && { conversionProbability: decision.updatedConversionProbability }),
     });
 
-    console.log(`📅 [FOLLOWUP-SCHEDULER] Scheduled follow-up for ${candidate.conversationId} at ${scheduledFor.toISOString()} (AI decision with rule "${aiDecisionRule.name}")`);
+    console.log(`📅 [FOLLOWUP-SCHEDULER] Scheduled follow-up for ${candidate.conversationId} at ${scheduledFor.toISOString()} (AI: "${effectiveAiRule.name}")`);
     return 'scheduled';
   }
 
