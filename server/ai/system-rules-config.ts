@@ -1,13 +1,17 @@
 /**
- * REGOLE DETERMINISTICHE DI SISTEMA
+ * REGOLE DETERMINISTICHE DI SISTEMA [DEPRECATO]
  * 
- * Queste regole vengono valutate PRIMA dell'AI in ordine di priorità.
- * Sono visibili nella UI in modalità read-only.
+ * ⚠️ ATTENZIONE: Questo file è DEPRECATO.
  * 
- * FLUSSO DECISIONALE:
- * 1. Valuta regole in ordine di priorità (100 = massima)
- * 2. Se una regola matcha → restituisce decisione
- * 3. Se nessuna regola matcha → passa all'AI
+ * Il nuovo sistema "Human-Like AI" NON usa più regole codificate.
+ * L'AI analizza tutto il contesto come un dipendente umano esperto
+ * e decide autonomamente cosa fare.
+ * 
+ * Questo file viene mantenuto per retrocompatibilità con l'API
+ * che mostra le vecchie regole nella UI (ora segnate come deprecate).
+ * 
+ * Vedere: server/ai/human-like-decision-engine.ts per il nuovo sistema.
+ * Vedere: server/ai/followup-decision-engine.ts (USE_HUMAN_LIKE_AI = true)
  */
 
 export type SystemRuleDecision = "stop" | "skip" | "send_now";

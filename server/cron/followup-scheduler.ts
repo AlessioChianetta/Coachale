@@ -932,6 +932,8 @@ export async function findCandidateConversations(
   console.log(`👥 [FOLLOWUP-SCHEDULER] Found ${consultantIds.length} consultants with active follow-up rules`);
 
   // Build dynamic where conditions
+  // TASK 7: Confirmation log - we filter out closed conversations here
+  console.log(`✅ [FILTER-CHECK] Excluding closed states: 'closed_won', 'closed_lost' from candidate search`);
   const whereConditions = [
     sql`${conversationStates.currentState} NOT IN ('closed_won', 'closed_lost')`,
     inArray(whatsappConversations.consultantId, consultantIds),
@@ -1084,6 +1086,20 @@ async function evaluateConversation(
 ): Promise<'scheduled' | 'skipped' | 'stopped'> {
   console.log(`🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation ${candidate.conversationId}`);
   console.log(`   State: ${candidate.currentState}, Days silent: ${candidate.daysSilent}, Hours silent: ${candidate.hoursSilent.toFixed(1)}, Follow-ups: ${candidate.followupCount}/${candidate.maxFollowupsAllowed}`);
+  
+  // TASK 6: Safety net - check max follow-ups at the very beginning
+  if (candidate.followupCount >= candidate.maxFollowupsAllowed) {
+    console.log(`🛑 [SAFETY-NET] Max follow-ups reached (${candidate.followupCount}/${candidate.maxFollowupsAllowed}), stopping`);
+    
+    await updateConversationState(candidate.conversationId, {
+      currentState: 'ghost',
+      previousState: candidate.currentState,
+      lastAiEvaluationAt: new Date(),
+      aiRecommendation: `[SAFETY-NET] Max follow-ups reached (${candidate.followupCount}/${candidate.maxFollowupsAllowed})`,
+    });
+    
+    return 'stopped';
+  }
   
   // Bug 3 Fix: Safety check for applicableRules that could be undefined
   const applicableRules = candidate.applicableRules;
@@ -1304,6 +1320,13 @@ async function evaluateConversation(
 
   const decision = await evaluateFollowup(context, candidate.consultantId);
 
+  // TASK 3b: Check if last outbound was template and block freeform if lead hasn't responded
+  const lastOutboundWasTemplate = await checkLastOutboundWasTemplate(candidate.conversationId);
+  if (lastOutboundWasTemplate && (candidate.leadNeverResponded || candidate.hoursSinceLastInbound >= 24)) {
+    decision.allowFreeformMessage = false;
+    console.log(`🔒 [FOLLOWUP-SCHEDULER] Freeform blocked: last outbound was template without response (leadNeverResponded=${candidate.leadNeverResponded}, hoursSinceLastInbound=${candidate.hoursSinceLastInbound.toFixed(1)})`);
+  }
+
   await logFollowupDecision(
     candidate.conversationId,
     context,
@@ -1478,26 +1501,132 @@ async function evaluateConversation(
   return 'skipped';
 }
 
+/**
+ * TASK 3: Helper to check if the last outbound message was a template
+ * Checks cross-reference with scheduledFollowupMessages to determine if the last 
+ * outbound message was sent using a template or freeform.
+ */
+async function checkLastOutboundWasTemplate(conversationId: string): Promise<boolean> {
+  const lastOutbound = await db
+    .select({
+      id: whatsappMessages.id,
+      createdAt: whatsappMessages.createdAt,
+      twilioSid: whatsappMessages.twilioSid,
+    })
+    .from(whatsappMessages)
+    .where(
+      and(
+        eq(whatsappMessages.conversationId, conversationId),
+        inArray(whatsappMessages.sender, ['consultant', 'ai', 'system'])
+      )
+    )
+    .orderBy(desc(whatsappMessages.createdAt))
+    .limit(1);
+
+  if (lastOutbound.length === 0) {
+    return false;
+  }
+
+  const outboundMsg = lastOutbound[0];
+  const outboundTime = outboundMsg.createdAt;
+  
+  if (!outboundTime) {
+    return false;
+  }
+
+  const timeWindowStart = new Date(outboundTime.getTime() - 60000);
+  const timeWindowEnd = new Date(outboundTime.getTime() + 60000);
+
+  const scheduledWithTemplate = await db
+    .select({ id: scheduledFollowupMessages.id, templateId: scheduledFollowupMessages.templateId })
+    .from(scheduledFollowupMessages)
+    .where(
+      and(
+        eq(scheduledFollowupMessages.conversationId, conversationId),
+        isNotNull(scheduledFollowupMessages.templateId),
+        eq(scheduledFollowupMessages.status, 'sent'),
+        and(
+          sql`${scheduledFollowupMessages.sentAt} >= ${timeWindowStart}`,
+          sql`${scheduledFollowupMessages.sentAt} <= ${timeWindowEnd}`
+        )
+      )
+    )
+    .limit(1);
+
+  if (scheduledWithTemplate.length > 0) {
+    console.log(`🔍 [TEMPLATE-CHECK] Last outbound for ${conversationId} was a template (scheduledFollowupMessage found)`);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * TASK 5: Get last messages with messageType classification
+ * Each message is classified as 'template', 'freeform', or 'inbound'
+ */
 async function getLastMessages(
   conversationId: string, 
   limit: number = 10
-): Promise<Array<{ role: string; content: string; timestamp: string }>> {
+): Promise<Array<{ role: string; content: string; timestamp: string; messageType: 'template' | 'freeform' | 'inbound' }>> {
   const messages = await db
     .select({
+      id: whatsappMessages.id,
       sender: whatsappMessages.sender,
       messageText: whatsappMessages.messageText,
       createdAt: whatsappMessages.createdAt,
+      twilioSid: whatsappMessages.twilioSid,
     })
     .from(whatsappMessages)
     .where(eq(whatsappMessages.conversationId, conversationId))
     .orderBy(desc(whatsappMessages.createdAt))
     .limit(limit);
 
-  return messages.reverse().map(m => ({
-    role: m.sender === 'client' ? 'lead' : (m.sender === 'consultant' ? 'consultant' : 'ai'),
-    content: m.messageText,
-    timestamp: m.createdAt?.toISOString() || new Date().toISOString(),
-  }));
+  const result: Array<{ role: string; content: string; timestamp: string; messageType: 'template' | 'freeform' | 'inbound' }> = [];
+
+  for (const m of messages.reverse()) {
+    const timestamp = m.createdAt?.toISOString() || new Date().toISOString();
+    const role = m.sender === 'client' ? 'lead' : (m.sender === 'consultant' ? 'consultant' : 'ai');
+
+    if (m.sender === 'client') {
+      result.push({ role, content: m.messageText, timestamp, messageType: 'inbound' });
+    } else {
+      const msgTime = m.createdAt;
+      let isTemplate = false;
+
+      if (msgTime) {
+        const timeWindowStart = new Date(msgTime.getTime() - 60000);
+        const timeWindowEnd = new Date(msgTime.getTime() + 60000);
+
+        const scheduledWithTemplate = await db
+          .select({ id: scheduledFollowupMessages.id })
+          .from(scheduledFollowupMessages)
+          .where(
+            and(
+              eq(scheduledFollowupMessages.conversationId, conversationId),
+              isNotNull(scheduledFollowupMessages.templateId),
+              eq(scheduledFollowupMessages.status, 'sent'),
+              and(
+                sql`${scheduledFollowupMessages.sentAt} >= ${timeWindowStart}`,
+                sql`${scheduledFollowupMessages.sentAt} <= ${timeWindowEnd}`
+              )
+            )
+          )
+          .limit(1);
+
+        isTemplate = scheduledWithTemplate.length > 0;
+      }
+
+      result.push({ 
+        role, 
+        content: m.messageText, 
+        timestamp, 
+        messageType: isTemplate ? 'template' : 'freeform' 
+      });
+    }
+  }
+
+  return result;
 }
 
 /**

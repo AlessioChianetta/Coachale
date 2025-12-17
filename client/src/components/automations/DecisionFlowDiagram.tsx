@@ -1,134 +1,103 @@
-import { useQuery } from "@tanstack/react-query";
-import { getAuthHeaders } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { 
   ArrowDown, 
-  Shield, 
   Brain,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Clock,
+  User,
+  Zap,
+  CheckCircle2,
+  XCircle,
+  PauseCircle,
+  Calendar
 } from "lucide-react";
 
-interface SystemRule {
-  id: string;
-  priority: number;
-  label: string;
-  description: string;
-  decision: "STOP" | "ATTENDI" | "INVIA ORA";
-  icon: string;
-}
-
-function getDecisionColor(decision: string) {
-  switch (decision) {
-    case "STOP":
-      return "bg-red-100 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-400 dark:border-red-800";
-    case "ATTENDI":
-      return "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800";
-    case "INVIA ORA":
-      return "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-400 dark:border-green-800";
-    default:
-      return "bg-gray-100 text-gray-700 border-gray-300";
-  }
-}
-
-function RuleStep({ 
-  order, 
-  rule, 
-  isLast 
+function AIThinkingStep({ 
+  step, 
+  title, 
+  description,
+  icon: Icon
 }: { 
-  order: number; 
-  rule: SystemRule; 
-  isLast: boolean;
+  step: number;
+  title: string;
+  description: string;
+  icon: React.ElementType;
 }) {
   return (
-    <div className="relative">
-      <div className={`flex items-start gap-3 p-3 rounded-lg border ${getDecisionColor(rule.decision)}`}>
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center font-bold text-sm border shadow-sm">
-          {order}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-lg">{rule.icon}</span>
-            <span className="font-semibold text-sm">{rule.label}</span>
-            <Badge variant="outline" className="text-xs">
-              P{rule.priority}
-            </Badge>
-          </div>
-          <p className="text-xs mt-1 opacity-80">{rule.description}</p>
-        </div>
-        <div className="flex-shrink-0">
-          <Badge className={`text-xs ${
-            rule.decision === "STOP" ? "bg-red-600" :
-            rule.decision === "ATTENDI" ? "bg-yellow-600" :
-            "bg-green-600"
-          } text-white`}>
-            {rule.decision}
-          </Badge>
-        </div>
+    <div className="flex items-start gap-3 p-3 bg-purple-50/50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800">
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-purple-600 dark:text-purple-400">
+        <Icon className="h-4 w-4" />
       </div>
-      {!isLast && (
-        <div className="flex justify-center py-1">
-          <ArrowDown className="h-4 w-4 text-muted-foreground" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-purple-500 font-medium">Passo {step}</span>
+          <span className="font-semibold text-sm text-purple-700 dark:text-purple-300">{title}</span>
         </div>
-      )}
+        <p className="text-xs mt-1 text-purple-600/80 dark:text-purple-400/80">{description}</p>
+      </div>
     </div>
   );
 }
 
-function LoadingSkeleton() {
+function DecisionOption({
+  decision,
+  label,
+  description,
+  color,
+  icon: Icon
+}: {
+  decision: string;
+  label: string;
+  description: string;
+  color: "green" | "blue" | "yellow" | "red";
+  icon: React.ElementType;
+}) {
+  const colorClasses = {
+    green: "bg-green-100 border-green-300 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-400",
+    blue: "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400",
+    yellow: "bg-yellow-100 border-yellow-300 text-yellow-700 dark:bg-yellow-950 dark:border-yellow-800 dark:text-yellow-400",
+    red: "bg-red-100 border-red-300 text-red-700 dark:bg-red-950 dark:border-red-800 dark:text-red-400",
+  };
+  
+  const badgeClasses = {
+    green: "bg-green-600",
+    blue: "bg-blue-600",
+    yellow: "bg-yellow-600",
+    red: "bg-red-600",
+  };
+  
   return (
-    <div className="space-y-2">
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <div key={i}>
-          <div className="flex items-start gap-3 p-3 rounded-lg border bg-gray-50">
-            <Skeleton className="w-8 h-8 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-3 w-64" />
-            </div>
-            <Skeleton className="h-5 w-16" />
-          </div>
-          {i < 6 && (
-            <div className="flex justify-center py-1">
-              <ArrowDown className="h-4 w-4 text-muted-foreground" />
-            </div>
-          )}
+    <div className={`p-2 rounded-lg border ${colorClasses[color]} flex items-center gap-2`}>
+      <Icon className="h-4 w-4 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <Badge className={`${badgeClasses[color]} text-white text-xs`}>{decision}</Badge>
+          <span className="text-xs font-medium">{label}</span>
         </div>
-      ))}
+        <p className="text-xs opacity-75 mt-0.5">{description}</p>
+      </div>
     </div>
   );
 }
 
 export function DecisionFlowDiagram() {
-  const { data, isLoading, error } = useQuery<{ rules: SystemRule[] }>({
-    queryKey: ["system-rules"],
-    queryFn: async () => {
-      const response = await fetch("/api/followup/system-rules", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch system rules");
-      return response.json();
-    },
-  });
-
-  const rules = data?.rules?.sort((a, b) => b.priority - a.priority) || [];
-
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-blue-600" />
-          <CardTitle className="text-lg">Flusso Decisionale</CardTitle>
+          <Brain className="h-5 w-5 text-purple-600" />
+          <CardTitle className="text-lg">Sistema AI "Dipendente Umano"</CardTitle>
         </div>
         <CardDescription>
-          Le regole vengono valutate dall'alto verso il basso. La prima che matcha determina l'azione.
+          L'AI analizza ogni lead come farebbe un consulente esperto, senza regole rigide predefinite.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-1">
+        <div className="space-y-3">
           {/* Entry point */}
-          <div className="flex items-center justify-center gap-2 p-2 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800 mb-2">
+          <div className="flex items-center justify-center gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
             <span className="text-lg">📥</span>
             <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
               Lead da valutare
@@ -143,62 +112,119 @@ export function DecisionFlowDiagram() {
             <ArrowDown className="h-4 w-4 text-muted-foreground" />
           </div>
 
-          {/* System Rules Section */}
-          <div className="border-l-4 border-blue-500 pl-3 space-y-1">
+          {/* AI Analysis Section */}
+          <div className="border-l-4 border-purple-500 pl-3 space-y-3">
             <div className="flex items-center gap-2 mb-2">
-              <Shield className="h-4 w-4 text-blue-600" />
-              <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
-                Fase 1: Regole di Sistema
+              <Brain className="h-4 w-4 text-purple-600" />
+              <span className="text-xs font-semibold text-purple-600 uppercase tracking-wide">
+                Analisi AI Intelligente
               </span>
-              <Badge variant="secondary" className="text-xs">Non modificabili</Badge>
+              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                Nuovo Sistema
+              </Badge>
             </div>
 
-            {isLoading && <LoadingSkeleton />}
-            
-            {error && (
-              <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">
-                Errore nel caricamento delle regole
+            <div className="p-3 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/50 dark:to-indigo-950/50 rounded-lg border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">🧑‍💼</span>
+                <span className="font-semibold text-sm text-purple-700 dark:text-purple-300">
+                  "Marco" - Consulente AI Esperto
+                </span>
               </div>
-            )}
-
-            {!isLoading && !error && rules.map((rule, index) => (
-              <RuleStep
-                key={rule.id}
-                order={index + 1}
-                rule={rule}
-                isLast={index === rules.length - 1}
-              />
-            ))}
+              <p className="text-xs text-purple-600 dark:text-purple-400 mb-3">
+                L'AI analizza la situazione come un dipendente umano con 15 anni di esperienza.
+                <br />
+                <strong>Nessuna regola rigida</strong> - usa giudizio e contesto per decidere.
+              </p>
+              
+              <div className="space-y-2">
+                <AIThinkingStep
+                  step={1}
+                  title="Legge la Chat"
+                  description="Analizza tutti i messaggi, distinguendo template, risposte lead, messaggi liberi"
+                  icon={MessageSquare}
+                />
+                <AIThinkingStep
+                  step={2}
+                  title="Valuta il Timing"
+                  description="Considera quanto tempo è passato, se il lead ha mai risposto, quanti follow-up abbiamo fatto"
+                  icon={Clock}
+                />
+                <AIThinkingStep
+                  step={3}
+                  title="Interpreta i Segnali"
+                  description="Ha chiesto prezzo? Ha detto no? È interessato? Analizza il comportamento"
+                  icon={User}
+                />
+                <AIThinkingStep
+                  step={4}
+                  title="Decide l'Azione"
+                  description="Come farebbe un consulente esperto, decide cosa fare basandosi sul contesto"
+                  icon={Zap}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-center py-1">
             <ArrowDown className="h-4 w-4 text-muted-foreground" />
           </div>
 
-          {/* AI Decision */}
-          <div className="border-l-4 border-purple-500 pl-3">
+          {/* Decision Options */}
+          <div className="border-l-4 border-gray-400 pl-3">
             <div className="flex items-center gap-2 mb-2">
-              <Brain className="h-4 w-4 text-purple-600" />
-              <span className="text-xs font-semibold text-purple-600 uppercase tracking-wide">
-                Fase 2: Decisione AI
+              <Zap className="h-4 w-4 text-gray-600" />
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                Possibili Decisioni
               </span>
             </div>
             
-            <div className="p-3 bg-purple-50 dark:bg-purple-950 rounded-lg border border-purple-200 dark:border-purple-800">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">🤖</span>
-                <span className="font-semibold text-sm text-purple-700 dark:text-purple-300">
-                  Nessuna regola matchata → AI analizza
-                </span>
-              </div>
-              <p className="text-xs text-purple-600 dark:text-purple-400">
-                Se nessuna regola di sistema si applica, l'AI analizza la conversazione e decide:
-              </p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                <Badge className="bg-green-600 text-white text-xs">INVIA ORA</Badge>
-                <Badge className="bg-blue-600 text-white text-xs">PROGRAMMA</Badge>
-                <Badge className="bg-yellow-600 text-white text-xs">SALTA</Badge>
-                <Badge className="bg-red-600 text-white text-xs">STOP</Badge>
+            <div className="grid grid-cols-2 gap-2">
+              <DecisionOption
+                decision="INVIA ORA"
+                label="send_now"
+                description="Il momento è perfetto, invia subito"
+                color="green"
+                icon={CheckCircle2}
+              />
+              <DecisionOption
+                decision="PROGRAMMA"
+                label="schedule"
+                description="Aspetta e programma per dopo"
+                color="blue"
+                icon={Calendar}
+              />
+              <DecisionOption
+                decision="SALTA"
+                label="skip"
+                description="Non serve azione, lead attivo"
+                color="yellow"
+                icon={PauseCircle}
+              />
+              <DecisionOption
+                decision="STOP"
+                label="stop"
+                description="Lead perso o non interessato"
+                color="red"
+                icon={XCircle}
+              />
+            </div>
+          </div>
+
+          {/* Info Box */}
+          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+            <div className="flex items-start gap-2">
+              <span className="text-lg">💡</span>
+              <div>
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                  Perché questo sistema è migliore?
+                </p>
+                <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-1">
+                  Le vecchie regole codificate erano rigide e potevano sbagliare in casi particolari.
+                  <br />
+                  L'AI valuta <strong>tutto il contesto</strong>: storico chat, tipo messaggio (template vs libero),
+                  timing, segnali del lead, e prende decisioni più intelligenti e contestualizzate.
+                </p>
               </div>
             </div>
           </div>

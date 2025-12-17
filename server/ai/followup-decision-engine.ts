@@ -2,6 +2,10 @@
  * AI Follow-up Decision Engine
  * Servizio che usa Vertex AI (Gemini 2.5 Flash) per decidere intelligentemente
  * quando e come contattare i lead nel sistema di follow-up algoritmico WhatsApp.
+ * 
+ * AGGIORNAMENTO: Ora usa il nuovo sistema "Human-Like AI" che decide tutto
+ * senza regole codificate predefinite. L'AI analizza il contesto completo
+ * come farebbe un dipendente umano esperto.
  */
 
 import { db } from "../db";
@@ -9,7 +13,11 @@ import { conversationStates, followupAiEvaluationLog } from "../../shared/schema
 import { eq, desc } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { createVertexGeminiClient, parseServiceAccountJson, getAIProvider } from "./provider-factory";
-import { evaluateSystemRules, RuleEvaluationContext } from "./system-rules-config";
+// Le regole di sistema NON vengono più usate - l'AI decide tutto
+// import { evaluateSystemRules, RuleEvaluationContext } from "./system-rules-config";
+
+// Flag per abilitare il nuovo sistema AI-only (Human-Like)
+export const USE_HUMAN_LIKE_AI = true;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Interfaces
@@ -23,6 +31,8 @@ export interface AIProvider {
   apiKey?: string;
 }
 
+export type MessageType = 'template' | 'freeform' | 'inbound';
+
 export interface FollowupContext {
   conversationId: string;
   leadName?: string;
@@ -33,7 +43,7 @@ export interface FollowupContext {
   maxFollowupsAllowed: number;
   channel: string;
   agentType: string;
-  lastMessages: Array<{ role: string; content: string; timestamp: string }>;
+  lastMessages: Array<{ role: string; content: string; timestamp: string; messageType?: MessageType }>;
   lastMessageDirection: "inbound" | "outbound" | null;
   signals: {
     hasAskedPrice: boolean;
@@ -51,6 +61,8 @@ export interface FollowupContext {
   secondsSilent: number;
   // Flag se il lead non ha mai risposto
   leadNeverResponded: boolean;
+  // Flag se l'ultimo messaggio outbound era un template (per TASK 3)
+  lastOutboundWasTemplate?: boolean;
   // Valutazioni AI precedenti
   previousEvaluations?: Array<{
     decision: string;
@@ -128,6 +140,9 @@ async function getPreviousEvaluations(conversationId: string, limit: number = 5)
 
 /**
  * Valuta se inviare un follow-up e come farlo usando AI
+ * 
+ * NUOVO SISTEMA: L'AI decide TUTTO senza regole predefinite.
+ * L'AI analizza il contesto completo come un dipendente umano esperto.
  */
 export async function evaluateFollowup(
   context: FollowupContext,
@@ -136,59 +151,13 @@ export async function evaluateFollowup(
   const startTime = Date.now();
   
   try {
-    console.log(`🤖 [FOLLOWUP-ENGINE] Evaluating follow-up for conversation ${context.conversationId}`);
+    console.log(`🧑‍💼 [FOLLOWUP-ENGINE] Human-Like AI evaluation for conversation ${context.conversationId}`);
     console.log(`   State: ${context.currentState}, Days silent: ${context.daysSilent}, Follow-ups: ${context.followupCount}/${context.maxFollowupsAllowed}`);
+    console.log(`   Mode: AI-ONLY (no hardcoded rules)`);
 
-    // Pre-check: regole deterministiche di sistema prima dell'AI
-    const ruleContext: RuleEvaluationContext = {
-      daysSilent: context.daysSilent,
-      hoursSinceLastInbound: context.hoursSinceLastInbound,
-      followupCount: context.followupCount,
-      maxFollowupsAllowed: context.maxFollowupsAllowed,
-      currentState: context.currentState,
-      lastMessageDirection: context.lastMessageDirection,
-      leadNeverResponded: context.leadNeverResponded,
-      signals: {
-        hasSaidNoExplicitly: context.signals.hasSaidNoExplicitly
-      }
-    };
-    
-    const ruleResult = evaluateSystemRules(ruleContext);
-    if (ruleResult.matched && ruleResult.decision) {
-      console.log(`⚡ [FOLLOWUP-ENGINE] System rule matched: ${ruleResult.rule?.id} - ${ruleResult.reasoningIt}`);
-      
-      if (ruleResult.decision === "stop") {
-        return {
-          decision: "stop",
-          urgency: "never",
-          reasoning: ruleResult.reasoningIt,
-          confidenceScore: 1.0,
-          matchedSystemRule: ruleResult.rule?.id
-        };
-      }
-      
-      if (ruleResult.decision === "skip") {
-        return {
-          decision: "skip",
-          urgency: undefined,
-          reasoning: ruleResult.reasoningIt,
-          confidenceScore: 0.9,
-          matchedSystemRule: ruleResult.rule?.id
-        };
-      }
-      
-      if (ruleResult.decision === "send_now" && ruleResult.allowFreeformMessage) {
-        console.log(`⚡ [FOLLOWUP-ENGINE] Pending short-window: AI will generate freeform message`);
-        return {
-          decision: "send_now",
-          urgency: "now",
-          reasoning: ruleResult.reasoningIt,
-          confidenceScore: 0.95,
-          allowFreeformMessage: true,
-          matchedSystemRule: ruleResult.rule?.id
-        };
-      }
-    }
+    // NUOVO: Nessuna regola deterministica! L'AI analizza tutto.
+    // Le vecchie regole (explicit_rejection, max_followups, etc.) 
+    // ora vengono considerate dall'AI nel suo ragionamento.
 
     // Recupera valutazioni AI precedenti per dare contesto storico all'AI
     const previousEvaluations = await getPreviousEvaluations(context.conversationId, 5);
@@ -230,16 +199,48 @@ export async function evaluateFollowup(
     console.log(`   Reasoning: ${result.reasoning}`);
     console.log(`   Latency: ${latencyMs}ms`);
 
+    // Determina se possiamo inviare messaggi liberi (finestra 24h WhatsApp)
+    // Se il lead ha risposto nelle ultime 24h, possiamo usare messaggi liberi
+    // Altrimenti dobbiamo usare template approvati
+    const canSendFreeform = !context.leadNeverResponded && context.hoursSinceLastInbound < 24;
+    
+    // Se l'AI ha suggerito un messaggio libero ma non siamo nella finestra 24h,
+    // e non ha specificato un template, forziamo l'uso di un template
+    let allowFreeformMessage = canSendFreeform;
+    let finalSuggestedTemplateId = result.suggestedTemplateId || undefined;
+    let finalDecision = result.decision || "skip";
+    let finalReasoning = result.reasoning || "Nessun reasoning fornito";
+    
+    // TASK 1: Forzare template fuori 24h window
+    if (result.decision === "send_now" && !canSendFreeform && !result.suggestedTemplateId) {
+      console.log(`⚠️ [FOLLOWUP-ENGINE] TASK 1: AI suggested send_now but outside 24h window without template - attempting auto-selection`);
+      
+      // Tentare auto-selezione di un template dalla lista availableTemplates
+      if (context.availableTemplates && context.availableTemplates.length > 0) {
+        // Seleziona il primo template disponibile (TODO: potremmo usare AI per selezionare il migliore)
+        const autoSelectedTemplate = context.availableTemplates[0];
+        finalSuggestedTemplateId = autoSelectedTemplate.id;
+        finalReasoning = `${result.reasoning} [AUTO-CORREZIONE: Fuori finestra 24h, auto-selezionato template "${autoSelectedTemplate.name}"]`;
+        console.log(`🔧 [FOLLOWUP-ENGINE] TASK 1: Auto-selected template: ${autoSelectedTemplate.id} (${autoSelectedTemplate.name})`);
+      } else {
+        // Nessun template disponibile - cambiare decision a 'skip'
+        finalDecision = "skip";
+        finalReasoning = `Impossibile inviare: fuori finestra 24h WhatsApp e nessun template approvato disponibile. Configurare almeno un template per questo agente. [AI originale: ${result.reasoning}]`;
+        console.log(`🚫 [FOLLOWUP-ENGINE] TASK 1: No templates available outside 24h window - changing decision to 'skip'`);
+      }
+    }
+
     return {
-      decision: result.decision || "skip",
+      decision: finalDecision,
       urgency: result.urgency || undefined,
-      suggestedTemplateId: result.suggestedTemplateId || undefined,
+      suggestedTemplateId: finalSuggestedTemplateId,
       suggestedMessage: result.suggestedMessage || undefined,
-      reasoning: result.reasoning || "Nessun reasoning fornito",
+      reasoning: finalReasoning,
       confidenceScore: result.confidenceScore || 0.5,
       updatedEngagementScore: result.updatedEngagementScore || undefined,
       updatedConversionProbability: result.updatedConversionProbability || undefined,
       stateTransition: result.stateTransition || undefined,
+      allowFreeformMessage, // NUOVO: indica se possiamo usare messaggi liberi
     };
   } catch (error) {
     console.error("❌ [FOLLOWUP-ENGINE] Error evaluating follow-up:", error);
@@ -257,71 +258,151 @@ function buildFollowupPrompt(context: FollowupContext): string {
     : "Nessun template disponibile";
 
   const messagesHistory = context.lastMessages.length > 0
-    ? context.lastMessages.map(m => `[${m.timestamp}] ${m.role}: ${m.content}`).join('\n')
+    ? context.lastMessages.map(m => {
+        const typeLabel = m.messageType 
+          ? (m.messageType === 'template' ? ' [TEMPLATE]' : m.messageType === 'freeform' ? ' [FREEFORM]' : ' [INBOUND]')
+          : '';
+        return `[${m.timestamp}]${typeLabel} ${m.role}: ${m.content}`;
+      }).join('\n')
     : "Nessun messaggio precedente";
 
-  return `Sei un esperto consulente di vendita italiano. Analizza questa situazione e decidi se e come fare follow-up con un lead.
+  // Calcola se siamo nella finestra 24h per messaggi liberi
+  const canSendFreeform = !context.leadNeverResponded && context.hoursSinceLastInbound < 24;
+  const window24hStatus = context.leadNeverResponded 
+    ? "❌ FUORI FINESTRA - Il lead non ha mai risposto, DEVI usare un Template approvato"
+    : context.hoursSinceLastInbound < 24 
+      ? `✅ NELLA FINESTRA 24H - Puoi inviare messaggi liberi (il lead ha risposto ${context.hoursSinceLastInbound.toFixed(1)}h fa)`
+      : `⚠️ FUORI FINESTRA 24H - Ultima risposta ${context.hoursSinceLastInbound.toFixed(1)}h fa, DEVI usare un Template approvato`;
 
-CONTESTO CONVERSAZIONE:
-- ID Conversazione: ${context.conversationId}
-- Nome Lead: ${context.leadName || "Non specificato"}
-- Stato Attuale: ${context.currentState}
-- Tempo trascorso dall'ultimo messaggio: ${context.daysSilent} giorni, ${context.hoursSilent % 24} ore, ${context.minutesSilent % 60} minuti
-- Il lead ha mai risposto: ${context.leadNeverResponded ? "NO (primo contatto proattivo)" : "Sì"}
-- Follow-up già inviati: ${context.followupCount} di ${context.maxFollowupsAllowed} massimi
-- Canale: ${context.channel}
-- Tipo Agente: ${context.agentType}
+  return `# SEI MARCO, UN CONSULENTE COMMERCIALE ESPERTO
 
-SEGNALI RILEVATI:
-- Ha chiesto il prezzo: ${context.signals.hasAskedPrice ? "Sì" : "No"}
-- Ha menzionato urgenza: ${context.signals.hasMentionedUrgency ? "Sì" : "No"}
-- Ha detto NO esplicitamente: ${context.signals.hasSaidNoExplicitly ? "Sì" : "No"}
-- Discovery completata: ${context.signals.discoveryCompleted ? "Sì" : "No"}
-- Demo presentata: ${context.signals.demoPresented ? "Sì" : "No"}
+Tu sei Marco, un consulente commerciale italiano con 15 anni di esperienza nel settore vendite.
+Il tuo compito è analizzare questa conversazione WhatsApp e decidere COSA FARE con questo lead.
 
-METRICHE:
-- Engagement Score: ${context.engagementScore}/100
-- Probabilità Conversione: ${(context.conversionProbability * 100).toFixed(0)}%
+**NON HAI REGOLE RIGIDE DA SEGUIRE.** Usa il tuo giudizio umano e la tua esperienza per decidere, proprio come faresti se fossi un dipendente in ufficio che gestisce i lead.
 
-ULTIMI MESSAGGI:
+---
+
+## CONTESTO CONVERSAZIONE
+
+- **ID Conversazione:** ${context.conversationId}
+- **Nome Lead:** ${context.leadName || "Non specificato"}
+- **Stato Attuale:** ${context.currentState}
+- **Tempo trascorso:** ${context.daysSilent} giorni, ${context.hoursSilent % 24} ore, ${context.minutesSilent % 60} minuti
+- **Il lead ha mai risposto:** ${context.leadNeverResponded ? "❌ NO (mai risposto)" : "✅ Sì"}
+- **Follow-up già inviati:** ${context.followupCount} di ${context.maxFollowupsAllowed} massimi
+- **Canale:** ${context.channel}
+- **Tipo Agente:** ${context.agentType}
+
+---
+
+## ⚠️ FINESTRA 24H WHATSAPP (IMPORTANTE!)
+
+${window24hStatus}
+
+**Regola WhatsApp:** Puoi inviare messaggi liberi SOLO se il lead ha risposto nelle ultime 24 ore.
+Altrimenti DEVI selezionare un template dalla lista sotto.
+
+---
+
+## SEGNALI RILEVATI DAL LEAD
+
+- **Ha chiesto il prezzo:** ${context.signals.hasAskedPrice ? "✅ Sì (segnale positivo!)" : "❌ No"}
+- **Ha menzionato urgenza:** ${context.signals.hasMentionedUrgency ? "✅ Sì (lead caldo!)" : "❌ No"}
+- **Ha detto NO esplicitamente:** ${context.signals.hasSaidNoExplicitly ? "⚠️ SÌ! Rispetta la sua scelta!" : "❌ No"}
+- **Discovery completata:** ${context.signals.discoveryCompleted ? "✅ Sì" : "❌ No"}
+- **Demo presentata:** ${context.signals.demoPresented ? "✅ Sì" : "❌ No"}
+
+---
+
+## METRICHE
+
+- **Engagement Score:** ${context.engagementScore}/100
+- **Probabilità Conversione:** ${(context.conversionProbability * 100).toFixed(0)}%
+
+---
+
+## STORICO MESSAGGI
+
 ${messagesHistory}
 
-VALUTAZIONI AI PRECEDENTI:
+---
+
+## TUE VALUTAZIONI PRECEDENTI
+
 ${context.previousEvaluations && context.previousEvaluations.length > 0
   ? context.previousEvaluations.map(e => `[${e.timestamp}] Decisione: ${e.decision} (${Math.round(e.confidenceScore * 100)}%) - ${e.reasoning.substring(0, 150)}...`).join('\n')
-  : "Nessuna valutazione precedente"}
+  : "Nessuna valutazione precedente - questa è la prima volta che valuti questo lead"}
 
-IMPORTANTE: Considera le valutazioni precedenti per non ripetere le stesse decisioni inutilmente.
+---
 
-TEMPLATE DISPONIBILI:
+## TEMPLATE DISPONIBILI
+
 ${templatesInfo}
 
-ISTRUZIONI:
-1. Analizza il contesto e i segnali del lead
-2. Considera il timing ottimale per un follow-up
-3. Valuta se il lead è ancora interessato o se è meglio fermarsi
-4. Se decidi di inviare, scegli il template più appropriato o suggerisci un messaggio personalizzato
+---
 
-REGOLE DI DECISIONE:
-- "send_now": Invia SUBITO se il momento è ottimale (lead caldo, segnali positivi, urgenza)
-- "schedule": PROGRAMMA per dopo (domani/settimana prossima). USA QUESTO quando vuoi mandare un follow-up ma NON ORA. Esempio: "oggi è troppo presto, programmo per domani" = schedule con urgency "tomorrow"
-- "skip": NON programmare nulla. USA SOLO se il lead sta già rispondendo attivamente, o se la conversazione è in corso e non serve follow-up. NON usare skip per "aspettare" - usa schedule invece!
-- "stop": Ferma DEFINITIVAMENTE i follow-up se il lead non è interessato, ha detto no, o è perso
+## COME DEVI RAGIONARE (Linee Guida, NON Regole Rigide)
 
-⚠️ IMPORTANTE: Se il primo messaggio è stato inviato oggi e vuoi aspettare prima di fare follow-up, USA "schedule" con urgency "tomorrow", MAI "skip". Skip significa che NON vuoi programmare affatto.
+1. **Leggi tutta la chat** - Capisci il contesto e l'atteggiamento del lead
+2. **Considera il timing** - Non essere invadente, ma nemmeno troppo passivo
+3. **Rispetta il lead** - Se ha detto NO, smetti. Se è interessato, coltivalo.
+4. **Pensa alle tue valutazioni precedenti** - Non ripetere sempre la stessa decisione
 
-RISPONDI IN FORMATO JSON:
+### Situazioni Tipiche:
+
+**Se il lead NON ha MAI risposto:**
+- Non tempestarlo subito. Aspetta 24-48h dopo il primo messaggio
+- Se dopo 2-3 tentativi non risponde, valuta se fermarti
+
+**Se il lead HA risposto ma ora è silenzioso:**
+- Quanto interesse aveva mostrato? Più era interessato, più vale insistere
+- Ma se era freddo/disinteressato, non insistere troppo
+
+**Se l'ultimo messaggio è NOSTRO:**
+- Dai tempo al lead di rispondere! Non mandare subito un altro messaggio
+- Aspetta almeno qualche ora
+
+**Se il lead ha detto ESPLICITAMENTE "no", "non mi interessa", etc:**
+- FERMATI! Rispetta la sua scelta. Decisione = "stop"
+
+**Se abbiamo già fatto molti follow-up senza risposta:**
+- Dopo ${context.maxFollowupsAllowed} tentativi, probabilmente è meglio fermarsi
+
+---
+
+## COSA DEVI DECIDERE
+
+Rispondi con UNA delle seguenti azioni:
+
+1. **send_now** - Invia SUBITO (il momento è perfetto, il lead è caldo)
+2. **schedule** - PROGRAMMA per dopo (domani, settimana prossima) - USA QUESTO se vuoi aspettare prima di contattare
+3. **skip** - NON fare nulla (il lead sta già rispondendo, non serve follow-up aggiuntivo)
+4. **stop** - FERMATI DEFINITIVAMENTE (il lead non è interessato, ha detto no, o è perso)
+
+⚠️ **ATTENZIONE:**
+- Se vuoi ASPETTARE prima di mandare un follow-up, usa **"schedule"** con urgency "tomorrow" o "next_week"
+- **"skip"** significa che NON programmi nulla perché non serve (es: il lead sta già rispondendo attivamente)
+
+---
+
+## FORMATO RISPOSTA (JSON)
+
 {
   "decision": "send_now" | "schedule" | "skip" | "stop",
   "urgency": "now" | "tomorrow" | "next_week" | "never",
-  "suggestedTemplateId": "id del template consigliato o null",
-  "suggestedMessage": "messaggio personalizzato se non usi template",
-  "reasoning": "spiegazione dettagliata in italiano della decisione",
+  "suggestedTemplateId": "OBBLIGATORIO se fuori finestra 24h, ID del template da usare o null se nella finestra e preferisci messaggio libero",
+  "suggestedMessage": "messaggio personalizzato SOLO se sei dentro la finestra 24h e non usi template",
+  "reasoning": "spiegazione dettagliata in italiano della tua decisione, come la spiegheresti a un collega",
   "confidenceScore": 0.0-1.0,
-  "updatedEngagementScore": numero 0-100 o null,
-  "updatedConversionProbability": numero 0-1 o null,
-  "stateTransition": "nuovo stato suggerito o null"
-}`;
+  "updatedEngagementScore": numero 0-100 o null se non cambia,
+  "updatedConversionProbability": numero 0-1 o null se non cambia,
+  "stateTransition": "nuovo stato suggerito (es: 'ghost', 'closed_lost') o null"
+}
+
+⚠️ RICORDA: Se sei FUORI dalla finestra 24h, DEVI specificare suggestedTemplateId!
+
+Ora analizza la situazione e decidi come Marco, il consulente esperto.`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -741,77 +822,13 @@ export async function evaluateConversationsBatch(
     return results;
   }
 
-  console.log(`🤖 [FOLLOWUP-ENGINE-BATCH] Evaluating ${conversations.length} conversations in batch mode`);
+  console.log(`🧑‍💼 [FOLLOWUP-ENGINE-BATCH] Evaluating ${conversations.length} conversations with Human-Like AI (no hardcoded rules)`);
 
-  // Pre-check: applica regole deterministiche prima dell'AI per ogni conversazione
-  const needsAiEvaluation: ConversationForEvaluation[] = [];
-  
-  for (const conv of conversations) {
-    const ruleContext: RuleEvaluationContext = {
-      daysSilent: conv.context.daysSilent,
-      hoursSinceLastInbound: conv.context.hoursSinceLastInbound,
-      followupCount: conv.context.followupCount,
-      maxFollowupsAllowed: conv.context.maxFollowupsAllowed,
-      currentState: conv.context.currentState,
-      lastMessageDirection: conv.context.lastMessageDirection,
-      signals: {
-        hasSaidNoExplicitly: conv.context.signals.hasSaidNoExplicitly
-      }
-    };
-    
-    const ruleResult = evaluateSystemRules(ruleContext);
-    if (ruleResult.matched && ruleResult.decision) {
-      if (ruleResult.decision === "stop") {
-        results.push({
-          conversationId: conv.conversationId,
-          decision: {
-            decision: "stop",
-            urgency: "never",
-            reasoning: ruleResult.reasoningIt,
-            confidenceScore: 1.0,
-            matchedSystemRule: ruleResult.rule?.id
-          },
-          processingTimeMs: Date.now() - startTime
-        });
-        continue;
-      }
-      
-      if (ruleResult.decision === "skip") {
-        results.push({
-          conversationId: conv.conversationId,
-          decision: {
-            decision: "skip",
-            urgency: undefined,
-            reasoning: ruleResult.reasoningIt,
-            confidenceScore: 0.9,
-            matchedSystemRule: ruleResult.rule?.id
-          },
-          processingTimeMs: Date.now() - startTime
-        });
-        continue;
-      }
-      
-      if (ruleResult.decision === "send_now" && ruleResult.allowFreeformMessage) {
-        results.push({
-          conversationId: conv.conversationId,
-          decision: {
-            decision: "send_now",
-            urgency: "now",
-            reasoning: ruleResult.reasoningIt,
-            confidenceScore: 0.95,
-            allowFreeformMessage: true,
-            matchedSystemRule: ruleResult.rule?.id
-          },
-          processingTimeMs: Date.now() - startTime
-        });
-        continue;
-      }
-    }
-    
-    needsAiEvaluation.push(conv);
-  }
+  // NUOVO: Nessuna regola deterministica! Tutte le conversazioni vanno all'AI
+  // L'AI analizza il contesto completo come un dipendente umano esperto
+  const needsAiEvaluation: ConversationForEvaluation[] = [...conversations];
 
-  console.log(`⚡ [FOLLOWUP-ENGINE-BATCH] ${results.length} resolved by system rules, ${needsAiEvaluation.length} need AI evaluation`);
+  console.log(`🧠 [FOLLOWUP-ENGINE-BATCH] All ${needsAiEvaluation.length} conversations will be evaluated by AI (no pre-filtering with rules)`);
 
   if (needsAiEvaluation.length === 0) {
     return results;
