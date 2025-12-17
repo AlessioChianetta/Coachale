@@ -547,47 +547,72 @@ export async function getTwilioClient(consultantId: string) {
 
 /**
  * Fetches the body text of a Twilio WhatsApp template by its Content SID (HX...).
- * This retrieves the actual template content from Twilio API.
+ * This retrieves the actual template content from Twilio API with retry logic.
  * 
  * @param twilioAccountSid - Twilio Account SID
  * @param twilioAuthToken - Twilio Auth Token
  * @param contentSid - The template Content SID (starts with HX)
- * @returns The template body text or null if not found
+ * @param maxRetries - Maximum number of retry attempts (default: 2)
+ * @returns The template body text or null if not found/error
  */
 export async function fetchTwilioTemplateBody(
   twilioAccountSid: string,
   twilioAuthToken: string,
-  contentSid: string
+  contentSid: string,
+  maxRetries: number = 2
 ): Promise<string | null> {
   if (!twilioAccountSid || !twilioAuthToken || !contentSid) {
+    console.warn(`⚠️ [TWILIO] Missing credentials or contentSid for template fetch`);
     return null;
   }
 
-  try {
-    const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
-    const content = await twilioClient.content.v1.contents(contentSid).fetch();
-    
-    // Extract body text from WhatsApp template structure
-    const whatsappTemplate = content.types?.['twilio/whatsapp']?.template;
-    if (whatsappTemplate?.components) {
-      const bodyComponent = whatsappTemplate.components.find(
-        (comp: any) => comp.type === 'BODY'
-      );
-      if (bodyComponent?.text) {
-        return bodyComponent.text;
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+    try {
+      const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
+      const content = await twilioClient.content.v1.contents(contentSid).fetch();
+      
+      // Extract body text from WhatsApp template structure
+      const whatsappTemplate = content.types?.['twilio/whatsapp']?.template;
+      if (whatsappTemplate?.components) {
+        const bodyComponent = whatsappTemplate.components.find(
+          (comp: any) => comp.type === 'BODY'
+        );
+        if (bodyComponent?.text) {
+          return bodyComponent.text;
+        }
+      }
+      
+      // Fallback to text body if available
+      if (content.types?.['twilio/text']?.body) {
+        return content.types['twilio/text'].body;
+      }
+      
+      // Template found but no body - this is not a retry-able error
+      console.warn(`⚠️ [TWILIO] Template ${contentSid} exists but has no body text`);
+      return null;
+      
+    } catch (error: any) {
+      lastError = error;
+      
+      // Don't retry on auth errors (401, 403) or not found (404)
+      if (error.status === 401 || error.status === 403 || error.status === 404) {
+        console.warn(`⚠️ [TWILIO] Template ${contentSid} fetch failed (${error.status}): ${error.message}`);
+        return null;
+      }
+      
+      // Retry on rate limits (429) or server errors (5xx)
+      if (attempt <= maxRetries) {
+        const waitMs = Math.min(500 * Math.pow(2, attempt - 1), 2000);
+        console.log(`⏳ [TWILIO] Retry ${attempt}/${maxRetries} for ${contentSid} after ${waitMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitMs));
       }
     }
-    
-    // Fallback to text body if available
-    if (content.types?.['twilio/text']?.body) {
-      return content.types['twilio/text'].body;
-    }
-    
-    return null;
-  } catch (error: any) {
-    console.warn(`⚠️ Could not fetch template ${contentSid}: ${error.message}`);
-    return null;
   }
+  
+  console.error(`❌ [TWILIO] Failed to fetch template ${contentSid} after ${maxRetries + 1} attempts: ${lastError?.message}`);
+  return null;
 }
 
 /**

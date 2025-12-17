@@ -1817,14 +1817,20 @@ async function getAllApprovedTemplatesForAgent(
   
   for (const t of approvedTwilioTemplates) {
     const realBodyText = twilioTemplateBodies.get(t.templateId);
-    templates.push({
-      id: t.templateId,
-      name: `Template Twilio ${t.templateId.substring(2, 10)}`,
-      goal: 'Follow-up WhatsApp',
-      tone: 'Professionale',
-      bodyText: realBodyText || 'Contenuto template non disponibile',
-      priority: t.priority
-    });
+    // Only include templates where we successfully fetched the body text
+    // Skip templates without body to prevent AI from seeing priority-based placeholders
+    if (realBodyText) {
+      templates.push({
+        id: t.templateId,
+        name: `Template Twilio ${t.templateId.substring(2, 10)}`,
+        goal: 'Follow-up WhatsApp',
+        tone: 'Professionale',
+        bodyText: realBodyText,
+        priority: t.priority
+      });
+    } else {
+      console.warn(`⚠️ [TEMPLATE-AI] Skipping template ${t.templateId} - could not fetch body text from Twilio`);
+    }
   }
   
   // STEP 2: Get custom templates with full details

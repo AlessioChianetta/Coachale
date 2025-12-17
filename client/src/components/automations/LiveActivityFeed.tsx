@@ -506,7 +506,7 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                           <SendNowButton 
                             messageId={event.id.replace('msg-', '')} 
                             canSendFreeform={event.canSendFreeform}
-                            hasApprovedTemplate={event.templateId?.startsWith('HX') || event.templateTwilioStatus === 'approved'}
+                            hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
                           />
                         </div>
                       )}
@@ -529,7 +529,7 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                   <SendNowButton 
                     messageId={scheduledEvent.id.replace('msg-', '')} 
                     canSendFreeform={scheduledEvent.canSendFreeform}
-                    hasApprovedTemplate={scheduledEvent.templateId?.startsWith('HX') || scheduledEvent.templateTwilioStatus === 'approved'}
+                    hasApprovedTemplate={scheduledEvent.templateTwilioStatus === 'approved'}
                   />
                 ) : null;
               })()}
