@@ -107,6 +107,7 @@ export interface RuleEvaluationContext {
   maxFollowupsAllowed: number;
   currentState: string;
   lastMessageDirection: "inbound" | "outbound" | null;
+  leadNeverResponded: boolean;
   signals: {
     hasSaidNoExplicitly: boolean;
   };
@@ -164,21 +165,29 @@ function checkRuleCondition(rule: SystemRule, context: RuleEvaluationContext): {
       return { matched: context.currentState === "closed_lost" };
     
     case "pending_short_window":
+      // IMPORTANTE: NON permettere freeform se il lead non ha mai risposto!
+      // In quel caso serve sempre un template approvato
+      if (context.leadNeverResponded) {
+        console.log(`🔒 [SYSTEM-RULES] pending_short_window blocked: leadNeverResponded=true, template required`);
+        return { matched: false };
+      }
       return { 
         matched: context.hoursSinceLastInbound < 24 && 
                  context.lastMessageDirection === "outbound"
       };
     
     case "recent_response_24h":
-      // IMPORTANT: Only match if the lead has ACTUALLY responded (hoursSinceLastInbound < 500 means there was a real inbound message)
-      // If hoursSinceLastInbound >= 500 (default is 999 when no inbound exists), the lead has NEVER responded
-      const leadHasActuallyResponded = context.hoursSinceLastInbound < 500 && context.lastMessageDirection === "inbound";
+      // CRITICAL FIX: Solo se il lead HA EFFETTIVAMENTE risposto
+      // Se leadNeverResponded=true, questa regola NON deve matchare mai
+      if (context.leadNeverResponded) {
+        console.log(`🔍 [SYSTEM-RULES] recent_response_24h: leadNeverResponded=true → NOT matched`);
+        return { matched: false };
+      }
+      const leadHasActuallyResponded = context.hoursSinceLastInbound < 24 && context.lastMessageDirection === "inbound";
       if (leadHasActuallyResponded) {
         console.log(`🔍 [SYSTEM-RULES] recent_response_24h CHECK: hoursSinceLastInbound=${context.hoursSinceLastInbound.toFixed(1)}h, lastMessageDirection=${context.lastMessageDirection} → MATCHED`);
       }
-      return { 
-        matched: leadHasActuallyResponded
-      };
+      return { matched: leadHasActuallyResponded };
     
     default:
       return { matched: false };

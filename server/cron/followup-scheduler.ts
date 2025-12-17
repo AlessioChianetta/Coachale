@@ -794,6 +794,10 @@ interface CandidateConversation {
   applicableRules: ApplicableRule[];
   lastFollowupAt?: Date | null;
   temperatureLevel?: TemperatureLevel;
+  leadNeverResponded: boolean;
+  minutesSilent: number;
+  secondsSilent: number;
+  lastInboundMessageAt: Date | null;
 }
 
 async function findApplicableRules(
@@ -999,6 +1003,16 @@ export async function findCandidateConversations(
       ? (now.getTime() - new Date(lastInboundMessage[0].createdAt).getTime()) / (1000 * 60 * 60)
       : 999;
 
+    const leadNeverResponded = lastInboundMessage.length === 0;
+    const lastInboundMessageAt = lastInboundMessage.length > 0 && lastInboundMessage[0].createdAt
+      ? new Date(lastInboundMessage[0].createdAt)
+      : null;
+    const minutesSilent = Math.floor((msSilent / (1000 * 60)) % 60);
+    const secondsSilent = Math.floor((msSilent / 1000) % 60);
+    
+    // Log dettagliato per debugging
+    console.log(`📊 [CANDIDATE] ${state.conversationId}: leadNeverResponded=${leadNeverResponded}, hoursSinceLastInbound=${hoursSinceLastInbound.toFixed(1)}h, lastInbound=${lastInboundMessageAt?.toISOString() || 'NULL'}`);
+
     if (state.nextFollowupScheduledAt && new Date(state.nextFollowupScheduledAt) > now) {
       continue;
     }
@@ -1055,6 +1069,10 @@ export async function findCandidateConversations(
       applicableRules,
       lastFollowupAt: state.lastFollowupAt,
       temperatureLevel: state.temperatureLevel as TemperatureLevel | undefined,
+      leadNeverResponded,
+      minutesSilent,
+      secondsSilent,
+      lastInboundMessageAt,
     });
   }
 
@@ -1096,6 +1114,10 @@ async function evaluateConversation(
       engagementScore: candidate.engagementScore,
       conversionProbability: candidate.conversionProbability,
       availableTemplates: [],
+      hoursSilent: candidate.hoursSilent,
+      minutesSilent: candidate.minutesSilent,
+      secondsSilent: candidate.secondsSilent,
+      leadNeverResponded: candidate.leadNeverResponded,
     };
     
     const waitingHours = Math.max(4 - candidate.hoursSilent, 0).toFixed(1);
@@ -1184,6 +1206,10 @@ async function evaluateConversation(
         engagementScore: candidate.engagementScore,
         conversionProbability: candidate.conversionProbability,
         availableTemplates: [],
+        hoursSilent: candidate.hoursSilent,
+        minutesSilent: candidate.minutesSilent,
+        secondsSilent: candidate.secondsSilent,
+        leadNeverResponded: candidate.leadNeverResponded,
       };
       
       const reasoningMessage = windowCheck.leadNeverResponded
@@ -1270,6 +1296,10 @@ async function evaluateConversation(
     engagementScore: candidate.engagementScore,
     conversionProbability: candidate.conversionProbability,
     availableTemplates,
+    hoursSilent: candidate.hoursSilent,
+    minutesSilent: candidate.minutesSilent,
+    secondsSilent: candidate.secondsSilent,
+    leadNeverResponded: candidate.leadNeverResponded,
   };
 
   const decision = await evaluateFollowup(context, candidate.consultantId);
@@ -1323,9 +1353,17 @@ async function evaluateConversation(
     let fallbackMessageToUse: string | null = null;
     
     if (decision.allowFreeformMessage) {
-      console.log(`⚡ [FOLLOWUP-SCHEDULER] Freeform message mode (pending short-window rule)`);
-      fallbackMessageToUse = await generateFreeformFollowupMessage(context, candidate.consultantId);
-      templateIdToUse = null;
+      // CRITICAL FIX: Se il lead non ha mai risposto, NON usare freeform, DEVE usare template
+      if (candidate.leadNeverResponded) {
+        console.log(`🔒 [FOLLOWUP-SCHEDULER] Freeform BLOCKED: leadNeverResponded=true - using validated template instead`);
+        // Keep templateIdToUse from windowCheck validation
+        templateIdToUse = windowCheck.selectedTemplateId;
+        fallbackMessageToUse = null;
+      } else {
+        console.log(`⚡ [FOLLOWUP-SCHEDULER] Freeform message mode (pending short-window rule)`);
+        fallbackMessageToUse = await generateFreeformFollowupMessage(context, candidate.consultantId);
+        templateIdToUse = null;
+      }
     } else if (windowCheck.willBeOutside24h && windowCheck.selectedTemplateId) {
       // CRITICAL: Outside 24h window - MUST use the pre-validated approved template from windowCheck
       // This template was already validated for 24h compliance, do not override with AI
@@ -1373,6 +1411,19 @@ async function evaluateConversation(
         console.error(`❌ [FOLLOWUP-SCHEDULER] AI template selection failed:`, aiError);
         throw aiError;
       }
+    }
+    
+    // Log strutturato per debugging template selection
+    console.log(`📋 [TEMPLATE-FINAL] Conversation ${candidate.conversationId}:`);
+    console.log(`   leadNeverResponded: ${candidate.leadNeverResponded}`);
+    console.log(`   allowFreeformMessage: ${decision.allowFreeformMessage}`);
+    console.log(`   templateIdToUse: ${templateIdToUse || 'NULL'}`);
+    console.log(`   fallbackMessageToUse: ${fallbackMessageToUse ? 'SET' : 'NULL'}`);
+    
+    // Validazione finale: se leadNeverResponded e templateId è null, è un errore
+    if (candidate.leadNeverResponded && !templateIdToUse) {
+      console.error(`❌ [TEMPLATE-FINAL] CRITICAL ERROR: leadNeverResponded=true but templateId is NULL!`);
+      throw new Error('Cannot schedule message without approved template when lead has never responded');
     }
     
     await db.insert(scheduledFollowupMessages).values({

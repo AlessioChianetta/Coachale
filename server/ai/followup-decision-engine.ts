@@ -6,7 +6,7 @@
 
 import { db } from "../db";
 import { conversationStates, followupAiEvaluationLog } from "../../shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
 import { createVertexGeminiClient, parseServiceAccountJson, getAIProvider } from "./provider-factory";
 import { evaluateSystemRules, RuleEvaluationContext } from "./system-rules-config";
@@ -45,6 +45,19 @@ export interface FollowupContext {
   engagementScore: number;
   conversionProbability: number;
   availableTemplates: Array<{ id: string; name: string; useCase: string; bodyText: string }>;
+  // Tempo preciso per AI
+  hoursSilent: number;
+  minutesSilent: number;
+  secondsSilent: number;
+  // Flag se il lead non ha mai risposto
+  leadNeverResponded: boolean;
+  // Valutazioni AI precedenti
+  previousEvaluations?: Array<{
+    decision: string;
+    reasoning: string;
+    timestamp: string;
+    confidenceScore: number;
+  }>;
 }
 
 export interface FollowupDecision {
@@ -80,6 +93,36 @@ export interface BatchEvaluationResult {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Helper: Get Previous AI Evaluations
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function getPreviousEvaluations(conversationId: string, limit: number = 5): Promise<Array<{
+  decision: string;
+  reasoning: string;
+  timestamp: string;
+  confidenceScore: number;
+}>> {
+  const evaluations = await db
+    .select({
+      decision: followupAiEvaluationLog.decision,
+      reasoning: followupAiEvaluationLog.reasoning,
+      createdAt: followupAiEvaluationLog.createdAt,
+      confidenceScore: followupAiEvaluationLog.confidenceScore,
+    })
+    .from(followupAiEvaluationLog)
+    .where(eq(followupAiEvaluationLog.conversationId, conversationId))
+    .orderBy(desc(followupAiEvaluationLog.createdAt))
+    .limit(limit);
+  
+  return evaluations.map(e => ({
+    decision: e.decision,
+    reasoning: e.reasoning || '',
+    timestamp: e.createdAt?.toISOString() || '',
+    confidenceScore: e.confidenceScore || 0,
+  }));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Main Function: evaluateFollowup
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -104,6 +147,7 @@ export async function evaluateFollowup(
       maxFollowupsAllowed: context.maxFollowupsAllowed,
       currentState: context.currentState,
       lastMessageDirection: context.lastMessageDirection,
+      leadNeverResponded: context.leadNeverResponded,
       signals: {
         hasSaidNoExplicitly: context.signals.hasSaidNoExplicitly
       }
@@ -212,7 +256,8 @@ CONTESTO CONVERSAZIONE:
 - ID Conversazione: ${context.conversationId}
 - Nome Lead: ${context.leadName || "Non specificato"}
 - Stato Attuale: ${context.currentState}
-- Giorni senza risposta: ${context.daysSilent}
+- Tempo trascorso dall'ultimo messaggio: ${context.daysSilent} giorni, ${context.hoursSilent % 24} ore, ${context.minutesSilent % 60} minuti
+- Il lead ha mai risposto: ${context.leadNeverResponded ? "NO (primo contatto proattivo)" : "Sì"}
 - Follow-up già inviati: ${context.followupCount} di ${context.maxFollowupsAllowed} massimi
 - Canale: ${context.channel}
 - Tipo Agente: ${context.agentType}
@@ -230,6 +275,13 @@ METRICHE:
 
 ULTIMI MESSAGGI:
 ${messagesHistory}
+
+VALUTAZIONI AI PRECEDENTI:
+${context.previousEvaluations && context.previousEvaluations.length > 0
+  ? context.previousEvaluations.map(e => `[${e.timestamp}] Decisione: ${e.decision} (${Math.round(e.confidenceScore * 100)}%) - ${e.reasoning.substring(0, 150)}...`).join('\n')
+  : "Nessuna valutazione precedente"}
+
+IMPORTANTE: Considera le valutazioni precedenti per non ripetere le stesse decisioni inutilmente.
 
 TEMPLATE DISPONIBILI:
 ${templatesInfo}
