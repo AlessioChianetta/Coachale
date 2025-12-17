@@ -50,13 +50,12 @@ import {
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { PipelineKanban } from "@/components/automations/PipelineKanban";
-import { AutomationRulesList } from "@/components/automations/AutomationRulesList";
 import { TemplatesGrid } from "@/components/automations/TemplatesGrid";
 import { AnalyticsDashboard } from "@/components/automations/AnalyticsDashboard";
-import { SystemRulesViewer } from "@/components/automations/SystemRulesViewer";
 import { AutomationDashboard } from "@/components/automations/AutomationDashboard";
 import { DecisionFlowDiagram } from "@/components/automations/DecisionFlowDiagram";
 import { LiveActivityFeed } from "@/components/automations/LiveActivityFeed";
+import { AIPreferencesEditor } from "@/components/automations/AIPreferencesEditor";
 import { Link } from "wouter";
 
 function AutomationFlowVisual() {
@@ -965,10 +964,7 @@ export default function ConsultantAutomationsPage() {
               </TabsContent>
 
               <TabsContent value="regole">
-                <div className="space-y-6">
-                  <SystemRulesViewer />
-                  <AutomationRulesList />
-                </div>
+                <AIPreferencesEditor />
               </TabsContent>
 
               <TabsContent value="template">

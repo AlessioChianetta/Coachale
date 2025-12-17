@@ -16,9 +16,44 @@
  */
 
 import { db } from "../db";
-import { conversationStates, followupAiEvaluationLog, whatsappMessages } from "../../shared/schema";
+import { conversationStates, followupAiEvaluationLog, whatsappMessages, consultantAiPreferences } from "../../shared/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { getAIProvider } from "./provider-factory";
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSULTANT AI PREFERENCES
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ConsultantPreferences {
+  maxFollowupsTotal: number;
+  minHoursBetweenFollowups: number;
+  aggressivenessLevel: number;
+  persistenceLevel: number;
+  firstFollowupDelayHours: number;
+  templateNoResponseDelayHours: number;
+  customInstructions: string | null;
+  stopOnFirstNo: boolean;
+}
+
+export async function getConsultantPreferences(consultantId: string): Promise<ConsultantPreferences> {
+  const [prefs] = await db
+    .select()
+    .from(consultantAiPreferences)
+    .where(eq(consultantAiPreferences.consultantId, consultantId))
+    .limit(1);
+  
+  // Return defaults if no preferences set
+  return {
+    maxFollowupsTotal: prefs?.maxFollowupsTotal ?? 5,
+    minHoursBetweenFollowups: prefs?.minHoursBetweenFollowups ?? 24,
+    aggressivenessLevel: prefs?.aggressivenessLevel ?? 5,
+    persistenceLevel: prefs?.persistenceLevel ?? 5,
+    firstFollowupDelayHours: prefs?.firstFollowupDelayHours ?? 24,
+    templateNoResponseDelayHours: prefs?.templateNoResponseDelayHours ?? 48,
+    customInstructions: prefs?.customInstructions ?? null,
+    stopOnFirstNo: prefs?.stopOnFirstNo ?? true,
+  };
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INTERFACES
@@ -101,6 +136,9 @@ export interface ConversationContext {
   // Finestra 24h WhatsApp
   window24hExpiresAt: Date | null;
   canSendFreeformNow: boolean;
+  
+  // Preferenze consulente (se disponibili)
+  consultantPreferences?: ConsultantPreferences;
 }
 
 export interface HumanLikeDecision {
@@ -357,6 +395,28 @@ ${templatesInfo}
 
 ---
 
+## PREFERENZE DEL CONSULENTE
+
+${context.consultantPreferences ? `
+Il consulente ha impostato queste preferenze per guidare le tue decisioni:
+
+- **Max follow-up consentiti:** ${context.consultantPreferences.maxFollowupsTotal}
+- **Attesa minima tra follow-up:** ${context.consultantPreferences.minHoursBetweenFollowups} ore
+- **Ritardo primo follow-up:** ${context.consultantPreferences.firstFollowupDelayHours} ore
+- **Attesa dopo template senza risposta:** ${context.consultantPreferences.templateNoResponseDelayHours} ore
+- **Aggressività (1-10):** ${context.consultantPreferences.aggressivenessLevel} ${context.consultantPreferences.aggressivenessLevel <= 3 ? '(molto paziente)' : context.consultantPreferences.aggressivenessLevel >= 8 ? '(molto insistente)' : '(equilibrato)'}
+- **Persistenza su lead freddi (1-10):** ${context.consultantPreferences.persistenceLevel}
+- **Fermarsi al primo NO:** ${context.consultantPreferences.stopOnFirstNo ? 'Sì' : 'No, posso insistere gentilmente'}
+
+${context.consultantPreferences.customInstructions ? `### ISTRUZIONI PERSONALIZZATE DAL CONSULENTE:
+"${context.consultantPreferences.customInstructions}"
+
+⚠️ IMPORTANTE: Rispetta queste istruzioni come se fossero ordini dal tuo capo!
+` : ''}
+` : 'Il consulente non ha impostato preferenze personalizzate. Usa le impostazioni predefinite.'}
+
+---
+
 ## COME DEVI RAGIONARE
 
 1. **LEGGI TUTTA LA CHAT** - Capiscila contestualmente
@@ -443,6 +503,14 @@ export async function evaluateWithHumanLikeAI(
     console.log(`   Lead: ${context.leadName || 'N/A'}, State: ${context.currentState}, Temp: ${context.temperatureLevel}`);
     console.log(`   Messages: ${context.totalMessages} total, ${context.messagesFromLead} from lead, ${context.templatessSent} templates`);
     console.log(`   Hours since last lead response: ${context.hoursSinceLastLeadResponse ?? 'NEVER'}`);
+
+    // Recupera preferenze consulente
+    const consultantPrefs = await getConsultantPreferences(consultantId);
+    context.consultantPreferences = consultantPrefs;
+    console.log(`⚙️ [HUMAN-AI] Loaded consultant preferences: maxFollowups=${consultantPrefs.maxFollowupsTotal}, minHours=${consultantPrefs.minHoursBetweenFollowups}`);
+    if (consultantPrefs.customInstructions) {
+      console.log(`📝 [HUMAN-AI] Custom instructions: "${consultantPrefs.customInstructions.substring(0, 100)}..."`);
+    }
 
     // Recupera valutazioni precedenti
     const previousEvaluations = await getPreviousEvaluations(context.conversationId, 5);
