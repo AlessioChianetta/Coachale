@@ -1,0 +1,204 @@
+🔴 SITUAZIONE ATTUALE: "Il Sistema Cieco"
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        COME FUNZIONA OGGI                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   📧 Proactive Lead                                                      │
+│        │                                                                 │
+│        ▼                                                                 │
+│   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐               │
+│   │  Messaggio  │────▶│   Twilio    │────▶│
+Planned document structure and phases
+📖 Piano Completo: Sistema Follow-up Intelligente
+
+🔴 SITUAZIONE ATTUALE (Come funziona OGGI)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        FLUSSO ATTUALE (BUGGATO)                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+  Lead importato          Messaggio 1              Messaggio 2 (Follow-up)
+       │                  (Apertura)                    │
+       ▼                      │                         ▼
+  ┌─────────┐            ┌────▼────┐              ┌──────────┐
+  │ Proactive│ ────────► │whatsapp │              │scheduled │
+  │ Outreach │           │Messages │              │Followup  │
+  └─────────┘            │  ✅     │              │Messages  │
+                         └─────────┘              └────┬─────┘
+                              │                        │
+                              ▼                        ▼
+                         ┌─────────┐              ┌─────────┐
+                         │  CHAT   │              │  CHAT   │
+                         │ VISIBILE│              │  ❌ NO  │ ◄── BUG!
+                         └─────────┘              └─────────┘
+  PROBLEMA: Il follow-up viene INVIATO ma NON SALVATO nella chat!
+❌ Problemi Attuali:
+#
+Problema
+Impatto
+1
+Follow-up non salvato in whatsappMessages
+Messaggi invisibili nella chat
+2
+maxFollowupsAllowed = 5 fisso
+Non c'è logica intelligente
+3
+Nessun contatore "tentativi senza risposta"
+Impossibile sapere quante volte ignorato
+4
+Nessuna "dormienza" dopo N tentativi
+Lead bombardati all'infinito
+5
+Nessuna esclusione permanente
+Spam continuo
+6
+Nessuna vista di monitoraggio
+Non si sa cosa sta succedendo
+
+
+🟢 SITUAZIONE FUTURA (Come funzionerà DOPO)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        FLUSSO NUOVO (CORRETTO)                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                             ┌─────────────────────────────────────┐
+                             │     SISTEMA FOLLOW-UP INTELLIGENTE  │
+                             └─────────────────────────────────────┘
+                                             │
+         ┌───────────────────────────────────┼───────────────────────────────────┐
+         ▼                                   ▼                                   ▼
+  ┌──────────────┐                    ┌──────────────┐                    ┌──────────────┐
+  │  FASE ATTIVA │                    │   DORMIENZA  │                    │  ESCLUSIONE  │
+  │  (3 tentativi)│                    │   (3 mesi)   │                    │  PERMANENTE  │
+  └──────┬───────┘                    └──────┬───────┘                    └──────────────┘
+         │                                   │
+         ▼                                   ▼
+  ┌──────────────┐                    ┌──────────────┐
+  │ Tentativo 1  │                    │ Dopo 3 mesi  │
+  │ Tentativo 2  │ ──► No risposta ──►│ riprova 1x   │──► No risposta ──► STOP FOREVER
+  │ Tentativo 3  │     x3 = STOP      │              │
+  └──────────────┘                    └──────────────┘
+         │                                   │
+         ▼ (Lead risponde)                   ▼ (Lead risponde)
+  ┌──────────────┐                    ┌──────────────┐
+  │    RESET!    │                    │    RESET!    │
+  │ Riparti da 0 │                    │ Riparti da 0 │
+  └──────────────┘                    └──────────────┘
+🔄 Ciclo di Vita del Lead:
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  NUOVO ──► MSG1 ──► (attesa) ──► MSG2 ──► (attesa) ──► MSG3 ──► (attesa) ──► DORMIENTE │
+│    │                                                                              │      │
+│    │                        ▲ Lead risponde = RESET                               │      │
+│    │                        │                                                     │      │
+│    └────────────────────────┘                                            (3 mesi) │      │
+│                                                                                   ▼      │
+│                                                                            ┌──────────┐ │
+│                    ▲ Lead risponde = RESET                                 │RIPROVA 1X│ │
+│                    │                                                       └────┬─────┘ │
+│                    └───────────────────────────────────────────────────────────┘        │
+│                                                                                   │      │
+│                                                                 No risposta ──────┘      │
+│                                                                                   ▼      │
+│                                                                        ┌─────────────┐  │
+│                                                                        │ MAI PIÙ 🚫  │  │
+│                                                                        └─────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+🎯 LE 9 FASI DEL PIANO
+FASE 1 - Fix Bug Critico (Salvataggio Messaggi)
+PRIMA:  sendWhatsAppMessage() ──► Twilio ──► ❌ Niente in chat
+DOPO:   INSERT whatsappMessages ──► sendWhatsAppMessage() ──► Twilio ──► ✅ Visibile in chat
+FASE 2 - Nuovi Campi Database
+ALTER TABLE conversation_states ADD:
+ ├── consecutive_no_reply_count (INTEGER) -- Tentativi senza risposta consecutivi
+ ├── dormant_until (TIMESTAMP)            -- Data fine dormienza
+ ├── permanently_excluded (BOOLEAN)       -- Mai più contattare
+ ├── dormant_reason (TEXT)                -- Motivo dormienza
+ └── last_reply_at (TIMESTAMP)            -- Ultima risposta del lead
+FASE 3 - Logica Dinamica (via maxFollowupsAllowed fisso)
+PRIMA: if (followupCount >= 5) → STOP
+DOPO:  if (consecutiveNoReplyCount >= 3) → DORMIENZA
+      if (dormantUntil passed && ancora no reply) → PERMANENTE
+FASE 4 - Reset Automatico su Risposta
+Quando lead risponde:
+ ├── consecutiveNoReplyCount = 0
+ ├── dormantUntil = NULL
+ ├── permanentlyExcluded = FALSE
+ └── lastReplyAt = NOW()
+FASE 5 - Logica Dormienza (3 mesi)
+Se consecutiveNoReplyCount >= 3:
+ ├── dormantUntil = NOW() + 3 mesi
+ ├── dormantReason = "Nessuna risposta dopo 3 tentativi"
+ └── STOP messaggi fino a dormantUntil
+FASE 6 - Esclusione Permanente
+Se dormantUntil è passato E lead non ha risposto:
+ ├── Invia 1 ultimo tentativo
+ └── Se ancora no risposta → permanentlyExcluded = TRUE → MAI PIÙ
+FASE 7 - Nuova Tab "Stato Follow-up"
+┌─────────────────────────────────────────────────────────────────────────┐
+│  📊 STATO FOLLOW-UP                                        [Aggiorna]  │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  🟢 ATTIVI (12)     🟡 DORMIENTI (5)     🔴 ESCLUSI (3)                │
+│                                                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Lead           Agente         Stato           Prossima Azione         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Mario Rossi    Marco setter   🟢 Attivo       Contatto tra 2 giorni   │
+│  Luca Bianchi   Marco setter   🟡 Dormiente    Riprova il 17 Mar 2026  │
+│  Anna Verdi     Marco setter   🔴 Escluso      Mai più (no reply x4)   │
+│  Paolo Neri     Marco setter   🟢 Attivo       In attesa risposta      │
+└─────────────────────────────────────────────────────────────────────────┘
+FASE 8 - API Endpoint
+GET /api/followup/lead-status
+Response: {
+ leads: [
+   {
+     name: "Mario Rossi",
+     agent: "Marco setter",
+     status: "active",
+     consecutiveNoReplyCount: 1,
+     nextAction: "Contatto tra 2 giorni",
+     nextActionDate: "2025-12-19T10:00:00Z",
+     reason: "Attesa risposta dopo primo follow-up"
+   },
+   ...
+ ]
+}
+FASE 9 - Log Dettagliati
+📝 [FOLLOWUP] Lead Mario Rossi: Tentativo 2/3, no risposta
+📝 [FOLLOWUP] Lead Luca Bianchi: 3 tentativi senza risposta → DORMIENZA fino al 2026-03-17
+📝 [FOLLOWUP] Lead Anna Verdi: Dormienza terminata, nessuna risposta → ESCLUSIONE PERMANENTE
+📝 [FOLLOWUP] Lead Paolo Neri: HA RISPOSTO! Reset contatore → 0/3
+
+📅 TIMELINE STIMATA
+Fase
+Descrizione
+Complessità
+1
+Fix bug salvataggio messaggi
+🟢 Bassa
+2
+Nuovi campi database
+🟢 Bassa
+3
+Logica dinamica
+🟡 Media
+4
+Reset su risposta
+🟢 Bassa
+5
+Logica dormienza
+🟡 Media
+6
+Esclusione permanente
+🟡 Media
+7
+Nuova Tab UI
+🟡 Media
+8
+API endpoint
+🟢 Bassa
+9
+Log dettagliati
+🟢 Bassa
+
+
