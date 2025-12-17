@@ -1019,6 +1019,26 @@ export async function findCandidateConversations(
     // Log dettagliato per debugging
     console.log(`📊 [CANDIDATE] ${state.conversationId}: leadNeverResponded=${leadNeverResponded}, hoursSinceLastInbound=${hoursSinceLastInbound.toFixed(1)}h, lastInbound=${lastInboundMessageAt?.toISOString() || 'NULL'}`);
 
+    // RACE CONDITION FIX: Verify that at least one outbound message exists in the chat
+    // This prevents the followup-scheduler from evaluating conversations where
+    // the proactive-outreach hasn't sent the first message yet
+    const outboundMessageCount = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(whatsappMessages)
+      .where(
+        and(
+          eq(whatsappMessages.conversationId, state.conversationId),
+          inArray(whatsappMessages.sender, ['consultant', 'ai', 'system'])
+        )
+      );
+    
+    const hasOutboundMessages = outboundMessageCount[0]?.count > 0;
+    
+    if (!hasOutboundMessages) {
+      console.log(`⏭️ [CANDIDATE] ${state.conversationId}: SKIPPED - No outbound messages yet (proactive-outreach not completed)`);
+      continue;
+    }
+
     if (state.nextFollowupScheduledAt && new Date(state.nextFollowupScheduledAt) > now) {
       continue;
     }
