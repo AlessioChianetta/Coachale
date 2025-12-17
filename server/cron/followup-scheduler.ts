@@ -1320,11 +1320,62 @@ async function evaluateConversation(
 
   const decision = await evaluateFollowup(context, candidate.consultantId);
 
-  // TASK 3b: Check if last outbound was template and block freeform if lead hasn't responded
+  // TASK 8: Apply AI-suggested updates to conversationStates
+  // BUG 4 FIX: aiUpdates is already a local const, validated with range checks
+  const aiUpdates: Record<string, any> = {};
+  const appliedUpdates: string[] = [];
+
+  // BUG 4 FIX: Validate engagementScore is in range 0-100
+  if (decision.updatedEngagementScore !== undefined && decision.updatedEngagementScore !== null) {
+    const score = Number(decision.updatedEngagementScore);
+    if (!isNaN(score) && score >= 0 && score <= 100) {
+      aiUpdates.engagementScore = score;
+      appliedUpdates.push(`engagementScore: ${candidate.engagementScore} → ${score}`);
+    } else {
+      console.log(`⚠️ [FOLLOWUP-SCHEDULER] Invalid engagementScore from AI: ${decision.updatedEngagementScore} (must be 0-100) - ignoring`);
+    }
+  }
+
+  // BUG 4 FIX: Validate conversionProbability is in range 0-1
+  if (decision.updatedConversionProbability !== undefined && decision.updatedConversionProbability !== null) {
+    const prob = Number(decision.updatedConversionProbability);
+    if (!isNaN(prob) && prob >= 0 && prob <= 1) {
+      aiUpdates.conversionProbability = prob;
+      appliedUpdates.push(`conversionProbability: ${candidate.conversionProbability.toFixed(2)} → ${prob.toFixed(2)}`);
+    } else {
+      console.log(`⚠️ [FOLLOWUP-SCHEDULER] Invalid conversionProbability from AI: ${decision.updatedConversionProbability} (must be 0-1) - ignoring`);
+    }
+  }
+
+  // BUG 4 FIX: Validate stateTransition is a valid state
+  if (decision.stateTransition && typeof decision.stateTransition === 'string' && decision.stateTransition !== candidate.currentState) {
+    const validStates = ['new', 'engaged', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost', 'stalled', 'ghost'];
+    if (validStates.includes(decision.stateTransition)) {
+      aiUpdates.currentState = decision.stateTransition;
+      aiUpdates.previousState = candidate.currentState;
+      appliedUpdates.push(`currentState: ${candidate.currentState} → ${decision.stateTransition}`);
+    } else {
+      console.log(`⚠️ [FOLLOWUP-SCHEDULER] Invalid stateTransition suggested by AI: "${decision.stateTransition}" - ignoring`);
+    }
+  }
+
+  if (appliedUpdates.length > 0) {
+    console.log(`📝 [AI-UPDATES] Applying ${appliedUpdates.length} AI-suggested update(s) for ${candidate.conversationId}:`);
+    for (const update of appliedUpdates) {
+      console.log(`   • ${update}`);
+    }
+    await updateConversationState(candidate.conversationId, aiUpdates);
+  }
+
+  // TASK 3b: Check if last outbound was template and block freeform if lead hasn't responded AFTER template
+  // BUG 1 FIX: Block freeform ALWAYS until lead responds after template (not just based on hours)
   const lastOutboundWasTemplate = await checkLastOutboundWasTemplate(candidate.conversationId);
-  if (lastOutboundWasTemplate && (candidate.leadNeverResponded || candidate.hoursSinceLastInbound >= 24)) {
-    decision.allowFreeformMessage = false;
-    console.log(`🔒 [FOLLOWUP-SCHEDULER] Freeform blocked: last outbound was template without response (leadNeverResponded=${candidate.leadNeverResponded}, hoursSinceLastInbound=${candidate.hoursSinceLastInbound.toFixed(1)})`);
+  if (lastOutboundWasTemplate) {
+    const hasInboundAfterTemplate = await checkHasInboundAfterLastOutbound(candidate.conversationId);
+    if (!hasInboundAfterTemplate) {
+      decision.allowFreeformMessage = false;
+      console.log(`🔒 [FOLLOWUP-SCHEDULER] Freeform blocked: last outbound was template and no inbound response after it`);
+    }
   }
 
   await logFollowupDecision(
@@ -1503,6 +1554,7 @@ async function evaluateConversation(
 
 /**
  * TASK 3: Helper to check if the last outbound message was a template
+ * BUG 2 FIX: Use twilioSid matching instead of sentAt (which can be null)
  * Checks cross-reference with scheduledFollowupMessages to determine if the last 
  * outbound message was sent using a template or freeform.
  */
@@ -1528,41 +1580,107 @@ async function checkLastOutboundWasTemplate(conversationId: string): Promise<boo
   }
 
   const outboundMsg = lastOutbound[0];
-  const outboundTime = outboundMsg.createdAt;
   
-  if (!outboundTime) {
-    return false;
-  }
-
-  const timeWindowStart = new Date(outboundTime.getTime() - 60000);
-  const timeWindowEnd = new Date(outboundTime.getTime() + 60000);
-
-  const scheduledWithTemplate = await db
-    .select({ id: scheduledFollowupMessages.id, templateId: scheduledFollowupMessages.templateId })
-    .from(scheduledFollowupMessages)
-    .where(
-      and(
-        eq(scheduledFollowupMessages.conversationId, conversationId),
-        isNotNull(scheduledFollowupMessages.templateId),
-        eq(scheduledFollowupMessages.status, 'sent'),
+  // BUG 2 FIX: Primary method - use twilioSid to match against scheduledFollowupMessages
+  if (outboundMsg.twilioSid) {
+    const scheduledByTwilioSid = await db
+      .select({ id: scheduledFollowupMessages.id, templateId: scheduledFollowupMessages.templateId })
+      .from(scheduledFollowupMessages)
+      .where(
         and(
-          sql`${scheduledFollowupMessages.sentAt} >= ${timeWindowStart}`,
-          sql`${scheduledFollowupMessages.sentAt} <= ${timeWindowEnd}`
+          eq(scheduledFollowupMessages.conversationId, conversationId),
+          isNotNull(scheduledFollowupMessages.templateId),
+          eq(scheduledFollowupMessages.status, 'sent'),
+          eq(scheduledFollowupMessages.twilioMessageSid, outboundMsg.twilioSid)
         )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  if (scheduledWithTemplate.length > 0) {
-    console.log(`🔍 [TEMPLATE-CHECK] Last outbound for ${conversationId} was a template (scheduledFollowupMessage found)`);
-    return true;
+    if (scheduledByTwilioSid.length > 0) {
+      console.log(`🔍 [TEMPLATE-CHECK] Last outbound for ${conversationId} was a template (matched by twilioSid)`);
+      return true;
+    }
+  }
+  
+  // BUG 2 FIX: Fallback method - check for any sent scheduled message with template for this conversation
+  // Match by createdAt timestamp within a small window (only if twilioSid didn't match)
+  const outboundTime = outboundMsg.createdAt;
+  if (outboundTime) {
+    const timeWindowStart = new Date(outboundTime.getTime() - 60000);
+    const timeWindowEnd = new Date(outboundTime.getTime() + 60000);
+
+    const scheduledWithTemplate = await db
+      .select({ id: scheduledFollowupMessages.id, templateId: scheduledFollowupMessages.templateId })
+      .from(scheduledFollowupMessages)
+      .where(
+        and(
+          eq(scheduledFollowupMessages.conversationId, conversationId),
+          isNotNull(scheduledFollowupMessages.templateId),
+          eq(scheduledFollowupMessages.status, 'sent'),
+          sql`${scheduledFollowupMessages.scheduledFor} >= ${timeWindowStart}`,
+          sql`${scheduledFollowupMessages.scheduledFor} <= ${timeWindowEnd}`
+        )
+      )
+      .limit(1);
+
+    if (scheduledWithTemplate.length > 0) {
+      console.log(`🔍 [TEMPLATE-CHECK] Last outbound for ${conversationId} was a template (matched by scheduledFor time window)`);
+      return true;
+    }
   }
 
   return false;
 }
 
 /**
+ * BUG 1 FIX: Check if there's an inbound message AFTER the last outbound message
+ * This is used to determine if the lead has responded after we sent a template
+ */
+async function checkHasInboundAfterLastOutbound(conversationId: string): Promise<boolean> {
+  // Find the last outbound message
+  const lastOutbound = await db
+    .select({
+      createdAt: whatsappMessages.createdAt,
+    })
+    .from(whatsappMessages)
+    .where(
+      and(
+        eq(whatsappMessages.conversationId, conversationId),
+        inArray(whatsappMessages.sender, ['consultant', 'ai', 'system'])
+      )
+    )
+    .orderBy(desc(whatsappMessages.createdAt))
+    .limit(1);
+
+  if (lastOutbound.length === 0 || !lastOutbound[0].createdAt) {
+    // No outbound message found - allow freeform
+    return true;
+  }
+
+  const lastOutboundTime = lastOutbound[0].createdAt;
+
+  // Check if there's an inbound message after the last outbound
+  const inboundAfterOutbound = await db
+    .select({ id: whatsappMessages.id })
+    .from(whatsappMessages)
+    .where(
+      and(
+        eq(whatsappMessages.conversationId, conversationId),
+        eq(whatsappMessages.sender, 'client'),
+        sql`${whatsappMessages.createdAt} > ${lastOutboundTime}`
+      )
+    )
+    .limit(1);
+
+  const hasInbound = inboundAfterOutbound.length > 0;
+  console.log(`🔍 [INBOUND-CHECK] Conversation ${conversationId}: hasInboundAfterLastOutbound=${hasInbound}`);
+  
+  return hasInbound;
+}
+
+/**
  * TASK 5: Get last messages with messageType classification
+ * BUG 2 FIX: Use twilioSid matching instead of sentAt (which can be null)
  * Each message is classified as 'template', 'freeform', or 'inbound'
  */
 async function getLastMessages(
@@ -1591,12 +1709,30 @@ async function getLastMessages(
     if (m.sender === 'client') {
       result.push({ role, content: m.messageText, timestamp, messageType: 'inbound' });
     } else {
-      const msgTime = m.createdAt;
       let isTemplate = false;
 
-      if (msgTime) {
-        const timeWindowStart = new Date(msgTime.getTime() - 60000);
-        const timeWindowEnd = new Date(msgTime.getTime() + 60000);
+      // BUG 2 FIX: Primary method - use twilioSid to match against scheduledFollowupMessages
+      if (m.twilioSid) {
+        const scheduledByTwilioSid = await db
+          .select({ id: scheduledFollowupMessages.id })
+          .from(scheduledFollowupMessages)
+          .where(
+            and(
+              eq(scheduledFollowupMessages.conversationId, conversationId),
+              isNotNull(scheduledFollowupMessages.templateId),
+              eq(scheduledFollowupMessages.status, 'sent'),
+              eq(scheduledFollowupMessages.twilioMessageSid, m.twilioSid)
+            )
+          )
+          .limit(1);
+
+        isTemplate = scheduledByTwilioSid.length > 0;
+      }
+      
+      // BUG 2 FIX: Fallback method - match by scheduledFor time window (not sentAt)
+      if (!isTemplate && m.createdAt) {
+        const timeWindowStart = new Date(m.createdAt.getTime() - 60000);
+        const timeWindowEnd = new Date(m.createdAt.getTime() + 60000);
 
         const scheduledWithTemplate = await db
           .select({ id: scheduledFollowupMessages.id })
@@ -1606,10 +1742,8 @@ async function getLastMessages(
               eq(scheduledFollowupMessages.conversationId, conversationId),
               isNotNull(scheduledFollowupMessages.templateId),
               eq(scheduledFollowupMessages.status, 'sent'),
-              and(
-                sql`${scheduledFollowupMessages.sentAt} >= ${timeWindowStart}`,
-                sql`${scheduledFollowupMessages.sentAt} <= ${timeWindowEnd}`
-              )
+              sql`${scheduledFollowupMessages.scheduledFor} >= ${timeWindowStart}`,
+              sql`${scheduledFollowupMessages.scheduledFor} <= ${timeWindowEnd}`
             )
           )
           .limit(1);

@@ -15,6 +15,7 @@ import {
   superadminVertexConfig,
   consultantVertexAccess,
   vertexAiSettings,
+  conversationStates,
 } from "../../shared/schema";
 import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
@@ -48,6 +49,45 @@ import { exec, spawn } from "child_process";
 import { promisify } from "util";
 
 const execAsync = promisify(exec);
+
+/**
+ * TASK 2: Detect explicit rejection phrases in lead messages
+ * Detects Italian and English rejection patterns to update hasSaidNoExplicitly flag
+ */
+function detectExplicitRejection(messageText: string): boolean {
+  const normalizedText = messageText.toLowerCase().trim();
+  
+  const italianPatterns = [
+    /\bno\s+grazie\b/,
+    /\bnon\s+mi\s+interessa\b/,
+    /\bnon\s+sono\s+interessat[oa]?\b/,
+    /\blasciatemi\s+stare\b/,
+    /\brimuovimi\b/,
+    /\bnon\s+contattatemi\b/,
+    /\bbasta\b/,
+    /\bstop\b/,
+    /\bcancella\b/,
+    /\bnon\s+voglio\b/,
+  ];
+  
+  const englishPatterns = [
+    /\bnot\s+interested\b/,
+    /\bleave\s+me\s+alone\b/,
+    /\bremove\s+me\b/,
+    /\bunsubscribe\b/,
+    /\bstop\s+contacting\b/,
+  ];
+  
+  const allPatterns = [...italianPatterns, ...englishPatterns];
+  
+  for (const pattern of allPatterns) {
+    if (pattern.test(normalizedText)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 /**
  * Convert WAV to OGG/Opus asynchronously with timeout
@@ -813,6 +853,15 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       console.log(`🎤 [AUDIO DETECTION] Client sent audio message - Mirror mode may trigger TTS response`);
     } else {
       console.log(`💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode`);
+    }
+
+    // TASK 2: Detect explicit rejection in inbound messages
+    const isExplicitRejection = detectExplicitRejection(batchedText);
+    if (isExplicitRejection) {
+      console.log(`⚠️ [REJECTION-DETECTED] Lead ha detto NO esplicitamente - aggiornato flag`);
+      await db.update(conversationStates)
+        .set({ hasSaidNoExplicitly: true })
+        .where(eq(conversationStates.conversationId, conversation.id));
     }
 
     console.log(`📸 [STEP 5] Building media context (${inboundMessages.length} messages)`);

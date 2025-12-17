@@ -212,21 +212,33 @@ export async function evaluateFollowup(
     let finalReasoning = result.reasoning || "Nessun reasoning fornito";
     
     // TASK 1: Forzare template fuori 24h window
+    // BUG 3 FIX: Filter only approved templates in auto-selection
     if (result.decision === "send_now" && !canSendFreeform && !result.suggestedTemplateId) {
       console.log(`⚠️ [FOLLOWUP-ENGINE] TASK 1: AI suggested send_now but outside 24h window without template - attempting auto-selection`);
       
-      // Tentare auto-selezione di un template dalla lista availableTemplates
-      if (context.availableTemplates && context.availableTemplates.length > 0) {
-        // Seleziona il primo template disponibile (TODO: potremmo usare AI per selezionare il migliore)
-        const autoSelectedTemplate = context.availableTemplates[0];
+      // BUG 3 FIX: Filter for approved templates only (HX prefix for Twilio or twilioStatus === 'approved')
+      const approvedTemplates = (context.availableTemplates || []).filter(t => {
+        // Twilio templates with HX prefix are pre-approved
+        if (t.id.startsWith('HX')) {
+          return true;
+        }
+        // For custom templates, check if twilioStatus is 'approved' (if available in the template object)
+        // Since availableTemplates may include twilioStatus from getAvailableTemplates function
+        const templateWithStatus = t as { id: string; name: string; useCase: string; bodyText: string; twilioStatus?: string };
+        return templateWithStatus.twilioStatus === 'approved';
+      });
+      
+      if (approvedTemplates.length > 0) {
+        // Seleziona il primo template APPROVATO disponibile
+        const autoSelectedTemplate = approvedTemplates[0];
         finalSuggestedTemplateId = autoSelectedTemplate.id;
-        finalReasoning = `${result.reasoning} [AUTO-CORREZIONE: Fuori finestra 24h, auto-selezionato template "${autoSelectedTemplate.name}"]`;
-        console.log(`🔧 [FOLLOWUP-ENGINE] TASK 1: Auto-selected template: ${autoSelectedTemplate.id} (${autoSelectedTemplate.name})`);
+        finalReasoning = `${result.reasoning} [AUTO-CORREZIONE: Fuori finestra 24h, auto-selezionato template approvato "${autoSelectedTemplate.name}"]`;
+        console.log(`🔧 [FOLLOWUP-ENGINE] TASK 1: Auto-selected APPROVED template: ${autoSelectedTemplate.id} (${autoSelectedTemplate.name})`);
       } else {
-        // Nessun template disponibile - cambiare decision a 'skip'
+        // Nessun template APPROVATO disponibile - cambiare decision a 'skip'
         finalDecision = "skip";
-        finalReasoning = `Impossibile inviare: fuori finestra 24h WhatsApp e nessun template approvato disponibile. Configurare almeno un template per questo agente. [AI originale: ${result.reasoning}]`;
-        console.log(`🚫 [FOLLOWUP-ENGINE] TASK 1: No templates available outside 24h window - changing decision to 'skip'`);
+        finalReasoning = `Impossibile inviare: fuori finestra 24h WhatsApp e nessun template APPROVATO disponibile. Configurare almeno un template approvato per questo agente. [AI originale: ${result.reasoning}]`;
+        console.log(`🚫 [FOLLOWUP-ENGINE] TASK 1: No APPROVED templates available outside 24h window - changing decision to 'skip'`);
       }
     }
 
@@ -342,6 +354,19 @@ ${templatesInfo}
 
 ---
 
+## TIPO DI CONVERSAZIONE
+
+Analizza i messaggi e determina il tipo di conversazione:
+- **VENDITA**: Il lead è interessato a comprare qualcosa
+- **ASSISTENZA**: Il lead ha bisogno di supporto tecnico o aiuto  
+- **INFO**: Il lead chiede informazioni generali
+- **PRENOTAZIONE**: Il lead vuole prenotare un appuntamento
+- **ALTRO**: Conversazione generica o sociale
+
+Adatta il tuo approccio in base al contesto. Non trattare una richiesta di assistenza come una vendita!
+
+---
+
 ## COME DEVI RAGIONARE (Linee Guida, NON Regole Rigide)
 
 1. **Leggi tutta la chat** - Capisci il contesto e l'atteggiamento del lead
@@ -395,6 +420,7 @@ Rispondi con UNA delle seguenti azioni:
   "suggestedMessage": "messaggio personalizzato SOLO se sei dentro la finestra 24h e non usi template",
   "reasoning": "spiegazione dettagliata in italiano della tua decisione, come la spiegheresti a un collega",
   "confidenceScore": 0.0-1.0,
+  "conversationType": "VENDITA" | "ASSISTENZA" | "INFO" | "PRENOTAZIONE" | "ALTRO",
   "updatedEngagementScore": numero 0-100 o null se non cambia,
   "updatedConversionProbability": numero 0-1 o null se non cambia,
   "stateTransition": "nuovo stato suggerito (es: 'ghost', 'closed_lost') o null"
