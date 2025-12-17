@@ -1436,24 +1436,17 @@ async function evaluateConversation(
           console.log(`   Reasoning: ${aiSelection.reasoning}`);
           console.log(`   Confidence: ${(aiSelection.confidence * 100).toFixed(0)}%`);
         } else {
-          templateIdToUse = windowCheck.selectedTemplateId || null;
-          if (!templateIdToUse) {
-            console.error(`❌ [FOLLOWUP-SCHEDULER] CRITICAL: AI returned no selection and no fallback template available`);
-            throw new Error('No approved template available for scheduling outside 24h window');
-          }
-          console.log(`⚠️ [FOLLOWUP-SCHEDULER] AI returned no selection, using priority fallback: ${templateIdToUse}`);
+          // AI MUST select a template - no fallback to priority
+          console.error(`❌ [FOLLOWUP-SCHEDULER] CRITICAL: AI returned no selection`);
+          throw new Error('AI template selection returned no result - cannot schedule without AI decision');
         }
         
         fallbackMessageToUse = effectiveAiRule.fallbackMessage || decision.suggestedMessage || null;
         
       } catch (aiError) {
-        console.error(`❌ [FOLLOWUP-SCHEDULER] AI template selection failed, using priority fallback:`, aiError);
-        templateIdToUse = windowCheck.selectedTemplateId || null;
-        if (!templateIdToUse) {
-          console.error(`❌ [FOLLOWUP-SCHEDULER] CRITICAL: No fallback template available for outside 24h/never-responded lead`);
-          throw new Error('No approved template available for scheduling outside 24h window');
-        }
-        fallbackMessageToUse = effectiveAiRule.fallbackMessage || decision.suggestedMessage || null;
+        // NO FALLBACK TO PRIORITY - AI selection is mandatory
+        console.error(`❌ [FOLLOWUP-SCHEDULER] AI template selection failed - NOT using priority fallback:`, aiError);
+        throw aiError; // Propagate error - do not schedule without AI decision
       }
     } else {
       // Inside 24h window - use AI to select best template from all available approved templates
@@ -1824,12 +1817,17 @@ async function getAllApprovedTemplatesForAgent(
   }
   
   // STEP 2: Get custom templates with full details
+  // NOTE: Using correct field names from schema:
+  // - whatsappCustomTemplates.templateName (not .name)
+  // - whatsappCustomTemplates.body (not .bodyText)
+  // - whatsappTemplateVersions.bodyText for versioned content
   const customTemplates = await db
     .select({
       templateId: whatsappCustomTemplates.id,
-      name: whatsappCustomTemplates.name,
+      templateName: whatsappCustomTemplates.templateName,
       description: whatsappCustomTemplates.description,
-      bodyText: whatsappCustomTemplates.bodyText,
+      templateBody: whatsappCustomTemplates.body,
+      versionBodyText: whatsappTemplateVersions.bodyText,
       useCase: whatsappCustomTemplates.useCase,
       priority: whatsappTemplateAssignments.priority,
       twilioStatus: whatsappTemplateVersions.twilioStatus,
@@ -1857,12 +1855,14 @@ async function getAllApprovedTemplatesForAgent(
   
   for (const t of customTemplates) {
     const templateIdToUse = t.twilioContentSid || t.templateId;
+    // Use versioned body text if available, otherwise fall back to template body
+    const bodyText = t.versionBodyText || t.templateBody || '';
     templates.push({
       id: templateIdToUse,
-      name: t.name || 'Template personalizzato',
+      name: t.templateName || 'Template personalizzato',
       goal: t.useCase || t.description || 'Follow-up',
       tone: 'Personalizzato',
-      bodyText: t.bodyText || '',
+      bodyText: bodyText,
       priority: t.priority || 0
     });
   }
