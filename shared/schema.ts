@@ -5444,3 +5444,62 @@ export const followupAiEvaluationLog = pgTable("followup_ai_evaluation_log", {
 
 export type FollowupAiEvaluationLog = typeof followupAiEvaluationLog.$inferSelect;
 export type InsertFollowupAiEvaluationLog = typeof followupAiEvaluationLog.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Consultant AI Preferences - Personalizzazione comportamento AI Follow-up
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const consultantAiPreferences = pgTable("consultant_ai_preferences", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  
+  // === PARAMETRI GLOBALI ===
+  maxFollowupsTotal: integer("max_followups_total").default(5).notNull(),
+  minHoursBetweenFollowups: integer("min_hours_between_followups").default(24).notNull(),
+  workingHoursStart: integer("working_hours_start").default(9).notNull(), // 0-23
+  workingHoursEnd: integer("working_hours_end").default(19).notNull(), // 0-23
+  workingDays: jsonb("working_days").$type<number[]>().default(sql`'[1,2,3,4,5]'::jsonb`), // 0=Sun, 1=Mon...6=Sat
+  
+  // === STILE COMUNICATIVO ===
+  toneStyle: text("tone_style").$type<"professionale" | "amichevole" | "diretto" | "formale">().default("professionale"),
+  messageLength: text("message_length").$type<"breve" | "medio" | "dettagliato">().default("medio"),
+  useEmojis: boolean("use_emojis").default(false).notNull(),
+  
+  // === AGGRESSIVITÀ FOLLOW-UP ===
+  aggressivenessLevel: integer("aggressiveness_level").default(5).notNull(), // 1-10 (1=molto passivo, 10=molto aggressivo)
+  persistenceLevel: integer("persistence_level").default(5).notNull(), // 1-10 (quante volte insistere su lead freddi)
+  
+  // === TIMING PREFERENZE ===
+  firstFollowupDelayHours: integer("first_followup_delay_hours").default(24).notNull(),
+  templateNoResponseDelayHours: integer("template_no_response_delay_hours").default(48).notNull(),
+  coldLeadReactivationDays: integer("cold_lead_reactivation_days").default(7).notNull(),
+  
+  // === ISTRUZIONI PERSONALIZZATE (TESTO LIBERO) ===
+  customInstructions: text("custom_instructions"), // Istruzioni libere per l'AI
+  businessContext: text("business_context"), // Contesto del business
+  targetAudience: text("target_audience"), // Descrizione target
+  
+  // === REGOLE SPECIALI ===
+  neverContactWeekends: boolean("never_contact_weekends").default(false).notNull(),
+  respectHolidays: boolean("respect_holidays").default(true).notNull(),
+  stopOnFirstNo: boolean("stop_on_first_no").default(true).notNull(),
+  requireLeadResponseForFreeform: boolean("require_lead_response_for_freeform").default(true).notNull(),
+  
+  // === AI BEHAVIOR FLAGS ===
+  allowAiToSuggestTemplates: boolean("allow_ai_to_suggest_templates").default(true).notNull(),
+  allowAiToWriteFreeformMessages: boolean("allow_ai_to_write_freeform_messages").default(true).notNull(),
+  logAiReasoning: boolean("log_ai_reasoning").default(true).notNull(),
+  
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type ConsultantAiPreferences = typeof consultantAiPreferences.$inferSelect;
+export type InsertConsultantAiPreferences = typeof consultantAiPreferences.$inferInsert;
+
+export const insertConsultantAiPreferencesSchema = createInsertSchema(consultantAiPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});

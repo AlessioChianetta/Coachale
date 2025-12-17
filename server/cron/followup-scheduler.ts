@@ -907,29 +907,32 @@ export async function findCandidateConversations(
 ): Promise<CandidateConversation[]> {
   const closedStates = ['closed_won', 'closed_lost'];
   
-  const consultantsWithActiveRules = await db
-    .selectDistinct({ consultantId: followupRules.consultantId })
-    .from(followupRules)
-    .where(eq(followupRules.isActive, true));
+  // NEW SYSTEM: L'AI è sempre attiva come "regola hardcoded".
+  // Non richiediamo più regole DB - ogni consulente con configurazione WhatsApp attiva viene valutato.
+  // Le preferenze AI personalizzano il comportamento dell'AI, ma l'AI funziona sempre.
   
-  if (consultantsWithActiveRules.length === 0) {
-    console.log('⚠️ [FOLLOWUP-SCHEDULER] No consultants with active follow-up rules');
-    return [];
-  }
+  let consultantIds: string[] = [];
   
-  let consultantIds = consultantsWithActiveRules.map(c => c.consultantId);
-  
-  // Filter by specific consultant if provided
   if (consultantId) {
-    consultantIds = consultantIds.filter(id => id === consultantId);
+    // Specific consultant requested
+    consultantIds = [consultantId];
+    console.log(`🧑‍💼 [FOLLOWUP-SCHEDULER] Evaluating specific consultant: ${consultantId}`);
+  } else {
+    // Get all consultants with active WhatsApp configs
+    const consultantsWithWhatsapp = await db
+      .selectDistinct({ consultantId: consultantWhatsappConfig.consultantId })
+      .from(consultantWhatsappConfig)
+      .where(eq(consultantWhatsappConfig.isActive, true));
+    
+    consultantIds = consultantsWithWhatsapp.map(c => c.consultantId).filter((id): id is string => id !== null);
+    
+    if (consultantIds.length === 0) {
+      console.log('⚠️ [FOLLOWUP-SCHEDULER] No consultants with active WhatsApp configuration');
+      return [];
+    }
+    
+    console.log(`🧠 [FOLLOWUP-SCHEDULER] AI-ONLY mode: Found ${consultantIds.length} consultants with active WhatsApp configs`);
   }
-  
-  if (consultantIds.length === 0) {
-    console.log('⚠️ [FOLLOWUP-SCHEDULER] No consultants match the filter');
-    return [];
-  }
-  
-  console.log(`👥 [FOLLOWUP-SCHEDULER] Found ${consultantIds.length} consultants with active follow-up rules`);
 
   // Build dynamic where conditions
   // TASK 7: Confirmation log - we filter out closed conversations here
