@@ -1,0 +1,188 @@
+COME FUNZIONA ORA (Sistema Ibrido: Regole Codificate + AI)
+┌─────────────────────────────────────────────────────────────────────┐
+│                    FLUSSO ATTUALE (CON REGOLE)                      │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │    NUOVO MESSAGGIO / TIMER    │
+              └───────────────────────────────┘
+                              │
+              ┌───────────────▼───────────────┐
+              │ FASE 1: REGOLE DETERMINISTICHE│  ◄── Codice "stupido"
+              │    (Valutate automaticamente) │
+              └───────────────────────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         │                    │                    │
+         ▼                    ▼                    ▼
+   ┌──────────┐        ┌──────────┐        ┌──────────┐
+   │ Regola 1 │        │ Regola 2 │        │ Regola 3 │
+   │ Rifiuto  │        │ Max      │        │ Vinta    │
+   │ Esplicito│        │ Followup │        │          │
+   │ → STOP   │        │ → STOP   │        │ → STOP   │
+   └──────────┘        └──────────┘        └──────────┘
+         │                    │                    │
+         ▼                    ▼                    ▼
+   ┌──────────┐        ┌──────────┐        ┌──────────┐
+   │ Regola 4 │        │ Regola 5 │        │ Regola 6 │
+   │ Persa    │        │ Finestra │        │ Risposta │
+   │ → STOP   │        │ Breve    │        │ Recente  │
+   │          │        │ → INVIA  │        │ → SKIP   │
+   └──────────┘        └──────────┘        └──────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │  SE NESSUNA REGOLA MATCHA:    │
+              │  PASSA ALL'AI (Fase 2)        │
+              └───────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │ FASE 2: VALUTAZIONE AI        │  ◄── AI analizza
+              │  - Analizza contesto          │
+              │  - Ma limitata dalle regole!  │
+              └───────────────────────────────┘
+                              │
+              ┌───────────────▼───────────────┐
+              │      DECISIONE FINALE         │
+              │  send_now / schedule / skip   │
+              └───────────────────────────────┘
+
+Problemi del Sistema Attuale:
+Le regole codificate non hanno intelligenza contestuale
+Non riconoscono se un messaggio è un template WhatsApp vs risposta umana
+Applicano logiche rigide (es: "24h = skip") senza valutare il contesto reale
+L'AI arriva DOPO le regole, quindi non può "salvare" situazioni speciali
+COME POTREBBE FUNZIONARE (100% AI Intelligente)
+┌─────────────────────────────────────────────────────────────────────┐
+│               NUOVO FLUSSO (AI COME DIPENDENTE UMANO)               │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │    NUOVO MESSAGGIO / TIMER    │
+              └───────────────────────────────┘
+                              │
+                              ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │                    🧠 AI "DIPENDENTE UMANO"                      │
+    │                                                                  │
+    │  L'AI riceve TUTTO il contesto e decide autonomamente:          │
+    │                                                                  │
+    │  INPUT:                                                          │
+    │  ├─ Storico completo conversazione                              │
+    │  ├─ Valutazioni AI precedenti + feedback                        │
+    │  ├─ Tipo messaggi (TEMPLATE vs libero vs risposta lead)         │
+    │  ├─ Timing (ore silenzio, giorni, finestra 24h)                 │
+    │  ├─ Segnali lead (interesse, obiezioni, urgenza, budget)        │
+    │  ├─ Stato attuale conversazione                                 │
+    │  └─ Template disponibili                                        │
+    │                                                                  │
+    │  ANALISI INTELLIGENTE:                                          │
+    │  ├─ "È un template iniziale senza risposta? → Attendo 24-48h"   │
+    │  ├─ "Ha detto 'fammi pensare'? → Gentle reminder dopo 2gg"      │
+    │  ├─ "Sta chattando attivamente? → Non interrompo"               │
+    │  ├─ "3 follow-up senza risposta? → Forse perso, provo finale"   │
+    │  ├─ "Ha chiesto prezzo ma silenzio? → Follow-up valore"         │
+    │  └─ "Ha detto NO chiaramente? → Rispetto e chiudo"              │
+    │                                                                  │
+    │  OUTPUT (decisione motivata):                                   │
+    │  ├─ Decisione: send_now / schedule / skip / stop                │
+    │  ├─ Reasoning: "Perché ho deciso così..."                       │
+    │  ├─ Template suggerito (se applicabile)                         │
+    │  ├─ Messaggio personalizzato (se libero)                        │
+    │  └─ Prossimo check-in suggerito                                 │
+    └─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │      ESEGUE LA DECISIONE      │
+              │  (Log + invio se necessario)  │
+              └───────────────────────────────┘
+
+Vantaggi del Nuovo Sistema:
+Rilevamento Template: L'AI capisce se l'ultimo messaggio era un template automatico
+Contesto Umano: Valuta come farebbe un dipendente esperto
+Flessibilità: Può adattarsi a situazioni non previste dalle regole
+Motivazioni: Spiega sempre PERCHÉ ha preso una decisione
+Apprendimento: Usa le valutazioni passate per migliorare
+
+
+
+
+
+
+
+
+
+
+
+Sistema AI "Dipendente Umano"
+L'AI analizza ogni lead come farebbe un consulente esperto, senza regole rigide predefinite.
+📥
+Lead da valutare
+Valutazione ogni 5 minuti
+Analisi AI Intelligente
+Nuovo Sistema
+🧑‍💼
+"Marco" - Consulente AI Esperto
+L'AI analizza la situazione come un dipendente umano con 15 anni di esperienza.
+Nessuna regola rigida - usa giudizio e contesto per decidere.
+
+Passo 1
+Legge la Chat
+Analizza tutti i messaggi, distinguendo template, risposte lead, messaggi liberi
+
+Passo 2
+Valuta il Timing
+Considera quanto tempo è passato, se il lead ha mai risposto, quanti follow-up abbiamo fatto
+
+Passo 3
+Interpreta i Segnali
+Ha chiesto prezzo? Ha detto no? È interessato? Analizza il comportamento
+
+Passo 4
+Decide l'Azione
+Come farebbe un consulente esperto, decide cosa fare basandosi sul contesto
+
+Possibili Decisioni
+INVIA ORA
+send_now
+Il momento è perfetto, invia subito
+
+PROGRAMMA
+schedule
+Aspetta e programma per dopo
+
+SALTA
+skip
+Non serve azione, lead attivo
+
+STOP
+stop
+Lead perso o non interessato
+
+
+
+
+
+
+
+Modifiche implementate:
+
+Rilevamento automatico del "NO" - Quando un lead scrive frasi tipo "no grazie", "non mi interessa", il sistema aggiorna automaticamente il flag hasSaidNoExplicitly
+
+Blocco freeform dopo template - Se l'ultimo messaggio inviato era un template e il lead non ha risposto, il sistema blocca messaggi liberi e consente solo altri template (indipendentemente dalle ore passate)
+
+Rilevamento template affidabile - Ora usa twilioSid invece di sentAt per capire se un messaggio era template o libero
+
+Solo template approvati - Il fallback automatico seleziona solo template con stato "approved" o prefisso HX (pre-approvati Twilio)
+
+Validazione aggiornamenti AI - I punteggi suggeriti dall'AI vengono validati (engagement 0-100, conversion 0-1) prima di essere salvati
+
+Safety net max follow-up - Controllo all'inizio della valutazione: se raggiunto il limite massimo, la conversazione diventa "ghost" immediatamente
+
+Filtro conversazioni chiuse - Le conversazioni "closed_won" e "closed_lost" sono escluse dalla ricerca candidati
+
+Contesto conversazione - L'AI ora analizza il tipo di conversazione (vendita/assistenza/info/prenotazione) per adattare il suo approccio
