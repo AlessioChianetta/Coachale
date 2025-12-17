@@ -5329,7 +5329,7 @@ export const scheduledFollowupMessages = pgTable("scheduled_followup_messages", 
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }).notNull(),
   ruleId: varchar("rule_id").references(() => followupRules.id, { onDelete: "set null" }),
-  templateId: varchar("template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
+  templateId: varchar("template_id"),
   
   scheduledFor: timestamp("scheduled_for").notNull(),
   status: text("status").$type<"pending" | "sent" | "cancelled" | "failed" | "skipped">().default("pending").notNull(),
