@@ -2804,14 +2804,22 @@ async function sendFollowupMessage(
     console.log(`📋 [FOLLOWUP-SCHEDULER] Passing contentVariables to Twilio: ${JSON.stringify(contentVariablesObj)}`);
   }
 
-  // Check if this is DRY RUN mode
+  console.log(`🔍 [DEBUG] Step 1: About to check DRY RUN mode for consultant ${consultantId}`);
+  
+  // Check if this is DRY RUN mode (field is isDryRun in schema, not dryRunMode)
   const config = await db
-    .select({ dryRunMode: consultantWhatsappConfig.dryRunMode })
+    .select({ isDryRun: consultantWhatsappConfig.isDryRun })
     .from(consultantWhatsappConfig)
     .where(eq(consultantWhatsappConfig.consultantId, consultantId))
     .limit(1);
   
-  const isDryRun = config.length > 0 && config[0].dryRunMode === true;
+  console.log(`🔍 [DEBUG] Step 2: Config query result: ${JSON.stringify(config)}`);
+  
+  const isDryRun = config.length > 0 && config[0].isDryRun === true;
+  
+  console.log(`🔍 [DEBUG] Step 3: isDryRun = ${isDryRun}, twilioContentSid = ${twilioContentSid}`);
+  console.log(`🔍 [DEBUG] Step 4: messageText length = ${messageText?.length}, templateVars = ${JSON.stringify(templateVars)}`);
+  console.log(`🔍 [DEBUG] Step 5: message.conversationId = ${message.conversationId}`);
   
   // ═══════════════════════════════════════════════════════════════════════════
   // FIX: Save message to whatsappMessages BEFORE sending (like proactive-outreach)

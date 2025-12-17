@@ -1,0 +1,44 @@
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+🚀 [FOLLOWUP-API] Send-now requested for message 8b26b521-ec37-4e84-8398-1caf903daf70 by consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📤 [FOLLOWUP-API] Processing message 8b26b521-ec37-4e84-8398-1caf903daf70 immediately...
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages... (MANUAL SEND NOW)
+📬 [FOLLOWUP-SCHEDULER] Found 1 pending messages to send
+📤 [FOLLOWUP-SCHEDULER] Sending follow-up message 8b26b521-ec37-4e84-8398-1caf903daf70
+⏰ [FOLLOWUP-SCHEDULER] Hours since last lead message: 999.0, within 24h: false
+📋 [FOLLOWUP-SCHEDULER] Outside 24h window - MUST use approved template
+✅ [FOLLOWUP-SCHEDULER] Using Twilio HX template directly: HX5e6d27c6d82026f3620247262ef67340
+📱 [FOLLOWUP-SCHEDULER] Sending follow-up to +3933312345351: "Ciao Mario, ci tenevo solo a risentirti per capire..."
+📋 [FOLLOWUP-SCHEDULER] Passing contentVariables to Twilio: {"1":"Mario","2":"Marco","3":"Orbitale","4":"più tranquillità e la tua libertà finanziaria","5":"più tranquillità e la tua libertà finanziaria"}
+⚠️ [FOLLOWUP-SCHEDULER] Message 8b26b521-ec37-4e84-8398-1caf903daf70 will retry in 60min (attempt 4/5): Cannot convert undefined or null to object
+[FOLLOWUP-SCHEDULER] Processing Cycle cycle_1766010759519_lykk3w: 1.304s
+📈 [FOLLOWUP-SCHEDULER] Message processing completed
+   ⏱️  Duration: 1303ms
+   ✅ Sent: 0
+   ⏭️  Cancelled: 0
+   ⏳ Rate Limited: 0
+   ❌ Failed: 1
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+📊 [FOLLOWUP-SCHEDULER] Cycle Metrics Report
+📊 [FOLLOWUP-SCHEDULER] ───────────────────────────────────────
+📊 [FOLLOWUP-SCHEDULER] Timestamp: 2025-12-17T22:32:40.824Z
+📊 [FOLLOWUP-SCHEDULER] Cycle ID: cycle_1766010759519_lykk3w
+📊 [FOLLOWUP-SCHEDULER] Type: message_processing
+📊 [FOLLOWUP-SCHEDULER] Duration: 1303ms
+📊 [FOLLOWUP-SCHEDULER] Processed: 1
+📊 [FOLLOWUP-SCHEDULER] Success: 0
+📊 [FOLLOWUP-SCHEDULER] Errors: 1
+📊 [FOLLOWUP-SCHEDULER] Skipped: 0
+📊 [FOLLOWUP-SCHEDULER] Rate Limited: 0
+📊 [FOLLOWUP-SCHEDULER] Error Rate: 100.0%
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+[FOLLOWUP-SCHEDULER] ALERT: Error rate exceeded 10% (100.0%)
+✅ [FOLLOWUP-API] Send-now completed for message 8b26b521-ec37-4e84-8398-1caf903daf70, new status: pending
+10:32:40 PM [express] POST /api/followup/messages/8b26b521-ec37-4e84-8398-1caf903daf70/send-now 200 i…
+10:32:42 PM [express] GET /api/followup/activity-log 200 in 1744ms :: {"timeline":[{"conversationId":…
