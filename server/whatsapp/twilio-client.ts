@@ -544,3 +544,79 @@ export async function getTwilioClient(consultantId: string) {
 
   return twilio(config.twilioAccountSid, config.twilioAuthToken);
 }
+
+/**
+ * Fetches the body text of a Twilio WhatsApp template by its Content SID (HX...).
+ * This retrieves the actual template content from Twilio API.
+ * 
+ * @param twilioAccountSid - Twilio Account SID
+ * @param twilioAuthToken - Twilio Auth Token
+ * @param contentSid - The template Content SID (starts with HX)
+ * @returns The template body text or null if not found
+ */
+export async function fetchTwilioTemplateBody(
+  twilioAccountSid: string,
+  twilioAuthToken: string,
+  contentSid: string
+): Promise<string | null> {
+  if (!twilioAccountSid || !twilioAuthToken || !contentSid) {
+    return null;
+  }
+
+  try {
+    const twilioClient = twilio(twilioAccountSid, twilioAuthToken);
+    const content = await twilioClient.content.v1.contents(contentSid).fetch();
+    
+    // Extract body text from WhatsApp template structure
+    const whatsappTemplate = content.types?.['twilio/whatsapp']?.template;
+    if (whatsappTemplate?.components) {
+      const bodyComponent = whatsappTemplate.components.find(
+        (comp: any) => comp.type === 'BODY'
+      );
+      if (bodyComponent?.text) {
+        return bodyComponent.text;
+      }
+    }
+    
+    // Fallback to text body if available
+    if (content.types?.['twilio/text']?.body) {
+      return content.types['twilio/text'].body;
+    }
+    
+    return null;
+  } catch (error: any) {
+    console.warn(`⚠️ Could not fetch template ${contentSid}: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Fetches template bodies for multiple Content SIDs in parallel.
+ * More efficient than calling fetchTwilioTemplateBody for each one.
+ * 
+ * @param twilioAccountSid - Twilio Account SID
+ * @param twilioAuthToken - Twilio Auth Token
+ * @param contentSids - Array of template Content SIDs
+ * @returns Map of contentSid -> bodyText
+ */
+export async function fetchMultipleTwilioTemplateBodies(
+  twilioAccountSid: string,
+  twilioAuthToken: string,
+  contentSids: string[]
+): Promise<Map<string, string>> {
+  const results = new Map<string, string>();
+  
+  if (!twilioAccountSid || !twilioAuthToken || contentSids.length === 0) {
+    return results;
+  }
+
+  const fetchPromises = contentSids.map(async (sid) => {
+    const body = await fetchTwilioTemplateBody(twilioAccountSid, twilioAuthToken, sid);
+    if (body) {
+      results.set(sid, body);
+    }
+  });
+
+  await Promise.all(fetchPromises);
+  return results;
+}

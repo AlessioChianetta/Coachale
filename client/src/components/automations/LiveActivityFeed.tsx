@@ -186,13 +186,24 @@ function getEventLabel(type: string, decision?: string) {
   }
 }
 
-function SendNowButton({ messageId, canSendFreeform }: { messageId: string; canSendFreeform?: boolean }) {
+function SendNowButton({ 
+  messageId, 
+  canSendFreeform, 
+  hasApprovedTemplate 
+}: { 
+  messageId: string; 
+  canSendFreeform?: boolean;
+  hasApprovedTemplate?: boolean;
+}) {
   const { toast } = useToast();
   const sendNow = useSendMessageNow();
   
+  // Can send if: inside 24h window (canSendFreeform) OR has an approved template
+  const canSend = canSendFreeform || hasApprovedTemplate;
+  
   const handleSendNow = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!canSendFreeform) return;
+    if (!canSend) return;
     try {
       const result = await sendNow.mutateAsync(messageId);
       toast({
@@ -208,10 +219,12 @@ function SendNowButton({ messageId, canSendFreeform }: { messageId: string; canS
     }
   };
   
-  const isDisabled = sendNow.isPending || !canSendFreeform;
-  const tooltipText = !canSendFreeform 
-    ? "Fuori finestra 24h - serve template approvato" 
-    : "Invia subito";
+  const isDisabled = sendNow.isPending || !canSend;
+  const tooltipText = !canSend
+    ? "Fuori finestra 24h e nessun template approvato" 
+    : hasApprovedTemplate && !canSendFreeform
+      ? "Invia subito (con template approvato)"
+      : "Invia subito";
   
   return (
     <TooltipProvider>
@@ -223,7 +236,7 @@ function SendNowButton({ messageId, canSendFreeform }: { messageId: string; canS
               size="sm"
               onClick={handleSendNow}
               disabled={isDisabled}
-              className={`gap-1 ${!canSendFreeform ? 'opacity-50 cursor-not-allowed' : 'text-blue-600 border-blue-300 hover:bg-blue-50'}`}
+              className={`gap-1 ${!canSend ? 'opacity-50 cursor-not-allowed' : 'text-blue-600 border-blue-300 hover:bg-blue-50'}`}
             >
               {sendNow.isPending ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -490,7 +503,11 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                       
                       {event.type === 'message_scheduled' && event.status === 'scheduled' && (
                         <div className="mt-2">
-                          <SendNowButton messageId={event.id.replace('msg-', '')} canSendFreeform={event.canSendFreeform} />
+                          <SendNowButton 
+                            messageId={event.id.replace('msg-', '')} 
+                            canSendFreeform={event.canSendFreeform}
+                            hasApprovedTemplate={event.templateId?.startsWith('HX') || event.templateTwilioStatus === 'approved'}
+                          />
                         </div>
                       )}
                     </div>
@@ -506,12 +523,16 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                   Vedi Chat
                 </Button>
               </Link>
-              {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (
-                <SendNowButton 
-                  messageId={conversation.events.find(e => e.type === 'message_scheduled')!.id.replace('msg-', '')} 
-                  canSendFreeform={conversation.events.find(e => e.type === 'message_scheduled')?.canSendFreeform}
-                />
-              )}
+              {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (() => {
+                const scheduledEvent = conversation.events.find(e => e.type === 'message_scheduled');
+                return scheduledEvent ? (
+                  <SendNowButton 
+                    messageId={scheduledEvent.id.replace('msg-', '')} 
+                    canSendFreeform={scheduledEvent.canSendFreeform}
+                    hasApprovedTemplate={scheduledEvent.templateId?.startsWith('HX') || scheduledEvent.templateTwilioStatus === 'approved'}
+                  />
+                ) : null;
+              })()}
               {conversation.currentStatus === 'error' && conversation.events.some(e => e.type === 'message_failed') && (
                 <RetryButton 
                   messageId={conversation.events.find(e => e.type === 'message_failed')!.id.replace('msg-', '')} 

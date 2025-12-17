@@ -561,13 +561,14 @@ export async function selectBestTemplateWithAI(
     };
   }
   
-  // Build template summaries for the prompt (optimized for tokens)
+  // Build template summaries for the prompt - show full content for AI to analyze
+  // NOTE: We explicitly do NOT show priority to the AI - selection must be content-based
   const templateSummaries = templates.map((t, index) => 
     `${index + 1}. ID: "${t.id}"
    Nome: "${t.name}"
    Obiettivo: ${t.goal || 'Non specificato'}
    Tono: ${t.tone || 'Professionale'}
-   Anteprima: "${t.bodyText.substring(0, 150)}..."`
+   Testo Completo: "${t.bodyText}"`
   ).join('\n\n');
   
   // Build conversation summary
@@ -583,21 +584,23 @@ CONTESTO LEAD:
 - Stato: ${conversationContext.currentState}
 - Giorni senza risposta: ${conversationContext.daysSilent}
 
-ULTIMI MESSAGGI:
+ULTIMI MESSAGGI (LEGGI ATTENTAMENTE):
 ${recentMessages || 'Nessun messaggio precedente'}
 
 TEMPLATE DISPONIBILI:
 ${templateSummaries}
 
-ISTRUZIONI:
-1. Analizza il contesto della conversazione
-2. Valuta quale template è più appropriato per la situazione attuale
-3. Considera il tono, l'obiettivo e il momento della conversazione
+ISTRUZIONI IMPORTANTI:
+1. LEGGI ATTENTAMENTE la cronologia dei messaggi per capire il contesto
+2. Scegli il template il cui CONTENUTO si adatta meglio alla situazione attuale
+3. Considera: cosa è stato già detto? Di cosa ha bisogno il lead ora?
+4. NON scegliere in base all'ordine o alla posizione del template
+5. Valuta tono, obiettivo e contenuto del messaggio rispetto al contesto
 
 RISPONDI SOLO IN JSON:
 {
   "selectedTemplateId": "ID del template scelto",
-  "reasoning": "Breve spiegazione in italiano del perché hai scelto questo template",
+  "reasoning": "Breve spiegazione in italiano del perché questo template è il più adatto AL CONTESTO DELLA CONVERSAZIONE",
   "confidence": 0.0-1.0
 }`;
 

@@ -33,7 +33,7 @@ import {
   createStudioProvider
 } from '../ai/followup-decision-engine';
 import { getAIProvider } from '../ai/provider-factory';
-import { sendWhatsAppMessage } from '../whatsapp/twilio-client';
+import { sendWhatsAppMessage, fetchMultipleTwilioTemplateBodies } from '../whatsapp/twilio-client';
 
 let evaluationJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
@@ -1761,6 +1761,9 @@ async function getLastMessages(
 /**
  * Gets all approved templates for an agent with full details for AI selection.
  * Returns templates with name, goal, tone, and body text for context-aware selection.
+ * 
+ * UPDATED: Now fetches real body text from Twilio API for HX templates,
+ * so the AI can make content-based decisions instead of priority-based.
  */
 async function getAllApprovedTemplatesForAgent(
   agentConfigId: string | null
@@ -1774,8 +1777,17 @@ async function getAllApprovedTemplatesForAgent(
   
   const templates: TemplateForSelection[] = [];
   
+  // Get agent's Twilio credentials for fetching template bodies
+  const [agentConfig] = await db
+    .select({
+      twilioAccountSid: consultantWhatsappConfig.twilioAccountSid,
+      twilioAuthToken: consultantWhatsappConfig.twilioAuthToken,
+    })
+    .from(consultantWhatsappConfig)
+    .where(eq(consultantWhatsappConfig.id, agentConfigId))
+    .limit(1);
+  
   // STEP 1: Get Twilio templates (HX prefix) assigned to this agent
-  // NOTE: whatsappTemplateAssignments does NOT have templateName field
   const twilioTemplates = await db
     .select({ 
       templateId: whatsappTemplateAssignments.templateId,
@@ -1791,13 +1803,26 @@ async function getAllApprovedTemplatesForAgent(
     t.templateId.startsWith('HX') && t.templateType === 'twilio'
   );
   
+  // Fetch real body text from Twilio API for all HX templates
+  let twilioTemplateBodies = new Map<string, string>();
+  if (approvedTwilioTemplates.length > 0 && agentConfig?.twilioAccountSid && agentConfig?.twilioAuthToken) {
+    console.log(`📥 [TEMPLATE-AI] Fetching body text from Twilio for ${approvedTwilioTemplates.length} HX templates...`);
+    twilioTemplateBodies = await fetchMultipleTwilioTemplateBodies(
+      agentConfig.twilioAccountSid,
+      agentConfig.twilioAuthToken,
+      approvedTwilioTemplates.map(t => t.templateId)
+    );
+    console.log(`✅ [TEMPLATE-AI] Successfully fetched ${twilioTemplateBodies.size}/${approvedTwilioTemplates.length} template bodies from Twilio`);
+  }
+  
   for (const t of approvedTwilioTemplates) {
+    const realBodyText = twilioTemplateBodies.get(t.templateId);
     templates.push({
       id: t.templateId,
       name: `Template Twilio ${t.templateId.substring(2, 10)}`,
-      goal: 'Follow-up WhatsApp', // Default goal for Twilio templates
+      goal: 'Follow-up WhatsApp',
       tone: 'Professionale',
-      bodyText: `Template Twilio pre-approvato (Priority: ${t.priority})`,
+      bodyText: realBodyText || 'Contenuto template non disponibile',
       priority: t.priority
     });
   }
