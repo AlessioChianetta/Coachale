@@ -46,7 +46,10 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Loader2
+  Loader2,
+  PauseCircle,
+  Ban,
+  Calendar
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { PipelineKanban } from "@/components/automations/PipelineKanban";
@@ -57,6 +60,213 @@ import { DecisionFlowDiagram } from "@/components/automations/DecisionFlowDiagra
 import { LiveActivityFeed } from "@/components/automations/LiveActivityFeed";
 import { AIPreferencesEditor } from "@/components/automations/AIPreferencesEditor";
 import { Link } from "wouter";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface LeadStatusItem {
+  conversationId: string;
+  phoneNumber: string;
+  leadName: string;
+  agentName: string;
+  status: 'active' | 'dormant' | 'excluded';
+  currentState: string;
+  followupCount: number;
+  consecutiveNoReplyCount: number;
+  lastReplyAt: string | null;
+  lastFollowupAt: string | null;
+  dormantUntil: string | null;
+  permanentlyExcluded: boolean;
+  engagementScore: number | null;
+  temperatureLevel: string | null;
+  nextAction: string;
+  nextActionDate: string | null;
+  reason: string;
+  aiRecommendation: string | null;
+}
+
+interface LeadStatusResponse {
+  success: boolean;
+  leads: LeadStatusItem[];
+  summary: {
+    total: number;
+    active: number;
+    dormant: number;
+    excluded: number;
+  };
+}
+
+function LeadStatusDashboard() {
+  const { data, isLoading, refetch } = useQuery<LeadStatusResponse>({
+    queryKey: ['lead-status'],
+    queryFn: async () => {
+      const response = await fetch('/api/followup/lead-status', {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error('Errore nel caricamento');
+      return response.json();
+    },
+    refetchInterval: 30000,
+  });
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'active': return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'dormant': return <PauseCircle className="h-4 w-4 text-amber-500" />;
+      case 'excluded': return <Ban className="h-4 w-4 text-red-500" />;
+      default: return <Clock className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active': return <Badge className="bg-green-100 text-green-800">Attivo</Badge>;
+      case 'dormant': return <Badge className="bg-amber-100 text-amber-800">Dormiente</Badge>;
+      case 'excluded': return <Badge className="bg-red-100 text-red-800">Escluso</Badge>;
+      default: return <Badge>Sconosciuto</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-600 font-medium">Totale Lead</p>
+                <p className="text-3xl font-bold text-blue-800">{data?.summary.total || 0}</p>
+              </div>
+              <Users className="h-10 w-10 text-blue-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-green-600 font-medium">Attivi</p>
+                <p className="text-3xl font-bold text-green-800">{data?.summary.active || 0}</p>
+              </div>
+              <CheckCircle className="h-10 w-10 text-green-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-amber-600 font-medium">Dormienti</p>
+                <p className="text-3xl font-bold text-amber-800">{data?.summary.dormant || 0}</p>
+              </div>
+              <PauseCircle className="h-10 w-10 text-amber-400" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-red-600 font-medium">Esclusi</p>
+                <p className="text-3xl font-bold text-red-800">{data?.summary.excluded || 0}</p>
+              </div>
+              <Ban className="h-10 w-10 text-red-400" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Stato Follow-up Lead
+            </CardTitle>
+            <CardDescription>
+              Visualizza lo stato di ogni lead e perché viene contattato o meno
+            </CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Aggiorna
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {!data?.leads?.length ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nessun lead con stato follow-up trovato</p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[500px]">
+              <div className="space-y-3">
+                {data.leads.map((lead) => (
+                  <div
+                    key={lead.conversationId}
+                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        {getStatusIcon(lead.status)}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{lead.leadName}</span>
+                            {getStatusBadge(lead.status)}
+                          </div>
+                          <p className="text-sm text-muted-foreground">{lead.phoneNumber}</p>
+                          <p className="text-xs text-muted-foreground mt-1">Agente: {lead.agentName}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-primary">{lead.nextAction}</div>
+                        {lead.nextActionDate && (
+                          <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground mt-1">
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(lead.nextActionDate), "d MMM yyyy HH:mm", { locale: it })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                      <span>Follow-up: {lead.followupCount}</span>
+                      <span>Tentativi senza risposta: {lead.consecutiveNoReplyCount}/3</span>
+                      {lead.lastFollowupAt && (
+                        <span>Ultimo contatto: {format(new Date(lead.lastFollowupAt), "d MMM HH:mm", { locale: it })}</span>
+                      )}
+                      {lead.lastReplyAt && (
+                        <span className="text-green-600">Ultima risposta: {format(new Date(lead.lastReplyAt), "d MMM HH:mm", { locale: it })}</span>
+                      )}
+                    </div>
+                    <div className="mt-2 p-2 bg-muted/50 rounded text-sm">
+                      <span className="font-medium">Motivo: </span>
+                      {lead.reason}
+                    </div>
+                    {lead.dormantUntil && new Date(lead.dormantUntil) > new Date() && (
+                      <div className="mt-2 p-2 bg-amber-50 rounded text-sm text-amber-800">
+                        <span className="font-medium">Dormiente fino a: </span>
+                        {format(new Date(lead.dormantUntil), "d MMMM yyyy", { locale: it })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 function AutomationFlowVisual() {
   const steps = [
@@ -939,6 +1149,10 @@ export default function ConsultantAutomationsPage() {
                   <BarChart className="h-4 w-4" />
                   <span className="hidden sm:inline">Analytics</span>
                 </TabsTrigger>
+                <TabsTrigger value="stato-followup" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Stato Follow-up</span>
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="monitoraggio">
@@ -972,6 +1186,10 @@ export default function ConsultantAutomationsPage() {
 
               <TabsContent value="analytics">
                 <AnalyticsDashboard />
+              </TabsContent>
+
+              <TabsContent value="stato-followup">
+                <LeadStatusDashboard />
               </TabsContent>
             </Tabs>
           </div>

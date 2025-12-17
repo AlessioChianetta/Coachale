@@ -1914,4 +1914,164 @@ router.get("/ai-system-info", authenticateToken, requireRole("consultant"), asyn
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FASE 7-8: Lead Status API - Stato dettagliato follow-up per ogni lead
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/lead-status", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    // Get all conversation states with lead info for this consultant
+    const leadStates = await db
+      .select({
+        conversationId: schema.conversationStates.conversationId,
+        currentState: schema.conversationStates.currentState,
+        followupCount: schema.conversationStates.followupCount,
+        consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
+        lastReplyAt: schema.conversationStates.lastReplyAt,
+        dormantUntil: schema.conversationStates.dormantUntil,
+        permanentlyExcluded: schema.conversationStates.permanentlyExcluded,
+        dormantReason: schema.conversationStates.dormantReason,
+        lastFollowupAt: schema.conversationStates.lastFollowupAt,
+        nextFollowupScheduledAt: schema.conversationStates.nextFollowupScheduledAt,
+        engagementScore: schema.conversationStates.engagementScore,
+        temperatureLevel: schema.conversationStates.temperatureLevel,
+        aiRecommendation: schema.conversationStates.aiRecommendation,
+        phoneNumber: schema.whatsappConversations.phoneNumber,
+        agentConfigId: schema.whatsappConversations.agentConfigId,
+        lastMessageAt: schema.whatsappConversations.lastMessageAt,
+      })
+      .from(schema.conversationStates)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.conversationStates.conversationId, schema.whatsappConversations.id)
+      )
+      .where(eq(schema.whatsappConversations.consultantId, consultantId))
+      .orderBy(desc(schema.whatsappConversations.lastMessageAt));
+    
+    // Enrich with lead name and agent name
+    const enrichedLeads = await Promise.all(
+      leadStates.map(async (lead) => {
+        // Get lead name from proactiveLeads if exists
+        let leadName = 'Lead';
+        const conversation = await db
+          .select({ proactiveLeadId: schema.whatsappConversations.proactiveLeadId })
+          .from(schema.whatsappConversations)
+          .where(eq(schema.whatsappConversations.id, lead.conversationId))
+          .limit(1);
+        
+        if (conversation[0]?.proactiveLeadId) {
+          const proactiveLead = await db
+            .select({ firstName: schema.proactiveLeads.firstName, lastName: schema.proactiveLeads.lastName })
+            .from(schema.proactiveLeads)
+            .where(eq(schema.proactiveLeads.id, conversation[0].proactiveLeadId))
+            .limit(1);
+          
+          if (proactiveLead[0]) {
+            leadName = `${proactiveLead[0].firstName || ''} ${proactiveLead[0].lastName || ''}`.trim() || 'Lead';
+          }
+        }
+        
+        // Get agent name
+        let agentName = 'Agente';
+        if (lead.agentConfigId) {
+          const agentConfig = await db
+            .select({ agentName: schema.consultantWhatsappConfig.agentName })
+            .from(schema.consultantWhatsappConfig)
+            .where(eq(schema.consultantWhatsappConfig.id, lead.agentConfigId))
+            .limit(1);
+          
+          if (agentConfig[0]) {
+            agentName = agentConfig[0].agentName || 'Agente';
+          }
+        }
+        
+        // Calculate status and next action
+        let status: 'active' | 'dormant' | 'excluded' = 'active';
+        let nextAction = '';
+        let nextActionDate: Date | null = null;
+        let reason = '';
+        
+        const now = new Date();
+        
+        if (lead.permanentlyExcluded) {
+          status = 'excluded';
+          reason = lead.dormantReason || 'Nessuna risposta dopo 4+ tentativi';
+          nextAction = 'Non lo contatto più';
+        } else if (lead.dormantUntil && new Date(lead.dormantUntil) > now) {
+          status = 'dormant';
+          const daysLeft = Math.ceil((new Date(lead.dormantUntil).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          reason = lead.dormantReason || 'Nessuna risposta dopo 3 tentativi';
+          nextAction = `Riprovo tra ${daysLeft} giorni`;
+          nextActionDate = new Date(lead.dormantUntil);
+        } else if (lead.nextFollowupScheduledAt) {
+          const scheduledDate = new Date(lead.nextFollowupScheduledAt);
+          if (scheduledDate > now) {
+            const hoursLeft = Math.ceil((scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60));
+            if (hoursLeft < 24) {
+              nextAction = `Contatto tra ${hoursLeft} ore`;
+            } else {
+              const daysLeft = Math.ceil(hoursLeft / 24);
+              nextAction = `Contatto tra ${daysLeft} giorni`;
+            }
+            nextActionDate = scheduledDate;
+            reason = `Follow-up #${lead.followupCount + 1} programmato`;
+          } else {
+            nextAction = 'In attesa valutazione AI';
+            reason = 'Il sistema sta decidendo quando contattare';
+          }
+        } else if (lead.consecutiveNoReplyCount >= 3) {
+          status = 'dormant';
+          reason = 'Raggiunto limite 3 tentativi senza risposta';
+          nextAction = 'Entrerà in dormienza';
+        } else {
+          nextAction = 'In attesa risposta';
+          reason = `Tentativi: ${lead.consecutiveNoReplyCount}/3 senza risposta`;
+        }
+        
+        return {
+          conversationId: lead.conversationId,
+          phoneNumber: lead.phoneNumber,
+          leadName,
+          agentName,
+          status,
+          currentState: lead.currentState,
+          followupCount: lead.followupCount,
+          consecutiveNoReplyCount: lead.consecutiveNoReplyCount,
+          lastReplyAt: lead.lastReplyAt,
+          lastFollowupAt: lead.lastFollowupAt,
+          dormantUntil: lead.dormantUntil,
+          permanentlyExcluded: lead.permanentlyExcluded,
+          engagementScore: lead.engagementScore,
+          temperatureLevel: lead.temperatureLevel,
+          nextAction,
+          nextActionDate,
+          reason,
+          aiRecommendation: lead.aiRecommendation,
+        };
+      })
+    );
+    
+    // Calculate summary stats
+    const activeCount = enrichedLeads.filter(l => l.status === 'active').length;
+    const dormantCount = enrichedLeads.filter(l => l.status === 'dormant').length;
+    const excludedCount = enrichedLeads.filter(l => l.status === 'excluded').length;
+    
+    res.json({
+      success: true,
+      leads: enrichedLeads,
+      summary: {
+        total: enrichedLeads.length,
+        active: activeCount,
+        dormant: dormantCount,
+        excluded: excludedCount,
+      },
+    });
+  } catch (error: any) {
+    console.error("Error fetching lead status:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 export default router;

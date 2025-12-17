@@ -5263,6 +5263,13 @@ export const conversationStates = pgTable("conversation_states", {
   lastFollowupAt: timestamp("last_followup_at"),
   nextFollowupScheduledAt: timestamp("next_followup_scheduled_at"),
   
+  // Intelligent retry logic - NEW FIELDS
+  consecutiveNoReplyCount: integer("consecutive_no_reply_count").default(0).notNull(), // Tentativi senza risposta consecutivi
+  lastReplyAt: timestamp("last_reply_at"), // Ultima risposta del lead
+  dormantUntil: timestamp("dormant_until"), // Data fine dormienza (3 mesi dopo 3 tentativi)
+  permanentlyExcluded: boolean("permanently_excluded").default(false).notNull(), // Mai più contattare
+  dormantReason: text("dormant_reason"), // Motivo dormienza es: "Nessuna risposta dopo 3 tentativi"
+  
   // AI scoring
   engagementScore: integer("engagement_score").default(50).notNull(), // 0-100
   conversionProbability: real("conversion_probability").default(0.5), // 0-1

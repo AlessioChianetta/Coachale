@@ -800,6 +800,12 @@ interface CandidateConversation {
   minutesSilent: number;
   secondsSilent: number;
   lastInboundMessageAt: Date | null;
+  // NEW: Intelligent retry logic fields
+  consecutiveNoReplyCount: number;
+  lastReplyAt: Date | null;
+  dormantUntil: Date | null;
+  permanentlyExcluded: boolean;
+  dormantReason: string | null;
 }
 
 /**
@@ -1070,6 +1076,12 @@ export async function findCandidateConversations(
       nextFollowupScheduledAt: conversationStates.nextFollowupScheduledAt,
       lastFollowupAt: conversationStates.lastFollowupAt,
       temperatureLevel: conversationStates.temperatureLevel,
+      // NEW: Intelligent retry logic fields
+      consecutiveNoReplyCount: conversationStates.consecutiveNoReplyCount,
+      lastReplyAt: conversationStates.lastReplyAt,
+      dormantUntil: conversationStates.dormantUntil,
+      permanentlyExcluded: conversationStates.permanentlyExcluded,
+      dormantReason: conversationStates.dormantReason,
       conversation: {
         consultantId: whatsappConversations.consultantId,
         agentConfigId: whatsappConversations.agentConfigId,
@@ -1146,7 +1158,32 @@ export async function findCandidateConversations(
       continue;
     }
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // NEW INTELLIGENT RETRY LOGIC - Replaces fixed maxFollowupsAllowed check
+    // ═══════════════════════════════════════════════════════════════════════════
+    
+    // 1. Skip permanently excluded leads (never contact again)
+    if (state.permanentlyExcluded) {
+      console.log(`🚫 [CANDIDATE] ${state.conversationId}: SKIPPED - Permanently excluded (${state.dormantReason || 'no reason'})`);
+      continue;
+    }
+    
+    // 2. Skip leads currently in dormancy period
+    if (state.dormantUntil && new Date(state.dormantUntil) > now) {
+      const daysUntilWakeup = Math.ceil((new Date(state.dormantUntil).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      console.log(`😴 [CANDIDATE] ${state.conversationId}: SKIPPED - Dormant until ${state.dormantUntil.toISOString()} (${daysUntilWakeup} days left)`);
+      continue;
+    }
+    
+    // 3. Check if reached 3 consecutive no-reply attempts (trigger dormancy)
+    if (state.consecutiveNoReplyCount >= 3 && !state.dormantUntil) {
+      console.log(`⏸️ [CANDIDATE] ${state.conversationId}: Reached 3 consecutive no-reply, should enter dormancy`);
+      // This will be handled in evaluateConversation
+    }
+    
+    // Keep legacy check as fallback safety net
     if (state.followupCount >= state.maxFollowupsAllowed) {
+      console.log(`🛑 [CANDIDATE] ${state.conversationId}: SKIPPED - Legacy max followups reached (${state.followupCount}/${state.maxFollowupsAllowed})`);
       continue;
     }
 
@@ -1202,6 +1239,12 @@ export async function findCandidateConversations(
       minutesSilent,
       secondsSilent,
       lastInboundMessageAt,
+      // NEW: Intelligent retry logic fields
+      consecutiveNoReplyCount: state.consecutiveNoReplyCount,
+      lastReplyAt: state.lastReplyAt ? new Date(state.lastReplyAt) : null,
+      dormantUntil: state.dormantUntil ? new Date(state.dormantUntil) : null,
+      permanentlyExcluded: state.permanentlyExcluded,
+      dormantReason: state.dormantReason,
     });
   }
 
@@ -1213,10 +1256,71 @@ async function evaluateConversation(
 ): Promise<'scheduled' | 'skipped' | 'stopped'> {
   console.log(`🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation ${candidate.conversationId}`);
   console.log(`   State: ${candidate.currentState}, Days silent: ${candidate.daysSilent}, Hours silent: ${candidate.hoursSilent.toFixed(1)}, Follow-ups: ${candidate.followupCount}/${candidate.maxFollowupsAllowed}`);
+  console.log(`   🆕 Consecutive no-reply: ${candidate.consecutiveNoReplyCount}/3, Dormant: ${candidate.dormantUntil ? 'YES until ' + candidate.dormantUntil.toISOString() : 'NO'}, Excluded: ${candidate.permanentlyExcluded}`);
   
-  // TASK 6: Safety net - check max follow-ups at the very beginning
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW INTELLIGENT RETRY LOGIC
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // 1. Check if permanently excluded
+  if (candidate.permanentlyExcluded) {
+    console.log(`🚫 [INTELLIGENT-RETRY] Lead permanently excluded: ${candidate.dormantReason || 'No reason provided'}`);
+    return 'stopped';
+  }
+  
+  // 2. Check if still in dormancy
+  const now = new Date();
+  if (candidate.dormantUntil && candidate.dormantUntil > now) {
+    const daysLeft = Math.ceil((candidate.dormantUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    console.log(`😴 [INTELLIGENT-RETRY] Lead still dormant for ${daysLeft} more days. Reason: ${candidate.dormantReason}`);
+    return 'skipped';
+  }
+  
+  // 3. Check if dormancy just ended (was dormant, now it's time to try once more)
+  if (candidate.dormantUntil && candidate.dormantUntil <= now && candidate.consecutiveNoReplyCount >= 3) {
+    // Check if this is the final attempt after dormancy (consecutiveNoReplyCount >= 4 means we already tried once after dormancy)
+    if (candidate.consecutiveNoReplyCount >= 4) {
+      console.log(`🚫 [INTELLIGENT-RETRY] Final attempt after dormancy already sent. Lead did not reply. PERMANENT EXCLUSION.`);
+      
+      await updateConversationState(candidate.conversationId, {
+        permanentlyExcluded: true,
+        dormantReason: 'Nessuna risposta dopo tentativo finale post-dormienza (4+ tentativi totali)',
+        lastAiEvaluationAt: new Date(),
+        aiRecommendation: `[INTELLIGENT-RETRY] Esclusione permanente: nessuna risposta dopo il tentativo finale post-dormienza`,
+      } as any);
+      
+      console.log(`🚫 [INTELLIGENT-RETRY] Lead ${candidate.conversationId} PERMANENTLY EXCLUDED`);
+      return 'stopped';
+    }
+    
+    console.log(`⏰ [INTELLIGENT-RETRY] Dormancy period ended! This is the FINAL attempt after 3-month break.`);
+    // Allow one more attempt, consecutiveNoReplyCount will increment to 4
+    // Next evaluation will trigger permanent exclusion if no reply
+  }
+  
+  // 4. Check if reached 3 consecutive no-replies (should enter dormancy)
+  if (candidate.consecutiveNoReplyCount >= 3 && !candidate.dormantUntil) {
+    console.log(`⏸️ [INTELLIGENT-RETRY] Reached 3 consecutive no-reply attempts. Entering 3-month dormancy.`);
+    
+    const dormantUntilDate = new Date();
+    dormantUntilDate.setMonth(dormantUntilDate.getMonth() + 3); // 3 months dormancy
+    
+    await updateConversationState(candidate.conversationId, {
+      currentState: 'ghost',
+      previousState: candidate.currentState,
+      lastAiEvaluationAt: new Date(),
+      aiRecommendation: `[INTELLIGENT-RETRY] 3 tentativi senza risposta. Dormienza attivata fino a ${dormantUntilDate.toLocaleDateString('it-IT')}`,
+      dormantUntil: dormantUntilDate,
+      dormantReason: 'Nessuna risposta dopo 3 tentativi consecutivi',
+    } as any);
+    
+    console.log(`😴 [INTELLIGENT-RETRY] Lead ${candidate.conversationId} now dormant until ${dormantUntilDate.toISOString()}`);
+    return 'stopped';
+  }
+  
+  // Legacy safety net (fallback)
   if (candidate.followupCount >= candidate.maxFollowupsAllowed) {
-    console.log(`🛑 [SAFETY-NET] Max follow-ups reached (${candidate.followupCount}/${candidate.maxFollowupsAllowed}), stopping`);
+    console.log(`🛑 [SAFETY-NET] Legacy max follow-ups reached (${candidate.followupCount}/${candidate.maxFollowupsAllowed}), stopping`);
     
     await updateConversationState(candidate.conversationId, {
       currentState: 'ghost',
@@ -2699,12 +2803,71 @@ async function sendFollowupMessage(
   if (contentVariables) {
     console.log(`📋 [FOLLOWUP-SCHEDULER] Passing contentVariables to Twilio: ${contentVariables}`);
   }
+
+  // Check if this is DRY RUN mode
+  const config = await db
+    .select({ dryRunMode: consultantWhatsappConfig.dryRunMode })
+    .from(consultantWhatsappConfig)
+    .where(eq(consultantWhatsappConfig.consultantId, consultantId))
+    .limit(1);
   
+  const isDryRun = config.length > 0 && config[0].dryRunMode === true;
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FIX: Save message to whatsappMessages BEFORE sending (like proactive-outreach)
+  // This ensures the message appears in the chat interface
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Build the message text for display (with DRY RUN prefix if applicable)
+  const displayMessageText = isDryRun 
+    ? `🧪 DRY RUN - Anteprima Follow-up\n\n${messageText}\n\n───────────────────\nTemplate ID: ${twilioContentSid || 'N/A'}`
+    : messageText;
+  
+  console.log(`💾 [FOLLOWUP-SCHEDULER] Saving message to whatsappMessages BEFORE sending...`);
+  
+  const [savedMessage] = await db
+    .insert(whatsappMessages)
+    .values({
+      conversationId: message.conversationId,
+      messageText: displayMessageText,
+      direction: 'outbound',
+      sender: 'ai',
+      mediaType: 'text',
+      twilioStatus: isDryRun ? 'sent' : 'queued',
+      twilioSid: isDryRun ? `DRY_RUN_FOLLOWUP_${Date.now()}_${Math.random().toString(36).substring(2, 6)}` : undefined,
+      sentAt: isDryRun ? new Date() : undefined,
+      metadata: {
+        isDryRun: isDryRun,
+        dryRun: isDryRun,
+        messageType: 'followup',
+        templateSid: twilioContentSid,
+        templateMode: !!twilioContentSid,
+        templateVariables: templateVars,
+        templateBody: messageText,
+        scheduledMessageId: message.id,
+      },
+    })
+    .returning();
+  
+  console.log(`✅ [FOLLOWUP-SCHEDULER] Message saved to whatsappMessages with ID: ${savedMessage.id}`);
+  
+  // Update conversation with last message info
+  await db
+    .update(whatsappConversations)
+    .set({
+      lastMessageAt: new Date(),
+      lastMessageFrom: 'ai',
+      messageCount: sql`message_count + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(whatsappConversations.id, message.conversationId));
+  
+  // Now send via Twilio (passing the savedMessageId for status updates)
   await sendWhatsAppMessage(
     consultantId,
     phoneNumber,
     messageText,
-    undefined,
+    savedMessage.id, // Pass the saved message ID for Twilio status callback updates
     {
       agentConfigId: agentConfigId || undefined,
       conversationId: message.conversationId,
@@ -2713,13 +2876,20 @@ async function sendFollowupMessage(
     }
   );
   
-  console.log(`✅ [FOLLOWUP-SCHEDULER] Message sent successfully to ${phoneNumber}`);
+  console.log(`✅ [FOLLOWUP-SCHEDULER] Message sent successfully to ${phoneNumber} (saved as ${savedMessage.id})`);
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UPDATE: Increment consecutiveNoReplyCount when sending follow-up
+  // This will be reset to 0 when lead replies (in webhook-handler)
+  // ═══════════════════════════════════════════════════════════════════════════
   await updateConversationState(message.conversationId, {
     followupCount: sql`followup_count + 1` as any,
+    consecutiveNoReplyCount: sql`consecutive_no_reply_count + 1` as any,
     lastFollowupAt: new Date(),
     nextFollowupScheduledAt: undefined,
   });
+  
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Updated state: followupCount+1, consecutiveNoReplyCount+1`);
 }
 
 export function isSchedulerRunning(): boolean {
