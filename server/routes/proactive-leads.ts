@@ -927,10 +927,47 @@ router.post("/proactive-leads/:id/trigger-now", authenticateToken, requireRole("
         error: `Lead status "${lead.status}" non valido per outreach. Solo lead "pending" possono essere contattati manualmente.`
       });
     }
+
+    // Import db and schema for validation and logging
+    const { db } = await import('../db');
+    const { proactiveLeadActivityLogs, marketingCampaigns, consultantWhatsappConfig } = await import('../../shared/schema');
+    const { eq } = await import('drizzle-orm');
+
+    // VALIDATION: Check if obiettivi are configured (from lead, campaign, or agent config)
+    const leadObiettivi = lead.leadInfo?.obiettivi?.trim();
+    if (!leadObiettivi) {
+      // Try to get from campaign or agent config
+      let hasObiettivi = false;
+      
+      if ((lead as any).campaignId) {
+        const campaign = await db.select()
+          .from(marketingCampaigns)
+          .where(eq(marketingCampaigns.id, (lead as any).campaignId))
+          .then(rows => rows[0]);
+        if (campaign?.defaultObiettivi?.trim()) {
+          hasObiettivi = true;
+        }
+      }
+      
+      if (!hasObiettivi) {
+        const agentConfig = await db.select()
+          .from(consultantWhatsappConfig)
+          .where(eq(consultantWhatsappConfig.id, lead.agentConfigId))
+          .then(rows => rows[0]);
+        if (agentConfig?.defaultObiettivi?.trim()) {
+          hasObiettivi = true;
+        }
+      }
+      
+      if (!hasObiettivi) {
+        return res.status(400).json({
+          success: false,
+          error: "Impossibile avviare l'outreach: gli Obiettivi non sono configurati. Modifica il lead e assegna una campagna con obiettivi, oppure inserisci gli obiettivi manualmente."
+        });
+      }
+    }
     
     // Log manual trigger
-    const { db } = await import('../db');
-    const { proactiveLeadActivityLogs } = await import('../../shared/schema');
     
     await db.insert(proactiveLeadActivityLogs).values({
       leadId: lead.id,

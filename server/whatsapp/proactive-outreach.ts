@@ -316,6 +316,26 @@ async function processLead(
       console.log(`ℹ️  Lead ${lead.id} has no campaign association - using agent defaults only`);
     }
 
+    // VALIDATION: Check if obiettivi are configured (from lead, campaign, or agent config)
+    const leadObiettivi = lead.leadInfo?.obiettivi?.trim();
+    const campaignObiettivi = campaign?.defaultObiettivi?.trim();
+    const agentObiettivi = agentConfig.defaultObiettivi?.trim();
+    
+    if (!leadObiettivi && !campaignObiettivi && !agentObiettivi) {
+      console.log(`❌ [OBIETTIVI MISSING] Skipping lead ${lead.id} - no obiettivi configured`);
+      await logLeadActivity(
+        lead.id,
+        lead.consultantId,
+        lead.agentConfigId,
+        'skipped',
+        'Obiettivi non configurati - impossibile procedere con outreach',
+        { skipReason: 'missing_obiettivi', leadHasObiettivi: !!leadObiettivi, campaignHasObiettivi: !!campaignObiettivi, agentHasObiettivi: !!agentObiettivi },
+        lead.status
+      );
+      return;
+    }
+    console.log(`✅ [OBIETTIVI CHECK] Lead has obiettivi: ${leadObiettivi ? 'from lead' : campaignObiettivi ? 'from campaign' : 'from agent config'}`);
+
     // Check if WhatsApp templates are configured
     // Precedence: campaign templates > agent config templates
     const agentTemplates = agentConfig.whatsappTemplates as {

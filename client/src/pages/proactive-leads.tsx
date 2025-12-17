@@ -620,19 +620,47 @@ export default function ProactiveLeadsPage() {
       ? format(new Date(lead.contactSchedule), "yyyy-MM-dd'T'HH:mm")
       : "";
 
+    // Get campaign defaults if lead has a campaign assigned
+    const leadCampaignId = (lead as any).campaignId || "";
+    const leadCampaign = leadCampaignId ? activeCampaigns.find((c: any) => c.id === leadCampaignId) : null;
+
+    // Apply campaign defaults if fields are empty
+    const existingLeadInfo = lead.leadInfo || {};
+    const appliedLeadInfo = {
+      obiettivi: existingLeadInfo.obiettivi || (leadCampaign?.defaultObiettivi) || "",
+      desideri: existingLeadInfo.desideri || (leadCampaign?.implicitDesires) || "",
+      uncino: existingLeadInfo.uncino || (leadCampaign?.hookText) || "",
+      fonte: existingLeadInfo.fonte || "",
+      // Preserve other fields from leadInfo (Hubdigital data)
+      email: existingLeadInfo.email,
+      companyName: existingLeadInfo.companyName,
+      website: existingLeadInfo.website,
+      customFields: existingLeadInfo.customFields,
+      dateAdded: existingLeadInfo.dateAdded,
+      dateOfBirth: existingLeadInfo.dateOfBirth,
+      address: existingLeadInfo.address,
+      city: existingLeadInfo.city,
+      state: existingLeadInfo.state,
+      postalCode: existingLeadInfo.postalCode,
+      country: existingLeadInfo.country,
+      ghlContactId: existingLeadInfo.ghlContactId,
+      ghlLocationId: existingLeadInfo.ghlLocationId,
+      assignedTo: existingLeadInfo.assignedTo,
+      tags: existingLeadInfo.tags,
+      dnd: existingLeadInfo.dnd,
+      dndSettings: existingLeadInfo.dndSettings,
+    };
+
+    const appliedIdealState = lead.idealState || (leadCampaign?.idealStateDescription) || "";
+
     setFormData({
-      campaignId: (lead as any).campaignId || "",
+      campaignId: leadCampaignId,
       firstName: lead.firstName,
       lastName: lead.lastName,
       phoneNumber: lead.phoneNumber,
       agentConfigId: lead.agentConfigId,
-      leadInfo: lead.leadInfo || {
-        obiettivi: "",
-        desideri: "",
-        uncino: "",
-        fonte: "",
-      },
-      idealState: lead.idealState || "",
+      leadInfo: appliedLeadInfo,
+      idealState: appliedIdealState,
       contactSchedule: contactScheduleFormatted,
       notes: lead.metadata?.notes || "",
     });

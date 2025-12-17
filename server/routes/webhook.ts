@@ -175,6 +175,25 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     // Use the source from payload (already validated if filter is active) or default to 'hubdigital'
     const source = payloadSource || 'hubdigital';
 
+    // Fetch campaign to apply defaults (obiettivi, desideri, uncino, idealState)
+    let campaign: any = null;
+    if (webhookConfig.targetCampaignId) {
+      const campaigns = await db.select()
+        .from(schema.marketingCampaigns)
+        .where(eq(schema.marketingCampaigns.id, webhookConfig.targetCampaignId));
+      
+      if (campaigns.length > 0) {
+        campaign = campaigns[0];
+        console.log(`📣 [WEBHOOK] Found campaign: ${campaign.campaignName} - applying defaults`);
+      }
+    }
+
+    // Also fetch agent config for fallback defaults
+    const agentConfigs = await db.select()
+      .from(schema.consultantWhatsappConfig)
+      .where(eq(schema.consultantWhatsappConfig.id, agentConfigId));
+    const agentConfig = agentConfigs.length > 0 ? agentConfigs[0] : null;
+
     const leadInfo: {
       obiettivi?: string;
       desideri?: string;
@@ -202,6 +221,10 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       dndSettings?: any;
     } = {
       fonte: source,
+      // Apply campaign defaults (priority: campaign > agentConfig)
+      obiettivi: campaign?.defaultObiettivi || agentConfig?.defaultObiettivi || undefined,
+      desideri: campaign?.implicitDesires || agentConfig?.defaultDesideri || undefined,
+      uncino: campaign?.hookText || agentConfig?.defaultUncino || undefined,
     };
 
     // Dati contatto base
@@ -233,6 +256,9 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     if (payload.dnd !== undefined) leadInfo.dnd = payload.dnd;
     if (payload.dndSettings) leadInfo.dndSettings = payload.dndSettings;
 
+    // Apply idealState from campaign or agent config
+    const idealState = campaign?.idealStateDescription || agentConfig?.defaultIdealState || undefined;
+
     const leadData: schema.InsertProactiveLead = {
       consultantId: webhookConfig.consultantId,
       agentConfigId: agentConfigId,
@@ -240,6 +266,7 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       lastName: lastName,
       phoneNumber: phoneNumber,
       leadInfo: leadInfo,
+      idealState: idealState,
       contactSchedule: new Date(),
       status: 'pending',
       campaignId: webhookConfig.targetCampaignId || undefined,
