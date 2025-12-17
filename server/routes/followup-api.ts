@@ -1291,25 +1291,10 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       let templateTwilioStatus = msg.templateTwilioStatus;
       let messagePreview = msg.fallbackMessage || msg.templateBody || null;
       
-      // Se il templateId inizia con HX, cerca nella tabella whatsappTemplates (template Twilio)
+      // Se il templateId inizia con HX, usa il SID come nome (i template Twilio non sono memorizzati localmente)
       if (msg.templateId && msg.templateId.startsWith('HX') && !templateName) {
-        const twilioTemplate = await db
-          .select({
-            friendlyName: schema.whatsappTemplates.friendlyName,
-            twilioStatus: schema.whatsappTemplates.twilioStatus,
-            bodyText: schema.whatsappTemplates.bodyText,
-          })
-          .from(schema.whatsappTemplates)
-          .where(eq(schema.whatsappTemplates.sid, msg.templateId))
-          .limit(1);
-        
-        if (twilioTemplate.length > 0) {
-          templateName = twilioTemplate[0].friendlyName;
-          templateTwilioStatus = twilioTemplate[0].twilioStatus as any || 'approved';
-          if (!messagePreview && twilioTemplate[0].bodyText) {
-            messagePreview = twilioTemplate[0].bodyText;
-          }
-        }
+        templateName = msg.templateId;
+        templateTwilioStatus = 'approved';
       }
       
       events.push({

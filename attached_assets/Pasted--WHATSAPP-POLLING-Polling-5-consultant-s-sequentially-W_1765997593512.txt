@@ -1,0 +1,79 @@
+📊 [WHATSAPP POLLING] Polling 5 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [FOLLOWUP-ENGINE] Decision: schedule (confidence: 0.95)
+   Reasoning: È passato troppo poco tempo (solo 11 minuti) dall'invio del primo messaggio al lead. Il lead non ha ancora avuto il tempo materiale di leggerlo e rispondere. Inviare un altro messaggio ora sarebbe controproducente e troppo aggressivo. Come da mia precedente valutazione, è saggio aspettare. Programmo quindi un follow-up per domani. Dato che il lead non ha ancora risposto, sono fuori dalla finestra di 24 ore di WhatsApp per messaggi liberi, quindi devo usare un template. Il template 'HX922112cd9b1d531c5be56772acd50034' è stato quello usato per il primo contatto, quindi per un follow-up suggerisco l'altro template disponibile, 'HX5e6d27c6d82026f3620247262ef67340', sperando sia adatto come promemoria o per chiedere nuovamente il motivo dell'iscrizione in modo leggermente diverso.
+   Latency: 24522ms
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+📝 [FOLLOWUP-ENGINE] Logging decision for conversation 68a51f7c-6c7f-4e7a-b43c-5aeed7926b6c
+✅ [FOLLOWUP-ENGINE] Decision logged successfully
+🔍 [TEMPLATE-TRACE] ═══ CHIAMATA 2: AI decision ═══
+🔍 [TEMPLATE-TRACE] candidate.agentConfigId: 760bb513-098f-4722-b02a-a700160c2fc3
+🔍 [TEMPLATE-TRACE] candidate.conversationId: 68a51f7c-6c7f-4e7a-b43c-5aeed7926b6c
+🔍 [TEMPLATE-TRACE] candidate.leadName: undefined
+🔍 [TEMPLATE-TRACE] decision.decision: schedule
+⚠️ [FOLLOWUP-SCHEDULER] Lead mai risposto - finestra 24h non ancora aperta, richiesto template approvato
+🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════
+🔍 [TEMPLATE-DEBUG] Cercando template per agentConfigId: 760bb513-098f-4722-b02a-a700160c2fc3
+🔍 [TEMPLATE-DEBUG] Conversation: 68a51f7c-6c7f-4e7a-b43c-5aeed7926b6c
+🔍 [TEMPLATE-DEBUG] Template TROVATI dalla query (tutti): 2
+🔍 [TEMPLATE-DEBUG]   1. templateId: HX922112cd9b1d531c5be56772acd50034, type: twilio, priority: 2
+🔍 [TEMPLATE-DEBUG]      - Inizia con HX? true
+🔍 [TEMPLATE-DEBUG]      - templateType === 'twilio'? true
+🔍 [TEMPLATE-DEBUG]   2. templateId: HX5e6d27c6d82026f3620247262ef67340, type: twilio, priority: 1
+🔍 [TEMPLATE-DEBUG]      - Inizia con HX? true
+🔍 [TEMPLATE-DEBUG]      - templateType === 'twilio'? true
+🔍 [TEMPLATE-DEBUG] Template DOPO filtro (HX + twilio): 2
+🔍 [TEMPLATE-DEBUG]   1. HX922112cd9b1d531c5be56772acd50034 (priority: 2)
+🔍 [TEMPLATE-DEBUG]   2. HX5e6d27c6d82026f3620247262ef67340 (priority: 1)
+🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════
+✅ [FOLLOWUP-SCHEDULER] Template Twilio approvato SELEZIONATO: HX922112cd9b1d531c5be56772acd50034 (priority: 2, type: twilio)
+🔒 [FOLLOWUP-SCHEDULER] Outside 24h window - using pre-validated template: HX922112cd9b1d531c5be56772acd50034
+📋 [TEMPLATE-FINAL] Conversation 68a51f7c-6c7f-4e7a-b43c-5aeed7926b6c:
+   leadNeverResponded: true
+   allowFreeformMessage: false
+   templateIdToUse: HX922112cd9b1d531c5be56772acd50034
+   fallbackMessageToUse: NULL
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+🔄 [FOLLOWUP-ENGINE] Updating conversation state for 68a51f7c-6c7f-4e7a-b43c-5aeed7926b6c
+   Updates: {
+  "nextFollowupScheduledAt": "2025-12-18T10:00:00.000Z",
+  "lastAiEvaluationAt": "2025-12-17T18:53:03.779Z",
+  "aiRecommendation": "È passato troppo poco tempo (solo 11 minuti) dall'invio del primo messaggio al lead. Il lead non ha ancora avuto il tempo materiale di leggerlo e rispondere. Inviare un altro messaggio ora sarebbe controproducente e troppo aggressivo. Come da mia precedente valutazione, è saggio aspettare. Programmo quindi un follow-up per domani. Dato che il lead non ha ancora risposto, sono fuori dalla finestra di 24 ore di WhatsApp per messaggi liberi, quindi devo usare un template. Il template 'HX922112cd9b1d531c5be56772acd50034' è stato quello usato per il primo contatto, quindi per un follow-up suggerisco l'altro template disponibile, 'HX5e6d27c6d82026f3620247262ef67340', sperando sia adatto come promemoria o per chiedere nuovamente il motivo dell'iscrizione in modo leggermente diverso."
+}
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+✅ [FOLLOWUP-ENGINE] Conversation state updated successfully
+📅 [FOLLOWUP-SCHEDULER] Scheduled follow-up for 68a51f7c-6c7f-4e7a-b43c-5aeed7926b6c at 2025-12-18T10:00:00.000Z (AI: "Sistema AI Marco")
+[FOLLOWUP-SCHEDULER] Evaluation Cycle cycle_1765997557347_tiq67x: 26.658s
+📈 [FOLLOWUP-SCHEDULER] ALL evaluation cycle completed
+   ⏱️  Duration: 26658ms
+   📊 Processed: 1/1
+   🌡️  Temperature updates: 0
+   📅 Scheduled: 1
+   ⏭️  Skipped: 0
+   🛑 Stopped: 0
+   ❌ Errors: 0
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+📊 [FOLLOWUP-SCHEDULER] Cycle Metrics Report
+📊 [FOLLOWUP-SCHEDULER] ───────────────────────────────────────
+📊 [FOLLOWUP-SCHEDULER] Timestamp: 2025-12-17T18:53:04.006Z
+📊 [FOLLOWUP-SCHEDULER] Cycle ID: cycle_1765997557347_tiq67x
+📊 [FOLLOWUP-SCHEDULER] Type: evaluation_all
+📊 [FOLLOWUP-SCHEDULER] Duration: 26658ms
+📊 [FOLLOWUP-SCHEDULER] Processed: 1
+📊 [FOLLOWUP-SCHEDULER] Success: 1
+📊 [FOLLOWUP-SCHEDULER] Errors: 0
+📊 [FOLLOWUP-SCHEDULER] Skipped: 0
+📊 [FOLLOWUP-SCHEDULER] Rate Limited: 0
+📊 [FOLLOWUP-SCHEDULER] Error Rate: 0.0%
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+6:53:04 PM [express] POST /api/followup/trigger-evaluation 200 in 26883ms :: {"success":true,"messag…
+✅ [WHATSAPP POLLING] Poll cycle complete
+6:53:06 PM [express] GET /api/followup/dashboard-stats 200 in 900ms :: {"awaitingFollowup":1,"sentTo…
+Error fetching activity log: TypeError: Cannot read properties of undefined (reading 'friendlyName')
+    at <anonymous> (/home/runner/workspace/server/routes/followup-api.ts:1298:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+6:53:06 PM [express] GET /api/followup/activity-log 500 in 1369ms :: {"message":"Cannot read propert…
