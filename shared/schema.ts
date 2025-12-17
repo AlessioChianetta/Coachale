@@ -5341,6 +5341,8 @@ export const scheduledFollowupMessages = pgTable("scheduled_followup_messages", 
   // AI decision context
   aiDecisionReasoning: text("ai_decision_reasoning"),
   aiConfidenceScore: real("ai_confidence_score"),
+  messagePreview: text("message_preview"),
+  aiSelectedTemplateReasoning: text("ai_selected_template_reasoning"),
   
   // Execution tracking
   sentAt: timestamp("sent_at"),

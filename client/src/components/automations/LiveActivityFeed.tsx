@@ -57,6 +57,7 @@ interface TimelineEvent {
   templateName?: string;
   templateTwilioStatus?: 'not_synced' | 'pending' | 'approved' | 'rejected' | null;
   messagePreview?: string;
+  aiSelectedTemplateReasoning?: string;
   temperatureLevel?: 'hot' | 'warm' | 'cold' | 'ghost';
 }
 
@@ -458,6 +459,12 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                             >
                               {showFullMessagePreview[event.id] ? 'Mostra meno' : 'Mostra tutto'}
                             </button>
+                          )}
+                          {event.aiSelectedTemplateReasoning && (
+                            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5 flex items-center gap-1">
+                              <Brain className="h-3 w-3" />
+                              <span className="font-medium">AI:</span> {event.aiSelectedTemplateReasoning}
+                            </p>
                           )}
                         </div>
                       )}

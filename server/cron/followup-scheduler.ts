@@ -1390,6 +1390,8 @@ async function evaluateConversation(
     // Use the template found during validation, or fall back to rule template
     let templateIdToUse: string | null = windowCheck.selectedTemplateId || null;
     let fallbackMessageToUse: string | null = null;
+    let messagePreview: string | null = null;
+    let aiSelectedTemplateReasoning: string | null = null;
     
     if (decision.allowFreeformMessage) {
       // CRITICAL FIX: Se il lead non ha mai risposto, NON usare freeform, DEVE usare template
@@ -1403,12 +1405,56 @@ async function evaluateConversation(
         fallbackMessageToUse = await generateFreeformFollowupMessage(context, candidate.consultantId);
         templateIdToUse = null;
       }
-    } else if (windowCheck.willBeOutside24h && windowCheck.selectedTemplateId) {
-      // CRITICAL: Outside 24h window - MUST use the pre-validated approved template from windowCheck
-      // This template was already validated for 24h compliance, do not override with AI
-      templateIdToUse = windowCheck.selectedTemplateId;
-      fallbackMessageToUse = effectiveAiRule.fallbackMessage || decision.suggestedMessage || null;
-      console.log(`🔒 [FOLLOWUP-SCHEDULER] Outside 24h window - using pre-validated template: ${templateIdToUse}`);
+    } else if (windowCheck.willBeOutside24h || candidate.leadNeverResponded) {
+      // Outside 24h window OR lead never responded - use AI to select best template from approved Twilio templates
+      console.log(`🎯 [FOLLOWUP-SCHEDULER] Outside 24h/Lead never responded - using AI to select best template`);
+      
+      try {
+        const allTemplates = await getAllApprovedTemplatesForAgent(candidate.agentConfigId);
+        
+        if (allTemplates.length === 0) {
+          throw new Error("No approved templates available for AI selection");
+        }
+        
+        const aiSelection = await selectBestTemplateWithAI(
+          {
+            leadName: candidate.leadName || 'Lead',
+            currentState: candidate.currentState,
+            daysSilent: candidate.daysSilent,
+            lastMessages: context.lastMessages
+          },
+          allTemplates,
+          candidate.consultantId
+        );
+        
+        if (aiSelection.selectedTemplateId) {
+          templateIdToUse = aiSelection.selectedTemplateId;
+          aiSelectedTemplateReasoning = aiSelection.reasoning;
+          const selectedTemplate = allTemplates.find(t => t.id === aiSelection.selectedTemplateId);
+          messagePreview = selectedTemplate?.bodyText || null;
+          console.log(`🤖 [FOLLOWUP-SCHEDULER] AI selected template (outside 24h): ${templateIdToUse}`);
+          console.log(`   Reasoning: ${aiSelection.reasoning}`);
+          console.log(`   Confidence: ${(aiSelection.confidence * 100).toFixed(0)}%`);
+        } else {
+          templateIdToUse = windowCheck.selectedTemplateId || null;
+          if (!templateIdToUse) {
+            console.error(`❌ [FOLLOWUP-SCHEDULER] CRITICAL: AI returned no selection and no fallback template available`);
+            throw new Error('No approved template available for scheduling outside 24h window');
+          }
+          console.log(`⚠️ [FOLLOWUP-SCHEDULER] AI returned no selection, using priority fallback: ${templateIdToUse}`);
+        }
+        
+        fallbackMessageToUse = effectiveAiRule.fallbackMessage || decision.suggestedMessage || null;
+        
+      } catch (aiError) {
+        console.error(`❌ [FOLLOWUP-SCHEDULER] AI template selection failed, using priority fallback:`, aiError);
+        templateIdToUse = windowCheck.selectedTemplateId || null;
+        if (!templateIdToUse) {
+          console.error(`❌ [FOLLOWUP-SCHEDULER] CRITICAL: No fallback template available for outside 24h/never-responded lead`);
+          throw new Error('No approved template available for scheduling outside 24h window');
+        }
+        fallbackMessageToUse = effectiveAiRule.fallbackMessage || decision.suggestedMessage || null;
+      }
     } else {
       // Inside 24h window - use AI to select best template from all available approved templates
       console.log(`🎯 [FOLLOWUP-SCHEDULER] Inside 24h window - using AI to select best template`);
@@ -1436,6 +1482,9 @@ async function evaluateConversation(
         
         if (aiSelection.selectedTemplateId) {
           templateIdToUse = aiSelection.selectedTemplateId;
+          aiSelectedTemplateReasoning = aiSelection.reasoning;
+          const selectedTemplate = allTemplates.find(t => t.id === aiSelection.selectedTemplateId);
+          messagePreview = selectedTemplate?.bodyText || null;
           console.log(`🤖 [FOLLOWUP-SCHEDULER] AI selected template: ${templateIdToUse}`);
           console.log(`   Reasoning: ${aiSelection.reasoning}`);
           console.log(`   Confidence: ${(aiSelection.confidence * 100).toFixed(0)}%`);
@@ -1477,6 +1526,8 @@ async function evaluateConversation(
         ? `Pending short-window: AI generated freeform message` 
         : decision.reasoning,
       aiConfidenceScore: decision.confidenceScore,
+      messagePreview: messagePreview || fallbackMessageToUse,
+      aiSelectedTemplateReasoning: aiSelectedTemplateReasoning,
       attemptCount: 0,
       maxAttempts: effectiveAiRule.maxAttempts,
     });
@@ -1986,18 +2037,24 @@ async function getAvailableTemplates(
 function calculateScheduledTime(decision: FollowupDecision): Date {
   const now = new Date();
   
+  const hour = decision.scheduledHour !== undefined ? decision.scheduledHour : 10;
+  const minute = decision.scheduledMinute !== undefined ? decision.scheduledMinute : 0;
+  
+  const validHour = Math.max(9, Math.min(18, hour));
+  const validMinute = Math.max(0, Math.min(59, minute));
+  
   switch (decision.urgency) {
     case 'now':
       return now;
     case 'tomorrow':
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(10, 0, 0, 0);
+      tomorrow.setHours(validHour, validMinute, 0, 0);
       return tomorrow;
     case 'next_week':
       const nextWeek = new Date(now);
       nextWeek.setDate(nextWeek.getDate() + 7);
-      nextWeek.setHours(10, 0, 0, 0);
+      nextWeek.setHours(validHour, validMinute, 0, 0);
       return nextWeek;
     default:
       return now;

@@ -1187,6 +1187,8 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         leadLastName: schema.proactiveLeads.lastName,
         templateId: schema.scheduledFollowupMessages.templateId,
         fallbackMessage: schema.scheduledFollowupMessages.fallbackMessage,
+        savedMessagePreview: schema.scheduledFollowupMessages.messagePreview,
+        aiSelectedTemplateReasoning: schema.scheduledFollowupMessages.aiSelectedTemplateReasoning,
         templateName: schema.whatsappCustomTemplates.templateName,
         templateBody: schema.whatsappCustomTemplates.body,
         templateTwilioStatus: schema.whatsappTemplateVersions.twilioStatus,
@@ -1289,7 +1291,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     for (const msg of enrichedMessages) {
       let templateName = msg.templateName;
       let templateTwilioStatus = msg.templateTwilioStatus;
-      let messagePreview = msg.fallbackMessage || msg.templateBody || null;
+      let messagePreview = msg.savedMessagePreview || msg.fallbackMessage || msg.templateBody || null;
       
       // Se il templateId inizia con HX, usa il SID come nome (i template Twilio non sono memorizzati localmente)
       if (msg.templateId && msg.templateId.startsWith('HX') && !templateName) {
@@ -1321,6 +1323,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         templateName: templateName || (msg.templateId?.startsWith('HX') ? msg.templateId : null),
         templateTwilioStatus: templateTwilioStatus || (msg.templateId ? 'not_synced' : null),
         messagePreview: messagePreview,
+        aiSelectedTemplateReasoning: msg.aiSelectedTemplateReasoning,
         temperatureLevel: msg.temperatureLevel || 'warm',
         currentState: msg.currentState,
       });

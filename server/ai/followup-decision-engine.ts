@@ -75,6 +75,8 @@ export interface FollowupContext {
 export interface FollowupDecision {
   decision: "send_now" | "schedule" | "skip" | "stop";
   urgency?: "now" | "tomorrow" | "next_week" | "never";
+  scheduledHour?: number;
+  scheduledMinute?: number;
   suggestedTemplateId?: string;
   suggestedMessage?: string;
   reasoning: string;
@@ -416,6 +418,8 @@ Rispondi con UNA delle seguenti azioni:
 {
   "decision": "send_now" | "schedule" | "skip" | "stop",
   "urgency": "now" | "tomorrow" | "next_week" | "never",
+  "scheduledHour": 9-18 (ora del giorno in cui inviare, decidi TU in base al contesto - es: 9 per mattina, 14 per pomeriggio),
+  "scheduledMinute": 0-59 (minuti, es: 0, 15, 30, 45),
   "suggestedTemplateId": "OBBLIGATORIO se fuori finestra 24h, ID del template da usare o null se nella finestra e preferisci messaggio libero",
   "suggestedMessage": "messaggio personalizzato SOLO se sei dentro la finestra 24h e non usi template",
   "reasoning": "spiegazione dettagliata in italiano della tua decisione, come la spiegheresti a un collega",
@@ -426,7 +430,9 @@ Rispondi con UNA delle seguenti azioni:
   "stateTransition": "nuovo stato suggerito (es: 'ghost', 'closed_lost') o null"
 }
 
-⚠️ RICORDA: Se sei FUORI dalla finestra 24h, DEVI specificare suggestedTemplateId!
+⚠️ RICORDA: 
+- Se sei FUORI dalla finestra 24h, DEVI specificare suggestedTemplateId!
+- scheduledHour: scegli un orario appropriato (9-18) in base al tipo di lead e contesto. Non usare sempre lo stesso orario!
 
 Ora analizza la situazione e decidi come Marco, il consulente esperto.`;
 }
