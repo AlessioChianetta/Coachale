@@ -1237,7 +1237,7 @@ async function evaluateConversation(
   // NUOVO: Creiamo una regola virtuale AI se non esiste una regola esplicita
   // Il sistema AI "Marco" funziona autonomamente senza regole predefinite
   const effectiveAiRule = aiDecisionRule || {
-    id: 'ai-virtual-rule',
+    id: null as string | null, // null perché ruleId è una foreign key e non esiste una regola esplicita
     name: 'Sistema AI Marco',
     triggerType: 'ai_decision' as const,
     maxAttempts: candidate.maxFollowupsAllowed,
