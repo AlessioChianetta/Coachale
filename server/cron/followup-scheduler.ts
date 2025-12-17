@@ -1251,8 +1251,9 @@ async function evaluateConversation(
   candidate: CandidateConversation
 ): Promise<'scheduled' | 'skipped' | 'stopped'> {
   console.log(`🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation ${candidate.conversationId}`);
-  console.log(`   State: ${candidate.currentState}, Days silent: ${candidate.daysSilent}, Hours silent: ${candidate.hoursSilent.toFixed(1)}, Follow-ups: ${candidate.followupCount}/${candidate.maxFollowupsAllowed}`);
-  console.log(`   🆕 Consecutive no-reply: ${candidate.consecutiveNoReplyCount}/3, Dormant: ${candidate.dormantUntil ? 'YES until ' + candidate.dormantUntil.toISOString() : 'NO'}, Excluded: ${candidate.permanentlyExcluded}`);
+  console.log(`   State: ${candidate.currentState}, Days silent: ${candidate.daysSilent}, Hours silent: ${candidate.hoursSilent.toFixed(1)}`);
+  console.log(`   📊 Follow-ups: ${candidate.followupCount} total | 🆕 Consecutive no-reply: ${candidate.consecutiveNoReplyCount}/3 → Dormancy`);
+  console.log(`   😴 Status: ${candidate.permanentlyExcluded ? '🚫 PERMANENTLY EXCLUDED' : candidate.dormantUntil && new Date(candidate.dormantUntil) > new Date() ? `DORMANT until ${candidate.dormantUntil.toISOString()}` : 'ACTIVE'}`);
   
   // ═══════════════════════════════════════════════════════════════════════════
   // NEW INTELLIGENT RETRY LOGIC

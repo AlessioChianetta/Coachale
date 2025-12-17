@@ -688,13 +688,17 @@ export async function updateConversationState(
     hasSaidNoExplicitly: boolean;
     discoveryCompleted: boolean;
     demoPresented: boolean;
-    followupCount: number;
+    followupCount: number | any; // Allow SQL expressions
+    consecutiveNoReplyCount: number | any; // Allow SQL expressions
     lastFollowupAt: Date;
     nextFollowupScheduledAt: Date;
     engagementScore: number;
     conversionProbability: number;
     lastAiEvaluationAt: Date;
     aiRecommendation: string;
+    dormantUntil: Date | null;
+    permanentlyExcluded: boolean;
+    dormantReason: string | null;
   }>
 ): Promise<void> {
   try {
@@ -734,12 +738,16 @@ export async function updateConversationState(
     if (updates.discoveryCompleted !== undefined) updateData.discoveryCompleted = updates.discoveryCompleted;
     if (updates.demoPresented !== undefined) updateData.demoPresented = updates.demoPresented;
     if (updates.followupCount !== undefined) updateData.followupCount = updates.followupCount;
+    if (updates.consecutiveNoReplyCount !== undefined) updateData.consecutiveNoReplyCount = updates.consecutiveNoReplyCount;
     if (updates.lastFollowupAt !== undefined) updateData.lastFollowupAt = updates.lastFollowupAt;
     if (updates.nextFollowupScheduledAt !== undefined) updateData.nextFollowupScheduledAt = updates.nextFollowupScheduledAt;
     if (updates.engagementScore !== undefined) updateData.engagementScore = updates.engagementScore;
     if (updates.conversionProbability !== undefined) updateData.conversionProbability = updates.conversionProbability;
     if (updates.lastAiEvaluationAt !== undefined) updateData.lastAiEvaluationAt = updates.lastAiEvaluationAt;
     if (updates.aiRecommendation !== undefined) updateData.aiRecommendation = updates.aiRecommendation;
+    if (updates.dormantUntil !== undefined) updateData.dormantUntil = updates.dormantUntil;
+    if (updates.permanentlyExcluded !== undefined) updateData.permanentlyExcluded = updates.permanentlyExcluded;
+    if (updates.dormantReason !== undefined) updateData.dormantReason = updates.dormantReason;
 
     await db
       .update(conversationStates)
