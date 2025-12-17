@@ -1795,4 +1795,139 @@ router.get("/agent-templates", authenticateToken, requireRole("consultant"), asy
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// AI PREFERENCES - Personalizzazione comportamento AI (Sistema 100% AI)
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/ai-preferences", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const [preferences] = await db
+      .select()
+      .from(schema.consultantAiPreferences)
+      .where(eq(schema.consultantAiPreferences.consultantId, req.user!.id))
+      .limit(1);
+    
+    if (!preferences) {
+      // Return default preferences if none exist
+      return res.json({
+        success: true,
+        preferences: {
+          maxFollowupsTotal: 5,
+          minHoursBetweenFollowups: 24,
+          workingHoursStart: 9,
+          workingHoursEnd: 19,
+          workingDays: [1, 2, 3, 4, 5],
+          toneStyle: "professionale",
+          messageLength: "medio",
+          useEmojis: false,
+          aggressivenessLevel: 5,
+          persistenceLevel: 5,
+          firstFollowupDelayHours: 24,
+          templateNoResponseDelayHours: 48,
+          coldLeadReactivationDays: 7,
+          customInstructions: null,
+          businessContext: null,
+          targetAudience: null,
+          neverContactWeekends: false,
+          respectHolidays: true,
+          stopOnFirstNo: true,
+          requireLeadResponseForFreeform: true,
+          allowAiToSuggestTemplates: true,
+          allowAiToWriteFreeformMessages: true,
+          logAiReasoning: true,
+          isActive: true,
+        },
+        isDefault: true,
+      });
+    }
+    
+    res.json({
+      success: true,
+      preferences,
+      isDefault: false,
+    });
+  } catch (error: any) {
+    console.error("Error fetching AI preferences:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+router.put("/ai-preferences", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const updates = req.body;
+    
+    // Check if preferences exist
+    const [existing] = await db
+      .select()
+      .from(schema.consultantAiPreferences)
+      .where(eq(schema.consultantAiPreferences.consultantId, req.user!.id))
+      .limit(1);
+    
+    let result;
+    
+    if (existing) {
+      // Update existing
+      [result] = await db
+        .update(schema.consultantAiPreferences)
+        .set({
+          ...updates,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.consultantAiPreferences.consultantId, req.user!.id))
+        .returning();
+    } else {
+      // Create new
+      [result] = await db
+        .insert(schema.consultantAiPreferences)
+        .values({
+          consultantId: req.user!.id,
+          ...updates,
+        })
+        .returning();
+    }
+    
+    console.log(`✅ [AI-PREFERENCES] Updated preferences for consultant ${req.user!.id}`);
+    
+    res.json({
+      success: true,
+      preferences: result,
+      message: "Preferenze AI aggiornate con successo",
+    });
+  } catch (error: any) {
+    console.error("Error updating AI preferences:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Get AI system info for display
+router.get("/ai-system-info", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      system: {
+        name: "Assistente AI Intelligente",
+        version: "2.0",
+        description: "L'AI analizza ogni lead come un consulente esperto con 15 anni di esperienza, decidendo autonomamente quando e come contattarli.",
+        capabilities: [
+          { icon: "🧠", title: "Analisi Intelligente", description: "Legge la chat completa e interpreta il contesto" },
+          { icon: "⏰", title: "Timing Ottimale", description: "Sceglie il momento migliore per ogni follow-up" },
+          { icon: "🎯", title: "Personalizzazione", description: "Adatta messaggi e template al singolo lead" },
+          { icon: "🚫", title: "Rispetto Decisioni", description: "Si ferma automaticamente ai NO espliciti" },
+          { icon: "📊", title: "Apprendimento", description: "Migliora dalle valutazioni precedenti" },
+        ],
+        defaultBehavior: [
+          "Attende 24-48h dopo il primo template senza risposta",
+          "Non tempesta i lead con messaggi ravvicinati",
+          "Usa template approvati fuori dalla finestra 24h",
+          "Rispetta orari lavorativi del consulente",
+          "Ferma follow-up dopo un NO esplicito",
+        ],
+      },
+    });
+  } catch (error: any) {
+    console.error("Error fetching AI system info:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 export default router;
