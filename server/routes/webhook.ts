@@ -108,6 +108,26 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       });
     }
 
+    // SOURCE FILTER LOGIC: If defaultSource is configured, ONLY accept leads with matching source
+    // Leads with different sources are skipped and counted
+    const payloadSource = payload.source || '';
+    const configuredSource = webhookConfig.defaultSource || '';
+    
+    if (configuredSource && payloadSource !== configuredSource) {
+      console.log(`⏭️ [WEBHOOK] Source filter active - Skipping lead. Expected: "${configuredSource}", Got: "${payloadSource}"`);
+      
+      // Increment skipped leads counter
+      await storage.incrementWebhookSkippedCount(webhookConfig.id);
+      
+      return res.json({
+        success: true,
+        skipped: true,
+        message: `Lead skipped: source "${payloadSource}" does not match filter "${configuredSource}"`,
+        expectedSource: configuredSource,
+        receivedSource: payloadSource,
+      });
+    }
+
     let firstName = payload.firstName || '';
     let lastName = payload.lastName || '';
     
@@ -152,8 +172,8 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
     } else {
       console.log(`✅ [WEBHOOK] Using configured agent: ${agentConfigId}`);
     }
-    // Use configured defaultSource if set, otherwise use payload source or default to 'hubdigital'
-    const source = webhookConfig.defaultSource || payload.source || 'hubdigital';
+    // Use the source from payload (already validated if filter is active) or default to 'hubdigital'
+    const source = payloadSource || 'hubdigital';
 
     const leadInfo: {
       obiettivi?: string;

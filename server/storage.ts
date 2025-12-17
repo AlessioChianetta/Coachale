@@ -4727,6 +4727,20 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async incrementWebhookSkippedCount(id: string): Promise<void> {
+    try {
+      await db.update(schema.webhookConfigs)
+        .set({
+          skippedLeadsCount: sql`${schema.webhookConfigs.skippedLeadsCount} + 1`,
+          lastWebhookAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(schema.webhookConfigs.id, id));
+    } catch (error: any) {
+      console.error(`Error incrementing webhook skipped count for ${id}:`, error);
+    }
+  }
+
   // External Lead Import Log operations
   async createExternalLeadImportLog(data: InsertExternalLeadImportLog): Promise<ExternalLeadImportLog> {
     try {

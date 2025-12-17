@@ -3249,6 +3249,7 @@ export const webhookConfigs = pgTable("webhook_configs", {
   isActive: boolean("is_active").default(true).notNull(),
   lastWebhookAt: timestamp("last_webhook_at"), // Last webhook received timestamp
   totalLeadsReceived: integer("total_leads_received").default(0).notNull(),
+  skippedLeadsCount: integer("skipped_leads_count").default(0).notNull(), // Leads filtered out by source filter
   
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

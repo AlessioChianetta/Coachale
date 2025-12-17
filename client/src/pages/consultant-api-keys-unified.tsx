@@ -15,7 +15,8 @@ import {
   Bot, Key, Mail, MessageSquare, Server, Cloud, Sparkles, Save, 
   AlertCircle, Clock, CheckCircle, Plus, Trash2, Users, Calendar, XCircle,
   RefreshCw, Eye, EyeOff, Loader2, ExternalLink, FileText, CalendarDays, Video,
-  BookOpen, ChevronDown, Shield, Database, Plug, Copy, Check
+  BookOpen, ChevronDown, ChevronUp, Shield, Database, Plug, Copy, Check, Filter,
+  MapPin, Tag, Settings, Send, User
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import Navbar from "@/components/navbar";
@@ -778,18 +779,38 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
-  // State per il test del webhook Hubdigital
+  // State per il test del webhook Hubdigital - Expanded with all fields
   const [hubdigitalTestData, setHubdigitalTestData] = useState({
+    // Dati base
     firstName: "Mario",
     lastName: "Rossi",
     email: "mario.rossi@test.com",
     phone: "+39 333 1234567",
     companyName: "Test SRL",
     source: "hubdigital-test",
+    website: "",
+    dateOfBirth: "",
+    // Indirizzo
+    address1: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "Italia",
+    // GHL IDs
+    locationId: "loc_test123",
+    contactId: "contact_test456",
+    assignedTo: "",
+    // Tags
+    tags: [] as string[],
+    tagInput: "",
+    // Custom fields
     customFieldKey: "",
     customFieldValue: "",
     customFields: [] as Array<{id: string, value: string}>,
+    // DND
+    dnd: false,
   });
+  const [showAdvancedTest, setShowAdvancedTest] = useState(false);
   const [hubdigitalTestResult, setHubdigitalTestResult] = useState<{
     success: boolean;
     message: string;
@@ -812,17 +833,38 @@ export default function ConsultantApiKeysUnified() {
     setHubdigitalTestResult(null);
 
     try {
-      const payload = {
+      const payload: any = {
         type: "ContactCreate",
         firstName: hubdigitalTestData.firstName,
         lastName: hubdigitalTestData.lastName,
-        email: hubdigitalTestData.email,
+        email: hubdigitalTestData.email || undefined,
         phone: hubdigitalTestData.phone,
-        companyName: hubdigitalTestData.companyName,
+        companyName: hubdigitalTestData.companyName || undefined,
         source: hubdigitalTestData.source,
         dateAdded: new Date().toISOString(),
-        customFields: hubdigitalTestData.customFields,
+        // GHL IDs
+        locationId: hubdigitalTestData.locationId || undefined,
+        id: hubdigitalTestData.contactId || undefined,
+        // Extra fields
+        website: hubdigitalTestData.website || undefined,
+        dateOfBirth: hubdigitalTestData.dateOfBirth || undefined,
+        assignedTo: hubdigitalTestData.assignedTo || undefined,
+        // Address
+        address1: hubdigitalTestData.address1 || undefined,
+        city: hubdigitalTestData.city || undefined,
+        state: hubdigitalTestData.state || undefined,
+        postalCode: hubdigitalTestData.postalCode || undefined,
+        country: hubdigitalTestData.country || undefined,
+        // Tags
+        tags: hubdigitalTestData.tags.length > 0 ? hubdigitalTestData.tags : undefined,
+        // Custom fields
+        customFields: hubdigitalTestData.customFields.length > 0 ? hubdigitalTestData.customFields : undefined,
+        // DND
+        dnd: hubdigitalTestData.dnd || undefined,
       };
+      
+      // Remove undefined values
+      Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
 
       const response = await fetch(`/api/webhook/hubdigital/${testConfig.secretKey}`, {
         method: "POST",
@@ -3468,6 +3510,14 @@ export default function ConsultantApiKeysUnified() {
                       </AlertDescription>
                     </Alert>
 
+                    {/* Source Filter Explanation */}
+                    <Alert className="mb-4 bg-purple-50 border-purple-200">
+                      <Filter className="h-5 w-5 text-purple-600" />
+                      <AlertDescription className="text-sm text-purple-800">
+                        <strong>Filtro Fonte (Source Filter)</strong> - Se imposti un "Filtro Fonte" nella configurazione, il webhook accetterà <strong>SOLO</strong> i lead che arrivano con quella fonte esatta nel campo <code className="bg-purple-100 px-1 rounded">source</code>. I lead con fonte diversa verranno scartati automaticamente e conteggiati nella colonna "Scartati". Se lasci il filtro vuoto, tutti i lead verranno accettati.
+                      </AlertDescription>
+                    </Alert>
+
                     {/* Field Mapping Legend */}
                     <Collapsible className="mb-6">
                       <CollapsibleTrigger asChild>
@@ -3494,13 +3544,13 @@ export default function ConsultantApiKeysUnified() {
                                   <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300 shrink-0">type</Badge>
                                   <span className="text-gray-700">Tipo evento - Solo "ContactCreate" viene processato</span>
                                 </div>
-                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">locationId</Badge>
-                                  <span className="text-gray-500">ID location GHL - Non salvato</span>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">locationId</Badge>
+                                  <span className="text-gray-700">ID location GHL → leadInfo.ghlLocationId</span>
                                 </div>
-                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">id</Badge>
-                                  <span className="text-gray-500">ID univoco contatto GHL - Non salvato</span>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">id</Badge>
+                                  <span className="text-gray-700">ID contatto GHL → leadInfo.ghlContactId</span>
                                 </div>
                               </div>
                             </div>
@@ -3521,9 +3571,9 @@ export default function ConsultantApiKeysUnified() {
                                   <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">name</Badge>
                                   <span className="text-gray-700">Nome completo (diviso in nome/cognome)</span>
                                 </div>
-                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">dateOfBirth</Badge>
-                                  <span className="text-gray-500">Data di nascita - Non salvato</span>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">dateOfBirth</Badge>
+                                  <span className="text-gray-700">Data di nascita → leadInfo.dateOfBirth</span>
                                 </div>
                               </div>
                             </div>
@@ -3540,25 +3590,25 @@ export default function ConsultantApiKeysUnified() {
                                   <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">email</Badge>
                                   <span className="text-gray-700">Email → leadInfo.email</span>
                                 </div>
-                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">address1</Badge>
-                                  <span className="text-gray-500">Indirizzo - Non salvato</span>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">address1</Badge>
+                                  <span className="text-gray-700">Indirizzo → leadInfo.address</span>
                                 </div>
-                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">city</Badge>
-                                  <span className="text-gray-500">Città - Non salvato</span>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">city</Badge>
+                                  <span className="text-gray-700">Città → leadInfo.city</span>
                                 </div>
-                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">state</Badge>
-                                  <span className="text-gray-500">Provincia - Non salvato</span>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">state</Badge>
+                                  <span className="text-gray-700">Provincia → leadInfo.state</span>
                                 </div>
-                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">postalCode</Badge>
-                                  <span className="text-gray-500">CAP - Non salvato</span>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">postalCode</Badge>
+                                  <span className="text-gray-700">CAP → leadInfo.postalCode</span>
                                 </div>
-                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">country</Badge>
-                                  <span className="text-gray-500">Paese - Non salvato</span>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">country</Badge>
+                                  <span className="text-gray-700">Paese → leadInfo.country</span>
                                 </div>
                               </div>
                             </div>
@@ -3571,9 +3621,9 @@ export default function ConsultantApiKeysUnified() {
                                   <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">companyName</Badge>
                                   <span className="text-gray-700">Nome azienda → leadInfo.companyName</span>
                                 </div>
-                                <div className="flex items-start gap-2 p-2 bg-gray-50 rounded border border-dashed">
-                                  <Badge variant="outline" className="bg-gray-100 text-gray-500 border-gray-300 shrink-0">website</Badge>
-                                  <span className="text-gray-500">Sito web - Non salvato</span>
+                                <div className="flex items-start gap-2 p-2 bg-white rounded border">
+                                  <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300 shrink-0">website</Badge>
+                                  <span className="text-gray-700">Sito web → leadInfo.website</span>
                                 </div>
                               </div>
                             </div>
@@ -3887,8 +3937,10 @@ export default function ConsultantApiKeysUnified() {
                                   <TableHead>Nome</TableHead>
                                   <TableHead>Agente</TableHead>
                                   <TableHead>Campagna</TableHead>
+                                  <TableHead>Filtro Fonte</TableHead>
                                   <TableHead>Stato</TableHead>
-                                  <TableHead className="text-center">Lead</TableHead>
+                                  <TableHead className="text-center">Importati</TableHead>
+                                  <TableHead className="text-center">Scartati</TableHead>
                                   <TableHead>URL Webhook</TableHead>
                                   <TableHead className="text-right">Azioni</TableHead>
                                 </TableRow>
@@ -3908,6 +3960,15 @@ export default function ConsultantApiKeysUnified() {
                                       {campaigns.find((c: any) => c.id === config.targetCampaignId)?.campaignName || "-"}
                                     </TableCell>
                                     <TableCell>
+                                      {config.defaultSource ? (
+                                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-300 font-mono text-xs">
+                                          {config.defaultSource}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-gray-400 text-xs">Tutti</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
                                       <Badge
                                         variant={config.isActive ? "default" : "secondary"}
                                         className={config.isActive ? "bg-green-500" : "bg-gray-400"}
@@ -3917,6 +3978,15 @@ export default function ConsultantApiKeysUnified() {
                                     </TableCell>
                                     <TableCell className="text-center font-bold text-green-700">
                                       {config.totalLeadsReceived || 0}
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      {(config.skippedLeadsCount || 0) > 0 ? (
+                                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300">
+                                          {config.skippedLeadsCount}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-gray-400">0</span>
+                                      )}
                                     </TableCell>
                                     <TableCell>
                                       <div className="flex items-center gap-2">
@@ -4038,17 +4108,27 @@ export default function ConsultantApiKeysUnified() {
 
                     {/* Test Webhook Section - Only show if there are configs */}
                     {hubdigitalConfigs.length > 0 && (
-                      <Card className="border-2 border-orange-200 shadow-xl bg-gradient-to-br from-orange-50 to-amber-50 mt-6">
-                        <CardHeader>
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            <Sparkles className="h-5 w-5 text-orange-600" />
-                            Test Webhook
-                          </CardTitle>
-                          <CardDescription>Simula l'invio di un lead da Hubdigital.io per testare il webhook</CardDescription>
+                      <Card className="border-2 border-orange-200 shadow-2xl bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 mt-6 overflow-hidden">
+                        <CardHeader className="bg-gradient-to-r from-orange-500 to-amber-500 text-white pb-6">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                                <Sparkles className="h-6 w-6 text-white" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-xl text-white">Test Webhook Completo</CardTitle>
+                                <CardDescription className="text-orange-100">Simula l'invio di un lead con tutti i campi disponibili</CardDescription>
+                              </div>
+                            </div>
+                            <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                              {hubdigitalConfigs.length} config
+                            </Badge>
+                          </div>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Seleziona configurazione da testare</Label>
+                        <CardContent className="space-y-6 pt-6">
+                          {/* Config Selection */}
+                          <div className="p-4 bg-white/60 rounded-xl border border-orange-200 shadow-sm">
+                            <Label className="text-sm font-semibold text-orange-800 mb-2 block">Configurazione da Testare</Label>
                             <Select
                               value={selectedTestConfigId || hubdigitalConfigs[0]?.id || ""}
                               onValueChange={(configId) => {
@@ -4062,13 +4142,16 @@ export default function ConsultantApiKeysUnified() {
                                 }
                               }}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className="bg-white border-orange-200 focus:border-orange-400">
                                 <SelectValue placeholder="Seleziona una configurazione" />
                               </SelectTrigger>
                               <SelectContent>
                                 {hubdigitalConfigs.map((config: any) => (
                                   <SelectItem key={config.id} value={config.id}>
-                                    {config.configName || config.displayName || "Hubdigital.io"} {config.isActive ? "(Attivo)" : "(Inattivo)"}
+                                    <span className="flex items-center gap-2">
+                                      {config.isActive ? <CheckCircle className="h-3 w-3 text-green-500" /> : <XCircle className="h-3 w-3 text-gray-400" />}
+                                      {config.configName || config.displayName || "Hubdigital.io"}
+                                    </span>
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -4082,10 +4165,10 @@ export default function ConsultantApiKeysUnified() {
                               : hubdigitalConfigs[0];
                             if (testConfig?.defaultSource) {
                               return (
-                                <Alert className="bg-purple-50 border-purple-200">
+                                <Alert className="bg-purple-50 border-purple-200 rounded-xl">
                                   <AlertCircle className="h-4 w-4 text-purple-600" />
                                   <AlertDescription className="text-sm text-purple-800">
-                                    <strong>Nota:</strong> Questa configurazione ha una fonte predefinita "{testConfig.defaultSource}" che sovrascriverà il campo Fonte del test.
+                                    <strong>Nota:</strong> Fonte predefinita "<span className="font-mono bg-purple-100 px-1 rounded">{testConfig.defaultSource}</span>" sovrascriverà il campo Fonte.
                                   </AlertDescription>
                                 </Alert>
                               );
@@ -4093,166 +4176,384 @@ export default function ConsultantApiKeysUnified() {
                             return null;
                           })()}
 
-                          <Alert className="bg-orange-50 border-orange-200">
-                            <AlertCircle className="h-4 w-4 text-orange-600" />
-                            <AlertDescription className="text-sm text-orange-800">
-                              Simula l'invio di un lead da Hubdigital.io. Il lead verrà creato esattamente come se provenisse dal CRM esterno.
-                            </AlertDescription>
-                          </Alert>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="testFirstName">Nome</Label>
-                              <Input
-                                id="testFirstName"
-                                value={hubdigitalTestData.firstName}
-                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, firstName: e.target.value }))}
-                                placeholder="Mario"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="testLastName">Cognome</Label>
-                              <Input
-                                id="testLastName"
-                                value={hubdigitalTestData.lastName}
-                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, lastName: e.target.value }))}
-                                placeholder="Rossi"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="testPhone" className="text-orange-700 font-medium">Telefono *</Label>
-                              <Input
-                                id="testPhone"
-                                value={hubdigitalTestData.phone}
-                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, phone: e.target.value }))}
-                                placeholder="+39 333 1234567"
-                                className={!hubdigitalTestData.phone.trim() ? "border-red-400 focus:border-red-500" : ""}
-                                required
-                              />
-                              {!hubdigitalTestData.phone.trim() ? (
-                                <p className="text-xs text-red-500 font-medium">Campo obbligatorio</p>
-                              ) : (
-                                <p className="text-xs text-gray-500">Cambia il numero per ogni test per evitare duplicati.</p>
-                              )}
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="testEmail">Email</Label>
-                              <Input
-                                id="testEmail"
-                                type="email"
-                                value={hubdigitalTestData.email}
-                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, email: e.target.value }))}
-                                placeholder="mario.rossi@test.com"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="testCompany">Azienda</Label>
-                              <Input
-                                id="testCompany"
-                                value={hubdigitalTestData.companyName}
-                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, companyName: e.target.value }))}
-                                placeholder="Test SRL"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="testSource">Fonte (payload)</Label>
-                              <Input
-                                id="testSource"
-                                value={hubdigitalTestData.source}
-                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, source: e.target.value }))}
-                                placeholder="hubdigital-test"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Custom Fields Editor */}
-                          <div className="space-y-3 pt-2 border-t">
-                            <Label className="text-sm font-medium">Custom Fields (opzionale)</Label>
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder="ID Campo (es. campo_xyz123)"
-                                value={hubdigitalTestData.customFieldKey}
-                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, customFieldKey: e.target.value }))}
-                                className="flex-1"
-                              />
-                              <Input
-                                placeholder="Valore"
-                                value={hubdigitalTestData.customFieldValue}
-                                onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, customFieldValue: e.target.value }))}
-                                className="flex-1"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  if (hubdigitalTestData.customFieldKey.trim() && hubdigitalTestData.customFieldValue.trim()) {
-                                    setHubdigitalTestData(prev => ({
-                                      ...prev,
-                                      customFields: [...prev.customFields, { id: prev.customFieldKey.trim(), value: prev.customFieldValue.trim() }],
-                                      customFieldKey: "",
-                                      customFieldValue: "",
-                                    }));
-                                  }
-                                }}
-                                disabled={!hubdigitalTestData.customFieldKey.trim() || !hubdigitalTestData.customFieldValue.trim()}
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            {hubdigitalTestData.customFields.length > 0 && (
-                              <div className="flex flex-wrap gap-2">
-                                {hubdigitalTestData.customFields.map((cf, idx) => (
-                                  <Badge 
-                                    key={idx} 
-                                    variant="secondary" 
-                                    className="bg-purple-100 text-purple-800 cursor-pointer hover:bg-red-100 hover:text-red-800"
-                                    onClick={() => {
-                                      setHubdigitalTestData(prev => ({
-                                        ...prev,
-                                        customFields: prev.customFields.filter((_, i) => i !== idx)
-                                      }));
-                                    }}
-                                  >
-                                    {cf.id}: {cf.value} ✕
-                                  </Badge>
-                                ))}
+                          {/* Basic Fields */}
+                          <div className="space-y-4">
+                            <h4 className="font-semibold text-gray-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                              <User className="h-4 w-4 text-orange-600" />
+                              Dati Contatto Base
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <div className="space-y-1.5">
+                                <Label htmlFor="testFirstName" className="text-xs font-medium text-gray-600">Nome</Label>
+                                <Input
+                                  id="testFirstName"
+                                  value={hubdigitalTestData.firstName}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, firstName: e.target.value }))}
+                                  placeholder="Mario"
+                                  className="bg-white border-gray-200 focus:border-orange-400"
+                                />
                               </div>
-                            )}
-                            <p className="text-xs text-muted-foreground">
-                              Aggiungi campi personalizzati come li invierebbe Hubdigital. Clicca su un badge per rimuoverlo.
-                            </p>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="testLastName" className="text-xs font-medium text-gray-600">Cognome</Label>
+                                <Input
+                                  id="testLastName"
+                                  value={hubdigitalTestData.lastName}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, lastName: e.target.value }))}
+                                  placeholder="Rossi"
+                                  className="bg-white border-gray-200 focus:border-orange-400"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="testPhone" className="text-xs font-medium text-orange-700 flex items-center gap-1">
+                                  Telefono <span className="text-red-500">*</span>
+                                </Label>
+                                <Input
+                                  id="testPhone"
+                                  value={hubdigitalTestData.phone}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, phone: e.target.value }))}
+                                  placeholder="+39 333 1234567"
+                                  className={`bg-white ${!hubdigitalTestData.phone.trim() ? "border-red-300 focus:border-red-400" : "border-gray-200 focus:border-orange-400"}`}
+                                />
+                                {!hubdigitalTestData.phone.trim() && (
+                                  <p className="text-xs text-red-500">Obbligatorio</p>
+                                )}
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="testEmail" className="text-xs font-medium text-gray-600">Email</Label>
+                                <Input
+                                  id="testEmail"
+                                  type="email"
+                                  value={hubdigitalTestData.email}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, email: e.target.value }))}
+                                  placeholder="mario.rossi@test.com"
+                                  className="bg-white border-gray-200 focus:border-orange-400"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="testCompany" className="text-xs font-medium text-gray-600">Azienda</Label>
+                                <Input
+                                  id="testCompany"
+                                  value={hubdigitalTestData.companyName}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, companyName: e.target.value }))}
+                                  placeholder="Test SRL"
+                                  className="bg-white border-gray-200 focus:border-orange-400"
+                                />
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="testSource" className="text-xs font-medium text-gray-600">Fonte</Label>
+                                <Input
+                                  id="testSource"
+                                  value={hubdigitalTestData.source}
+                                  onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, source: e.target.value }))}
+                                  placeholder="hubdigital-test"
+                                  className="bg-white border-gray-200 focus:border-orange-400"
+                                />
+                              </div>
+                            </div>
                           </div>
 
+                          {/* Advanced Fields Toggle */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowAdvancedTest(!showAdvancedTest)}
+                            className="w-full border-dashed border-orange-300 text-orange-700 hover:bg-orange-50 hover:border-orange-400"
+                          >
+                            {showAdvancedTest ? (
+                              <>
+                                <ChevronUp className="h-4 w-4 mr-2" />
+                                Nascondi Campi Avanzati
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="h-4 w-4 mr-2" />
+                                Mostra Tutti i Campi (Indirizzo, Tags, DND...)
+                              </>
+                            )}
+                          </Button>
+
+                          {/* Advanced Fields */}
+                          {showAdvancedTest && (
+                            <div className="space-y-6 p-4 bg-gradient-to-br from-amber-50/50 to-orange-50/50 rounded-xl border border-orange-200/50">
+                              {/* Address */}
+                              <div className="space-y-4">
+                                <h4 className="font-semibold text-gray-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                  <MapPin className="h-4 w-4 text-orange-600" />
+                                  Indirizzo
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  <div className="sm:col-span-2 lg:col-span-3 space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Via/Indirizzo</Label>
+                                    <Input
+                                      value={hubdigitalTestData.address1}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, address1: e.target.value }))}
+                                      placeholder="Via Roma 123"
+                                      className="bg-white border-gray-200"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Città</Label>
+                                    <Input
+                                      value={hubdigitalTestData.city}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, city: e.target.value }))}
+                                      placeholder="Milano"
+                                      className="bg-white border-gray-200"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Provincia/Stato</Label>
+                                    <Input
+                                      value={hubdigitalTestData.state}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, state: e.target.value }))}
+                                      placeholder="MI"
+                                      className="bg-white border-gray-200"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">CAP</Label>
+                                    <Input
+                                      value={hubdigitalTestData.postalCode}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, postalCode: e.target.value }))}
+                                      placeholder="20100"
+                                      className="bg-white border-gray-200"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Paese</Label>
+                                    <Input
+                                      value={hubdigitalTestData.country}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, country: e.target.value }))}
+                                      placeholder="Italia"
+                                      className="bg-white border-gray-200"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Extra Fields */}
+                              <div className="space-y-4">
+                                <h4 className="font-semibold text-gray-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                  <FileText className="h-4 w-4 text-orange-600" />
+                                  Dati Aggiuntivi
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Sito Web</Label>
+                                    <Input
+                                      value={hubdigitalTestData.website}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, website: e.target.value }))}
+                                      placeholder="https://example.com"
+                                      className="bg-white border-gray-200"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Data di Nascita</Label>
+                                    <Input
+                                      type="date"
+                                      value={hubdigitalTestData.dateOfBirth}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
+                                      className="bg-white border-gray-200"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">GHL Location ID</Label>
+                                    <Input
+                                      value={hubdigitalTestData.locationId}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, locationId: e.target.value }))}
+                                      placeholder="loc_xxx"
+                                      className="bg-white border-gray-200 font-mono text-xs"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">GHL Contact ID</Label>
+                                    <Input
+                                      value={hubdigitalTestData.contactId}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, contactId: e.target.value }))}
+                                      placeholder="contact_xxx"
+                                      className="bg-white border-gray-200 font-mono text-xs"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <Label className="text-xs font-medium text-gray-600">Assegnato a (User ID)</Label>
+                                    <Input
+                                      value={hubdigitalTestData.assignedTo}
+                                      onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, assignedTo: e.target.value }))}
+                                      placeholder="user_xxx"
+                                      className="bg-white border-gray-200 font-mono text-xs"
+                                    />
+                                  </div>
+                                  <div className="space-y-1.5 flex items-end">
+                                    <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-gray-200 w-full">
+                                      <Switch
+                                        checked={hubdigitalTestData.dnd}
+                                        onCheckedChange={(checked) => setHubdigitalTestData(prev => ({ ...prev, dnd: checked }))}
+                                      />
+                                      <Label className="text-xs font-medium text-gray-600">DND (Do Not Disturb)</Label>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Tags */}
+                              <div className="space-y-3">
+                                <h4 className="font-semibold text-gray-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                  <Tag className="h-4 w-4 text-orange-600" />
+                                  Tags
+                                </h4>
+                                <div className="flex gap-2">
+                                  <Input
+                                    placeholder="Aggiungi un tag..."
+                                    value={hubdigitalTestData.tagInput}
+                                    onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, tagInput: e.target.value }))}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && hubdigitalTestData.tagInput.trim()) {
+                                        e.preventDefault();
+                                        setHubdigitalTestData(prev => ({
+                                          ...prev,
+                                          tags: [...prev.tags, prev.tagInput.trim()],
+                                          tagInput: "",
+                                        }));
+                                      }
+                                    }}
+                                    className="flex-1 bg-white border-gray-200"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (hubdigitalTestData.tagInput.trim()) {
+                                        setHubdigitalTestData(prev => ({
+                                          ...prev,
+                                          tags: [...prev.tags, prev.tagInput.trim()],
+                                          tagInput: "",
+                                        }));
+                                      }
+                                    }}
+                                    disabled={!hubdigitalTestData.tagInput.trim()}
+                                    className="border-orange-300 text-orange-700"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                {hubdigitalTestData.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {hubdigitalTestData.tags.map((tag, idx) => (
+                                      <Badge 
+                                        key={idx} 
+                                        className="bg-orange-100 text-orange-800 cursor-pointer hover:bg-red-100 hover:text-red-800 transition-colors"
+                                        onClick={() => {
+                                          setHubdigitalTestData(prev => ({
+                                            ...prev,
+                                            tags: prev.tags.filter((_, i) => i !== idx)
+                                          }));
+                                        }}
+                                      >
+                                        {tag} <span className="ml-1">×</span>
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Custom Fields */}
+                              <div className="space-y-3">
+                                <h4 className="font-semibold text-gray-800 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                  <Settings className="h-4 w-4 text-orange-600" />
+                                  Custom Fields
+                                </h4>
+                                <div className="flex gap-2">
+                                  <Input
+                                    placeholder="ID Campo (es. campo_xyz123)"
+                                    value={hubdigitalTestData.customFieldKey}
+                                    onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, customFieldKey: e.target.value }))}
+                                    className="flex-1 bg-white border-gray-200 font-mono text-xs"
+                                  />
+                                  <Input
+                                    placeholder="Valore"
+                                    value={hubdigitalTestData.customFieldValue}
+                                    onChange={(e) => setHubdigitalTestData(prev => ({ ...prev, customFieldValue: e.target.value }))}
+                                    className="flex-1 bg-white border-gray-200"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (hubdigitalTestData.customFieldKey.trim() && hubdigitalTestData.customFieldValue.trim()) {
+                                        setHubdigitalTestData(prev => ({
+                                          ...prev,
+                                          customFields: [...prev.customFields, { id: prev.customFieldKey.trim(), value: prev.customFieldValue.trim() }],
+                                          customFieldKey: "",
+                                          customFieldValue: "",
+                                        }));
+                                      }
+                                    }}
+                                    disabled={!hubdigitalTestData.customFieldKey.trim() || !hubdigitalTestData.customFieldValue.trim()}
+                                    className="border-orange-300 text-orange-700"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                {hubdigitalTestData.customFields.length > 0 && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {hubdigitalTestData.customFields.map((cf, idx) => (
+                                      <Badge 
+                                        key={idx} 
+                                        variant="secondary" 
+                                        className="bg-purple-100 text-purple-800 cursor-pointer hover:bg-red-100 hover:text-red-800 transition-colors font-mono text-xs"
+                                        onClick={() => {
+                                          setHubdigitalTestData(prev => ({
+                                            ...prev,
+                                            customFields: prev.customFields.filter((_, i) => i !== idx)
+                                          }));
+                                        }}
+                                      >
+                                        {cf.id}: {cf.value} <span className="ml-1">×</span>
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Send Button */}
                           <Button
                             onClick={handleTestHubdigitalWebhook}
                             disabled={isTestingHubdigital || !hubdigitalTestData.phone.trim() || hubdigitalConfigs.length === 0}
-                            className="w-full bg-orange-600 hover:bg-orange-700"
+                            className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-200 h-12 text-base font-semibold"
                           >
                             {isTestingHubdigital ? (
                               <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                                 Invio in corso...
                               </>
                             ) : (
                               <>
-                                <Sparkles className="h-4 w-4 mr-2" />
+                                <Send className="h-5 w-5 mr-2" />
                                 Invia Lead di Test
                               </>
                             )}
                           </Button>
 
+                          {/* Result */}
                           {hubdigitalTestResult && (
-                            <Alert className={hubdigitalTestResult.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}>
+                            <Alert className={`rounded-xl ${hubdigitalTestResult.success ? "bg-green-50 border-green-300" : "bg-red-50 border-red-300"}`}>
                               {hubdigitalTestResult.success ? (
-                                <CheckCircle className="h-4 w-4 text-green-600" />
+                                <CheckCircle className="h-5 w-5 text-green-600" />
                               ) : (
-                                <XCircle className="h-4 w-4 text-red-600" />
+                                <XCircle className="h-5 w-5 text-red-600" />
                               )}
                               <AlertDescription className="text-sm">
-                                <strong>{hubdigitalTestResult.success ? "Successo!" : "Errore:"}</strong> {hubdigitalTestResult.message}
+                                <strong className={hubdigitalTestResult.success ? "text-green-800" : "text-red-800"}>
+                                  {hubdigitalTestResult.success ? "Successo!" : "Errore:"}
+                                </strong>{" "}
+                                <span className={hubdigitalTestResult.success ? "text-green-700" : "text-red-700"}>
+                                  {hubdigitalTestResult.message}
+                                </span>
                                 {hubdigitalTestResult.details && (
-                                  <pre className="mt-2 p-2 bg-white/50 rounded text-xs overflow-auto max-h-32">
+                                  <pre className="mt-3 p-3 bg-white/70 rounded-lg text-xs overflow-auto max-h-40 border border-gray-200">
                                     {JSON.stringify(hubdigitalTestResult.details, null, 2)}
                                   </pre>
                                 )}
