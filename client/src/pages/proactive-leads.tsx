@@ -89,6 +89,34 @@ interface LeadInfo {
   desideri?: string;
   uncino?: string;
   fonte?: string;
+  // Extended fields from Hubdigital.io webhook
+  email?: string;
+  companyName?: string;
+  website?: string;
+  customFields?: Array<{ id: string; value: any }> | Record<string, any>;
+  dateAdded?: string;
+  dateOfBirth?: string;
+  // Address
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  // GHL reference IDs
+  ghlContactId?: string;
+  ghlLocationId?: string;
+  assignedTo?: string;
+  // Tags and DND
+  tags?: string[];
+  dnd?: boolean;
+  dndSettings?: {
+    SMS?: { status: string; message?: string; code?: string };
+    Email?: { status: string; message?: string; code?: string };
+    WhatsApp?: { status: string; message?: string; code?: string };
+    Call?: { status: string; message?: string; code?: string };
+    FB?: { status: string; message?: string; code?: string };
+    GMB?: { status: string; message?: string; code?: string };
+  };
 }
 
 interface ProactiveLead {
@@ -2028,6 +2056,144 @@ export default function ProactiveLeadsPage() {
                   </div>
                 </CollapsibleContent>
               </Collapsible>
+
+              {/* Hubdigital.io Imported Data - Read Only Section */}
+              {selectedLead && (formData.leadInfo.email || formData.leadInfo.companyName || formData.leadInfo.address || formData.leadInfo.tags?.length) && (
+                <Collapsible defaultOpen={true} className="border rounded-lg p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 border-orange-200 dark:border-orange-800">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="w-full flex justify-between items-center p-0 h-auto hover:bg-transparent">
+                      <span className="text-base font-semibold flex items-center gap-2 text-orange-700 dark:text-orange-300">
+                        <Zap className="h-5 w-5 text-orange-600" />
+                        Dati Importati da Hubdigital.io
+                      </span>
+                      <ChevronDown className="h-5 w-5 text-orange-500" />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      {/* Email */}
+                      {formData.leadInfo.email && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-medium text-gray-500 uppercase">Email</span>
+                          <span className="text-gray-900 dark:text-gray-100">{formData.leadInfo.email}</span>
+                        </div>
+                      )}
+                      {/* Azienda */}
+                      {formData.leadInfo.companyName && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-medium text-gray-500 uppercase">Azienda</span>
+                          <span className="text-gray-900 dark:text-gray-100">{formData.leadInfo.companyName}</span>
+                        </div>
+                      )}
+                      {/* Sito Web */}
+                      {formData.leadInfo.website && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-medium text-gray-500 uppercase">Sito Web</span>
+                          <a href={formData.leadInfo.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{formData.leadInfo.website}</a>
+                        </div>
+                      )}
+                      {/* Data di Nascita */}
+                      {formData.leadInfo.dateOfBirth && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-medium text-gray-500 uppercase">Data di Nascita</span>
+                          <span className="text-gray-900 dark:text-gray-100">{formData.leadInfo.dateOfBirth}</span>
+                        </div>
+                      )}
+                      {/* Fonte */}
+                      {formData.leadInfo.fonte && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-medium text-gray-500 uppercase">Fonte</span>
+                          <Badge variant="outline" className="w-fit bg-purple-100 text-purple-800 border-purple-300">{formData.leadInfo.fonte}</Badge>
+                        </div>
+                      )}
+                      {/* Data Aggiunta */}
+                      {formData.leadInfo.dateAdded && (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-medium text-gray-500 uppercase">Data Aggiunta CRM</span>
+                          <span className="text-gray-900 dark:text-gray-100">{formData.leadInfo.dateAdded}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Indirizzo */}
+                    {(formData.leadInfo.address || formData.leadInfo.city || formData.leadInfo.state || formData.leadInfo.postalCode || formData.leadInfo.country) && (
+                      <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-orange-100 dark:border-orange-900">
+                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Indirizzo</span>
+                        <div className="text-sm text-gray-900 dark:text-gray-100 space-y-0.5">
+                          {formData.leadInfo.address && <p>{formData.leadInfo.address}</p>}
+                          <p>
+                            {[formData.leadInfo.postalCode, formData.leadInfo.city, formData.leadInfo.state, formData.leadInfo.country].filter(Boolean).join(", ")}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tags */}
+                    {formData.leadInfo.tags && formData.leadInfo.tags.length > 0 && (
+                      <div>
+                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Tags</span>
+                        <div className="flex flex-wrap gap-2">
+                          {formData.leadInfo.tags.map((tag, idx) => (
+                            <Badge key={idx} className="bg-orange-100 text-orange-800 border-orange-300">{tag}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Custom Fields */}
+                    {formData.leadInfo.customFields && (
+                      Array.isArray(formData.leadInfo.customFields) ? formData.leadInfo.customFields.length > 0 : Object.keys(formData.leadInfo.customFields).length > 0
+                    ) && (
+                      <div>
+                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Campi Personalizzati</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                          {Array.isArray(formData.leadInfo.customFields) 
+                            ? formData.leadInfo.customFields.map((cf, idx) => (
+                                <div key={idx} className="flex justify-between p-2 bg-white/60 dark:bg-gray-800/40 rounded border border-orange-100">
+                                  <span className="text-gray-600 font-mono text-xs">{cf.id}</span>
+                                  <span className="text-gray-900 dark:text-gray-100">{String(cf.value)}</span>
+                                </div>
+                              ))
+                            : Object.entries(formData.leadInfo.customFields).map(([key, value], idx) => (
+                                <div key={idx} className="flex justify-between p-2 bg-white/60 dark:bg-gray-800/40 rounded border border-orange-100">
+                                  <span className="text-gray-600 font-mono text-xs">{key}</span>
+                                  <span className="text-gray-900 dark:text-gray-100">{String(value)}</span>
+                                </div>
+                              ))
+                          }
+                        </div>
+                      </div>
+                    )}
+
+                    {/* DND Status */}
+                    {formData.leadInfo.dnd !== undefined && (
+                      <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-orange-100 dark:border-orange-900">
+                        <span className="text-xs font-medium text-gray-500 uppercase block mb-2">Stato DND (Do Not Disturb)</span>
+                        <Badge variant={formData.leadInfo.dnd ? "destructive" : "secondary"} className="mb-2">
+                          {formData.leadInfo.dnd ? "DND Attivo" : "DND Disattivo"}
+                        </Badge>
+                        {formData.leadInfo.dndSettings && (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-xs">
+                            {Object.entries(formData.leadInfo.dndSettings).map(([channel, setting]) => (
+                              <div key={channel} className={`p-1.5 rounded text-center ${setting?.status === 'active' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                <span className="font-medium">{channel}</span>: {setting?.status || 'N/A'}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* GHL IDs (for reference) */}
+                    {(formData.leadInfo.ghlContactId || formData.leadInfo.ghlLocationId) && (
+                      <div className="text-xs text-gray-500 pt-2 border-t border-orange-200/50">
+                        {formData.leadInfo.ghlContactId && <span className="mr-4">GHL Contact: <code className="bg-gray-100 px-1 rounded">{formData.leadInfo.ghlContactId}</code></span>}
+                        {formData.leadInfo.ghlLocationId && <span>GHL Location: <code className="bg-gray-100 px-1 rounded">{formData.leadInfo.ghlLocationId}</code></span>}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-6 border-t">
