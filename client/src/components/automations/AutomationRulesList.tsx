@@ -255,27 +255,37 @@ function EmptyState({ onCreateNew, onCreateWithAI }: { onCreateNew: () => void; 
   };
   
   return (
-    <Card>
+    <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 dark:border-green-800">
       <CardContent className="p-12">
         <div className="flex flex-col items-center justify-center text-center">
-          <Settings className="h-16 w-16 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Nessuna regola configurata</h3>
-          <p className="text-muted-foreground mb-6">
-            Crea la tua prima regola di automazione o usa quelle predefinite!
+          <div className="relative mb-4">
+            <Sparkles className="h-16 w-16 text-green-600" />
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-500 animate-pulse"></span>
+          </div>
+          <h3 className="text-xl font-semibold mb-2">Sistema AI Attivo</h3>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            L'AI "Marco" analizza ogni lead come un consulente esperto con 15 anni di esperienza. 
+            Decide autonomamente quando e come contattare i lead, senza bisogno di regole rigide.
           </p>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 mb-6 border">
+            <p className="text-sm text-muted-foreground">
+              <strong>Opzionale:</strong> Puoi aggiungere regole personalizzate per casi specifici, 
+              ma il sistema AI funziona perfettamente anche senza.
+            </p>
+          </div>
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button 
               onClick={handleSeedDefaults} 
-              variant="default"
+              variant="outline"
               disabled={seedMutation.isPending}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              className="flex items-center gap-2"
             >
               {seedMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <PackagePlus className="h-4 w-4" />
               )}
-              Crea Regole Predefinite
+              Aggiungi Regole Opzionali
             </Button>
             <Button onClick={onCreateNew} variant="outline" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />

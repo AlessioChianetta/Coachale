@@ -167,9 +167,15 @@ export function SystemRulesViewer() {
         )}
 
         {!isLoading && !error && sortedRules.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Shield className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>Nessuna regola di sistema configurata.</p>
+          <div className="text-center py-8">
+            <div className="relative inline-block mb-3">
+              <Shield className="h-12 w-12 text-green-500" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-500 animate-pulse"></span>
+            </div>
+            <p className="text-green-600 dark:text-green-400 font-medium">Sistema AI attivo</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              L'AI gestisce autonomamente i follow-up senza regole rigide
+            </p>
           </div>
         )}
       </CardContent>

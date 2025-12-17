@@ -1903,26 +1903,22 @@ router.put("/ai-preferences", authenticateToken, requireRole("consultant"), asyn
 router.get("/ai-system-info", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     res.json({
-      success: true,
-      system: {
-        name: "Assistente AI Intelligente",
-        version: "2.0",
-        description: "L'AI analizza ogni lead come un consulente esperto con 15 anni di esperienza, decidendo autonomamente quando e come contattarli.",
-        capabilities: [
-          { icon: "🧠", title: "Analisi Intelligente", description: "Legge la chat completa e interpreta il contesto" },
-          { icon: "⏰", title: "Timing Ottimale", description: "Sceglie il momento migliore per ogni follow-up" },
-          { icon: "🎯", title: "Personalizzazione", description: "Adatta messaggi e template al singolo lead" },
-          { icon: "🚫", title: "Rispetto Decisioni", description: "Si ferma automaticamente ai NO espliciti" },
-          { icon: "📊", title: "Apprendimento", description: "Migliora dalle valutazioni precedenti" },
-        ],
-        defaultBehavior: [
-          "Attende 24-48h dopo il primo template senza risposta",
-          "Non tempesta i lead con messaggi ravvicinati",
-          "Usa template approvati fuori dalla finestra 24h",
-          "Rispetta orari lavorativi del consulente",
-          "Ferma follow-up dopo un NO esplicito",
-        ],
-      },
+      name: "Marco - Consulente AI Esperto",
+      description: "L'AI analizza ogni lead come un consulente esperto con 15 anni di esperienza, decidendo autonomamente quando e come contattarli.",
+      capabilities: [
+        { icon: "brain", label: "Analisi Intelligente - Legge la chat completa e interpreta il contesto" },
+        { icon: "clock", label: "Timing Ottimale - Sceglie il momento migliore per ogni follow-up" },
+        { icon: "target", label: "Personalizzazione - Adatta messaggi e template al singolo lead" },
+        { icon: "zap", label: "Rispetto Decisioni - Si ferma automaticamente ai NO espliciti" },
+        { icon: "sparkles", label: "Apprendimento - Migliora dalle valutazioni precedenti" },
+      ],
+      defaultBehaviors: [
+        "Attende 24-48h dopo il primo template senza risposta",
+        "Non tempesta i lead con messaggi ravvicinati",
+        "Usa template approvati fuori dalla finestra 24h",
+        "Rispetta orari lavorativi del consulente",
+        "Ferma follow-up dopo un NO esplicito",
+      ],
     });
   } catch (error: any) {
     console.error("Error fetching AI system info:", error);

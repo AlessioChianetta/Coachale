@@ -70,6 +70,9 @@ function getIconComponent(iconName: string) {
 }
 
 function AISystemInfoCard({ data }: { data: AISystemInfo }) {
+  const capabilities = data?.capabilities || [];
+  const defaultBehaviors = data?.defaultBehaviors || [];
+  
   return (
     <Card className="mb-6 border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 dark:border-purple-800">
       <CardHeader className="pb-3">
@@ -78,8 +81,8 @@ function AISystemInfoCard({ data }: { data: AISystemInfo }) {
             <Brain className="h-6 w-6 text-purple-600 dark:text-purple-400" />
           </div>
           <div>
-            <CardTitle className="text-lg">{data.name}</CardTitle>
-            <CardDescription>{data.description}</CardDescription>
+            <CardTitle className="text-lg">{data?.name || "Sistema AI Follow-up"}</CardTitle>
+            <CardDescription>{data?.description || "Sistema intelligente per la gestione automatica dei follow-up"}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -91,7 +94,7 @@ function AISystemInfoCard({ data }: { data: AISystemInfo }) {
               Capacità
             </h4>
             <ul className="space-y-1">
-              {data.capabilities.map((cap, idx) => (
+              {capabilities.map((cap, idx) => (
                 <li key={idx} className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span className="text-purple-500">{getIconComponent(cap.icon)}</span>
                   {cap.label}
@@ -105,7 +108,7 @@ function AISystemInfoCard({ data }: { data: AISystemInfo }) {
               Comportamenti Default
             </h4>
             <ul className="space-y-1">
-              {data.defaultBehaviors.map((behavior, idx) => (
+              {defaultBehaviors.map((behavior, idx) => (
                 <li key={idx} className="flex items-start gap-2 text-sm text-muted-foreground">
                   <CheckCircle className="h-3 w-3 mt-1 text-green-500 flex-shrink-0" />
                   {behavior}

@@ -198,11 +198,10 @@ function FollowupIntervalCard() {
             )}
           </Button>
           
-          {settings?.rulesCount === 0 && (
-            <span className="text-xs text-amber-600 dark:text-amber-400">
-              Nessuna regola configurata
-            </span>
-          )}
+          <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            AI attiva
+          </span>
         </div>
       </CardContent>
     </Card>
