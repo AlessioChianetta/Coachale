@@ -57,8 +57,17 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Prevents API bombardment during video meetings via intelligent turn-taking using a state machine and `SpeakerTurnBuffer`. Triggers transcription on silence detection and finalizes turns on speaker change. Reduces API calls through client-side VAD.
 ## WebRTC/WebSocket Resilience System
 - Implements WebSocket heartbeat, exponential backoff reconnection with jitter, and network change detection. Handles visibility changes, monitors connection quality, and ensures participant cleanup.
-## Human-Like AI Follow-up System Hardening
-- Automatic rejection detection, template-only responses after a template if no reply, reliable template detection, and validation of AI updates. Includes a safety net for max follow-up limits and detailed conversation context detection for AI prompts.
+## AI-Driven Follow-up Automation System
+- **100% AI-Driven**: The follow-up system is fully AI-powered without hardcoded rules. The AI acts as an expert sales consultant ("Marco") evaluating each conversation independently.
+- **Consultant Preferences**: Table `consultant_ai_preferences` stores per-consultant settings:
+  - `maxFollowupsTotal`, `minHoursBetweenFollowups`, `firstFollowupDelayHours`, `templateNoResponseDelayHours`
+  - `aggressivenessLevel` (1-10), `persistenceLevel` (1-10)
+  - `customInstructions` - free-text field for personalized AI behavior
+  - `stopOnFirstNo` - whether to stop immediately on rejection
+- **Preference Integration**: Preferences are loaded in `evaluateWithHumanLikeAI()` and included in the AI prompt as guidelines (not rigid rules). The AI maintains decision autonomy.
+- **UI**: `AIPreferencesEditor` component in consultant-automations page allows adjusting numeric preferences and custom instructions.
+- **Scheduler**: Uses AI-ONLY mode, requiring only active WhatsApp configuration (no database rules needed).
+- **Human-Like AI Follow-up System Hardening**: Automatic rejection detection, template-only responses after a template if no reply, reliable template detection, and validation of AI updates. Includes a safety net for max follow-up limits and detailed conversation context detection for AI prompts.
 
 # External Dependencies
 - **Supabase**: PostgreSQL hosting.
