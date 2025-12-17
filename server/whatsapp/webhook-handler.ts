@@ -735,7 +735,7 @@ export async function findOrCreateConversation(
             currentState: 'new',
             previousState: null,
             followupCount: 0,
-            maxFollowupsAllowed: 5,
+            // Usa logica intelligente: consecutiveNoReplyCount gestisce i tentativi
             engagementScore: 50,
             conversionProbability: null,
             hasAskedPrice: false,
@@ -743,6 +743,7 @@ export async function findOrCreateConversation(
             hasSaidNoExplicitly: false,
             discoveryCompleted: false,
             demoPresented: false,
+            consecutiveNoReplyCount: 0,
           })
           .onConflictDoNothing({ target: conversationStates.conversationId });
         console.log(`📊 [CONVERSATION STATE] Created initial state for conversation ${conversation.id}`);

@@ -4,28 +4,22 @@ import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Brain,
-  Bot,
-  Clock,
   Settings2,
   Sparkles,
-  ChevronDown,
-  ChevronUp,
   Save,
   Loader2,
   AlertCircle,
   CheckCircle,
-  Zap,
-  Target,
   MessageSquare,
-  Timer,
+  RefreshCw,
+  Zap,
+  Clock,
+  Target,
 } from "lucide-react";
 
 interface AISystemInfo {
@@ -36,35 +30,21 @@ interface AISystemInfo {
 }
 
 interface AIPreferences {
-  maxFollowupsTotal: number;
-  minHoursBetweenFollowups: number;
-  firstFollowupDelayHours: number;
-  templateNoResponseDelayHours: number;
-  aggressivenessLevel: number;
-  persistenceLevel: number;
   customInstructions: string;
 }
 
 const defaultPreferences: AIPreferences = {
-  maxFollowupsTotal: 5,
-  minHoursBetweenFollowups: 24,
-  firstFollowupDelayHours: 24,
-  templateNoResponseDelayHours: 48,
-  aggressivenessLevel: 5,
-  persistenceLevel: 5,
   customInstructions: "",
 };
 
 function getIconComponent(iconName: string) {
   const iconMap: Record<string, React.ReactNode> = {
     brain: <Brain className="h-4 w-4" />,
-    bot: <Bot className="h-4 w-4" />,
-    clock: <Clock className="h-4 w-4" />,
     sparkles: <Sparkles className="h-4 w-4" />,
     zap: <Zap className="h-4 w-4" />,
     target: <Target className="h-4 w-4" />,
     message: <MessageSquare className="h-4 w-4" />,
-    timer: <Timer className="h-4 w-4" />,
+    clock: <Clock className="h-4 w-4" />,
   };
   return iconMap[iconName.toLowerCase()] || <Sparkles className="h-4 w-4" />;
 }
@@ -91,7 +71,7 @@ function AISystemInfoCard({ data }: { data: AISystemInfo }) {
           <div>
             <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-purple-500" />
-              Capacità
+              Capacita
             </h4>
             <ul className="space-y-1">
               {capabilities.map((cap, idx) => (
@@ -105,7 +85,7 @@ function AISystemInfoCard({ data }: { data: AISystemInfo }) {
           <div>
             <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
               <Settings2 className="h-4 w-4 text-indigo-500" />
-              Comportamenti Default
+              Comportamento Automatico
             </h4>
             <ul className="space-y-1">
               {defaultBehaviors.map((behavior, idx) => (
@@ -116,6 +96,20 @@ function AISystemInfoCard({ data }: { data: AISystemInfo }) {
               ))}
             </ul>
           </div>
+        </div>
+        
+        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+          <h4 className="text-sm font-semibold mb-2 flex items-center gap-2 text-blue-700 dark:text-blue-400">
+            <RefreshCw className="h-4 w-4" />
+            Logica Follow-up Intelligente
+          </h4>
+          <ul className="space-y-1 text-sm text-blue-600 dark:text-blue-300">
+            <li>1. Invio messaggio → Attesa risposta</li>
+            <li>2. Se risponde → Reset contatore, continua conversazione</li>
+            <li>3. Se ignora 3 volte → Dormienza 3 mesi</li>
+            <li>4. Dopo 3 mesi → 1 ultimo tentativo</li>
+            <li>5. Se ignora ancora → Esclusione permanente</li>
+          </ul>
         </div>
       </CardContent>
     </Card>
@@ -155,9 +149,7 @@ function LoadingSkeleton() {
           <Skeleton className="h-5 w-32" />
         </CardHeader>
         <CardContent className="space-y-4">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-32 w-full" />
         </CardContent>
       </Card>
     </div>
@@ -179,7 +171,6 @@ function ErrorState({ message }: { message: string }) {
 export function AIPreferencesEditor() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isStyleOpen, setIsStyleOpen] = useState(false);
   const [preferences, setPreferences] = useState<AIPreferences>(defaultPreferences);
   const [hasChanges, setHasChanges] = useState(false);
 
@@ -213,7 +204,7 @@ export function AIPreferencesEditor() {
     if (savedPreferences) {
       setPreferences({
         ...defaultPreferences,
-        ...savedPreferences,
+        customInstructions: savedPreferences.customInstructions || "",
       });
       setHasChanges(false);
     }
@@ -238,7 +229,7 @@ export function AIPreferencesEditor() {
     onSuccess: () => {
       toast({
         title: "Preferenze salvate",
-        description: "Le preferenze AI sono state aggiornate con successo.",
+        description: "Le istruzioni personalizzate sono state aggiornate.",
       });
       setHasChanges(false);
       queryClient.invalidateQueries({ queryKey: ["ai-preferences"] });
@@ -252,8 +243,8 @@ export function AIPreferencesEditor() {
     },
   });
 
-  const handleChange = <K extends keyof AIPreferences>(key: K, value: AIPreferences[K]) => {
-    setPreferences((prev) => ({ ...prev, [key]: value }));
+  const handleChange = (value: string) => {
+    setPreferences((prev) => ({ ...prev, customInstructions: value }));
     setHasChanges(true);
   };
 
@@ -280,8 +271,8 @@ export function AIPreferencesEditor() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Settings2 className="h-5 w-5 text-muted-foreground" />
-              <CardTitle className="text-lg">Preferenze AI</CardTitle>
+              <MessageSquare className="h-5 w-5 text-green-500" />
+              <CardTitle className="text-lg">Istruzioni Personalizzate</CardTitle>
             </div>
             <Button
               onClick={handleSave}
@@ -298,164 +289,22 @@ export function AIPreferencesEditor() {
             </Button>
           </div>
           <CardDescription>
-            Personalizza il comportamento dell'AI per i follow-up automatici
+            Aggiungi istruzioni specifiche per personalizzare il comportamento dell'AI nei messaggi
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-8">
-          <div>
-            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-              <Target className="h-4 w-4 text-blue-500" />
-              Parametri Base
-            </h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="maxFollowupsTotal">Max follow-up per lead</Label>
-                <Input
-                  id="maxFollowupsTotal"
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={preferences.maxFollowupsTotal}
-                  onChange={(e) => handleChange("maxFollowupsTotal", parseInt(e.target.value) || 5)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Numero massimo di follow-up inviati per singolo lead
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="minHoursBetweenFollowups">Attesa minima tra follow-up (ore)</Label>
-                <Input
-                  id="minHoursBetweenFollowups"
-                  type="number"
-                  min={1}
-                  max={168}
-                  value={preferences.minHoursBetweenFollowups}
-                  onChange={(e) => handleChange("minHoursBetweenFollowups", parseInt(e.target.value) || 24)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ore minime da attendere tra un follow-up e il successivo
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-orange-500" />
-              Timing
-            </h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="firstFollowupDelayHours">Ritardo primo follow-up (ore)</Label>
-                <Input
-                  id="firstFollowupDelayHours"
-                  type="number"
-                  min={1}
-                  max={168}
-                  value={preferences.firstFollowupDelayHours}
-                  onChange={(e) => handleChange("firstFollowupDelayHours", parseInt(e.target.value) || 24)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ore di attesa prima di inviare il primo follow-up
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="templateNoResponseDelayHours">Attesa dopo template senza risposta (ore)</Label>
-                <Input
-                  id="templateNoResponseDelayHours"
-                  type="number"
-                  min={1}
-                  max={336}
-                  value={preferences.templateNoResponseDelayHours}
-                  onChange={(e) => handleChange("templateNoResponseDelayHours", parseInt(e.target.value) || 48)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Ore di attesa se un template non riceve risposta
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <Collapsible open={isStyleOpen} onOpenChange={setIsStyleOpen}>
-            <div className="border rounded-lg">
-              <CollapsibleTrigger asChild>
-                <button className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm font-semibold">Stile</span>
-                    <span className="text-xs text-muted-foreground">(opzionale)</span>
-                  </div>
-                  {isStyleOpen ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="px-4 pb-4 space-y-6">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label>Aggressività Follow-up</Label>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {preferences.aggressivenessLevel}/10
-                      </span>
-                    </div>
-                    <Slider
-                      value={[preferences.aggressivenessLevel]}
-                      onValueChange={([value]) => handleChange("aggressivenessLevel", value)}
-                      min={1}
-                      max={10}
-                      step={1}
-                      className="w-full"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Livello basso: messaggi soft e meno frequenti. Livello alto: messaggi più diretti e insistenti.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label>Persistenza su Lead Freddi</Label>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        {preferences.persistenceLevel}/10
-                      </span>
-                    </div>
-                    <Slider
-                      value={[preferences.persistenceLevel]}
-                      onValueChange={([value]) => handleChange("persistenceLevel", value)}
-                      min={1}
-                      max={10}
-                      step={1}
-                      className="w-full"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Livello basso: abbandona presto i lead non responsivi. Livello alto: continua a seguire più a lungo.
-                    </p>
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
-
-          <div>
-            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-green-500" />
-              Istruzioni Personalizzate
-            </h3>
-            <div className="space-y-2">
-              <Label htmlFor="customInstructions">Istruzioni aggiuntive per l'AI</Label>
-              <Textarea
-                id="customInstructions"
-                value={preferences.customInstructions}
-                onChange={(e) => handleChange("customInstructions", e.target.value)}
-                placeholder="Es: Usa sempre un tono professionale ma amichevole. Menziona sempre i benefici del nostro servizio. Non essere troppo insistente sui prezzi..."
-                className="min-h-[120px]"
-              />
-              <p className="text-xs text-muted-foreground">
-                Aggiungi istruzioni specifiche per personalizzare il comportamento dell'AI
-              </p>
-            </div>
+        <CardContent>
+          <div className="space-y-2">
+            <Label htmlFor="customInstructions">Istruzioni per l'AI</Label>
+            <Textarea
+              id="customInstructions"
+              value={preferences.customInstructions}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder="Es: Usa sempre un tono professionale ma amichevole. Menziona sempre i benefici del nostro servizio. Non essere troppo insistente sui prezzi..."
+              className="min-h-[150px]"
+            />
+            <p className="text-xs text-muted-foreground">
+              Queste istruzioni vengono usate dall'AI per generare messaggi personalizzati per i tuoi lead.
+            </p>
           </div>
         </CardContent>
       </Card>

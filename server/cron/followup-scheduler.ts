@@ -1181,11 +1181,7 @@ export async function findCandidateConversations(
       // This will be handled in evaluateConversation
     }
     
-    // Keep legacy check as fallback safety net
-    if (state.followupCount >= state.maxFollowupsAllowed) {
-      console.log(`🛑 [CANDIDATE] ${state.conversationId}: SKIPPED - Legacy max followups reached (${state.followupCount}/${state.maxFollowupsAllowed})`);
-      continue;
-    }
+    // LEGACY CHECK RIMOSSO: ora usa solo la logica intelligente (consecutiveNoReplyCount + dormancy)
 
     let agentType = 'reactive_lead';
     if (state.conversation.agentConfigId) {
@@ -1318,19 +1314,8 @@ async function evaluateConversation(
     return 'stopped';
   }
   
-  // Legacy safety net (fallback)
-  if (candidate.followupCount >= candidate.maxFollowupsAllowed) {
-    console.log(`🛑 [SAFETY-NET] Legacy max follow-ups reached (${candidate.followupCount}/${candidate.maxFollowupsAllowed}), stopping`);
-    
-    await updateConversationState(candidate.conversationId, {
-      currentState: 'ghost',
-      previousState: candidate.currentState,
-      lastAiEvaluationAt: new Date(),
-      aiRecommendation: `[SAFETY-NET] Max follow-ups reached (${candidate.followupCount}/${candidate.maxFollowupsAllowed})`,
-    });
-    
-    return 'stopped';
-  }
+  // LEGACY SAFETY NET RIMOSSO: ora usa solo la logica intelligente
+  // La logica è: 3 tentativi senza risposta → dormienza 3 mesi → 1 tentativo finale → esclusione permanente
   
   // Bug 3 Fix: Safety check for applicableRules that could be undefined
   const applicableRules = candidate.applicableRules;
@@ -2890,14 +2875,34 @@ async function sendFollowupMessage(
   // UPDATE: Increment consecutiveNoReplyCount when sending follow-up
   // This will be reset to 0 when lead replies (in webhook-handler)
   // ═══════════════════════════════════════════════════════════════════════════
+  
+  // FIX PROBLEMA 2: Usa cooldownHours dalla regola invece di un valore fisso di 24h
+  let cooldownHours = 24; // Default fallback
+  
+  if (message.ruleId) {
+    const rule = await db
+      .select({ cooldownHours: followupRules.cooldownHours })
+      .from(followupRules)
+      .where(eq(followupRules.id, message.ruleId))
+      .limit(1);
+    
+    if (rule.length > 0 && rule[0].cooldownHours) {
+      cooldownHours = rule[0].cooldownHours;
+      console.log(`⏰ [FOLLOWUP-SCHEDULER] Using rule cooldown: ${cooldownHours}h (from rule ${message.ruleId})`);
+    }
+  }
+  
+  const nextCheckDate = new Date();
+  nextCheckDate.setHours(nextCheckDate.getHours() + cooldownHours);
+  
   await updateConversationState(message.conversationId, {
     followupCount: sql`followup_count + 1` as any,
     consecutiveNoReplyCount: sql`consecutive_no_reply_count + 1` as any,
     lastFollowupAt: new Date(),
-    nextFollowupScheduledAt: undefined,
+    nextFollowupScheduledAt: nextCheckDate,
   });
   
-  console.log(`📊 [FOLLOWUP-SCHEDULER] Updated state: followupCount+1, consecutiveNoReplyCount+1`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Updated state: followupCount+1, consecutiveNoReplyCount+1, nextCheck=${nextCheckDate.toISOString()} (cooldown: ${cooldownHours}h)`);
 }
 
 export function isSchedulerRunning(): boolean {

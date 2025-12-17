@@ -2009,14 +2009,26 @@ router.get("/lead-status", authenticateToken, requireRole("consultant"), async (
           const scheduledDate = new Date(lead.nextFollowupScheduledAt);
           if (scheduledDate > now) {
             const hoursLeft = Math.ceil((scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60));
-            if (hoursLeft < 24) {
-              nextAction = `Contatto tra ${hoursLeft} ore`;
+            
+            // Distingui tra "in attesa risposta" e "prossimo contatto"
+            // Se l'ultimo follow-up è stato inviato nelle ultime 24 ore, siamo in attesa risposta
+            const hoursSinceLastFollowup = lead.lastFollowupAt 
+              ? (now.getTime() - new Date(lead.lastFollowupAt).getTime()) / (1000 * 60 * 60)
+              : 999;
+            
+            if (hoursSinceLastFollowup < 24 && lead.consecutiveNoReplyCount > 0) {
+              // Messaggio appena inviato, in attesa risposta
+              nextAction = `In attesa risposta (${lead.consecutiveNoReplyCount}/3)`;
+              reason = `Messaggio inviato ${hoursSinceLastFollowup < 1 ? 'da poco' : `${Math.floor(hoursSinceLastFollowup)}h fa`}, controllo tra ${hoursLeft}h`;
+            } else if (hoursLeft < 24) {
+              nextAction = `Prossimo contatto tra ${hoursLeft} ore`;
+              reason = `Follow-up #${lead.followupCount + 1} programmato`;
             } else {
               const daysLeft = Math.ceil(hoursLeft / 24);
-              nextAction = `Contatto tra ${daysLeft} giorni`;
+              nextAction = `Prossimo contatto tra ${daysLeft} giorni`;
+              reason = `Follow-up #${lead.followupCount + 1} programmato`;
             }
             nextActionDate = scheduledDate;
-            reason = `Follow-up #${lead.followupCount + 1} programmato`;
           } else {
             nextAction = 'In attesa valutazione AI';
             reason = 'Il sistema sta decidendo quando contattare';
