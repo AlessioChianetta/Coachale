@@ -2770,12 +2770,40 @@ export const proactiveLeads = pgTable("proactive_leads", {
   lastName: text("last_name").notNull(),
   phoneNumber: text("phone_number").notNull(),
   
-  // Lead Information
+  // Lead Information (extended for Hubdigital.io webhook data)
   leadInfo: jsonb("lead_info").$type<{
     obiettivi?: string;
     desideri?: string;
     uncino?: string;
-    fonte?: string; // Legacy field, use campaignId instead
+    fonte?: string;
+    // Contact info
+    email?: string;
+    companyName?: string;
+    website?: string;
+    customFields?: Array<{ id: string; value: any }> | Record<string, any>;
+    dateAdded?: string;
+    dateOfBirth?: string;
+    // Address
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    // GHL reference IDs
+    ghlContactId?: string;
+    ghlLocationId?: string;
+    assignedTo?: string;
+    // Tags and DND
+    tags?: string[];
+    dnd?: boolean;
+    dndSettings?: {
+      SMS?: { status: string; message?: string; code?: string };
+      Email?: { status: string; message?: string; code?: string };
+      WhatsApp?: { status: string; message?: string; code?: string };
+      Call?: { status: string; message?: string; code?: string };
+      FB?: { status: string; message?: string; code?: string };
+      GMB?: { status: string; message?: string; code?: string };
+    };
   }>().default(sql`'{}'::jsonb`),
   idealState: text("ideal_state"),
   

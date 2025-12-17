@@ -23,16 +23,48 @@ function splitFullName(fullName: string): { firstName: string; lastName: string 
 }
 
 interface HubdigitalPayload {
+  // Metadati Evento
   type?: string;
+  locationId?: string;
+  id?: string; // ID univoco contatto GHL
+  
+  // Dati Anagrafici
   firstName?: string;
   lastName?: string;
   name?: string;
+  dateOfBirth?: string;
+  
+  // Dati Contatto
   email?: string;
   phone?: string;
+  address1?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  
+  // Dati Aziendali
   companyName?: string;
+  website?: string;
+  
+  // Metadati CRM
   source?: string;
-  customFields?: Record<string, any>;
+  assignedTo?: string;
   dateAdded?: string;
+  tags?: string[];
+  customFields?: Array<{ id: string; value: any }> | Record<string, any>;
+  attachments?: any[];
+  
+  // Privacy DND
+  dnd?: boolean;
+  dndSettings?: {
+    SMS?: { status: string; message?: string; code?: string };
+    Email?: { status: string; message?: string; code?: string };
+    WhatsApp?: { status: string; message?: string; code?: string };
+    Call?: { status: string; message?: string; code?: string };
+    FB?: { status: string; message?: string; code?: string };
+    GMB?: { status: string; message?: string; code?: string };
+  };
 }
 
 router.get('/hubdigital/:secretKey/test', async (req: Request, res: Response) => {
@@ -130,24 +162,56 @@ router.post('/hubdigital/:secretKey', async (req: Request, res: Response) => {
       fonte?: string;
       email?: string;
       companyName?: string;
-      customFields?: Record<string, any>;
+      website?: string;
+      customFields?: Array<{ id: string; value: any }> | Record<string, any>;
       dateAdded?: string;
+      dateOfBirth?: string;
+      // Indirizzo
+      address?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+      // GHL IDs
+      ghlContactId?: string;
+      ghlLocationId?: string;
+      assignedTo?: string;
+      // Tags e DND
+      tags?: string[];
+      dnd?: boolean;
+      dndSettings?: any;
     } = {
       fonte: source,
     };
 
-    if (payload.email) {
-      leadInfo.email = payload.email;
+    // Dati contatto base
+    if (payload.email) leadInfo.email = payload.email;
+    if (payload.companyName) leadInfo.companyName = payload.companyName;
+    if (payload.website) leadInfo.website = payload.website;
+    if (payload.customFields) leadInfo.customFields = payload.customFields;
+    if (payload.dateAdded) leadInfo.dateAdded = payload.dateAdded;
+    if (payload.dateOfBirth) leadInfo.dateOfBirth = payload.dateOfBirth;
+    
+    // Indirizzo completo
+    if (payload.address1) leadInfo.address = payload.address1;
+    if (payload.city) leadInfo.city = payload.city;
+    if (payload.state) leadInfo.state = payload.state;
+    if (payload.postalCode) leadInfo.postalCode = payload.postalCode;
+    if (payload.country) leadInfo.country = payload.country;
+    
+    // GHL IDs per riferimento
+    if (payload.id) leadInfo.ghlContactId = payload.id;
+    if (payload.locationId) leadInfo.ghlLocationId = payload.locationId;
+    if (payload.assignedTo) leadInfo.assignedTo = payload.assignedTo;
+    
+    // Tags
+    if (payload.tags && Array.isArray(payload.tags) && payload.tags.length > 0) {
+      leadInfo.tags = payload.tags;
     }
-    if (payload.companyName) {
-      leadInfo.companyName = payload.companyName;
-    }
-    if (payload.customFields) {
-      leadInfo.customFields = payload.customFields;
-    }
-    if (payload.dateAdded) {
-      leadInfo.dateAdded = payload.dateAdded;
-    }
+    
+    // DND (Do Not Disturb)
+    if (payload.dnd !== undefined) leadInfo.dnd = payload.dnd;
+    if (payload.dndSettings) leadInfo.dndSettings = payload.dndSettings;
 
     const leadData: schema.InsertProactiveLead = {
       consultantId: webhookConfig.consultantId,

@@ -640,7 +640,7 @@ export default function ConsultantApiKeysUnified() {
 
   // Hubdigital Webhook mutations
   const createHubdigitalMutation = useMutation({
-    mutationFn: async (data: { configName: string; agentConfigId: string; targetCampaignId: string; isActive: boolean }) => {
+    mutationFn: async (data: { configName: string; agentConfigId: string; targetCampaignId: string; defaultSource?: string; isActive: boolean }) => {
       const response = await fetch("/api/external-api/webhook-configs", {
         method: "POST",
         headers: {
@@ -649,15 +649,17 @@ export default function ConsultantApiKeysUnified() {
         },
         body: JSON.stringify({
           providerName: "hubdigital",
+          displayName: "Hubdigital.io",
           configName: data.configName,
           agentConfigId: data.agentConfigId,
           targetCampaignId: data.targetCampaignId,
+          defaultSource: data.defaultSource || null,
           isActive: data.isActive,
         }),
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Errore durante la creazione del webhook");
+        throw new Error(error.message || error.error || "Errore durante la creazione del webhook");
       }
       return response.json();
     },
@@ -681,9 +683,9 @@ export default function ConsultantApiKeysUnified() {
   });
 
   const updateHubdigitalMutation = useMutation({
-    mutationFn: async (data: { id: string; configName?: string; agentConfigId?: string; targetCampaignId?: string; isActive?: boolean }) => {
+    mutationFn: async (data: { id: string; configName?: string; agentConfigId?: string; targetCampaignId?: string; defaultSource?: string | null; isActive?: boolean }) => {
       const response = await fetch(`/api/external-api/webhook-configs/${data.id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           ...getAuthHeaders(),
           "Content-Type": "application/json",
@@ -692,12 +694,13 @@ export default function ConsultantApiKeysUnified() {
           configName: data.configName,
           agentConfigId: data.agentConfigId,
           targetCampaignId: data.targetCampaignId,
+          defaultSource: data.defaultSource,
           isActive: data.isActive,
         }),
       });
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Errore durante l'aggiornamento");
+        throw new Error(error.message || error.error || "Errore durante l'aggiornamento");
       }
       return response.json();
     },
