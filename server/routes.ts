@@ -120,7 +120,7 @@ import {
   isGoogleCalendarConnected,
   buildBaseUrlFromRequest
 } from "./google-calendar-service";
-import { encryptForConsultant, decryptForConsultant } from "./encryption";
+import { encrypt, decrypt, encryptForConsultant, decryptForConsultant } from "./encryption";
 import { getTurnCredentialsForMeeting } from "./services/turn-config-service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";

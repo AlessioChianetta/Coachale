@@ -33,7 +33,8 @@ import {
   createStudioProvider
 } from '../ai/followup-decision-engine';
 import { getAIProvider } from '../ai/provider-factory';
-import { sendWhatsAppMessage, fetchMultipleTwilioTemplateBodies } from '../whatsapp/twilio-client';
+import { sendWhatsAppMessage, fetchMultipleTwilioTemplateBodies, fetchTwilioTemplateBody } from '../whatsapp/twilio-client';
+import { decryptForConsultant } from '../encryption';
 
 let evaluationJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
@@ -2386,37 +2387,78 @@ async function sendFollowupMessage(
     console.log(`📋 [FOLLOWUP-SCHEDULER] Outside 24h window - MUST use approved template`);
     
     if (message.templateId) {
-      // Check if template has approved version
-      const templateVersion = await db
-        .select({
-          bodyText: whatsappTemplateVersions.bodyText,
-          twilioStatus: whatsappTemplateVersions.twilioStatus,
-          twilioContentSid: whatsappTemplateVersions.twilioContentSid,
-        })
-        .from(whatsappTemplateVersions)
-        .where(
-          and(
-            eq(whatsappTemplateVersions.templateId, message.templateId),
-            eq(whatsappTemplateVersions.isActive, true)
-          )
-        )
-        .limit(1);
-
-      if (templateVersion.length > 0 && templateVersion[0].twilioStatus === 'approved') {
-        messageText = templateVersion[0].bodyText;
-        twilioContentSid = templateVersion[0].twilioContentSid;
+      // Check if templateId is already a Twilio Content SID (starts with HX)
+      if (message.templateId.startsWith('HX')) {
+        // This is a Twilio-imported template - use it directly
+        twilioContentSid = message.templateId;
         useTemplate = true;
-        console.log(`✅ [FOLLOWUP-SCHEDULER] Using approved template with ContentSid: ${twilioContentSid}`);
+        
+        // Fetch the template body from Twilio for logging/variable replacement
+        try {
+          const user = await db
+            .select({
+              twilioAccountSid: users.twilioAccountSid,
+              twilioAuthToken: users.twilioAuthToken,
+              encryptionSalt: users.encryptionSalt,
+            })
+            .from(users)
+            .where(eq(users.id, consultantId))
+            .limit(1);
+          
+          if (user.length > 0 && user[0].twilioAccountSid && user[0].twilioAuthToken && user[0].encryptionSalt) {
+            const decryptedAuthToken = decryptForConsultant(user[0].twilioAuthToken, user[0].encryptionSalt);
+            const templateBody = await fetchTwilioTemplateBody(
+              user[0].twilioAccountSid,
+              decryptedAuthToken,
+              message.templateId
+            );
+            if (templateBody) {
+              messageText = templateBody;
+              console.log(`✅ [FOLLOWUP-SCHEDULER] Using Twilio HX template directly: ${twilioContentSid}`);
+            }
+          }
+        } catch (fetchError) {
+          console.warn(`⚠️ [FOLLOWUP-SCHEDULER] Could not fetch HX template body, will send without preview: ${fetchError}`);
+        }
+        
+        // Even if we couldn't fetch the body, we can still send using the ContentSid
+        if (!messageText) {
+          messageText = '[Template Twilio]'; // Placeholder - Twilio will use the actual template
+          console.log(`✅ [FOLLOWUP-SCHEDULER] Using Twilio HX template (ContentSid only): ${twilioContentSid}`);
+        }
       } else {
-        // Try fallback to template body
-        const template = await db
-          .select({ body: whatsappCustomTemplates.body })
-          .from(whatsappCustomTemplates)
-          .where(eq(whatsappCustomTemplates.id, message.templateId))
+        // Check if template has approved version in local database
+        const templateVersion = await db
+          .select({
+            bodyText: whatsappTemplateVersions.bodyText,
+            twilioStatus: whatsappTemplateVersions.twilioStatus,
+            twilioContentSid: whatsappTemplateVersions.twilioContentSid,
+          })
+          .from(whatsappTemplateVersions)
+          .where(
+            and(
+              eq(whatsappTemplateVersions.templateId, message.templateId),
+              eq(whatsappTemplateVersions.isActive, true)
+            )
+          )
           .limit(1);
 
-        if (template.length > 0 && template[0].body) {
-          messageText = template[0].body;
+        if (templateVersion.length > 0 && templateVersion[0].twilioStatus === 'approved') {
+          messageText = templateVersion[0].bodyText;
+          twilioContentSid = templateVersion[0].twilioContentSid;
+          useTemplate = true;
+          console.log(`✅ [FOLLOWUP-SCHEDULER] Using approved template with ContentSid: ${twilioContentSid}`);
+        } else {
+          // Try fallback to template body
+          const template = await db
+            .select({ body: whatsappCustomTemplates.body })
+            .from(whatsappCustomTemplates)
+            .where(eq(whatsappCustomTemplates.id, message.templateId))
+            .limit(1);
+
+          if (template.length > 0 && template[0].body) {
+            messageText = template[0].body;
+          }
         }
       }
     }
