@@ -5344,6 +5344,7 @@ export const scheduledFollowupMessages = pgTable("scheduled_followup_messages", 
   
   // Execution tracking
   sentAt: timestamp("sent_at"),
+  twilioMessageSid: varchar("twilio_message_sid"),
   cancelledAt: timestamp("cancelled_at"),
   cancelReason: text("cancel_reason").$type<"user_replied" | "manual" | "max_reached" | "state_changed" | "error">(),
   errorMessage: text("error_message"),
