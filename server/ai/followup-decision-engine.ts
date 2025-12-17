@@ -571,10 +571,10 @@ export async function selectBestTemplateWithAI(
    Testo Completo: "${t.bodyText}"`
   ).join('\n\n');
   
-  // Build conversation summary
+  // Build conversation summary - NO truncation to avoid AI seeing incomplete messages
   const recentMessages = conversationContext.lastMessages
     .slice(-5) // Only last 5 messages
-    .map(m => `[${m.role}]: ${m.content.substring(0, 200)}`)
+    .map(m => `[${m.role}]: ${m.content}`)
     .join('\n');
   
   const prompt = `Sei un esperto di vendita. Devi scegliere il MIGLIOR template per fare follow-up con questo lead.
@@ -788,7 +788,7 @@ function buildBatchPrompt(conversations: ConversationForEvaluation[]): string {
       ? ctx.availableTemplates.slice(0, 3).map(t => `${t.id}: ${t.name}`).join(', ')
       : "Nessuno";
     
-    const lastMsgs = ctx.lastMessages.slice(-3).map(m => `[${m.role}]: ${m.content.substring(0, 100)}`).join(' | ');
+    const lastMsgs = ctx.lastMessages.slice(-3).map(m => `[${m.role}]: ${m.content}`).join(' | ');
     
     return `
 [CONV_${index + 1}] ID: ${conv.conversationId}
