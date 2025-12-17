@@ -18,7 +18,8 @@ import {
   whatsappTemplateAssignments,
   whatsappTemplateVersions,
   consultantWhatsappConfig,
-  users
+  users,
+  proactiveLeads
 } from '../../shared/schema';
 import { eq, and, ne, lte, inArray, isNotNull, desc, sql } from 'drizzle-orm';
 import { 
@@ -801,6 +802,108 @@ interface CandidateConversation {
   lastInboundMessageAt: Date | null;
 }
 
+/**
+ * Build template variables for follow-up messages
+ * Retrieves lead data from proactiveLeads and agent config to populate template placeholders
+ */
+async function buildFollowupTemplateVariables(
+  conversationId: string,
+  consultantId: string,
+  agentConfigId: string | null,
+  leadName?: string
+): Promise<Record<string, string>> {
+  try {
+    // Get conversation to find proactiveLeadId
+    const conversation = await db
+      .select({
+        proactiveLeadId: whatsappConversations.proactiveLeadId,
+      })
+      .from(whatsappConversations)
+      .where(eq(whatsappConversations.id, conversationId))
+      .limit(1);
+
+    let firstName = leadName || 'Cliente';
+    let consultantName = '';
+    let businessName = '';
+    let idealState = 'i tuoi obiettivi';
+
+    // If there's a proactive lead, get its data
+    if (conversation.length > 0 && conversation[0].proactiveLeadId) {
+      const lead = await db
+        .select({
+          firstName: proactiveLeads.firstName,
+          idealState: proactiveLeads.idealState,
+          leadInfo: proactiveLeads.leadInfo,
+        })
+        .from(proactiveLeads)
+        .where(eq(proactiveLeads.id, conversation[0].proactiveLeadId))
+        .limit(1);
+
+      if (lead.length > 0) {
+        firstName = lead[0].firstName || firstName;
+        idealState = lead[0].idealState || (lead[0].leadInfo as any)?.obiettivi || idealState;
+      }
+    }
+
+    // Get agent config for consultant name and business
+    if (agentConfigId) {
+      const agentConfig = await db
+        .select({
+          consultantDisplayName: consultantWhatsappConfig.consultantDisplayName,
+          agentName: consultantWhatsappConfig.agentName,
+          businessName: consultantWhatsappConfig.businessName,
+        })
+        .from(consultantWhatsappConfig)
+        .where(eq(consultantWhatsappConfig.id, agentConfigId))
+        .limit(1);
+
+      if (agentConfig.length > 0) {
+        consultantName = agentConfig[0].consultantDisplayName || agentConfig[0].agentName || '';
+        businessName = agentConfig[0].businessName || '';
+      }
+    }
+
+    // If no consultant name from agent config, get from users table
+    if (!consultantName) {
+      const consultant = await db
+        .select({
+          firstName: users.firstName,
+          lastName: users.lastName,
+        })
+        .from(users)
+        .where(eq(users.id, consultantId))
+        .limit(1);
+
+      if (consultant.length > 0) {
+        consultantName = `${consultant[0].firstName || ''} ${consultant[0].lastName || ''}`.trim();
+      }
+    }
+
+    // Build variables object - keys match template placeholders
+    const variables: Record<string, string> = {
+      "1": firstName,
+      "2": consultantName || 'il tuo consulente',
+      "3": businessName || 'la nostra azienda',
+      "4": idealState,
+      "5": idealState, // Some templates use {{5}} for the same purpose
+    };
+
+    console.log(`📋 [TEMPLATE-VARS] Built variables for ${conversationId}:`, JSON.stringify(variables));
+    return variables;
+
+  } catch (error) {
+    console.error(`❌ [TEMPLATE-VARS] Error building variables for ${conversationId}:`, error);
+    // Return minimal fallback
+    return {
+      "1": leadName || 'Cliente',
+      "2": 'il tuo consulente',
+      "3": 'la nostra azienda',
+      "4": 'i tuoi obiettivi',
+      "5": 'i tuoi obiettivi',
+    };
+  }
+}
+
 async function findApplicableRules(
   consultantId: string,
   agentConfigId: string | null,
@@ -1229,13 +1332,21 @@ async function evaluateConversation(
       return 'skipped';
     }
     
+    // Build template variables before scheduling
+    const templateVariables = await buildFollowupTemplateVariables(
+      candidate.conversationId,
+      candidate.consultantId,
+      candidate.agentConfigId,
+      candidate.leadName
+    );
+    
     await db.insert(scheduledFollowupMessages).values({
       conversationId: candidate.conversationId,
       ruleId: timeBasedRule.id,
       templateId: timeBasedRule.templateId,
       scheduledFor,
       status: 'pending',
-      templateVariables: {},
+      templateVariables,
       fallbackMessage: timeBasedRule.fallbackMessage,
       aiDecisionReasoning: `Deterministic time_based rule: "${timeBasedRule.name}"`,
       aiConfidenceScore: 1.0,
@@ -1514,13 +1625,21 @@ async function evaluateConversation(
       throw new Error('Cannot schedule message without approved template when lead has never responded');
     }
     
+    // Build template variables before scheduling
+    const templateVariables = await buildFollowupTemplateVariables(
+      candidate.conversationId,
+      candidate.consultantId,
+      candidate.agentConfigId,
+      candidate.leadName
+    );
+    
     await db.insert(scheduledFollowupMessages).values({
       conversationId: candidate.conversationId,
       ruleId: effectiveAiRule.id,
       templateId: templateIdToUse,
       scheduledFor,
       status: 'pending',
-      templateVariables: {},
+      templateVariables,
       fallbackMessage: fallbackMessageToUse,
       aiDecisionReasoning: decision.allowFreeformMessage 
         ? `Pending short-window: AI generated freeform message` 
@@ -2571,6 +2690,16 @@ async function sendFollowupMessage(
   // Send message via Twilio
   console.log(`📱 [FOLLOWUP-SCHEDULER] Sending follow-up to ${phoneNumber}: "${messageText.substring(0, 50)}..."`);
   
+  // Prepare content variables for Twilio template
+  const templateVars = message.templateVariables as Record<string, string> || {};
+  const contentVariables = Object.keys(templateVars).length > 0 
+    ? JSON.stringify(templateVars)
+    : undefined;
+  
+  if (contentVariables) {
+    console.log(`📋 [FOLLOWUP-SCHEDULER] Passing contentVariables to Twilio: ${contentVariables}`);
+  }
+  
   await sendWhatsAppMessage(
     consultantId,
     phoneNumber,
@@ -2580,6 +2709,7 @@ async function sendFollowupMessage(
       agentConfigId: agentConfigId || undefined,
       conversationId: message.conversationId,
       twilioContentSid: twilioContentSid || undefined,
+      contentVariables,
     }
   );
   
