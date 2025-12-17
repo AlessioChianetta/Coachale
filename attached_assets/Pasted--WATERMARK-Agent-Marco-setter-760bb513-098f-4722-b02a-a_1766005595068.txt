@@ -1,0 +1,118 @@
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:06:04 PM [express] GET /api/whatsapp/conversations/stats 200 in 21ms
+9:06:05 PM [express] GET /api/auth/my-profiles 304 in 343ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+9:06:05 PM [express] GET /api/whatsapp/conversations 304 in 573ms :: {"conversations":[{"id":"4a695f…
+9:06:06 PM [express] GET /api/automation-rules 200 in 11ms
+9:06:06 PM [express] GET /api/auth/my-profiles 304 in 335ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+9:06:06 PM [express] GET /api/proactive-leads 200 in 335ms :: {"success":true,"leads":[{"id":"e8b1c5…
+9:06:09 PM [express] GET /api/external-api/import-logs 200 in 14ms
+9:06:09 PM [express] GET /api/campaigns 200 in 336ms :: {"success":true,"data":[{"id":"dd10cce2-065f…
+9:06:09 PM [express] GET /api/auth/my-profiles 304 in 338ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+🚀 [MANUAL TRIGGER] Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b triggered immediate outreach for lead e8b1c51e-6154-4686-99d2-fe0efb4cfe4d (isDryRun: false)
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-12-17T21:06:10.999Z
+📋 Found 1 pending leads to contact (first message only)
+🔒 [LOCK ACQUIRED] Claimed lead e8b1c51e-6154-4686-99d2-fe0efb4cfe4d for processing
+📤 Processing lead: rosita sd (+393331234569)
+📝 [ACTIVITY LOG] processing: Inizio elaborazione lead rosita sd
+
+📋 [CAMPAIGN INFO] Lead associated with campaign
+   Campaign ID: dd10cce2-065f-4adc-a051-d445545cc976
+   Campaign Name: Orbitale finanza
+   Campaign Type: inbound_form
+   Is Active: true
+   Lead Category: N/A
+   Campaign Defaults:
+     - Obiettivi: raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni
+     - Desideri: NOT SET
+     - Uncino: NOT SET
+     - Stato Ideale: NOT SET
+   Campaign Template Overrides:
+     - Opening Template: NOT SET (using agent default)
+     - Gentle Follow-up: NOT SET (using agent default)
+     - Value Follow-up: NOT SET (using agent default)
+     - Final Follow-up: NOT SET (using agent default)
+
+✅ [OBIETTIVI CHECK] Lead has obiettivi: from lead
+
+🎯 [TEMPLATE PRECEDENCE] Resolving opening template assignment
+   Agent Template (default): HX922112cd9b1d531c5be56772acd50034
+   Campaign Template (override): NOT SET
+   Final Opening Template: HX922112cd9b1d531c5be56772acd50034
+
+
+📋 [PROACTIVE OUTREACH] Sending template message:
+   Agent ID: 760bb513-098f-4722-b02a-a700160c2fc3
+   Agent Name: Marco setter
+   Template SID: HX922112cd9b1d531c5be56772acd50034
+   Message Type: opening
+   Lead ID: e8b1c51e-6154-4686-99d2-fe0efb4cfe4d
+   Lead Name: rosita sd
+   Template Variables:
+     {{1}}: "rosita"
+     {{2}}: "Marco"
+     {{3}}: "Orbitale"
+     {{4}}: "abbiamo visto che ti sei iscritto ai nostri contenuti per capire come raggiungere dai 100.000 ai 500.000 nei prossimi 2-4 anni"
+     {{5}}: "più tranquillità e la tua libertà finanziaria"
+   Dry Run: true
+
+🔒 [DRY RUN] Skipping template approval check (dry run mode)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [CONVERSATION LOOKUP] Called at 2025-12-17T21:06:11.457Z
+📞 Phone: +393331234569
+👤 Consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🤖 Agent: 760bb513-098f-4722-b02a-a700160c2fc3
+🎯 Proactive Lead: true
+📍 Call originated from:
+    at processLead (/home/runner/workspace/server/whatsapp/proactive-outreach.ts:546:32)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async processProactiveOutreach (/home/runner/workspace/server/whatsapp/proactive-outreach.ts:994:9)
+    at async <anonymous> (/home/runner/workspace/server/routes/proactive-leads.ts:987:20)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🆕🆕🆕 [CONVERSATION CREATE] Creating NEW conversation at 2025-12-17T21:06:11.801Z 🆕🆕🆕
+👤 [PARTICIPANT] Type: unknown, isLead: true, userId: none
+✅ [CONVERSATION CREATED] id=8ade4b3f-b309-4c51-aa6d-4b21f02da8de for +393331234569 (Type: unknown, Lead - PROACTIVE) assigned to agent: 760bb513-098f-4722-b02a-a700160c2fc3
+📊 [CONVERSATION STATE] Created initial state for conversation 8ade4b3f-b309-4c51-aa6d-4b21f02da8de
+💾 [INSERT] Inserting message for lead e8b1c51e-6154-4686-99d2-fe0efb4cfe4d (rosita) to conversation 8ade4b3f-b309-4c51-aa6d-4b21f02da8de
+   Message text preview: "🧪 DRY RUN - Anteprima Messaggio
+
+Ciao rosita! 👋 Sono Marco di Orbitale.
+
+Ti scrivo riguardo alla t..."
+   Dry run: true, Template SID: HX922112cd9b1d531c5be56772acd50034
+✅ [INSERT] Message saved with ID: 2298e91f-a550-413e-830e-94615da68e09
+🔒 [DRY RUN] Saved simulated message to database: 2298e91f-a550-413e-830e-94615da68e09
+✅ Using explicitly specified agent: Marco setter (760bb513-098f-4722-b02a-a700160c2fc3)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Marco setter
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Marco setter)
+📤 [DRY RUN] Would send WhatsApp message with template: HX922112cd9b1d531c5be56772acd50034
+📋 Template Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393331234569
+   Template SID: HX922112cd9b1d531c5be56772acd50034
+   Variables: {
+  "1": "rosita",
+  "2": "Marco",
+  "3": "Orbitale",
+  "4": "abbiamo visto che ti sei iscritto ai nostri contenuti per capire come raggiungere dai 100.000 ai 500.000 nei prossimi 2-4 anni",
+  "5": "più tranquillità e la tua libertà finanziaria"
+}
+   Message Text (fallback): TEMPLATE:HX922112cd9b1d531c5be56772acd50034
+✅ [DRY RUN] Simulated template message: DRY_RUN_TEMPLATE_1766005572598_0tpoe
+🔒 [DRY RUN] Simulated message to rosita sd - updating status to prevent duplicates
+🔒 [DRY RUN] Lead e8b1c51e-6154-4686-99d2-fe0efb4cfe4d status updated to 'contacted' (prevents duplicate sends)
+📝 [ACTIVITY LOG] sent: Messaggio simulato (DRY RUN)
+
+✅ [PROACTIVE OUTREACH] Completed in 2161ms
+   📊 Results: 1 success, 0 errors, 0 skipped, 1 pending leads total
+9:06:13 PM [express] POST /api/proactive-leads/e8b1c51e-6154-4686-99d2-fe0efb4cfe4d/trigger-now 200 …

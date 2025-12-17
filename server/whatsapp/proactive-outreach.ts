@@ -10,7 +10,8 @@ import {
   consultantWhatsappConfig, 
   whatsappConversations, 
   whatsappMessages,
-  proactiveLeadActivityLogs
+  proactiveLeadActivityLogs,
+  conversationStates
 } from '../../shared/schema';
 import { eq, lte, and } from 'drizzle-orm';
 import { 
@@ -771,6 +772,19 @@ async function processLead(
         updatedAt: new Date(),
       })
       .where(eq(whatsappConversations.id, conversation.id));
+
+    // CRITICAL FIX: Update conversation_states to increment followupCount
+    // This prevents race condition with followup-scheduler thinking it's a new lead
+    await db
+      .update(conversationStates)
+      .set({
+        followupCount: 1, // First message sent by proactive outreach
+        lastFollowupAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(conversationStates.conversationId, conversation.id));
+    
+    console.log(`📊 [PROACTIVE OUTREACH] Updated conversation_states: followupCount=1 for ${conversation.id}`);
 
     // Send via Twilio (with template if available)
     await sendWhatsAppMessage(

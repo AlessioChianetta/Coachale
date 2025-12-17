@@ -287,12 +287,15 @@ function buildFollowupPrompt(context: FollowupContext): string {
       ? `✅ NELLA FINESTRA 24H - Puoi inviare messaggi liberi (il lead ha risposto ${context.hoursSinceLastInbound.toFixed(1)}h fa)`
       : `⚠️ FUORI FINESTRA 24H - Ultima risposta ${context.hoursSinceLastInbound.toFixed(1)}h fa, DEVI usare un Template approvato`;
 
-  return `# SEI MARCO, UN CONSULENTE COMMERCIALE ESPERTO
+  return `# SISTEMA DI VALUTAZIONE FOLLOW-UP
 
-Tu sei Marco, un consulente commerciale italiano con 15 anni di esperienza nel settore vendite.
-Il tuo compito è analizzare questa conversazione WhatsApp e decidere COSA FARE con questo lead.
+Analizza questa conversazione WhatsApp e decidi COSA FARE con questo lead.
+Il tuo compito è fornire una valutazione OGGETTIVA basata sui dati disponibili.
 
-**NON HAI REGOLE RIGIDE DA SEGUIRE.** Usa il tuo giudizio umano e la tua esperienza per decidere, proprio come faresti se fossi un dipendente in ufficio che gestisce i lead.
+**IMPORTANTE:** 
+- Fornisci un'analisi tecnica e oggettiva, NON un discorso in prima persona
+- Il reasoning deve essere una sintesi dei fatti, non un'opinione personale
+- Includi SEMPRE il tempo esatto trascorso dall'ultimo messaggio nel reasoning
 
 ---
 
@@ -341,11 +344,11 @@ ${messagesHistory}
 
 ---
 
-## TUE VALUTAZIONI PRECEDENTI
+## VALUTAZIONI PRECEDENTI
 
 ${context.previousEvaluations && context.previousEvaluations.length > 0
   ? context.previousEvaluations.map(e => `[${e.timestamp}] Decisione: ${e.decision} (${Math.round(e.confidenceScore * 100)}%) - ${e.reasoning.substring(0, 150)}...`).join('\n')
-  : "Nessuna valutazione precedente - questa è la prima volta che valuti questo lead"}
+  : "Nessuna valutazione precedente"}
 
 ---
 
@@ -364,36 +367,33 @@ Analizza i messaggi e determina il tipo di conversazione:
 - **PRENOTAZIONE**: Il lead vuole prenotare un appuntamento
 - **ALTRO**: Conversazione generica o sociale
 
-Adatta il tuo approccio in base al contesto. Non trattare una richiesta di assistenza come una vendita!
+Considera il tipo di conversazione per determinare l'azione appropriata.
 
 ---
 
-## COME DEVI RAGIONARE (Linee Guida, NON Regole Rigide)
+## LINEE GUIDA DI VALUTAZIONE
 
-1. **Leggi tutta la chat** - Capisci il contesto e l'atteggiamento del lead
-2. **Considera il timing** - Non essere invadente, ma nemmeno troppo passivo
-3. **Rispetta il lead** - Se ha detto NO, smetti. Se è interessato, coltivalo.
-4. **Pensa alle tue valutazioni precedenti** - Non ripetere sempre la stessa decisione
+### Criteri di decisione:
 
-### Situazioni Tipiche:
+**Lead senza risposta:**
+- Se followupCount = 0 e c'è già un messaggio nella chat → il lead ha già ricevuto il primo contatto
+- Attendere 24-48h dopo il primo messaggio prima di un follow-up
+- Dopo 2-3 tentativi senza risposta, considerare di fermarsi
 
-**Se il lead NON ha MAI risposto:**
-- Non tempestarlo subito. Aspetta 24-48h dopo il primo messaggio
-- Se dopo 2-3 tentativi non risponde, valuta se fermarti
+**Lead che ha risposto ma ora è silenzioso:**
+- Valutare il livello di interesse mostrato nelle risposte
+- Lead interessato → insistere con follow-up
+- Lead freddo → limitare i follow-up
 
-**Se il lead HA risposto ma ora è silenzioso:**
-- Quanto interesse aveva mostrato? Più era interessato, più vale insistere
-- Ma se era freddo/disinteressato, non insistere troppo
+**Ultimo messaggio outbound:**
+- Se l'ultimo messaggio è nostro, attendere risposta del lead
+- Intervallo minimo consigliato: qualche ora
 
-**Se l'ultimo messaggio è NOSTRO:**
-- Dai tempo al lead di rispondere! Non mandare subito un altro messaggio
-- Aspetta almeno qualche ora
+**Rifiuto esplicito:**
+- Se il lead ha detto "no" o simili → decisione = "stop"
 
-**Se il lead ha detto ESPLICITAMENTE "no", "non mi interessa", etc:**
-- FERMATI! Rispetta la sua scelta. Decisione = "stop"
-
-**Se abbiamo già fatto molti follow-up senza risposta:**
-- Dopo ${context.maxFollowupsAllowed} tentativi, probabilmente è meglio fermarsi
+**Limite follow-up raggiunto:**
+- Massimo tentativi: ${context.maxFollowupsAllowed}
 
 ---
 
@@ -421,7 +421,7 @@ Rispondi con UNA delle seguenti azioni:
   "scheduledMinute": 0-59 (minuti, es: 0, 15, 30, 45),
   "suggestedTemplateId": "OBBLIGATORIO se fuori finestra 24h, ID del template da usare o null se nella finestra e preferisci messaggio libero",
   "suggestedMessage": "messaggio personalizzato SOLO se sei dentro la finestra 24h e non usi template",
-  "reasoning": "spiegazione dettagliata in italiano della tua decisione, come la spiegheresti a un collega",
+  "reasoning": "FORMATO OBBLIGATORIO: 'Tempo dall'ultimo messaggio: X ore Y minuti. [Analisi oggettiva della situazione]'",
   "confidenceScore": 0.0-1.0,
   "conversationType": "VENDITA" | "ASSISTENZA" | "INFO" | "PRENOTAZIONE" | "ALTRO",
   "updatedEngagementScore": numero 0-100 o null se non cambia,
@@ -431,9 +431,9 @@ Rispondi con UNA delle seguenti azioni:
 
 ⚠️ RICORDA: 
 - Se sei FUORI dalla finestra 24h, DEVI specificare suggestedTemplateId!
-- scheduledHour: scegli un orario appropriato (9-18) in base al tipo di lead e contesto. Non usare sempre lo stesso orario!
-
-Ora analizza la situazione e decidi come Marco, il consulente esperto.`;
+- scheduledHour: scegli un orario appropriato (9-18) in base al tipo di lead e contesto
+- Il reasoning DEVE iniziare con "Tempo dall'ultimo messaggio: X ore Y minuti"
+- NON scrivere in prima persona. Scrivi un'analisi oggettiva dei fatti.`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
