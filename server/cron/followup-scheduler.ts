@@ -1789,12 +1789,12 @@ async function getAllApprovedTemplatesForAgent(
   const templates: TemplateForSelection[] = [];
   
   // STEP 1: Get Twilio templates (HX prefix) assigned to this agent
+  // NOTE: whatsappTemplateAssignments does NOT have templateName field
   const twilioTemplates = await db
     .select({ 
       templateId: whatsappTemplateAssignments.templateId,
       priority: whatsappTemplateAssignments.priority,
-      templateType: whatsappTemplateAssignments.templateType,
-      templateName: whatsappTemplateAssignments.templateName
+      templateType: whatsappTemplateAssignments.templateType
     })
     .from(whatsappTemplateAssignments)
     .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId))
@@ -1808,7 +1808,7 @@ async function getAllApprovedTemplatesForAgent(
   for (const t of approvedTwilioTemplates) {
     templates.push({
       id: t.templateId,
-      name: t.templateName || `Template ${t.templateId.substring(0, 8)}`,
+      name: `Template Twilio ${t.templateId.substring(2, 10)}`,
       goal: 'Follow-up WhatsApp', // Default goal for Twilio templates
       tone: 'Professionale',
       bodyText: `Template Twilio pre-approvato (Priority: ${t.priority})`,
