@@ -1211,7 +1211,7 @@ async function evaluateConversation(
     await db.insert(scheduledFollowupMessages).values({
       conversationId: candidate.conversationId,
       ruleId: timeBasedRule.id,
-      templateId: windowCheck.selectedTemplateId || timeBasedRule.templateId,
+      templateId: timeBasedRule.templateId,
       scheduledFor,
       status: 'pending',
       templateVariables: {},
@@ -1353,13 +1353,6 @@ async function evaluateConversation(
   if (decision.decision === 'send_now' || decision.decision === 'schedule') {
     const scheduledFor = calculateScheduledTime(decision);
     
-    // 🔍 DEBUG LOG: Traccia agentConfigId passato alla validazione
-    console.log(`🔍 [TEMPLATE-TRACE] ═══ CHIAMATA 2: AI decision ═══`);
-    console.log(`🔍 [TEMPLATE-TRACE] candidate.agentConfigId: ${candidate.agentConfigId || 'NULL/UNDEFINED'}`);
-    console.log(`🔍 [TEMPLATE-TRACE] candidate.conversationId: ${candidate.conversationId}`);
-    console.log(`🔍 [TEMPLATE-TRACE] candidate.leadName: ${candidate.leadName}`);
-    console.log(`🔍 [TEMPLATE-TRACE] decision.decision: ${decision.decision}`);
-    
     const windowCheck = await validate24hWindowForScheduling(
       candidate.conversationId,
       scheduledFor,
@@ -1387,24 +1380,17 @@ async function evaluateConversation(
       return 'skipped';
     }
     
-    // Use the template found during validation, or fall back to rule template
-    let templateIdToUse: string | null = windowCheck.selectedTemplateId || null;
+    // Template verrà selezionato dall'AI
+    let templateIdToUse: string | null = null;
     let fallbackMessageToUse: string | null = null;
     let messagePreview: string | null = null;
     let aiSelectedTemplateReasoning: string | null = null;
     
-    if (decision.allowFreeformMessage) {
-      // CRITICAL FIX: Se il lead non ha mai risposto, NON usare freeform, DEVE usare template
-      if (candidate.leadNeverResponded) {
-        console.log(`🔒 [FOLLOWUP-SCHEDULER] Freeform BLOCKED: leadNeverResponded=true - using validated template instead`);
-        // Keep templateIdToUse from windowCheck validation
-        templateIdToUse = windowCheck.selectedTemplateId;
-        fallbackMessageToUse = null;
-      } else {
-        console.log(`⚡ [FOLLOWUP-SCHEDULER] Freeform message mode (pending short-window rule)`);
-        fallbackMessageToUse = await generateFreeformFollowupMessage(context, candidate.consultantId);
-        templateIdToUse = null;
-      }
+    if (decision.allowFreeformMessage && !candidate.leadNeverResponded && !windowCheck.willBeOutside24h) {
+      // Freeform solo se il lead ha risposto E siamo dentro la finestra 24h
+      console.log(`⚡ [FOLLOWUP-SCHEDULER] Freeform message mode (inside 24h window)`);
+      fallbackMessageToUse = await generateFreeformFollowupMessage(context, candidate.consultantId);
+      templateIdToUse = null;
     } else if (windowCheck.willBeOutside24h || candidate.leadNeverResponded) {
       // Outside 24h window OR lead never responded - use AI to select best template from approved Twilio templates
       console.log(`🎯 [FOLLOWUP-SCHEDULER] Outside 24h/Lead never responded - using AI to select best template`);
@@ -2100,57 +2086,29 @@ async function validate24hWindowForScheduling(
     return { canSchedule: false, window24hExpiresAt, willBeOutside24h, leadNeverResponded };
   }
 
-  // 🔍 DEBUG LOG: Mostra quale agentConfigId stiamo cercando
-  console.log(`🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════`);
-  console.log(`🔍 [TEMPLATE-DEBUG] Cercando template per agentConfigId: ${agentConfigId}`);
-  console.log(`🔍 [TEMPLATE-DEBUG] Conversation: ${conversationId}`);
-
+  // Verifica solo che esistano template approvati (la selezione viene fatta dall'AI dopo)
   // STEP 1: Check for Twilio templates (HX prefix) assigned to this agent
-  // Twilio templates with HX prefix that are assigned are considered pre-approved
-  // They go through Twilio's approval process before being available in the Content API
   const twilioTemplates = await db
     .select({ 
       templateId: whatsappTemplateAssignments.templateId,
-      priority: whatsappTemplateAssignments.priority,
       templateType: whatsappTemplateAssignments.templateType
     })
     .from(whatsappTemplateAssignments)
-    .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId))
-    .orderBy(desc(whatsappTemplateAssignments.priority));
+    .where(eq(whatsappTemplateAssignments.agentConfigId, agentConfigId));
 
-  // 🔍 DEBUG LOG: Mostra TUTTI i template trovati dalla query (PRIMA del filtro)
-  console.log(`🔍 [TEMPLATE-DEBUG] Template TROVATI dalla query (tutti): ${twilioTemplates.length}`);
-  twilioTemplates.forEach((t, i) => {
-    console.log(`🔍 [TEMPLATE-DEBUG]   ${i + 1}. templateId: ${t.templateId}, type: ${t.templateType}, priority: ${t.priority}`);
-    console.log(`🔍 [TEMPLATE-DEBUG]      - Inizia con HX? ${t.templateId.startsWith('HX')}`);
-    console.log(`🔍 [TEMPLATE-DEBUG]      - templateType === 'twilio'? ${t.templateType === 'twilio'}`);
-  });
-
-  // Filter for Twilio templates (HX prefix) - these are pre-approved by Twilio when they have the HX ContentSID format
-  // Only templates that have been synced to Twilio and approved will have an HX prefix
   const approvedTwilioTemplates = twilioTemplates.filter(t => 
     t.templateId.startsWith('HX') && t.templateType === 'twilio'
   );
-
-  // 🔍 DEBUG LOG: Mostra template DOPO il filtro
-  console.log(`🔍 [TEMPLATE-DEBUG] Template DOPO filtro (HX + twilio): ${approvedTwilioTemplates.length}`);
-  approvedTwilioTemplates.forEach((t, i) => {
-    console.log(`🔍 [TEMPLATE-DEBUG]   ${i + 1}. ${t.templateId} (priority: ${t.priority})`);
-  });
-  console.log(`🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════`);
   
   if (approvedTwilioTemplates.length > 0) {
-    const selectedTemplate = approvedTwilioTemplates[0];
-    console.log(`✅ [FOLLOWUP-SCHEDULER] Template Twilio approvato SELEZIONATO: ${selectedTemplate.templateId} (priority: ${selectedTemplate.priority}, type: ${selectedTemplate.templateType})`);
-    return { canSchedule: true, window24hExpiresAt, willBeOutside24h, leadNeverResponded, selectedTemplateId: selectedTemplate.templateId };
+    console.log(`✅ [FOLLOWUP-SCHEDULER] Trovati ${approvedTwilioTemplates.length} template Twilio approvati - AI selezionerà il migliore`);
+    return { canSchedule: true, window24hExpiresAt, willBeOutside24h, leadNeverResponded };
   }
 
   // STEP 2: Check for custom templates with approved status
   const approvedCustomTemplate = await db
     .select({ 
-      id: whatsappTemplateVersions.id,
-      templateId: whatsappTemplateVersions.templateId,
-      twilioContentSid: whatsappTemplateVersions.twilioContentSid
+      id: whatsappTemplateVersions.id
     })
     .from(whatsappTemplateVersions)
     .innerJoin(
@@ -2164,14 +2122,11 @@ async function validate24hWindowForScheduling(
         eq(whatsappTemplateVersions.twilioStatus, 'approved')
       )
     )
-    .orderBy(desc(whatsappTemplateAssignments.priority))
     .limit(1);
 
   if (approvedCustomTemplate.length > 0) {
-    const selectedTemplate = approvedCustomTemplate[0];
-    const templateIdToUse = selectedTemplate.twilioContentSid || selectedTemplate.templateId;
-    console.log(`✅ [FOLLOWUP-SCHEDULER] Template custom approvato trovato: ${templateIdToUse}`);
-    return { canSchedule: true, window24hExpiresAt, willBeOutside24h, leadNeverResponded, selectedTemplateId: templateIdToUse };
+    console.log(`✅ [FOLLOWUP-SCHEDULER] Trovati template custom approvati - AI selezionerà il migliore`);
+    return { canSchedule: true, window24hExpiresAt, willBeOutside24h, leadNeverResponded };
   }
 
   console.log(`❌ [FOLLOWUP-SCHEDULER] NESSUN template approvato disponibile (né Twilio né custom) per fuori 24h - NON schedulo`);

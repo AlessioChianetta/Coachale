@@ -11,8 +11,7 @@
 import { db } from "../db";
 import { conversationStates, followupAiEvaluationLog } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
-import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson, getAIProvider } from "./provider-factory";
+import { getAIProvider } from "./provider-factory";
 // Le regole di sistema NON vengono più usate - l'AI decide tutto
 // import { evaluateSystemRules, RuleEvaluationContext } from "./system-rules-config";
 
@@ -608,35 +607,21 @@ RISPONDI SOLO IN JSON:
     try {
       console.log(`🔄 [TEMPLATE-AI] Attempt ${attempt}/${maxRetries}`);
       
+      // getAIProvider restituisce un client già pronto da usare
       const aiProvider = await getAIProvider(consultantId, consultantId);
       
-      if (!aiProvider) {
+      if (!aiProvider || !aiProvider.client) {
         throw new Error("No AI provider available");
       }
       
-      let responseText: string;
+      console.log(`🤖 [TEMPLATE-AI] Using AI provider: ${aiProvider.metadata?.name || aiProvider.source}`);
       
-      if (aiProvider.type === 'vertex') {
-        const client = await createVertexGeminiClient(
-          aiProvider.projectId!,
-          aiProvider.location!,
-          aiProvider.credentials
-        );
-        
-        if (!client) {
-          throw new Error("Failed to create Vertex AI client");
-        }
-        
-        const result = await client.generateContent(prompt);
-        responseText = result.response?.text() || "";
-      } else {
-        const genAI = new GoogleGenAI({ apiKey: aiProvider.apiKey! });
-        const response = await genAI.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: prompt
-        });
-        responseText = response.text || "";
-      }
+      // Usa direttamente il client già configurato con il formato corretto
+      const aiResponse = await aiProvider.client.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+      const responseText = aiResponse.response?.text() || "";
       
       // Parse JSON response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -644,12 +629,12 @@ RISPONDI SOLO IN JSON:
         throw new Error("No JSON found in AI response");
       }
       
-      const result = JSON.parse(jsonMatch[0]);
+      const parsedResult = JSON.parse(jsonMatch[0]);
       
       // Validate the selected template exists
-      const selectedTemplate = templates.find(t => t.id === result.selectedTemplateId);
+      const selectedTemplate = templates.find(t => t.id === parsedResult.selectedTemplateId);
       if (!selectedTemplate) {
-        console.warn(`⚠️ [TEMPLATE-AI] AI selected unknown template ID: ${result.selectedTemplateId}, falling back to first`);
+        console.warn(`⚠️ [TEMPLATE-AI] AI selected unknown template ID: ${parsedResult.selectedTemplateId}, falling back to first`);
         return {
           selectedTemplateId: templates[0].id,
           reasoning: `AI ha suggerito un template non valido. Usando il template prioritario: ${templates[0].name}`,
@@ -657,13 +642,13 @@ RISPONDI SOLO IN JSON:
         };
       }
       
-      console.log(`✅ [TEMPLATE-AI] Selected template: ${result.selectedTemplateId} (confidence: ${result.confidence})`);
-      console.log(`   Reasoning: ${result.reasoning}`);
+      console.log(`✅ [TEMPLATE-AI] Selected template: ${parsedResult.selectedTemplateId} (confidence: ${parsedResult.confidence})`);
+      console.log(`   Reasoning: ${parsedResult.reasoning}`);
       
       return {
-        selectedTemplateId: result.selectedTemplateId,
-        reasoning: result.reasoning || "Template selezionato dall'AI",
-        confidence: result.confidence || 0.8
+        selectedTemplateId: parsedResult.selectedTemplateId,
+        reasoning: parsedResult.reasoning || "Template selezionato dall'AI",
+        confidence: parsedResult.confidence || 0.8
       };
       
     } catch (error) {
