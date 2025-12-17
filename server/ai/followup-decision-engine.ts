@@ -190,8 +190,18 @@ export async function evaluateFollowup(
       }
     }
 
+    // Recupera valutazioni AI precedenti per dare contesto storico all'AI
+    const previousEvaluations = await getPreviousEvaluations(context.conversationId, 5);
+    console.log(`📜 [FOLLOWUP-ENGINE] Found ${previousEvaluations.length} previous evaluations for context`);
+    
+    // Arricchisci il context con le valutazioni precedenti
+    const enrichedContext: FollowupContext = { 
+      ...context, 
+      previousEvaluations 
+    };
+
     // Costruisci il prompt per l'AI
-    const prompt = buildFollowupPrompt(context);
+    const prompt = buildFollowupPrompt(enrichedContext);
     
     // Get AI provider using the unified provider factory
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
