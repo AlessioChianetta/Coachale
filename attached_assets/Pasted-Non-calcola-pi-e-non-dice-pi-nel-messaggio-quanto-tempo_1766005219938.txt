@@ -1,0 +1,35 @@
+Non calcola più e non dice più nel messaggio quanto tempo è passato dall'ultimo messaggio, 
+
+quando invio il template, dice che lo ha inviato nella console sembra sia stato inviato 
+ma poi o siamo in dry run o non in dry run non arriva nella chat, controlla come funziona proactive outreach nella pagina /consultant/proactive-leads  quando da li
+invio il messaggio li arriva correttamente
+
+inoltre non voglio che dica, come marco con i miei x anni di esperienza so che bla bla bla, ma voglio solo l'analisi, lui dice che sceglie il template diverso dal primo, ma in realtà deve solo scegliere di programmare  ebasta, perchè poi ci pensa l'altro dipendente  a scegliere il template quando lo legge
+
+
+QUESTO  è QUELLO CHE è SUCCESSO
+
+Messaggio INVIATO
+17 dic 21:54
+Come Marco, con i miei 15 anni di esperienza, so che il tempismo è fondamentale. Abbiamo appena inviato il primo messaggio e il lead non ha ancora avuto il tempo di rispondere. Mandare un altro messaggio subito sarebbe controproducente e potremmo sembrare troppo insistenti. Dobbiamo dargli un po' di respiro. Data l'assenza di risposta e il fatto che siamo fuori dalla finestra delle 24 ore di WhatsApp, è imperativo programmare un follow-up con un template approvato per domani mattina. Non avendo il contenuto del secondo template, scelgo quello diverso dal primo inviato, presumendo che sia un template di follow-up o con un messaggio leggermente diverso per catturare l'attenzione. Un tentativo il giorno dopo è una buona prassi per mantenere vivo l'interesse senza essere invadenti. La conversazione è chiaramente di VENDITA, dato l'obiettivo del messaggio iniziale.
+
+Mostra tutto
+Template: HX922112cd9b1d531c5be56772acd50034
+
+✅
+Approvato
+"Ciao {{1}}! 👋 Sono {{2}} di {{3}}. Ti scrivo riguardo alla tua iscrizione e al tuo interesse per: {{4}}. Il nostro scopo è aiutarti a raggiungere il tuo obiettivo: {{5}}. Per partire col piede giusto e non sprecare il tuo tempo, posso chiederti: cosa ti ha spinto a iscriverti? 😃"
+
+Mostra tutto
+AI:
+Il lead è in stato 'new' e ha '0 giorni senza risposta'. Inoltre, l'ultimo 'messaggio' è etichettato come 'DRY RUN - Anteprima Messaggio' ed è incompleto. Questo indica chiaramente che il primo contatto effettivo non è ancora avvenuto o è in fase di preparazione. Il Template 1 è un messaggio di primo contatto che introduce il mittente, fa riferimento all'iscrizione e pone una domanda aperta per ingaggiare il lead, adattandosi perfettamente a una situazione di primo approccio. Il Template 2, invece, è un follow-up progettato per un messaggio *già inviato e non risposto*, il che non è il caso qui.
+
+
+
+
+
+
+
+
+
+
