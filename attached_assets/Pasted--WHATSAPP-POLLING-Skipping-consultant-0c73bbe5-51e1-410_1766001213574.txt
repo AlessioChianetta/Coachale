@@ -1,0 +1,397 @@
+[WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+📊 [CALENDAR SYNC] Syncing 1 consultant(s)...
+
+🔄 [CALENDAR SYNC] Starting sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📋 Found 1 total configs across all consultants
+✅ Found 0 configs with polling enabled and active
+✅ Lead polling scheduler initialized successfully
+7:50:19 PM [express] ✅ Lead polling scheduler initialized
+7:50:19 PM [express] 📊 Training summary aggregator enabled - starting scheduler...
+✅ [TRAINING AGGREGATOR] Registering cron job (ID: 6fwcod)
+📅 [TRAINING AGGREGATOR] Schedule: Daily at 3:00 AM
+⏰ [TRAINING AGGREGATOR] Timezone: UTC
+✅ [TRAINING AGGREGATOR] Cron job started successfully
+7:50:19 PM [express] ✅ Training summary aggregator started
+7:50:19 PM [express] ⚡ Follow-up scheduler enabled - starting scheduler...
+🚀 [FOLLOWUP-SCHEDULER] Initializing follow-up scheduler...
+✅ [FOLLOWUP-SCHEDULER] Scheduler initialized successfully
+   🔥 HOT/WARM: */5 * * * * (every 5 minutes)
+   ❄️  COLD: 0 */2 * * * (every 2 hours)
+   👻 GHOST: 0 10 * * * (daily at 10:00)
+   📋 Processing: * * * * * (every minute)
+7:50:19 PM [express] ✅ Follow-up scheduler started
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+🔗 [GOOGLE CALENDAR] Using GLOBAL OAuth credentials. Redirect URI: https://69b7a3eb-fe09-4b24-bb43-3c566925a6cb-00-2kr08edz273ih.spock.replit.dev/api/calendar-settings/oauth/callback
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ Using saved calendar ID from settings: primary
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+✅ [CALENDAR SYNC] No confirmed appointments to sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b in the next 90 days
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+
+✅ [CALENDAR SYNC] Sync cycle complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7:50:22 PM [express] GET /api/whatsapp/stats 200 in 19ms
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+7:50:22 PM [express] GET /api/proactive-leads 304 in 437ms :: {"success":true,"leads":[{"id":"e7434e…
+Getting active sessions for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [WHATSAPP POLLING] Poll cycle complete
+Found active sessions: 1
+7:50:23 PM [express] GET /api/auth/my-profiles 304 in 1306ms :: {"profiles":[{"id":"fd732f27-d63b-4e…
+7:50:23 PM [express] GET /api/clients 304 in 1315ms :: [{"id":"8a7f6b63-b41e-4071-bf44-28d71df1f4d8"…
+Returning sessions with users: 1
+7:50:23 PM [express] GET /api/activity/sessions/active 200 in 722ms :: [{"id":"543732da-a30d-4a5b-a8…
+7:50:24 PM [express] GET /api/stats/consultant 304 in 1775ms :: {"activeClients":23,"completedExerci…
+Getting activity logs for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+7:50:24 PM [express] GET /api/whatsapp/conversations 200 in 714ms :: {"conversations":[{"id":"1c1589…
+7:50:24 PM [express] GET /api/exercise-assignments/consultant 304 in 1757ms :: [{"id":"63c7f092-f938…
+7:50:24 PM [express] GET /api/email-journey-progress 304 in 2422ms :: [{"id":"b1b288cc-50de-4068-a0a…
+7:50:24 PM [express] GET /api/sessions/active 200 in 12ms
+Found activity logs: 500
+7:50:25 PM [express] GET /api/exercises 304 in 1320ms :: [{"id":"5718c758-63f5-4b73-aeae-7f386899df4…
+Returning logs with users: 500
+7:50:28 PM [express] GET /api/activity/clients 304 in 4849ms :: [{"id":"f7a01460-966a-478d-a1e6-5d99…
+7:50:29 PM [express] GET /api/consultant/onboarding/interactive-intro/status 304 in 3999ms :: {"succ…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 5 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+7:50:30 PM [express] GET /api/university/stats/overview 304 in 6720ms :: [{"clientId":"8a7f6b63-b41e…
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+7:50:35 PM [express] GET /api/sessions/active 200 in 6ms
+7:50:36 PM [express] GET /api/automation-rules 200 in 7ms
+7:50:36 PM [express] GET /api/auth/my-profiles 304 in 432ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+7:50:36 PM [express] GET /api/campaigns 304 in 428ms :: {"success":true,"data":[{"id":"dd10cce2-065f…
+📋 Loaded 5 cached approval statuses for agent Receptionist Principale
+✅ [APPROVAL FETCH] Template notification_order_tracking (HX16a6ec5dbd358dd745f096c22fb13e3d): unsubmitted
+✅ [APPROVAL FETCH] Template lead_followup_che_non_ha_risposto (HX5e6d27c6d82026f3620247262ef67340): approved
+✅ [APPROVAL FETCH] Template lead_appena_iscritto_messaggi_aperturaa (HX922112cd9b1d531c5be56772acd50034): approved
+✅ [APPROVAL FETCH] Template message_opt_in (HX5b5fa6e11bfe36fa44f872043448e783): unsubmitted
+✅ [APPROVAL FETCH] Template verifications_2fa_template (HXfe0b137388084a3f0a801921c06d08d9): unsubmitted
+📋 Loaded 5 cached approval statuses for agent Marco setter
+✅ Updated approval status cache for Receptionist Principale
+7:50:38 PM [express] GET /api/whatsapp/custom-templates 304 in 2025ms :: {"success":true,"data":[{"i…
+✅ [APPROVAL FETCH] Template message_opt_in (HX5b5fa6e11bfe36fa44f872043448e783): unsubmitted
+✅ [APPROVAL FETCH] Template notification_order_tracking (HX16a6ec5dbd358dd745f096c22fb13e3d): unsubmitted
+✅ [APPROVAL FETCH] Template verifications_2fa_template (HXfe0b137388084a3f0a801921c06d08d9): unsubmitted
+✅ [APPROVAL FETCH] Template lead_appena_iscritto_messaggi_aperturaa (HX922112cd9b1d531c5be56772acd50034): approved
+✅ [APPROVAL FETCH] Template lead_followup_che_non_ha_risposto (HX5e6d27c6d82026f3620247262ef67340): approved
+7:50:38 PM [express] GET /api/whatsapp/templates 304 in 2165ms :: {"templates":[{"sid":"HX5b5fa6e11b…
+✅ Updated approval status cache for Marco setter
+7:50:39 PM [express] GET /api/auth/my-profiles 304 in 440ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+7:50:39 PM [express] GET /api/followup/settings 304 in 435ms :: {"hoursWithoutReply":4,"rulesCount":…
+7:50:39 PM [express] GET /api/followup/agents 304 in 433ms :: [{"id":"3e3aedc9-1a8f-42b1-b5ac-6a67a4…
+7:50:39 PM [express] GET /api/followup/activity-log 304 in 728ms :: {"timeline":[{"conversationId":"…
+7:50:39 PM [express] GET /api/followup/dashboard-stats 304 in 1150ms :: {"awaitingFollowup":1,"sentT…
+7:50:49 PM [express] POST /api/activity/session/heartbeat 200 in 436ms :: {"success":true,"lastActiv…
+🔄 [FOLLOWUP-API] Manual trigger requested by consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [FOLLOWUP-SCHEDULER] Starting ALL follow-up evaluation cycle...
+🧠 [FOLLOWUP-SCHEDULER] AI-ONLY mode: Found 3 consultants with active WhatsApp configs
+✅ [FILTER-CHECK] Excluding closed states: 'closed_won', 'closed_lost' from candidate search
+📊 [CANDIDATE] 1c158920-2cad-4274-98dc-0adbb5ca61e8: leadNeverResponded=true, hoursSinceLastInbound=999.0h, lastInbound=NULL
+📊 [FOLLOWUP-SCHEDULER] Found 1 ALL candidate conversations
+🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation 1c158920-2cad-4274-98dc-0adbb5ca61e8
+   State: new, Days silent: 0, Hours silent: 0.1, Follow-ups: 0/5
+   📋 Applicable rules: 0 (Sistema AI attivo - le regole sono opzionali)
+🤖 [FOLLOWUP-SCHEDULER] Nessuna regola esplicita - Sistema AI "Marco" attivo per 1c158920-2cad-4274-98dc-0adbb5ca61e8
+🧑‍💼 [FOLLOWUP-ENGINE] Human-Like AI evaluation for conversation 1c158920-2cad-4274-98dc-0adbb5ca61e8
+   State: new, Days silent: 0, Follow-ups: 0/5
+   Mode: AI-ONLY (no hardcoded rules)
+📜 [FOLLOWUP-ENGINE] Found 1 previous evaluations for context
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is the consultant themselves
+✅ Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b can use SuperAdmin Vertex AI
+🔍 Looking for SuperAdmin Vertex AI configuration...
+📋 Found SuperAdmin Vertex AI config: project=gen-lang-client-0278434337, location=us-central1
+✅ Parsed credentials as plaintext JSON
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created SuperAdmin Vertex AI client successfully
+✅ TIER 0: Successfully created SuperAdmin Vertex AI client
+🚀 [FOLLOWUP-ENGINE] Using Vertex AI (SuperAdmin) for evaluation
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 5 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ [FOLLOWUP-ENGINE] Decision: schedule (confidence: 0.98)
+   Reasoning: In qualità di Marco, con 15 anni di esperienza, non invierei un altro messaggio dopo soli 3 minuti dal primo. Il lead non ha ancora avuto tempo di leggere e rispondere. È fondamentale dare spazio al potenziale cliente. La decisione più sensata è programmare un follow-up per domani mattina, diciamo alle 10:00. Se entro allora non avrà risposto, potremo inviare un secondo template per riattivare l'interesse. Il primo messaggio è stato inviato pochi minuti fa, quindi non ci sono segnali negativi, solo normale attesa. Userò l'altro template disponibile per variare l'approccio nel follow-up.
+   Latency: 13423ms
+📝 [FOLLOWUP-ENGINE] Logging decision for conversation 1c158920-2cad-4274-98dc-0adbb5ca61e8
+✅ [FOLLOWUP-ENGINE] Decision logged successfully
+🔍 [TEMPLATE-TRACE] ═══ CHIAMATA 2: AI decision ═══
+🔍 [TEMPLATE-TRACE] candidate.agentConfigId: 760bb513-098f-4722-b02a-a700160c2fc3
+🔍 [TEMPLATE-TRACE] candidate.conversationId: 1c158920-2cad-4274-98dc-0adbb5ca61e8
+🔍 [TEMPLATE-TRACE] candidate.leadName: undefined
+🔍 [TEMPLATE-TRACE] decision.decision: schedule
+⚠️ [FOLLOWUP-SCHEDULER] Lead mai risposto - finestra 24h non ancora aperta, richiesto template approvato
+🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════
+🔍 [TEMPLATE-DEBUG] Cercando template per agentConfigId: 760bb513-098f-4722-b02a-a700160c2fc3
+🔍 [TEMPLATE-DEBUG] Conversation: 1c158920-2cad-4274-98dc-0adbb5ca61e8
+🔍 [TEMPLATE-DEBUG] Template TROVATI dalla query (tutti): 2
+🔍 [TEMPLATE-DEBUG]   1. templateId: HX922112cd9b1d531c5be56772acd50034, type: twilio, priority: 2
+🔍 [TEMPLATE-DEBUG]      - Inizia con HX? true
+🔍 [TEMPLATE-DEBUG]      - templateType === 'twilio'? true
+🔍 [TEMPLATE-DEBUG]   2. templateId: HX5e6d27c6d82026f3620247262ef67340, type: twilio, priority: 1
+🔍 [TEMPLATE-DEBUG]      - Inizia con HX? true
+🔍 [TEMPLATE-DEBUG]      - templateType === 'twilio'? true
+🔍 [TEMPLATE-DEBUG] Template DOPO filtro (HX + twilio): 2
+🔍 [TEMPLATE-DEBUG]   1. HX922112cd9b1d531c5be56772acd50034 (priority: 2)
+🔍 [TEMPLATE-DEBUG]   2. HX5e6d27c6d82026f3620247262ef67340 (priority: 1)
+🔍 [TEMPLATE-DEBUG] ══════════════════════════════════════════════
+✅ [FOLLOWUP-SCHEDULER] Template Twilio approvato SELEZIONATO: HX922112cd9b1d531c5be56772acd50034 (priority: 2, type: twilio)
+🎯 [FOLLOWUP-SCHEDULER] Outside 24h/Lead never responded - using AI to select best template
+📋 [TEMPLATE-AI] Fetching all approved templates for agent: 760bb513-098f-4722-b02a-a700160c2fc3
+📋 [TEMPLATE-AI] Found 2 templates for AI selection
+🎯 [TEMPLATE-AI] Selecting best template for conversation with 2 options
+🔄 [TEMPLATE-AI] Attempt 1/3
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is the consultant themselves
+✅ Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b can use SuperAdmin Vertex AI
+🔍 Looking for SuperAdmin Vertex AI configuration...
+📋 Found SuperAdmin Vertex AI config: project=gen-lang-client-0278434337, location=us-central1
+✅ Parsed credentials as plaintext JSON
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created SuperAdmin Vertex AI client successfully
+✅ TIER 0: Successfully created SuperAdmin Vertex AI client
+7:51:11 PM [express] GET /api/followup/activity-log 200 in 1588ms :: {"timeline":[{"conversationId":…
+❌ [TEMPLATE-AI] Attempt 1 failed: GaxiosError: Could not refresh access token: request to http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform failed, reason: connect ECONNREFUSED 169.254.169.254:80
+    at Gaxios._request (/home/runner/workspace/node_modules/gaxios/src/gaxios.ts:225:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async metadataAccessor (/home/runner/workspace/node_modules/gcp-metadata/src/index.ts:174:15)
+    at async Compute.refreshTokenNoCache (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/computeclient.js:57:20)
+    at async Compute.getRequestMetadataAsync (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/oauth2client.js:372:17)
+    at async Compute.getRequestHeaders (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/oauth2client.js:336:26)
+    at async NodeAuth.addGoogleAuthHeaders (/home/runner/workspace/node_modules/@google/genai/src/node/_node_auth.ts:75:25)
+    at async ApiClient.getHeadersInternal (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:634:5)
+    at async ApiClient.includeExtraHttpOptionsToRequestInit (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:476:27)
+    at async ApiClient.request (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:377:19)
+    at async Models.Models.generateContent (/home/runner/workspace/node_modules/@google/genai/src/models.ts:76:14)
+    at async selectBestTemplateWithAI (/home/runner/workspace/server/ai/followup-decision-engine.ts:634:26)
+    at async evaluateConversation (/home/runner/workspace/server/cron/followup-scheduler.ts:1419:29)
+    at async runFollowupEvaluation (/home/runner/workspace/server/cron/followup-scheduler.ts:390:24)
+    at async <anonymous> (/home/runner/workspace/server/routes/followup-api.ts:1686:5) {
+  config: {
+    url: URL {
+      href: 'http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform',
+      origin: 'http://169.254.169.254',
+      protocol: 'http:',
+      username: '',
+      password: '',
+      host: '169.254.169.254',
+      hostname: '169.254.169.254',
+      port: '',
+      pathname: '/computeMetadata/v1/instance/service-accounts/default/token',
+      search: '?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform',
+      searchParams: URLSearchParams { 'scopes' => 'https://www.googleapis.com/auth/cloud-platform' },
+      hash: ''
+    },
+    headers: Headers { 'metadata-flavor': 'Google' },
+    retryConfig: {
+      noResponseRetries: 3,
+      currentRetryAttempt: 3,
+      retry: 3,
+      httpMethodsToRetry: [Array],
+      retryDelayMultiplier: 2,
+      timeOfFirstRequest: 1766001069565,
+      totalTimeout: 9007199254740991,
+      maxRetryDelay: 9007199254740991,
+      statusCodesToRetry: [Array]
+    },
+    params: { scopes: 'https://www.googleapis.com/auth/cloud-platform' },
+    responseType: 'text',
+    timeout: 0,
+    validateStatus: [Function: validateStatus],
+    errorRedactor: [Function: defaultErrorRedactor]
+  },
+  response: undefined,
+  code: 'ECONNREFUSED',
+  status: undefined,
+  error: FetchError: request to http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform failed, reason: connect ECONNREFUSED 169.254.169.254:80
+      at ClientRequest.<anonymous> (file:///home/runner/workspace/node_modules/node-fetch/src/index.js:108:11)
+      at ClientRequest.emit (node:events:524:28)
+      at emitErrorEvent (node:_http_client:101:11)
+      at Socket.socketErrorListener (node:_http_client:504:5)
+      at Socket.emit (node:events:524:28)
+      at emitErrorNT (node:internal/streams/destroy:169:8)
+      at emitErrorCloseNT (node:internal/streams/destroy:128:3)
+      at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+    type: 'system',
+    errno: 'ECONNREFUSED',
+    code: 'ECONNREFUSED',
+    erroredSysCall: 'connect'
+  },
+  [Symbol(gaxios-gaxios-error)]: '7.1.2',
+  [cause]: FetchError: request to http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform failed, reason: connect ECONNREFUSED 169.254.169.254:80
+      at ClientRequest.<anonymous> (file:///home/runner/workspace/node_modules/node-fetch/src/index.js:108:11)
+      at ClientRequest.emit (node:events:524:28)
+      at emitErrorEvent (node:_http_client:101:11)
+      at Socket.socketErrorListener (node:_http_client:504:5)
+      at Socket.emit (node:events:524:28)
+      at emitErrorNT (node:internal/streams/destroy:169:8)
+      at emitErrorCloseNT (node:internal/streams/destroy:128:3)
+      at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+    type: 'system',
+    errno: 'ECONNREFUSED',
+    code: 'ECONNREFUSED',
+    erroredSysCall: 'connect'
+  }
+}
+⏳ [TEMPLATE-AI] Waiting 1000ms before retry...
+7:51:12 PM [express] GET /api/followup/dashboard-stats 304 in 2029ms :: {"awaitingFollowup":1,"sentT…
+🔄 [TEMPLATE-AI] Attempt 2/3
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is the consultant themselves
+✅ Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b can use SuperAdmin Vertex AI
+🔍 Looking for SuperAdmin Vertex AI configuration...
+📋 Found SuperAdmin Vertex AI config: project=gen-lang-client-0278434337, location=us-central1
+✅ Parsed credentials as plaintext JSON
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created SuperAdmin Vertex AI client successfully
+✅ TIER 0: Successfully created SuperAdmin Vertex AI client
+❌ [TEMPLATE-AI] Attempt 2 failed: GaxiosError: Could not refresh access token: request to http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform failed, reason: connect ECONNREFUSED 169.254.169.254:80
+    at Gaxios._request (/home/runner/workspace/node_modules/gaxios/src/gaxios.ts:225:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async metadataAccessor (/home/runner/workspace/node_modules/gcp-metadata/src/index.ts:174:15)
+    at async Compute.refreshTokenNoCache (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/computeclient.js:57:20)
+    at async Compute.getRequestMetadataAsync (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/oauth2client.js:372:17)
+    at async Compute.getRequestHeaders (/home/runner/workspace/node_modules/google-auth-library/build/src/auth/oauth2client.js:336:26)
+    at async NodeAuth.addGoogleAuthHeaders (/home/runner/workspace/node_modules/@google/genai/src/node/_node_auth.ts:75:25)
+    at async ApiClient.getHeadersInternal (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:634:5)
+    at async ApiClient.includeExtraHttpOptionsToRequestInit (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:476:27)
+    at async ApiClient.request (/home/runner/workspace/node_modules/@google/genai/src/_api_client.ts:377:19)
+    at async Models.Models.generateContent (/home/runner/workspace/node_modules/@google/genai/src/models.ts:76:14)
+    at async selectBestTemplateWithAI (/home/runner/workspace/server/ai/followup-decision-engine.ts:634:26)
+    at async evaluateConversation (/home/runner/workspace/server/cron/followup-scheduler.ts:1419:29)
+    at async runFollowupEvaluation (/home/runner/workspace/server/cron/followup-scheduler.ts:390:24)
+    at async <anonymous> (/home/runner/workspace/server/routes/followup-api.ts:1686:5) {
+  config: {
+    url: URL {
+      href: 'http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform',
+      origin: 'http://169.254.169.254',
+      protocol: 'http:',
+      username: '',
+      password: '',
+      host: '169.254.169.254',
+      hostname: '169.254.169.254',
+      port: '',
+      pathname: '/computeMetadata/v1/instance/service-accounts/default/token',
+      search: '?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform',
+      searchParams: URLSearchParams { 'scopes' => 'https://www.googleapis.com/auth/cloud-platform' },
+      hash: ''
+    },
+    headers: Headers { 'metadata-flavor': 'Google' },
+    retryConfig: {
+      noResponseRetries: 3,
+      currentRetryAttempt: 3,
+      retry: 3,
+      httpMethodsToRetry: [Array],
+      retryDelayMultiplier: 2,
+      timeOfFirstRequest: 1766001075467,
+      totalTimeout: 9007199254740991,
+      maxRetryDelay: 9007199254740991,
+      statusCodesToRetry: [Array]
+    },
+    params: { scopes: 'https://www.googleapis.com/auth/cloud-platform' },
+    responseType: 'text',
+    timeout: 0,
+    validateStatus: [Function: validateStatus],
+    errorRedactor: [Function: defaultErrorRedactor]
+  },
+  response: undefined,
+  code: 'ECONNREFUSED',
+  status: undefined,
+  error: FetchError: request to http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform failed, reason: connect ECONNREFUSED 169.254.169.254:80
+      at ClientRequest.<anonymous> (file:///home/runner/workspace/node_modules/node-fetch/src/index.js:108:11)
+      at ClientRequest.emit (node:events:524:28)
+      at emitErrorEvent (node:_http_client:101:11)
+      at Socket.socketErrorListener (node:_http_client:504:5)
+      at Socket.emit (node:events:524:28)
+      at emitErrorNT (node:internal/streams/destroy:169:8)
+      at emitErrorCloseNT (node:internal/streams/destroy:128:3)
+      at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+    type: 'system',
+    errno: 'ECONNREFUSED',
+    code: 'ECONNREFUSED',
+    erroredSysCall: 'connect'
+  },
+  [Symbol(gaxios-gaxios-error)]: '7.1.2',
+  [cause]: FetchError: request to http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token?scopes=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform failed, reason: connect ECONNREFUSED 169.254.169.254:80
+      at ClientRequest.<anonymous> (file:///home/runner/workspace/node_modules/node-fetch/src/index.js:108:11)
+      at ClientRequest.emit (node:events:524:28)
+      at emitErrorEvent (node:_http_client:101:11)
+      at Socket.socketErrorListener (node:_http_client:504:5)
+      at Socket.emit (node:events:524:28)
+      at emitErrorNT (node:internal/streams/destroy:169:8)
+      at emitErrorCloseNT (node:internal/streams/destroy:128:3)
+      at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+    type: 'system',
+    errno: 'ECONNREFUSED',
+    code: 'ECONNREFUSED',
+    erroredSysCall: 'connect'
+  }
+}
+⏳ [TEMPLATE-AI] Waiting 2000ms before retry...
+🔄 [TEMPLATE-AI] Attempt 3/3
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is the consultant themselves
+✅ Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b can use SuperAdmin Vertex AI
+🔍 Looking for SuperAdmin Vertex AI configuration...
+📋 Found SuperAdmin Vertex AI config: project=gen-lang-client-0278434337, location=us-central1
+✅ Parsed credentials as plaintext JSON
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created SuperAdmin Vertex AI client successfully
+✅ TIER 0: Successfully created SuperAdmin Vertex AI client
