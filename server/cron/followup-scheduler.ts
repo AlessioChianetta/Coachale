@@ -2794,14 +2794,14 @@ async function sendFollowupMessage(
   // Send message via Twilio
   console.log(`📱 [FOLLOWUP-SCHEDULER] Sending follow-up to ${phoneNumber}: "${messageText.substring(0, 50)}..."`);
   
-  // Prepare content variables for Twilio template
+  // Prepare content variables for Twilio template (as object, not string - twilio-client will stringify)
   const templateVars = message.templateVariables as Record<string, string> || {};
-  const contentVariables = Object.keys(templateVars).length > 0 
-    ? JSON.stringify(templateVars)
+  const contentVariablesObj = Object.keys(templateVars).length > 0 
+    ? templateVars
     : undefined;
   
-  if (contentVariables) {
-    console.log(`📋 [FOLLOWUP-SCHEDULER] Passing contentVariables to Twilio: ${contentVariables}`);
+  if (contentVariablesObj) {
+    console.log(`📋 [FOLLOWUP-SCHEDULER] Passing contentVariables to Twilio: ${JSON.stringify(contentVariablesObj)}`);
   }
 
   // Check if this is DRY RUN mode
@@ -2871,8 +2871,8 @@ async function sendFollowupMessage(
     {
       agentConfigId: agentConfigId || undefined,
       conversationId: message.conversationId,
-      twilioContentSid: twilioContentSid || undefined,
-      contentVariables,
+      contentSid: twilioContentSid || undefined,
+      contentVariables: contentVariablesObj,
     }
   );
   
