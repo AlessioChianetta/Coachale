@@ -1,0 +1,112 @@
+
+injected.js:37 You're attempting to animate multiple children within AnimatePresence, but its mode is set to "wait". This will lead to odd visual behaviour.
+
+injected.js:37 Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+
+Check the render method of `Primitive.button.SlotClone`.
+    at Badge (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/ui/badge.tsx:35:18)
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=0bbb7401:79:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=0bbb7401:56:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=0bbb7401:42:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=0bbb7401:79:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=0bbb7401:56:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=0bbb7401:42:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…ner/workspace/node_modules/.vite/deps/chunk-4XNOAIBL.js?v=0bbb7401:1929:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…space/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=0bbb7401:199:13
+    at Provider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=0bbb7401:38:15)
+    at Provider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=0bbb7401:38:15)
+    at Popper (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…ner/workspace/node_modules/.vite/deps/chunk-4XNOAIBL.js?v=0bbb7401:1921:11)
+    at Tooltip (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…kspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=0bbb7401:108:5)
+    at Provider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=0bbb7401:38:15)
+    at TooltipProvider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=0bbb7401:64:5)
+    at div
+    at _c5 (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/ui/card.tsx:67:12)
+    at div
+    at div
+    at div
+    at div
+    at _c3 (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/ui/card.tsx:45:12)
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=0bbb7401:79:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=0bbb7401:56:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=0bbb7401:42:13
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-67PCYIOC.js?v=0bbb7401:81:13
+    at div
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=0bbb7401:42:13
+    at Provider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=0bbb7401:38:15)
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…runner/workspace/node_modules/.vite/deps/chunk-67PCYIOC.js?v=0bbb7401:44:7
+    at div
+    at _c (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/ui/card.tsx:20:11)
+    at ConversationCard (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/automations/LiveActivityFeed.tsx:327:29)
+    at div
+    at div
+    at LiveActivityFeed (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/automations/LiveActivityFeed.tsx:850:31)
+    at div
+    at _c9 (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=0bbb7401:42:13
+    at Presence (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-LUE5KDWX.js?v=0bbb7401:24:11)
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…orkspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=0bbb7401:176:13
+    at _c5 (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=0bbb7401:42:13
+    at Provider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=0bbb7401:38:15)
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=0bbb7401:54:7
+    at div
+    at main
+    at div
+    at div
+    at ConsultantAutomationsPage (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/pages/consultant-automations.tsx:1628:20)
+    at AuthGuard (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0bbb7401:323:16)
+    at Switch (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0bbb7401:379:17)
+    at Suspense
+    at Router (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/App.tsx?v=8ibrevLQ7axt7_VeypKEr:234:35)
+    at Provider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=0bbb7401:38:15)
+    at TooltipProvider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=0bbb7401:64:5)
+    at TourProvider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at QueryClientProvider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=0bbb7401:2805:3)
+    at V (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=0bbb7401:44:25)
+    at J (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=0bbb7401:42:18)
+    at App (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/App.tsx?v=8ibrevLQ7axt7_VeypKEr:1523:22)
+injected.js:37 Heartbeat sent successfully
+2
+AIPreferencesEditor.tsx:94 Uncaught TypeError: Cannot read properties of undefined (reading 'map')
+    at AISystemInfoCard (AIPreferencesEditor.tsx:94:34)
+injected.js:37 The above error occurred in the <AISystemInfoCard> component:
+
+    at AISystemInfoCard (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/automations/AIPreferencesEditor.tsx:105:29)
+    at div
+    at AIPreferencesEditor (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/automations/AIPreferencesEditor.tsx:397:21)
+    at div
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=0bbb7401:42:13
+    at Presence (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-LUE5KDWX.js?v=0bbb7401:24:11)
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…orkspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=0bbb7401:176:13
+    at _c5 (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/ui/tabs.tsx:72:12)
+    at div
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=0bbb7401:42:13
+    at Provider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=0bbb7401:38:15)
+    at https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…/workspace/node_modules/.vite/deps/@radix-ui_react-tabs.js?v=0bbb7401:54:7
+    at div
+    at main
+    at div
+    at div
+    at ConsultantAutomationsPage (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/pages/consultant-automations.tsx:1628:20)
+    at AuthGuard (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/components/auth-guard.tsx:20:37)
+    at Route (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0bbb7401:323:16)
+    at Switch (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=0bbb7401:379:17)
+    at Suspense
+    at Router (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/App.tsx?v=8ibrevLQ7axt7_VeypKEr:234:35)
+    at Provider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…unner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=0bbb7401:38:15)
+    at TooltipProvider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…rkspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=0bbb7401:64:5)
+    at TourProvider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/contexts/TourContext.tsx:28:32)
+    at QueryClientProvider (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…rkspace/node_modules/.vite/deps/@tanstack_react-query.js?v=0bbb7401:2805:3)
+    at V (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=0bbb7401:44:25)
+    at J (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.de…e/runner/workspace/node_modules/.vite/deps/next-themes.js?v=0bbb7401:42:18)
+    at App (https://ebd619c6-c9e6-45e8-8226-dc41123307a2-00-ibg6p4c8ylc1.worf.replit.dev/src/App.tsx?v=8ibrevLQ7axt7_VeypKEr:1523:22)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+chunk-RPCDYKBN.js?v=0bbb7401:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'map')
+    at AISystemInfoCard (AIPreferencesEditor.tsx:94:34)
