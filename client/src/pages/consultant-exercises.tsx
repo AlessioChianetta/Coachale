@@ -1763,7 +1763,7 @@ export default function ConsultantExercises() {
                   {/* Right Preview Panel - Responsive & Harmonized */}
                   {selectedClientForPreview && (
                     <div className="w-80 flex-shrink-0 hidden xl:block h-[calc(100vh-7rem)]">
-                      <Card className="sticky top-20 overflow-hidden border shadow-lg bg-card h-full flex flex-col">
+                      <Card className="sticky top-0 overflow-hidden border shadow-lg bg-card h-full flex flex-col z-50">
                         {/* Header - Clean slate gradient */}
                         <div className="relative bg-gradient-to-r from-slate-700 to-slate-800 dark:from-slate-800 dark:to-slate-900 p-4 shrink-0">
                           <Button 
