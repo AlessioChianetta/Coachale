@@ -471,6 +471,7 @@ export async function buildUserContext(
     conversation?: any; // WhatsApp conversation data for proactive/reactive detection
     sessionType?: 'weekly_consultation' | undefined; // NEW: Distinguish session types
     focusedDocument?: { id: string; title: string; category: string }; // Focused document for Knowledge Base
+    useFileSearch?: boolean; // NEW: When true, load only metadata (content retrieved via File Search)
   }
 ): Promise<UserContext> {
   // ========================================
@@ -479,7 +480,8 @@ export async function buildUserContext(
   const intent = options?.intent || 'general';
   const pageContext = options?.pageContext;
   const sessionKey = options?.sessionType || 'normal';
-  const cacheKey = `${clientId}-${intent}-${sessionKey}`; // Separate cache per session type
+  const useFileSearch = options?.useFileSearch || false;
+  const cacheKey = `${clientId}-${intent}-${sessionKey}-${useFileSearch ? 'fs' : 'classic'}`; // Separate cache per session type and File Search mode
 
   const cached = userContextCache.get(cacheKey);
   if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
@@ -920,24 +922,44 @@ export async function buildUserContext(
 
       if (moduleIds.length > 0) {
         // Bulk fetch all lessons for all modules with library documents
-        const allLessons = await db
-          .select({
-            id: universityLessons.id,
-            title: universityLessons.title,
-            description: universityLessons.description,
-            resourceUrl: universityLessons.resourceUrl,
-            libraryDocumentId: universityLessons.libraryDocumentId,
-            moduleId: universityLessons.moduleId,
-            sortOrder: universityLessons.sortOrder,
-            docTitle: libraryDocuments.title,
-            docContent: libraryDocuments.content,
-            docContentType: libraryDocuments.contentType,
-            docVideoUrl: libraryDocuments.videoUrl,
-          })
-          .from(universityLessons)
-          .leftJoin(libraryDocuments, eq(universityLessons.libraryDocumentId, libraryDocuments.id))
-          .where(inArray(universityLessons.moduleId, moduleIds))
-          .orderBy(universityLessons.sortOrder);
+        // 🔍 FILE SEARCH MODE: Skip heavy content (docContent) - retrieved via semantic search
+        const allLessons = useFileSearch
+          ? await db
+              .select({
+                id: universityLessons.id,
+                title: universityLessons.title,
+                description: sql<string>`SUBSTRING(${universityLessons.description}, 1, 100)`.as('description'),
+                resourceUrl: universityLessons.resourceUrl,
+                libraryDocumentId: universityLessons.libraryDocumentId,
+                moduleId: universityLessons.moduleId,
+                sortOrder: universityLessons.sortOrder,
+                docTitle: libraryDocuments.title,
+                docContent: sql<string | null>`NULL`.as('docContent'),
+                docContentType: libraryDocuments.contentType,
+                docVideoUrl: libraryDocuments.videoUrl,
+              })
+              .from(universityLessons)
+              .leftJoin(libraryDocuments, eq(universityLessons.libraryDocumentId, libraryDocuments.id))
+              .where(inArray(universityLessons.moduleId, moduleIds))
+              .orderBy(universityLessons.sortOrder)
+          : await db
+              .select({
+                id: universityLessons.id,
+                title: universityLessons.title,
+                description: universityLessons.description,
+                resourceUrl: universityLessons.resourceUrl,
+                libraryDocumentId: universityLessons.libraryDocumentId,
+                moduleId: universityLessons.moduleId,
+                sortOrder: universityLessons.sortOrder,
+                docTitle: libraryDocuments.title,
+                docContent: libraryDocuments.content,
+                docContentType: libraryDocuments.contentType,
+                docVideoUrl: libraryDocuments.videoUrl,
+              })
+              .from(universityLessons)
+              .leftJoin(libraryDocuments, eq(universityLessons.libraryDocumentId, libraryDocuments.id))
+              .where(inArray(universityLessons.moduleId, moduleIds))
+              .orderBy(universityLessons.sortOrder);
 
         const lessonIds = allLessons.map(l => l.id);
 
