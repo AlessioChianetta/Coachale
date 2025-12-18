@@ -82,17 +82,62 @@ router.post('/sync-knowledge', authenticateToken, requireRole('consultant'), asy
 });
 
 /**
+ * POST /api/file-search/sync-consultations
+ * Trigger sync of consultations to FileSearchStore
+ */
+router.post('/sync-consultations', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const result = await fileSearchSyncService.syncAllConsultations(userId);
+    res.json(result);
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing consultations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/sync-exercises
+ * Trigger sync of exercises to FileSearchStore
+ */
+router.post('/sync-exercises', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const result = await fileSearchSyncService.syncAllExercises(userId);
+    res.json(result);
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing exercises:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/sync-university
+ * Trigger sync of university lessons to FileSearchStore
+ */
+router.post('/sync-university', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const result = await fileSearchSyncService.syncAllUniversityLessons(userId);
+    res.json(result);
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing university:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/file-search/sync-all
- * Trigger full sync of all documents (library + knowledge base) to FileSearchStore
+ * Trigger full sync of ALL content (library + knowledge base + exercises + university + consultations) to FileSearchStore
  */
 router.post('/sync-all', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
-    const result = await fileSearchSyncService.syncAllDocumentsForConsultant(userId);
+    const result = await fileSearchSyncService.syncAllContentForConsultant(userId);
     res.json({
       success: true,
       ...result,
-      message: `Sincronizzazione completata. Library: ${result.library.synced}/${result.library.total}, Knowledge Base: ${result.knowledgeBase.synced}/${result.knowledgeBase.total} (${result.knowledgeBase.skipped} già sincronizzati)`,
+      message: `Sincronizzazione COMPLETA. Library: ${result.library.synced}/${result.library.total}, Knowledge Base: ${result.knowledgeBase.synced}/${result.knowledgeBase.total}, Exercises: ${result.exercises.synced}/${result.exercises.total}, University: ${result.university.synced}/${result.university.total}, Consultations: ${result.consultations.synced}/${result.consultations.total}`,
     });
   } catch (error: any) {
     console.error('[FileSearch API] Error syncing all:', error);

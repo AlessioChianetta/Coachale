@@ -14,9 +14,16 @@ import {
   fileSearchStores, 
   fileSearchDocuments,
   consultantKnowledgeDocuments,
+  exercises,
+  universityLessons,
+  universityModules,
+  universityTrimesters,
+  universityYears,
+  consultations,
+  users,
 } from "../../shared/schema";
 import { fileSearchService } from "../ai/file-search-service";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, isNotNull } from "drizzle-orm";
 
 export class FileSearchSyncService {
   /**
@@ -379,6 +386,651 @@ export class FileSearchSyncService {
       storeId: store.id,
       storeName: store.googleStoreName,
       documentCount: store.documentCount || 0,
+    };
+  }
+
+  // ============================================================
+  // EXERCISES SYNC - Indicizzazione degli esercizi per File Search
+  // ============================================================
+
+  /**
+   * Sync a single exercise to FileSearchStore
+   */
+  static async syncExercise(
+    exerciseId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const exercise = await db.query.exercises.findFirst({
+        where: eq(exercises.id, exerciseId),
+      });
+
+      if (!exercise) {
+        return { success: false, error: 'Exercise not found' };
+      }
+
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', exerciseId);
+      if (isAlreadyIndexed) {
+        console.log(`📌 [FileSync] Exercise already indexed: ${exerciseId}`);
+        return { success: true };
+      }
+
+      // Get or create consultant store
+      let consultantStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, consultantId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+        ),
+      });
+
+      if (!consultantStore) {
+        const result = await fileSearchService.createStore({
+          displayName: `Knowledge Store Consulente`,
+          ownerId: consultantId,
+          ownerType: 'consultant',
+          description: 'Esercizi, documenti e contenuti indicizzati per AI semantic search',
+        });
+
+        if (!result.success || !result.storeId) {
+          return { success: false, error: 'Failed to create FileSearchStore' };
+        }
+
+        consultantStore = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, result.storeId),
+        });
+
+        if (!consultantStore) {
+          return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      // Build exercise content for indexing
+      const content = this.buildExerciseContent(exercise);
+      
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[EX] ${exercise.title}`,
+        storeId: consultantStore.id,
+        sourceType: 'exercise',
+        sourceId: exerciseId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Exercise synced: ${exercise.title}`);
+      }
+
+      return uploadResult.success 
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing exercise:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Build searchable content from an exercise
+   */
+  private static buildExerciseContent(exercise: any): string {
+    const parts: string[] = [];
+    
+    parts.push(`# ${exercise.title}`);
+    parts.push(`Categoria: ${exercise.category}`);
+    parts.push(`Tipo: ${exercise.type}`);
+    
+    if (exercise.description) {
+      parts.push(`\n## Descrizione\n${exercise.description}`);
+    }
+    
+    if (exercise.instructions) {
+      parts.push(`\n## Istruzioni\n${exercise.instructions}`);
+    }
+    
+    // Include questions if present
+    if (exercise.questions && Array.isArray(exercise.questions) && exercise.questions.length > 0) {
+      parts.push(`\n## Domande`);
+      exercise.questions.forEach((q: any, i: number) => {
+        parts.push(`\n### Domanda ${i + 1}: ${q.question || q.text || ''}`);
+        if (q.type) parts.push(`Tipo: ${q.type}`);
+        if (q.options && Array.isArray(q.options)) {
+          parts.push(`Opzioni: ${q.options.join(', ')}`);
+        }
+      });
+    }
+    
+    if (exercise.workPlatform) {
+      parts.push(`\n## Piattaforma di lavoro\n${exercise.workPlatform}`);
+    }
+    
+    return parts.join('\n');
+  }
+
+  /**
+   * Bulk sync all exercises for a consultant
+   */
+  static async syncAllExercises(consultantId: string): Promise<{
+    total: number;
+    synced: number;
+    failed: number;
+    skipped: number;
+    errors: string[];
+  }> {
+    try {
+      const allExercises = await db.query.exercises.findMany({
+        where: eq(exercises.createdBy, consultantId),
+      });
+
+      let synced = 0;
+      let failed = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`🏋️ [FileSync] Syncing ${allExercises.length} exercises for consultant ${consultantId}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      for (const exercise of allExercises) {
+        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', exercise.id);
+        if (isAlreadyIndexed) {
+          skipped++;
+          continue;
+        }
+
+        const result = await this.syncExercise(exercise.id, consultantId);
+        if (result.success) {
+          synced++;
+        } else {
+          failed++;
+          errors.push(`${exercise.title}: ${result.error}`);
+        }
+        
+        // Small delay to avoid rate limiting
+        if (synced % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`✅ [FileSync] Exercises sync complete`);
+      console.log(`   📊 Total: ${allExercises.length}`);
+      console.log(`   ✅ Synced: ${synced}`);
+      console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
+      console.log(`   ❌ Failed: ${failed}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      return {
+        total: allExercises.length,
+        synced,
+        failed,
+        skipped,
+        errors,
+      };
+    } catch (error: any) {
+      console.error('[FileSync] Exercises bulk sync error:', error);
+      return {
+        total: 0,
+        synced: 0,
+        failed: 1,
+        skipped: 0,
+        errors: [error.message],
+      };
+    }
+  }
+
+  // ============================================================
+  // UNIVERSITY LESSONS SYNC
+  // ============================================================
+
+  /**
+   * Sync a single university lesson to FileSearchStore
+   */
+  static async syncUniversityLesson(
+    lessonId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const lesson = await db.query.universityLessons.findFirst({
+        where: eq(universityLessons.id, lessonId),
+        with: {
+          module: {
+            with: {
+              trimester: {
+                with: {
+                  year: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (!lesson) {
+        return { success: false, error: 'Lesson not found' };
+      }
+
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('university_lesson', lessonId);
+      if (isAlreadyIndexed) {
+        console.log(`📌 [FileSync] Lesson already indexed: ${lessonId}`);
+        return { success: true };
+      }
+
+      // Get or create consultant store
+      let consultantStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, consultantId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+        ),
+      });
+
+      if (!consultantStore) {
+        const result = await fileSearchService.createStore({
+          displayName: `Knowledge Store Consulente`,
+          ownerId: consultantId,
+          ownerType: 'consultant',
+          description: 'Esercizi, documenti e contenuti indicizzati per AI semantic search',
+        });
+
+        if (!result.success || !result.storeId) {
+          return { success: false, error: 'Failed to create FileSearchStore' };
+        }
+
+        consultantStore = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, result.storeId),
+        });
+
+        if (!consultantStore) {
+          return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      // Build lesson content for indexing
+      const content = this.buildLessonContent(lesson);
+      
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[LESSON] ${lesson.title}`,
+        storeId: consultantStore.id,
+        sourceType: 'university_lesson',
+        sourceId: lessonId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Lesson synced: ${lesson.title}`);
+      }
+
+      return uploadResult.success 
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing lesson:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Build searchable content from a university lesson
+   */
+  private static buildLessonContent(lesson: any): string {
+    const parts: string[] = [];
+    
+    // Build hierarchy path
+    const hierarchy: string[] = [];
+    if (lesson.module?.trimester?.year?.name) {
+      hierarchy.push(lesson.module.trimester.year.name);
+    }
+    if (lesson.module?.trimester?.name) {
+      hierarchy.push(lesson.module.trimester.name);
+    }
+    if (lesson.module?.name) {
+      hierarchy.push(lesson.module.name);
+    }
+    
+    parts.push(`# ${lesson.title}`);
+    
+    if (hierarchy.length > 0) {
+      parts.push(`Percorso: ${hierarchy.join(' > ')}`);
+    }
+    
+    if (lesson.description) {
+      parts.push(`\n## Descrizione\n${lesson.description}`);
+    }
+    
+    if (lesson.content) {
+      parts.push(`\n## Contenuto\n${lesson.content}`);
+    }
+    
+    if (lesson.videoUrl) {
+      parts.push(`\n## Video\n${lesson.videoUrl}`);
+    }
+    
+    return parts.join('\n');
+  }
+
+  /**
+   * Bulk sync all university lessons for a consultant
+   */
+  static async syncAllUniversityLessons(consultantId: string): Promise<{
+    total: number;
+    synced: number;
+    failed: number;
+    skipped: number;
+    errors: string[];
+  }> {
+    try {
+      // Get all years for this consultant
+      const years = await db.query.universityYears.findMany();
+      
+      // Get all lessons through the hierarchy
+      const allLessons = await db.query.universityLessons.findMany({
+        with: {
+          module: {
+            with: {
+              trimester: {
+                with: {
+                  year: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      let synced = 0;
+      let failed = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`🎓 [FileSync] Syncing ${allLessons.length} university lessons`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      for (const lesson of allLessons) {
+        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('university_lesson', lesson.id);
+        if (isAlreadyIndexed) {
+          skipped++;
+          continue;
+        }
+
+        const result = await this.syncUniversityLesson(lesson.id, consultantId);
+        if (result.success) {
+          synced++;
+        } else {
+          failed++;
+          errors.push(`${lesson.title}: ${result.error}`);
+        }
+        
+        // Small delay to avoid rate limiting
+        if (synced % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`✅ [FileSync] University lessons sync complete`);
+      console.log(`   📊 Total: ${allLessons.length}`);
+      console.log(`   ✅ Synced: ${synced}`);
+      console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
+      console.log(`   ❌ Failed: ${failed}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      return {
+        total: allLessons.length,
+        synced,
+        failed,
+        skipped,
+        errors,
+      };
+    } catch (error: any) {
+      console.error('[FileSync] University lessons bulk sync error:', error);
+      return {
+        total: 0,
+        synced: 0,
+        failed: 1,
+        skipped: 0,
+        errors: [error.message],
+      };
+    }
+  }
+
+  // ============================================================
+  // CONSULTATIONS SYNC - Indicizzazione trascrizioni consulenze
+  // ============================================================
+
+  /**
+   * Sync a single consultation to FileSearchStore
+   */
+  static async syncConsultation(
+    consultationId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const consultation = await db.query.consultations.findFirst({
+        where: and(
+          eq(consultations.id, consultationId),
+          eq(consultations.consultantId, consultantId),
+        ),
+      });
+
+      if (!consultation) {
+        return { success: false, error: 'Consultation not found' };
+      }
+
+      // Only sync consultations with transcript or notes
+      if (!consultation.transcript && !consultation.notes) {
+        return { success: false, error: 'No transcript or notes to index' };
+      }
+
+      // Get client info separately (no relation defined)
+      const client = await db.query.users.findFirst({
+        where: eq(users.id, consultation.clientId),
+      });
+
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultation', consultationId);
+      if (isAlreadyIndexed) {
+        console.log(`📌 [FileSync] Consultation already indexed: ${consultationId}`);
+        return { success: true };
+      }
+
+      // Get or create consultant store
+      let consultantStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, consultantId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+        ),
+      });
+
+      if (!consultantStore) {
+        const result = await fileSearchService.createStore({
+          displayName: `Knowledge Store Consulente`,
+          ownerId: consultantId,
+          ownerType: 'consultant',
+          description: 'Esercizi, documenti e contenuti indicizzati per AI semantic search',
+        });
+
+        if (!result.success || !result.storeId) {
+          return { success: false, error: 'Failed to create FileSearchStore' };
+        }
+
+        consultantStore = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, result.storeId),
+        });
+
+        if (!consultantStore) {
+          return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      // Build consultation content for indexing (include client info)
+      const consultationWithClient = { ...consultation, client };
+      const content = this.buildConsultationContent(consultationWithClient);
+      const clientName = client?.firstName || 'Cliente';
+      const date = new Date(consultation.scheduledAt).toLocaleDateString('it-IT');
+      
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[CONSULENZA] ${clientName} - ${date}`,
+        storeId: consultantStore.id,
+        sourceType: 'consultation',
+        sourceId: consultationId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Consultation synced: ${clientName} - ${date}`);
+      }
+
+      return uploadResult.success 
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing consultation:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Build searchable content from a consultation
+   */
+  private static buildConsultationContent(consultation: any): string {
+    const parts: string[] = [];
+    const clientName = consultation.client?.firstName || 'Cliente';
+    const date = new Date(consultation.scheduledAt).toLocaleDateString('it-IT');
+    
+    parts.push(`# Consulenza con ${clientName}`);
+    parts.push(`Data: ${date}`);
+    parts.push(`Durata: ${consultation.duration} minuti`);
+    parts.push(`Stato: ${consultation.status}`);
+    
+    if (consultation.notes) {
+      parts.push(`\n## Note\n${consultation.notes}`);
+    }
+    
+    if (consultation.transcript) {
+      parts.push(`\n## Trascrizione\n${consultation.transcript}`);
+    }
+    
+    if (consultation.summaryEmail) {
+      parts.push(`\n## Riepilogo\n${consultation.summaryEmail}`);
+    }
+    
+    return parts.join('\n');
+  }
+
+  /**
+   * Bulk sync all consultations with transcripts for a consultant
+   */
+  static async syncAllConsultations(consultantId: string): Promise<{
+    total: number;
+    synced: number;
+    failed: number;
+    skipped: number;
+    errors: string[];
+  }> {
+    try {
+      // Get all completed consultations with transcripts or notes
+      const allConsultations = await db.query.consultations.findMany({
+        where: and(
+          eq(consultations.consultantId, consultantId),
+          eq(consultations.status, 'completed'),
+        ),
+      });
+
+      // Filter to only those with content to index
+      const consultationsWithContent = allConsultations.filter(
+        c => c.transcript || c.notes
+      );
+
+      let synced = 0;
+      let failed = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`📞 [FileSync] Syncing ${consultationsWithContent.length} consultations for consultant ${consultantId}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      for (const consultation of consultationsWithContent) {
+        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultation', consultation.id);
+        if (isAlreadyIndexed) {
+          skipped++;
+          continue;
+        }
+
+        const result = await this.syncConsultation(consultation.id, consultantId);
+        if (result.success) {
+          synced++;
+        } else {
+          failed++;
+          errors.push(`Consultation ${consultation.id}: ${result.error}`);
+        }
+        
+        // Small delay to avoid rate limiting
+        if (synced % 10 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`✅ [FileSync] Consultations sync complete`);
+      console.log(`   📊 Total with content: ${consultationsWithContent.length}`);
+      console.log(`   ✅ Synced: ${synced}`);
+      console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
+      console.log(`   ❌ Failed: ${failed}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      return {
+        total: consultationsWithContent.length,
+        synced,
+        failed,
+        skipped,
+        errors,
+      };
+    } catch (error: any) {
+      console.error('[FileSync] Consultations bulk sync error:', error);
+      return {
+        total: 0,
+        synced: 0,
+        failed: 1,
+        skipped: 0,
+        errors: [error.message],
+      };
+    }
+  }
+
+  /**
+   * Sync ALL content for a consultant (library + knowledge base + exercises + university + consultations)
+   */
+  static async syncAllContentForConsultant(consultantId: string): Promise<{
+    library: { total: number; synced: number; failed: number; errors: string[] };
+    knowledgeBase: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
+    exercises: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
+    university: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
+    consultations: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
+  }> {
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`🔄 [FileSync] Starting FULL content sync for consultant ${consultantId}`);
+    console.log(`${'═'.repeat(70)}\n`);
+
+    const libraryResult = await this.syncAllLibraryDocuments(consultantId);
+    const knowledgeResult = await this.syncAllConsultantKnowledgeDocuments(consultantId);
+    const exercisesResult = await this.syncAllExercises(consultantId);
+    const universityResult = await this.syncAllUniversityLessons(consultantId);
+    const consultationsResult = await this.syncAllConsultations(consultantId);
+
+    console.log(`\n${'═'.repeat(70)}`);
+    console.log(`✅ [FileSync] FULL content sync complete for consultant ${consultantId}`);
+    console.log(`   📚 Library: ${libraryResult.synced}/${libraryResult.total} synced`);
+    console.log(`   📖 Knowledge Base: ${knowledgeResult.synced}/${knowledgeResult.total} synced`);
+    console.log(`   🏋️ Exercises: ${exercisesResult.synced}/${exercisesResult.total} synced`);
+    console.log(`   🎓 University: ${universityResult.synced}/${universityResult.total} synced`);
+    console.log(`   📞 Consultations: ${consultationsResult.synced}/${consultationsResult.total} synced`);
+    console.log(`${'═'.repeat(70)}\n`);
+
+    return {
+      library: libraryResult,
+      knowledgeBase: knowledgeResult,
+      exercises: exercisesResult,
+      university: universityResult,
+      consultations: consultationsResult,
     };
   }
 }
