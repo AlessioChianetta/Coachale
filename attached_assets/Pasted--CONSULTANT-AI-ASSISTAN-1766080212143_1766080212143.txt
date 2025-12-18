@@ -1,0 +1,213 @@
+======================================================================
+🧑‍💼 CONSULTANT AI ASSISTANT - New Chat Message
+======================================================================
+Consultant ID: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+Message: ciao
+======================================================================
+
+🔍 [FileSearch] getStoreNamesForGeneration - Role: consultant, UserId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b, ConsultantId: N/A
+   📦 Found 0 stores: nessuno
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is the consultant themselves
+✅ Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b can use SuperAdmin Vertex AI
+🔍 Looking for SuperAdmin Vertex AI configuration...
+📋 Found SuperAdmin Vertex AI config: project=gen-lang-client-0278434337, location=us-central1
+✅ Parsed credentials as plaintext JSON
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created SuperAdmin Vertex AI client successfully
+✅ TIER 0: Successfully created SuperAdmin Vertex AI client
+🔍 [Intent Detection] Detected intent from message: general
+🔑 [Cache Key] Using cache key: 0c73bbe5-51e1-4108-866b-6be7a52fce3b-general
+🔄 Building fresh consultant context (intent: general)
+🔍 [DEBUG] Query flags: {
+  shouldLoadClients: true,
+  shouldLoadExercises: true,
+  shouldLoadClientData: true,
+  shouldLoadEmail: true,
+  shouldLoadWhatsApp: true,
+  shouldLoadCalendar: true,
+  shouldLoadConsultations: true,
+  shouldLoadEmailDetailed: false,
+  shouldLoadWhatsAppDetailed: true,
+  shouldLoadAIAgents: false,
+  shouldLoadLeads: true,
+  shouldLoadCampaigns: true,
+  shouldLoadApiSettings: true,
+  shouldLoadWhatsAppConfig: true
+}
+🔍 [Q1] Fetching consultant info...
+🔍 [Q2] Fetching all clients...
+🔍 [Q3] Fetching pending exercise reviews...
+🔍 [Q4] Fetching recently created exercises...
+🔍 [Q5] Fetching exercise stats...
+🔍 [Q6] Fetching email drafts...
+🔍 [Q7] Fetching scheduler logs...
+🔍 [Q8] Fetching WhatsApp leads...
+🔍 [Q9] Fetching WhatsApp conversations...
+🔍 [Q10] Fetching upcoming appointments...
+🔍 [Q11] Fetching today appointments...
+🔍 [Q12] Fetching all consultations...
+🔍 [Q13] Fetching consultation tasks...
+🔍 [Q13a] Fetching client goals...
+🔍 [Q13b] Fetching client state tracking data (latest per client)...
+🔍 [Q14] Fetching SMTP settings...
+🔍 [Q15] Fetching email journey templates...
+🔍 [Q16] Fetching WhatsApp custom templates...
+🔍 [Q17] Fetching library documents...
+🔍 [Q18] Fetching exercise feedback...
+🔍 [Q19] Fetching university year assignments with detailed structure...
+🔍 [Q20] Fetching exercise templates...
+🔍 [Q21] Fetching university templates...
+🔍 [Q27] Fetching detailed WhatsApp conversations...
+🔍 [Q28] Fetching recent WhatsApp messages...
+🔍 [Q29] Fetching WhatsApp agent configs...
+🔍 [Q40] Fetching proactive leads...
+🔍 [Q41] Fetching lead stats by status...
+🔍 [Q42] Fetching lead stats by category...
+🔍 [Q43] Fetching lead stats by campaign...
+🔍 [Q44] Fetching marketing campaigns with agent names...
+🔍 [Q44] Building query with leftJoin...
+🔍 [Q45] Fetching campaign analytics (last 30 days)...
+🔍 [Q46] Fetching external API configs...
+🔍 [Q46] Building query with leftJoin...
+🔍 [Q47] Fetching external lead import logs (last 30 days)...
+🔍 [Q48] Fetching WhatsApp/Twilio configuration (FULL)...
+🔍 [Q49] Fetching WhatsApp custom templates with versions...
+🔍 [Q50] Fetching WhatsApp template assignments...
+🔍 [Q51] Fetching Twilio WhatsApp templates from Content API...
+🔍 [Q52] Fetching calendar settings...
+✅ [Q1] Consultant info fetched
+✅ [Q2] All clients fetched: 20
+✅ [Q3] Pending exercise reviews fetched: 19
+✅ [Q21] University templates fetched: 4
+✅ [Q27] Detailed WhatsApp conversations fetched: 4
+✅ [Q20] Exercise templates fetched: 84
+✅ [Q29] WhatsApp agent configs fetched: 3
+✅ [Q28] Recent WhatsApp messages fetched: 75
+✅ [Q40] Proactive leads fetched: 4
+✅ [Q41] Lead stats by status fetched: 2 statuses
+✅ [Q19] University year assignments raw data fetched: 1097 rows
+✅ [Q4] Recently created exercises fetched: 50
+✅ [Q8] WhatsApp leads fetched: 4
+✅ [Q5] Exercise stats fetched
+✅ [Q42] Lead stats by category fetched: 1 categories
+✅ [Q9] WhatsApp conversations fetched: 4
+✅ [Q11] Today appointments fetched: 0
+✅ [Q10] Upcoming appointments fetched: 0
+✅ [Q43] Lead stats by campaign fetched: 1 campaigns
+✅ [Q13a] Client goals fetched: 0
+✅ [Q13] Consultation tasks fetched: 1
+✅ [Q14] SMTP settings fetched: 1
+✅ [Q15] Email journey templates fetched: 31
+✅ [Q16] WhatsApp custom templates fetched: 50
+✅ [Q18] Exercise feedback fetched: 10
+✅ [Q17] Library documents fetched: 20
+✅ [Q44] Marketing campaigns fetched: 2
+✅ [Q46] External API configs fetched: 1
+✅ [Q45] Campaign analytics fetched: 0 records
+✅ [Q47] External lead import logs fetched: 1
+✅ [Q48] WhatsApp/Twilio configuration (FULL) fetched: 1 record(s)
+✅ [Q7] Scheduler logs fetched: 1
+✅ [Q50] WhatsApp template assignments fetched: 0
+✅ [Q52] Calendar settings fetched: Found
+✅ [Q13b] Client state tracking fetched (unique clients): 23
+✅ [Q49] WhatsApp custom templates fetched: 104
+✅ [Q6] Email drafts fetched: 749
+✅ [Q12] All consultations fetched: 30
+✅ [Q51] Twilio WhatsApp templates fetched: 10 from 3 agent(s)
+📧 [EMAIL MAPPING] Created email mapping for 54 consultations
+🔐 [WhatsApp Config] Populated with masked credentials (Account SID: NULL, Auth Token: NULL)
+📚 [Knowledge Base] Loading ALL knowledge content for consultant (no filtering)...
+📚 [Knowledge Base] Loaded 1 documents and 0 APIs for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [Knowledge Base] Loaded ALL content: 1 documents, 0 API sources
+
+📊 Token Usage Breakdown (Intent: general):
+   Dashboard: 26 tokens
+   Clients (20 clients): 1,635 tokens
+   Exercises: 3,403 tokens
+   Email Marketing: 579 tokens
+   WhatsApp Leads: 319 tokens
+   Calendar: 149 tokens
+   Consultations: 35,903 tokens
+   Consultation Tasks: 18 tokens
+   Client Goals: 19 tokens
+   Client States (23 states): 7,904 tokens
+   SMTP Configuration: 0 tokens
+   Email Templates: 0 tokens
+   WhatsApp Templates: 0 tokens
+   Library Documents: 0 tokens
+   Exercise Feedback: 2,795 tokens
+   University: 42,478 tokens
+   Exercise Templates: 13,460 tokens
+   💬 WhatsApp (Detailed): 3,464 tokens
+   🎯 Lead Management: 1,207 tokens
+   📊 Campaign Marketing: 446 tokens
+   🔌 API Settings: 290 tokens
+   📱 WhatsApp Config: 531 tokens
+   📝 WhatsApp Templates (Detailed): 11,501 tokens
+   🔗 WhatsApp Template Assignments: 1 tokens
+   📲 Twilio WhatsApp Templates: 1,667 tokens
+   📅 Calendar Settings: 304 tokens
+   📚 Knowledge Base: 2,191 tokens
+   Base (prompts + metadata): 5,052 tokens
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🎯 TOTAL ESTIMATED: 135,342 tokens
+
+✅ Built and cached consultant context (intent: general)
+⏱️  [TIMING] Consultant context building: 2086ms
+⏱️  [TIMING] Consultant prompt building: 15ms
+
+📊 Token Usage Estimation:
+  - System Prompt: ~60,940 tokens
+  - User Message: ~1 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~60,941 tokens
+
+
+══════════════════════════════════════════════════════════════════════
+📚 AI MODE: RAG CLASSICO (Context Injection) [CONSULTANT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores FileSearch: NESSUNO
+   ❌ Tool fileSearch: NON ATTIVO
+   📄 Tutto il contesto viene iniettato nel system prompt (~60,940 tokens)
+   💡 TIP: Vai su AI Settings > File Search per sincronizzare i documenti!
+══════════════════════════════════════════════════════════════════════
+
+🔄 AI stream attempt 1/6...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+✅ AI streaming completed successfully on attempt 1
+⏱️  [TIMING] Gemini API call (with streaming): 1944ms
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+✅ Consultant AI streaming completed for message ca22acd6-9378-4cb5-b5a8-44088664c334
+
+──────────────────────────────────────────────────────────────────────
+📚 RAG CLASSICO STREAMING SUMMARY [CONSULTANT]
+──────────────────────────────────────────────────────────────────────
+   ❌ File Search: NON ATTIVO
+   📄 La risposta è basata interamente sul context injection
+      (~60,940 tokens nel system prompt)
+──────────────────────────────────────────────────────────────────────
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE TIMING BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [0ms → 2086ms] Context Building (2086ms)
+   [2086ms → 2101ms] Prompt Building (15ms)
+   [2101ms → 5954ms] Gemini API Call (1944ms)
+   ────────────────────────────────────────────────────────────────────
+   ⏱️  TOTAL: 5.95s (5954ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5:45:31 PM [express] POST /api/consultant/ai/chat 200 in 6179ms
