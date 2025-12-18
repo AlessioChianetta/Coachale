@@ -18,7 +18,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { db } from "../db";
 import { fileSearchStores, fileSearchDocuments } from "../../shared/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, or } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
 
@@ -341,10 +341,15 @@ export class FileSearchService {
   /**
    * Get Google FileSearchStore names for AI generation
    * Returns the Google store names that should be passed to generateContent
+   * 
+   * Logic:
+   * - Consultants: their own stores + system stores
+   * - Clients: their consultant's stores + system stores
    */
   async getStoreNamesForGeneration(userId: string, userRole: 'consultant' | 'client', consultantId?: string): Promise<string[]> {
     const conditions = [];
     
+    // User-specific stores (consultant or their consultant for clients)
     if (userRole === 'consultant') {
       conditions.push(
         and(
@@ -363,6 +368,7 @@ export class FileSearchService {
       );
     }
 
+    // Always include system-wide stores
     conditions.push(
       and(
         eq(fileSearchStores.ownerType, 'system'),
@@ -370,9 +376,13 @@ export class FileSearchService {
       )
     );
 
+    // FIX: Use OR to combine all conditions (was using only first condition before!)
     const stores = await db.query.fileSearchStores.findMany({
-      where: conditions.length > 0 ? conditions[0] : undefined,
+      where: conditions.length > 1 ? or(...conditions) : conditions[0],
     });
+
+    console.log(`🔍 [FileSearch] getStoreNamesForGeneration - Role: ${userRole}, UserId: ${userId}, ConsultantId: ${consultantId || 'N/A'}`);
+    console.log(`   📦 Found ${stores.length} stores: ${stores.map(s => s.displayName).join(', ') || 'nessuno'}`);
 
     return stores.map(store => store.googleStoreName);
   }

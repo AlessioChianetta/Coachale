@@ -814,6 +814,9 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
     
     // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO
+    const ragTokens = breakdown.exercises + breakdown.library + breakdown.consultations + breakdown.knowledgeBase;
+    const potentialSavings = fileSearchStoreNames.length > 0 ? ragTokens : 0;
+    
     console.log(`\n${'═'.repeat(70)}`);
     if (fileSearchStoreNames.length > 0) {
       console.log(`🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG)`);
@@ -822,12 +825,15 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       fileSearchStoreNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
       console.log(`   ✅ Tool fileSearch: ATTIVO`);
       console.log(`   📄 Il modello cercherà semanticamente nei documenti indicizzati`);
+      console.log(`   💰 RISPARMIO TOKENS: ~${ragTokens.toLocaleString()} tokens (esercizi+library+consultazioni+KB)`);
+      console.log(`   📉 System prompt ridotto: da ~${(systemPromptTokens + ragTokens).toLocaleString()} a ~${systemPromptTokens.toLocaleString()} tokens`);
     } else {
       console.log(`📚 AI MODE: RAG CLASSICO (Context Injection)`);
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📦 Stores FileSearch: NESSUNO`);
       console.log(`   ❌ Tool fileSearch: NON ATTIVO`);
-      console.log(`   📄 Tutto il contesto viene iniettato nel system prompt`);
+      console.log(`   📄 Tutto il contesto viene iniettato nel system prompt (~${systemPromptTokens.toLocaleString()} tokens)`);
+      console.log(`   💡 TIP: Sincronizza i documenti per attivare File Search e ridurre i costi!`);
     }
     console.log(`${'═'.repeat(70)}\n`);
 
@@ -1456,6 +1462,8 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
     
     // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO (CLIENT STREAMING)
+    const ragTokensClient = breakdown.exercises + breakdown.library + breakdown.consultations + breakdown.knowledgeBase;
+    
     console.log(`\n${'═'.repeat(70)}`);
     if (fileSearchStoreNames.length > 0) {
       console.log(`🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]`);
@@ -1464,12 +1472,15 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
       fileSearchStoreNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
       console.log(`   ✅ Tool fileSearch: ATTIVO`);
       console.log(`   📄 Il modello cercherà semanticamente nei documenti indicizzati`);
+      console.log(`   💰 RISPARMIO TOKENS: ~${ragTokensClient.toLocaleString()} tokens (esercizi+library+consultazioni+KB)`);
+      console.log(`   📉 System prompt ridotto: da ~${(systemPromptTokens + ragTokensClient).toLocaleString()} a ~${systemPromptTokens.toLocaleString()} tokens`);
     } else {
       console.log(`📚 AI MODE: RAG CLASSICO (Context Injection) [CLIENT]`);
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📦 Stores FileSearch: NESSUNO`);
       console.log(`   ❌ Tool fileSearch: NON ATTIVO`);
       console.log(`   📄 Tutto il contesto viene iniettato nel system prompt (~${systemPromptTokens.toLocaleString()} tokens)`);
+      console.log(`   💡 TIP: Sincronizza i documenti per attivare File Search e ridurre i costi!`);
     }
     console.log(`${'═'.repeat(70)}\n`);
 
@@ -2314,12 +2325,14 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       consultantFileSearchStoreNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
       console.log(`   ✅ Tool fileSearch: ATTIVO`);
       console.log(`   📄 Il modello cercherà semanticamente nei documenti indicizzati`);
+      console.log(`   📉 System prompt ridotto grazie a File Search`);
     } else {
       console.log(`📚 AI MODE: RAG CLASSICO (Context Injection) [CONSULTANT]`);
       console.log(`${'═'.repeat(70)}`);
       console.log(`   📦 Stores FileSearch: NESSUNO`);
       console.log(`   ❌ Tool fileSearch: NON ATTIVO`);
       console.log(`   📄 Tutto il contesto viene iniettato nel system prompt (~${systemPromptTokens.toLocaleString()} tokens)`);
+      console.log(`   💡 TIP: Vai su AI Settings > File Search per sincronizzare i documenti!`);
     }
     console.log(`${'═'.repeat(70)}\n`);
 

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,17 @@ import {
   Key,
   Trash2,
   Save,
-  Sparkles
+  Sparkles,
+  FileSearch,
+  RefreshCw,
+  Database,
+  FileText,
+  BookOpen,
+  GraduationCap,
+  MessageSquare,
+  CheckCircle2,
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -18,11 +28,29 @@ import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAss
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+
+interface FileSearchInfo {
+  hasStore: boolean;
+  storeId?: string;
+  storeName?: string;
+  documentCount?: number;
+}
+
+interface SyncResult {
+  success: boolean;
+  total?: number;
+  synced?: number;
+  failed?: number;
+  skipped?: number;
+  message?: string;
+}
 
 export default function ConsultantAISettingsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [geminiApiKeys, setGeminiApiKeys] = useState<string[]>([]);
+  const [syncingCategory, setSyncingCategory] = useState<string | null>(null);
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -42,6 +70,56 @@ export default function ConsultantAISettingsPage() {
       return data;
     },
   });
+
+  // Fetch File Search store info
+  const { data: fileSearchInfo, isLoading: fileSearchLoading, refetch: refetchFileSearch } = useQuery<FileSearchInfo>({
+    queryKey: ["/api/file-search/info"],
+    queryFn: async () => {
+      const response = await fetch("/api/file-search/info", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        return { hasStore: false };
+      }
+      return response.json();
+    },
+  });
+
+  // Sync mutations
+  const syncMutation = useMutation({
+    mutationFn: async (category: string) => {
+      setSyncingCategory(category);
+      const response = await fetch(`/api/file-search/sync-${category}`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error(`Sync ${category} failed`);
+      }
+      return response.json() as Promise<SyncResult>;
+    },
+    onSuccess: (data, category) => {
+      refetchFileSearch();
+      toast({
+        title: "Sincronizzazione completata",
+        description: data.message || `${category}: ${data.synced || 0} documenti sincronizzati`,
+      });
+    },
+    onError: (error: any, category) => {
+      toast({
+        title: "Errore sincronizzazione",
+        description: error.message || `Errore durante la sincronizzazione di ${category}`,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setSyncingCategory(null);
+    },
+  });
+
+  const handleSyncCategory = (category: string) => {
+    syncMutation.mutate(category);
+  };
 
   const handleAddApiKey = () => {
     if (geminiApiKeys.length < 10) {
@@ -288,6 +366,185 @@ export default function ConsultantAISettingsPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* File Search Card - NEW */}
+          <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm max-w-4xl mx-auto mt-6">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl">
+                    <FileSearch className="h-6 w-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-bold text-slate-800">
+                      File Search (RAG Semantico)
+                    </CardTitle>
+                    <CardDescription className="text-slate-600">
+                      Indicizza i tuoi documenti per una ricerca AI semantica avanzata
+                    </CardDescription>
+                  </div>
+                </div>
+                {fileSearchInfo?.hasStore && (
+                  <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <Database className="h-3 w-3 mr-1" />
+                    {fileSearchInfo.documentCount || 0} documenti
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            
+            <CardContent className="p-6 space-y-6">
+              {/* Status */}
+              <div className={`flex items-center gap-3 p-4 rounded-lg ${fileSearchInfo?.hasStore ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+                {fileSearchInfo?.hasStore ? (
+                  <>
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-emerald-800">File Search Attivo</p>
+                      <p className="text-xs text-emerald-600">L'AI usa la ricerca semantica per trovare informazioni rilevanti nei tuoi documenti</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-amber-800">File Search Non Configurato</p>
+                      <p className="text-xs text-amber-600">Sincronizza i tuoi documenti per attivare la ricerca semantica e ridurre i costi</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Sync Categories */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium flex items-center gap-2 text-slate-700">
+                  <RefreshCw className="h-4 w-4 text-emerald-600" />
+                  Sincronizza Contenuti
+                </Label>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Library */}
+                  <Button
+                    variant="outline"
+                    className="justify-start h-auto py-3 px-4 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
+                    onClick={() => handleSyncCategory('library')}
+                    disabled={syncingCategory !== null}
+                  >
+                    {syncingCategory === 'library' ? (
+                      <Loader2 className="h-4 w-4 mr-3 animate-spin" />
+                    ) : (
+                      <BookOpen className="h-4 w-4 mr-3 text-blue-600" />
+                    )}
+                    <div className="text-left">
+                      <p className="font-medium">Libreria</p>
+                      <p className="text-xs text-slate-500">Documenti della libreria</p>
+                    </div>
+                  </Button>
+
+                  {/* Knowledge Base */}
+                  <Button
+                    variant="outline"
+                    className="justify-start h-auto py-3 px-4 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
+                    onClick={() => handleSyncCategory('knowledge')}
+                    disabled={syncingCategory !== null}
+                  >
+                    {syncingCategory === 'knowledge' ? (
+                      <Loader2 className="h-4 w-4 mr-3 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-3 text-purple-600" />
+                    )}
+                    <div className="text-left">
+                      <p className="font-medium">Knowledge Base</p>
+                      <p className="text-xs text-slate-500">Documenti AI training</p>
+                    </div>
+                  </Button>
+
+                  {/* Exercises */}
+                  <Button
+                    variant="outline"
+                    className="justify-start h-auto py-3 px-4 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
+                    onClick={() => handleSyncCategory('exercises')}
+                    disabled={syncingCategory !== null}
+                  >
+                    {syncingCategory === 'exercises' ? (
+                      <Loader2 className="h-4 w-4 mr-3 animate-spin" />
+                    ) : (
+                      <FileText className="h-4 w-4 mr-3 text-orange-600" />
+                    )}
+                    <div className="text-left">
+                      <p className="font-medium">Esercizi</p>
+                      <p className="text-xs text-slate-500">Tutti gli esercizi creati</p>
+                    </div>
+                  </Button>
+
+                  {/* University */}
+                  <Button
+                    variant="outline"
+                    className="justify-start h-auto py-3 px-4 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
+                    onClick={() => handleSyncCategory('university')}
+                    disabled={syncingCategory !== null}
+                  >
+                    {syncingCategory === 'university' ? (
+                      <Loader2 className="h-4 w-4 mr-3 animate-spin" />
+                    ) : (
+                      <GraduationCap className="h-4 w-4 mr-3 text-indigo-600" />
+                    )}
+                    <div className="text-left">
+                      <p className="font-medium">University</p>
+                      <p className="text-xs text-slate-500">Lezioni e moduli</p>
+                    </div>
+                  </Button>
+
+                  {/* Consultations */}
+                  <Button
+                    variant="outline"
+                    className="justify-start h-auto py-3 px-4 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
+                    onClick={() => handleSyncCategory('consultations')}
+                    disabled={syncingCategory !== null}
+                  >
+                    {syncingCategory === 'consultations' ? (
+                      <Loader2 className="h-4 w-4 mr-3 animate-spin" />
+                    ) : (
+                      <MessageSquare className="h-4 w-4 mr-3 text-teal-600" />
+                    )}
+                    <div className="text-left">
+                      <p className="font-medium">Consulenze</p>
+                      <p className="text-xs text-slate-500">Storico consulenze</p>
+                    </div>
+                  </Button>
+
+                  {/* Sync All */}
+                  <Button
+                    className="justify-start h-auto py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
+                    onClick={() => handleSyncCategory('all')}
+                    disabled={syncingCategory !== null}
+                  >
+                    {syncingCategory === 'all' ? (
+                      <Loader2 className="h-4 w-4 mr-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-3" />
+                    )}
+                    <div className="text-left">
+                      <p className="font-medium">Sincronizza TUTTO</p>
+                      <p className="text-xs text-emerald-100">Indicizza tutti i contenuti</p>
+                    </div>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Info Box */}
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-4">
+                <p className="text-xs text-emerald-800 flex items-start gap-2">
+                  <Sparkles className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Vantaggi File Search:</strong> Riduce il consumo di token del 90%+, 
+                    evita errori "Resource Exhausted", fornisce citazioni automatiche delle fonti, 
+                    e permette una ricerca semantica intelligente sui tuoi documenti.
+                  </span>
+                </p>
               </div>
             </CardContent>
           </Card>

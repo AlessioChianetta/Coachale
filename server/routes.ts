@@ -100,6 +100,7 @@ import adminRouter from "./routes/admin";
 import onboardingRouter from "./routes/onboarding";
 import followupApiRouter from "./routes/followup-api";
 import fileSearchRouter from "./routes/file-search";
+import { fileSearchSyncService } from "./services/file-search-sync-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
 import { handleWebhook } from "./whatsapp/webhook-handler";
 import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
@@ -4137,6 +4138,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('STEP 10: Document created in storage, result:', JSON.stringify(document, null, 2));
       console.log('========== DOCUMENT CREATION DEBUG END ==========');
+
+      // Auto-sync to FileSearch for semantic RAG (async, don't block response)
+      if (document.id && createdBy) {
+        fileSearchSyncService.onDocumentUploaded(document.id, createdBy).catch(err => {
+          console.error('❌ [FileSearch Auto-Sync] Failed to sync library document:', err);
+        });
+      }
 
       res.status(201).json(document);
     } catch (error: any) {
