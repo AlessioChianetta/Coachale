@@ -40,6 +40,7 @@ import {
   Moon,
   Database,
   Plug,
+  FileSearch,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
@@ -164,6 +165,7 @@ const consultantCategories: SidebarCategoryExtended[] = [
     defaultExpanded: false,
     items: [
       { name: "Consulenze AI", href: "/consultant/ai-consultations", icon: Sparkles, color: "text-purple-500" },
+      { name: "File Search", href: "/consultant/file-search-analytics", icon: FileSearch, color: "text-emerald-500", badge: "RAG" },
     ]
   }
 ];
