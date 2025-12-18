@@ -801,9 +801,24 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       consultantIdForFileSearch
     );
     const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
+    
+    // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO
+    console.log(`\n${'═'.repeat(70)}`);
     if (fileSearchStoreNames.length > 0) {
-      console.log(`🔍 [FileSearch] Using ${fileSearchStoreNames.length} stores for semantic retrieval`);
+      console.log(`🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG)`);
+      console.log(`${'═'.repeat(70)}`);
+      console.log(`   📦 Stores disponibili: ${fileSearchStoreNames.length}`);
+      fileSearchStoreNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
+      console.log(`   ✅ Tool fileSearch: ATTIVO`);
+      console.log(`   📄 Il modello cercherà semanticamente nei documenti indicizzati`);
+    } else {
+      console.log(`📚 AI MODE: RAG CLASSICO (Context Injection)`);
+      console.log(`${'═'.repeat(70)}`);
+      console.log(`   📦 Stores FileSearch: NESSUNO`);
+      console.log(`   ❌ Tool fileSearch: NON ATTIVO`);
+      console.log(`   📄 Tutto il contesto viene iniettato nel system prompt`);
     }
+    console.log(`${'═'.repeat(70)}\n`);
 
     const response = await retryWithBackoff(
       async (ctx: OperationAttemptContext) => {
@@ -823,6 +838,25 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     );
 
     let assistantMessage = response.text || "Mi dispiace, non sono riuscito a generare una risposta.";
+
+    // 📊 LOG CITAZIONI FILE SEARCH (se usato)
+    if (fileSearchStoreNames.length > 0) {
+      const citations = fileSearchService.parseCitations(response);
+      console.log(`\n${'─'.repeat(70)}`);
+      console.log(`🔍 FILE SEARCH RESPONSE ANALYSIS`);
+      console.log(`${'─'.repeat(70)}`);
+      if (citations.length > 0) {
+        console.log(`   ✅ Gemini HA USATO File Search - ${citations.length} citazioni trovate:`);
+        citations.forEach((c, i) => {
+          console.log(`      ${i + 1}. "${c.sourceTitle}" ${c.startIndex !== undefined ? `[${c.startIndex}-${c.endIndex}]` : ''}`);
+          if (c.content) console.log(`         └─ "${c.content.substring(0, 100)}..."`);
+        });
+      } else {
+        console.log(`   ⚠️  Gemini NON ha usato File Search per questa risposta`);
+        console.log(`   📄 La risposta è basata sul context injection (RAG classico)`);
+      }
+      console.log(`${'─'.repeat(70)}\n`);
+    }
 
     // Extract suggested actions before saving
     const suggestedActions = extractSuggestedActions(assistantMessage, userContext);
@@ -1397,9 +1431,24 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
       consultantIdForFileSearch
     );
     const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
+    
+    // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO (CLIENT STREAMING)
+    console.log(`\n${'═'.repeat(70)}`);
     if (fileSearchStoreNames.length > 0) {
-      console.log(`🔍 [FileSearch] Using ${fileSearchStoreNames.length} stores for semantic retrieval`);
+      console.log(`🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]`);
+      console.log(`${'═'.repeat(70)}`);
+      console.log(`   📦 Stores disponibili: ${fileSearchStoreNames.length}`);
+      fileSearchStoreNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
+      console.log(`   ✅ Tool fileSearch: ATTIVO`);
+      console.log(`   📄 Il modello cercherà semanticamente nei documenti indicizzati`);
+    } else {
+      console.log(`📚 AI MODE: RAG CLASSICO (Context Injection) [CLIENT]`);
+      console.log(`${'═'.repeat(70)}`);
+      console.log(`   📦 Stores FileSearch: NESSUNO`);
+      console.log(`   ❌ Tool fileSearch: NON ATTIVO`);
+      console.log(`   📄 Tutto il contesto viene iniettato nel system prompt (~${systemPromptTokens.toLocaleString()} tokens)`);
     }
+    console.log(`${'═'.repeat(70)}\n`);
 
     // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
@@ -1494,6 +1543,26 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     ]);
 
     console.log(`✅ AI streaming completed for message ${savedMessage.id}`);
+
+    // 📊 LOG FILE SEARCH STREAMING SUMMARY (CLIENT)
+    if (fileSearchStoreNames.length > 0) {
+      console.log(`\n${'─'.repeat(70)}`);
+      console.log(`🔍 FILE SEARCH STREAMING SUMMARY [CLIENT]`);
+      console.log(`${'─'.repeat(70)}`);
+      console.log(`   📦 Stores attivi: ${fileSearchStoreNames.length}`);
+      console.log(`   ⚠️  Nota: In modalità streaming, le citazioni non sono disponibili`);
+      console.log(`      nel response object. File Search è stato configurato come tool.`);
+      console.log(`   📄 Se la risposta cita documenti specifici, Gemini ha usato File Search.`);
+      console.log(`${'─'.repeat(70)}\n`);
+    } else {
+      console.log(`\n${'─'.repeat(70)}`);
+      console.log(`📚 RAG CLASSICO STREAMING SUMMARY [CLIENT]`);
+      console.log(`${'─'.repeat(70)}`);
+      console.log(`   ❌ File Search: NON ATTIVO`);
+      console.log(`   📄 La risposta è basata interamente sul context injection`);
+      console.log(`      (~${systemPromptTokens.toLocaleString()} tokens nel system prompt)`);
+      console.log(`${'─'.repeat(70)}\n`);
+    }
 
     // Calculate total timing
     timings.totalEnd = performance.now();
@@ -2212,9 +2281,24 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       'consultant'
     );
     const consultantFileSearchTool = fileSearchService.buildFileSearchTool(consultantFileSearchStoreNames);
+    
+    // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO (CONSULTANT)
+    console.log(`\n${'═'.repeat(70)}`);
     if (consultantFileSearchStoreNames.length > 0) {
-      console.log(`🔍 [FileSearch] Consultant using ${consultantFileSearchStoreNames.length} stores for semantic retrieval`);
+      console.log(`🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CONSULTANT]`);
+      console.log(`${'═'.repeat(70)}`);
+      console.log(`   📦 Stores disponibili: ${consultantFileSearchStoreNames.length}`);
+      consultantFileSearchStoreNames.forEach((name, i) => console.log(`      ${i + 1}. ${name}`));
+      console.log(`   ✅ Tool fileSearch: ATTIVO`);
+      console.log(`   📄 Il modello cercherà semanticamente nei documenti indicizzati`);
+    } else {
+      console.log(`📚 AI MODE: RAG CLASSICO (Context Injection) [CONSULTANT]`);
+      console.log(`${'═'.repeat(70)}`);
+      console.log(`   📦 Stores FileSearch: NESSUNO`);
+      console.log(`   ❌ Tool fileSearch: NON ATTIVO`);
+      console.log(`   📄 Tutto il contesto viene iniettato nel system prompt (~${systemPromptTokens.toLocaleString()} tokens)`);
     }
+    console.log(`${'═'.repeat(70)}\n`);
 
     // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
@@ -2265,6 +2349,26 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       .where(eq(aiConversations.id, conversation.id));
 
     console.log(`✅ Consultant AI streaming completed for message ${savedMessage.id}`);
+
+    // 📊 LOG FILE SEARCH STREAMING SUMMARY (CONSULTANT)
+    if (consultantFileSearchStoreNames.length > 0) {
+      console.log(`\n${'─'.repeat(70)}`);
+      console.log(`🔍 FILE SEARCH STREAMING SUMMARY [CONSULTANT]`);
+      console.log(`${'─'.repeat(70)}`);
+      console.log(`   📦 Stores attivi: ${consultantFileSearchStoreNames.length}`);
+      console.log(`   ⚠️  Nota: In modalità streaming, le citazioni non sono disponibili`);
+      console.log(`      nel response object. File Search è stato configurato come tool.`);
+      console.log(`   📄 Se la risposta cita documenti specifici, Gemini ha usato File Search.`);
+      console.log(`${'─'.repeat(70)}\n`);
+    } else {
+      console.log(`\n${'─'.repeat(70)}`);
+      console.log(`📚 RAG CLASSICO STREAMING SUMMARY [CONSULTANT]`);
+      console.log(`${'─'.repeat(70)}`);
+      console.log(`   ❌ File Search: NON ATTIVO`);
+      console.log(`   📄 La risposta è basata interamente sul context injection`);
+      console.log(`      (~${systemPromptTokens.toLocaleString()} tokens nel system prompt)`);
+      console.log(`${'─'.repeat(70)}\n`);
+    }
 
     // Track knowledge base usage - increment usage count for all documents and APIs used in context
     if (consultantContext.knowledgeBase) {
