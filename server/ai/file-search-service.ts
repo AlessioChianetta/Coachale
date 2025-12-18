@@ -21,6 +21,7 @@ import { fileSearchStores, fileSearchDocuments } from "../../shared/schema";
 import { eq, and, desc, inArray, or } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 
 export interface ChunkingConfig {
   maxTokensPerChunk: number;
@@ -255,7 +256,6 @@ export class FileSearchService {
    * Calculate content hash for incremental sync
    */
   private calculateContentHash(content: string): string {
-    const crypto = require('crypto');
     return crypto.createHash('sha256').update(content, 'utf8').digest('hex').substring(0, 16);
   }
 

@@ -14,6 +14,7 @@ import {
   fileSearchStores, 
   fileSearchDocuments,
   consultantKnowledgeDocuments,
+  clientKnowledgeDocuments,
   exercises,
   exerciseSubmissions,
   exerciseAssignments,
@@ -1627,6 +1628,319 @@ export class FileSearchSyncService {
       total: allExercises.length,
       indexed,
       missing,
+    };
+  }
+
+  // ============================================================
+  // CLIENT KNOWLEDGE DOCUMENTS SYNC
+  // ============================================================
+
+  /**
+   * Sync a client knowledge document to their PRIVATE FileSearchStore
+   * 
+   * @param documentId - The client knowledge document ID
+   * @param clientId - The client's user ID
+   * @param consultantId - The consultant's user ID
+   */
+  static async syncClientKnowledgeDocument(
+    documentId: string,
+    clientId: string,
+    consultantId: string,
+    maxRetries: number = 3,
+  ): Promise<{ success: boolean; error?: string }> {
+    let doc = null;
+    let lastStatus = 'unknown';
+    
+    // Retry loop to handle race condition when document is just being indexed
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      doc = await db.query.clientKnowledgeDocuments.findFirst({
+        where: and(
+          eq(clientKnowledgeDocuments.id, documentId),
+          eq(clientKnowledgeDocuments.clientId, clientId),
+        ),
+      });
+
+      if (!doc) {
+        return { success: false, error: 'Client knowledge document not found' };
+      }
+      
+      lastStatus = doc.status;
+      
+      if (doc.status === 'indexed') {
+        break; // Document is ready for sync
+      }
+      
+      // If not indexed yet and we have retries left, wait and try again
+      if (attempt < maxRetries) {
+        console.log(`⏳ [FileSync] Client document ${documentId} status is '${doc.status}', waiting for indexed status (attempt ${attempt}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+      }
+    }
+    
+    if (!doc || doc.status !== 'indexed') {
+      return { success: false, error: `Document status is '${lastStatus}' after ${maxRetries} attempts, expected 'indexed'` };
+    }
+
+    // Verify the client has a consultant assigned
+    if (!consultantId) {
+      return { success: false, error: 'Client must be associated with a consultant to sync documents' };
+    }
+    
+    try {
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', documentId);
+      if (isAlreadyIndexed) {
+        console.log(`📌 [FileSync] Client knowledge document already indexed: ${documentId}`);
+        return { success: true };
+      }
+
+      // Get or create the client's PRIVATE store (NOT the consultant's store)
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, error: 'Failed to get or create client private store' };
+      }
+
+      // Build content from the document
+      const content = this.buildClientKnowledgeDocumentContent(doc);
+      
+      // Upload to client's PRIVATE store with clientId set to distinguish from consultant docs
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[CLIENT KB] ${doc.title}`,
+        storeId: clientStore.storeId,
+        sourceType: 'knowledge_base',
+        sourceId: documentId,
+        clientId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Client knowledge document synced to PRIVATE store: ${doc.title} (client: ${clientId.substring(0, 8)})`);
+      }
+
+      return uploadResult.success 
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing client knowledge document:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Build searchable content from a client knowledge document
+   */
+  private static buildClientKnowledgeDocumentContent(doc: any): string {
+    const parts: string[] = [];
+    
+    parts.push(`# ${doc.title}`);
+    
+    if (doc.category) {
+      parts.push(`Categoria: ${doc.category}`);
+    }
+    
+    if (doc.description) {
+      parts.push(`\n## Descrizione\n${doc.description}`);
+    }
+    
+    // Use extracted content if available, otherwise use summary
+    if (doc.extractedContent) {
+      parts.push(`\n## Contenuto\n${doc.extractedContent}`);
+    } else if (doc.contentSummary) {
+      parts.push(`\n## Riepilogo\n${doc.contentSummary}`);
+    }
+    
+    // Include keywords if present
+    if (doc.keywords && Array.isArray(doc.keywords) && doc.keywords.length > 0) {
+      parts.push(`\n## Parole chiave\n${doc.keywords.join(', ')}`);
+    }
+    
+    // Include tags if present
+    if (doc.tags && Array.isArray(doc.tags) && doc.tags.length > 0) {
+      parts.push(`\n## Tag\n${doc.tags.join(', ')}`);
+    }
+    
+    return parts.join('\n');
+  }
+
+  /**
+   * Bulk sync all client knowledge documents for a specific client to their PRIVATE store
+   */
+  static async syncAllClientKnowledgeDocuments(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{
+    total: number;
+    synced: number;
+    failed: number;
+    skipped: number;
+    errors: string[];
+  }> {
+    try {
+      // Verify the client has a consultant assigned
+      if (!consultantId) {
+        return {
+          total: 0,
+          synced: 0,
+          failed: 1,
+          skipped: 0,
+          errors: ['Client must be associated with a consultant to sync documents'],
+        };
+      }
+
+      const docs = await db.query.clientKnowledgeDocuments.findMany({
+        where: and(
+          eq(clientKnowledgeDocuments.clientId, clientId),
+          eq(clientKnowledgeDocuments.status, 'indexed')
+        ),
+        orderBy: [desc(clientKnowledgeDocuments.priority)],
+      });
+
+      let synced = 0;
+      let failed = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`🔐 [FileSync] Syncing ${docs.length} knowledge documents for client ${clientId.substring(0, 8)} to PRIVATE store`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      for (const doc of docs) {
+        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
+        if (isAlreadyIndexed) {
+          skipped++;
+          continue;
+        }
+
+        const result = await this.syncClientKnowledgeDocument(doc.id, clientId, consultantId);
+        if (result.success) {
+          synced++;
+        } else {
+          failed++;
+          errors.push(`${doc.title}: ${result.error}`);
+        }
+      }
+
+      console.log(`✅ [FileSync] Client knowledge documents sync complete - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+
+      return {
+        total: docs.length,
+        synced,
+        failed,
+        skipped,
+        errors,
+      };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing all client knowledge documents:', error);
+      return {
+        total: 0,
+        synced: 0,
+        failed: 1,
+        skipped: 0,
+        errors: [error.message],
+      };
+    }
+  }
+
+  /**
+   * Auto-sync on client knowledge document upload/index
+   */
+  static async onClientKnowledgeDocumentIndexed(
+    documentId: string,
+    clientId: string,
+    consultantId: string
+  ): Promise<void> {
+    try {
+      const result = await this.syncClientKnowledgeDocument(documentId, clientId, consultantId);
+      if (!result.success) {
+        console.warn(`⚠️ [FileSync] Failed to auto-sync client knowledge document: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('[FileSync] Client knowledge auto-sync error:', error);
+    }
+  }
+
+  /**
+   * Audit client knowledge documents for a specific client
+   */
+  private static async auditClientKnowledgeDocuments(clientId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: string[];
+  }> {
+    const docs = await db.query.clientKnowledgeDocuments.findMany({
+      where: and(
+        eq(clientKnowledgeDocuments.clientId, clientId),
+        eq(clientKnowledgeDocuments.status, 'indexed'),
+      ),
+    });
+
+    const missing: string[] = [];
+    let indexed = 0;
+
+    for (const doc of docs) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push(doc.title);
+      }
+    }
+
+    return {
+      total: docs.length,
+      indexed,
+      missing,
+    };
+  }
+
+  /**
+   * Run a Post-Import Audit for a client's private data
+   * 
+   * @param clientId - The client's user ID
+   * @returns Audit summary with health score and recommendations
+   */
+  static async runClientPostImportAudit(clientId: string): Promise<{
+    summary: {
+      clientKnowledgeBase: { total: number; indexed: number; missing: string[] };
+    };
+    recommendations: string[];
+    healthScore: number;
+  }> {
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`🔍 [FileSync] Running Client Post-Import Audit for client ${clientId.substring(0, 8)}`);
+    console.log(`${'═'.repeat(60)}\n`);
+
+    const clientKnowledgeResult = await this.auditClientKnowledgeDocuments(clientId);
+
+    const totalDocs = clientKnowledgeResult.total;
+    const totalIndexed = clientKnowledgeResult.indexed;
+    const healthScore = totalDocs > 0 ? Math.round((totalIndexed / totalDocs) * 100) : 100;
+
+    const recommendations: string[] = [];
+
+    if (clientKnowledgeResult.missing.length > 0) {
+      recommendations.push(`Sincronizza ${clientKnowledgeResult.missing.length} documenti knowledge del client mancanti`);
+    }
+
+    if (healthScore < 50) {
+      recommendations.push('⚠️ Health Score basso: esegui una sincronizzazione completa');
+    } else if (healthScore < 80) {
+      recommendations.push('💡 Consigliato: sincronizza i contenuti mancanti per migliorare le performance AI');
+    } else if (healthScore === 100) {
+      recommendations.push('✅ Tutti i documenti del client sono indicizzati correttamente');
+    }
+
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`✅ [FileSync] Client Post-Import Audit Complete`);
+    console.log(`   📖 Client Knowledge Base: ${clientKnowledgeResult.indexed}/${clientKnowledgeResult.total} indexed`);
+    console.log(`   🏥 Health Score: ${healthScore}%`);
+    console.log(`${'═'.repeat(60)}\n`);
+
+    return {
+      summary: {
+        clientKnowledgeBase: clientKnowledgeResult,
+      },
+      recommendations,
+      healthScore,
     };
   }
 }

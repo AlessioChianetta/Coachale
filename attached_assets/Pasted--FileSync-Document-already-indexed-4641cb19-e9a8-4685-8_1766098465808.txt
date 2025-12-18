@@ -1,0 +1,22 @@
+ [FileSync] Document already indexed: 4641cb19-e9a8-4685-8a6c-22d37a7cb710
+📌 [FileSync] Document already indexed: f76a5288-b4bd-422a-90f7-b82718d6192e
+[FileSync] Error syncing document: ReferenceError: require is not defined
+    at FileSearchService.calculateContentHash (/home/runner/workspace/server/ai/file-search-service.ts:258:20)
+    at FileSearchService.uploadDocumentFromContent (/home/runner/workspace/server/ai/file-search-service.ts:292:30)
+    at Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:81:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:119:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1015:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+📌 [FileSync] Document already indexed: 24778e02-72e0-4d32-82f0-7ffc880a3b7a
+[FileSync] Error syncing document: ReferenceError: require is not defined
+    at FileSearchService.calculateContentHash (/home/runner/workspace/server/ai/file-search-service.ts:258:20)
+    at FileSearchService.uploadDocumentFromContent (/home/runner/workspace/server/ai/file-search-service.ts:292:30)
+    at Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:81:52)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:119:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1015:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+📌 [FileSync] Document already indexed: 3997d932-97bc-4e4e-9d7b-4bc579da5a32
+📌 [FileSync] Document already indexed: a6d31fb5-002a-412a-904e-581c3b82449f
+📌 [FileSync] Document already indexed: 798bdef7-ad49-43e2-900a-be3767c175cb

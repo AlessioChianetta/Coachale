@@ -12,6 +12,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { extractTextAndStructuredData, type VertexAICredentials, type StructuredTableData } from "../../services/document-processor";
 import { parseServiceAccountJson } from "../../ai/provider-factory";
+import { FileSearchSyncService } from "../../services/file-search-sync-service";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -281,6 +282,26 @@ router.post(
             .where(eq(clientKnowledgeDocuments.id, documentId));
 
           console.log(`✅ [CLIENT KNOWLEDGE DOCUMENTS] Document indexed: "${title}" (${extractedContent.length} chars${structuredData ? `, ${structuredData.totalRows} rows` : ''})`);
+
+          // Get the client's consultantId for File Search sync
+          const [clientUser] = await db
+            .select({ consultantId: users.consultantId })
+            .from(users)
+            .where(eq(users.id, clientId))
+            .limit(1);
+          
+          if (clientUser?.consultantId) {
+            // Sync to File Search for AI semantic search (background, non-blocking)
+            FileSearchSyncService.onClientKnowledgeDocumentIndexed(
+              documentId,
+              clientId,
+              clientUser.consultantId
+            ).catch((syncError: any) => {
+              console.warn(`⚠️ [CLIENT KNOWLEDGE DOCUMENTS] File Search sync failed:`, syncError.message);
+            });
+          } else {
+            console.warn(`⚠️ [CLIENT KNOWLEDGE DOCUMENTS] Cannot sync to File Search: client ${clientId} has no consultant assigned`);
+          }
         } catch (extractError: any) {
           console.error(`❌ [CLIENT KNOWLEDGE DOCUMENTS] Text extraction failed:`, extractError.message);
           await db

@@ -3,8 +3,8 @@ import { authenticateToken, requireRole, type AuthRequest } from '../middleware/
 import { fileSearchService } from '../ai/file-search-service';
 import { fileSearchSyncService } from '../services/file-search-sync-service';
 import { db } from '../db';
-import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments } from '../../shared/schema';
-import { eq, desc, sql, and, gte } from 'drizzle-orm';
+import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users } from '../../shared/schema';
+import { eq, desc, sql, and, gte, isNull, isNotNull } from 'drizzle-orm';
 
 const router = Router();
 
@@ -349,12 +349,78 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         sourceId: fileSearchDocuments.sourceId,
         uploadedAt: fileSearchDocuments.uploadedAt,
         storeDisplayName: fileSearchStores.displayName,
+        storeId: fileSearchDocuments.storeId,
+        clientId: fileSearchDocuments.clientId,
       })
       .from(fileSearchDocuments)
       .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
       .where(eq(fileSearchStores.ownerId, consultantId))
       .orderBy(desc(fileSearchDocuments.uploadedAt))
-      .limit(200);
+      .limit(500);
+    
+    // Build hierarchical data structure
+    const consultantDocs = documents.filter(d => !d.clientId);
+    const clientDocs = documents.filter(d => d.clientId);
+    
+    // Get unique client IDs
+    const uniqueClientIds = [...new Set(clientDocs.map(d => d.clientId).filter(Boolean))] as string[];
+    
+    // Fetch client info
+    const clientInfoMap: Record<string, { name: string; email: string }> = {};
+    if (uniqueClientIds.length > 0) {
+      const clientUsers = await db
+        .select({ id: users.id, name: users.name, email: users.email })
+        .from(users)
+        .where(sql`${users.id} IN ${uniqueClientIds}`);
+      
+      clientUsers.forEach(u => {
+        clientInfoMap[u.id] = { name: u.name, email: u.email };
+      });
+    }
+    
+    // Build consultant store data
+    const consultantStore = {
+      storeId: stores[0]?.id || '',
+      storeName: stores[0]?.displayName || 'Store Globale Consulente',
+      documents: {
+        library: consultantDocs.filter(d => d.sourceType === 'library'),
+        knowledgeBase: consultantDocs.filter(d => d.sourceType === 'knowledge_base'),
+        exercises: consultantDocs.filter(d => d.sourceType === 'exercise'),
+        university: consultantDocs.filter(d => d.sourceType === 'university'),
+        other: consultantDocs.filter(d => !['library', 'knowledge_base', 'exercise', 'university'].includes(d.sourceType)),
+      },
+      totals: {
+        library: consultantDocs.filter(d => d.sourceType === 'library').length,
+        knowledgeBase: consultantDocs.filter(d => d.sourceType === 'knowledge_base').length,
+        exercises: consultantDocs.filter(d => d.sourceType === 'exercise').length,
+        university: consultantDocs.filter(d => d.sourceType === 'university').length,
+      },
+    };
+    
+    // Build client stores data
+    const clientStoresData = uniqueClientIds.map(clientId => {
+      const clientDocuments = clientDocs.filter(d => d.clientId === clientId);
+      const clientInfo = clientInfoMap[clientId] || { name: 'Cliente Sconosciuto', email: '' };
+      
+      return {
+        clientId,
+        clientName: clientInfo.name,
+        clientEmail: clientInfo.email,
+        storeId: clientDocuments[0]?.storeId || '',
+        storeName: clientDocuments[0]?.storeDisplayName || '',
+        documents: {
+          exerciseResponses: clientDocuments.filter(d => d.sourceType === 'exercise'),
+          consultationNotes: clientDocuments.filter(d => d.sourceType === 'consultation'),
+          knowledgeBase: clientDocuments.filter(d => d.sourceType === 'knowledge_base'),
+        },
+        totals: {
+          exerciseResponses: clientDocuments.filter(d => d.sourceType === 'exercise').length,
+          consultationNotes: clientDocuments.filter(d => d.sourceType === 'consultation').length,
+          knowledgeBase: clientDocuments.filter(d => d.sourceType === 'knowledge_base').length,
+          total: clientDocuments.length,
+        },
+      };
+    });
     
     const totalFileSearchCalls = usageLogs.filter(l => l.usedFileSearch).length;
     const totalClassicRagCalls = usageLogs.filter(l => !l.usedFileSearch).length;
@@ -436,7 +502,12 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         sourceId: d.sourceId,
         uploadedAt: d.uploadedAt,
         storeDisplayName: d.storeDisplayName,
+        clientId: d.clientId,
       })),
+      hierarchicalData: {
+        consultantStore,
+        clientStores: clientStoresData,
+      },
       geminiApiKeyConfigured: !!process.env.GEMINI_API_KEY,
     });
   } catch (error: any) {

@@ -28,8 +28,16 @@ import {
   AlertTriangle,
   Activity,
   Sparkles,
-  Dumbbell
+  Dumbbell,
+  ChevronRight,
+  ChevronDown,
+  FolderOpen,
+  User,
+  GraduationCap,
+  Brain,
+  Folder
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -83,6 +91,45 @@ interface SyncedDocument {
   sourceId: string | null;
   uploadedAt: string;
   storeDisplayName?: string;
+  clientId?: string | null;
+}
+
+interface HierarchicalData {
+  consultantStore: {
+    storeId: string;
+    storeName: string;
+    documents: {
+      library: SyncedDocument[];
+      knowledgeBase: SyncedDocument[];
+      exercises: SyncedDocument[];
+      university: SyncedDocument[];
+      other: SyncedDocument[];
+    };
+    totals: {
+      library: number;
+      knowledgeBase: number;
+      exercises: number;
+      university: number;
+    };
+  };
+  clientStores: Array<{
+    clientId: string;
+    clientName: string;
+    clientEmail: string;
+    storeId: string;
+    storeName: string;
+    documents: {
+      exerciseResponses: SyncedDocument[];
+      consultationNotes: SyncedDocument[];
+      knowledgeBase: SyncedDocument[];
+    };
+    totals: {
+      exerciseResponses: number;
+      consultationNotes: number;
+      knowledgeBase: number;
+      total: number;
+    };
+  }>;
 }
 
 interface AnalyticsData {
@@ -124,6 +171,7 @@ interface AnalyticsData {
     createdAt: string;
   }>;
   documents: SyncedDocument[];
+  hierarchicalData?: HierarchicalData;
   geminiApiKeyConfigured: boolean;
 }
 
@@ -145,6 +193,19 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  const [consultantStoreOpen, setConsultantStoreOpen] = useState(true);
+  const [clientStoresOpen, setClientStoresOpen] = useState(true);
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+  const [openClients, setOpenClients] = useState<Record<string, boolean>>({});
+  
+  const toggleCategory = (key: string) => {
+    setOpenCategories(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+  
+  const toggleClient = (clientId: string) => {
+    setOpenClients(prev => ({ ...prev, [clientId]: !prev[clientId] }));
+  };
 
   const { data: settings, isLoading: settingsLoading } = useQuery<FileSearchSettings>({
     queryKey: ["/api/file-search/settings"],
@@ -868,186 +929,248 @@ export default function ConsultantFileSearchAnalyticsPage() {
               </TabsContent>
 
               <TabsContent value="contents" className="space-y-6">
-                {analytics?.documents && analytics.documents.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                    <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex flex-col items-center text-center">
-                          <FileText className="h-8 w-8 mb-2 opacity-90" />
-                          <p className="text-3xl font-bold">{analytics.documents.length}</p>
-                          <p className="text-sm opacity-90">Totale Documenti</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex flex-col items-center text-center">
-                          <BookOpen className="h-8 w-8 mb-2 opacity-90" />
-                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'library').length}</p>
-                          <p className="text-sm opacity-90">Libreria</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex flex-col items-center text-center">
-                          <Database className="h-8 w-8 mb-2 opacity-90" />
-                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'knowledge_base').length}</p>
-                          <p className="text-sm opacity-90">Knowledge Base</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white">
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex flex-col items-center text-center">
-                          <Zap className="h-8 w-8 mb-2 opacity-90" />
-                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'university').length}</p>
-                          <p className="text-sm opacity-90">University</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex flex-col items-center text-center">
-                          <CheckCircle2 className="h-8 w-8 mb-2 opacity-90" />
-                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'exercise').length}</p>
-                          <p className="text-sm opacity-90">Esercizi</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card className="bg-gradient-to-br from-pink-500 to-pink-600 text-white">
-                      <CardContent className="pt-4 pb-4">
-                        <div className="flex flex-col items-center text-center">
-                          <MessageSquare className="h-8 w-8 mb-2 opacity-90" />
-                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'consultation').length}</p>
-                          <p className="text-sm opacity-90">Consultazioni</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
+                {(() => {
+                  const hData = analytics?.hierarchicalData;
+                  const consultantTotal = (hData?.consultantStore.totals.library || 0) + 
+                                          (hData?.consultantStore.totals.knowledgeBase || 0) + 
+                                          (hData?.consultantStore.totals.exercises || 0) + 
+                                          (hData?.consultantStore.totals.university || 0);
+                  const clientsTotal = hData?.clientStores.reduce((sum, c) => sum + c.totals.total, 0) || 0;
+                  
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+                          <CardContent className="pt-4 pb-4">
+                            <div className="flex flex-col items-center text-center">
+                              <FileText className="h-8 w-8 mb-2 opacity-90" />
+                              <p className="text-3xl font-bold">{analytics?.documents?.length || 0}</p>
+                              <p className="text-sm opacity-90">Totale Documenti</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        
+                        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                          <CardContent className="pt-4 pb-4">
+                            <div className="flex flex-col items-center text-center">
+                              <FolderOpen className="h-8 w-8 mb-2 opacity-90" />
+                              <p className="text-3xl font-bold">{consultantTotal}</p>
+                              <p className="text-sm opacity-90">Store Globale</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        
+                        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                          <CardContent className="pt-4 pb-4">
+                            <div className="flex flex-col items-center text-center">
+                              <Users className="h-8 w-8 mb-2 opacity-90" />
+                              <p className="text-3xl font-bold">{clientsTotal}</p>
+                              <p className="text-sm opacity-90">Store Privati</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                        
+                        <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+                          <CardContent className="pt-4 pb-4">
+                            <div className="flex flex-col items-center text-center">
+                              <User className="h-8 w-8 mb-2 opacity-90" />
+                              <p className="text-3xl font-bold">{hData?.clientStores.length || 0}</p>
+                              <p className="text-sm opacity-90">Clienti con Documenti</p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      Documenti Sincronizzati
-                    </CardTitle>
-                    <CardDescription>
-                      Tutti i contenuti indicizzati per la ricerca semantica AI
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {analytics?.documents && analytics.documents.length > 0 ? (
-                      <div className="space-y-4">
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b bg-gray-50">
-                                <th className="text-left py-3 px-3 font-medium">Documento</th>
-                                <th className="text-left py-3 px-3 font-medium">Tipo Origine</th>
-                                <th className="text-left py-3 px-3 font-medium">Store</th>
-                                <th className="text-center py-3 px-3 font-medium">Stato</th>
-                                <th className="text-right py-3 px-3 font-medium">Data Sync</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {analytics.documents.map((doc) => (
-                                <tr key={doc.id} className="border-b hover:bg-gray-50">
-                                  <td className="py-3 px-3">
-                                    <div>
-                                      <p className="font-medium text-gray-900">{doc.displayName}</p>
-                                      <p className="text-xs text-gray-500 truncate max-w-xs">{doc.fileName}</p>
-                                    </div>
-                                  </td>
-                                  <td className="py-3 px-3">
-                                    <Badge 
-                                      variant="outline"
-                                      className={
-                                        doc.sourceType === 'library' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                                        doc.sourceType === 'knowledge_base' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                                        doc.sourceType === 'university' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                        doc.sourceType === 'exercise' ? 'bg-green-50 text-green-700 border-green-200' :
-                                        doc.sourceType === 'consultation' ? 'bg-pink-50 text-pink-700 border-pink-200' :
-                                        'bg-gray-50 text-gray-700 border-gray-200'
-                                      }
-                                    >
-                                      {doc.sourceType === 'library' ? 'Libreria' :
-                                       doc.sourceType === 'knowledge_base' ? 'Knowledge Base' :
-                                       doc.sourceType === 'university' ? 'University' :
-                                       doc.sourceType === 'exercise' ? 'Esercizio' :
-                                       doc.sourceType === 'consultation' ? 'Consultazione' :
-                                       doc.sourceType}
-                                    </Badge>
-                                  </td>
-                                  <td className="py-3 px-3">
-                                    <span className="text-gray-600 text-sm">{doc.storeDisplayName || '-'}</span>
-                                  </td>
-                                  <td className="py-3 px-3 text-center">
-                                    {doc.status === 'indexed' ? (
-                                      <Badge className="bg-emerald-100 text-emerald-700">
-                                        <CheckCircle2 className="h-3 w-3 mr-1" />
-                                        Indicizzato
-                                      </Badge>
-                                    ) : doc.status === 'processing' ? (
-                                      <Badge className="bg-blue-100 text-blue-700">
-                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                        In elaborazione
-                                      </Badge>
-                                    ) : doc.status === 'failed' ? (
-                                      <Badge className="bg-red-100 text-red-700">
-                                        <XCircle className="h-3 w-3 mr-1" />
-                                        Fallito
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="secondary">
-                                        {doc.status}
-                                      </Badge>
-                                    )}
-                                  </td>
-                                  <td className="py-3 px-3 text-right text-gray-500">
-                                    {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString('it-IT', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    }) : '-'}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center py-12">
-                        <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500 mb-2">Nessun documento sincronizzato</p>
-                        <p className="text-sm text-gray-400 mb-4">
-                          Vai nelle Impostazioni e clicca "Sincronizza Tutti i Documenti" per iniziare
-                        </p>
-                        <Button
-                          variant="outline"
-                          onClick={() => syncAllMutation.mutate()}
-                          disabled={syncAllMutation.isPending}
-                        >
-                          {syncAllMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Folder className="h-5 w-5" />
+                            Visualizzazione Gerarchica Contenuti
+                          </CardTitle>
+                          <CardDescription>
+                            Esplora i documenti organizzati per Store Globale e Store Privati Clienti
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {hData ? (
+                            <div className="space-y-3">
+                              <Collapsible open={consultantStoreOpen} onOpenChange={setConsultantStoreOpen}>
+                                <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors">
+                                  {consultantStoreOpen ? <ChevronDown className="h-5 w-5 text-blue-600" /> : <ChevronRight className="h-5 w-5 text-blue-600" />}
+                                  <FolderOpen className="h-5 w-5 text-blue-600" />
+                                  <span className="font-semibold text-blue-900">Store Globale Consulente</span>
+                                  <Badge className="ml-auto bg-blue-200 text-blue-800">{consultantTotal} documenti</Badge>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                                  <Collapsible open={openCategories['library']} onOpenChange={() => toggleCategory('library')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                      {openCategories['library'] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                      <BookOpen className="h-4 w-4 text-blue-600" />
+                                      <span className="text-gray-800">Libreria</span>
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.library}</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-8 mt-1 space-y-1">
+                                      {hData.consultantStore.documents.library.map(doc => (
+                                        <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
+                                          <FileText className="h-3 w-3 text-gray-400" />
+                                          <span className="truncate flex-1">{doc.displayName}</span>
+                                          <Badge className="text-xs bg-emerald-100 text-emerald-700">
+                                            {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
+                                          </Badge>
+                                        </div>
+                                      ))}
+                                      {hData.consultantStore.documents.library.length === 0 && (
+                                        <p className="text-gray-400 text-sm p-2">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['kb']} onOpenChange={() => toggleCategory('kb')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                      {openCategories['kb'] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                      <Brain className="h-4 w-4 text-purple-600" />
+                                      <span className="text-gray-800">Knowledge Base</span>
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.knowledgeBase}</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-8 mt-1 space-y-1">
+                                      {hData.consultantStore.documents.knowledgeBase.map(doc => (
+                                        <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
+                                          <FileText className="h-3 w-3 text-gray-400" />
+                                          <span className="truncate flex-1">{doc.displayName}</span>
+                                          <Badge className="text-xs bg-emerald-100 text-emerald-700">
+                                            {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
+                                          </Badge>
+                                        </div>
+                                      ))}
+                                      {hData.consultantStore.documents.knowledgeBase.length === 0 && (
+                                        <p className="text-gray-400 text-sm p-2">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['exercises']} onOpenChange={() => toggleCategory('exercises')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                      {openCategories['exercises'] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                      <Dumbbell className="h-4 w-4 text-green-600" />
+                                      <span className="text-gray-800">Esercizi Template</span>
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.exercises}</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-8 mt-1 space-y-1">
+                                      {hData.consultantStore.documents.exercises.map(doc => (
+                                        <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
+                                          <FileText className="h-3 w-3 text-gray-400" />
+                                          <span className="truncate flex-1">{doc.displayName}</span>
+                                          <Badge className="text-xs bg-emerald-100 text-emerald-700">
+                                            {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
+                                          </Badge>
+                                        </div>
+                                      ))}
+                                      {hData.consultantStore.documents.exercises.length === 0 && (
+                                        <p className="text-gray-400 text-sm p-2">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['university']} onOpenChange={() => toggleCategory('university')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                      {openCategories['university'] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                      <GraduationCap className="h-4 w-4 text-amber-600" />
+                                      <span className="text-gray-800">University</span>
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.university}</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-8 mt-1 space-y-1">
+                                      {hData.consultantStore.documents.university.map(doc => (
+                                        <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
+                                          <FileText className="h-3 w-3 text-gray-400" />
+                                          <span className="truncate flex-1">{doc.displayName}</span>
+                                          <Badge className="text-xs bg-emerald-100 text-emerald-700">
+                                            {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
+                                          </Badge>
+                                        </div>
+                                      ))}
+                                      {hData.consultantStore.documents.university.length === 0 && (
+                                        <p className="text-gray-400 text-sm p-2">Nessun documento</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                </CollapsibleContent>
+                              </Collapsible>
+
+                              <Collapsible open={clientStoresOpen} onOpenChange={setClientStoresOpen}>
+                                <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
+                                  {clientStoresOpen ? <ChevronDown className="h-5 w-5 text-purple-600" /> : <ChevronRight className="h-5 w-5 text-purple-600" />}
+                                  <Users className="h-5 w-5 text-purple-600" />
+                                  <span className="font-semibold text-purple-900">Store Privati Clienti</span>
+                                  <Badge className="ml-auto bg-purple-200 text-purple-800">{hData.clientStores.length} clienti</Badge>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                                  {hData.clientStores.length > 0 ? (
+                                    hData.clientStores.map(client => (
+                                      <Collapsible key={client.clientId} open={openClients[client.clientId]} onOpenChange={() => toggleClient(client.clientId)}>
+                                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                          {openClients[client.clientId] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                          <User className="h-4 w-4 text-purple-600" />
+                                          <span className="text-gray-800 font-medium">{client.clientName}</span>
+                                          <span className="text-gray-400 text-sm">({client.clientEmail})</span>
+                                          <Badge variant="outline" className="ml-auto">{client.totals.total} doc</Badge>
+                                        </CollapsibleTrigger>
+                                        <CollapsibleContent className="ml-8 mt-1 p-3 bg-gray-50 rounded-lg space-y-2">
+                                          <div className="flex items-center justify-between text-sm">
+                                            <span className="flex items-center gap-2">
+                                              <Dumbbell className="h-3 w-3 text-green-600" />
+                                              Risposte Esercizi
+                                            </span>
+                                            <Badge variant="outline">{client.totals.exerciseResponses}</Badge>
+                                          </div>
+                                          <div className="flex items-center justify-between text-sm">
+                                            <span className="flex items-center gap-2">
+                                              <MessageSquare className="h-3 w-3 text-pink-600" />
+                                              Note Consulenze
+                                            </span>
+                                            <Badge variant="outline">{client.totals.consultationNotes}</Badge>
+                                          </div>
+                                          <div className="flex items-center justify-between text-sm">
+                                            <span className="flex items-center gap-2">
+                                              <Brain className="h-3 w-3 text-purple-600" />
+                                              Knowledge Docs
+                                            </span>
+                                            <Badge variant="outline">{client.totals.knowledgeBase}</Badge>
+                                          </div>
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    ))
+                                  ) : (
+                                    <p className="text-gray-400 text-sm p-2">Nessun documento privato per i clienti</p>
+                                  )}
+                                </CollapsibleContent>
+                              </Collapsible>
+                            </div>
                           ) : (
-                            <RefreshCw className="h-4 w-4 mr-2" />
+                            <div className="text-center py-12">
+                              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                              <p className="text-gray-500 mb-2">Nessun documento sincronizzato</p>
+                              <p className="text-sm text-gray-400 mb-4">
+                                Vai nelle Impostazioni e clicca "Sincronizza Tutti i Documenti" per iniziare
+                              </p>
+                              <Button
+                                variant="outline"
+                                onClick={() => syncAllMutation.mutate()}
+                                disabled={syncAllMutation.isPending}
+                              >
+                                {syncAllMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                )}
+                                Sincronizza Ora
+                              </Button>
+                            </div>
                           )}
-                          Sincronizza Ora
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                        </CardContent>
+                      </Card>
+                    </>
+                  );
+                })()}
               </TabsContent>
 
               <TabsContent value="usage" className="space-y-6">
