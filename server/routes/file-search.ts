@@ -362,21 +362,25 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
     const consultantDocs = documents.filter(d => !d.clientId);
     const clientDocs = documents.filter(d => d.clientId);
     
-    // Get unique client IDs
-    const uniqueClientIds = [...new Set(clientDocs.map(d => d.clientId).filter(Boolean))] as string[];
+    // Get ALL clients for this consultant (not just those with documents)
+    const allClients = await db
+      .select({ 
+        id: users.id, 
+        firstName: users.firstName, 
+        lastName: users.lastName, 
+        email: users.email 
+      })
+      .from(users)
+      .where(and(
+        eq(users.consultantId, consultantId),
+        eq(users.role, 'client')
+      ));
     
-    // Fetch client info
+    // Build client info map
     const clientInfoMap: Record<string, { name: string; email: string }> = {};
-    if (uniqueClientIds.length > 0) {
-      const clientUsers = await db
-        .select({ id: users.id, name: users.name, email: users.email })
-        .from(users)
-        .where(sql`${users.id} IN ${uniqueClientIds}`);
-      
-      clientUsers.forEach(u => {
-        clientInfoMap[u.id] = { name: u.name, email: u.email };
-      });
-    }
+    allClients.forEach(u => {
+      clientInfoMap[u.id] = { name: `${u.firstName} ${u.lastName}`, email: u.email };
+    });
     
     // Build consultant store data
     const consultantStore = {
@@ -397,17 +401,19 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       },
     };
     
-    // Build client stores data
-    const clientStoresData = uniqueClientIds.map(clientId => {
-      const clientDocuments = clientDocs.filter(d => d.clientId === clientId);
-      const clientInfo = clientInfoMap[clientId] || { name: 'Cliente Sconosciuto', email: '' };
+    // Build client stores data - include ALL clients, even those without documents
+    const clientStoresData = allClients.map(client => {
+      const clientDocuments = clientDocs.filter(d => d.clientId === client.id);
+      const clientStore = stores.find(s => s.ownerId === client.id);
       
       return {
-        clientId,
-        clientName: clientInfo.name,
-        clientEmail: clientInfo.email,
-        storeId: clientDocuments[0]?.storeId || '',
-        storeName: clientDocuments[0]?.storeDisplayName || '',
+        clientId: client.id,
+        clientName: `${client.firstName} ${client.lastName}`,
+        clientEmail: client.email,
+        storeId: clientStore?.id || null,
+        storeName: clientStore?.displayName || null,
+        hasStore: !!clientStore,
+        hasDocuments: clientDocuments.length > 0,
         documents: {
           exerciseResponses: clientDocuments.filter(d => d.sourceType === 'exercise'),
           consultationNotes: clientDocuments.filter(d => d.sourceType === 'consultation'),
@@ -418,6 +424,11 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
           consultationNotes: clientDocuments.filter(d => d.sourceType === 'consultation').length,
           knowledgeBase: clientDocuments.filter(d => d.sourceType === 'knowledge_base').length,
           total: clientDocuments.length,
+        },
+        potentialContent: {
+          exerciseResponses: true,
+          consultationNotes: true,
+          knowledgeBase: true,
         },
       };
     });
@@ -518,15 +529,77 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
 
 /**
  * GET /api/file-search/audit
- * Run Post-Import Audit to check indexing status of all content
+ * Run Comprehensive Post-Import Audit to check indexing status of ALL content
+ * Returns full object details for each missing item (id, title, etc.)
  */
 router.get('/audit', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
   try {
     const consultantId = req.user!.id;
-    const audit = await fileSearchSyncService.runPostImportAudit(consultantId);
+    const audit = await fileSearchSyncService.runComprehensiveAudit(consultantId);
     res.json(audit);
   } catch (error: any) {
     console.error('[FileSearch API] Error running audit:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/sync-single
+ * Sync a single item to FileSearchStore
+ */
+router.post('/sync-single', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { type, id, clientId } = req.body;
+
+    if (!type || !id) {
+      return res.status(400).json({ error: 'type and id are required' });
+    }
+
+    let result: { success: boolean; error?: string };
+
+    switch (type) {
+      case 'library':
+        result = await fileSearchSyncService.syncLibraryDocument(consultantId, id);
+        break;
+      case 'knowledge_base':
+        result = await fileSearchSyncService.syncKnowledgeDocument(consultantId, id);
+        break;
+      case 'exercise':
+        result = await fileSearchSyncService.syncExercise(consultantId, id);
+        break;
+      case 'university_lesson':
+        result = await fileSearchSyncService.syncUniversityLesson(consultantId, id);
+        break;
+      case 'exercise_response':
+        if (!clientId) {
+          return res.status(400).json({ error: 'clientId is required for exercise_response' });
+        }
+        result = await fileSearchSyncService.syncClientExerciseResponse(id, clientId, consultantId);
+        break;
+      case 'consultation':
+        if (!clientId) {
+          return res.status(400).json({ error: 'clientId is required for consultation' });
+        }
+        result = await fileSearchSyncService.syncClientConsultationNotes(id, clientId, consultantId);
+        break;
+      case 'client_knowledge':
+        if (!clientId) {
+          return res.status(400).json({ error: 'clientId is required for client_knowledge' });
+        }
+        result = await fileSearchSyncService.syncClientKnowledgeDocument(id, clientId, consultantId);
+        break;
+      default:
+        return res.status(400).json({ error: `Unknown type: ${type}` });
+    }
+
+    if (result.success) {
+      res.json({ success: true, message: `Elemento sincronizzato con successo` });
+    } else {
+      res.status(500).json({ success: false, error: result.error });
+    }
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing single item:', error);
     res.status(500).json({ error: error.message });
   }
 });

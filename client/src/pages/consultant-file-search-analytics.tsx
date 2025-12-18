@@ -35,7 +35,10 @@ import {
   User,
   GraduationCap,
   Brain,
-  Folder
+  Folder,
+  Plus,
+  AlertCircle,
+  ClipboardCheck
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -72,6 +75,8 @@ interface FileSearchSettings {
   autoSyncExercises: boolean;
   autoSyncConsultations: boolean;
   autoSyncUniversity: boolean;
+  autoSyncClientKnowledge: boolean;
+  autoSyncExerciseResponses: boolean;
   scheduledSyncEnabled: boolean;
   scheduledSyncHour: number;
   lastScheduledSync: string | null;
@@ -116,8 +121,10 @@ interface HierarchicalData {
     clientId: string;
     clientName: string;
     clientEmail: string;
-    storeId: string;
-    storeName: string;
+    storeId: string | null;
+    storeName: string | null;
+    hasStore: boolean;
+    hasDocuments: boolean;
     documents: {
       exerciseResponses: SyncedDocument[];
       consultationNotes: SyncedDocument[];
@@ -128,6 +135,11 @@ interface HierarchicalData {
       consultationNotes: number;
       knowledgeBase: number;
       total: number;
+    };
+    potentialContent: {
+      exerciseResponses: boolean;
+      consultationNotes: boolean;
+      knowledgeBase: boolean;
     };
   }>;
 }
@@ -176,13 +188,55 @@ interface AnalyticsData {
 }
 
 interface AuditData {
+  consultant: {
+    library: {
+      total: number;
+      indexed: number;
+      missing: Array<{ id: string; title: string; type: string }>;
+    };
+    knowledgeBase: {
+      total: number;
+      indexed: number;
+      missing: Array<{ id: string; title: string }>;
+    };
+    exercises: {
+      total: number;
+      indexed: number;
+      missing: Array<{ id: string; title: string }>;
+    };
+    university: {
+      total: number;
+      indexed: number;
+      missing: Array<{ id: string; title: string; lessonTitle: string }>;
+    };
+  };
+  clients: Array<{
+    clientId: string;
+    clientName: string;
+    clientEmail: string;
+    exerciseResponses: {
+      total: number;
+      indexed: number;
+      missing: Array<{ id: string; exerciseTitle: string; submittedAt: string | null }>;
+    };
+    consultationNotes: {
+      total: number;
+      indexed: number;
+      missing: Array<{ id: string; date: string; summary: string }>;
+    };
+    knowledgeDocs: {
+      total: number;
+      indexed: number;
+      missing: Array<{ id: string; title: string }>;
+    };
+  }>;
   summary: {
-    library: { total: number; indexed: number; missing: string[] };
-    knowledgeBase: { total: number; indexed: number; missing: string[] };
-    exercises: { total: number; indexed: number; missing: string[] };
+    totalMissing: number;
+    consultantMissing: number;
+    clientsMissing: number;
+    healthScore: number;
   };
   recommendations: string[];
-  healthScore: number;
 }
 
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
@@ -349,11 +403,53 @@ export default function ConsultantFileSearchAnalyticsPage() {
     updateSettingsMutation.mutate({ [key]: value });
   };
 
+  const syncSingleMutation = useMutation({
+    mutationFn: async (params: { type: string; id: string; clientId?: string }) => {
+      const response = await fetch("/api/file-search/sync-single", {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(params),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Sync failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      toast({
+        title: "Elemento sincronizzato!",
+        description: "L'elemento è stato aggiunto al File Search.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore sincronizzazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const [openAuditCategories, setOpenAuditCategories] = useState<Record<string, boolean>>({});
+  const [openAuditClients, setOpenAuditClients] = useState<Record<string, boolean>>({});
+  
+  const toggleAuditCategory = (key: string) => {
+    setOpenAuditCategories(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+  
+  const toggleAuditClient = (clientId: string) => {
+    setOpenAuditClients(prev => ({ ...prev, [clientId]: !prev[clientId] }));
+  };
+
   const isLoading = settingsLoading || analyticsLoading || auditLoading;
   
-  const totalMissing = (auditData?.summary.library.missing.length || 0) + 
-                       (auditData?.summary.knowledgeBase.missing.length || 0) + 
-                       (auditData?.summary.exercises.missing.length || 0);
+  const totalMissing = auditData?.summary?.totalMissing || 0;
   
   const getHealthScoreColor = (score: number) => {
     if (score >= 80) return 'text-emerald-600';
@@ -470,6 +566,15 @@ export default function ConsultantFileSearchAnalyticsPage() {
                 <TabsTrigger value="contents">Contenuti</TabsTrigger>
                 <TabsTrigger value="usage">Utilizzo</TabsTrigger>
                 <TabsTrigger value="settings">Impostazioni</TabsTrigger>
+                <TabsTrigger value="audit" className="relative">
+                  <ClipboardCheck className="h-4 w-4 mr-1" />
+                  Audit
+                  {totalMissing > 0 && (
+                    <Badge variant="destructive" className="ml-2 text-xs h-5 min-w-5 flex items-center justify-center">
+                      {totalMissing}
+                    </Badge>
+                  )}
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
@@ -974,8 +1079,11 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <CardContent className="pt-4 pb-4">
                             <div className="flex flex-col items-center text-center">
                               <User className="h-8 w-8 mb-2 opacity-90" />
-                              <p className="text-3xl font-bold">{hData?.clientStores.length || 0}</p>
-                              <p className="text-sm opacity-90">Clienti con Documenti</p>
+                              <p className="text-3xl font-bold">
+                                {hData?.clientStores.filter(c => c.hasDocuments).length || 0}
+                                <span className="text-lg opacity-75">/{hData?.clientStores.length || 0}</span>
+                              </p>
+                              <p className="text-sm opacity-90">Clienti Sincronizzati</p>
                             </div>
                           </CardContent>
                         </Card>
@@ -1107,40 +1215,59 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                   {hData.clientStores.length > 0 ? (
                                     hData.clientStores.map(client => (
                                       <Collapsible key={client.clientId} open={openClients[client.clientId]} onOpenChange={() => toggleClient(client.clientId)}>
-                                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                        <CollapsibleTrigger className={`flex items-center gap-2 w-full p-2 rounded-lg transition-colors ${client.hasDocuments ? 'hover:bg-gray-50' : 'hover:bg-amber-50 border border-dashed border-amber-200'}`}>
                                           {openClients[client.clientId] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
-                                          <User className="h-4 w-4 text-purple-600" />
+                                          <User className={`h-4 w-4 ${client.hasDocuments ? 'text-purple-600' : 'text-amber-500'}`} />
                                           <span className="text-gray-800 font-medium">{client.clientName}</span>
                                           <span className="text-gray-400 text-sm">({client.clientEmail})</span>
-                                          <Badge variant="outline" className="ml-auto">{client.totals.total} doc</Badge>
+                                          {client.hasDocuments ? (
+                                            <Badge variant="outline" className="ml-auto">{client.totals.total} doc</Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="ml-auto bg-amber-50 text-amber-700 border-amber-200">Non sincronizzato</Badge>
+                                          )}
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="ml-8 mt-1 p-3 bg-gray-50 rounded-lg space-y-2">
-                                          <div className="flex items-center justify-between text-sm">
-                                            <span className="flex items-center gap-2">
-                                              <Dumbbell className="h-3 w-3 text-green-600" />
-                                              Risposte Esercizi
-                                            </span>
-                                            <Badge variant="outline">{client.totals.exerciseResponses}</Badge>
-                                          </div>
-                                          <div className="flex items-center justify-between text-sm">
-                                            <span className="flex items-center gap-2">
-                                              <MessageSquare className="h-3 w-3 text-pink-600" />
-                                              Note Consulenze
-                                            </span>
-                                            <Badge variant="outline">{client.totals.consultationNotes}</Badge>
-                                          </div>
-                                          <div className="flex items-center justify-between text-sm">
-                                            <span className="flex items-center gap-2">
-                                              <Brain className="h-3 w-3 text-purple-600" />
-                                              Knowledge Docs
-                                            </span>
-                                            <Badge variant="outline">{client.totals.knowledgeBase}</Badge>
-                                          </div>
+                                          {client.hasDocuments ? (
+                                            <>
+                                              <div className="flex items-center justify-between text-sm">
+                                                <span className="flex items-center gap-2">
+                                                  <Dumbbell className="h-3 w-3 text-green-600" />
+                                                  Risposte Esercizi
+                                                </span>
+                                                <Badge variant="outline">{client.totals.exerciseResponses}</Badge>
+                                              </div>
+                                              <div className="flex items-center justify-between text-sm">
+                                                <span className="flex items-center gap-2">
+                                                  <MessageSquare className="h-3 w-3 text-pink-600" />
+                                                  Note Consulenze
+                                                </span>
+                                                <Badge variant="outline">{client.totals.consultationNotes}</Badge>
+                                              </div>
+                                              <div className="flex items-center justify-between text-sm">
+                                                <span className="flex items-center gap-2">
+                                                  <Brain className="h-3 w-3 text-purple-600" />
+                                                  Knowledge Docs
+                                                </span>
+                                                <Badge variant="outline">{client.totals.knowledgeBase}</Badge>
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <div className="text-center py-2">
+                                              <p className="text-amber-600 text-sm mb-2">Nessun documento sincronizzato per questo cliente</p>
+                                              <p className="text-gray-500 text-xs mb-3">Contenuti disponibili per la sincronizzazione:</p>
+                                              <div className="flex flex-wrap justify-center gap-2">
+                                                <Badge variant="outline" className="text-xs"><Dumbbell className="h-3 w-3 mr-1" />Risposte Esercizi</Badge>
+                                                <Badge variant="outline" className="text-xs"><MessageSquare className="h-3 w-3 mr-1" />Note Consulenze</Badge>
+                                                <Badge variant="outline" className="text-xs"><Brain className="h-3 w-3 mr-1" />Knowledge Docs</Badge>
+                                              </div>
+                                              <p className="text-gray-400 text-xs mt-3">Vai alla tab Audit per sincronizzare</p>
+                                            </div>
+                                          )}
                                         </CollapsibleContent>
                                       </Collapsible>
                                     ))
                                   ) : (
-                                    <p className="text-gray-400 text-sm p-2">Nessun documento privato per i clienti</p>
+                                    <p className="text-gray-400 text-sm p-2">Nessun cliente associato a questo consulente</p>
                                   )}
                                 </CollapsibleContent>
                               </Collapsible>
@@ -1366,6 +1493,30 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             disabled={updateSettingsMutation.isPending}
                           />
                         </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Risposte Esercizi Clienti</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente le risposte degli esercizi dei clienti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncExerciseResponses ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncExerciseResponses', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Knowledge Base Clienti</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente la knowledge base dei clienti</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncClientKnowledge ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncClientKnowledge', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -1430,6 +1581,422 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="audit" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      Audit Sincronizzazione
+                    </CardTitle>
+                    <CardDescription>
+                      Verifica cosa manca e deve essere sincronizzato nel File Search
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-6">
+                      <div className="flex justify-between mb-2">
+                        <span className="text-sm font-medium">Completezza Indicizzazione</span>
+                        <span className={`font-bold ${getHealthScoreColor(auditData?.summary?.healthScore || 0)}`}>
+                          {auditData?.summary?.healthScore || 0}%
+                        </span>
+                      </div>
+                      <Progress 
+                        value={auditData?.summary?.healthScore || 0} 
+                        className="h-3"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                        <p className="text-2xl font-bold text-amber-700">
+                          {auditData?.summary?.totalMissing || 0}
+                        </p>
+                        <p className="text-sm text-amber-600">Elementi Mancanti Totali</p>
+                      </div>
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-2xl font-bold text-blue-700">
+                          {auditData?.summary?.consultantMissing || 0}
+                        </p>
+                        <p className="text-sm text-blue-600">Store Globale</p>
+                      </div>
+                      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <p className="text-2xl font-bold text-purple-700">
+                          {auditData?.summary?.clientsMissing || 0}
+                        </p>
+                        <p className="text-sm text-purple-600">Store Privati Clienti</p>
+                      </div>
+                    </div>
+
+                    {auditData?.recommendations && auditData.recommendations.length > 0 && (
+                      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="font-medium mb-2 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-amber-500" />
+                          Raccomandazioni
+                        </h4>
+                        <ul className="space-y-1">
+                          {auditData.recommendations.map((rec, i) => (
+                            <li key={i} className="text-sm text-gray-600">{rec}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FolderOpen className="h-5 w-5 text-blue-600" />
+                      Store Globale - Elementi Mancanti
+                    </CardTitle>
+                    <CardDescription>
+                      Documenti del consulente non ancora indicizzati
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Collapsible open={openAuditCategories['library']} onOpenChange={() => toggleAuditCategory('library')}>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors">
+                        {openAuditCategories['library'] ? <ChevronDown className="h-4 w-4 text-blue-600" /> : <ChevronRight className="h-4 w-4 text-blue-600" />}
+                        <BookOpen className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium text-blue-900">Libreria</span>
+                        <Badge className={`ml-auto ${(auditData?.consultant?.library?.missing?.length || 0) > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                          {auditData?.consultant?.library?.missing?.length || 0} mancanti
+                        </Badge>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-1">
+                        {auditData?.consultant?.library?.missing?.length === 0 ? (
+                          <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            Tutti i documenti della libreria sono indicizzati
+                          </p>
+                        ) : (
+                          auditData?.consultant?.library?.missing?.map(doc => (
+                            <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-gray-400" />
+                                <span className="text-sm">{doc.title}</span>
+                                <Badge variant="outline" className="text-xs">{doc.type}</Badge>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => syncSingleMutation.mutate({ type: 'library', id: doc.id })}
+                                disabled={syncSingleMutation.isPending}
+                              >
+                                {syncSingleMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Sync
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+
+                    <Collapsible open={openAuditCategories['kb']} onOpenChange={() => toggleAuditCategory('kb')}>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
+                        {openAuditCategories['kb'] ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
+                        <Brain className="h-4 w-4 text-purple-600" />
+                        <span className="font-medium text-purple-900">Knowledge Base</span>
+                        <Badge className={`ml-auto ${(auditData?.consultant?.knowledgeBase?.missing?.length || 0) > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                          {auditData?.consultant?.knowledgeBase?.missing?.length || 0} mancanti
+                        </Badge>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-1">
+                        {auditData?.consultant?.knowledgeBase?.missing?.length === 0 ? (
+                          <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            Tutti i documenti della knowledge base sono indicizzati
+                          </p>
+                        ) : (
+                          auditData?.consultant?.knowledgeBase?.missing?.map(doc => (
+                            <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-gray-400" />
+                                <span className="text-sm">{doc.title}</span>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => syncSingleMutation.mutate({ type: 'knowledge_base', id: doc.id })}
+                                disabled={syncSingleMutation.isPending}
+                              >
+                                {syncSingleMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Sync
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+
+                    <Collapsible open={openAuditCategories['exercises']} onOpenChange={() => toggleAuditCategory('exercises')}>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors">
+                        {openAuditCategories['exercises'] ? <ChevronDown className="h-4 w-4 text-green-600" /> : <ChevronRight className="h-4 w-4 text-green-600" />}
+                        <Dumbbell className="h-4 w-4 text-green-600" />
+                        <span className="font-medium text-green-900">Esercizi</span>
+                        <Badge className={`ml-auto ${(auditData?.consultant?.exercises?.missing?.length || 0) > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                          {auditData?.consultant?.exercises?.missing?.length || 0} mancanti
+                        </Badge>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-1">
+                        {auditData?.consultant?.exercises?.missing?.length === 0 ? (
+                          <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            Tutti gli esercizi sono indicizzati
+                          </p>
+                        ) : (
+                          auditData?.consultant?.exercises?.missing?.map(doc => (
+                            <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                              <div className="flex items-center gap-2">
+                                <Dumbbell className="h-4 w-4 text-gray-400" />
+                                <span className="text-sm">{doc.title}</span>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => syncSingleMutation.mutate({ type: 'exercise', id: doc.id })}
+                                disabled={syncSingleMutation.isPending}
+                              >
+                                {syncSingleMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Sync
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+
+                    <Collapsible open={openAuditCategories['university']} onOpenChange={() => toggleAuditCategory('university')}>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200 transition-colors">
+                        {openAuditCategories['university'] ? <ChevronDown className="h-4 w-4 text-amber-600" /> : <ChevronRight className="h-4 w-4 text-amber-600" />}
+                        <GraduationCap className="h-4 w-4 text-amber-600" />
+                        <span className="font-medium text-amber-900">University</span>
+                        <Badge className={`ml-auto ${(auditData?.consultant?.university?.missing?.length || 0) > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                          {auditData?.consultant?.university?.missing?.length || 0} mancanti
+                        </Badge>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-1">
+                        {auditData?.consultant?.university?.missing?.length === 0 ? (
+                          <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            Tutte le lezioni university sono indicizzate
+                          </p>
+                        ) : (
+                          auditData?.consultant?.university?.missing?.map(doc => (
+                            <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                              <div className="flex items-center gap-2">
+                                <GraduationCap className="h-4 w-4 text-gray-400" />
+                                <span className="text-sm">{doc.title} - {doc.lessonTitle}</span>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => syncSingleMutation.mutate({ type: 'university_lesson', id: doc.id })}
+                                disabled={syncSingleMutation.isPending}
+                              >
+                                {syncSingleMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Sync
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-purple-600" />
+                      Store Privati Clienti - Elementi Mancanti
+                    </CardTitle>
+                    <CardDescription>
+                      Dati privati dei clienti non ancora indicizzati
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(!auditData?.clients || auditData.clients.length === 0) ? (
+                      <p className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg text-center">
+                        Nessun cliente con dati da sincronizzare
+                      </p>
+                    ) : (
+                      auditData.clients.map(client => {
+                        const clientMissing = (client.exerciseResponses?.missing?.length || 0) + 
+                                              (client.consultationNotes?.missing?.length || 0) +
+                                              (client.knowledgeDocs?.missing?.length || 0);
+                        return (
+                          <Collapsible key={client.clientId} open={openAuditClients[client.clientId]} onOpenChange={() => toggleAuditClient(client.clientId)}>
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
+                              {openAuditClients[client.clientId] ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
+                              <User className="h-4 w-4 text-purple-600" />
+                              <span className="font-medium text-purple-900">{client.clientName}</span>
+                              <span className="text-sm text-gray-500">({client.clientEmail})</span>
+                              <Badge className={`ml-auto ${clientMissing > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                                {clientMissing} mancanti
+                              </Badge>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                              {client.exerciseResponses?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                    <Dumbbell className="h-3 w-3" />
+                                    Risposte Esercizi ({client.exerciseResponses.missing.length})
+                                  </p>
+                                  {client.exerciseResponses.missing.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-3 w-3 text-gray-400" />
+                                        <span className="text-sm">{item.exerciseTitle}</span>
+                                        {item.submittedAt && (
+                                          <span className="text-xs text-gray-400">
+                                            ({new Date(item.submittedAt).toLocaleDateString('it-IT')})
+                                          </span>
+                                        )}
+                                      </div>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => syncSingleMutation.mutate({ type: 'exercise_response', id: item.id, clientId: client.clientId })}
+                                        disabled={syncSingleMutation.isPending}
+                                      >
+                                        {syncSingleMutation.isPending ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <>
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Sync
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.consultationNotes?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                    <MessageSquare className="h-3 w-3" />
+                                    Note Consulenze ({client.consultationNotes.missing.length})
+                                  </p>
+                                  {client.consultationNotes.missing.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-3 w-3 text-gray-400" />
+                                        <span className="text-sm">
+                                          {new Date(item.date).toLocaleDateString('it-IT')} - {item.summary}
+                                        </span>
+                                      </div>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => syncSingleMutation.mutate({ type: 'consultation', id: item.id, clientId: client.clientId })}
+                                        disabled={syncSingleMutation.isPending}
+                                      >
+                                        {syncSingleMutation.isPending ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <>
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Sync
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {client.knowledgeDocs?.missing?.length > 0 && (
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                    <Brain className="h-3 w-3" />
+                                    Knowledge Docs ({client.knowledgeDocs.missing.length})
+                                  </p>
+                                  {client.knowledgeDocs.missing.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border ml-4">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-3 w-3 text-gray-400" />
+                                        <span className="text-sm">{item.title}</span>
+                                      </div>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => syncSingleMutation.mutate({ type: 'client_knowledge', id: item.id, clientId: client.clientId })}
+                                        disabled={syncSingleMutation.isPending}
+                                      >
+                                        {syncSingleMutation.isPending ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <>
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Sync
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {clientMissing === 0 && (
+                                <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                  Tutti i dati di questo cliente sono indicizzati
+                                </p>
+                              )}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        );
+                      })
+                    )}
+                  </CardContent>
+                </Card>
+
+                {(auditData?.summary?.totalMissing || 0) > 0 && (
+                  <div className="flex justify-center">
+                    <Button
+                      size="lg"
+                      onClick={() => syncMissingMutation.mutate()}
+                      disabled={syncMissingMutation.isPending}
+                      className="gap-2"
+                    >
+                      {syncMissingMutation.isPending ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-5 w-5" />
+                      )}
+                      Sincronizza Tutti gli Elementi Mancanti ({auditData?.summary?.totalMissing || 0})
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>

@@ -1893,6 +1893,401 @@ export class FileSearchSyncService {
   }
 
   /**
+   * Run a COMPREHENSIVE Post-Import Audit to verify indexing status of ALL content
+   * Returns full object details (not just titles) for the audit UI
+   * 
+   * @param consultantId - The consultant's user ID
+   * @returns Detailed audit with full object info for each missing item
+   */
+  static async runComprehensiveAudit(consultantId: string): Promise<{
+    consultant: {
+      library: {
+        total: number;
+        indexed: number;
+        missing: Array<{ id: string; title: string; type: string }>;
+      };
+      knowledgeBase: {
+        total: number;
+        indexed: number;
+        missing: Array<{ id: string; title: string }>;
+      };
+      exercises: {
+        total: number;
+        indexed: number;
+        missing: Array<{ id: string; title: string }>;
+      };
+      university: {
+        total: number;
+        indexed: number;
+        missing: Array<{ id: string; title: string; lessonTitle: string }>;
+      };
+    };
+    clients: Array<{
+      clientId: string;
+      clientName: string;
+      clientEmail: string;
+      exerciseResponses: {
+        total: number;
+        indexed: number;
+        missing: Array<{ id: string; exerciseTitle: string; submittedAt: Date | null }>;
+      };
+      consultationNotes: {
+        total: number;
+        indexed: number;
+        missing: Array<{ id: string; date: Date; summary: string }>;
+      };
+      knowledgeDocs: {
+        total: number;
+        indexed: number;
+        missing: Array<{ id: string; title: string }>;
+      };
+    }>;
+    summary: {
+      totalMissing: number;
+      consultantMissing: number;
+      clientsMissing: number;
+      healthScore: number;
+    };
+    recommendations: string[];
+  }> {
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`🔍 [FileSync] Running COMPREHENSIVE Audit for consultant ${consultantId}`);
+    console.log(`${'═'.repeat(60)}\n`);
+
+    // Consultant data audit
+    const libraryResult = await this.auditLibraryDocumentsDetailed(consultantId);
+    const knowledgeBaseResult = await this.auditKnowledgeDocumentsDetailed(consultantId);
+    const exercisesResult = await this.auditExercisesDetailed(consultantId);
+    const universityResult = await this.auditUniversityLessonsDetailed(consultantId);
+
+    // Get all clients for this consultant
+    const clientUsers = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      })
+      .from(users)
+      .where(and(
+        eq(users.consultantId, consultantId),
+        eq(users.role, 'client')
+      ));
+
+    // Audit each client's private data
+    const clientsAudit = [];
+    let totalClientsMissing = 0;
+
+    for (const client of clientUsers) {
+      const exerciseResponses = await this.auditClientExerciseResponsesDetailed(client.id, consultantId);
+      const consultationNotes = await this.auditClientConsultationsDetailed(client.id);
+      const knowledgeDocs = await this.auditClientKnowledgeDocsDetailed(client.id);
+
+      const clientMissing = exerciseResponses.missing.length + consultationNotes.missing.length + knowledgeDocs.missing.length;
+      
+      if (exerciseResponses.total > 0 || consultationNotes.total > 0 || knowledgeDocs.total > 0) {
+        clientsAudit.push({
+          clientId: client.id,
+          clientName: `${client.firstName} ${client.lastName}`,
+          clientEmail: client.email,
+          exerciseResponses,
+          consultationNotes,
+          knowledgeDocs,
+        });
+        totalClientsMissing += clientMissing;
+      }
+    }
+
+    const consultantMissing = libraryResult.missing.length + knowledgeBaseResult.missing.length + 
+                              exercisesResult.missing.length + universityResult.missing.length;
+    const totalMissing = consultantMissing + totalClientsMissing;
+
+    const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total + universityResult.total +
+                      clientsAudit.reduce((sum, c) => sum + c.exerciseResponses.total + c.consultationNotes.total + c.knowledgeDocs.total, 0);
+    const totalIndexed = (libraryResult.total - libraryResult.missing.length) + 
+                         (knowledgeBaseResult.total - knowledgeBaseResult.missing.length) +
+                         (exercisesResult.total - exercisesResult.missing.length) + 
+                         (universityResult.total - universityResult.missing.length) +
+                         clientsAudit.reduce((sum, c) => 
+                           sum + (c.exerciseResponses.total - c.exerciseResponses.missing.length) + 
+                           (c.consultationNotes.total - c.consultationNotes.missing.length) + 
+                           (c.knowledgeDocs.total - c.knowledgeDocs.missing.length), 0);
+
+    const healthScore = totalDocs > 0 ? Math.round((totalIndexed / totalDocs) * 100) : 100;
+
+    const recommendations: string[] = [];
+    if (libraryResult.missing.length > 0) {
+      recommendations.push(`Sincronizza ${libraryResult.missing.length} documenti libreria mancanti`);
+    }
+    if (knowledgeBaseResult.missing.length > 0) {
+      recommendations.push(`Sincronizza ${knowledgeBaseResult.missing.length} documenti knowledge base mancanti`);
+    }
+    if (exercisesResult.missing.length > 0) {
+      recommendations.push(`Sincronizza ${exercisesResult.missing.length} esercizi mancanti`);
+    }
+    if (universityResult.missing.length > 0) {
+      recommendations.push(`Sincronizza ${universityResult.missing.length} lezioni university mancanti`);
+    }
+    if (totalClientsMissing > 0) {
+      recommendations.push(`Sincronizza ${totalClientsMissing} documenti privati dei clienti mancanti`);
+    }
+
+    if (healthScore === 100) {
+      recommendations.push('✅ Tutti i contenuti sono indicizzati correttamente');
+    } else if (healthScore >= 80) {
+      recommendations.push('💡 Quasi completo - sincronizza i contenuti mancanti per il 100%');
+    } else if (healthScore >= 50) {
+      recommendations.push('⚠️ Sincronizzazione parziale - consigliato completare');
+    } else {
+      recommendations.push('🚨 Health Score basso - esegui sincronizzazione completa');
+    }
+
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`✅ [FileSync] Comprehensive Audit Complete`);
+    console.log(`   📚 Library: ${libraryResult.total - libraryResult.missing.length}/${libraryResult.total} indexed`);
+    console.log(`   📖 Knowledge Base: ${knowledgeBaseResult.total - knowledgeBaseResult.missing.length}/${knowledgeBaseResult.total} indexed`);
+    console.log(`   🏋️ Exercises: ${exercisesResult.total - exercisesResult.missing.length}/${exercisesResult.total} indexed`);
+    console.log(`   🎓 University: ${universityResult.total - universityResult.missing.length}/${universityResult.total} indexed`);
+    console.log(`   👥 Clients: ${clientsAudit.length} with data, ${totalClientsMissing} missing`);
+    console.log(`   🏥 Health Score: ${healthScore}%`);
+    console.log(`${'═'.repeat(60)}\n`);
+
+    return {
+      consultant: {
+        library: libraryResult,
+        knowledgeBase: knowledgeBaseResult,
+        exercises: exercisesResult,
+        university: universityResult,
+      },
+      clients: clientsAudit,
+      summary: {
+        totalMissing,
+        consultantMissing,
+        clientsMissing: totalClientsMissing,
+        healthScore,
+      },
+      recommendations,
+    };
+  }
+
+  private static async auditLibraryDocumentsDetailed(consultantId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: Array<{ id: string; title: string; type: string }>;
+  }> {
+    const docs = await db.query.libraryDocuments.findMany({
+      where: eq(libraryDocuments.createdBy, consultantId),
+    });
+
+    const missing: Array<{ id: string; title: string; type: string }> = [];
+    let indexed = 0;
+
+    for (const doc of docs) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('library', doc.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push({ id: doc.id, title: doc.title, type: doc.type || 'document' });
+      }
+    }
+
+    return { total: docs.length, indexed, missing };
+  }
+
+  private static async auditKnowledgeDocumentsDetailed(consultantId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: Array<{ id: string; title: string }>;
+  }> {
+    const docs = await db.query.consultantKnowledgeDocuments.findMany({
+      where: and(
+        eq(consultantKnowledgeDocuments.consultantId, consultantId),
+        eq(consultantKnowledgeDocuments.status, 'indexed'),
+      ),
+    });
+
+    const missing: Array<{ id: string; title: string }> = [];
+    let indexed = 0;
+
+    for (const doc of docs) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push({ id: doc.id, title: doc.title });
+      }
+    }
+
+    return { total: docs.length, indexed, missing };
+  }
+
+  private static async auditExercisesDetailed(consultantId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: Array<{ id: string; title: string }>;
+  }> {
+    const allExercises = await db.query.exercises.findMany({
+      where: eq(exercises.createdBy, consultantId),
+    });
+
+    const missing: Array<{ id: string; title: string }> = [];
+    let indexed = 0;
+
+    for (const exercise of allExercises) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('exercise', exercise.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push({ id: exercise.id, title: exercise.title });
+      }
+    }
+
+    return { total: allExercises.length, indexed, missing };
+  }
+
+  private static async auditUniversityLessonsDetailed(consultantId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: Array<{ id: string; title: string; lessonTitle: string }>;
+  }> {
+    const lessons = await db.query.universityLessons.findMany({
+      where: eq(universityLessons.createdBy, consultantId),
+      with: {
+        module: true,
+      },
+    });
+
+    const missing: Array<{ id: string; title: string; lessonTitle: string }> = [];
+    let indexed = 0;
+
+    for (const lesson of lessons) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('university_lesson', lesson.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push({ 
+          id: lesson.id, 
+          title: lesson.module?.name || 'Modulo', 
+          lessonTitle: lesson.title 
+        });
+      }
+    }
+
+    return { total: lessons.length, indexed, missing };
+  }
+
+  private static async auditClientExerciseResponsesDetailed(clientId: string, consultantId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: Array<{ id: string; exerciseTitle: string; submittedAt: Date | null }>;
+  }> {
+    const assignments = await db.query.exerciseAssignments.findMany({
+      where: eq(exerciseAssignments.clientId, clientId),
+    });
+
+    const assignmentIds = assignments.map(a => a.id);
+    if (assignmentIds.length === 0) {
+      return { total: 0, indexed: 0, missing: [] };
+    }
+
+    const submissions = await db.query.exerciseSubmissions.findMany({
+      where: isNotNull(exerciseSubmissions.submittedAt),
+    });
+
+    const clientSubmissions = submissions.filter(s => assignmentIds.includes(s.assignmentId));
+
+    const missing: Array<{ id: string; exerciseTitle: string; submittedAt: Date | null }> = [];
+    let indexed = 0;
+
+    for (const submission of clientSubmissions) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('exercise', submission.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        const assignment = assignments.find(a => a.id === submission.assignmentId);
+        let exerciseTitle = 'Esercizio';
+        if (assignment) {
+          const exercise = await db.query.exercises.findFirst({
+            where: eq(exercises.id, assignment.exerciseId),
+          });
+          if (exercise) {
+            exerciseTitle = exercise.title;
+          }
+        }
+        missing.push({ 
+          id: submission.id, 
+          exerciseTitle, 
+          submittedAt: submission.submittedAt 
+        });
+      }
+    }
+
+    return { total: clientSubmissions.length, indexed, missing };
+  }
+
+  private static async auditClientConsultationsDetailed(clientId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: Array<{ id: string; date: Date; summary: string }>;
+  }> {
+    const clientConsultations = await db.query.consultations.findMany({
+      where: and(
+        eq(consultations.clientId, clientId),
+        eq(consultations.status, 'completed'),
+      ),
+    });
+
+    const consultationsWithContent = clientConsultations.filter(
+      c => c.transcript || c.notes || c.summaryEmail
+    );
+
+    const missing: Array<{ id: string; date: Date; summary: string }> = [];
+    let indexed = 0;
+
+    for (const consultation of consultationsWithContent) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('consultation', `client_${consultation.id}`);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push({ 
+          id: consultation.id, 
+          date: consultation.scheduledAt, 
+          summary: consultation.notes?.substring(0, 50) || consultation.summaryEmail?.substring(0, 50) || 'Consulenza'
+        });
+      }
+    }
+
+    return { total: consultationsWithContent.length, indexed, missing };
+  }
+
+  private static async auditClientKnowledgeDocsDetailed(clientId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: Array<{ id: string; title: string }>;
+  }> {
+    const docs = await db.query.clientKnowledgeDocuments.findMany({
+      where: and(
+        eq(clientKnowledgeDocuments.clientId, clientId),
+        eq(clientKnowledgeDocuments.status, 'indexed'),
+      ),
+    });
+
+    const missing: Array<{ id: string; title: string }> = [];
+    let indexed = 0;
+
+    for (const doc of docs) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push({ id: doc.id, title: doc.title });
+      }
+    }
+
+    return { total: docs.length, indexed, missing };
+  }
+
+  /**
    * Run a Post-Import Audit for a client's private data
    * 
    * @param clientId - The client's user ID
