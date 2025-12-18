@@ -1,0 +1,56 @@
+:11:29 PM [express] GET /api/auth/my-profiles 304 in 340ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+🔧 [FileSearch API] Creating new store for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [FileSearch] Creating store for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: "Knowledge Base Consulente"
+✅ [FileSearch] Store created: fileSearchStores/knowledge-base-consulente-juw371zchi3s (DB ID: 67d6e373-f964-48e5-b434-45e8643620fe)
+✅ [FileSearch API] Store created successfully: 67d6e373-f964-48e5-b434-45e8643620fe
+6:11:30 PM [express] POST /api/file-search/initialize 200 in 704ms :: {"success":true,"message":"Sto…
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+6:11:31 PM [express] GET /api/file-search/analytics 200 in 565ms :: {"summary":{"totalCalls":0,"file…
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+6:11:35 PM [express] POST /api/activity/session/heartbeat 200 in 352ms :: {"success":true,"lastActiv…
+
+══════════════════════════════════════════════════════════════════════
+🔄 [FileSync] Starting FULL content sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+══════════════════════════════════════════════════════════════════════
+
+🔄 [FileSync] Syncing 86 library documents for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📤 [FileSearch] Uploading "Lezione 2: La Postura del "Dottore": Diagnosticare, non Curare" to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+❌ [FileSearch] Upload failed: TypeError: Cannot read properties of undefined (reading 'name')
+    at Operations.get (/home/runner/workspace/node_modules/@google/genai/src/operations.ts:81:19)
+    at FileSearchService.uploadDocument (/home/runner/workspace/server/ai/file-search-service.ts:188:45)
+    at async FileSearchService.uploadDocumentFromContent (/home/runner/workspace/server/ai/file-search-service.ts:250:22)
+    at async Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:79:28)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+📤 [FileSearch] Uploading "3. Creazione della Tua Proposta di Valore Unica" to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+❌ [FileSearch] Upload failed: TypeError: Cannot read properties of undefined (reading 'name')
+    at Operations.get (/home/runner/workspace/node_modules/@google/genai/src/operations.ts:81:19)
+    at FileSearchService.uploadDocument (/home/runner/workspace/server/ai/file-search-service.ts:188:45)
+    at async FileSearchService.uploadDocumentFromContent (/home/runner/workspace/server/ai/file-search-service.ts:250:22)
+    at async Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:79:28)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+📤 [FileSearch] Uploading "Lezione 1: Vendere la Trasformazione: Il Concetto del "Ponte"" to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+❌ [FileSearch] Upload failed: TypeError: Cannot read properties of undefined (reading 'name')
+    at Operations.get (/home/runner/workspace/node_modules/@google/genai/src/operations.ts:81:19)
+    at FileSearchService.uploadDocument (/home/runner/workspace/server/ai/file-search-service.ts:188:45)
+    at async FileSearchService.uploadDocumentFromContent (/home/runner/workspace/server/ai/file-search-service.ts:250:22)
+    at async Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:79:28)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+📤 [FileSearch] Uploading "Lezione 2: Il Lavoro Interiore e la Mentalità dell'Aiuto" to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
