@@ -5,7 +5,7 @@ export function useFollowupSettings() {
   return useQuery({
     queryKey: ["followup-settings"],
     queryFn: async () => {
-      const res = await fetch("/api/followup/settings", { 
+      const res = await fetch("/api/followup/settings", {
         credentials: "include",
         headers: getAuthHeaders()
       });
@@ -21,7 +21,7 @@ export function useUpdateFollowupSettings() {
     mutationFn: async (hoursWithoutReply: number) => {
       const res = await fetch("/api/followup/settings", {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...getAuthHeaders()
         },
@@ -43,7 +43,7 @@ export function useFollowupRules() {
   return useQuery({
     queryKey: ["followup-rules"],
     queryFn: async () => {
-      const res = await fetch("/api/followup/rules", { 
+      const res = await fetch("/api/followup/rules", {
         credentials: "include",
         headers: getAuthHeaders()
       });
@@ -59,7 +59,7 @@ export function useCreateFollowupRule() {
     mutationFn: async (data: any) => {
       const res = await fetch("/api/followup/rules", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...getAuthHeaders()
         },
@@ -134,7 +134,7 @@ export function useConversationStates() {
   return useQuery({
     queryKey: ["followup-conversations"],
     queryFn: async () => {
-      const res = await fetch("/api/followup/conversations", { 
+      const res = await fetch("/api/followup/conversations", {
         credentials: "include",
         headers: getAuthHeaders()
       });
@@ -150,7 +150,7 @@ export function useUpdateConversationState() {
     mutationFn: async ({ id, state }: { id: string; state: string }) => {
       const res = await fetch(`/api/followup/conversations/${id}/state`, {
         method: "PATCH",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...getAuthHeaders()
         },
@@ -170,7 +170,7 @@ export function useWhatsAppTemplates() {
   return useQuery({
     queryKey: ["whatsapp-templates"],
     queryFn: async () => {
-      const res = await fetch("/api/whatsapp/custom-templates", { 
+      const res = await fetch("/api/whatsapp/custom-templates", {
         credentials: "include",
         headers: getAuthHeaders()
       });
@@ -184,7 +184,7 @@ export function useAgentAssignedTemplates() {
   return useQuery({
     queryKey: ["agent-assigned-templates"],
     queryFn: async () => {
-      const res = await fetch("/api/followup/agent-templates", { 
+      const res = await fetch("/api/followup/agent-templates", {
         credentials: "include",
         headers: getAuthHeaders()
       });
@@ -198,7 +198,7 @@ export function useFollowupAnalytics() {
   return useQuery({
     queryKey: ["followup-analytics"],
     queryFn: async () => {
-      const res = await fetch("/api/followup/analytics", { 
+      const res = await fetch("/api/followup/analytics", {
         credentials: "include",
         headers: getAuthHeaders()
       });
@@ -213,7 +213,7 @@ export function useGenerateRuleWithAI() {
     mutationFn: async (description: string) => {
       const res = await fetch("/api/followup/rules/generate-with-ai", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...getAuthHeaders()
         },
@@ -234,7 +234,7 @@ export function useGenerateTemplateWithAI() {
     mutationFn: async (description: string) => {
       const res = await fetch("/api/whatsapp/custom-templates/generate-with-ai", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...getAuthHeaders()
         },
@@ -262,7 +262,7 @@ export function useCreateWhatsAppTemplate() {
     }) => {
       const res = await fetch("/api/whatsapp/custom-templates", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...getAuthHeaders()
         },
@@ -304,11 +304,35 @@ export function useSendMessageNow() {
   });
 }
 
+export function useSimulateAiFollowup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (conversationId: string) => {
+      const res = await fetch(`/api/followup/conversations/${conversationId}/simulate-ai-followup`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Errore durante la simulazione");
+      }
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["activity-log"] });
+      queryClient.invalidateQueries({ queryKey: ["followup-scheduled"] });
+      queryClient.invalidateQueries({ queryKey: ["followup-dashboard-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["followup-conversations"] });
+    },
+  });
+}
+
 export function useFollowupAgents() {
   return useQuery({
     queryKey: ["followup-agents"],
     queryFn: async () => {
-      const res = await fetch("/api/followup/agents", { 
+      const res = await fetch("/api/followup/agents", {
         credentials: "include",
         headers: getAuthHeaders()
       });
@@ -334,11 +358,11 @@ export function useActivityLog(filters: ActivityLogFilters = {}) {
   if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
   if (filters.dateTo) params.set("dateTo", filters.dateTo);
   params.set("limit", "50");
-  
+
   return useQuery({
     queryKey: ["activity-log", filters],
     queryFn: async () => {
-      const res = await fetch(`/api/followup/activity-log?${params.toString()}`, { 
+      const res = await fetch(`/api/followup/activity-log?${params.toString()}`, {
         credentials: "include",
         headers: getAuthHeaders()
       });
@@ -368,12 +392,53 @@ export function useWeeklyStats() {
   return useQuery<WeeklyStats>({
     queryKey: ["followup-weekly-stats"],
     queryFn: async () => {
-      const res = await fetch("/api/followup/stats/weekly", { 
+      const res = await fetch("/api/followup/stats/weekly", {
         credentials: "include",
         headers: getAuthHeaders()
       });
       if (!res.ok) throw new Error("Failed to fetch weekly stats");
       return res.json();
     },
+  });
+}
+
+export interface PendingQueueItem {
+  conversationId: string;
+  leadName: string;
+  phoneNumber: string;
+  nextCheckAt: string | null;
+  isOverdue: boolean;
+  currentState: string;
+  followupCount: number;
+  consecutiveNoReply: number;
+  isDormant: boolean;
+  dormantUntil: string | null;
+}
+
+export interface AgentPendingQueue {
+  agentId: string;
+  agentName: string;
+  agentType: string;
+  pending: PendingQueueItem[];
+}
+
+export interface PendingQueueData {
+  agents: AgentPendingQueue[];
+  totalPending: number;
+  totalDormant: number;
+}
+
+export function usePendingQueue() {
+  return useQuery<PendingQueueData>({
+    queryKey: ["followup-pending-queue"],
+    queryFn: async () => {
+      const res = await fetch("/api/followup/pending-queue", {
+        credentials: "include",
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error("Failed to fetch pending queue");
+      return res.json();
+    },
+    refetchInterval: 60000,
   });
 }

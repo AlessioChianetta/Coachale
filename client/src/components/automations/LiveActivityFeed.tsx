@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
+import {
   Activity,
   User,
   ChevronDown,
@@ -30,7 +30,8 @@ import {
   Filter
 } from "lucide-react";
 import { Link } from "wouter";
-import { useSendMessageNow, useFollowupAgents, useActivityLog, type ActivityLogFilters } from "@/hooks/useFollowupApi";
+import { useSendMessageNow, useFollowupAgents, useActivityLog, usePendingQueue, type ActivityLogFilters, type PendingQueueItem } from "@/hooks/useFollowupApi";
+import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -131,20 +132,20 @@ function getTemplateStatusConfig(twilioStatus?: string | null, hasTemplate?: boo
 
 function formatCountdown(expiresAt?: string): { text: string; isExpired: boolean; isUrgent: boolean } | null {
   if (!expiresAt) return null;
-  
+
   const now = new Date();
   const expires = new Date(expiresAt);
   const diffMs = expires.getTime() - now.getTime();
-  
+
   if (diffMs <= 0) {
     return { text: 'Scaduta', isExpired: true, isUrgent: false };
   }
-  
+
   const hours = Math.floor(diffMs / (1000 * 60 * 60));
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  
+
   const isUrgent = hours < 2;
-  
+
   if (hours > 0) {
     return { text: `${hours}h ${minutes}m`, isExpired: false, isUrgent };
   }
@@ -186,21 +187,21 @@ function getEventLabel(type: string, decision?: string) {
   }
 }
 
-function SendNowButton({ 
-  messageId, 
-  canSendFreeform, 
-  hasApprovedTemplate 
-}: { 
-  messageId: string; 
+function SendNowButton({
+  messageId,
+  canSendFreeform,
+  hasApprovedTemplate
+}: {
+  messageId: string;
   canSendFreeform?: boolean;
   hasApprovedTemplate?: boolean;
 }) {
   const { toast } = useToast();
   const sendNow = useSendMessageNow();
-  
+
   // Can send if: inside 24h window (canSendFreeform) OR has an approved template
   const canSend = canSendFreeform || hasApprovedTemplate;
-  
+
   const handleSendNow = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!canSend) return;
@@ -218,14 +219,14 @@ function SendNowButton({
       });
     }
   };
-  
+
   const isDisabled = sendNow.isPending || !canSend;
   const tooltipText = !canSend
-    ? "Fuori finestra 24h e nessun template approvato" 
+    ? "Fuori finestra 24h e nessun template approvato"
     : hasApprovedTemplate && !canSendFreeform
       ? "Invia subito (con template approvato)"
       : "Invia subito";
-  
+
   return (
     <TooltipProvider>
       <Tooltip>
@@ -259,7 +260,7 @@ function RetryButton({ messageId }: { messageId: string }) {
   const { toast } = useToast();
   const [isRetrying, setIsRetrying] = useState(false);
   const queryClient = useQueryClient();
-  
+
   const handleRetry = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsRetrying(true);
@@ -289,7 +290,7 @@ function RetryButton({ messageId }: { messageId: string }) {
       setIsRetrying(false);
     }
   };
-  
+
   return (
     <Button
       variant="outline"
@@ -305,6 +306,251 @@ function RetryButton({ messageId }: { messageId: string }) {
       )}
       Riprova
     </Button>
+  );
+}
+
+function SimulateAiButton({ conversationId }: { conversationId: string }) {
+  const { toast } = useToast();
+  const [isSimulating, setIsSimulating] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleSimulate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsSimulating(true);
+    try {
+      const response = await fetch(`/api/followup/conversations/${conversationId}/simulate-ai-followup`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        }
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: `📤 ${result.message}`,
+          description: result.messagePreview ? `"${result.messagePreview}..."` : undefined,
+        });
+
+        if (result.dormancyTriggered) {
+          toast({
+            title: "😴 Lead in Dormienza",
+            description: "Troppi tentativi senza risposta. Il lead è stato messo in pausa per 3 mesi.",
+            variant: "destructive",
+          });
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['activity-log'] });
+        queryClient.invalidateQueries({ queryKey: ['followup-conversations'] });
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Errore Simulazione",
+        description: error.message || "Errore durante la simulazione AI",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSimulate}
+            disabled={isSimulating}
+            className="gap-1 text-purple-600 border-purple-300 hover:bg-purple-50"
+          >
+            {isSimulating ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Brain className="h-3 w-3" />
+            )}
+            Simula AI
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Forza valutazione AI e aggiorna contatori (per test)</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PENDING QUEUE PANEL - Shows upcoming follow-ups grouped by agent
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+
+function PendingQueuePanel() {
+  const { data, isLoading, error } = usePendingQueue();
+
+  if (isLoading) {
+    return (
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Prossimi Controlli
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="mb-4 border-red-200">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 text-red-600">
+            <AlertTriangle className="h-4 w-4" />
+            Errore Prossimi Controlli
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-red-500">{(error as Error).message}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  if (data.agents.length === 0) {
+    return (
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Prossimi Controlli
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Nessun follow-up in coda</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Prossimi Controlli
+          <Badge variant="secondary" className="ml-auto">
+            {data.totalPending} attivi
+          </Badge>
+          {data.totalDormant > 0 && (
+            <Badge variant="outline" className="text-orange-600">
+              {data.totalDormant} in pausa
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {data.agents.map((agent) => (
+          <div key={agent.agentId} className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Activity className="h-3 w-3 text-primary" />
+              {agent.agentName}
+              <Badge variant="outline" className="text-xs">
+                {agent.pending.length}
+              </Badge>
+            </div>
+            <div className="ml-5 space-y-1">
+              {agent.pending.slice(0, 5).map((item) => (
+                <PendingQueueRow key={item.conversationId} item={item} />
+              ))}
+              {agent.pending.length > 5 && (
+                <p className="text-xs text-muted-foreground">
+                  +{agent.pending.length - 5} altri...
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PendingQueueRow({ item }: { item: PendingQueueItem }) {
+  const formatNextCheck = (dateStr: string | null) => {
+    if (!dateStr) return "Non schedulato";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+
+    if (diffMins < 0) return "Scaduto";
+    if (diffMins < 60) return `tra ${diffMins}m`;
+    if (diffHours < 24) return `tra ${diffHours}h`;
+    return format(date, "dd MMM HH:mm", { locale: it });
+  };
+
+  // Describe what will happen next
+  const getNextAction = () => {
+    if (item.isDormant) {
+      return `Risveglio: ${item.dormantUntil ? format(new Date(item.dormantUntil), "dd MMM yyyy", { locale: it }) : '3 mesi'}`;
+    }
+    if (item.consecutiveNoReply >= 2) {
+      return "⚠️ Prossimo: ultimo tentativo prima di dormienza";
+    }
+    if (item.consecutiveNoReply === 1) {
+      return `📤 Prossimo: follow-up #${item.followupCount + 1} (tentativo 2/3)`;
+    }
+    return `📤 Prossimo: follow-up #${item.followupCount + 1}`;
+  };
+
+  return (
+    <div className={`flex flex-col gap-1 text-xs p-2 rounded ${item.isDormant ? 'bg-orange-50 border border-orange-200' :
+      item.isOverdue ? 'bg-red-50 border border-red-200' :
+        'bg-muted/50'
+      }`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <User className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate font-medium">{item.leadName}</span>
+          <span className="text-muted-foreground">({item.consecutiveNoReply}/3)</span>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {item.isDormant ? (
+            <Badge variant="outline" className="text-orange-600 text-[10px]">
+              😴 Pausa
+            </Badge>
+          ) : item.isOverdue ? (
+            <Badge variant="destructive" className="text-[10px]">
+              ⚠️ Scaduto
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="text-[10px]">
+              {formatNextCheck(item.nextCheckAt)}
+            </Badge>
+          )}
+        </div>
+      </div>
+      <div className="text-[10px] text-muted-foreground pl-5">
+        {getNextAction()}
+      </div>
+    </div>
   );
 }
 
@@ -352,20 +598,19 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
-                              countdown.isExpired 
-                                ? 'bg-red-100 text-red-700' 
-                                : countdown.isUrgent 
-                                  ? 'bg-orange-100 text-orange-700' 
-                                  : 'bg-green-100 text-green-700'
-                            }`}>
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${countdown.isExpired
+                              ? 'bg-red-100 text-red-700'
+                              : countdown.isUrgent
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-green-100 text-green-700'
+                              }`}>
                               <Clock className="h-3 w-3" />
                               {countdown.isExpired ? '24h scaduta' : `24h: ${countdown.text}`}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{countdown.isExpired 
-                              ? 'Finestra 24h scaduta - serve template approvato' 
+                            <p>{countdown.isExpired
+                              ? 'Finestra 24h scaduta - serve template approvato'
                               : `Finestra 24h scade tra ${countdown.text}`}
                             </p>
                           </TooltipContent>
@@ -396,7 +641,7 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
               {conversation.events.slice(0, 10).map((event) => (
                 <div key={event.id} className="relative">
                   <div className="absolute -left-[21px] w-3 h-3 rounded-full bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-600" />
-                  
+
                   <div className="flex items-start gap-2">
                     {getEventIcon(event.type)}
                     <div className="flex-1 min-w-0">
@@ -408,24 +653,24 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                           {format(new Date(event.timestamp), "dd MMM HH:mm", { locale: it })}
                         </span>
                       </div>
-                      
+
                       {event.matchedRuleId && (
                         <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
                           Regola: {event.matchedRuleId}
                           {event.matchedRuleReason && ` - ${event.matchedRuleReason}`}
                         </p>
                       )}
-                      
+
                       {event.reasoning && (
                         <div className="mt-0.5">
                           <p className={`text-xs text-muted-foreground ${showFullReasoning[event.id] ? '' : 'line-clamp-2'}`}>
                             {event.reasoning}
                           </p>
                           {event.reasoning.length > 100 && (
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setShowFullReasoning(prev => ({...prev, [event.id]: !prev[event.id]}));
+                                setShowFullReasoning(prev => ({ ...prev, [event.id]: !prev[event.id] }));
                               }}
                               className="text-xs text-blue-600 hover:underline mt-0.5"
                             >
@@ -434,7 +679,7 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                           )}
                         </div>
                       )}
-                      
+
                       {event.messagePreview && (
                         <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
                           <div className="flex items-center justify-between mb-1">
@@ -463,10 +708,10 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                           </div>
                           <p className={`text-xs italic ${showFullMessagePreview[event.id] ? '' : 'line-clamp-3'}`}>"{event.messagePreview}"</p>
                           {event.messagePreview.length > 150 && (
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setShowFullMessagePreview(prev => ({...prev, [event.id]: !prev[event.id]}));
+                                setShowFullMessagePreview(prev => ({ ...prev, [event.id]: !prev[event.id] }));
                               }}
                               className="text-xs text-blue-600 hover:underline mt-1"
                             >
@@ -481,7 +726,7 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                           )}
                         </div>
                       )}
-                      
+
                       {event.errorMessage && (
                         <div className="mt-0.5">
                           <p className="text-xs text-red-600">
@@ -500,11 +745,11 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                           Confidenza: {Math.round(event.confidenceScore * 100)}%
                         </span>
                       )}
-                      
+
                       {event.type === 'message_scheduled' && event.status === 'scheduled' && (
                         <div className="mt-2">
-                          <SendNowButton 
-                            messageId={event.id.replace('msg-', '')} 
+                          <SendNowButton
+                            messageId={event.id.replace('msg-', '')}
                             canSendFreeform={event.canSendFreeform}
                             hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
                           />
@@ -516,26 +761,27 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
               ))}
             </div>
 
-            <div className="flex gap-2 mt-4 pt-3 border-t">
+            <div className="flex gap-2 mt-4 pt-3 border-t flex-wrap">
               <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
                 <Button variant="outline" size="sm" className="gap-1">
                   <MessageSquare className="h-3 w-3" />
                   Vedi Chat
                 </Button>
               </Link>
+              <SimulateAiButton conversationId={conversation.conversationId} />
               {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (() => {
                 const scheduledEvent = conversation.events.find(e => e.type === 'message_scheduled');
                 return scheduledEvent ? (
-                  <SendNowButton 
-                    messageId={scheduledEvent.id.replace('msg-', '')} 
+                  <SendNowButton
+                    messageId={scheduledEvent.id.replace('msg-', '')}
                     canSendFreeform={scheduledEvent.canSendFreeform}
                     hasApprovedTemplate={scheduledEvent.templateTwilioStatus === 'approved'}
                   />
                 ) : null;
               })()}
               {conversation.currentStatus === 'error' && conversation.events.some(e => e.type === 'message_failed') && (
-                <RetryButton 
-                  messageId={conversation.events.find(e => e.type === 'message_failed')!.id.replace('msg-', '')} 
+                <RetryButton
+                  messageId={conversation.events.find(e => e.type === 'message_failed')!.id.replace('msg-', '')}
                 />
               )}
             </div>
@@ -626,9 +872,9 @@ export function LiveActivityFeed() {
               </Badge>
             )}
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => refetch()}
             disabled={isFetching}
             className="gap-1"
@@ -653,7 +899,7 @@ export function LiveActivityFeed() {
                 className="h-8 text-sm"
               />
             </div>
-            
+
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <User className="h-3 w-3" /> Agente
@@ -672,7 +918,7 @@ export function LiveActivityFeed() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <Calendar className="h-3 w-3" /> Da data
@@ -684,7 +930,7 @@ export function LiveActivityFeed() {
                 className="h-8 text-sm"
               />
             </div>
-            
+
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <Calendar className="h-3 w-3" /> A data
@@ -697,7 +943,7 @@ export function LiveActivityFeed() {
               />
             </div>
           </div>
-          
+
           {hasActiveFilters && (
             <div className="mt-3 pt-3 border-t flex justify-end">
               <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs">
@@ -723,7 +969,7 @@ export function LiveActivityFeed() {
           <CardContent className="py-12 text-center">
             <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">
-              {hasActiveFilters 
+              {hasActiveFilters
                 ? "Nessuna attività trovata con i filtri selezionati. Prova a modificare i criteri di ricerca."
                 : "Nessuna attività trovata. Le attività appariranno quando il sistema valuterà le conversazioni."
               }
@@ -734,6 +980,9 @@ export function LiveActivityFeed() {
 
       {!isLoading && !error && data?.timeline && data.timeline.length > 0 && (
         <div className="space-y-3">
+          {/* Pending Queue Panel shows upcoming follow-ups */}
+          <PendingQueuePanel />
+
           {data.timeline.map((conversation: ConversationTimeline) => (
             <ConversationCard key={conversation.conversationId} conversation={conversation} />
           ))}

@@ -6,7 +6,7 @@
 import { Router } from "express";
 import { db } from "../db";
 import * as schema from "../../shared/schema";
-import { eq, and, desc, sql, gte, lte } from "drizzle-orm";
+import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
 import { getAIProvider } from "../ai/provider-factory";
 
@@ -23,7 +23,7 @@ router.get("/rules", authenticateToken, requireRole("consultant"), async (req, r
       .from(schema.followupRules)
       .where(eq(schema.followupRules.consultantId, req.user!.id))
       .orderBy(desc(schema.followupRules.priority));
-    
+
     res.json(rules);
   } catch (error: any) {
     console.error("Error fetching followup rules:", error);
@@ -34,9 +34,9 @@ router.get("/rules", authenticateToken, requireRole("consultant"), async (req, r
 router.post("/rules", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { name, description, triggerType, triggerCondition, templateId, fallbackMessage,
-            applicableToStates, applicableToAgentTypes, applicableToChannels,
-            maxAttempts, cooldownHours, priority, isActive, isDefault, agentId } = req.body;
-    
+      applicableToStates, applicableToAgentTypes, applicableToChannels,
+      maxAttempts, cooldownHours, priority, isActive, isDefault, agentId } = req.body;
+
     const [newRule] = await db
       .insert(schema.followupRules)
       .values({
@@ -58,7 +58,7 @@ router.post("/rules", authenticateToken, requireRole("consultant"), async (req, 
         isDefault: isDefault || false,
       })
       .returning();
-    
+
     res.status(201).json(newRule);
   } catch (error: any) {
     console.error("Error creating followup rule:", error);
@@ -70,7 +70,7 @@ router.put("/rules/:id", authenticateToken, requireRole("consultant"), async (re
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
     const [existingRule] = await db
       .select()
       .from(schema.followupRules)
@@ -79,17 +79,17 @@ router.put("/rules/:id", authenticateToken, requireRole("consultant"), async (re
         eq(schema.followupRules.consultantId, req.user!.id)
       ))
       .limit(1);
-    
+
     if (!existingRule) {
       return res.status(404).json({ message: "Rule not found" });
     }
-    
+
     const [updatedRule] = await db
       .update(schema.followupRules)
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(schema.followupRules.id, id))
       .returning();
-    
+
     res.json(updatedRule);
   } catch (error: any) {
     console.error("Error updating followup rule:", error);
@@ -100,7 +100,7 @@ router.put("/rules/:id", authenticateToken, requireRole("consultant"), async (re
 router.delete("/rules/:id", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const [existingRule] = await db
       .select()
       .from(schema.followupRules)
@@ -109,13 +109,13 @@ router.delete("/rules/:id", authenticateToken, requireRole("consultant"), async 
         eq(schema.followupRules.consultantId, req.user!.id)
       ))
       .limit(1);
-    
+
     if (!existingRule) {
       return res.status(404).json({ message: "Rule not found" });
     }
-    
+
     await db.delete(schema.followupRules).where(eq(schema.followupRules.id, id));
-    
+
     res.json({ message: "Rule deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting followup rule:", error);
@@ -126,7 +126,7 @@ router.delete("/rules/:id", authenticateToken, requireRole("consultant"), async 
 router.patch("/rules/:id/toggle", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const [existingRule] = await db
       .select()
       .from(schema.followupRules)
@@ -135,17 +135,17 @@ router.patch("/rules/:id/toggle", authenticateToken, requireRole("consultant"), 
         eq(schema.followupRules.consultantId, req.user!.id)
       ))
       .limit(1);
-    
+
     if (!existingRule) {
       return res.status(404).json({ message: "Rule not found" });
     }
-    
+
     const [updatedRule] = await db
       .update(schema.followupRules)
       .set({ isActive: !existingRule.isActive, updatedAt: new Date() })
       .where(eq(schema.followupRules.id, id))
       .returning();
-    
+
     res.json(updatedRule);
   } catch (error: any) {
     console.error("Error toggling followup rule:", error);
@@ -165,13 +165,13 @@ router.post("/rules/seed-defaults", authenticateToken, requireRole("consultant")
       .from(schema.followupRules)
       .where(eq(schema.followupRules.consultantId, req.user!.id))
       .limit(1);
-    
+
     if (existingRules.length > 0) {
-      return res.status(400).json({ 
-        message: "Hai già delle regole configurate. Elimina le regole esistenti prima di creare quelle predefinite." 
+      return res.status(400).json({
+        message: "Hai già delle regole configurate. Elimina le regole esistenti prima di creare quelle predefinite."
       });
     }
-    
+
     // Default rules for WhatsApp follow-up scenarios
     // Distinzione chiave: 
     // - Entro 24h dall'ultimo messaggio lead: AI genera messaggio intelligente leggendo la chat
@@ -248,12 +248,12 @@ router.post("/rules/seed-defaults", authenticateToken, requireRole("consultant")
         isDefault: true,
       },
     ];
-    
+
     const createdRules = await db
       .insert(schema.followupRules)
       .values(defaultRules)
       .returning();
-    
+
     res.status(201).json({
       message: `Create ${createdRules.length} regole predefinite con successo!`,
       rules: createdRules,
@@ -271,13 +271,13 @@ router.post("/rules/seed-defaults", authenticateToken, requireRole("consultant")
 router.post("/rules/generate-with-ai", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { description } = req.body;
-    
+
     if (!description || typeof description !== "string" || description.trim().length < 10) {
       return res.status(400).json({ message: "Descrizione troppo corta. Fornisci almeno 10 caratteri." });
     }
 
     const aiProvider = await getAIProvider(req.user!.id, "admin");
-    
+
     if (!aiProvider) {
       return res.status(500).json({ message: "Impossibile accedere al provider AI. Contatta l'amministratore." });
     }
@@ -320,7 +320,7 @@ Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
     });
 
     const responseText = result.response.text();
-    
+
     let jsonStr = responseText.trim();
     if (jsonStr.startsWith("```json")) {
       jsonStr = jsonStr.slice(7);
@@ -337,8 +337,8 @@ Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
     const validatedRule = {
       name: generatedRule.name || "Nuova Regola AI",
       description: generatedRule.description || "",
-      triggerType: ["time_based", "event_based", "ai_decision"].includes(generatedRule.triggerType) 
-        ? generatedRule.triggerType 
+      triggerType: ["time_based", "event_based", "ai_decision"].includes(generatedRule.triggerType)
+        ? generatedRule.triggerType
         : "time_based",
       triggerCondition: generatedRule.triggerCondition || { hoursWithoutReply: 24 },
       fallbackMessage: generatedRule.fallbackMessage || "",
@@ -350,11 +350,11 @@ Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
     res.json({ success: true, data: validatedRule });
   } catch (error: any) {
     console.error("Error generating rule with AI:", error);
-    
+
     if (error.message?.includes("JSON")) {
       return res.status(500).json({ success: false, message: "L'AI ha generato una risposta non valida. Riprova con una descrizione diversa." });
     }
-    
+
     res.status(500).json({ success: false, message: error.message || "Errore durante la generazione della regola." });
   }
 });
@@ -381,7 +381,7 @@ router.get("/conversations", authenticateToken, requireRole("consultant"), async
       )
       .where(eq(schema.consultantWhatsappConfig.consultantId, req.user!.id))
       .orderBy(desc(schema.conversationStates.updatedAt));
-    
+
     res.json(conversations);
   } catch (error: any) {
     console.error("Error fetching conversation states:", error);
@@ -392,7 +392,7 @@ router.get("/conversations", authenticateToken, requireRole("consultant"), async
 router.get("/conversations/:id", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const [result] = await db
       .select({
         state: schema.conversationStates,
@@ -412,11 +412,11 @@ router.get("/conversations/:id", authenticateToken, requireRole("consultant"), a
         eq(schema.consultantWhatsappConfig.consultantId, req.user!.id)
       ))
       .limit(1);
-    
+
     if (!result) {
       return res.status(404).json({ message: "Conversation not found" });
     }
-    
+
     res.json(result);
   } catch (error: any) {
     console.error("Error fetching conversation state:", error);
@@ -428,19 +428,19 @@ router.patch("/conversations/:id/state", authenticateToken, requireRole("consult
   try {
     const { id } = req.params;
     const { currentState, engagementScore, conversionProbability, aiRecommendation } = req.body;
-    
+
     const [existingState] = await db
       .select()
       .from(schema.conversationStates)
       .where(eq(schema.conversationStates.conversationId, id))
       .limit(1);
-    
+
     if (!existingState) {
       return res.status(404).json({ message: "Conversation state not found" });
     }
-    
+
     const updateData: any = { updatedAt: new Date() };
-    
+
     if (currentState) {
       updateData.currentState = currentState;
       updateData.previousState = existingState.currentState;
@@ -449,13 +449,13 @@ router.patch("/conversations/:id/state", authenticateToken, requireRole("consult
     if (engagementScore !== undefined) updateData.engagementScore = engagementScore;
     if (conversionProbability !== undefined) updateData.conversionProbability = conversionProbability;
     if (aiRecommendation) updateData.aiRecommendation = aiRecommendation;
-    
+
     const [updatedState] = await db
       .update(schema.conversationStates)
       .set(updateData)
       .where(eq(schema.conversationStates.id, existingState.id))
       .returning();
-    
+
     res.json(updatedState);
   } catch (error: any) {
     console.error("Error updating conversation state:", error);
@@ -470,14 +470,14 @@ router.patch("/conversations/:id/state", authenticateToken, requireRole("consult
 router.get("/analytics", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
+
     let query = db
       .select()
       .from(schema.followupAnalytics)
       .where(eq(schema.followupAnalytics.consultantId, req.user!.id));
-    
+
     const analytics = await query.orderBy(desc(schema.followupAnalytics.date));
-    
+
     const totals = await db
       .select({
         totalSent: sql<number>`COALESCE(SUM(${schema.followupAnalytics.messagesSent}), 0)`,
@@ -489,7 +489,7 @@ router.get("/analytics", authenticateToken, requireRole("consultant"), async (re
       })
       .from(schema.followupAnalytics)
       .where(eq(schema.followupAnalytics.consultantId, req.user!.id));
-    
+
     res.json({
       daily: analytics,
       totals: totals[0] || {},
@@ -522,7 +522,7 @@ router.get("/scheduled", authenticateToken, requireRole("consultant"), async (re
       )
       .where(eq(schema.consultantWhatsappConfig.consultantId, req.user!.id))
       .orderBy(schema.scheduledFollowupMessages.scheduledFor);
-    
+
     res.json(scheduled);
   } catch (error: any) {
     console.error("Error fetching scheduled messages:", error);
@@ -533,16 +533,16 @@ router.get("/scheduled", authenticateToken, requireRole("consultant"), async (re
 router.delete("/scheduled/:id", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     await db
       .update(schema.scheduledFollowupMessages)
-      .set({ 
-        status: "cancelled", 
+      .set({
+        status: "cancelled",
         cancelledAt: new Date(),
         cancelReason: "manual"
       })
       .where(eq(schema.scheduledFollowupMessages.id, id));
-    
+
     res.json({ message: "Scheduled message cancelled" });
   } catch (error: any) {
     console.error("Error cancelling scheduled message:", error);
@@ -554,9 +554,9 @@ router.post("/messages/:id/retry", authenticateToken, requireRole("consultant"),
   try {
     const { id } = req.params;
     const consultantId = req.user!.id;
-    
+
     console.log(`🔄 [FOLLOWUP-API] Retry requested for message ${id} by consultant ${consultantId}`);
-    
+
     const [messageWithConversation] = await db
       .select({
         message: schema.scheduledFollowupMessages,
@@ -569,22 +569,22 @@ router.post("/messages/:id/retry", authenticateToken, requireRole("consultant"),
       )
       .where(eq(schema.scheduledFollowupMessages.id, id))
       .limit(1);
-    
+
     if (!messageWithConversation) {
       return res.status(404).json({ success: false, message: "Messaggio non trovato" });
     }
-    
+
     if (messageWithConversation.conversation.consultantId !== consultantId) {
       return res.status(403).json({ success: false, message: "Non autorizzato" });
     }
-    
+
     if (messageWithConversation.message.status !== 'failed') {
       return res.status(400).json({ success: false, message: "Solo i messaggi falliti possono essere ritentati" });
     }
-    
+
     const now = new Date();
     const retryIn5Min = new Date(now.getTime() + 5 * 60 * 1000);
-    
+
     await db
       .update(schema.scheduledFollowupMessages)
       .set({
@@ -597,13 +597,13 @@ router.post("/messages/:id/retry", authenticateToken, requireRole("consultant"),
         failureReason: null,
       })
       .where(eq(schema.scheduledFollowupMessages.id, id));
-    
+
     console.log(`✅ [FOLLOWUP-API] Message ${id} queued for retry at ${retryIn5Min.toISOString()}`);
-    
-    res.json({ 
-      success: true, 
-      message: "Messaggio schedulato per ritentativo", 
-      retryAt: retryIn5Min.toISOString() 
+
+    res.json({
+      success: true,
+      message: "Messaggio schedulato per ritentativo",
+      retryAt: retryIn5Min.toISOString()
     });
   } catch (error: any) {
     console.error("Error retrying message:", error);
@@ -614,7 +614,7 @@ router.post("/messages/:id/retry", authenticateToken, requireRole("consultant"),
 router.get("/failed-messages", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const consultantId = req.user!.id;
-    
+
     const failedMessages = await db
       .select({
         id: schema.scheduledFollowupMessages.id,
@@ -642,7 +642,7 @@ router.get("/failed-messages", authenticateToken, requireRole("consultant"), asy
       )
       .orderBy(desc(schema.scheduledFollowupMessages.lastAttemptAt))
       .limit(50);
-    
+
     res.json(failedMessages);
   } catch (error: any) {
     console.error("Error fetching failed messages:", error);
@@ -654,9 +654,9 @@ router.post("/messages/:id/send-now", authenticateToken, requireRole("consultant
   try {
     const { id } = req.params;
     const consultantId = req.user!.id;
-    
+
     console.log(`🚀 [FOLLOWUP-API] Send-now requested for message ${id} by consultant ${consultantId}`);
-    
+
     const [messageWithConversation] = await db
       .select({
         message: schema.scheduledFollowupMessages,
@@ -674,57 +674,57 @@ router.post("/messages/:id/send-now", authenticateToken, requireRole("consultant
       )
       .where(eq(schema.scheduledFollowupMessages.id, id))
       .limit(1);
-    
+
     if (!messageWithConversation) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Messaggio non trovato" 
+      return res.status(404).json({
+        success: false,
+        message: "Messaggio non trovato"
       });
     }
-    
+
     if (messageWithConversation.agent.consultantId !== consultantId) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Non hai i permessi per inviare questo messaggio" 
+      return res.status(403).json({
+        success: false,
+        message: "Non hai i permessi per inviare questo messaggio"
       });
     }
-    
+
     if (messageWithConversation.message.status !== 'pending') {
-      return res.status(400).json({ 
-        success: false, 
-        message: `Il messaggio non è in stato pending (stato attuale: ${messageWithConversation.message.status})` 
+      return res.status(400).json({
+        success: false,
+        message: `Il messaggio non è in stato pending (stato attuale: ${messageWithConversation.message.status})`
       });
     }
-    
+
     await db
       .update(schema.scheduledFollowupMessages)
       .set({ scheduledFor: new Date() })
       .where(eq(schema.scheduledFollowupMessages.id, id));
-    
+
     console.log(`📤 [FOLLOWUP-API] Processing message ${id} immediately...`);
-    
+
     await processScheduledMessages([id]);
-    
+
     const [updatedMessage] = await db
       .select()
       .from(schema.scheduledFollowupMessages)
       .where(eq(schema.scheduledFollowupMessages.id, id))
       .limit(1);
-    
+
     console.log(`✅ [FOLLOWUP-API] Send-now completed for message ${id}, new status: ${updatedMessage?.status}`);
-    
+
     res.json({
       success: true,
-      message: updatedMessage?.status === 'sent' 
-        ? "Messaggio inviato con successo!" 
+      message: updatedMessage?.status === 'sent'
+        ? "Messaggio inviato con successo!"
         : `Messaggio elaborato (stato: ${updatedMessage?.status})`,
       status: updatedMessage?.status,
       sentAt: updatedMessage?.sentAt,
     });
   } catch (error: any) {
     console.error("Error sending message now:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: error.message || "Errore durante l'invio del messaggio"
     });
   }
@@ -738,7 +738,7 @@ router.get("/ai-logs", authenticateToken, requireRole("consultant"), async (req,
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
     const offset = parseInt(req.query.offset as string) || 0;
-    
+
     // Get AI evaluation logs for this consultant's conversations
     const logs = await db
       .select({
@@ -774,7 +774,7 @@ router.get("/ai-logs", authenticateToken, requireRole("consultant"), async (req,
       .orderBy(desc(schema.followupAiEvaluationLog.createdAt))
       .limit(limit)
       .offset(offset);
-    
+
     // Get total count
     const [countResult] = await db
       .select({ count: sql<number>`count(*)` })
@@ -788,7 +788,7 @@ router.get("/ai-logs", authenticateToken, requireRole("consultant"), async (req,
         eq(schema.whatsappConversations.agentConfigId, schema.consultantWhatsappConfig.id)
       )
       .where(eq(schema.consultantWhatsappConfig.consultantId, req.user!.id));
-    
+
     res.json({
       logs,
       total: countResult?.count || 0,
@@ -817,7 +817,7 @@ router.get("/dashboard-stats", authenticateToken, requireRole("consultant"), asy
       .select({ id: schema.consultantWhatsappConfig.id })
       .from(schema.consultantWhatsappConfig)
       .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId));
-    
+
     const agentIds = agentConfigs.map(a => a.id);
 
     // 1. Conversations awaiting follow-up (active, not closed)
@@ -1049,7 +1049,7 @@ router.get("/stats/weekly", authenticateToken, requireRole("consultant"), async 
 router.get("/agents", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const consultantId = req.user!.id;
-    
+
     const agents = await db
       .select({
         id: schema.consultantWhatsappConfig.id,
@@ -1058,7 +1058,7 @@ router.get("/agents", authenticateToken, requireRole("consultant"), async (req, 
       .from(schema.consultantWhatsappConfig)
       .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
       .orderBy(schema.consultantWhatsappConfig.agentName);
-    
+
     res.json(agents);
   } catch (error: any) {
     console.error("Error fetching agents:", error);
@@ -1083,7 +1083,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     // Build dynamic where conditions
     const buildWhereConditions = (baseCondition: any, createdAtField: any) => {
       const conditions = [baseCondition];
-      
+
       if (agentIdFilter) {
         conditions.push(eq(schema.consultantWhatsappConfig.id, agentIdFilter));
       }
@@ -1095,7 +1095,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         endDate.setHours(23, 59, 59, 999);
         conditions.push(sql`${createdAtField} <= ${endDate}`);
       }
-      
+
       return and(...conditions);
     };
 
@@ -1155,13 +1155,13 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         )
         .orderBy(desc(schema.whatsappMessages.createdAt))
         .limit(1);
-      
+
       const window24hExpiresAt = lastLeadMsg.length > 0 && lastLeadMsg[0].createdAt
         ? new Date(new Date(lastLeadMsg[0].createdAt).getTime() + 24 * 60 * 60 * 1000)
         : null;
-      
+
       const canSendFreeform = window24hExpiresAt ? new Date() < window24hExpiresAt : false;
-      
+
       return {
         ...log,
         window24hExpiresAt,
@@ -1244,13 +1244,13 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         )
         .orderBy(desc(schema.whatsappMessages.createdAt))
         .limit(1);
-      
+
       const window24hExpiresAt = lastLeadMsg.length > 0 && lastLeadMsg[0].createdAt
         ? new Date(new Date(lastLeadMsg[0].createdAt).getTime() + 24 * 60 * 60 * 1000)
         : null;
-      
+
       const canSendFreeform = window24hExpiresAt ? new Date() < window24hExpiresAt : false;
-      
+
       return {
         ...msg,
         window24hExpiresAt,
@@ -1266,7 +1266,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         id: `ai-${log.id}`,
         type: 'ai_evaluation',
         conversationId: log.conversationId,
-        leadName: log.leadFirstName || log.leadLastName 
+        leadName: log.leadFirstName || log.leadLastName
           ? `${log.leadFirstName || ''} ${log.leadLastName || ''}`.trim()
           : log.phoneNumber,
         phoneNumber: log.phoneNumber,
@@ -1282,9 +1282,9 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         temperatureLevel: log.temperatureLevel || 'warm',
         window24hExpiresAt: log.window24hExpiresAt,
         canSendFreeform: log.canSendFreeform,
-        status: log.decision === 'stop' ? 'stopped' : 
-                log.decision === 'skip' ? 'waiting' : 
-                log.decision === 'send_now' ? 'active' : 'active',
+        status: log.decision === 'stop' ? 'stopped' :
+          log.decision === 'skip' ? 'waiting' :
+            log.decision === 'send_now' ? 'active' : 'active',
       });
     }
 
@@ -1292,20 +1292,20 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       let templateName = msg.templateName;
       let templateTwilioStatus = msg.templateTwilioStatus;
       let messagePreview = msg.savedMessagePreview || msg.fallbackMessage || msg.templateBody || null;
-      
+
       // Se il templateId inizia con HX, usa il SID come nome (i template Twilio non sono memorizzati localmente)
       if (msg.templateId && msg.templateId.startsWith('HX') && !templateName) {
         templateName = msg.templateId;
         templateTwilioStatus = 'approved';
       }
-      
+
       events.push({
         id: `msg-${msg.id}`,
-        type: msg.status === 'sent' ? 'message_sent' : 
-              msg.status === 'failed' ? 'message_failed' :
-              msg.status === 'pending' ? 'message_scheduled' : 'message_cancelled',
+        type: msg.status === 'sent' ? 'message_sent' :
+          msg.status === 'failed' ? 'message_failed' :
+            msg.status === 'pending' ? 'message_scheduled' : 'message_cancelled',
         conversationId: msg.conversationId,
-        leadName: msg.leadFirstName || msg.leadLastName 
+        leadName: msg.leadFirstName || msg.leadLastName
           ? `${msg.leadFirstName || ''} ${msg.leadLastName || ''}`.trim()
           : msg.phoneNumber,
         phoneNumber: msg.phoneNumber,
@@ -1315,8 +1315,8 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         reasoning: msg.aiDecisionReasoning,
         errorMessage: msg.errorMessage,
         status: msg.status === 'sent' ? 'active' :
-                msg.status === 'failed' ? 'error' :
-                msg.status === 'pending' ? 'scheduled' : 'cancelled',
+          msg.status === 'failed' ? 'error' :
+            msg.status === 'pending' ? 'scheduled' : 'cancelled',
         window24hExpiresAt: msg.window24hExpiresAt,
         canSendFreeform: msg.canSendFreeform,
         templateId: msg.templateId,
@@ -1336,12 +1336,12 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
     let filteredEvents = events;
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
-      filteredEvents = filteredEvents.filter(e => 
+      filteredEvents = filteredEvents.filter(e =>
         e.leadName?.toLowerCase().includes(searchLower) ||
         e.phoneNumber?.includes(searchQuery)
       );
     }
-    
+
     // Filter by status/type
     if (filter === 'errors') {
       filteredEvents = filteredEvents.filter(e => e.status === 'error' || e.type === 'message_failed');
@@ -1480,9 +1480,9 @@ router.get("/conversation/:conversationId/timeline", authenticateToken, requireR
     for (const msg of messages) {
       timeline.push({
         id: msg.id,
-        type: msg.status === 'sent' ? 'message_sent' : 
-              msg.status === 'failed' ? 'message_failed' :
-              msg.status === 'pending' ? 'message_scheduled' : 'message_cancelled',
+        type: msg.status === 'sent' ? 'message_sent' :
+          msg.status === 'failed' ? 'message_failed' :
+            msg.status === 'pending' ? 'message_scheduled' : 'message_cancelled',
         timestamp: msg.sentAt || msg.scheduledFor || msg.createdAt,
         status: msg.status,
         errorMessage: msg.errorMessage,
@@ -1497,7 +1497,7 @@ router.get("/conversation/:conversationId/timeline", authenticateToken, requireR
 
     res.json({
       conversationId,
-      leadName: lead?.firstName || lead?.lastName 
+      leadName: lead?.firstName || lead?.lastName
         ? `${lead?.firstName || ''} ${lead?.lastName || ''}`.trim()
         : lead?.phoneNumber,
       phoneNumber: lead?.phoneNumber,
@@ -1567,8 +1567,8 @@ router.get("/stats/daily", authenticateToken, requireRole("consultant"), async (
         pending: Number(d.pending),
       })),
       totals,
-      successRate: totals.sent + totals.failed > 0 
-        ? Math.round((totals.sent / (totals.sent + totals.failed)) * 100) 
+      successRate: totals.sent + totals.failed > 0
+        ? Math.round((totals.sent / (totals.sent + totals.failed)) * 100)
         : 100,
     });
   } catch (error: any) {
@@ -1588,7 +1588,7 @@ router.get("/settings", authenticateToken, requireRole("consultant"), async (req
       .from(schema.followupRules)
       .where(eq(schema.followupRules.consultantId, req.user!.id))
       .limit(1);
-    
+
     let hoursWithoutReply = 4;
     if (rules.length > 0 && rules[0].triggerCondition) {
       const condition = rules[0].triggerCondition as Record<string, any>;
@@ -1596,7 +1596,7 @@ router.get("/settings", authenticateToken, requireRole("consultant"), async (req
         hoursWithoutReply = condition.hoursWithoutReply;
       }
     }
-    
+
     res.json({
       hoursWithoutReply,
       rulesCount: rules.length
@@ -1610,18 +1610,18 @@ router.get("/settings", authenticateToken, requireRole("consultant"), async (req
 router.put("/settings", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const { hoursWithoutReply } = req.body;
-    
+
     if (typeof hoursWithoutReply !== 'number' || hoursWithoutReply < 0 || hoursWithoutReply > 168) {
-      return res.status(400).json({ 
-        message: "hoursWithoutReply deve essere un numero tra 0 e 168 (1 settimana)" 
+      return res.status(400).json({
+        message: "hoursWithoutReply deve essere un numero tra 0 e 168 (1 settimana)"
       });
     }
-    
+
     const rules = await db
       .select()
       .from(schema.followupRules)
       .where(eq(schema.followupRules.consultantId, req.user!.id));
-    
+
     let updatedCount = 0;
     for (const rule of rules) {
       const currentCondition = (rule.triggerCondition || {}) as Record<string, any>;
@@ -1629,17 +1629,17 @@ router.put("/settings", authenticateToken, requireRole("consultant"), async (req
         ...currentCondition,
         hoursWithoutReply
       };
-      
+
       await db
         .update(schema.followupRules)
-        .set({ 
+        .set({
           triggerCondition: newCondition,
-          updatedAt: new Date() 
+          updatedAt: new Date()
         })
         .where(eq(schema.followupRules.id, rule.id));
       updatedCount++;
     }
-    
+
     res.json({
       success: true,
       message: `Aggiornate ${updatedCount} regole con hoursWithoutReply = ${hoursWithoutReply}`,
@@ -1682,9 +1682,9 @@ import { runFollowupEvaluation, processScheduledMessages } from "../cron/followu
 router.post("/trigger-evaluation", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     console.log(`🔄 [FOLLOWUP-API] Manual trigger requested by consultant ${req.user!.id}`);
-    
+
     await runFollowupEvaluation();
-    
+
     res.json({
       success: true,
       message: "Valutazione follow-up eseguita con successo",
@@ -1692,9 +1692,9 @@ router.post("/trigger-evaluation", authenticateToken, requireRole("consultant"),
     });
   } catch (error: any) {
     console.error("Error triggering followup evaluation:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -1706,7 +1706,7 @@ router.post("/trigger-evaluation", authenticateToken, requireRole("consultant"),
 router.get("/agent-templates", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const consultantId = req.user!.id;
-    
+
     // Get all agents for this consultant
     const agents = await db
       .select({
@@ -1717,7 +1717,7 @@ router.get("/agent-templates", authenticateToken, requireRole("consultant"), asy
       })
       .from(schema.consultantWhatsappConfig)
       .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId));
-    
+
     // Get template assignments for each agent
     const agentTemplates = await Promise.all(agents.map(async (agent) => {
       const assignments = await db
@@ -1729,12 +1729,12 @@ router.get("/agent-templates", authenticateToken, requireRole("consultant"), asy
         .from(schema.whatsappTemplateAssignments)
         .where(eq(schema.whatsappTemplateAssignments.agentConfigId, agent.id))
         .orderBy(desc(schema.whatsappTemplateAssignments.priority));
-      
+
       // Filter only approved Twilio templates (HX prefix)
-      const approvedTemplates = assignments.filter(t => 
+      const approvedTemplates = assignments.filter(t =>
         t.templateId.startsWith('HX') && t.templateType === 'twilio'
       );
-      
+
       // Get template details from Twilio templates if available
       const templateDetails = await Promise.all(approvedTemplates.map(async (t) => {
         // Try to find the template name from whatsapp_templates or cache
@@ -1747,7 +1747,7 @@ router.get("/agent-templates", authenticateToken, requireRole("consultant"), asy
           .from(schema.whatsappTemplates)
           .where(eq(schema.whatsappTemplates.sid, t.templateId))
           .limit(1);
-        
+
         return {
           templateId: t.templateId,
           templateType: t.templateType,
@@ -1757,7 +1757,7 @@ router.get("/agent-templates", authenticateToken, requireRole("consultant"), asy
           bodyText: templateInfo[0]?.bodyText || null,
         };
       }));
-      
+
       return {
         agentId: agent.id,
         agentName: agent.agentName,
@@ -1767,7 +1767,7 @@ router.get("/agent-templates", authenticateToken, requireRole("consultant"), asy
         hasApprovedTemplates: templateDetails.length > 0,
       };
     }));
-    
+
     res.json({
       success: true,
       agents: agentTemplates,
@@ -1776,9 +1776,9 @@ router.get("/agent-templates", authenticateToken, requireRole("consultant"), asy
     });
   } catch (error: any) {
     console.error("Error fetching agent templates:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -1794,7 +1794,7 @@ router.get("/ai-preferences", authenticateToken, requireRole("consultant"), asyn
       .from(schema.consultantAiPreferences)
       .where(eq(schema.consultantAiPreferences.consultantId, req.user!.id))
       .limit(1);
-    
+
     if (!preferences) {
       // Return default preferences if none exist
       return res.json({
@@ -1828,7 +1828,7 @@ router.get("/ai-preferences", authenticateToken, requireRole("consultant"), asyn
         isDefault: true,
       });
     }
-    
+
     res.json({
       success: true,
       preferences,
@@ -1843,16 +1843,16 @@ router.get("/ai-preferences", authenticateToken, requireRole("consultant"), asyn
 router.put("/ai-preferences", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const updates = req.body;
-    
+
     // Check if preferences exist
     const [existing] = await db
       .select()
       .from(schema.consultantAiPreferences)
       .where(eq(schema.consultantAiPreferences.consultantId, req.user!.id))
       .limit(1);
-    
+
     let result;
-    
+
     if (existing) {
       // Update existing
       [result] = await db
@@ -1873,9 +1873,9 @@ router.put("/ai-preferences", authenticateToken, requireRole("consultant"), asyn
         })
         .returning();
     }
-    
+
     console.log(`✅ [AI-PREFERENCES] Updated preferences for consultant ${req.user!.id}`);
-    
+
     res.json({
       success: true,
       preferences: result,
@@ -1921,7 +1921,7 @@ router.get("/ai-system-info", authenticateToken, requireRole("consultant"), asyn
 router.get("/lead-status", authenticateToken, requireRole("consultant"), async (req, res) => {
   try {
     const consultantId = req.user!.id;
-    
+
     // Get all conversation states with lead info for this consultant
     const leadStates = await db
       .select({
@@ -1949,7 +1949,7 @@ router.get("/lead-status", authenticateToken, requireRole("consultant"), async (
       )
       .where(eq(schema.whatsappConversations.consultantId, consultantId))
       .orderBy(desc(schema.whatsappConversations.lastMessageAt));
-    
+
     // Enrich with lead name and agent name
     const enrichedLeads = await Promise.all(
       leadStates.map(async (lead) => {
@@ -1960,19 +1960,19 @@ router.get("/lead-status", authenticateToken, requireRole("consultant"), async (
           .from(schema.whatsappConversations)
           .where(eq(schema.whatsappConversations.id, lead.conversationId))
           .limit(1);
-        
+
         if (conversation[0]?.proactiveLeadId) {
           const proactiveLead = await db
             .select({ firstName: schema.proactiveLeads.firstName, lastName: schema.proactiveLeads.lastName })
             .from(schema.proactiveLeads)
             .where(eq(schema.proactiveLeads.id, conversation[0].proactiveLeadId))
             .limit(1);
-          
+
           if (proactiveLead[0]) {
             leadName = `${proactiveLead[0].firstName || ''} ${proactiveLead[0].lastName || ''}`.trim() || 'Lead';
           }
         }
-        
+
         // Get agent name
         let agentName = 'Agente';
         if (lead.agentConfigId) {
@@ -1981,20 +1981,20 @@ router.get("/lead-status", authenticateToken, requireRole("consultant"), async (
             .from(schema.consultantWhatsappConfig)
             .where(eq(schema.consultantWhatsappConfig.id, lead.agentConfigId))
             .limit(1);
-          
+
           if (agentConfig[0]) {
             agentName = agentConfig[0].agentName || 'Agente';
           }
         }
-        
+
         // Calculate status and next action
         let status: 'active' | 'dormant' | 'excluded' = 'active';
         let nextAction = '';
         let nextActionDate: Date | null = null;
         let reason = '';
-        
+
         const now = new Date();
-        
+
         if (lead.permanentlyExcluded) {
           status = 'excluded';
           reason = lead.dormantReason || 'Nessuna risposta dopo 4+ tentativi';
@@ -2009,13 +2009,13 @@ router.get("/lead-status", authenticateToken, requireRole("consultant"), async (
           const scheduledDate = new Date(lead.nextFollowupScheduledAt);
           if (scheduledDate > now) {
             const hoursLeft = Math.ceil((scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60));
-            
+
             // Distingui tra "in attesa risposta" e "prossimo contatto"
             // Se l'ultimo follow-up è stato inviato nelle ultime 24 ore, siamo in attesa risposta
-            const hoursSinceLastFollowup = lead.lastFollowupAt 
+            const hoursSinceLastFollowup = lead.lastFollowupAt
               ? (now.getTime() - new Date(lead.lastFollowupAt).getTime()) / (1000 * 60 * 60)
               : 999;
-            
+
             if (hoursSinceLastFollowup < 24 && lead.consecutiveNoReplyCount > 0) {
               // Messaggio appena inviato, in attesa risposta
               nextAction = `In attesa risposta (${lead.consecutiveNoReplyCount}/3)`;
@@ -2041,7 +2041,7 @@ router.get("/lead-status", authenticateToken, requireRole("consultant"), async (
           nextAction = 'In attesa risposta';
           reason = `Tentativi: ${lead.consecutiveNoReplyCount}/3 senza risposta`;
         }
-        
+
         return {
           conversationId: lead.conversationId,
           phoneNumber: lead.phoneNumber,
@@ -2064,12 +2064,12 @@ router.get("/lead-status", authenticateToken, requireRole("consultant"), async (
         };
       })
     );
-    
+
     // Calculate summary stats
     const activeCount = enrichedLeads.filter(l => l.status === 'active').length;
     const dormantCount = enrichedLeads.filter(l => l.status === 'dormant').length;
     const excludedCount = enrichedLeads.filter(l => l.status === 'excluded').length;
-    
+
     res.json({
       success: true,
       leads: enrichedLeads,
@@ -2083,6 +2083,366 @@ router.get("/lead-status", authenticateToken, requireRole("consultant"), async (
   } catch (error: any) {
     console.error("Error fetching lead status:", error);
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SIMULATE AI FOLLOW-UP (Testing endpoint)
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.post("/conversations/:conversationId/simulate-ai-followup", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const consultantId = req.user!.id;
+    const now = new Date();
+
+    console.log(`🧪 [FORCE-SEND] Starting forced follow-up for conversation ${conversationId}`);
+
+    // 1. Verify conversation belongs to consultant and get state
+    const [conversation] = await db
+      .select({
+        conversation: schema.whatsappConversations,
+        state: schema.conversationStates,
+        agent: schema.consultantWhatsappConfig,
+      })
+      .from(schema.whatsappConversations)
+      .leftJoin(
+        schema.conversationStates,
+        eq(schema.conversationStates.conversationId, schema.whatsappConversations.id)
+      )
+      .innerJoin(
+        schema.consultantWhatsappConfig,
+        eq(schema.consultantWhatsappConfig.id, schema.whatsappConversations.agentConfigId)
+      )
+      .where(
+        and(
+          eq(schema.whatsappConversations.id, conversationId),
+          eq(schema.consultantWhatsappConfig.consultantId, consultantId)
+        )
+      )
+      .limit(1);
+
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversazione non trovata"
+      });
+    }
+
+    // 2. Find scheduled message for this conversation (if any)
+    const [scheduledMessage] = await db
+      .select()
+      .from(schema.scheduledFollowupMessages)
+      .where(
+        and(
+          eq(schema.scheduledFollowupMessages.conversationId, conversationId),
+          eq(schema.scheduledFollowupMessages.status, 'pending')
+        )
+      )
+      .orderBy(desc(schema.scheduledFollowupMessages.scheduledFor))
+      .limit(1);
+
+    let messageText = "";
+    let templateId = null;
+    let messageSent = false;
+
+    if (scheduledMessage) {
+      // Use the scheduled message (messagePreview or fallbackMessage)
+      messageText = scheduledMessage.messagePreview || scheduledMessage.fallbackMessage || "";
+      templateId = scheduledMessage.templateId;
+      console.log(`📨 [FORCE-SEND] Found scheduled message: ${messageText.substring(0, 50)}...`);
+
+      // Mark scheduled message as sent
+      await db
+        .update(schema.scheduledFollowupMessages)
+        .set({
+          status: 'sent',
+          sentAt: now,
+        })
+        .where(eq(schema.scheduledFollowupMessages.id, scheduledMessage.id));
+    } else {
+      // No scheduled message, use a default follow-up
+      messageText = "Ciao! Volevo fare un follow-up sulla nostra conversazione. Hai avuto modo di riflettere?";
+      console.log(`📨 [FORCE-SEND] No scheduled message, using default`);
+    }
+
+    // 3. Build and replace template variables {{1}}, {{2}}, etc.
+    // Get lead info for variable substitution
+    const [lead] = await db
+      .select()
+      .from(schema.proactiveLeads)
+      .where(eq(schema.proactiveLeads.id, conversation.conversation.proactiveLeadId || ''))
+      .limit(1);
+
+    // Build template variables
+    const templateVariables: Record<string, string> = {
+      "1": lead?.firstName || conversation.conversation.phoneNumber.slice(-4) || "Cliente",
+      "2": conversation.agent.consultantDisplayName || conversation.agent.agentName || "il tuo consulente",
+      "3": conversation.agent.businessName || "la nostra azienda",
+      "4": lead?.idealState || (lead?.leadInfo as any)?.obiettivi || "i tuoi obiettivi",
+      "5": lead?.idealState || (lead?.leadInfo as any)?.obiettivi || "i tuoi obiettivi",
+    };
+
+    console.log(`📋 [FORCE-SEND] Template variables:`, JSON.stringify(templateVariables));
+
+    // Replace {{1}}, {{2}}, etc. with actual values
+    for (const [key, value] of Object.entries(templateVariables)) {
+      const placeholder = `{{${key}}}`;
+      messageText = messageText.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
+    }
+
+    console.log(`📝 [FORCE-SEND] Compiled message: ${messageText.substring(0, 80)}...`);
+
+    // 4. Send the message via Twilio (unless dry run)
+    const { sendWhatsAppMessage } = await import("../whatsapp/twilio-client");
+
+    // Save message to DB first
+    const [savedMessage] = await db
+      .insert(schema.whatsappMessages)
+      .values({
+        conversationId,
+        messageText,
+        direction: "outbound",
+        sender: "ai",
+        templateId: templateId,
+        metadata: {
+          forcedFollowup: true,
+          simulatedAt: now.toISOString(),
+        },
+      })
+      .returning();
+
+    if (!conversation.agent.isDryRun) {
+      try {
+        await sendWhatsAppMessage(
+          consultantId,
+          conversation.conversation.phoneNumber,
+          messageText,
+          savedMessage.id,
+          { conversationId }
+        );
+        messageSent = true;
+        console.log(`📤 [FORCE-SEND] Message sent via Twilio`);
+      } catch (twilioError: any) {
+        console.error(`❌ [FORCE-SEND] Twilio error:`, twilioError.message);
+      }
+    } else {
+      messageSent = true; // Consider dry run as "sent"
+      console.log(`🧪 [FORCE-SEND] DRY RUN mode - message logged but NOT sent via Twilio`);
+    }
+
+    // 4. Update counters (the key part!)
+    const state = conversation.state;
+    const oldConsecutiveCount = state?.consecutiveNoReplyCount || 0;
+    const newConsecutiveCount = oldConsecutiveCount + 1;
+    const cooldownHours = 24;
+    const nextCheck = new Date();
+    nextCheck.setHours(nextCheck.getHours() + cooldownHours);
+
+    await db
+      .update(schema.conversationStates)
+      .set({
+        followupCount: sql`COALESCE(followup_count, 0) + 1`,
+        consecutiveNoReplyCount: sql`COALESCE(consecutive_no_reply_count, 0) + 1`,
+        lastFollowupAt: now,
+        nextFollowupScheduledAt: nextCheck,
+        updatedAt: now,
+      })
+      .where(eq(schema.conversationStates.conversationId, conversationId));
+
+    console.log(`📊 [FORCE-SEND] Updated counters: followupCount++, consecutiveNoReplyCount: ${oldConsecutiveCount} → ${newConsecutiveCount}`);
+
+    // 5. Check for dormancy trigger (3 consecutive no-replies)
+    let dormancyTriggered = false;
+
+    if (newConsecutiveCount >= 3 && !state?.dormantUntil) {
+      const dormantUntilDate = new Date();
+      dormantUntilDate.setMonth(dormantUntilDate.getMonth() + 3);
+
+      await db
+        .update(schema.conversationStates)
+        .set({
+          currentState: 'ghost',
+          temperatureLevel: 'ghost',
+          dormantUntil: dormantUntilDate,
+          dormantReason: 'Nessuna risposta dopo 3 tentativi consecutivi',
+          updatedAt: now,
+        })
+        .where(eq(schema.conversationStates.conversationId, conversationId));
+
+      dormancyTriggered = true;
+      console.log(`😴 [FORCE-SEND] Lead entered dormancy until ${dormantUntilDate.toISOString()}`);
+    }
+
+    // 6. Update conversation lastMessageAt
+    await db
+      .update(schema.whatsappConversations)
+      .set({
+        lastMessageAt: now,
+        lastMessageFrom: 'ai',
+        updatedAt: now,
+      })
+      .where(eq(schema.whatsappConversations.id, conversationId));
+
+    res.json({
+      success: true,
+      action: 'force_sent',
+      messageSent,
+      messagePreview: messageText.substring(0, 100),
+      templateId,
+      countersUpdated: true,
+      oldConsecutiveNoReplyCount: oldConsecutiveCount,
+      newConsecutiveNoReplyCount: newConsecutiveCount,
+      nextFollowupAt: nextCheck.toISOString(),
+      dormancyTriggered,
+      message: dormancyTriggered
+        ? `Messaggio inviato! Lead in DORMIENZA (${newConsecutiveCount}/3 tentativi)`
+        : `Messaggio inviato! Tentativo ${newConsecutiveCount}/3`,
+    });
+
+  } catch (error: any) {
+    console.error("❌ [FORCE-SEND] Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Errore durante l'invio forzato"
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PENDING FOLLOW-UPS QUEUE (per agent)
+// ═══════════════════════════════════════════════════════════════════════════
+
+router.get("/pending-queue", authenticateToken, requireRole("consultant"), async (req, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const now = new Date();
+
+    // Get all conversation states with next scheduled follow-up, grouped by agent
+    const pendingConversations = await db
+      .select({
+        conversationId: schema.conversationStates.conversationId,
+        nextFollowupScheduledAt: schema.conversationStates.nextFollowupScheduledAt,
+        currentState: schema.conversationStates.currentState,
+        temperatureLevel: schema.conversationStates.temperatureLevel,
+        followupCount: schema.conversationStates.followupCount,
+        consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
+        dormantUntil: schema.conversationStates.dormantUntil,
+        // Conversation info
+        phoneNumber: schema.whatsappConversations.phoneNumber,
+        proactiveLeadId: schema.whatsappConversations.proactiveLeadId,
+        lastMessageAt: schema.whatsappConversations.lastMessageAt,
+        // Agent info
+        agentId: schema.consultantWhatsappConfig.id,
+        agentName: schema.consultantWhatsappConfig.agentName,
+        agentType: schema.consultantWhatsappConfig.agentType,
+      })
+      .from(schema.conversationStates)
+      .innerJoin(
+        schema.whatsappConversations,
+        eq(schema.whatsappConversations.id, schema.conversationStates.conversationId)
+      )
+      .innerJoin(
+        schema.consultantWhatsappConfig,
+        eq(schema.consultantWhatsappConfig.id, schema.whatsappConversations.agentConfigId)
+      )
+      .where(
+        and(
+          eq(schema.consultantWhatsappConfig.consultantId, consultantId),
+          eq(schema.conversationStates.permanentlyExcluded, false)
+        )
+      )
+      .orderBy(schema.conversationStates.nextFollowupScheduledAt);
+
+    // Enrich with lead names
+    const leadIds = pendingConversations
+      .filter(c => c.proactiveLeadId)
+      .map(c => c.proactiveLeadId!);
+
+    const leads = leadIds.length > 0 ? await db
+      .select({
+        id: schema.proactiveLeads.id,
+        firstName: schema.proactiveLeads.firstName,
+        lastName: schema.proactiveLeads.lastName,
+      })
+      .from(schema.proactiveLeads)
+      .where(inArray(schema.proactiveLeads.id, leadIds)) : [];
+
+    const leadMap = new Map(leads.map(l => [l.id, `${l.firstName || ''} ${l.lastName || ''}`.trim()]));
+
+    // Group by agent
+    const byAgent: Record<string, {
+      agentId: string;
+      agentName: string;
+      agentType: string;
+      pending: Array<{
+        conversationId: string;
+        leadName: string;
+        phoneNumber: string;
+        nextCheckAt: string | null;
+        isOverdue: boolean;
+        currentState: string;
+        followupCount: number;
+        consecutiveNoReply: number;
+        isDormant: boolean;
+        dormantUntil: string | null;
+      }>;
+    }> = {};
+
+    for (const conv of pendingConversations) {
+      if (!byAgent[conv.agentId]) {
+        byAgent[conv.agentId] = {
+          agentId: conv.agentId,
+          agentName: conv.agentName || 'Agent',
+          agentType: conv.agentType,
+          pending: [],
+        };
+      }
+
+      const isDormant = !!conv.dormantUntil && new Date(conv.dormantUntil) > now;
+      const isOverdue = conv.nextFollowupScheduledAt
+        ? new Date(conv.nextFollowupScheduledAt) < now && !isDormant
+        : false;
+
+      byAgent[conv.agentId].pending.push({
+        conversationId: conv.conversationId,
+        leadName: conv.proactiveLeadId ? (leadMap.get(conv.proactiveLeadId) || conv.phoneNumber) : conv.phoneNumber,
+        phoneNumber: conv.phoneNumber,
+        nextCheckAt: conv.nextFollowupScheduledAt?.toISOString() || null,
+        isOverdue,
+        currentState: conv.currentState || 'new',
+        followupCount: conv.followupCount || 0,
+        consecutiveNoReply: conv.consecutiveNoReplyCount || 0,
+        isDormant,
+        dormantUntil: conv.dormantUntil?.toISOString() || null,
+      });
+    }
+
+    // Sort pending items in each agent: overdue first, then by nextCheckAt
+    for (const agent of Object.values(byAgent)) {
+      agent.pending.sort((a, b) => {
+        if (a.isOverdue && !b.isOverdue) return -1;
+        if (!a.isOverdue && b.isOverdue) return 1;
+        if (a.isDormant && !b.isDormant) return 1;
+        if (!a.isDormant && b.isDormant) return -1;
+        if (!a.nextCheckAt) return 1;
+        if (!b.nextCheckAt) return -1;
+        return new Date(a.nextCheckAt).getTime() - new Date(b.nextCheckAt).getTime();
+      });
+    }
+
+    res.json({
+      agents: Object.values(byAgent),
+      totalPending: pendingConversations.filter(c => !c.dormantUntil || new Date(c.dormantUntil) < now).length,
+      totalDormant: pendingConversations.filter(c => c.dormantUntil && new Date(c.dormantUntil) > now).length,
+    });
+
+  } catch (error: any) {
+    console.error("❌ [PENDING-QUEUE] Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Errore nel recupero della coda"
+    });
   }
 });
 

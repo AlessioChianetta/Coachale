@@ -13,46 +13,46 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: path.resolve(__dirname, "node_modules/@ricky0123/vad-web/dist/silero_vad_legacy.onnx"),
+          src: "../node_modules/@ricky0123/vad-web/dist/silero_vad_legacy.onnx",
           dest: "vad-assets"
         },
         {
-          src: path.resolve(__dirname, "node_modules/@ricky0123/vad-web/dist/silero_vad_v5.onnx"),
+          src: "../node_modules/@ricky0123/vad-web/dist/silero_vad_v5.onnx",
           dest: "vad-assets"
         },
         {
-          src: path.resolve(__dirname, "node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js"),
+          src: "../node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js",
           dest: "vad-assets"
         },
         {
-          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm"),
+          src: "../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm",
           dest: "vad-assets"
         },
         {
-          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs"),
+          src: "../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs",
           dest: "vad-assets"
         },
         {
-          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm"),
+          src: "../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.wasm",
           dest: "vad-assets"
         },
         {
-          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs"),
+          src: "../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.jsep.mjs",
           dest: "vad-assets"
         },
         {
-          src: path.resolve(__dirname, "node_modules/onnxruntime-web/dist/ort.wasm.min.mjs"),
+          src: "../node_modules/onnxruntime-web/dist/ort.wasm.min.mjs",
           dest: "vad-assets"
         },
       ]
     }),
     ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
+      process.env.REPL_ID !== undefined
       ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-        ]
+        await import("@replit/vite-plugin-cartographer").then((m) =>
+          m.cartographer(),
+        ),
+      ]
       : []),
   ],
   resolve: {
