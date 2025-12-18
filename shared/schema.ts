@@ -5547,15 +5547,21 @@ export const fileSearchDocuments = pgTable("file_search_documents", {
   displayName: text("display_name").notNull(),
   mimeType: text("mime_type").notNull(),
   status: text("status").$type<"pending" | "processing" | "indexed" | "failed">().default("pending").notNull(),
-  sourceType: text("source_type").$type<"library" | "knowledge_base" | "manual">().notNull(),
+  sourceType: text("source_type").$type<"library" | "knowledge_base" | "exercise" | "consultation" | "university" | "manual">().notNull(),
   sourceId: varchar("source_id"),
+  contentHash: text("content_hash"),
+  contentSize: integer("content_size"),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "set null" }),
   chunkingConfig: jsonb("chunking_config").$type<{ maxTokensPerChunk: number; maxOverlapTokens: number }>(),
   errorMessage: text("error_message"),
   uploadedAt: timestamp("uploaded_at").default(sql`now()`),
   indexedAt: timestamp("indexed_at"),
+  lastModifiedAt: timestamp("last_modified_at"),
 }, (table) => ({
   storeIdx: index("file_search_documents_store_idx").on(table.storeId),
   sourceIdx: index("file_search_documents_source_idx").on(table.sourceType, table.sourceId),
+  hashIdx: index("file_search_documents_hash_idx").on(table.contentHash),
+  clientIdx: index("file_search_documents_client_idx").on(table.clientId),
 }));
 
 export type FileSearchDocument = typeof fileSearchDocuments.$inferSelect;

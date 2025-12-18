@@ -252,27 +252,68 @@ export class FileSearchService {
   }
 
   /**
+   * Calculate content hash for incremental sync
+   */
+  private calculateContentHash(content: string): string {
+    const crypto = require('crypto');
+    return crypto.createHash('sha256').update(content, 'utf8').digest('hex').substring(0, 16);
+  }
+
+  /**
+   * Check if document needs re-upload (content changed)
+   */
+  async needsReupload(sourceType: string, sourceId: string, contentHash: string): Promise<boolean> {
+    const existingDoc = await db.query.fileSearchDocuments.findFirst({
+      where: and(
+        eq(fileSearchDocuments.sourceType, sourceType),
+        eq(fileSearchDocuments.sourceId, sourceId),
+        eq(fileSearchDocuments.status, 'indexed')
+      ),
+    });
+
+    if (!existingDoc) return true;
+    if (!existingDoc.contentHash) return true;
+    return existingDoc.contentHash !== contentHash;
+  }
+
+  /**
    * Upload document from text content (for library documents already in DB)
    */
   async uploadDocumentFromContent(params: {
     content: string;
     displayName: string;
     storeId: string;
-    sourceType: 'library' | 'knowledge_base' | 'manual';
+    sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'manual';
     sourceId?: string;
+    clientId?: string;
     chunkingConfig?: ChunkingConfig;
+    skipHashCheck?: boolean;
   }): Promise<FileSearchUploadResult> {
+    const contentHash = this.calculateContentHash(params.content);
+    const contentSize = params.content.length;
+    
+    if (!params.skipHashCheck && params.sourceId) {
+      const needsUpload = await this.needsReupload(params.sourceType, params.sourceId, contentHash);
+      if (!needsUpload) {
+        console.log(`⏭️ [FileSearch] Skipping upload - content unchanged: ${params.displayName} (hash: ${contentHash})`);
+        return { success: true, fileId: 'unchanged', storeName: '' };
+      }
+    }
+    
     const tempFilePath = path.join('/tmp', `filesearch-${Date.now()}.txt`);
     
     try {
       await fs.writeFile(tempFilePath, params.content, 'utf-8');
       
-      const result = await this.uploadDocument({
+      const result = await this.uploadDocumentWithHash({
         filePath: tempFilePath,
         displayName: params.displayName,
         storeId: params.storeId,
         sourceType: params.sourceType,
         sourceId: params.sourceId,
+        clientId: params.clientId,
+        contentHash,
+        contentSize,
         chunkingConfig: params.chunkingConfig,
       });
 
@@ -282,6 +323,117 @@ export class FileSearchService {
         await fs.unlink(tempFilePath);
       } catch {
       }
+    }
+  }
+
+  /**
+   * Upload document with hash tracking (internal method)
+   */
+  private async uploadDocumentWithHash(params: {
+    filePath: string;
+    displayName: string;
+    storeId: string;
+    sourceType: string;
+    sourceId?: string;
+    clientId?: string;
+    contentHash: string;
+    contentSize: number;
+    chunkingConfig?: ChunkingConfig;
+  }): Promise<FileSearchUploadResult> {
+    const client = this.getClient();
+    if (!client) {
+      return { success: false, error: 'FileSearch client not available (missing GEMINI_API_KEY)' };
+    }
+
+    try {
+      const store = await db.query.fileSearchStores.findFirst({
+        where: eq(fileSearchStores.id, params.storeId),
+      });
+
+      if (!store) {
+        return { success: false, error: `Store ${params.storeId} not found` };
+      }
+
+      if (params.sourceId) {
+        await db.delete(fileSearchDocuments).where(
+          and(
+            eq(fileSearchDocuments.sourceType, params.sourceType),
+            eq(fileSearchDocuments.sourceId, params.sourceId)
+          )
+        );
+      }
+
+      console.log(`📤 [FileSearch] Uploading "${params.displayName}" (hash: ${params.contentHash}) to store ${store.googleStoreName}`);
+
+      const chunkConfig = params.chunkingConfig || DEFAULT_CHUNKING_CONFIG;
+
+      let operation = await client.fileSearchStores.uploadToFileSearchStore({
+        file: params.filePath,
+        fileSearchStoreName: store.googleStoreName,
+        config: {
+          displayName: params.displayName,
+          chunkingConfig: {
+            whiteSpaceConfig: {
+              maxTokensPerChunk: chunkConfig.maxTokensPerChunk,
+              maxOverlapTokens: chunkConfig.maxOverlapTokens,
+            }
+          }
+        }
+      });
+
+      let attempts = 0;
+      const maxAttempts = 60;
+      while (!operation.done && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        attempts++;
+        try {
+          operation = await client.operations.get({ operation });
+        } catch (pollError: any) {
+          console.warn(`⚠️ [FileSearch] Polling attempt ${attempts} warning:`, pollError.message);
+          if (attempts >= 5 && !operation.done) break;
+        }
+      }
+
+      if (!operation.done) {
+        return { success: false, error: 'Upload operation timed out' };
+      }
+
+      const googleFileId = (operation as any).result?.name || `file-${Date.now()}`;
+
+      const [dbDoc] = await db.insert(fileSearchDocuments).values({
+        storeId: params.storeId,
+        googleFileId: googleFileId,
+        fileName: path.basename(params.filePath),
+        displayName: params.displayName,
+        mimeType: 'text/plain',
+        status: 'indexed',
+        sourceType: params.sourceType as any,
+        sourceId: params.sourceId || null,
+        clientId: params.clientId || null,
+        contentHash: params.contentHash,
+        contentSize: params.contentSize,
+        chunkingConfig: chunkConfig,
+        indexedAt: new Date(),
+        lastModifiedAt: new Date(),
+      }).returning();
+
+      await db.update(fileSearchStores)
+        .set({ documentCount: (store.documentCount || 0) + 1 })
+        .where(eq(fileSearchStores.id, params.storeId));
+
+      console.log(`✅ [FileSearch] Document uploaded: ${googleFileId} (hash: ${params.contentHash})`);
+
+      return {
+        success: true,
+        fileId: dbDoc.id,
+        storeName: store.googleStoreName,
+      };
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] Upload with hash failed:`, error);
+      return {
+        success: false,
+        error: error.message || 'Unknown error uploading document',
+      };
     }
   }
 
@@ -425,15 +577,17 @@ export class FileSearchService {
       mimeType: doc.mimeType,
       status: doc.status as 'pending' | 'processing' | 'indexed' | 'failed',
       uploadedAt: doc.uploadedAt!,
-      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'manual',
+      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'manual',
       sourceId: doc.sourceId || undefined,
+      contentHash: doc.contentHash || undefined,
+      clientId: doc.clientId || undefined,
     }));
   }
 
   /**
    * Check if a document is already indexed
    */
-  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base', sourceId: string): Promise<boolean> {
+  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'manual', sourceId: string): Promise<boolean> {
     const doc = await db.query.fileSearchDocuments.findFirst({
       where: and(
         eq(fileSearchDocuments.sourceType, sourceType),
