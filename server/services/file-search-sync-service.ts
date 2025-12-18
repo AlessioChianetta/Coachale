@@ -1901,98 +1901,123 @@ export class FileSearchSyncService {
    */
   static async runComprehensiveAudit(consultantId: string): Promise<{
     consultant: {
-      library: {
-        total: number;
-        indexed: number;
-        missing: Array<{ id: string; title: string; type: string }>;
-      };
-      knowledgeBase: {
-        total: number;
-        indexed: number;
-        missing: Array<{ id: string; title: string }>;
-      };
-      exercises: {
-        total: number;
-        indexed: number;
-        missing: Array<{ id: string; title: string }>;
-      };
-      university: {
-        total: number;
-        indexed: number;
-        missing: Array<{ id: string; title: string; lessonTitle: string }>;
-      };
+      library: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
+      knowledgeBase: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+      exercises: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
+      university: { total: number; indexed: number; missing: Array<{ id: string; title: string; lessonTitle: string }> };
     };
     clients: Array<{
       clientId: string;
       clientName: string;
       clientEmail: string;
-      exerciseResponses: {
-        total: number;
-        indexed: number;
-        missing: Array<{ id: string; exerciseTitle: string; submittedAt: Date | null }>;
-      };
-      consultationNotes: {
-        total: number;
-        indexed: number;
-        missing: Array<{ id: string; date: Date; summary: string }>;
-      };
-      knowledgeDocs: {
-        total: number;
-        indexed: number;
-        missing: Array<{ id: string; title: string }>;
-      };
+      exerciseResponses: { total: number; indexed: number; missing: Array<{ id: string; exerciseTitle: string; submittedAt: Date | null }> };
+      consultationNotes: { total: number; indexed: number; missing: Array<{ id: string; date: Date; summary: string }> };
+      knowledgeDocs: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
     }>;
-    summary: {
-      totalMissing: number;
-      consultantMissing: number;
-      clientsMissing: number;
-      healthScore: number;
-    };
+    summary: { totalMissing: number; consultantMissing: number; clientsMissing: number; healthScore: number };
     recommendations: string[];
   }> {
     console.log(`\n${'═'.repeat(60)}`);
-    console.log(`🔍 [FileSync] Running COMPREHENSIVE Audit for consultant ${consultantId}`);
+    console.log(`🔍 [FileSync] Running FAST Audit for consultant ${consultantId}`);
     console.log(`${'═'.repeat(60)}\n`);
 
-    // Consultant data audit
-    const libraryResult = await this.auditLibraryDocumentsDetailed(consultantId);
-    const knowledgeBaseResult = await this.auditKnowledgeDocumentsDetailed(consultantId);
-    const exercisesResult = await this.auditExercisesDetailed(consultantId);
-    const universityResult = await this.auditUniversityLessonsDetailed(consultantId);
+    // FAST APPROACH: Count from DB and compare with file_search_documents table
+    // Instead of calling API for each document, just use SQL counts
+    
+    // Count items in source tables
+    const libraryDocs = await db.select({ id: libraryDocuments.id, title: libraryDocuments.title, type: libraryDocuments.type })
+      .from(libraryDocuments).where(eq(libraryDocuments.createdBy, consultantId));
+    const knowledgeDocs = await db.select({ id: consultantKnowledgeDocuments.id, title: consultantKnowledgeDocuments.title })
+      .from(consultantKnowledgeDocuments).where(eq(consultantKnowledgeDocuments.consultantId, consultantId));
+    const allExercises = await db.select({ id: exercises.id, title: exercises.title })
+      .from(exercises).where(eq(exercises.createdBy, consultantId));
+    
+    // University lessons via join
+    const universityLessonsList = await db.select({ id: universityLessons.id, title: universityLessons.title })
+      .from(universityLessons)
+      .innerJoin(universityModules, eq(universityLessons.moduleId, universityModules.id))
+      .innerJoin(universityTrimesters, eq(universityModules.trimesterId, universityTrimesters.id))
+      .innerJoin(universityYears, eq(universityTrimesters.yearId, universityYears.id))
+      .where(eq(universityYears.createdBy, consultantId));
 
-    // Get all clients for this consultant
-    const clientUsers = await db
-      .select({
-        id: users.id,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        email: users.email,
-      })
-      .from(users)
+    // Get indexed documents from file_search_documents for this consultant
+    const indexedDocs = await db.select({ sourceType: fileSearchDocuments.sourceType, sourceId: fileSearchDocuments.sourceId })
+      .from(fileSearchDocuments)
+      .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
       .where(and(
-        eq(users.consultantId, consultantId),
-        eq(users.role, 'client')
+        eq(fileSearchStores.ownerId, consultantId),
+        eq(fileSearchDocuments.status, 'indexed')
       ));
 
-    // Audit each client's private data
+    const indexedLibraryIds = new Set(indexedDocs.filter(d => d.sourceType === 'library').map(d => d.sourceId));
+    const indexedKnowledgeIds = new Set(indexedDocs.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
+    const indexedExerciseIds = new Set(indexedDocs.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
+    const indexedUniversityIds = new Set(indexedDocs.filter(d => d.sourceType === 'university').map(d => d.sourceId));
+
+    // Calculate missing
+    const libraryMissing = libraryDocs.filter(d => !indexedLibraryIds.has(d.id)).map(d => ({ id: d.id, title: d.title, type: d.type || 'document' }));
+    const knowledgeMissing = knowledgeDocs.filter(d => !indexedKnowledgeIds.has(d.id)).map(d => ({ id: d.id, title: d.title }));
+    const exercisesMissing = allExercises.filter(d => !indexedExerciseIds.has(d.id)).map(d => ({ id: d.id, title: d.title }));
+    const universityMissing = universityLessonsList.filter(d => !indexedUniversityIds.has(d.id)).map(d => ({ id: d.id, title: d.title, lessonTitle: d.title }));
+
+    const libraryResult = { total: libraryDocs.length, indexed: libraryDocs.length - libraryMissing.length, missing: libraryMissing };
+    const knowledgeBaseResult = { total: knowledgeDocs.length, indexed: knowledgeDocs.length - knowledgeMissing.length, missing: knowledgeMissing };
+    const exercisesResult = { total: allExercises.length, indexed: allExercises.length - exercisesMissing.length, missing: exercisesMissing };
+    const universityResult = { total: universityLessonsList.length, indexed: universityLessonsList.length - universityMissing.length, missing: universityMissing };
+
+    // Get all clients
+    const clientUsers = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email })
+      .from(users).where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
+
+    // For clients - simplified counts
     const clientsAudit = [];
     let totalClientsMissing = 0;
 
     for (const client of clientUsers) {
-      const exerciseResponses = await this.auditClientExerciseResponsesDetailed(client.id, consultantId);
-      const consultationNotes = await this.auditClientConsultationsDetailed(client.id);
-      const knowledgeDocs = await this.auditClientKnowledgeDocsDetailed(client.id);
-
-      const clientMissing = exerciseResponses.missing.length + consultationNotes.missing.length + knowledgeDocs.missing.length;
+      // Count exercise submissions for this client
+      const clientAssignments = await db.select({ id: exerciseAssignments.id, exerciseId: exerciseAssignments.exerciseId })
+        .from(exerciseAssignments).where(eq(exerciseAssignments.clientId, client.id));
+      const assignmentIds = clientAssignments.map(a => a.id);
       
-      if (exerciseResponses.total > 0 || consultationNotes.total > 0 || knowledgeDocs.total > 0) {
+      const clientSubmissions = assignmentIds.length > 0 
+        ? await db.select({ id: exerciseSubmissions.id, assignmentId: exerciseSubmissions.assignmentId, submittedAt: exerciseSubmissions.submittedAt })
+            .from(exerciseSubmissions).where(isNotNull(exerciseSubmissions.submittedAt))
+            .then(subs => subs.filter(s => assignmentIds.includes(s.assignmentId)))
+        : [];
+
+      // Count consultations
+      const clientConsultations = await db.select({ id: consultations.id, scheduledAt: consultations.scheduledAt, notes: consultations.notes })
+        .from(consultations).where(and(eq(consultations.clientId, client.id), eq(consultations.status, 'completed')));
+      const consultationsWithContent = clientConsultations.filter(c => c.notes);
+
+      // Count client knowledge docs
+      const clientKnowledge = await db.select({ id: clientKnowledgeDocuments.id, title: clientKnowledgeDocuments.title })
+        .from(clientKnowledgeDocuments).where(eq(clientKnowledgeDocuments.clientId, client.id));
+
+      // Get indexed for this client
+      const clientIndexed = await db.select({ sourceType: fileSearchDocuments.sourceType, sourceId: fileSearchDocuments.sourceId })
+        .from(fileSearchDocuments)
+        .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
+        .where(and(eq(fileSearchDocuments.clientId, client.id), eq(fileSearchDocuments.status, 'indexed')));
+
+      const indexedSubmissionIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
+      const indexedConsultationIds = new Set(clientIndexed.filter(d => d.sourceType === 'consultation').map(d => d.sourceId));
+      const indexedClientKnowledgeIds = new Set(clientIndexed.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
+
+      const submissionsMissing = clientSubmissions.filter(s => !indexedSubmissionIds.has(s.id)).map(s => ({ id: s.id, exerciseTitle: 'Esercizio', submittedAt: s.submittedAt }));
+      const consultationsMissing = consultationsWithContent.filter(c => !indexedConsultationIds.has(c.id)).map(c => ({ id: c.id, date: c.scheduledAt, summary: c.notes?.substring(0, 50) || '' }));
+      const clientKnowledgeMissing = clientKnowledge.filter(k => !indexedClientKnowledgeIds.has(k.id)).map(k => ({ id: k.id, title: k.title }));
+
+      const clientMissing = submissionsMissing.length + consultationsMissing.length + clientKnowledgeMissing.length;
+      
+      if (clientSubmissions.length > 0 || consultationsWithContent.length > 0 || clientKnowledge.length > 0) {
         clientsAudit.push({
           clientId: client.id,
           clientName: `${client.firstName} ${client.lastName}`,
           clientEmail: client.email,
-          exerciseResponses,
-          consultationNotes,
-          knowledgeDocs,
+          exerciseResponses: { total: clientSubmissions.length, indexed: clientSubmissions.length - submissionsMissing.length, missing: submissionsMissing },
+          consultationNotes: { total: consultationsWithContent.length, indexed: consultationsWithContent.length - consultationsMissing.length, missing: consultationsMissing },
+          knowledgeDocs: { total: clientKnowledge.length, indexed: clientKnowledge.length - clientKnowledgeMissing.length, missing: clientKnowledgeMissing },
         });
         totalClientsMissing += clientMissing;
       }
@@ -2075,9 +2100,7 @@ export class FileSearchSyncService {
     indexed: number;
     missing: Array<{ id: string; title: string; type: string }>;
   }> {
-    const docs = await db.query.libraryDocuments.findMany({
-      where: eq(libraryDocuments.createdBy, consultantId),
-    });
+    const docs = await db.select().from(libraryDocuments).where(eq(libraryDocuments.createdBy, consultantId));
 
     const missing: Array<{ id: string; title: string; type: string }> = [];
     let indexed = 0;
@@ -2099,12 +2122,12 @@ export class FileSearchSyncService {
     indexed: number;
     missing: Array<{ id: string; title: string }>;
   }> {
-    const docs = await db.query.consultantKnowledgeDocuments.findMany({
-      where: and(
+    const docs = await db.select().from(consultantKnowledgeDocuments).where(
+      and(
         eq(consultantKnowledgeDocuments.consultantId, consultantId),
         eq(consultantKnowledgeDocuments.status, 'indexed'),
-      ),
-    });
+      )
+    );
 
     const missing: Array<{ id: string; title: string }> = [];
     let indexed = 0;
@@ -2126,9 +2149,7 @@ export class FileSearchSyncService {
     indexed: number;
     missing: Array<{ id: string; title: string }>;
   }> {
-    const allExercises = await db.query.exercises.findMany({
-      where: eq(exercises.createdBy, consultantId),
-    });
+    const allExercises = await db.select().from(exercises).where(eq(exercises.createdBy, consultantId));
 
     const missing: Array<{ id: string; title: string }> = [];
     let indexed = 0;
@@ -2150,30 +2171,36 @@ export class FileSearchSyncService {
     indexed: number;
     missing: Array<{ id: string; title: string; lessonTitle: string }>;
   }> {
-    const lessons = await db.query.universityLessons.findMany({
-      where: eq(universityLessons.createdBy, consultantId),
-      with: {
-        module: true,
-      },
-    });
+    // universityLessons doesn't have createdBy - must join through modules -> trimesters -> years
+    const lessonsWithModules = await db.select({
+      id: universityLessons.id,
+      title: universityLessons.title,
+      moduleId: universityLessons.moduleId,
+      moduleName: universityModules.name,
+    })
+      .from(universityLessons)
+      .innerJoin(universityModules, eq(universityLessons.moduleId, universityModules.id))
+      .innerJoin(universityTrimesters, eq(universityModules.trimesterId, universityTrimesters.id))
+      .innerJoin(universityYears, eq(universityTrimesters.yearId, universityYears.id))
+      .where(eq(universityYears.createdBy, consultantId));
 
     const missing: Array<{ id: string; title: string; lessonTitle: string }> = [];
     let indexed = 0;
 
-    for (const lesson of lessons) {
+    for (const lesson of lessonsWithModules) {
       const isIndexed = await fileSearchService.isDocumentIndexed('university_lesson', lesson.id);
       if (isIndexed) {
         indexed++;
       } else {
         missing.push({ 
           id: lesson.id, 
-          title: lesson.module?.name || 'Modulo', 
+          title: lesson.moduleName || 'Modulo', 
           lessonTitle: lesson.title 
         });
       }
     }
 
-    return { total: lessons.length, indexed, missing };
+    return { total: lessonsWithModules.length, indexed, missing };
   }
 
   private static async auditClientExerciseResponsesDetailed(clientId: string, consultantId: string): Promise<{
@@ -2181,18 +2208,14 @@ export class FileSearchSyncService {
     indexed: number;
     missing: Array<{ id: string; exerciseTitle: string; submittedAt: Date | null }>;
   }> {
-    const assignments = await db.query.exerciseAssignments.findMany({
-      where: eq(exerciseAssignments.clientId, clientId),
-    });
+    const assignments = await db.select().from(exerciseAssignments).where(eq(exerciseAssignments.clientId, clientId));
 
     const assignmentIds = assignments.map(a => a.id);
     if (assignmentIds.length === 0) {
       return { total: 0, indexed: 0, missing: [] };
     }
 
-    const submissions = await db.query.exerciseSubmissions.findMany({
-      where: isNotNull(exerciseSubmissions.submittedAt),
-    });
+    const submissions = await db.select().from(exerciseSubmissions).where(isNotNull(exerciseSubmissions.submittedAt));
 
     const clientSubmissions = submissions.filter(s => assignmentIds.includes(s.assignmentId));
 
@@ -2207,9 +2230,7 @@ export class FileSearchSyncService {
         const assignment = assignments.find(a => a.id === submission.assignmentId);
         let exerciseTitle = 'Esercizio';
         if (assignment) {
-          const exercise = await db.query.exercises.findFirst({
-            where: eq(exercises.id, assignment.exerciseId),
-          });
+          const [exercise] = await db.select().from(exercises).where(eq(exercises.id, assignment.exerciseId)).limit(1);
           if (exercise) {
             exerciseTitle = exercise.title;
           }
@@ -2230,12 +2251,12 @@ export class FileSearchSyncService {
     indexed: number;
     missing: Array<{ id: string; date: Date; summary: string }>;
   }> {
-    const clientConsultations = await db.query.consultations.findMany({
-      where: and(
+    const clientConsultations = await db.select().from(consultations).where(
+      and(
         eq(consultations.clientId, clientId),
         eq(consultations.status, 'completed'),
-      ),
-    });
+      )
+    );
 
     const consultationsWithContent = clientConsultations.filter(
       c => c.transcript || c.notes || c.summaryEmail
@@ -2265,12 +2286,12 @@ export class FileSearchSyncService {
     indexed: number;
     missing: Array<{ id: string; title: string }>;
   }> {
-    const docs = await db.query.clientKnowledgeDocuments.findMany({
-      where: and(
+    const docs = await db.select().from(clientKnowledgeDocuments).where(
+      and(
         eq(clientKnowledgeDocuments.clientId, clientId),
         eq(clientKnowledgeDocuments.status, 'indexed'),
-      ),
-    });
+      )
+    );
 
     const missing: Array<{ id: string; title: string }> = [];
     let indexed = 0;
