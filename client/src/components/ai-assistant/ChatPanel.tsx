@@ -47,6 +47,7 @@ interface ChatPanelProps {
   isConsultantMode?: boolean; // NEW: Flag for consultant mode
   autoMessage?: string | null; // Auto-send message when opening from document focus
   onAutoMessageSent?: () => void; // Callback after auto message is sent
+  embedded?: boolean;
 }
 
 // Funzione placeholder per stimare i token (da implementare o sostituire con una libreria)
@@ -73,7 +74,8 @@ export function ChatPanel({
   openedFromContext = false,
   isConsultantMode = false,
   autoMessage = null,
-  onAutoMessageSent
+  onAutoMessageSent,
+  embedded = false
 }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>();
@@ -110,7 +112,7 @@ export function ChatPanel({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const safetyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
-  
+
   const userName = useMemo(() => {
     const user = getAuthUser();
     return user?.firstName || "Utente";
@@ -145,8 +147,8 @@ export function ChatPanel({
   // Load conversation messages when selecting from history
   const loadConversationMessages = async (conversationId: string) => {
     try {
-      const endpoint = isConsultantMode 
-        ? `/api/consultant/ai/conversations/${conversationId}` 
+      const endpoint = isConsultantMode
+        ? `/api/consultant/ai/conversations/${conversationId}`
         : `/api/ai/conversations/${conversationId}`;
       console.log("Loading conversation:", conversationId, "endpoint:", endpoint);
       const response = await fetch(endpoint, {
@@ -269,7 +271,7 @@ export function ChatPanel({
     try {
       // Use different endpoint based on mode
       const endpoint = isConsultantMode ? "/api/consultant/ai/chat" : "/api/ai/chat";
-      
+
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -280,30 +282,30 @@ export function ChatPanel({
         body: JSON.stringify(
           isConsultantMode
             ? {
-                // Consultant endpoint payload
-                message,
-                conversationId: currentConversationId,
-                pageContext: pageContext,
-                focusedDocument: focusedDocument ? {
-                  id: focusedDocument.id,
-                  title: focusedDocument.title,
-                  category: focusedDocument.category,
-                } : undefined,
-              }
+              // Consultant endpoint payload
+              message,
+              conversationId: currentConversationId,
+              pageContext: pageContext,
+              focusedDocument: focusedDocument ? {
+                id: focusedDocument.id,
+                title: focusedDocument.title,
+                category: focusedDocument.category,
+              } : undefined,
+            }
             : {
-                // Client endpoint payload
-                message,
-                conversationId: currentConversationId,
-                mode,
-                consultantType: mode === "consulente" ? consultantType : undefined,
-                pageContext: pageContext,
-                hasPageContext: hasPageContext,
-                focusedDocument: focusedDocument ? {
-                  id: focusedDocument.id,
-                  title: focusedDocument.title,
-                  category: focusedDocument.category,
-                } : undefined,
-              }
+              // Client endpoint payload
+              message,
+              conversationId: currentConversationId,
+              mode,
+              consultantType: mode === "consulente" ? consultantType : undefined,
+              pageContext: pageContext,
+              hasPageContext: hasPageContext,
+              focusedDocument: focusedDocument ? {
+                id: focusedDocument.id,
+                title: focusedDocument.title,
+                category: focusedDocument.category,
+              } : undefined,
+            }
         ),
       });
 
@@ -345,7 +347,7 @@ export function ChatPanel({
                 setRetryInfo(prev => ({ ...prev, isRetrying: false }));
               } else if (data.type === "delta" && data.content) {
                 setRetryInfo(prev => ({ ...prev, isRetrying: false }));
-                
+
                 if (safetyTimeoutRef.current) {
                   clearTimeout(safetyTimeoutRef.current);
                 }
@@ -358,7 +360,7 @@ export function ChatPanel({
                     variant: "destructive",
                   });
                 }, 90000);
-                
+
                 accumulatedContent += data.content;
 
                 // Se è il primo chunk, aggiungi il messaggio dell'assistente
@@ -418,13 +420,13 @@ export function ChatPanel({
                   prev.map((msg) =>
                     msg.id === assistantMessageId
                       ? {
-                          ...msg,
-                          id: finalMessageId,
-                          content: accumulatedContent,
-                          status: "completed",
-                          suggestedActions: finalSuggestedActions,
-                          timestamp: new Date(),
-                        }
+                        ...msg,
+                        id: finalMessageId,
+                        content: accumulatedContent,
+                        status: "completed",
+                        suggestedActions: finalSuggestedActions,
+                        timestamp: new Date(),
+                      }
                       : msg
                   )
                 );
@@ -441,20 +443,20 @@ export function ChatPanel({
                   retryDelaySeconds: 0,
                   countdownSeconds: 0
                 });
-                
+
                 setMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === assistantMessageId
                       ? {
-                          ...msg,
-                          content: data.content || "Si è verificato un errore",
-                          status: "error",
-                          timestamp: new Date(),
-                        }
+                        ...msg,
+                        content: data.content || "Si è verificato un errore",
+                        status: "error",
+                        timestamp: new Date(),
+                      }
                       : msg
                   )
                 );
-                 throw new Error(data.content || "Errore sconosciuto");
+                throw new Error(data.content || "Errore sconosciuto");
               } else if (data.type === "retry") {
                 // Gestisce evento retry con countdown
                 const { attempt, maxAttempts, delayMs, message } = data;
@@ -510,11 +512,11 @@ export function ChatPanel({
         prev.map((msg) =>
           msg.id === assistantMessageId
             ? {
-                ...msg,
-                content: "Mi dispiace, si è verificato un errore. Riprova più tardi.",
-                status: "error",
-                timestamp: new Date(),
-              }
+              ...msg,
+              content: "Mi dispiace, si è verificato un errore. Riprova più tardi.",
+              status: "error",
+              timestamp: new Date(),
+            }
             : msg
         )
       );
@@ -629,6 +631,140 @@ export function ChatPanel({
     }
   }, [isOpen, autoMessage, isTyping]);
 
+  if (embedded) {
+    return (
+      <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+        {/* Header with Tabs */}
+        <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+          <div className="flex items-center justify-between px-3 py-2">
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "chat" | "history")} className="flex-1">
+              <TabsList className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-full grid grid-cols-2">
+                <TabsTrigger
+                  value="chat"
+                  className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400 data-[state=active]:shadow-sm px-2 py-1.5 text-xs font-medium rounded-md transition-all"
+                >
+                  <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+                  Chat
+                </TabsTrigger>
+                <TabsTrigger
+                  value="history"
+                  className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400 data-[state=active]:shadow-sm px-2 py-1.5 text-xs font-medium rounded-md transition-all"
+                >
+                  <History className="h-3.5 w-3.5 mr-1.5" />
+                  Cronologia
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <div className="flex items-center gap-1 ml-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleNewConversation}
+                className="h-8 w-8 text-gray-500 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-lg transition-colors"
+                title="Nuova conversazione"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-hidden flex flex-col bg-gray-50 dark:bg-gray-950">
+          {activeTab === "chat" ? (
+            <>
+              {messages.length === 0 ? (
+                <ScrollArea ref={scrollAreaRef} className="flex-1">
+                  <div className="p-4">
+                    <div className="mb-4">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-200 dark:shadow-violet-900/30">
+                          <Sparkles className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                            Ciao, sono il tuo assistente
+                          </h2>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Come posso aiutarti oggi?
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                        Azioni rapide
+                      </p>
+                      {isConsultantMode && pageContext ? (
+                        <ConsultantQuickActions
+                          pageContext={pageContext}
+                          onActionClick={handleQuickAction}
+                        />
+                      ) : (
+                        <QuickActions
+                          mode={mode}
+                          onActionClick={handleQuickAction}
+                          userName={userName}
+                          consultantType={consultantType}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </ScrollArea>
+              ) : (
+                <MessageList messages={messages} isTyping={isTyping} />
+              )}
+              <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+                <InputArea
+                  onSendMessage={handleSendMessage}
+                  isTyping={isTyping}
+                  placeholder="Scrivi un messaggio..."
+                  isWaiting={rateLimitInfo.isWaiting}
+                  waitingSeconds={rateLimitInfo.isWaiting ? Math.ceil((rateLimitInfo.resetAt - Date.now()) / 1000) : 0}
+                  retryInfo={retryInfo.isRetrying ? retryInfo : undefined}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 overflow-auto p-4">
+              {isLoadingConversations ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {conversations.length === 0 ? (
+                    <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                      <History className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p>Nessuna conversazione recente</p>
+                    </div>
+                  ) : (
+                    conversations.map((conv) => (
+                      <div
+                        key={conv.id}
+                        onClick={() => loadConversationMessages(conv.id)}
+                        className="p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:border-violet-300 dark:hover:border-violet-700 cursor-pointer transition-all hover:shadow-sm group"
+                      >
+                        <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 mb-1 group-hover:text-violet-600 dark:group-hover:text-violet-400 truncate">
+                          {conv.title || "Nuova conversazione"}
+                        </h3>
+                        <div className="flex items-center justify-between text-xs text-gray-400">
+                          <span>{new Date(conv.lastMessageAt || conv.createdAt).toLocaleDateString()}</span>
+                          <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -644,15 +780,15 @@ export function ChatPanel({
             <div className="flex items-center justify-between px-4 py-3">
               <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "chat" | "history")} className="flex-1">
                 <TabsList className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-                  <TabsTrigger 
-                    value="chat" 
+                  <TabsTrigger
+                    value="chat"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400 data-[state=active]:shadow-sm px-4 py-1.5 text-sm font-medium rounded-md transition-all"
                   >
                     <MessageSquare className="h-4 w-4 mr-1.5" />
                     Chat
                   </TabsTrigger>
-                  <TabsTrigger 
-                    value="history" 
+                  <TabsTrigger
+                    value="history"
                     className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-violet-600 dark:data-[state=active]:text-violet-400 data-[state=active]:shadow-sm px-4 py-1.5 text-sm font-medium rounded-md transition-all"
                   >
                     <History className="h-4 w-4 mr-1.5" />
@@ -874,17 +1010,17 @@ export function ChatPanel({
                                 {conv.title || "Conversazione"}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                {conv.lastMessageAt 
-                                  ? new Date(conv.lastMessageAt).toLocaleDateString('it-IT', { 
-                                      day: 'numeric', 
-                                      month: 'short',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })
-                                  : new Date(conv.createdAt).toLocaleDateString('it-IT', { 
-                                      day: 'numeric', 
-                                      month: 'short'
-                                    })
+                                {conv.lastMessageAt
+                                  ? new Date(conv.lastMessageAt).toLocaleDateString('it-IT', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })
+                                  : new Date(conv.createdAt).toLocaleDateString('it-IT', {
+                                    day: 'numeric',
+                                    month: 'short'
+                                  })
                                 }
                               </p>
                             </div>
@@ -914,7 +1050,7 @@ export function ChatPanel({
                 <Alert className="mb-3 bg-violet-50 dark:bg-violet-900/20 border-violet-200 dark:border-violet-800">
                   <AlertCircle className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                   <AlertDescription className="text-xs text-violet-800 dark:text-violet-200">
-                    {retryInfo.countdownSeconds > 0 
+                    {retryInfo.countdownSeconds > 0
                       ? `⏳ Riprovo tra ${retryInfo.countdownSeconds}s... (tentativo ${retryInfo.retryAttempt}/${retryInfo.retryMaxAttempts - 1})`
                       : "⏳ Riconnessione..."}
                   </AlertDescription>

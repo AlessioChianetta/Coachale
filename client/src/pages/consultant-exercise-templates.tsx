@@ -79,7 +79,7 @@ export default function ConsultantTemplates() {
   const [editingTemplate, setEditingTemplate] = useState<ExerciseTemplate | undefined>();
   const [usingTemplate, setUsingTemplate] = useState<ExerciseTemplate | undefined>();
   const [deletingTemplate, setDeletingTemplate] = useState<string | undefined>();
-  const [templateToDelete, setTemplateToDelete] = useState<{id: string, hasExercises: boolean, exerciseCount: number} | undefined>();
+  const [templateToDelete, setTemplateToDelete] = useState<{ id: string, hasExercises: boolean, exerciseCount: number } | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -167,7 +167,7 @@ export default function ConsultantTemplates() {
         isPublic: false,
       };
       const response = await apiRequest("POST", "/api/templates", templateData);
-      
+
       // Save client associations if selectedClients exist
       if (response && response.id && exerciseData.selectedClients && exerciseData.selectedClients.length > 0) {
         try {
@@ -178,7 +178,7 @@ export default function ConsultantTemplates() {
           console.error('Failed to save template associations:', error);
         }
       }
-      
+
       return response;
     },
     onSuccess: () => {
@@ -342,13 +342,47 @@ export default function ConsultantTemplates() {
 
   const categories = Array.from(new Set(templates.map((t: ExerciseTemplate) => t.category))).sort();
 
+  // Funzione per ordinamento naturale - estrae tutti i numeri dal testo per confronto
+  const naturalSortKey = (name: string): number[] => {
+    const numbers = name.match(/\d+/g);
+    if (numbers) {
+      return numbers.map(n => parseInt(n, 10));
+    }
+    return [999999];
+  };
+
+  // Confronto naturale tra due array di numeri  
+  const compareArrays = (a: number[], b: number[]): number => {
+    const maxLen = Math.max(a.length, b.length);
+    for (let i = 0; i < maxLen; i++) {
+      const aVal = a[i] ?? 999999;
+      const bVal = b[i] ?? 999999;
+      if (aVal !== bVal) {
+        return aVal - bVal;
+      }
+    }
+    return 0;
+  };
+
+  // Ordina i template filtrati per numeri nel nome (Modulo, Lezione, Esercizio, etc)
+  const sortedFilteredTemplates = useMemo(() => {
+    return [...filteredTemplates].sort((a: ExerciseTemplate, b: ExerciseTemplate) => {
+      const aKey = naturalSortKey(a.name);
+      const bKey = naturalSortKey(b.name);
+      const numCompare = compareArrays(aKey, bKey);
+      if (numCompare !== 0) return numCompare;
+      // Se i numeri sono uguali, ordina alfabeticamente
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredTemplates]);
+
   // Calcola la paginazione
-  const totalPages = Math.ceil(filteredTemplates.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedFilteredTemplates.length / itemsPerPage);
   const paginatedTemplates = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filteredTemplates.slice(startIndex, endIndex);
-  }, [filteredTemplates, currentPage, itemsPerPage]);
+    return sortedFilteredTemplates.slice(startIndex, endIndex);
+  }, [sortedFilteredTemplates, currentPage, itemsPerPage]);
 
   // Reset alla prima pagina quando cambiano i filtri
   React.useEffect(() => {
@@ -521,7 +555,7 @@ export default function ConsultantTemplates() {
                   </Card>
                 ))}
               </div>
-            ) : filteredTemplates.length === 0 ? (
+            ) : sortedFilteredTemplates.length === 0 ? (
               <Card className="border-0 shadow-lg">
                 <CardContent className="p-12 text-center">
                   <div className="w-20 h-20 bg-gradient-to-r from-purple-500/10 to-indigo-600/10 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -542,9 +576,9 @@ export default function ConsultantTemplates() {
             ) : (
               <Tabs defaultValue="all" className="w-full">
                 <TabsList className="mb-4">
-                  <TabsTrigger value="all">Tutti ({filteredTemplates.length})</TabsTrigger>
+                  <TabsTrigger value="all">Tutti ({sortedFilteredTemplates.length})</TabsTrigger>
                   {categories.map((category) => {
-                    const count = filteredTemplates.filter((t: ExerciseTemplate) => t.category === category).length;
+                    const count = sortedFilteredTemplates.filter((t: ExerciseTemplate) => t.category === category).length;
                     const displayName = categoryDisplayNames[category] || category;
                     return count > 0 ? (
                       <TabsTrigger key={category} value={category}>
@@ -558,12 +592,12 @@ export default function ConsultantTemplates() {
                   <div className="space-y-3">
                     {paginatedTemplates.map((template: ExerciseTemplate) => {
                       const isOwner = currentUser?.id === template.createdBy;
-                      const categoryEmoji = template.category === 'Metodo Orbitale - Finanza' ? '📧' : 
-                                           template.category === 'Risparmio e Investimenti' ? '📊' :
-                                           template.category === 'Imprenditoria' ? '🚀' : '📝';
+                      const categoryEmoji = template.category === 'Metodo Orbitale - Finanza' ? '📧' :
+                        template.category === 'Risparmio e Investimenti' ? '📊' :
+                          template.category === 'Imprenditoria' ? '🚀' : '📝';
 
                       return (
-                        <Card 
+                        <Card
                           key={template.id}
                           className="group hover:shadow-lg transition-all duration-200 border overflow-hidden"
                           data-testid={`card-template-${template.id}`}
@@ -663,7 +697,7 @@ export default function ConsultantTemplates() {
                       <Pagination>
                         <PaginationContent>
                           <PaginationItem>
-                            <PaginationPrevious 
+                            <PaginationPrevious
                               href="#"
                               onClick={(e) => {
                                 e.preventDefault();
@@ -672,7 +706,7 @@ export default function ConsultantTemplates() {
                               className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                             />
                           </PaginationItem>
-                          
+
                           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                             <PaginationItem key={page}>
                               <PaginationLink
@@ -688,9 +722,9 @@ export default function ConsultantTemplates() {
                               </PaginationLink>
                             </PaginationItem>
                           ))}
-                          
+
                           <PaginationItem>
-                            <PaginationNext 
+                            <PaginationNext
                               href="#"
                               onClick={(e) => {
                                 e.preventDefault();
@@ -706,7 +740,7 @@ export default function ConsultantTemplates() {
                 </TabsContent>
 
                 {categories.map((category) => {
-                  const categoryTemplates = filteredTemplates.filter((t: ExerciseTemplate) => t.category === category);
+                  const categoryTemplates = sortedFilteredTemplates.filter((t: ExerciseTemplate) => t.category === category);
                   if (categoryTemplates.length === 0) return null;
 
                   return (
@@ -714,12 +748,12 @@ export default function ConsultantTemplates() {
                       <div className="space-y-3">
                         {categoryTemplates.map((template: ExerciseTemplate) => {
                           const isOwner = currentUser?.id === template.createdBy;
-                          const categoryEmoji = template.category === 'Metodo Orbitale - Finanza' ? '📧' : 
-                                               template.category === 'Risparmio e Investimenti' ? '📊' :
-                                               template.category === 'Imprenditoria' ? '🚀' : '📝';
+                          const categoryEmoji = template.category === 'Metodo Orbitale - Finanza' ? '📧' :
+                            template.category === 'Risparmio e Investimenti' ? '📊' :
+                              template.category === 'Imprenditoria' ? '🚀' : '📝';
 
                           return (
-                            <Card 
+                            <Card
                               key={template.id}
                               className="group hover:shadow-lg transition-all duration-200 border overflow-hidden"
                               data-testid={`card-template-${template.id}`}
@@ -832,8 +866,8 @@ export default function ConsultantTemplates() {
                 workPlatform: editingTemplate?.workPlatform || "",
                 questions: editingTemplate?.questions || [],
                 isPublic: editingTemplate?.isPublic || false,
-                isExam: editingTemplate?.isExam || false,
-                autoCorrect: editingTemplate?.autoCorrect || false,
+                isExam: (editingTemplate as any)?.isExam || false,
+                autoCorrect: (editingTemplate as any)?.autoCorrect || false,
                 createdBy: undefined, // Remove createdBy to indicate this is a template being edited
               } : undefined}
               templateData={usingTemplate}
@@ -842,6 +876,13 @@ export default function ConsultantTemplates() {
                 setEditingTemplate(undefined);
                 setUsingTemplate(undefined);
                 setShowExerciseForm(false);
+              }}
+              onSuccess={() => {
+                // Called when template assignment is complete (closes modal)
+                setEditingTemplate(undefined);
+                setUsingTemplate(undefined);
+                setShowExerciseForm(false);
+                queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
               }}
               isLoading={createTemplateMutation.isPending || updateTemplateMutation.isPending || createExerciseMutation.isPending}
             />

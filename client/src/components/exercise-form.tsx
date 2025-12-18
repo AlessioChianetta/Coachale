@@ -18,15 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  Plus, 
-  Trash2, 
-  X, 
-  Tag, 
-  BookOpen, 
-  Calendar, 
-  Target, 
-  Eye, 
+import {
+  Plus,
+  Trash2,
+  X,
+  Tag,
+  BookOpen,
+  Calendar,
+  Target,
+  Eye,
   AlertCircle,
   Clock,
   Star,
@@ -120,23 +120,24 @@ type ExerciseFormData = z.infer<typeof exerciseFormSchema>;
 interface ExerciseFormProps {
   onSubmit: (data: ExerciseFormData, files: File[]) => void;
   onCancel: () => void;
+  onSuccess?: () => void; // Called when template assignment is complete (closes modal)
   isLoading?: boolean;
   existingExercise?: any; // Exercise data for editing
   templateData?: any; // Template data for preloading
 }
 
 // Client Selector Component
-function ClientSelector({ 
-  selectedClients, 
-  onClientsChange, 
-  templateData, 
+function ClientSelector({
+  selectedClients,
+  onClientsChange,
+  templateData,
   existingAssignments = [],
   showPlatformLinks = false,
   customPlatformLinks = {},
   onPlatformLinkChange,
   existingExercise
-}: { 
-  selectedClients: string[], 
+}: {
+  selectedClients: string[],
   onClientsChange: (clients: string[]) => void,
   templateData?: any,
   existingAssignments?: any[],
@@ -168,18 +169,18 @@ function ClientSelector({
   // Only disable clients when USING a template to create NEW exercises
   // When EDITING a template, never disable - you're just changing associations
   const isEditingTemplateNow = existingExercise && !existingExercise.createdBy;
-  
+
   const clientHasTemplate = (clientId: string) => {
     // If we're editing a template (not using one), never disable clients
     if (isEditingTemplateNow) return false;
-    
+
     // If we're using a template to create exercises, check for existing assignments
     if (!templateData) return false;
 
-    return existingAssignments.some((assignment: any) => 
-      assignment.clientId === clientId && 
-      assignment.exercise && 
-      assignment.exercise.title && 
+    return existingAssignments.some((assignment: any) =>
+      assignment.clientId === clientId &&
+      assignment.exercise &&
+      assignment.exercise.title &&
       assignment.exercise.title.includes(templateData.name)
     );
   };
@@ -189,7 +190,7 @@ function ClientSelector({
       {isEditingTemplateNow && (
         <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-md">
           <p className="text-sm text-blue-900 dark:text-blue-100">
-            💡 <strong>Modifica assegnazioni:</strong> Puoi selezionare o deselezionare clienti. 
+            💡 <strong>Modifica assegnazioni:</strong> Puoi selezionare o deselezionare clienti.
             Deselezionando un cliente, tutti i suoi esercizi creati da questo template saranno rimossi.
           </p>
         </div>
@@ -200,7 +201,7 @@ function ClientSelector({
         clients.map((client: any) => {
           const hasTemplate = clientHasTemplate(client.id);
           const isSelected = selectedClients.includes(client.id);
-          
+
           return (
             <div key={client.id} className="space-y-2">
               <div className="flex items-center space-x-2">
@@ -210,8 +211,8 @@ function ClientSelector({
                   onCheckedChange={() => handleClientToggle(client.id)}
                   disabled={hasTemplate}
                 />
-                <Label 
-                  htmlFor={`client-${client.id}`} 
+                <Label
+                  htmlFor={`client-${client.id}`}
                   className={`text-sm font-normal ${hasTemplate ? 'text-muted-foreground line-through' : ''}`}
                 >
                   {client.firstName} {client.lastName} ({client.email})
@@ -245,7 +246,7 @@ function ClientSelector({
 }
 
 
-export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingExercise, templateData }: ExerciseFormProps) {
+export default function ExerciseForm({ onSubmit, onCancel, onSuccess, isLoading, existingExercise, templateData }: ExerciseFormProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [saveAsTemplate, setSaveAsTemplate] = useState(false);
@@ -257,7 +258,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
   const [activeTab, setActiveTab] = useState(templateData ? "clients" : "basic");
   const [customPlatformLinks, setCustomPlatformLinks] = useState<Record<string, string>>({});
   const [pastedOptionsText, setPastedOptionsText] = useState<Record<string, string>>({});
-  
+
   // Ref to track the last initialized exercise/template ID to prevent unnecessary resets
   const lastInitializedIdRef = useRef<string | null>(null);
   // Ref to track if template associations have been loaded and applied
@@ -346,7 +347,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
   // When editing a template, it comes as existingExercise without a createdBy field
   const isEditingTemplate = existingExercise && !existingExercise.createdBy;
   const templateIdForAssociations = templateData?.id || (isEditingTemplate ? existingExercise?.id : null);
-  
+
   console.log('🔍 TEMPLATE ASSOCIATIONS SETUP', {
     templateDataId: templateData?.id,
     existingExerciseId: existingExercise?.id,
@@ -355,7 +356,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
     hasTemplateData: !!templateData,
     hasExistingExercise: !!existingExercise
   });
-  
+
   const { data: templateAssociations = [], isLoading: isLoadingAssociations } = useQuery({
     queryKey: ["/api/templates", templateIdForAssociations, "associations"],
     queryFn: async () => {
@@ -426,13 +427,13 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
   // Filter years based on selected clients (show only years common to ALL selected clients)
   const universityYears = selectedClientIds.length > 0 && clientYearAssignments.length > 0
     ? allUniversityYears.filter((year: any) => {
-        // Check if ALL selected clients have this year assigned
-        return selectedClientIds.every(clientId => 
-          clientYearAssignments.some((assignment: any) => 
-            assignment.yearId === year.id && assignment.clientId === clientId
-          )
-        );
-      })
+      // Check if ALL selected clients have this year assigned
+      return selectedClientIds.every(clientId =>
+        clientYearAssignments.some((assignment: any) =>
+          assignment.yearId === year.id && assignment.clientId === clientId
+        )
+      );
+    })
     : allUniversityYears;
 
   // Fetch trimesters for selected year
@@ -458,7 +459,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
     // Check if we need to wait for template associations to load
     const needsAssociations = templateData || (existingExercise && !existingExercise.createdBy);
-    
+
     // If we need associations and they're still loading, wait
     if (needsAssociations && isLoadingAssociations) {
       console.log('⏳ Waiting for template associations to load...');
@@ -467,9 +468,9 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
     // Check if we need to reload because template associations have been loaded
     const isEditingTemplateNow = existingExercise && !existingExercise.createdBy;
-    const shouldReloadForAssociations = isEditingTemplateNow && 
-                                       !templateAssociationsLoadedRef.current && 
-                                       templateAssociations.length > 0;
+    const shouldReloadForAssociations = isEditingTemplateNow &&
+      !templateAssociationsLoadedRef.current &&
+      templateAssociations.length > 0;
 
     // Only reset if the ID has actually changed OR if template associations just loaded
     if ((currentId && currentId !== lastInitializedIdRef.current) || shouldReloadForAssociations) {
@@ -477,7 +478,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
         lastInitializedIdRef.current = currentId;
         templateAssociationsLoadedRef.current = false; // Reset for new template
       }
-      
+
       if (shouldReloadForAssociations) {
         templateAssociationsLoadedRef.current = true;
       }
@@ -513,7 +514,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
       // Get pre-selected clients based on context
       let preSelectedClients: string[] = [];
-      
+
       console.log('🎯 CLIENT SELECTION LOGIC', {
         hasTemplateData: !!templateData,
         hasExistingExercise: !!existingExercise,
@@ -523,7 +524,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
         templateAssociations: templateAssociations,
         existingAssignments: existingAssignments
       });
-      
+
       if (templateData && !existingExercise) {
         // Using a template to create new exercise - use template associations
         console.log('📝 Using template associations for client selection');
@@ -654,34 +655,34 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
     }
 
     const exerciseData: ExerciseFormData = {
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        instructions: data.instructions,
-        estimatedDuration: data.estimatedDuration ? Number(data.estimatedDuration) : undefined,
-        priority: data.priority,
-        workPlatform: data.usePlatform && data.workPlatform ? data.workPlatform : undefined,
-        libraryDocumentId: data.useLibraryLesson && data.libraryDocumentId ? data.libraryDocumentId : undefined,
-        questions: data.useQuestions ? questions : [],
-        type: data.type,
-        isPublic: data.isPublic,
-        selectedClients: data.selectedClients,
-        customPlatformLinks: customPlatformLinks,
-        allowRetries: data.allowRetries,
-        showProgressBar: data.showProgressBar,
-        randomizeQuestions: data.randomizeQuestions,
-        useQuestions: data.useQuestions,
-        usePlatform: data.usePlatform,
-        useLibraryLesson: data.useLibraryLesson,
-        // Exam-specific fields
-        isExam: data.isExam || false,
-        examDate: data.isExam && data.examDate ? data.examDate : undefined,
-        yearId: data.isExam && data.yearId ? data.yearId : undefined,
-        trimesterId: data.isExam && data.trimesterId ? data.trimesterId : undefined,
-        autoCorrect: data.isExam && data.autoCorrect ? data.autoCorrect : false,
-        totalPoints: data.isExam && data.totalPoints ? data.totalPoints : undefined,
-        examTimeLimit: data.isExam && data.examTimeLimit ? data.examTimeLimit : undefined,
-      };
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      instructions: data.instructions,
+      estimatedDuration: data.estimatedDuration ? Number(data.estimatedDuration) : undefined,
+      priority: data.priority,
+      workPlatform: data.usePlatform && data.workPlatform ? data.workPlatform : undefined,
+      libraryDocumentId: data.useLibraryLesson && data.libraryDocumentId ? data.libraryDocumentId : undefined,
+      questions: data.useQuestions ? questions : [],
+      type: data.type,
+      isPublic: data.isPublic,
+      selectedClients: data.selectedClients,
+      customPlatformLinks: customPlatformLinks,
+      allowRetries: data.allowRetries,
+      showProgressBar: data.showProgressBar,
+      randomizeQuestions: data.randomizeQuestions,
+      useQuestions: data.useQuestions,
+      usePlatform: data.usePlatform,
+      useLibraryLesson: data.useLibraryLesson,
+      // Exam-specific fields
+      isExam: data.isExam || false,
+      examDate: data.isExam && data.examDate ? data.examDate : undefined,
+      yearId: data.isExam && data.yearId ? data.yearId : undefined,
+      trimesterId: data.isExam && data.trimesterId ? data.trimesterId : undefined,
+      autoCorrect: data.isExam && data.autoCorrect ? data.autoCorrect : false,
+      totalPoints: data.isExam && data.totalPoints ? data.totalPoints : undefined,
+      examTimeLimit: data.isExam && data.examTimeLimit ? data.examTimeLimit : undefined,
+    };
 
     console.log('📦 FINAL EXERCISE DATA PREPARED', {
       exerciseData,
@@ -694,33 +695,58 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
     // Determine if we're working with a template (either using one or editing one)
     const templateIdToUpdate = templateData?.id || (isEditingTemplate ? existingExercise?.id : null);
-    
+
     // Update template-client associations for both new template usage and template editing
     if (templateIdToUpdate && !data.isPublic && data.selectedClients && data.selectedClients.length > 0) {
       try {
+        // Get existing associated client IDs from templateAssociations
+        const existingAssociatedClientIds = new Set(
+          templateAssociations
+            .filter((assoc: any) => assoc.isVisible)
+            .map((assoc: any) => assoc.clientId)
+        );
+
+        // When USING a template (not editing), only send NEW clients that aren't already associated
+        // When EDITING a template, send ALL selected clients (to allow add/remove)
+        const isUsingTemplate = templateData && !isEditingTemplate;
+        const clientIdsToSend = isUsingTemplate
+          ? data.selectedClients.filter((id: string) => !existingAssociatedClientIds.has(id))
+          : data.selectedClients;
+
         console.log('💾 Saving template associations:', {
           templateId: templateIdToUpdate,
           isEditingTemplate,
-          clientIds: data.selectedClients
+          isUsingTemplate,
+          allSelectedClients: data.selectedClients,
+          existingAssociatedClientIds: Array.from(existingAssociatedClientIds),
+          clientIdsToSend
         });
-        await apiRequest("POST", `/api/templates/${templateIdToUpdate}/associate-clients`, {
-          clientIds: data.selectedClients,
-        });
+
+        // Only call the API if there are new clients to add (when using) or any changes (when editing)
+        if (clientIdsToSend.length > 0 || isEditingTemplate) {
+          await apiRequest("POST", `/api/templates/${templateIdToUpdate}/associate-clients`, {
+            clientIds: clientIdsToSend,
+          });
+        } else {
+          console.log('ℹ️ No new clients to associate, skipping API call');
+        }
       } catch (error: any) {
         console.error('Failed to update template associations:', error);
       }
     } else if (templateIdToUpdate && !data.isPublic && (!data.selectedClients || data.selectedClients.length === 0)) {
       // If editing a template and clearing all client associations
-      try {
-        console.log('🗑️ Clearing template associations:', {
-          templateId: templateIdToUpdate,
-          isEditingTemplate
-        });
-        await apiRequest("POST", `/api/templates/${templateIdToUpdate}/associate-clients`, {
-          clientIds: [],
-        });
-      } catch (error: any) {
-        console.error('Failed to clear template associations:', error);
+      if (isEditingTemplate) {
+        try {
+          console.log('🗑️ Clearing template associations:', {
+            templateId: templateIdToUpdate,
+            isEditingTemplate
+          });
+          await apiRequest("POST", `/api/templates/${templateIdToUpdate}/associate-clients`, {
+            clientIds: [],
+          });
+        } catch (error: any) {
+          console.error('Failed to clear template associations:', error);
+        }
       }
     }
 
@@ -733,7 +759,23 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
       isPublic: exerciseData.isPublic
     });
 
-    onSubmit(exerciseData, files);
+    // When USING a template to assign to clients, associateTemplateWithClients already created the exercises.
+    // Only call onSubmit for: editing existing exercises, editing templates, or creating new exercises from scratch.
+    const isUsingTemplateToCreate = templateData && !isEditingTemplate && !existingExercise;
+
+    if (isUsingTemplateToCreate) {
+      console.log('✅ Template usage complete - exercises created via associateTemplateWithClients');
+      toast({
+        title: "Esercizio assegnato",
+        description: "L'esercizio è stato creato e assegnato ai clienti selezionati",
+      });
+      // Call onSuccess to close the modal
+      if (onSuccess) {
+        onSuccess();
+      }
+    } else {
+      onSubmit(exerciseData, files);
+    }
   };
 
   const handleSaveAsTemplate = () => {
@@ -799,7 +841,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
   };
 
   const updateQuestion = (id: string, field: keyof Question, value: any) => {
-    setQuestions(questions.map(q => 
+    setQuestions(questions.map(q =>
       q.id === id ? { ...q, [field]: value } : q
     ));
   };
@@ -809,8 +851,8 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
   };
 
   const addOption = (questionId: string) => {
-    setQuestions(questions.map(q => 
-      q.id === questionId 
+    setQuestions(questions.map(q =>
+      q.id === questionId
         ? { ...q, options: [...(q.options || []), ""] }
         : q
     ));
@@ -821,13 +863,13 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
       if (q.id === questionId) {
         const oldValue = q.options?.[optionIndex];
         const newOptions = q.options?.map((opt, idx) => idx === optionIndex ? value : opt);
-        
+
         // Update correctAnswers if the old value was in it
         let newCorrectAnswers = q.correctAnswers;
         if (oldValue !== undefined && newCorrectAnswers?.includes(oldValue)) {
           newCorrectAnswers = newCorrectAnswers.map(ans => ans === oldValue ? value : ans);
         }
-        
+
         return { ...q, options: newOptions, correctAnswers: newCorrectAnswers };
       }
       return q;
@@ -839,13 +881,13 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
       if (q.id === questionId) {
         const removedValue = q.options?.[optionIndex];
         const newOptions = q.options?.filter((_, idx) => idx !== optionIndex);
-        
+
         // Remove from correctAnswers if it was there
         let newCorrectAnswers = q.correctAnswers;
         if (removedValue !== undefined && newCorrectAnswers?.includes(removedValue)) {
           newCorrectAnswers = newCorrectAnswers.filter(ans => ans !== removedValue);
         }
-        
+
         return { ...q, options: newOptions, correctAnswers: newCorrectAnswers };
       }
       return q;
@@ -855,39 +897,39 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
   // Parse pasted text and extract options
   const parseOptionsFromText = (text: string): string[] => {
     if (!text.trim()) return [];
-    
+
     // Split by semicolon if present
     if (text.includes(';')) {
       return text.split(';').map(opt => opt.trim()).filter(opt => opt.length > 0);
     }
-    
+
     // Try to match inline patterns like "A. text B. text C. text"
     const inlinePattern = /[A-Za-z0-9]+[\.\)]\s*[^A-Z0-9\.\)]+/g;
     const inlineMatches = text.match(inlinePattern);
-    
+
     if (inlineMatches && inlineMatches.length > 1) {
       // Found inline formatted options
-      return inlineMatches.map(match => 
+      return inlineMatches.map(match =>
         match.replace(/^[A-Za-z0-9]+[\.\)]\s*/, '').trim()
       ).filter(opt => opt.length > 0);
     }
-    
+
     // Split by newlines
     const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    
+
     const options: string[] = [];
-    
+
     for (const line of lines) {
       // Remove common prefixes like "A. ", "1. ", "a) ", etc.
       const cleaned = line
         .replace(/^[A-Za-z0-9]+[\.\)]\s*/, '') // Remove "A. " or "1. " or "a) " etc.
         .trim();
-      
+
       if (cleaned.length > 0) {
         options.push(cleaned);
       }
     }
-    
+
     return options;
   };
 
@@ -895,7 +937,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
   const applyParsedOptions = (questionId: string) => {
     const text = pastedOptionsText[questionId] || "";
     const parsedOptions = parseOptionsFromText(text);
-    
+
     if (parsedOptions.length === 0) {
       toast({
         title: "Nessuna opzione trovata",
@@ -904,20 +946,20 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
       });
       return;
     }
-    
-    setQuestions(questions.map(q => 
-      q.id === questionId 
+
+    setQuestions(questions.map(q =>
+      q.id === questionId
         ? { ...q, options: parsedOptions, correctAnswers: [] }
         : q
     ));
-    
+
     // Clear the pasted text after applying
     setPastedOptionsText(prev => {
       const newState = { ...prev };
       delete newState[questionId];
       return newState;
     });
-    
+
     toast({
       title: "Opzioni inserite!",
       description: `${parsedOptions.length} opzioni sono state aggiunte con successo.`,
@@ -1053,8 +1095,8 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
           <div>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-4 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl h-auto">
-                <TabsTrigger 
-                  value="basic" 
+                <TabsTrigger
+                  value="basic"
                   className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-md rounded-lg py-3 font-medium transition-all"
                 >
                   <div className="flex items-center space-x-2">
@@ -1062,7 +1104,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                     <span>Base</span>
                   </div>
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="content"
                   className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-md rounded-lg py-3 font-medium transition-all"
                 >
@@ -1071,7 +1113,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                     <span>Contenuto</span>
                   </div>
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="settings"
                   className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-md rounded-lg py-3 font-medium transition-all"
                 >
@@ -1080,7 +1122,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                     <span>Impostazioni</span>
                   </div>
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="clients"
                   className="data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:shadow-md rounded-lg py-3 font-medium transition-all"
                 >
@@ -1097,7 +1139,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                   errors,
                   formValues: form.getValues()
                 });
-                
+
                 // Show toast with first error
                 const firstError = Object.values(errors)[0];
                 toast({
@@ -1125,7 +1167,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Public exercise warning */}
                     {existingExercise.isPublic && (
                       <div className="bg-purple-50 dark:bg-purple-950/30 border-l-4 border-purple-500 p-4 rounded-r-lg">
@@ -1146,7 +1188,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                 )}
 
                 <TabsContent value="basic" className="space-y-6">
-          {/* Basic Information */}
+                  {/* Basic Information */}
                   <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                     <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
                       <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
@@ -1154,128 +1196,128 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                       </div>
                       <span>Informazioni di Base</span>
                     </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title" className="text-sm font-semibold text-gray-700 dark:text-gray-300">Titolo *</Label>
-                      <Input
-                        id="title"
-                        {...form.register("title")}
-                        placeholder="es. Analisi di Bilancio"
-                        data-testid="input-title"
-                        className="border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      />
-                      {form.formState.errors.title && (
-                        <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
-                      )}
-                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="title" className="text-sm font-semibold text-gray-700 dark:text-gray-300">Titolo *</Label>
+                        <Input
+                          id="title"
+                          {...form.register("title")}
+                          placeholder="es. Analisi di Bilancio"
+                          data-testid="input-title"
+                          className="border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                        {form.formState.errors.title && (
+                          <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
+                        )}
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Categoria *</Label>
-                      <Select 
-                        onValueChange={(value) => form.setValue("category", value)}
-                        value={form.watch("category") || undefined}
-                        data-testid="select-category"
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleziona categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="post-consulenza">📋 Post Consulenza</SelectItem>
-                          <SelectItem value="finanza-personale">💰 Finanza Personale</SelectItem>
-                          <SelectItem value="vendita">💼 Vendita</SelectItem>
-                          <SelectItem value="marketing">📈 Marketing</SelectItem>
-                          <SelectItem value="imprenditoria">🚀 Imprenditoria</SelectItem>
-                          <SelectItem value="risparmio-investimenti">📊 Risparmio e Investimenti</SelectItem>
-                          <SelectItem value="contabilità">🧮 Contabilità</SelectItem>
-                          <SelectItem value="gestione-risorse">⚙️ Gestione Risorse</SelectItem>
-                          <SelectItem value="strategia">🎯 Strategia</SelectItem>
-                          <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-                            📚 Corsi
-                          </div>
-                          <SelectItem value="newsletter">🌟 Metodo Orbitale - Finanza</SelectItem>
-                          <SelectItem value="metodo-turbo">⚡ Metodo Turbo - Vendita</SelectItem>
-                          <SelectItem value="metodo-hybrid">🔄 Metodo Hybrid - Azienda</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {form.formState.errors.category && (
-                        <p className="text-sm text-destructive">{form.formState.errors.category.message}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Tipo *</Label>
-                      <Select 
-                        onValueChange={(value: "general" | "personalized") => form.setValue("type", value)}
-                        defaultValue="general"
-                        data-testid="select-type"
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="general">Generale</SelectItem>
-                          <SelectItem value="personalized">Personalizzato</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="priority">Priorità</Label>
-                      <Select 
-                        onValueChange={(value: "low" | "medium" | "high") => form.setValue("priority", value)}
-                        defaultValue="medium"
-                        data-testid="select-priority"
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                              <span>Bassa</span>
+                      <div className="space-y-2">
+                        <Label htmlFor="category">Categoria *</Label>
+                        <Select
+                          onValueChange={(value) => form.setValue("category", value)}
+                          value={form.watch("category") || undefined}
+                          data-testid="select-category"
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleziona categoria" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="post-consulenza">📋 Post Consulenza</SelectItem>
+                            <SelectItem value="finanza-personale">💰 Finanza Personale</SelectItem>
+                            <SelectItem value="vendita">💼 Vendita</SelectItem>
+                            <SelectItem value="marketing">📈 Marketing</SelectItem>
+                            <SelectItem value="imprenditoria">🚀 Imprenditoria</SelectItem>
+                            <SelectItem value="risparmio-investimenti">📊 Risparmio e Investimenti</SelectItem>
+                            <SelectItem value="contabilità">🧮 Contabilità</SelectItem>
+                            <SelectItem value="gestione-risorse">⚙️ Gestione Risorse</SelectItem>
+                            <SelectItem value="strategia">🎯 Strategia</SelectItem>
+                            <div className="px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+                              📚 Corsi
                             </div>
-                          </SelectItem>
-                          <SelectItem value="medium">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                              <span>Media</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="high">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                              <span>Alta</span>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                            <SelectItem value="newsletter">🌟 Metodo Orbitale - Finanza</SelectItem>
+                            <SelectItem value="metodo-turbo">⚡ Metodo Turbo - Vendita</SelectItem>
+                            <SelectItem value="metodo-hybrid">🔄 Metodo Hybrid - Azienda</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {form.formState.errors.category && (
+                          <p className="text-sm text-destructive">{form.formState.errors.category.message}</p>
+                        )}
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="estimatedDuration">Durata stimata (minuti)</Label>
-                      <Input
-                        id="estimatedDuration"
-                        type="number"
-                        {...form.register("estimatedDuration", { valueAsNumber: true })}
-                        placeholder="60"
-                        data-testid="input-duration"
-                      />
-                      {form.formState.errors.estimatedDuration && (
-                        <p className="text-sm text-destructive">{form.formState.errors.estimatedDuration.message}</p>
-                      )}
-                    </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="type">Tipo *</Label>
+                        <Select
+                          onValueChange={(value: "general" | "personalized") => form.setValue("type", value)}
+                          defaultValue="general"
+                          data-testid="select-type"
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">Generale</SelectItem>
+                            <SelectItem value="personalized">Personalizzato</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="dueDate">Scadenza (opzionale)</Label>
-                      <Input
-                        id="dueDate"
-                        type="datetime-local"
-                        {...form.register("dueDate")}
-                        data-testid="input-due-date"
-                      />
+                      <div className="space-y-2">
+                        <Label htmlFor="priority">Priorità</Label>
+                        <Select
+                          onValueChange={(value: "low" | "medium" | "high") => form.setValue("priority", value)}
+                          defaultValue="medium"
+                          data-testid="select-priority"
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="low">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span>Bassa</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="medium">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                                <span>Media</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="high">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                                <span>Alta</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="estimatedDuration">Durata stimata (minuti)</Label>
+                        <Input
+                          id="estimatedDuration"
+                          type="number"
+                          {...form.register("estimatedDuration", { valueAsNumber: true })}
+                          placeholder="60"
+                          data-testid="input-duration"
+                        />
+                        {form.formState.errors.estimatedDuration && (
+                          <p className="text-sm text-destructive">{form.formState.errors.estimatedDuration.message}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="dueDate">Scadenza (opzionale)</Label>
+                        <Input
+                          id="dueDate"
+                          type="datetime-local"
+                          {...form.register("dueDate")}
+                          data-testid="input-due-date"
+                        />
+                      </div>
                     </div>
-                  </div>
                   </div>
 
                   {/* Description */}
@@ -1306,7 +1348,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
                 <TabsContent value="content" className="space-y-6">
 
-          {/* Instructions */}
+                  {/* Instructions */}
                   <div className="space-y-2">
                     <Label htmlFor="instructions">Istruzioni dettagliate</Label>
                     <Textarea
@@ -1407,7 +1449,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                   {/* File Upload */}
                   <div className="space-y-2">
                     <Label>Allegati di supporto</Label>
-                    <FileUpload 
+                    <FileUpload
                       onFilesChange={setFiles}
                       maxFiles={5}
                       data-testid="file-upload-attachments"
@@ -1417,352 +1459,352 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                     </p>
                   </div>
 
-          {/* Questions - only when questions is selected */}
-          {form.watch("useQuestions") && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label>Domande personalizzate</Label>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Crea domande specifiche per valutare la comprensione
-                        </p>
-                      </div>
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={addQuestion}
-                        data-testid="button-add-question"
-                      >
-                        <Plus size={16} className="mr-1" />
-                        Aggiungi Domanda
-                      </Button>
-                    </div>
-
-            {questions.map((question, index) => (
-              <Card key={question.id} className="p-4" data-testid={`question-${index}`}>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Domanda {index + 1}</Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeQuestion(question.id)}
-                      className="text-destructive hover:text-destructive"
-                      data-testid={`button-remove-question-${index}`}
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div className="md:col-span-2">
-                        <Input
-                          placeholder="Inserisci la domanda..."
-                          value={question.question}
-                          onChange={(e) => updateQuestion(question.id, "question", e.target.value)}
-                          data-testid={`input-question-text-${index}`}
-                        />
-                      </div>
-                      <Select
-                        value={question.type}
-                        onValueChange={(value: Question["type"]) => {
-                          // Update question with all necessary fields in one go
-                          setQuestions(questions.map(q => {
-                            if (q.id === question.id) {
-                              const updates: Partial<Question> = { type: value };
-                              
-                              // Initialize options for types that need them
-                              if ((value === "select" || value === "multiple_choice" || value === "multiple_answer")) {
-                                updates.options = q.options && q.options.length > 0 ? q.options : ["", "", "", ""];
-                              }
-                              
-                              // Initialize correctAnswers for auto-graded types
-                              if ((value === "true_false" || value === "multiple_choice" || value === "multiple_answer")) {
-                                updates.correctAnswers = q.correctAnswers || [];
-                              }
-                              
-                              return { ...q, ...updates };
-                            }
-                            return q;
-                          }));
-                        }}
-                        data-testid={`select-question-type-${index}`}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="text">📝 Testo libero</SelectItem>
-                          <SelectItem value="number">🔢 Numero</SelectItem>
-                          <SelectItem value="select">📋 Selezione</SelectItem>
-                          <Separator className="my-1" />
-                          <SelectItem value="true_false">✓✗ Vero/Falso</SelectItem>
-                          <SelectItem value="multiple_choice">◉ Scelta multipla</SelectItem>
-                          <SelectItem value="multiple_answer">☑ Risposta multipla</SelectItem>
-                          <SelectItem value="file_upload">📎 Caricamento file</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Points field for exam questions */}
-                    {form.watch("isExam") && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Punti</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="10"
-                            value={question.points || ""}
-                            onChange={(e) => updateQuestion(question.id, "points", e.target.value ? parseInt(e.target.value) : undefined)}
-                            data-testid={`input-question-points-${index}`}
-                            className="h-9"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Options for select type */}
-                  {question.type === "select" && (
-                    <div className="space-y-2">
+                  {/* Questions - only when questions is selected */}
+                  {form.watch("useQuestions") && (
+                    <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm">Opzioni</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addOption(question.id)}
-                          data-testid={`button-add-option-${index}`}
-                        >
-                          <Plus size={14} className="mr-1" />
-                          Aggiungi Opzione
-                        </Button>
-                      </div>
-                      {question.options?.map((option, optIndex) => (
-                        <div key={optIndex} className="flex items-center space-x-2">
-                          <Input
-                            placeholder={`Opzione ${optIndex + 1}`}
-                            value={option}
-                            onChange={(e) => updateOption(question.id, optIndex, e.target.value)}
-                            data-testid={`input-option-${index}-${optIndex}`}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeOption(question.id, optIndex)}
-                            className="text-destructive hover:text-destructive"
-                            data-testid={`button-remove-option-${index}-${optIndex}`}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* True/False type */}
-                  {question.type === "true_false" && (
-                    <div className="space-y-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                      <Label className="text-sm">Risposta corretta</Label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Button
-                          type="button"
-                          variant={question.correctAnswers?.[0] === "true" ? "default" : "outline"}
-                          className="w-full"
-                          onClick={() => updateQuestion(question.id, "correctAnswers", ["true"])}
-                          data-testid={`button-true-${index}`}
-                        >
-                          ✓ Vero
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={question.correctAnswers?.[0] === "false" ? "default" : "outline"}
-                          className="w-full"
-                          onClick={() => updateQuestion(question.id, "correctAnswers", ["false"])}
-                          data-testid={`button-false-${index}`}
-                        >
-                          ✗ Falso
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Multiple Choice type */}
-                  {question.type === "multiple_choice" && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm">Opzioni (seleziona la risposta corretta)</Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addOption(question.id)}
-                          data-testid={`button-add-option-${index}`}
-                        >
-                          <Plus size={14} className="mr-1" />
-                          Aggiungi Opzione
-                        </Button>
-                      </div>
-                      
-                      {/* Quick paste options */}
-                      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2">
-                        <Label className="text-xs font-medium">Incolla opzioni formattate</Label>
-                        <Textarea
-                          placeholder="Incolla qui le opzioni. Es:&#10;A. Prima opzione&#10;B. Seconda opzione&#10;C. Terza opzione"
-                          value={pastedOptionsText[question.id] || ""}
-                          onChange={(e) => setPastedOptionsText(prev => ({ ...prev, [question.id]: e.target.value }))}
-                          rows={3}
-                          className="text-sm"
-                        />
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            Supporta formati: A. B. C. / 1. 2. 3. / a) b) c) o righe separate
+                        <div>
+                          <Label>Domande personalizzate</Label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Crea domande specifiche per valutare la comprensione
                           </p>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => applyParsedOptions(question.id)}
-                            disabled={!pastedOptionsText[question.id]?.trim()}
-                          >
-                            Applica
-                          </Button>
                         </div>
-                      </div>
-                      
-                      {question.options?.map((option, optIndex) => (
-                        <div key={optIndex} className="flex items-center space-x-2">
-                          <input
-                            type="radio"
-                            name={`correct-${question.id}`}
-                            checked={question.correctAnswers?.includes(option)}
-                            onChange={() => updateQuestion(question.id, "correctAnswers", [option])}
-                            className="w-4 h-4"
-                            data-testid={`radio-correct-${index}-${optIndex}`}
-                          />
-                          <Input
-                            placeholder={`Opzione ${optIndex + 1}`}
-                            value={option}
-                            onChange={(e) => updateOption(question.id, optIndex, e.target.value)}
-                            className={question.correctAnswers?.includes(option) ? "border-green-500 bg-green-50 dark:bg-green-950/20" : ""}
-                            data-testid={`input-option-${index}-${optIndex}`}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeOption(question.id, optIndex)}
-                            className="text-destructive hover:text-destructive"
-                            data-testid={`button-remove-option-${index}-${optIndex}`}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                      ))}
-                      {(!question.options || question.options.length < 2) && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400">Aggiungi almeno 2 opzioni</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Multiple Answer type */}
-                  {question.type === "multiple_answer" && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm">Opzioni (seleziona tutte le risposte corrette)</Label>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => addOption(question.id)}
-                          data-testid={`button-add-option-${index}`}
+                          onClick={addQuestion}
+                          data-testid="button-add-question"
                         >
-                          <Plus size={14} className="mr-1" />
-                          Aggiungi Opzione
+                          <Plus size={16} className="mr-1" />
+                          Aggiungi Domanda
                         </Button>
                       </div>
-                      
-                      {/* Quick paste options */}
-                      <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2">
-                        <Label className="text-xs font-medium">Incolla opzioni formattate</Label>
-                        <Textarea
-                          placeholder="Incolla qui le opzioni. Es:&#10;A. Prima opzione&#10;B. Seconda opzione&#10;C. Terza opzione"
-                          value={pastedOptionsText[question.id] || ""}
-                          onChange={(e) => setPastedOptionsText(prev => ({ ...prev, [question.id]: e.target.value }))}
-                          rows={3}
-                          className="text-sm"
-                        />
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            Supporta formati: A. B. C. / 1. 2. 3. / a) b) c) o righe separate
-                          </p>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => applyParsedOptions(question.id)}
-                            disabled={!pastedOptionsText[question.id]?.trim()}
-                          >
-                            Applica
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {question.options?.map((option, optIndex) => (
-                        <div key={optIndex} className="flex items-center space-x-2">
-                          <Checkbox
-                            checked={question.correctAnswers?.includes(option) || false}
-                            onCheckedChange={(checked) => {
-                              const currentCorrect = question.correctAnswers || [];
-                              const newCorrect = checked 
-                                ? [...currentCorrect, option]
-                                : currentCorrect.filter(a => a !== option);
-                              updateQuestion(question.id, "correctAnswers", newCorrect);
-                            }}
-                            data-testid={`checkbox-correct-${index}-${optIndex}`}
-                          />
-                          <Input
-                            placeholder={`Opzione ${optIndex + 1}`}
-                            value={option}
-                            onChange={(e) => updateOption(question.id, optIndex, e.target.value)}
-                            className={question.correctAnswers?.includes(option) ? "border-green-500 bg-green-50 dark:bg-green-950/20" : ""}
-                            data-testid={`input-option-${index}-${optIndex}`}
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeOption(question.id, optIndex)}
-                            className="text-destructive hover:text-destructive"
-                            data-testid={`button-remove-option-${index}-${optIndex}`}
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                      ))}
-                      {(!question.correctAnswers || question.correctAnswers.length === 0) && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400">Seleziona almeno una risposta corretta</p>
-                      )}
-                    </div>
-                  )}
 
-                  {/* File Upload type */}
-                  {question.type === "file_upload" && (
-                    <div className="p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
-                      <div className="flex items-center space-x-2 text-sm text-purple-700 dark:text-purple-300">
-                        <AlertCircle size={16} />
-                        <span>Il cliente dovrà caricare un file come risposta a questa domanda</span>
-                      </div>
+                      {questions.map((question, index) => (
+                        <Card key={question.id} className="p-4" data-testid={`question-${index}`}>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <Label>Domanda {index + 1}</Label>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeQuestion(question.id)}
+                                className="text-destructive hover:text-destructive"
+                                data-testid={`button-remove-question-${index}`}
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+
+                            <div className="space-y-3">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div className="md:col-span-2">
+                                  <Input
+                                    placeholder="Inserisci la domanda..."
+                                    value={question.question}
+                                    onChange={(e) => updateQuestion(question.id, "question", e.target.value)}
+                                    data-testid={`input-question-text-${index}`}
+                                  />
+                                </div>
+                                <Select
+                                  value={question.type}
+                                  onValueChange={(value: Question["type"]) => {
+                                    // Update question with all necessary fields in one go
+                                    setQuestions(questions.map(q => {
+                                      if (q.id === question.id) {
+                                        const updates: Partial<Question> = { type: value };
+
+                                        // Initialize options for types that need them
+                                        if ((value === "select" || value === "multiple_choice" || value === "multiple_answer")) {
+                                          updates.options = q.options && q.options.length > 0 ? q.options : ["", "", "", ""];
+                                        }
+
+                                        // Initialize correctAnswers for auto-graded types
+                                        if ((value === "true_false" || value === "multiple_choice" || value === "multiple_answer")) {
+                                          updates.correctAnswers = q.correctAnswers || [];
+                                        }
+
+                                        return { ...q, ...updates };
+                                      }
+                                      return q;
+                                    }));
+                                  }}
+                                  data-testid={`select-question-type-${index}`}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="text">📝 Testo libero</SelectItem>
+                                    <SelectItem value="number">🔢 Numero</SelectItem>
+                                    <SelectItem value="select">📋 Selezione</SelectItem>
+                                    <Separator className="my-1" />
+                                    <SelectItem value="true_false">✓✗ Vero/Falso</SelectItem>
+                                    <SelectItem value="multiple_choice">◉ Scelta multipla</SelectItem>
+                                    <SelectItem value="multiple_answer">☑ Risposta multipla</SelectItem>
+                                    <SelectItem value="file_upload">📎 Caricamento file</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* Points field for exam questions */}
+                              {form.watch("isExam") && (
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="space-y-1">
+                                    <Label className="text-xs">Punti</Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      placeholder="10"
+                                      value={question.points || ""}
+                                      onChange={(e) => updateQuestion(question.id, "points", e.target.value ? parseInt(e.target.value) : undefined)}
+                                      data-testid={`input-question-points-${index}`}
+                                      className="h-9"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Options for select type */}
+                            {question.type === "select" && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm">Opzioni</Label>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => addOption(question.id)}
+                                    data-testid={`button-add-option-${index}`}
+                                  >
+                                    <Plus size={14} className="mr-1" />
+                                    Aggiungi Opzione
+                                  </Button>
+                                </div>
+                                {question.options?.map((option, optIndex) => (
+                                  <div key={optIndex} className="flex items-center space-x-2">
+                                    <Input
+                                      placeholder={`Opzione ${optIndex + 1}`}
+                                      value={option}
+                                      onChange={(e) => updateOption(question.id, optIndex, e.target.value)}
+                                      data-testid={`input-option-${index}-${optIndex}`}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeOption(question.id, optIndex)}
+                                      className="text-destructive hover:text-destructive"
+                                      data-testid={`button-remove-option-${index}-${optIndex}`}
+                                    >
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* True/False type */}
+                            {question.type === "true_false" && (
+                              <div className="space-y-2 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <Label className="text-sm">Risposta corretta</Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={question.correctAnswers?.[0] === "true" ? "default" : "outline"}
+                                    className="w-full"
+                                    onClick={() => updateQuestion(question.id, "correctAnswers", ["true"])}
+                                    data-testid={`button-true-${index}`}
+                                  >
+                                    ✓ Vero
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={question.correctAnswers?.[0] === "false" ? "default" : "outline"}
+                                    className="w-full"
+                                    onClick={() => updateQuestion(question.id, "correctAnswers", ["false"])}
+                                    data-testid={`button-false-${index}`}
+                                  >
+                                    ✗ Falso
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Multiple Choice type */}
+                            {question.type === "multiple_choice" && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm">Opzioni (seleziona la risposta corretta)</Label>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => addOption(question.id)}
+                                    data-testid={`button-add-option-${index}`}
+                                  >
+                                    <Plus size={14} className="mr-1" />
+                                    Aggiungi Opzione
+                                  </Button>
+                                </div>
+
+                                {/* Quick paste options */}
+                                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2">
+                                  <Label className="text-xs font-medium">Incolla opzioni formattate</Label>
+                                  <Textarea
+                                    placeholder="Incolla qui le opzioni. Es:&#10;A. Prima opzione&#10;B. Seconda opzione&#10;C. Terza opzione"
+                                    value={pastedOptionsText[question.id] || ""}
+                                    onChange={(e) => setPastedOptionsText(prev => ({ ...prev, [question.id]: e.target.value }))}
+                                    rows={3}
+                                    className="text-sm"
+                                  />
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs text-muted-foreground">
+                                      Supporta formati: A. B. C. / 1. 2. 3. / a) b) c) o righe separate
+                                    </p>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => applyParsedOptions(question.id)}
+                                      disabled={!pastedOptionsText[question.id]?.trim()}
+                                    >
+                                      Applica
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {question.options?.map((option, optIndex) => (
+                                  <div key={optIndex} className="flex items-center space-x-2">
+                                    <input
+                                      type="radio"
+                                      name={`correct-${question.id}`}
+                                      checked={question.correctAnswers?.includes(option)}
+                                      onChange={() => updateQuestion(question.id, "correctAnswers", [option])}
+                                      className="w-4 h-4"
+                                      data-testid={`radio-correct-${index}-${optIndex}`}
+                                    />
+                                    <Input
+                                      placeholder={`Opzione ${optIndex + 1}`}
+                                      value={option}
+                                      onChange={(e) => updateOption(question.id, optIndex, e.target.value)}
+                                      className={question.correctAnswers?.includes(option) ? "border-green-500 bg-green-50 dark:bg-green-950/20" : ""}
+                                      data-testid={`input-option-${index}-${optIndex}`}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeOption(question.id, optIndex)}
+                                      className="text-destructive hover:text-destructive"
+                                      data-testid={`button-remove-option-${index}-${optIndex}`}
+                                    >
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  </div>
+                                ))}
+                                {(!question.options || question.options.length < 2) && (
+                                  <p className="text-xs text-amber-600 dark:text-amber-400">Aggiungi almeno 2 opzioni</p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Multiple Answer type */}
+                            {question.type === "multiple_answer" && (
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm">Opzioni (seleziona tutte le risposte corrette)</Label>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => addOption(question.id)}
+                                    data-testid={`button-add-option-${index}`}
+                                  >
+                                    <Plus size={14} className="mr-1" />
+                                    Aggiungi Opzione
+                                  </Button>
+                                </div>
+
+                                {/* Quick paste options */}
+                                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2">
+                                  <Label className="text-xs font-medium">Incolla opzioni formattate</Label>
+                                  <Textarea
+                                    placeholder="Incolla qui le opzioni. Es:&#10;A. Prima opzione&#10;B. Seconda opzione&#10;C. Terza opzione"
+                                    value={pastedOptionsText[question.id] || ""}
+                                    onChange={(e) => setPastedOptionsText(prev => ({ ...prev, [question.id]: e.target.value }))}
+                                    rows={3}
+                                    className="text-sm"
+                                  />
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs text-muted-foreground">
+                                      Supporta formati: A. B. C. / 1. 2. 3. / a) b) c) o righe separate
+                                    </p>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={() => applyParsedOptions(question.id)}
+                                      disabled={!pastedOptionsText[question.id]?.trim()}
+                                    >
+                                      Applica
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {question.options?.map((option, optIndex) => (
+                                  <div key={optIndex} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      checked={question.correctAnswers?.includes(option) || false}
+                                      onCheckedChange={(checked) => {
+                                        const currentCorrect = question.correctAnswers || [];
+                                        const newCorrect = checked
+                                          ? [...currentCorrect, option]
+                                          : currentCorrect.filter(a => a !== option);
+                                        updateQuestion(question.id, "correctAnswers", newCorrect);
+                                      }}
+                                      data-testid={`checkbox-correct-${index}-${optIndex}`}
+                                    />
+                                    <Input
+                                      placeholder={`Opzione ${optIndex + 1}`}
+                                      value={option}
+                                      onChange={(e) => updateOption(question.id, optIndex, e.target.value)}
+                                      className={question.correctAnswers?.includes(option) ? "border-green-500 bg-green-50 dark:bg-green-950/20" : ""}
+                                      data-testid={`input-option-${index}-${optIndex}`}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeOption(question.id, optIndex)}
+                                      className="text-destructive hover:text-destructive"
+                                      data-testid={`button-remove-option-${index}-${optIndex}`}
+                                    >
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  </div>
+                                ))}
+                                {(!question.correctAnswers || question.correctAnswers.length === 0) && (
+                                  <p className="text-xs text-amber-600 dark:text-amber-400">Seleziona almeno una risposta corretta</p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* File Upload type */}
+                            {question.type === "file_upload" && (
+                              <div className="p-4 bg-purple-50 dark:bg-purple-950/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                                <div className="flex items-center space-x-2 text-sm text-purple-700 dark:text-purple-300">
+                                  <AlertCircle size={16} />
+                                  <span>Il cliente dovrà caricare un file come risposta a questa domanda</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </Card>
+                      ))}
                     </div>
                   )}
-                </div>
-              </Card>
-            ))}
-                  </div>
-                )}
                 </TabsContent>
 
                 <TabsContent value="settings" className="space-y-6">
@@ -1891,11 +1933,11 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                               </div>
                             </div>
                           )}
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label htmlFor="yearId">Anno Universitario *</Label>
-                              <Select 
+                              <Select
                                 value={form.watch("yearId") || undefined}
                                 onValueChange={(value) => {
                                   form.setValue("yearId", value);
@@ -1910,8 +1952,8 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                                 <SelectContent>
                                   {universityYears.length === 0 ? (
                                     <div className="p-2 text-sm text-muted-foreground">
-                                      {selectedClientIds.length > 0 
-                                        ? "Nessun anno assegnato ai clienti selezionati" 
+                                      {selectedClientIds.length > 0
+                                        ? "Nessun anno assegnato ai clienti selezionati"
                                         : "Seleziona clienti per vedere gli anni disponibili"}
                                     </div>
                                   ) : (
@@ -1932,7 +1974,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
                             <div className="space-y-2">
                               <Label htmlFor="trimesterId">Trimestre (opzionale)</Label>
-                              <Select 
+                              <Select
                                 value={form.watch("trimesterId") || undefined}
                                 onValueChange={(value) => form.setValue("trimesterId", value === "all-year" ? undefined : value)}
                                 disabled={!form.watch("yearId")}
@@ -1954,8 +1996,8 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                                 </SelectContent>
                               </Select>
                               <p className="text-xs text-muted-foreground">
-                                {form.watch("trimesterId") 
-                                  ? "Esame specifico per il trimestre selezionato" 
+                                {form.watch("trimesterId")
+                                  ? "Esame specifico per il trimestre selezionato"
                                   : "Se non selezioni un trimestre, l'esame vale per tutto l'anno"}
                               </p>
                             </div>
@@ -2074,7 +2116,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
                 <TabsContent value="clients" className="space-y-6">
 
-          {/* Assignment Type Selection */}
+                  {/* Assignment Type Selection */}
                   <div className="space-y-4">
                     <div>
                       <Label>Tipo di Assegnazione *</Label>
@@ -2085,7 +2127,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${!form.watch("isPublic") ? "border-primary bg-primary/5" : "border-muted hover:border-muted-foreground/50"}`}
-                           onClick={() => form.setValue("isPublic", false)}>
+                        onClick={() => form.setValue("isPublic", false)}>
                         <div className="flex items-center space-x-3 mb-2">
                           <input
                             type="radio"
@@ -2103,7 +2145,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                       </div>
 
                       <div className={`p-4 border-2 rounded-lg transition-all cursor-pointer ${form.watch("isPublic") ? "border-primary bg-primary/5" : "border-muted hover:border-muted-foreground/50"}`}
-                           onClick={() => form.setValue("isPublic", true)}>
+                        onClick={() => form.setValue("isPublic", true)}>
                         <div className="flex items-center space-x-3 mb-2">
                           <input
                             type="radio"
@@ -2122,7 +2164,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                     </div>
                   </div>
 
-          {/* Client Selection - only shown when not public */}
+                  {/* Client Selection - only shown when not public */}
                   {!form.watch("isPublic") && (
                     <div className="space-y-4">
                       <div>
@@ -2169,7 +2211,7 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                     </div>
                   )}
 
-          {/* Public Exercise Summary */}
+                  {/* Public Exercise Summary */}
                   {form.watch("isPublic") && (
                     <div className="mt-4 p-4 bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg border border-blue-100 dark:border-blue-800">
                       <div className="flex items-center space-x-2 mb-2">
@@ -2186,9 +2228,9 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
                 {/* Actions */}
                 <div className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={onCancel}
                     data-testid="button-cancel"
                     className="px-6 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -2199,8 +2241,8 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
 
                   <div className="flex space-x-3">
                     {saveAsTemplate && (
-                      <Button 
-                        type="button" 
+                      <Button
+                        type="button"
                         variant="outline"
                         onClick={handleSaveAsTemplate}
                         disabled={isLoading || !templateName.trim()}
@@ -2212,8 +2254,8 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                       </Button>
                     )}
 
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={isLoading}
                       data-testid="button-submit"
                       onClick={(e) => {
@@ -2237,12 +2279,12 @@ export default function ExerciseForm({ onSubmit, onCancel, isLoading, existingEx
                       className="px-8 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                       <Sparkles size={16} className="mr-2" />
-                      {isLoading 
-                        ? existingExercise ? "Aggiornamento..." : "Creazione..." 
-                        : existingExercise 
+                      {isLoading
+                        ? existingExercise ? "Aggiornamento..." : "Creazione..."
+                        : existingExercise
                           ? "Aggiorna Esercizio"
-                          : form.watch("isPublic") 
-                            ? "Crea Esercizio Pubblico" 
+                          : form.watch("isPublic")
+                            ? "Crea Esercizio Pubblico"
                             : "Crea e Assegna Esercizio"
                       }
                     </Button>
