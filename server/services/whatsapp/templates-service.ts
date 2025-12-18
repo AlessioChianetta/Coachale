@@ -6,10 +6,10 @@ import {
   whatsappVariableCatalog,
 } from "../../../shared/schema";
 import { eq, and, desc, sql, isNull, asc } from "drizzle-orm";
-import { 
-  validateCreateTemplate, 
+import {
+  validateCreateTemplate,
   type CreateTemplateInput,
-  type UpdateTemplateInput 
+  type UpdateTemplateInput
 } from "../../validators/whatsapp/custom-template-schema";
 import { getTwilioClient } from "../../whatsapp/twilio-client";
 import { convertToTwilioFormat } from "./variable-converter";
@@ -24,6 +24,8 @@ export interface TemplateListItem {
   description: string | null;
   createdAt: Date;
   updatedAt: Date;
+  isSystemTemplate?: boolean;
+  targetAgentType?: string;
   activeVersion?: {
     id: string;
     versionNumber: number;
@@ -110,7 +112,7 @@ export async function createTemplate(
       const catalogEntry = validation.catalogVariables?.find(
         v => v.variableKey === varMapping.variableKey
       );
-      
+
       if (!catalogEntry) {
         throw new Error(`Variable ${varMapping.variableKey} not found in catalog`);
       }
@@ -186,7 +188,7 @@ export async function listTemplates(
     eq(whatsappCustomTemplates.consultantId, consultantId),
     isNull(whatsappCustomTemplates.archivedAt),
   ];
-  
+
   if (filters?.templateType) {
     conditions.push(eq(whatsappCustomTemplates.templateType, filters.templateType as any));
   }
@@ -200,7 +202,7 @@ export async function listTemplates(
 
   // For each template, get active version with variable count
   const result: TemplateListItem[] = [];
-  
+
   for (const template of templates) {
     // Get active version
     const activeVersions = await db
@@ -228,7 +230,7 @@ export async function listTemplates(
         .select({ count: sql<number>`count(*)` })
         .from(whatsappTemplateVariables)
         .where(eq(whatsappTemplateVariables.templateVersionId, activeVersion.id));
-      
+
       variableCount = Number(countResult[0]?.count || 0);
     }
 
@@ -239,6 +241,9 @@ export async function listTemplates(
       description: template.description,
       createdAt: template.createdAt,
       updatedAt: template.updatedAt,
+      // NEW: Include system template fields
+      isSystemTemplate: template.isSystemTemplate,
+      targetAgentType: template.targetAgentType,
       activeVersion: activeVersion ? {
         id: activeVersion.id,
         versionNumber: activeVersion.versionNumber,
@@ -346,7 +351,7 @@ export async function createNewVersion(
     templateName: "", // Not needed for validation
     templateType: "opening", // Not needed for validation
   });
-  
+
   if (!validation.valid) {
     throw new Error(`Validation failed: ${validation.errors.join("; ")}`);
   }
@@ -406,7 +411,7 @@ export async function createNewVersion(
       const catalogEntry = validation.catalogVariables?.find(
         v => v.variableKey === varMapping.variableKey
       );
-      
+
       if (!catalogEntry) {
         throw new Error(`Variable ${varMapping.variableKey} not found in catalog`);
       }
@@ -450,7 +455,7 @@ export async function archiveTemplate(
 ): Promise<boolean> {
   const result = await db
     .update(whatsappCustomTemplates)
-    .set({ 
+    .set({
       archivedAt: new Date(),
       updatedAt: new Date(),
     })
@@ -475,7 +480,7 @@ export async function restoreTemplate(
 ): Promise<boolean> {
   const result = await db
     .update(whatsappCustomTemplates)
-    .set({ 
+    .set({
       archivedAt: null,
       updatedAt: new Date(),
     })

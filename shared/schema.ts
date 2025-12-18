@@ -26,22 +26,22 @@ export const users = pgTable("users", {
   preferredAiProvider: text("preferred_ai_provider").$type<"vertex_admin" | "google_studio" | "custom" | "vertex_self">().default("vertex_admin"), // AI provider preference: vertex_admin (default Vertex AI), google_studio (fallback Google AI Studio), custom (client's own Google AI Studio API keys), vertex_self (client's own Vertex AI)
   encryptionSalt: text("encryption_salt"), // Unique salt for per-consultant encryption key derivation (only for consultants)
   googleClientId: text("google_client_id"), // Google OAuth Client ID for video meeting authentication (consultant-level)
-  
+
   // Google Drive Integration (for clients to connect their own Drive)
   googleDriveRefreshToken: text("google_drive_refresh_token"),
   googleDriveAccessToken: text("google_drive_access_token"),
   googleDriveTokenExpiresAt: timestamp("google_drive_token_expires_at"),
   googleDriveConnectedAt: timestamp("google_drive_connected_at"),
   googleDriveEmail: text("google_drive_email"),
-  
+
   // Twilio Configuration (consultant-level centralized settings)
   twilioAccountSid: text("twilio_account_sid"),
   twilioAuthToken: text("twilio_auth_token"),
   twilioWhatsappNumber: text("twilio_whatsapp_number"),
-  
+
   // Vertex AI Inheritance - consultants can use SuperAdmin's Vertex or their own
   useSuperadminVertex: boolean("use_superadmin_vertex").default(true), // If true, consultant uses SuperAdmin's Vertex; if false, uses their own
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -86,13 +86,13 @@ export const exerciseAssignments = pgTable("exercise_assignments", {
   submittedAt: timestamp("submitted_at"),
   reviewedAt: timestamp("reviewed_at"),
   score: integer("score"),
-  consultantFeedback: jsonb("consultant_feedback").$type<Array<{feedback: string; timestamp: string}>>().default(sql`'[]'::jsonb`),
+  consultantFeedback: jsonb("consultant_feedback").$type<Array<{ feedback: string; timestamp: string }>>().default(sql`'[]'::jsonb`),
   whatsappSent: boolean("whatsapp_sent").default(false),
   workPlatform: text("work_platform"), // Custom work platform link for this specific assignment
 
   // Exam-specific fields
   autoGradedScore: integer("auto_graded_score"), // Auto-graded score before consultant review
-  questionGrades: jsonb("question_grades").$type<Array<{questionId: string; score: number; maxScore: number; isCorrect?: boolean; feedback?: string}>>().default(sql`'[]'::jsonb`),
+  questionGrades: jsonb("question_grades").$type<Array<{ questionId: string; score: number; maxScore: number; isCorrect?: boolean; feedback?: string }>>().default(sql`'[]'::jsonb`),
   examStartedAt: timestamp("exam_started_at"), // When student started the exam
   examSubmittedAt: timestamp("exam_submitted_at"), // When student submitted the exam
 });
@@ -100,7 +100,7 @@ export const exerciseAssignments = pgTable("exercise_assignments", {
 export const exerciseSubmissions = pgTable("exercise_submissions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   assignmentId: varchar("assignment_id").references(() => exerciseAssignments.id, { onDelete: "cascade" }).notNull(),
-  answers: json("answers").$type<Array<{questionId: string; answer: string | string[]; uploadedFiles?: string[]}>>().default([]),
+  answers: json("answers").$type<Array<{ questionId: string; answer: string | string[]; uploadedFiles?: string[] }>>().default([]),
   attachments: json("attachments").$type<string[]>().default([]),
   notes: text("notes"),
   submittedAt: timestamp("submitted_at"), // Nullable to support drafts
@@ -581,16 +581,16 @@ export const vertexAiUsageTracking = pgTable("vertex_ai_usage_tracking", {
   sessionId: text("session_id"), // For grouping calls in the same Live API session
   callType: text("call_type").$type<"live_api" | "standard_api">().notNull(), // Type of API call
   modelName: text("model_name").notNull(), // e.g., "gemini-2.0-flash-exp"
-  
+
   // Token counts
   promptTokens: integer("prompt_tokens").notNull().default(0), // Text input tokens (fresh)
   candidatesTokens: integer("candidates_tokens").notNull().default(0), // Text output tokens
   cachedContentTokenCount: integer("cached_content_token_count").notNull().default(0), // Cached input tokens
-  
+
   // Audio metrics (for Live API only)
   audioInputSeconds: real("audio_input_seconds").default(0), // Audio input duration in seconds
   audioOutputSeconds: real("audio_output_seconds").default(0), // Audio output duration in seconds
-  
+
   // Cost breakdown (in USD) - Official Live API pricing
   // Cached: $0.03/1M tokens, Text Input: $0.50/1M, Audio Input: $3.00/1M, Audio Output: $12.00/1M
   textInputCost: real("text_input_cost").notNull().default(0), // Fresh text input cost
@@ -598,7 +598,7 @@ export const vertexAiUsageTracking = pgTable("vertex_ai_usage_tracking", {
   audioOutputCost: real("audio_output_cost").notNull().default(0), // Audio output cost (most expensive!)
   cachedInputCost: real("cached_input_cost").notNull().default(0), // Cached input cost (94% savings!)
   totalCost: real("total_cost").notNull().default(0), // Sum of all costs
-  
+
   // Metadata
   requestMetadata: jsonb("request_metadata").$type<{
     usageMetadata?: any;
@@ -606,7 +606,7 @@ export const vertexAiUsageTracking = pgTable("vertex_ai_usage_tracking", {
     toolCall?: any;
     endOfTurn?: boolean;
   }>().default(sql`'{}'::jsonb`), // Store full usage metadata from Vertex AI response
-  
+
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 }, (table) => {
   return {
@@ -663,7 +663,7 @@ export const schedulerExecutionLog = pgTable("scheduler_execution_log", {
   emailsSent: integer("emails_sent").notNull().default(0),
   draftsCreated: integer("drafts_created").notNull().default(0),
   errors: integer("errors").notNull().default(0),
-  errorDetails: jsonb("error_details").$type<Array<{clientId: string; clientName: string; error: string}>>().default(sql`'[]'::jsonb`),
+  errorDetails: jsonb("error_details").$type<Array<{ clientId: string; clientName: string; error: string }>>().default(sql`'[]'::jsonb`),
   executionTimeMs: integer("execution_time_ms"), // Tempo di esecuzione in millisecondi
   status: text("status").$type<"success" | "partial" | "failed">().notNull().default("success"),
   details: text("details"), // Note aggiuntive
@@ -699,8 +699,8 @@ export const clientEmailJourneyProgress = pgTable("client_email_journey_progress
   lastTemplateUsedId: varchar("last_template_used_id").references(() => emailJourneyTemplates.id),
   lastEmailSubject: text("last_email_subject"),
   lastEmailBody: text("last_email_body"), // Corpo dell'ultima email per analisi
-  lastEmailActions: jsonb("last_email_actions").$type<Array<{action: string; type: string; expectedCompletion?: string}>>().default(sql`'[]'::jsonb`),
-  actionsCompletedData: jsonb("actions_completed_data").$type<{completed: boolean; details: Array<{action: string; completed: boolean; completedAt?: string}>}>().default(sql`'{"completed": false, "details": []}'::jsonb`),
+  lastEmailActions: jsonb("last_email_actions").$type<Array<{ action: string; type: string; expectedCompletion?: string }>>().default(sql`'[]'::jsonb`),
+  actionsCompletedData: jsonb("actions_completed_data").$type<{ completed: boolean; details: Array<{ action: string; completed: boolean; completedAt?: string }> }>().default(sql`'{"completed": false, "details": []}'::jsonb`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => {
@@ -1339,7 +1339,7 @@ export const libraryDocuments = pgTable("library_documents", {
   level: text("level").notNull().$type<"base" | "intermedio" | "avanzato">().default("base"),
   estimatedDuration: integer("estimated_duration"), // in minutes
   tags: json("tags").$type<string[]>().default([]),
-  attachments: json("attachments").$type<Array<{filename: string, originalName: string, size: number, mimetype: string} | string>>().default([]),
+  attachments: json("attachments").$type<Array<{ filename: string, originalName: string, size: number, mimetype: string } | string>>().default([]),
   sortOrder: integer("sort_order").notNull().default(0),
   isPublished: boolean("is_published").default(true),
   createdBy: varchar("created_by").references(() => users.id).notNull(),
@@ -1650,28 +1650,28 @@ export const aiWeeklyConsultations = pgTable("ai_weekly_consultations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   consultantId: varchar("consultant_id").references(() => users.id).notNull(),
-  
+
   // Programmazione consulenza
   scheduledFor: timestamp("scheduled_for").notNull(), // martedì 15:00
   recurrenceRule: text("recurrence_rule").default("WEEKLY"), // per future espansioni
-  
+
   // Stato e durata
   status: text("status").notNull().default("scheduled").$type<"scheduled" | "in_progress" | "completed" | "cancelled">(),
   maxDurationMinutes: integer("max_duration_minutes").default(90), // 1.5 ore
-  
+
   // Collegamento alla conversazione Live
   aiConversationId: varchar("ai_conversation_id").references(() => aiConversations.id, { onDelete: "set null" }),
-  
+
   // Trascrizione e metadati
   startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
   actualDurationMinutes: integer("actual_duration_minutes"),
   transcript: text("transcript"), // trascrizione completa
   summary: text("summary"), // riassunto AI-generato
-  
+
   // Flag test per sviluppo
   isTestMode: boolean("is_test_mode").default(false),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -2078,26 +2078,26 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
   workingHoursEnd: text("working_hours_end"),
   workingDays: jsonb("working_days").$type<string[]>(),
   afterHoursMessage: text("after_hours_message"),
-  
+
   // Business Profile
   businessName: text("business_name"),
   consultantDisplayName: text("consultant_display_name"), // Nome da mostrare nei messaggi (es: "Marco", "Dott. Rossi")
   businessDescription: text("business_description"),
   consultantBio: text("consultant_bio"),
   salesScript: text("sales_script"),
-  
+
   // Authority & Positioning
   vision: text("vision"),
   mission: text("mission"),
   values: jsonb("values").$type<string[]>(),
   usp: text("usp"),
-  
+
   // Who We Help & Don't Help
   whoWeHelp: text("who_we_help"),
   whoWeDontHelp: text("who_we_dont_help"),
   whatWeDo: text("what_we_do"),
   howWeDoIt: text("how_we_do_it"),
-  
+
   // Software & Books
   softwareCreated: jsonb("software_created").$type<Array<{
     name: string;
@@ -2110,7 +2110,7 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
     description: string;
     link?: string;
   }>>(),
-  
+
   // Proof & Credibility
   yearsExperience: integer("years_experience"),
   clientsHelped: integer("clients_helped"),
@@ -2122,7 +2122,7 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
     after: string;
     timeFrame: string;
   }>>(),
-  
+
   // Services & Guarantees
   servicesOffered: jsonb("services_offered").$type<Array<{
     name: string;
@@ -2131,16 +2131,16 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
     investment: string;
   }>>(),
   guarantees: text("guarantees"),
-  
+
   // AI Personality Configuration
   aiPersonality: text("ai_personality").$type<"amico_fidato" | "coach_motivazionale" | "consulente_professionale" | "mentore_paziente" | "venditore_energico" | "consigliere_empatico" | "stratega_diretto" | "educatore_socratico" | "esperto_tecnico" | "compagno_entusiasta">().default("amico_fidato"),
-  
+
   // WhatsApp Conversation Style (only for clients)
   whatsappConciseMode: boolean("whatsapp_concise_mode").default(false).notNull(),
-  
+
   // Agent Type: reactive (waits for messages) vs proactive (writes first) vs informative (teaches without booking) vs customer_success (post-sale) vs intake_coordinator (document collection)
   agentType: text("agent_type").$type<"reactive_lead" | "proactive_setter" | "informative_advisor" | "customer_success" | "intake_coordinator">().default("reactive_lead").notNull(),
-  
+
   // WhatsApp Message Templates (ContentSid for proactive outreach)
   // PRECEDENCE: Custom template ID > Twilio SID > plaintext fallback
   // Only ONE source should be configured per slot (validated at runtime)
@@ -2156,7 +2156,7 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
     followUpValueTemplateId?: string;
     followUpFinalTemplateId?: string;
   }>(),
-  
+
   // Template body texts (for dry run preview and testing)
   // Stores the actual template text with {{1}}, {{2}}, etc. placeholders
   templateBodies: jsonb("template_bodies").$type<{
@@ -2165,30 +2165,30 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
     followUpValueBody?: string;
     followUpFinalBody?: string;
   }>(),
-  
+
   // Proactive Lead Defaults (applied when creating leads without explicit values)
   defaultObiettivi: text("default_obiettivi"),
   defaultDesideri: text("default_desideri"),
   defaultUncino: text("default_uncino"),
   defaultIdealState: text("default_ideal_state"),
-  
+
   // DRY RUN MODE - Per-agent test mode (simulates messages without sending)
   isDryRun: boolean("is_dry_run").default(true).notNull(),
-  
+
   // Proactive Agent Mode - Can initiate conversations (outreach) instead of only responding
   isProactiveAgent: boolean("is_proactive_agent").default(false).notNull(),
-  
+
   // Agent Instructions Configuration (migrazione da hardcoded a DB)
   agentInstructions: text("agent_instructions"),
   agentInstructionsEnabled: boolean("agent_instructions_enabled").default(false).notNull(),
   selectedTemplate: text("selected_template").$type<"receptionist" | "marco_setter" | "informative_advisor" | "customer_success" | "intake_coordinator" | "custom">(),
-  
+
   // Feature Blocks Configuration (on/off per funzionalità modulari)
   bookingEnabled: boolean("booking_enabled").default(true).notNull(),
   objectionHandlingEnabled: boolean("objection_handling_enabled").default(true).notNull(),
   disqualificationEnabled: boolean("disqualification_enabled").default(true).notNull(),
   upsellingEnabled: boolean("upselling_enabled").default(false).notNull(),
-  
+
   // Template Approval Status Cache (to avoid excessive Twilio API calls)
   templateApprovalStatus: jsonb("template_approval_status").$type<{
     [contentSid: string]: {
@@ -2198,16 +2198,16 @@ export const consultantWhatsappConfig = pgTable("consultant_whatsapp_config", {
     };
   }>(),
   lastApprovalCheck: timestamp("last_approval_check"),
-  
+
   // Business Header Configuration (come si presenta l'AI)
   businessHeaderMode: text("business_header_mode").$type<"assistant" | "direct_consultant" | "direct_professional" | "custom" | "none">().default("assistant"),
   professionalRole: text("professional_role"), // Es: "Insegnante di matematica", "Coach finanziario"
   customBusinessHeader: text("custom_business_header"), // Header completamente personalizzato
-  
+
   // TTS (Text-to-Speech) Configuration for voice responses
   ttsEnabled: boolean("tts_enabled").default(false).notNull(),
   audioResponseMode: text("audio_response_mode").$type<"always_text" | "always_audio" | "mirror" | "always_both">().default("always_text").notNull(),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -2447,7 +2447,7 @@ export const whatsappPollingWatermarks = pgTable("whatsapp_polling_watermarks", 
 export const consultantAvailabilitySettings = pgTable("consultant_availability_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
-  
+
   // Google Service Account Credentials (NEW - simpler than OAuth)
   googleServiceAccountJson: jsonb("google_service_account_json").$type<{
     type: string;
@@ -2461,25 +2461,25 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
     auth_provider_x509_cert_url: string;
     client_x509_cert_url: string;
   }>(),
-  
+
   // Google OAuth Credentials (LEGACY - keeping for backward compatibility)
   googleOAuthClientId: text("google_oauth_client_id"),
   googleOAuthClientSecret: text("google_oauth_client_secret"),
   googleOAuthRedirectUri: text("google_oauth_redirect_uri"),
-  
+
   // Google Calendar Integration
   googleCalendarId: text("google_calendar_id"),
   googleRefreshToken: text("google_refresh_token"),
   googleAccessToken: text("google_access_token"),
   googleTokenExpiresAt: timestamp("google_token_expires_at"),
-  
+
   // Google Drive Integration
   googleDriveRefreshToken: text("google_drive_refresh_token"),
   googleDriveAccessToken: text("google_drive_access_token"),
   googleDriveTokenExpiresAt: timestamp("google_drive_token_expires_at"),
   googleDriveConnectedAt: timestamp("google_drive_connected_at"),
   googleDriveEmail: text("google_drive_email"),
-  
+
   workingHours: jsonb("working_hours").$type<{
     monday?: { enabled: boolean; start: string; end: string };
     tuesday?: { enabled: boolean; start: string; end: string };
@@ -2489,7 +2489,7 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
     saturday?: { enabled: boolean; start: string; end: string };
     sunday?: { enabled: boolean; start: string; end: string };
   }>().default(sql`'{}'::jsonb`),
-  
+
   // AI Availability Configuration - when AI responds to WhatsApp messages
   aiAvailability: jsonb("ai_availability").$type<{
     enabled: boolean;
@@ -2503,7 +2503,7 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
       sunday?: { enabled: boolean; start: string; end: string };
     };
   }>().default(sql`'{"enabled": true, "workingDays": {}}'::jsonb`),
-  
+
   // Appointment Availability Configuration - when clients can book appointments
   appointmentAvailability: jsonb("appointment_availability").$type<{
     enabled: boolean;
@@ -2524,7 +2524,7 @@ export const consultantAvailabilitySettings = pgTable("consultant_availability_s
     maxDaysInAdvance: number;
     minNoticeHours: number;
   }>().default(sql`'{"enabled": true, "workingDays": {}, "appointmentDuration": 60, "bufferBefore": 15, "bufferAfter": 15, "maxDaysInAdvance": 30, "minNoticeHours": 24}'::jsonb`),
-  
+
   appointmentDuration: integer("appointment_duration").default(60).notNull(), // minutes
   bufferBefore: integer("buffer_before").default(15).notNull(), // minutes
   bufferAfter: integer("buffer_after").default(15).notNull(), // minutes
@@ -2700,35 +2700,35 @@ export const insertProposedAppointmentSlotsSchema = createInsertSchema(proposedA
 export const marketingCampaigns = pgTable("marketing_campaigns", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Campaign Info
   campaignName: text("campaign_name").notNull(),
   campaignType: text("campaign_type").$type<"outbound_ads" | "inbound_form" | "referral" | "recovery" | "partner" | "walk_in">().notNull(),
   leadCategory: text("lead_category").$type<"freddo" | "tiepido" | "caldo" | "recupero" | "referral">().default("freddo").notNull(),
-  
+
   // Campaign Positioning & Messaging
   hookText: text("hook_text"), // Uncino principale della campagna
   idealStateDescription: text("ideal_state_description"), // Stato ideale del lead
   implicitDesires: text("implicit_desires"), // Desiderio implicito del lead
   defaultObiettivi: text("default_obiettivi"), // Obiettivi predefiniti
-  
+
   // Agent & Template Configuration
   preferredAgentConfigId: varchar("preferred_agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "set null" }),
-  
+
   // Custom templates per campagna (opzionali - se null usa quelli dell'agent)
   openingTemplateId: varchar("opening_template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
   followupGentleTemplateId: varchar("followup_gentle_template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
   followupValueTemplateId: varchar("followup_value_template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
   followupFinalTemplateId: varchar("followup_final_template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
-  
+
   // Metrics (calculated from leads)
   totalLeads: integer("total_leads").default(0).notNull(),
   convertedLeads: integer("converted_leads").default(0).notNull(),
   conversionRate: real("conversion_rate").default(0),
-  
+
   // Status
   isActive: boolean("is_active").default(true).notNull(),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -2740,17 +2740,17 @@ export const campaignAnalytics = pgTable("campaign_analytics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   campaignId: varchar("campaign_id").references(() => marketingCampaigns.id, { onDelete: "cascade" }).notNull(),
   date: date("date").notNull(),
-  
+
   // Daily metrics
   leadsCreated: integer("leads_created").default(0).notNull(),
   leadsContacted: integer("leads_contacted").default(0).notNull(),
   leadsResponded: integer("leads_responded").default(0).notNull(),
   leadsConverted: integer("leads_converted").default(0).notNull(),
-  
+
   // Calculated metrics
   avgResponseTimeHours: real("avg_response_time_hours"),
   conversionRate: real("conversion_rate").default(0),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
 }, (table) => ({
   uniqueCampaignDate: unique().on(table.campaignId, table.date),
@@ -2761,15 +2761,15 @@ export const proactiveLeads = pgTable("proactive_leads", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Campaign Association (NEW)
   campaignId: varchar("campaign_id").references(() => marketingCampaigns.id, { onDelete: "set null" }),
   leadCategory: text("lead_category").$type<"freddo" | "tiepido" | "caldo" | "recupero" | "referral">(),
-  
+
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   phoneNumber: text("phone_number").notNull(),
-  
+
   // Lead Information (extended for Hubdigital.io webhook data)
   leadInfo: jsonb("lead_info").$type<{
     obiettivi?: string;
@@ -2806,25 +2806,25 @@ export const proactiveLeads = pgTable("proactive_leads", {
     };
   }>().default(sql`'{}'::jsonb`),
   idealState: text("ideal_state"),
-  
+
   // Scheduling
   contactSchedule: timestamp("contact_schedule").notNull(),
   contactFrequency: integer("contact_frequency").default(7).notNull(), // giorni tra follow-up
   lastContactedAt: timestamp("last_contacted_at"),
   lastMessageSent: text("last_message_sent"),
-  
+
   // Status tracking
   // 'processing' = temporary lock during message send (race condition protection)
   // 'lost' = lead marked as uncontactable (template error, etc)
   status: text("status").$type<"pending" | "processing" | "contacted" | "responded" | "converted" | "inactive" | "lost">().default("pending").notNull(),
-  
+
   // Metadata
   metadata: jsonb("metadata").$type<{
     tags?: string[];
     notes?: string;
     conversationId?: string;
   }>().default(sql`'{}'::jsonb`),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -2884,12 +2884,12 @@ export const proactiveLeadActivityLogs = pgTable("proactive_lead_activity_logs",
   leadId: varchar("lead_id").references(() => proactiveLeads.id, { onDelete: "cascade" }).notNull(),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "set null" }),
-  
+
   // Event type
   eventType: text("event_type").$type<
     "created" | "scheduled" | "processing" | "sent" | "failed" | "skipped" | "responded" | "converted" | "manual_trigger"
   >().notNull(),
-  
+
   // Event details
   eventMessage: text("event_message").notNull(),
   eventDetails: jsonb("event_details").$type<{
@@ -2903,10 +2903,10 @@ export const proactiveLeadActivityLogs = pgTable("proactive_lead_activity_logs",
     workingHoursCheck?: boolean;
     templateVariables?: Record<string, string>;
   }>().default(sql`'{}'::jsonb`),
-  
+
   // Status at time of event
   leadStatusAtEvent: text("lead_status_at_event").$type<"pending" | "contacted" | "responded" | "converted" | "inactive">(),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -2940,6 +2940,9 @@ export const whatsappCustomTemplates = pgTable("whatsapp_custom_templates", {
   body: text("body"), // Template body text (moved from versions for simpler access)
   isActive: boolean("is_active").default(true).notNull(), // Quick filter for active templates
   archivedAt: timestamp("archived_at"), // NULL = active, set = archived
+  // NEW: System template fields
+  isSystemTemplate: boolean("is_system_template").default(false).notNull(), // True = default template from system
+  targetAgentType: text("target_agent_type").$type<"receptionist" | "proactive_setter" | "informative_advisor" | "customer_success" | "intake_coordinator">(), // Target agent type for this template
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -3117,39 +3120,39 @@ export type InsertProposedAppointmentSlots = z.infer<typeof insertProposedAppoin
 export const externalApiConfigs = pgTable("external_api_configs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Configuration naming
   configName: text("config_name").notNull(), // "Metodo Orbitale Import", "Recovery Leads API"
-  
+
   // API Credentials (encrypted at rest)
   apiKey: text("api_key").notNull(), // Encrypted API key
   baseUrl: text("base_url").notNull(), // https://api.example.com
-  
+
   // Lead Import Settings
   leadType: text("lead_type").$type<"crm" | "marketing" | "both">().default("both").notNull(),
-  
+
   // Optional Filters
   sourceFilter: text("source_filter"), // e.g., "facebook", "landing-page-orbitale"
   campaignFilter: text("campaign_filter"), // e.g., "metodo-orbitale"
   daysFilter: text("days_filter"), // e.g., "7", "30", "all"
-  
+
   // Mapping to Marketing Campaign (optional)
   targetCampaignId: varchar("target_campaign_id").references(() => marketingCampaigns.id, { onDelete: "set null" }),
-  
+
   // Polling Configuration
   pollingEnabled: boolean("polling_enabled").default(false).notNull(),
   pollingIntervalMinutes: integer("polling_interval_minutes").default(5).notNull(), // Default: 5 minutes
-  
+
   // Status & Tracking
   isActive: boolean("is_active").default(true).notNull(),
   lastImportAt: timestamp("last_import_at"),
   lastImportStatus: text("last_import_status").$type<"success" | "error" | "never">().default("never"),
   lastImportLeadsCount: integer("last_import_leads_count").default(0),
   lastImportErrorMessage: text("last_import_error_message"),
-  
+
   // Scheduling metadata
   nextScheduledRun: timestamp("next_scheduled_run"),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -3161,30 +3164,30 @@ export const externalLeadImportLogs = pgTable("external_lead_import_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   configId: varchar("config_id").references(() => externalApiConfigs.id, { onDelete: "cascade" }).notNull(),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Import metadata
   importType: text("import_type").$type<"manual" | "scheduled">().notNull(),
   status: text("status").$type<"success" | "partial" | "error">().notNull(),
-  
+
   // Results
   leadsProcessed: integer("leads_processed").default(0).notNull(),
   leadsImported: integer("leads_imported").default(0).notNull(), // New leads created
   leadsUpdated: integer("leads_updated").default(0).notNull(), // Existing leads updated
   leadsDuplicated: integer("leads_duplicated").default(0).notNull(), // Skipped duplicates
   leadsErrored: integer("leads_errored").default(0).notNull(),
-  
+
   // Error tracking
   errorMessage: text("error_message"),
   errorDetails: jsonb("error_details").$type<{
-    failedLeads?: Array<{phoneNumber: string; error: string}>;
+    failedLeads?: Array<{ phoneNumber: string; error: string }>;
     apiError?: string;
   }>(),
-  
+
   // Duration
   startedAt: timestamp("started_at").default(sql`now()`).notNull(),
   completedAt: timestamp("completed_at"),
   durationMs: integer("duration_ms"),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -3227,30 +3230,30 @@ export type InsertExternalLeadImportLog = z.infer<typeof insertExternalLeadImpor
 export const webhookConfigs = pgTable("webhook_configs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Provider identification
   providerName: text("provider_name").notNull(), // "hubdigital", "altro_webhook"
   displayName: text("display_name").notNull(), // "Hubdigital.io"
   configName: text("config_name"), // Custom name to distinguish multiple configs (e.g., "Campagna Facebook", "Campagna Google")
-  
+
   // Security
   secretKey: text("secret_key").notNull(), // Unique secret key for webhook authentication
-  
+
   // Agent Association - which WhatsApp agent should handle leads from this webhook
   agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "set null" }),
-  
+
   // Mapping to Marketing Campaign (optional)
   targetCampaignId: varchar("target_campaign_id").references(() => marketingCampaigns.id, { onDelete: "set null" }),
-  
+
   // Default source to override payload source (if set, ignores payload.source)
   defaultSource: text("default_source"),
-  
+
   // Status & Tracking
   isActive: boolean("is_active").default(true).notNull(),
   lastWebhookAt: timestamp("last_webhook_at"), // Last webhook received timestamp
   totalLeadsReceived: integer("total_leads_received").default(0).notNull(),
   skippedLeadsCount: integer("skipped_leads_count").default(0).notNull(), // Leads filtered out by source filter
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -3287,14 +3290,14 @@ export const systemErrors = pgTable("system_errors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }),
-  
+
   // Error classification
   errorType: text("error_type").notNull().$type<
-    "template_not_approved" | 
-    "twilio_auth_failed" | 
-    "duplicate_lead" | 
-    "message_send_failed" | 
-    "invalid_credentials" | 
+    "template_not_approved" |
+    "twilio_auth_failed" |
+    "duplicate_lead" |
+    "message_send_failed" |
+    "invalid_credentials" |
     "configuration_error"
   >(),
   errorMessage: text("error_message").notNull(),
@@ -3306,12 +3309,12 @@ export const systemErrors = pgTable("system_errors", {
     stackTrace?: string;
     [key: string]: any;
   }>(),
-  
+
   // Status tracking
   resolvedAt: timestamp("resolved_at"),
   resolvedBy: varchar("resolved_by").references(() => users.id, { onDelete: "set null" }),
   resolutionNotes: text("resolution_notes"),
-  
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -3331,7 +3334,7 @@ export const whatsappAgentConsultantConversations = pgTable("whatsapp_agent_cons
   title: text("title"), // Auto-generated from first message, null until first message
   lastMessageAt: timestamp("last_message_at").default(sql`now()`),
   messageCount: integer("message_count").default(0).notNull(),
-  
+
   // External sharing support (when conversation is from public shared link)
   shareId: varchar("share_id").references(() => whatsappAgentShares.id, { onDelete: "set null" }), // FK to whatsappAgentShares (nullable - null for internal consultant chats)
   externalVisitorId: text("external_visitor_id"), // Unique visitor session ID for anonymous users
@@ -3343,7 +3346,7 @@ export const whatsappAgentConsultantConversations = pgTable("whatsapp_agent_cons
     country?: string;
     [key: string]: any;
   }>(),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -3373,34 +3376,34 @@ export const whatsappAgentShares = pgTable("whatsapp_agent_shares", {
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   agentConfigId: varchar("agent_config_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }).notNull(),
   agentName: text("agent_name").notNull(),
-  
+
   // Public access configuration
   slug: text("slug").notNull().unique(), // Unique URL slug (e.g., "demo-monitor-abc123")
   accessType: text("access_type").$type<"public" | "password" | "token">().default("public").notNull(),
   passwordHash: text("password_hash"), // bcrypt hash if accessType = 'password'
-  
+
   // Domain whitelisting for iframe embeds
   allowedDomains: jsonb("allowed_domains").$type<string[]>().default(sql`'[]'::jsonb`), // Empty array = allow all domains
-  
+
   // Status and lifecycle
   isActive: boolean("is_active").default(true).notNull(),
   revokedAt: timestamp("revoked_at"),
   revokeReason: text("revoke_reason"),
   expireAt: timestamp("expire_at"), // Optional expiration date
-  
+
   // Analytics and tracking
   lastAccessAt: timestamp("last_access_at"),
   totalAccessCount: integer("total_access_count").default(0).notNull(),
   uniqueVisitorsCount: integer("unique_visitors_count").default(0).notNull(),
   totalMessagesCount: integer("total_messages_count").default(0).notNull(),
-  
+
   // Rate limiting configuration
   rateLimitConfig: jsonb("rate_limit_config").$type<{
     maxMessagesPerHour?: number;
     maxMessagesPerDay?: number;
     maxConversationsPerVisitor?: number;
   }>().default(sql`'{"maxMessagesPerHour": 20, "maxMessagesPerDay": 100}'::jsonb`),
-  
+
   // Metadata
   createdBy: varchar("created_by").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
@@ -3417,16 +3420,16 @@ export const whatsappAgentShareVisitorSessions = pgTable("whatsapp_agent_share_v
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   shareId: varchar("share_id").references(() => whatsappAgentShares.id, { onDelete: "cascade" }).notNull(),
   visitorId: text("visitor_id").notNull(), // Generated visitor session ID (nanoid)
-  
+
   // Authentication tracking
   passwordValidatedAt: timestamp("password_validated_at").default(sql`now()`),
   expiresAt: timestamp("expires_at").notNull(), // Session expiration (e.g., 24 hours)
-  
+
   // Security and analytics
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
   referrer: text("referrer"),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 }, (table) => {
@@ -3471,18 +3474,18 @@ export const clientSalesAgents = pgTable("client_sales_agents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   consultantId: varchar("consultant_id").references(() => users.id).notNull(), // For reference
-  
+
   // Agent basic info
   agentName: text("agent_name").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   shareToken: text("share_token").notNull().unique(), // Unique token for public URL
-  
+
   // Business info
   displayName: text("display_name").notNull(), // e.g., "Marco Rossi"
   businessName: text("business_name").notNull(), // e.g., "Momentum Coaching"
   businessDescription: text("business_description"), // What the business does
   consultantBio: text("consultant_bio"), // Bio/presentation
-  
+
   // Authority & Positioning
   vision: text("vision"), // Where the business wants to go
   mission: text("mission"), // Why it exists
@@ -3492,27 +3495,27 @@ export const clientSalesAgents = pgTable("client_sales_agents", {
   nonTargetClient: text("non_target_client"), // Who they DON'T help
   whatWeDo: text("what_we_do"), // Services summary
   howWeDoIt: text("how_we_do_it"), // Method/process
-  
+
   // Credentials & Results
   yearsExperience: integer("years_experience").default(0),
   clientsHelped: integer("clients_helped").default(0),
   resultsGenerated: text("results_generated"), // e.g., "€10M+ revenue generated"
-  softwareCreated: jsonb("software_created").$type<Array<{emoji: string; name: string; description: string}>>().default(sql`'[]'::jsonb`),
-  booksPublished: jsonb("books_published").$type<Array<{title: string; year: string}>>().default(sql`'[]'::jsonb`),
-  caseStudies: jsonb("case_studies").$type<Array<{client: string; result: string}>>().default(sql`'[]'::jsonb`),
-  
+  softwareCreated: jsonb("software_created").$type<Array<{ emoji: string; name: string; description: string }>>().default(sql`'[]'::jsonb`),
+  booksPublished: jsonb("books_published").$type<Array<{ title: string; year: string }>>().default(sql`'[]'::jsonb`),
+  caseStudies: jsonb("case_studies").$type<Array<{ client: string; result: string }>>().default(sql`'[]'::jsonb`),
+
   // Services & Guarantees
-  servicesOffered: jsonb("services_offered").$type<Array<{name: string; description: string; price: string}>>().default(sql`'[]'::jsonb`),
+  servicesOffered: jsonb("services_offered").$type<Array<{ name: string; description: string; price: string }>>().default(sql`'[]'::jsonb`),
   guarantees: text("guarantees"),
-  
+
   // Sales modes
   enableDiscovery: boolean("enable_discovery").default(true).notNull(),
   enableDemo: boolean("enable_demo").default(true).notNull(),
   enablePayment: boolean("enable_payment").default(false).notNull(),
-  
+
   // Voice configuration
   voiceName: varchar("voice_name", { length: 50 }).default("Puck"), // Voice name for Gemini Live (Puck, Charon, Kore, Fenrir, Aoede, Leda, Orus, Zephyr)
-  
+
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -3523,15 +3526,15 @@ export const clientSalesConversations = pgTable("client_sales_conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull(),
   aiConversationId: varchar("ai_conversation_id").references(() => aiConversations.id, { onDelete: "set null" }), // Link to main AI conversation
-  
+
   // Prospect info
   prospectName: text("prospect_name").notNull(),
   prospectEmail: text("prospect_email"),
   prospectPhone: text("prospect_phone"),
-  
+
   // Conversation state
   currentPhase: text("current_phase").$type<"discovery" | "demo" | "objections" | "closing">().default("discovery").notNull(),
-  
+
   // Data collected during conversation
   collectedData: jsonb("collected_data").$type<{
     business?: string;
@@ -3543,23 +3546,23 @@ export const clientSalesConversations = pgTable("client_sales_conversations", {
     isDecisionMaker?: boolean;
     [key: string]: any;
   }>().default(sql`'{}'::jsonb`),
-  
+
   // Objections raised
   objectionsRaised: jsonb("objections_raised").$type<string[]>().default(sql`'[]'::jsonb`),
-  
+
   // Outcome
   outcome: text("outcome").$type<"interested" | "not_interested" | "closed" | "pending">().default("pending"),
-  
+
   // Used Script tracking - quale script dal DB era attivo durante questa conversazione
   usedScriptId: varchar("used_script_id"),
   usedScriptName: text("used_script_name"),
   usedScriptType: text("used_script_type").$type<"discovery" | "demo" | "objections">(),
   usedScriptSource: text("used_script_source").$type<"database" | "hardcoded_default" | "unknown">(), // Tracks whether script came from DB or hardcoded defaults
-  
+
   // Sales Manager feedback - pending feedback for injection (survives WebSocket reconnections)
   pendingFeedback: text("pending_feedback"), // Feedback from SalesManagerAgent waiting to be injected
   pendingFeedbackCreatedAt: timestamp("pending_feedback_created_at"), // When the feedback was created
-  
+
   // Discovery REC - Summary generated at end of discovery phase before transitioning to demo
   // Generated by Gemini 2.5 Flash from discovery transcript, used as context for demo phase
   discoveryRec: jsonb("discovery_rec").$type<{
@@ -3577,7 +3580,7 @@ export const clientSalesConversations = pgTable("client_sales_conversations", {
     noteAggiuntive?: string;            // Altre info rilevanti
     generatedAt?: string;               // ISO timestamp di quando è stato generato
   }>(),
-  
+
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -3587,12 +3590,12 @@ export const clientSalesConversations = pgTable("client_sales_conversations", {
 export const clientSalesKnowledge = pgTable("client_sales_knowledge", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull(),
-  
+
   title: text("title").notNull(),
   type: text("type").$type<"text" | "pdf" | "docx" | "txt">().notNull(),
   content: text("content"), // For type="text"
   filePath: text("file_path"), // For uploaded files
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -3612,30 +3615,30 @@ export const geminiSessionHandles = pgTable("gemini_session_handles", {
 export const consultationInvites = pgTable("consultation_invites", {
   inviteToken: varchar("invite_token", { length: 64 }).primaryKey(), // Unique invite token (e.g., inv_abc123xyz)
   agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Agent info (denormalized for performance)
   consultantName: text("consultant_name").notNull(), // e.g., "Marco Rossi"
-  
+
   // Prospect info (optional - can be filled in lobby or pre-filled by admin)
   prospectName: text("prospect_name"),
   prospectEmail: text("prospect_email"),
   prospectPhone: text("prospect_phone"),
-  
+
   // Schedule (optional - restricts access to specific date/time window)
   scheduledDate: text("scheduled_date"), // ISO date string (YYYY-MM-DD)
   startTime: text("start_time"), // HH:MM format (e.g., "14:00")
   endTime: text("end_time"), // HH:MM format (e.g., "15:00")
-  
+
   // Linked conversation (created when prospect joins for first time)
   conversationId: varchar("conversation_id").references(() => clientSalesConversations.id, { onDelete: "set null" }),
-  
+
   // Status tracking
   status: text("status").$type<"pending" | "active" | "completed">().default("pending").notNull(),
-  
+
   // Access tracking
   accessCount: integer("access_count").default(0).notNull(),
   lastAccessedAt: timestamp("last_accessed_at"),
-  
+
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -3703,11 +3706,11 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").references(() => clientSalesConversations.id, { onDelete: "cascade" }).notNull().unique(),
   agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Phase tracking
   currentPhase: text("current_phase").notNull(), // e.g., "phase_3", "phase_6"
   phasesReached: jsonb("phases_reached").$type<string[]>().default(sql`'[]'::jsonb`), // ["phase_1_2", "phase_3"]
-  
+
   // Phase activation tracking (WHY a phase was activated) - flat structure for UI compatibility
   phaseActivations: jsonb("phase_activations").$type<Array<{
     phase: string; // phaseId (e.g., "phase_3")
@@ -3720,7 +3723,7 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     excerpt?: string;
     reasoning?: string;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Checkpoint tracking with structured evidence
   checkpointsCompleted: jsonb("checkpoints_completed").$type<Array<{
     checkpointId: string;
@@ -3737,10 +3740,10 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
       };
     }>;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Semantic classification
   semanticTypes: jsonb("semantic_types").$type<string[]>().default(sql`'[]'::jsonb`), // ["opening", "discovery", "gap_stretching"]
-  
+
   // AI reasoning and decisions
   aiReasoning: jsonb("ai_reasoning").$type<Array<{
     timestamp: string;
@@ -3748,7 +3751,7 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     decision: string;
     reasoning: string;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Full conversation transcript
   fullTranscript: jsonb("full_transcript").$type<Array<{
     messageId: string; // Unique ID for this message (for linking evidence)
@@ -3758,7 +3761,7 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     phase?: string;
     checkpoint?: string;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Ladder tracking (3-5 PERCHÉ rule)
   ladderActivations: jsonb("ladder_activations").$type<Array<{
     timestamp: string;
@@ -3768,7 +3771,7 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     userResponse?: string;
     wasVague: boolean; // Was response vague?
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Contextual Responses tracking (Anti-Robot Mode)
   contextualResponses: jsonb("contextual_responses").$type<Array<{
     timestamp: string;
@@ -3776,7 +3779,7 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     prospectQuestion: string;
     aiResponse: string;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Questions asked by AI (for analytics)
   questionsAsked: jsonb("questions_asked").$type<Array<{
     timestamp: string;
@@ -3785,7 +3788,7 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     question: string;
     questionType?: string; // "opening", "discovery", "ladder", etc.
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Objections tracking
   objectionsEncountered: jsonb("objections_encountered").$type<Array<{
     timestamp: string;
@@ -3794,25 +3797,25 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     aiResponse: string; // How AI handled it
     resolved: boolean; // Whether it was successfully resolved
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Drop-off tracking
   dropOffPoint: text("drop_off_point"), // e.g., "checkpoint_4" or "phase_5_step_2"
   dropOffReason: text("drop_off_reason"), // e.g., "user_left", "too_many_questions", "vague_answers"
-  
+
   // Completion metrics
   completionRate: real("completion_rate").default(0.0), // Percentage of script completed (0.0 to 1.0)
   totalDuration: integer("total_duration").default(0), // Total conversation duration in seconds
-  
+
   // Script snapshot (for historical comparison)
   scriptSnapshot: jsonb("script_snapshot").$type<any>(), // Snapshot of sales-script-structure.json at conversation time (nullable)
   scriptVersion: text("script_version"), // Version of the script (e.g., "1.0.0") (nullable)
-  
+
   // Used Script tracking - quale script dal DB era attivo durante questa conversazione
   // Nota: Non può usare .references() perché salesScripts è definita dopo questa tabella
   usedScriptId: varchar("used_script_id"), // ID dello script usato (FK logica a sales_scripts.id)
   usedScriptName: text("used_script_name"), // Nome dello script per display facile (es. "Discovery Call v2.0")
   usedScriptType: text("used_script_type").$type<"discovery" | "demo" | "objections">(), // Tipo di script usato
-  
+
   // AI Analysis Result (Gemini 2.5 Pro analysis for this specific conversation)
   aiAnalysisResult: jsonb("ai_analysis_result").$type<{
     insights: Array<{ category: string; text: string; priority: string }>;
@@ -3829,7 +3832,7 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     analyzedAt: string;
     analyzedFiles?: string[]; // List of files used in analysis (if any)
   }>(),
-  
+
   // Sales Manager Analysis History (real-time coaching feedback during conversation)
   managerAnalysisHistory: jsonb("manager_analysis_history").$type<Array<{
     timestamp: string;
@@ -3867,7 +3870,7 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     };
     analysisTimeMs: number;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // 🔒 STICKY VALIDATION: Item singoli già validati (verde = resta verde)
   // Struttura: { "checkpoint_phase_1": [{ check: "...", status: "validated", ... }], ... }
   validatedCheckpointItems: jsonb("validated_checkpoint_items").$type<Record<string, Array<{
@@ -3878,7 +3881,7 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
     reason?: string;
     validatedAt?: string;
   }>>>().default(sql`'{}'::jsonb`),
-  
+
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -3888,16 +3891,16 @@ export const salesConversationTraining = pgTable("sales_conversation_training", 
 export const salesAgentTrainingSummary = pgTable("sales_agent_training_summary", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull().unique(),
-  
+
   // Statistics
   totalConversations: integer("total_conversations").default(0).notNull(),
   avgConversionRate: real("avg_conversion_rate").default(0.0),
-  
+
   // Phase completion rates (percentage per phase)
   phaseCompletionRates: jsonb("phase_completion_rates").$type<{
     [phaseId: string]: number; // e.g., { "phase_1_2": 0.98, "phase_3": 0.75 }
   }>().default(sql`'{}'::jsonb`),
-  
+
   // Common fail points (where conversations drop off)
   commonFailPoints: jsonb("common_fail_points").$type<Array<{
     phaseId: string;
@@ -3906,32 +3909,32 @@ export const salesAgentTrainingSummary = pgTable("sales_agent_training_summary",
     failureRate: number;
     reason?: string;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Checkpoint completion rates (detailed per checkpoint)
   checkpointCompletionRates: jsonb("checkpoint_completion_rates").$type<{
     [checkpointId: string]: number; // e.g., { "checkpoint_1_2": 0.95, "checkpoint_3": 0.72 }
   }>().default(sql`'{}'::jsonb`),
-  
+
   // Average metrics
   avgConversationDuration: integer("avg_conversation_duration").default(0), // Average duration in seconds
-  
+
   // Ladder effectiveness (3-5 PERCHÉ rule)
   ladderActivationRate: real("ladder_activation_rate").default(0.0), // % of times ladder activated when needed
   avgLadderDepth: real("avg_ladder_depth").default(0.0), // Average levels reached (1-6)
-  
+
   // Anti-Robot Mode effectiveness (Contextual Responses)
   totalContextualResponses: integer("total_contextual_responses").default(0), // Total number of times AI answered prospect questions
   avgContextualResponsesPerConversation: real("avg_contextual_responses_per_conversation").default(0.0), // Average per conversation
-  
+
   // Performance insights
   bestPerformingPhases: jsonb("best_performing_phases").$type<string[]>().default(sql`'[]'::jsonb`), // ["phase_1_2", "phase_3"]
   worstPerformingPhases: jsonb("worst_performing_phases").$type<string[]>().default(sql`'[]'::jsonb`), // ["phase_4", "phase_5"]
-  
+
   // Script structure validation
   lastStructureCheck: timestamp("last_structure_check"), // Last time script was validated
   structureMismatch: boolean("structure_mismatch").default(false), // Alert if script changed
   scriptVersion: text("script_version"), // Version of script structure used
-  
+
   // Metadata
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -3961,14 +3964,14 @@ export const trainingAnalysisHistory = pgTable("training_analysis_history", {
   id: varchar("id").primaryKey(),
   agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull(),
   consultantId: varchar("consultant_id").references(() => users.id).notNull(),
-  
+
   // Analysis results
   analyzedFiles: jsonb("analyzed_files").$type<Array<{
     filename: string;
     status: 'success' | 'error';
     error?: string;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   improvements: jsonb("improvements").$type<Array<{
     id: string;
     priority: 'critical' | 'high' | 'medium' | 'low';
@@ -3983,13 +3986,13 @@ export const trainingAnalysisHistory = pgTable("training_analysis_history", {
     effort: 'low' | 'medium' | 'high';
     sourceFile: string;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Metrics
   conversationsAnalyzed: integer("conversations_analyzed").default(0).notNull(),
   totalImprovements: integer("total_improvements").default(0).notNull(),
   criticalImprovements: integer("critical_improvements").default(0).notNull(),
   highImprovements: integer("high_improvements").default(0).notNull(),
-  
+
   // Timestamps
   analyzedAt: timestamp("analyzed_at").notNull(),
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
@@ -4008,12 +4011,12 @@ export const insertTrainingAnalysisHistorySchema = createInsertSchema(trainingAn
 
 export const salesScripts = pgTable("sales_scripts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Identificazione
   name: text("name").notNull(), // es. "Discovery Call v2.0", "Script Empatico"
   scriptType: text("script_type").notNull().$type<"discovery" | "demo" | "objections">(),
   version: text("version").notNull().default("1.0.0"), // Semantic versioning
-  
+
   // Contenuto
   content: text("content").notNull(), // Il testo completo dello script in markdown
   structure: jsonb("structure").$type<{
@@ -4040,22 +4043,22 @@ export const salesScripts = pgTable("sales_scripts", {
       }>;
     }>;
   }>(), // Struttura JSON parsata per visualizzazione step-by-step
-  
+
   // Stato
   isActive: boolean("is_active").default(false).notNull(), // Solo uno attivo per tipo
   isDraft: boolean("is_draft").default(true).notNull(), // Bozza o pubblicato
   isArchived: boolean("is_archived").default(false).notNull(), // Script archiviato (non eliminabile se ha sessioni training)
-  
+
   // Metadati - Chi possiede lo script
   clientId: varchar("client_id").references(() => users.id).notNull(), // Il client che possiede questo script
   consultantId: varchar("consultant_id").references(() => users.id), // Opzionale - consultant che ha creato
   description: text("description"), // Descrizione opzionale
   tags: jsonb("tags").$type<string[]>().default(sql`'[]'::jsonb`), // es. ["aggressivo", "b2b"]
-  
+
   // Statistiche
   usageCount: integer("usage_count").default(0), // Quante volte è stato usato
   lastUsedAt: timestamp("last_used_at"),
-  
+
   // Energy Settings per fase/step - Override personalizzati
   energySettings: jsonb("energy_settings").$type<{
     [phaseOrStepId: string]: {
@@ -4067,7 +4070,7 @@ export const salesScripts = pgTable("sales_scripts", {
       reason?: string;
     };
   }>().default(sql`'{}'::jsonb`),
-  
+
   // Ladder Levels Override - I 5 livelli del perché personalizzati per step
   ladderOverrides: jsonb("ladder_overrides").$type<{
     [stepId: string]: {
@@ -4079,7 +4082,7 @@ export const salesScripts = pgTable("sales_scripts", {
       }>;
     };
   }>().default(sql`'{}'::jsonb`),
-  
+
   // Step Questions Override - Domande chiave personalizzate per step
   stepQuestions: jsonb("step_questions").$type<{
     [stepId: string]: Array<{
@@ -4089,7 +4092,7 @@ export const salesScripts = pgTable("sales_scripts", {
       type?: string; // "opening", "discovery", "closing", etc.
     }>;
   }>().default(sql`'{}'::jsonb`),
-  
+
   // Biscottini Override - Piccole vittorie/cookies per step
   stepBiscottini: jsonb("step_biscottini").$type<{
     [stepId: string]: Array<{
@@ -4097,7 +4100,7 @@ export const salesScripts = pgTable("sales_scripts", {
       type: "rapport" | "value" | "agreement" | "other";
     }>;
   }>().default(sql`'{}'::jsonb`),
-  
+
   // Timestamp
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
   updatedAt: timestamp("updated_at").default(sql`now()`).notNull(),
@@ -4121,16 +4124,16 @@ export const insertSalesScriptSchema = createInsertSchema(salesScripts).omit({
 export const salesScriptVersions = pgTable("sales_script_versions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   scriptId: varchar("script_id").references(() => salesScripts.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Snapshot della versione
   version: text("version").notNull(),
   content: text("content").notNull(),
   structure: jsonb("structure"),
-  
+
   // Chi ha creato questa versione
   createdBy: varchar("created_by").references(() => users.id).notNull(),
   changeNotes: text("change_notes"), // Note sulle modifiche
-  
+
   createdAt: timestamp("created_at").default(sql`now()`).notNull(),
 });
 
@@ -4144,14 +4147,14 @@ export type InsertSalesScriptVersion = typeof salesScriptVersions.$inferInsert;
 
 export const agentScriptAssignments = pgTable("agent_script_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Relazioni
   agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull(),
   scriptId: varchar("script_id").references(() => salesScripts.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Tipo script per vincolo unicità (1 agente = max 1 script per tipo)
   scriptType: text("script_type").notNull().$type<"discovery" | "demo" | "objections">(),
-  
+
   // Metadata
   assignedAt: timestamp("assigned_at").default(sql`now()`).notNull(),
   assignedBy: varchar("assigned_by").references(() => users.id), // Chi ha fatto l'assegnazione
@@ -4176,31 +4179,31 @@ export const insertAgentScriptAssignmentSchema = createInsertSchema(agentScriptA
 
 export const aiTrainingSessions = pgTable("ai_training_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   agentId: varchar("agent_id").references(() => clientSalesAgents.id, { onDelete: "cascade" }).notNull(),
   scriptId: varchar("script_id").references(() => salesScripts.id).notNull(),
   scriptName: text("script_name"),
-  
+
   demoScriptId: varchar("demo_script_id").references(() => salesScripts.id),
   testMode: text("test_mode").$type<"discovery" | "demo" | "discovery_demo">().default("discovery"),
-  
+
   personaId: text("persona_id").notNull(),
   prospectName: text("prospect_name").notNull(),
   prospectEmail: text("prospect_email"),
-  
+
   status: text("status").notNull().$type<"running" | "completed" | "stopped">().default("running"),
-  
+
   conversationId: varchar("conversation_id"),
-  
+
   currentPhase: text("current_phase").default("starting"),
   completionRate: real("completion_rate").default(0),
   ladderActivations: integer("ladder_activations").default(0),
   messageCount: integer("message_count").default(0),
   lastMessage: text("last_message"),
-  
+
   startedAt: timestamp("started_at").default(sql`now()`).notNull(),
   endedAt: timestamp("ended_at"),
-  
+
   resultScore: real("result_score"),
   resultNotes: text("result_notes"),
 }, (table) => {
@@ -4221,19 +4224,19 @@ export const humanSellers = pgTable("human_sellers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   consultantId: varchar("consultant_id").references(() => users.id), // Consultant con Vertex AI configurato
-  
+
   // Basic Info
   sellerName: text("seller_name").notNull(),
   displayName: text("display_name").notNull(),
   description: text("description"),
   ownerEmail: text("owner_email"), // Email del proprietario/venditore per riconoscimento come host nel meeting
   isActive: boolean("is_active").default(true),
-  
+
   // Business Info (come client_sales_agents)
   businessName: text("business_name"),
   businessDescription: text("business_description"),
   consultantBio: text("consultant_bio"),
-  
+
   // Authority & Positioning
   vision: text("vision"),
   mission: text("mission"),
@@ -4243,19 +4246,19 @@ export const humanSellers = pgTable("human_sellers", {
   nonTargetClient: text("non_target_client"),
   whatWeDo: text("what_we_do"),
   howWeDoIt: text("how_we_do_it"),
-  
+
   // Credentials & Results
   yearsExperience: integer("years_experience").default(0),
   clientsHelped: integer("clients_helped").default(0),
   resultsGenerated: text("results_generated"),
   guarantees: text("guarantees"),
-  
+
   // Services
-  servicesOffered: jsonb("services_offered").$type<Array<{name: string; description: string; price: string}>>().default(sql`'[]'::jsonb`),
-  
+  servicesOffered: jsonb("services_offered").$type<Array<{ name: string; description: string; price: string }>>().default(sql`'[]'::jsonb`),
+
   // Voice configuration
   voiceName: varchar("voice_name", { length: 50 }).default("achernar"),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -4276,14 +4279,14 @@ export const insertHumanSellerSchema = createInsertSchema(humanSellers).omit({
 
 export const humanSellerScriptAssignments = pgTable("human_seller_script_assignments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  
+
   // Relazioni
   sellerId: varchar("seller_id").references(() => humanSellers.id, { onDelete: "cascade" }).notNull(),
   scriptId: varchar("script_id").references(() => salesScripts.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Tipo script per vincolo unicità (1 venditore = max 1 script per tipo)
   scriptType: text("script_type").notNull().$type<"discovery" | "demo">(),
-  
+
   // Metadata
   assignedAt: timestamp("assigned_at").default(sql`now()`).notNull(),
   assignedBy: varchar("assigned_by").references(() => users.id),
@@ -4471,19 +4474,19 @@ export const humanSellerMeetingTraining = pgTable("human_seller_meeting_training
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   meetingId: varchar("meeting_id").references(() => videoMeetings.id, { onDelete: "cascade" }).notNull().unique(),
   sellerId: varchar("seller_id").references(() => humanSellers.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Phase tracking
   currentPhase: text("current_phase"),
   currentPhaseIndex: integer("current_phase_index").default(0),
   phasesReached: jsonb("phases_reached").$type<string[]>().default(sql`'[]'::jsonb`),
-  
+
   // Checkpoint tracking
   checkpointsCompleted: jsonb("checkpoints_completed").$type<Array<{
     checkpointId: string;
     status: "completed" | "pending";
     completedAt: string;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Validated items per checkpoint
   validatedCheckpointItems: jsonb("validated_checkpoint_items").$type<Record<string, Array<{
     check: string;
@@ -4491,7 +4494,7 @@ export const humanSellerMeetingTraining = pgTable("human_seller_meeting_training
     infoCollected: string;
     evidenceQuote: string;
   }>>>().default(sql`'{}'::jsonb`),
-  
+
   // Conversation messages
   conversationMessages: jsonb("conversation_messages").$type<Array<{
     role: "seller" | "prospect";
@@ -4499,14 +4502,14 @@ export const humanSellerMeetingTraining = pgTable("human_seller_meeting_training
     timestamp: number;
     phase?: string;
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Archetype state
   archetypeState: jsonb("archetype_state").$type<{
     detectedArchetype: string;
     confidence: number;
     traits: string[];
   } | null>(),
-  
+
   // Full transcript (per replay)
   fullTranscript: jsonb("full_transcript").$type<Array<{
     speakerId: string;
@@ -4515,11 +4518,11 @@ export const humanSellerMeetingTraining = pgTable("human_seller_meeting_training
     timestamp: number;
     sentiment: "positive" | "neutral" | "negative";
   }>>().default(sql`'[]'::jsonb`),
-  
+
   // Script snapshot
   scriptSnapshot: jsonb("script_snapshot"),
   scriptVersion: text("script_version"),
-  
+
   // Coaching metrics
   coachingMetrics: jsonb("coaching_metrics").$type<{
     totalBuySignals: number;
@@ -4527,11 +4530,11 @@ export const humanSellerMeetingTraining = pgTable("human_seller_meeting_training
     objectionsHandled: number;
     scriptAdherenceScores: number[];
   }>(),
-  
+
   // Calculated metrics
   completionRate: real("completion_rate").default(0),
   totalDuration: integer("total_duration").default(0),
-  
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -4586,45 +4589,45 @@ export type InsertHumanSellerPerformanceSummary = typeof humanSellerPerformanceS
 export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Document metadata
   title: text("title").notNull(),
   description: text("description"),
   category: text("category").$type<
     "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other"
   >().default("other").notNull(),
-  
+
   // File information
   fileName: text("file_name").notNull(),
   fileType: text("file_type").$type<"pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "ppt" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio">().notNull(),
   fileSize: integer("file_size").notNull(), // in bytes
   filePath: text("file_path").notNull(), // path to stored file
-  
+
   // Extracted content for AI search
   extractedContent: text("extracted_content"), // Full text extracted from document
   contentSummary: text("content_summary"), // AI-generated summary (only when enabled)
   summaryEnabled: boolean("summary_enabled").default(false).notNull(), // Toggle for enabling summary generation
   keywords: jsonb("keywords").$type<string[]>().default(sql`'[]'::jsonb`), // Extracted keywords
   tags: jsonb("tags").$type<string[]>().default(sql`'[]'::jsonb`), // Custom user tags
-  
+
   // Versioning
   version: integer("version").default(1).notNull(), // Document version number
   previousVersionId: varchar("previous_version_id"), // Link to previous version
-  
+
   // Search optimization
   priority: integer("priority").default(5).notNull(), // 1-10, higher = more important
-  
+
   // Processing status
   status: text("status").$type<"uploading" | "processing" | "indexed" | "error">().default("uploading").notNull(),
   errorMessage: text("error_message"),
-  
+
   // Usage tracking
   usageCount: integer("usage_count").default(0).notNull(), // Times used in AI responses
   lastUsedAt: timestamp("last_used_at"),
-  
+
   // Import source tracking
   googleDriveFileId: text("google_drive_file_id"), // Google Drive file ID if imported from Drive
-  
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -4639,14 +4642,14 @@ export const consultantKnowledgeDocuments = pgTable("consultant_knowledge_docume
 export const consultantKnowledgeApis = pgTable("consultant_knowledge_apis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // API identification
   name: text("name").notNull(),
   description: text("description"),
   category: text("category").$type<
     "market_data" | "regulatory" | "benchmarking" | "news" | "analytics" | "custom"
   >().default("custom").notNull(),
-  
+
   // Connection settings
   baseUrl: text("base_url").notNull(),
   apiKey: text("api_key"), // Encrypted API key
@@ -4658,13 +4661,13 @@ export const consultantKnowledgeApis = pgTable("consultant_knowledge_apis", {
     oauthTokenUrl?: string; // for OAuth
     oauthClientId?: string;
   }>(),
-  
+
   // Request configuration
   defaultEndpoint: text("default_endpoint"), // e.g., "/v1/data"
   requestMethod: text("request_method").$type<"GET" | "POST">().default("GET").notNull(),
   requestHeaders: jsonb("request_headers").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
   requestParams: jsonb("request_params").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
-  
+
   // Data extraction configuration
   dataMapping: jsonb("data_mapping").$type<{
     responsePath?: string; // JSON path to extract data, e.g., "data.results"
@@ -4674,33 +4677,33 @@ export const consultantKnowledgeApis = pgTable("consultant_knowledge_apis", {
       transform?: "string" | "number" | "date" | "array";
     }>;
   }>(),
-  
+
   // Caching & refresh settings
   cacheDurationMinutes: integer("cache_duration_minutes").default(60).notNull(),
   autoRefresh: boolean("auto_refresh").default(false).notNull(),
   refreshIntervalMinutes: integer("refresh_interval_minutes").default(60),
-  
+
   // Status & tracking
   isActive: boolean("is_active").default(true).notNull(),
   lastSyncAt: timestamp("last_sync_at"),
   lastSyncStatus: text("last_sync_status").$type<"success" | "error" | "never">().default("never"),
   lastSyncError: text("last_sync_error"),
-  
+
   // Summary settings
   summaryEnabled: boolean("summary_enabled").default(false).notNull(), // Toggle for enabling summary generation
   dataSummary: text("data_summary"), // AI-generated summary of the API data
-  
+
   // Template info (for pre-configured templates)
   templateId: text("template_id"), // e.g., "hubspot", "salesforce", "istat"
   templateName: text("template_name"), // Friendly name of the template
-  
+
   // Usage tracking
   usageCount: integer("usage_count").default(0).notNull(),
   lastUsedAt: timestamp("last_used_at"),
-  
+
   // Priority for AI Controller
   priority: integer("priority").default(5).notNull(), // 1-10
-  
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -4715,17 +4718,17 @@ export const consultantKnowledgeApiCache = pgTable("consultant_knowledge_api_cac
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   apiConfigId: varchar("api_config_id").references(() => consultantKnowledgeApis.id, { onDelete: "cascade" }).notNull(),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Cache key (for different queries to same API)
   cacheKey: text("cache_key").default("default").notNull(),
-  
+
   // Cached data
   cachedData: jsonb("cached_data").notNull(),
   dataSummary: text("data_summary"), // AI summary of cached data
-  
+
   // Cache validity
   expiresAt: timestamp("expires_at").notNull(),
-  
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -4810,27 +4813,27 @@ export type InsertConsultantKnowledgeApiCache = typeof consultantKnowledgeApiCac
 export const clientKnowledgeDocuments = pgTable("client_knowledge_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Document metadata
   title: text("title").notNull(),
   description: text("description"),
   category: text("category").$type<
     "white_paper" | "case_study" | "manual" | "normative" | "research" | "article" | "other"
   >().default("other").notNull(),
-  
+
   // File information
   fileName: text("file_name").notNull(),
   fileType: text("file_type").$type<"pdf" | "docx" | "txt" | "md" | "rtf" | "odt" | "csv" | "xlsx" | "xls" | "pptx" | "ppt" | "mp3" | "wav" | "m4a" | "ogg" | "webm_audio">().notNull(),
   fileSize: integer("file_size").notNull(),
   filePath: text("file_path").notNull(),
-  
+
   // Extracted content for AI search
   extractedContent: text("extracted_content"),
   contentSummary: text("content_summary"),
   summaryEnabled: boolean("summary_enabled").default(false).notNull(),
   keywords: jsonb("keywords").$type<string[]>().default(sql`'[]'::jsonb`),
   tags: jsonb("tags").$type<string[]>().default(sql`'[]'::jsonb`),
-  
+
   // Structured data for tabular files (CSV/Excel) - used for preview
   structuredData: jsonb("structured_data").$type<{
     sheets: Array<{
@@ -4844,26 +4847,26 @@ export const clientKnowledgeDocuments = pgTable("client_knowledge_documents", {
     totalColumns: number;
     fileType: 'csv' | 'xlsx' | 'xls';
   } | null>(),
-  
+
   // Versioning
   version: integer("version").default(1).notNull(),
   previousVersionId: varchar("previous_version_id"),
-  
+
   // Search optimization
   priority: integer("priority").default(5).notNull(),
-  
+
   // Processing status
   status: text("status").$type<"uploading" | "processing" | "indexed" | "error">().default("uploading").notNull(),
   errorMessage: text("error_message"),
-  
+
   // Usage tracking
   usageCount: integer("usage_count").default(0).notNull(),
   lastUsedAt: timestamp("last_used_at"),
-  
+
   // Import source tracking
   googleDriveFileId: text("google_drive_file_id"), // Google Drive file ID if imported from Drive
   sourceConsultantDocId: varchar("source_consultant_doc_id").references(() => consultantKnowledgeDocuments.id, { onDelete: "set null" }), // Source consultant document if imported from consultant's KB
-  
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -4879,14 +4882,14 @@ export const clientKnowledgeDocuments = pgTable("client_knowledge_documents", {
 export const clientKnowledgeApis = pgTable("client_knowledge_apis", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // API identification
   name: text("name").notNull(),
   description: text("description"),
   category: text("category").$type<
     "market_data" | "regulatory" | "benchmarking" | "news" | "analytics" | "custom"
   >().default("custom").notNull(),
-  
+
   // Connection settings
   baseUrl: text("base_url").notNull(),
   apiKey: text("api_key"), // Encrypted API key (uses same encryption as consultant)
@@ -4898,7 +4901,7 @@ export const clientKnowledgeApis = pgTable("client_knowledge_apis", {
     oauthTokenUrl?: string;
     oauthClientId?: string;
   }>(),
-  
+
   // Request configuration
   defaultEndpoint: text("default_endpoint"),
   endpoint: text("endpoint"),
@@ -4906,7 +4909,7 @@ export const clientKnowledgeApis = pgTable("client_knowledge_apis", {
   requestHeaders: jsonb("request_headers").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
   customHeaders: jsonb("custom_headers").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
   requestParams: jsonb("request_params").$type<Record<string, string>>().default(sql`'{}'::jsonb`),
-  
+
   // Data extraction configuration
   dataMapping: jsonb("data_mapping").$type<{
     responsePath?: string;
@@ -4916,33 +4919,33 @@ export const clientKnowledgeApis = pgTable("client_knowledge_apis", {
       transform?: "string" | "number" | "date" | "array";
     }>;
   }>(),
-  
+
   // Caching & refresh settings
   cacheDurationMinutes: integer("cache_duration_minutes").default(60).notNull(),
   autoRefresh: boolean("auto_refresh").default(false).notNull(),
   refreshIntervalMinutes: integer("refresh_interval_minutes").default(60),
-  
+
   // Status & tracking
   isActive: boolean("is_active").default(true).notNull(),
   lastSyncAt: timestamp("last_sync_at"),
   lastSyncStatus: text("last_sync_status").$type<"success" | "error" | "never">().default("never"),
   lastSyncError: text("last_sync_error"),
-  
+
   // Summary settings
   summaryEnabled: boolean("summary_enabled").default(false).notNull(),
   dataSummary: text("data_summary"),
-  
+
   // Template info
   templateId: text("template_id"),
   templateName: text("template_name"),
-  
+
   // Usage tracking
   usageCount: integer("usage_count").default(0).notNull(),
   lastUsedAt: timestamp("last_used_at"),
-  
+
   // Priority for AI Controller
   priority: integer("priority").default(5).notNull(),
-  
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -4957,17 +4960,17 @@ export const clientKnowledgeApiCache = pgTable("client_knowledge_api_cache", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   apiConfigId: varchar("api_config_id").references(() => clientKnowledgeApis.id, { onDelete: "cascade" }).notNull(),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   // Cache key
   cacheKey: text("cache_key").default("default").notNull(),
-  
+
   // Cached data
   cachedData: jsonb("cached_data").notNull(),
   dataSummary: text("data_summary"),
-  
+
   // Cache validity
   expiresAt: timestamp("expires_at").notNull(),
-  
+
   // Timestamps
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -5083,71 +5086,71 @@ export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;
 export const consultantOnboardingStatus = pgTable("consultant_onboarding_status", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
-  
+
   // Core Infrastructure
   vertexAiStatus: text("vertex_ai_status").$type<"pending" | "configured" | "verified" | "error">().default("pending").notNull(),
   vertexAiTestedAt: timestamp("vertex_ai_tested_at"),
   vertexAiErrorMessage: text("vertex_ai_error_message"),
-  
+
   smtpStatus: text("smtp_status").$type<"pending" | "configured" | "verified" | "error">().default("pending").notNull(),
   smtpTestedAt: timestamp("smtp_tested_at"),
   smtpErrorMessage: text("smtp_error_message"),
-  
+
   googleCalendarStatus: text("google_calendar_status").$type<"pending" | "configured" | "verified" | "error">().default("pending").notNull(),
   googleCalendarTestedAt: timestamp("google_calendar_tested_at"),
   googleCalendarErrorMessage: text("google_calendar_error_message"),
-  
+
   videoMeetingStatus: text("video_meeting_status").$type<"pending" | "configured" | "verified" | "error" | "skipped">().default("pending").notNull(),
   videoMeetingTestedAt: timestamp("video_meeting_tested_at"),
   videoMeetingErrorMessage: text("video_meeting_error_message"),
-  
+
   // Optional Integrations
   leadImportStatus: text("lead_import_status").$type<"pending" | "configured" | "verified" | "error" | "skipped">().default("pending").notNull(),
   leadImportTestedAt: timestamp("lead_import_tested_at"),
   leadImportErrorMessage: text("lead_import_error_message"),
-  
+
   // WhatsApp AI (Separate from Twilio)
   whatsappAiStatus: text("whatsapp_ai_status").$type<"pending" | "configured" | "verified" | "error" | "skipped">().default("pending").notNull(),
   whatsappAiTestedAt: timestamp("whatsapp_ai_tested_at"),
   whatsappAiErrorMessage: text("whatsapp_ai_error_message"),
-  
+
   // Knowledge Base
   knowledgeBaseStatus: text("knowledge_base_status").$type<"pending" | "configured" | "verified">().default("pending").notNull(),
   knowledgeBaseDocumentsCount: integer("knowledge_base_documents_count").default(0),
-  
+
   // WhatsApp Agents (by type)
   hasInboundAgent: boolean("has_inbound_agent").default(false).notNull(),
   hasOutboundAgent: boolean("has_outbound_agent").default(false).notNull(),
   hasConsultativeAgent: boolean("has_consultative_agent").default(false).notNull(),
-  
+
   // Public Agent Link
   hasPublicAgentLink: boolean("has_public_agent_link").default(false).notNull(),
   publicLinksCount: integer("public_links_count").default(0),
-  
+
   // AI Ideas Generated
   hasGeneratedIdeas: boolean("has_generated_ideas").default(false).notNull(),
   generatedIdeasCount: integer("generated_ideas_count").default(0),
-  
+
   // Courses (University)
   hasCreatedCourse: boolean("has_created_course").default(false).notNull(),
   coursesCount: integer("courses_count").default(0),
-  
+
   // Exercises
   hasCreatedExercise: boolean("has_created_exercise").default(false).notNull(),
   exercisesCount: integer("exercises_count").default(0),
-  
+
   // First Summary Email Sent (from appointments)
   hasFirstSummaryEmail: boolean("has_first_summary_email").default(false).notNull(),
   summaryEmailsCount: integer("summary_emails_count").default(0),
-  
+
   // Client AI Decision
   clientAiStrategy: text("client_ai_strategy").$type<"vertex_shared" | "vertex_per_client" | "undecided">().default("undecided").notNull(),
-  
+
   // Overall Status
   onboardingCompleted: boolean("onboarding_completed").default(false).notNull(),
   onboardingCompletedAt: timestamp("onboarding_completed_at"),
   lastUpdatedStep: text("last_updated_step"),
-  
+
   // Interactive Intro (Minigame AI Narrativo)
   interactiveIntroCompleted: boolean("interactive_intro_completed").default(false).notNull(),
   interactiveIntroCompletedAt: timestamp("interactive_intro_completed_at"),
@@ -5158,7 +5161,7 @@ export const consultantOnboardingStatus = pgTable("consultant_onboarding_status"
     whyHere?: string;
     suggestedPath?: string[];
   }>(),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -5173,14 +5176,14 @@ export type InsertConsultantOnboardingStatus = typeof consultantOnboardingStatus
 export const consultantAiIdeas = pgTable("consultant_ai_ideas", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  
+
   name: text("name").notNull(),
   description: text("description").notNull(),
   targetAudience: text("target_audience"),
   agentType: text("agent_type").$type<"whatsapp" | "public_link" | "both">().default("whatsapp").notNull(),
   integrationTypes: jsonb("integration_types").$type<string[]>().default([]),
   sourceType: text("source_type").$type<"generated" | "template" | "custom">().default("generated").notNull(),
-  
+
   suggestedAgentType: text("suggested_agent_type").$type<"reactive_lead" | "proactive_setter" | "informative_advisor">().default("reactive_lead"),
   personality: text("personality"),
   whoWeHelp: text("who_we_help"),
@@ -5190,15 +5193,15 @@ export const consultantAiIdeas = pgTable("consultant_ai_ideas", {
   usp: text("usp"),
   suggestedInstructions: text("suggested_instructions"),
   useCases: jsonb("use_cases").$type<string[]>().default([]),
-  
+
   vision: text("vision"),
   mission: text("mission"),
   businessName: text("business_name"),
   consultantDisplayName: text("consultant_display_name"),
-  
+
   isImplemented: boolean("is_implemented").default(false),
   implementedAgentId: varchar("implemented_agent_id"),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -5240,45 +5243,45 @@ export const insertUserRoleProfileSchema = createInsertSchema(userRoleProfiles).
 export const conversationStates = pgTable("conversation_states", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }).notNull(),
-  
+
   currentState: text("current_state").$type<
-    "new_contact" | "contacted" | "engaged" | "qualified" | "stalled" | 
+    "new_contact" | "contacted" | "engaged" | "qualified" | "stalled" |
     "negotiating" | "demo" | "closed_won" | "closed_lost" | "ghost" | "nurturing"
   >().default("new_contact").notNull(),
   previousState: text("previous_state").$type<
-    "new_contact" | "contacted" | "engaged" | "qualified" | "stalled" | 
+    "new_contact" | "contacted" | "engaged" | "qualified" | "stalled" |
     "negotiating" | "demo" | "closed_won" | "closed_lost" | "ghost" | "nurturing"
   >(),
-  
+
   // Signals detected by AI
   hasAskedPrice: boolean("has_asked_price").default(false).notNull(),
   hasMentionedUrgency: boolean("has_mentioned_urgency").default(false).notNull(),
   hasSaidNoExplicitly: boolean("has_said_no_explicitly").default(false).notNull(),
   discoveryCompleted: boolean("discovery_completed").default(false).notNull(),
   demoPresented: boolean("demo_presented").default(false).notNull(),
-  
+
   // Follow-up tracking
   followupCount: integer("followup_count").default(0).notNull(),
   maxFollowupsAllowed: integer("max_followups_allowed").default(5).notNull(),
   lastFollowupAt: timestamp("last_followup_at"),
   nextFollowupScheduledAt: timestamp("next_followup_scheduled_at"),
-  
+
   // Intelligent retry logic - NEW FIELDS
   consecutiveNoReplyCount: integer("consecutive_no_reply_count").default(0).notNull(), // Tentativi senza risposta consecutivi
   lastReplyAt: timestamp("last_reply_at"), // Ultima risposta del lead
   dormantUntil: timestamp("dormant_until"), // Data fine dormienza (3 mesi dopo 3 tentativi)
   permanentlyExcluded: boolean("permanently_excluded").default(false).notNull(), // Mai più contattare
   dormantReason: text("dormant_reason"), // Motivo dormienza es: "Nessuna risposta dopo 3 tentativi"
-  
+
   // AI scoring
   engagementScore: integer("engagement_score").default(50).notNull(), // 0-100
   conversionProbability: real("conversion_probability").default(0.5), // 0-1
   lastAiEvaluationAt: timestamp("last_ai_evaluation_at"),
   aiRecommendation: text("ai_recommendation"), // Last AI decision reasoning
-  
+
   // Temperature segmentation for scalability (hot=<2h, warm=<24h, cold=<7d, ghost=>7d)
   temperatureLevel: text("temperature_level").$type<"hot" | "warm" | "cold" | "ghost">().default("warm"),
-  
+
   stateChangedAt: timestamp("state_changed_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -5296,10 +5299,10 @@ export const followupRules = pgTable("followup_rules", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   agentId: varchar("agent_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }),
-  
+
   name: text("name").notNull(),
   description: text("description"),
-  
+
   triggerType: text("trigger_type").$type<"time_based" | "event_based" | "ai_decision">().default("time_based").notNull(),
   triggerCondition: jsonb("trigger_condition").$type<{
     hoursWithoutReply?: number;
@@ -5309,21 +5312,21 @@ export const followupRules = pgTable("followup_rules", {
     minEngagementScore?: number;
     maxEngagementScore?: number;
   }>().notNull(),
-  
+
   templateId: varchar("template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
   fallbackMessage: text("fallback_message"),
-  
+
   applicableToStates: jsonb("applicable_to_states").$type<string[]>().default([]),
   applicableToAgentTypes: jsonb("applicable_to_agent_types").$type<string[]>().default([]),
   applicableToChannels: jsonb("applicable_to_channels").$type<string[]>().default([]),
-  
+
   maxAttempts: integer("max_attempts").default(3).notNull(),
   cooldownHours: integer("cooldown_hours").default(24).notNull(),
   priority: integer("priority").default(5).notNull(),
-  
+
   isActive: boolean("is_active").default(true).notNull(),
   isDefault: boolean("is_default").default(false).notNull(),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -5337,27 +5340,27 @@ export const scheduledFollowupMessages = pgTable("scheduled_followup_messages", 
   conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }).notNull(),
   ruleId: varchar("rule_id").references(() => followupRules.id, { onDelete: "set null" }),
   templateId: varchar("template_id"),
-  
+
   scheduledFor: timestamp("scheduled_for").notNull(),
   status: text("status").$type<"pending" | "sent" | "cancelled" | "failed" | "skipped">().default("pending").notNull(),
-  
+
   // Template variables
   templateVariables: jsonb("template_variables").$type<Record<string, string>>().default({}),
   fallbackMessage: text("fallback_message"),
-  
+
   // AI decision context
   aiDecisionReasoning: text("ai_decision_reasoning"),
   aiConfidenceScore: real("ai_confidence_score"),
   messagePreview: text("message_preview"),
   aiSelectedTemplateReasoning: text("ai_selected_template_reasoning"),
-  
+
   // Execution tracking
   sentAt: timestamp("sent_at"),
   twilioMessageSid: varchar("twilio_message_sid"),
   cancelledAt: timestamp("cancelled_at"),
   cancelReason: text("cancel_reason").$type<"user_replied" | "manual" | "max_reached" | "state_changed" | "error">(),
   errorMessage: text("error_message"),
-  
+
   // Retry tracking
   attemptCount: integer("attempt_count").default(0).notNull(),
   maxAttempts: integer("max_attempts").default(3).notNull(),
@@ -5365,7 +5368,7 @@ export const scheduledFollowupMessages = pgTable("scheduled_followup_messages", 
   nextRetryAt: timestamp("next_retry_at"),
   lastErrorCode: text("last_error_code").$type<"rate_limit" | "network" | "timeout" | "invalid_number" | "blocked" | "template_rejected" | "unknown">(),
   failureReason: text("failure_reason").$type<"max_retries_exceeded" | "permanent_error" | "user_blocked" | "invalid_recipient">(),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -5383,28 +5386,28 @@ export const followupAnalytics = pgTable("followup_analytics", {
   agentId: varchar("agent_id").references(() => consultantWhatsappConfig.id, { onDelete: "cascade" }),
   templateId: varchar("template_id").references(() => whatsappCustomTemplates.id, { onDelete: "set null" }),
   ruleId: varchar("rule_id").references(() => followupRules.id, { onDelete: "set null" }),
-  
+
   // Time period
   date: timestamp("date").notNull(),
-  
+
   // Counts
   messagesSent: integer("messages_sent").default(0).notNull(),
   messagesDelivered: integer("messages_delivered").default(0).notNull(),
   messagesRead: integer("messages_read").default(0).notNull(),
   repliesReceived: integer("replies_received").default(0).notNull(),
   conversionsAchieved: integer("conversions_achieved").default(0).notNull(),
-  
+
   // Rates (calculated)
   deliveryRate: real("delivery_rate"),
   readRate: real("read_rate"),
   responseRate: real("response_rate"),
   conversionRate: real("conversion_rate"),
-  
+
   // AI metrics
   aiDecisionsMade: integer("ai_decisions_made").default(0).notNull(),
   aiDecisionsAccepted: integer("ai_decisions_accepted").default(0).notNull(),
   avgConfidenceScore: real("avg_confidence_score"),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -5415,7 +5418,7 @@ export type InsertFollowupAnalytic = typeof followupAnalytics.$inferInsert;
 export const followupAiEvaluationLog = pgTable("followup_ai_evaluation_log", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").references(() => whatsappConversations.id, { onDelete: "cascade" }).notNull(),
-  
+
   // AI Input
   conversationContext: jsonb("conversation_context").$type<{
     lastMessages: Array<{ role: string; content: string; timestamp: string }>;
@@ -5426,29 +5429,29 @@ export const followupAiEvaluationLog = pgTable("followup_ai_evaluation_log", {
     agentType: string;
     signals: Record<string, boolean>;
   }>().notNull(),
-  
+
   // AI Output
   decision: text("decision").$type<"send_now" | "schedule" | "skip" | "stop">().notNull(),
   urgency: text("urgency").$type<"now" | "tomorrow" | "next_week" | "never">(),
   selectedTemplateId: varchar("selected_template_id"),
   reasoning: text("reasoning").notNull(),
   confidenceScore: real("confidence_score").notNull(),
-  
+
   // System rule matching (if a deterministic rule was applied instead of AI)
   matchedRuleId: varchar("matched_rule_id"),
   matchedRuleReason: text("matched_rule_reason"),
-  
+
   // Outcome tracking (filled later)
   wasExecuted: boolean("was_executed").default(false).notNull(),
   leadReplied: boolean("lead_replied"),
   repliedWithinHours: integer("replied_within_hours"),
   outcomePositive: boolean("outcome_positive"), // Did it lead to engagement/conversion?
-  
+
   // Model info
   modelUsed: text("model_used").default("gemini-3-flash-preview").notNull(),
   tokensUsed: integer("tokens_used"),
   latencyMs: integer("latency_ms"),
-  
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
@@ -5462,44 +5465,44 @@ export type InsertFollowupAiEvaluationLog = typeof followupAiEvaluationLog.$infe
 export const consultantAiPreferences = pgTable("consultant_ai_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
-  
+
   // === PARAMETRI GLOBALI ===
   maxFollowupsTotal: integer("max_followups_total").default(5).notNull(),
   minHoursBetweenFollowups: integer("min_hours_between_followups").default(24).notNull(),
   workingHoursStart: integer("working_hours_start").default(9).notNull(), // 0-23
   workingHoursEnd: integer("working_hours_end").default(19).notNull(), // 0-23
   workingDays: jsonb("working_days").$type<number[]>().default(sql`'[1,2,3,4,5]'::jsonb`), // 0=Sun, 1=Mon...6=Sat
-  
+
   // === STILE COMUNICATIVO ===
   toneStyle: text("tone_style").$type<"professionale" | "amichevole" | "diretto" | "formale">().default("professionale"),
   messageLength: text("message_length").$type<"breve" | "medio" | "dettagliato">().default("medio"),
   useEmojis: boolean("use_emojis").default(false).notNull(),
-  
+
   // === AGGRESSIVITÀ FOLLOW-UP ===
   aggressivenessLevel: integer("aggressiveness_level").default(5).notNull(), // 1-10 (1=molto passivo, 10=molto aggressivo)
   persistenceLevel: integer("persistence_level").default(5).notNull(), // 1-10 (quante volte insistere su lead freddi)
-  
+
   // === TIMING PREFERENZE ===
   firstFollowupDelayHours: integer("first_followup_delay_hours").default(24).notNull(),
   templateNoResponseDelayHours: integer("template_no_response_delay_hours").default(48).notNull(),
   coldLeadReactivationDays: integer("cold_lead_reactivation_days").default(7).notNull(),
-  
+
   // === ISTRUZIONI PERSONALIZZATE (TESTO LIBERO) ===
   customInstructions: text("custom_instructions"), // Istruzioni libere per l'AI
   businessContext: text("business_context"), // Contesto del business
   targetAudience: text("target_audience"), // Descrizione target
-  
+
   // === REGOLE SPECIALI ===
   neverContactWeekends: boolean("never_contact_weekends").default(false).notNull(),
   respectHolidays: boolean("respect_holidays").default(true).notNull(),
   stopOnFirstNo: boolean("stop_on_first_no").default(true).notNull(),
   requireLeadResponseForFreeform: boolean("require_lead_response_for_freeform").default(true).notNull(),
-  
+
   // === AI BEHAVIOR FLAGS ===
   allowAiToSuggestTemplates: boolean("allow_ai_to_suggest_templates").default(true).notNull(),
   allowAiToWriteFreeformMessages: boolean("allow_ai_to_write_freeform_messages").default(true).notNull(),
   logAiReasoning: boolean("log_ai_reasoning").default(true).notNull(),
-  
+
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

@@ -17,14 +17,19 @@ import {
 import { resolveVariables } from "../../services/whatsapp/variable-resolver";
 import { db } from "../../db";
 import * as schema from "../../../shared/schema";
-import { 
-  whatsappTemplateVersions, 
+import {
+  whatsappTemplateVersions,
   whatsappVariableCatalog,
   proactiveLeads,
   users,
   consultantWhatsappConfig,
 } from "../../../shared/schema";
 import { eq, and, sql } from "drizzle-orm";
+import {
+  DEFAULT_TEMPLATES_BY_AGENT,
+  AGENT_TYPE_LABELS,
+  type AgentType as TemplateAgentType
+} from "../../data/default-templates-seed";
 
 const router = Router();
 
@@ -155,6 +160,260 @@ router.get(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to list templates",
+      });
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEFAULT TEMPLATES ENDPOINTS 
+// (Must be placed BEFORE /:id route to avoid route collision)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/whatsapp/custom-templates/default-templates
+ * Get all available default templates grouped by agent type
+ */
+router.get(
+  "/whatsapp/custom-templates/default-templates",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      // Get existing templates for this consultant to check which defaults are already loaded
+      const existingTemplates = await db
+        .select({
+          templateName: schema.whatsappCustomTemplates.templateName,
+          targetAgentType: schema.whatsappCustomTemplates.targetAgentType,
+          isSystemTemplate: schema.whatsappCustomTemplates.isSystemTemplate,
+        })
+        .from(schema.whatsappCustomTemplates)
+        .where(eq(schema.whatsappCustomTemplates.consultantId, consultantId));
+
+      const existingNamesByAgent = new Map<string, Set<string>>();
+      for (const t of existingTemplates) {
+        if (t.targetAgentType && t.isSystemTemplate) {
+          if (!existingNamesByAgent.has(t.targetAgentType)) {
+            existingNamesByAgent.set(t.targetAgentType, new Set());
+          }
+          existingNamesByAgent.get(t.targetAgentType)!.add(t.templateName);
+        }
+      }
+
+      // Build response with availability status
+      const agentTemplates = Object.entries(DEFAULT_TEMPLATES_BY_AGENT).map(([agentType, templates]) => {
+        const existingNames = existingNamesByAgent.get(agentType) || new Set();
+        const loadedCount = templates.filter(t => existingNames.has(t.templateName)).length;
+
+        return {
+          agentType,
+          agentLabel: AGENT_TYPE_LABELS[agentType as TemplateAgentType],
+          totalTemplates: templates.length,
+          loadedCount,
+          allLoaded: loadedCount === templates.length,
+          templates: templates.map(t => ({
+            ...t,
+            isLoaded: existingNames.has(t.templateName),
+          })),
+        };
+      });
+
+      res.json({
+        success: true,
+        data: agentTemplates,
+        summary: {
+          totalAgentTypes: agentTemplates.length,
+          fullyLoadedAgents: agentTemplates.filter(a => a.allLoaded).length,
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [DEFAULT TEMPLATES] Error fetching defaults:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch default templates",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/custom-templates/load-defaults/:agentType
+ * Load default templates for a specific agent type
+ */
+router.post(
+  "/whatsapp/custom-templates/load-defaults/:agentType",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const agentType = req.params.agentType as TemplateAgentType;
+
+      // Validate agent type
+      const validAgentTypes = Object.keys(DEFAULT_TEMPLATES_BY_AGENT);
+      if (!validAgentTypes.includes(agentType)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid agent type. Valid types: ${validAgentTypes.join(", ")}`,
+        });
+      }
+
+      const defaultTemplates = DEFAULT_TEMPLATES_BY_AGENT[agentType];
+
+      // Get existing templates to avoid duplicates
+      const existingTemplates = await db
+        .select({
+          templateName: schema.whatsappCustomTemplates.templateName,
+        })
+        .from(schema.whatsappCustomTemplates)
+        .where(
+          and(
+            eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+            eq(schema.whatsappCustomTemplates.targetAgentType, agentType),
+            eq(schema.whatsappCustomTemplates.isSystemTemplate, true)
+          )
+        );
+
+      const existingNames = new Set(existingTemplates.map(t => t.templateName));
+
+      // Filter out templates that already exist
+      const templatesToCreate = defaultTemplates.filter(t => !existingNames.has(t.templateName));
+
+      if (templatesToCreate.length === 0) {
+        return res.json({
+          success: true,
+          message: "Tutti i template predefiniti sono già stati caricati",
+          created: 0,
+          skipped: defaultTemplates.length,
+        });
+      }
+
+      // Create templates and their versions
+      let createdCount = 0;
+      for (const template of templatesToCreate) {
+        console.log(`📝 [DEFAULT TEMPLATES] Creating template: ${template.templateName} with targetAgentType: ${template.targetAgentType}`);
+
+        const [newTemplate] = await db
+          .insert(schema.whatsappCustomTemplates)
+          .values({
+            consultantId,
+            templateName: template.templateName,
+            description: template.description,
+            body: template.body,
+            useCase: template.useCase,
+            targetAgentType: template.targetAgentType,
+            isSystemTemplate: true,
+            isActive: true,
+          })
+          .returning();
+
+        console.log(`✅ [DEFAULT TEMPLATES] Created template ID: ${newTemplate.id}, targetAgentType: ${newTemplate.targetAgentType}`);
+
+        await db
+          .insert(whatsappTemplateVersions)
+          .values({
+            templateId: newTemplate.id,
+            versionNumber: 1,
+            bodyText: template.body,
+            isActive: true,
+            createdBy: consultantId,
+          });
+
+        createdCount++;
+      }
+
+      console.log(`✅ [DEFAULT TEMPLATES] Created ${createdCount} templates for ${agentType}`);
+
+      res.json({
+        success: true,
+        message: `Caricati ${createdCount} template predefiniti per ${AGENT_TYPE_LABELS[agentType]}`,
+        created: createdCount,
+        skipped: defaultTemplates.length - createdCount,
+      });
+    } catch (error: any) {
+      console.error("❌ [DEFAULT TEMPLATES] Error loading defaults:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to load default templates",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/whatsapp/custom-templates/by-agent-type/:agentType
+ * Get all templates for a specific agent type (both system and custom)
+ */
+router.get(
+  "/whatsapp/custom-templates/by-agent-type/:agentType",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const agentType = req.params.agentType;
+
+      const templates = await db
+        .select({
+          id: schema.whatsappCustomTemplates.id,
+          templateName: schema.whatsappCustomTemplates.templateName,
+          description: schema.whatsappCustomTemplates.description,
+          body: schema.whatsappCustomTemplates.body,
+          useCase: schema.whatsappCustomTemplates.useCase,
+          targetAgentType: schema.whatsappCustomTemplates.targetAgentType,
+          isSystemTemplate: schema.whatsappCustomTemplates.isSystemTemplate,
+          isActive: schema.whatsappCustomTemplates.isActive,
+          archivedAt: schema.whatsappCustomTemplates.archivedAt,
+          createdAt: schema.whatsappCustomTemplates.createdAt,
+          versionId: whatsappTemplateVersions.id,
+          versionNumber: whatsappTemplateVersions.versionNumber,
+          twilioContentSid: whatsappTemplateVersions.twilioContentSid,
+          twilioStatus: whatsappTemplateVersions.twilioStatus,
+        })
+        .from(schema.whatsappCustomTemplates)
+        .leftJoin(
+          whatsappTemplateVersions,
+          and(
+            eq(whatsappTemplateVersions.templateId, schema.whatsappCustomTemplates.id),
+            eq(whatsappTemplateVersions.isActive, true)
+          )
+        )
+        .where(
+          and(
+            eq(schema.whatsappCustomTemplates.consultantId, consultantId),
+            eq(schema.whatsappCustomTemplates.targetAgentType, agentType)
+          )
+        )
+        .orderBy(schema.whatsappCustomTemplates.createdAt);
+
+      const approved = templates.filter(t => t.twilioStatus === "approved");
+      const pending = templates.filter(t => t.twilioStatus === "pending_approval" || t.twilioStatus === "pending");
+      const localDrafts = templates.filter(t => !t.twilioContentSid);
+      const rejected = templates.filter(t => t.twilioStatus === "rejected");
+
+      res.json({
+        success: true,
+        data: {
+          agentType,
+          agentLabel: AGENT_TYPE_LABELS[agentType as TemplateAgentType] || agentType,
+          templates,
+          grouped: { approved, pending, localDrafts, rejected },
+          counts: {
+            total: templates.length,
+            approved: approved.length,
+            pending: pending.length,
+            localDrafts: localDrafts.length,
+            rejected: rejected.length,
+          },
+        },
+      });
+    } catch (error: any) {
+      console.error("❌ [TEMPLATES BY AGENT] Error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch templates by agent type",
       });
     }
   }
@@ -469,13 +728,13 @@ router.post(
           const catalogVar = catalogMap.get(varMapping.variableKey)!;
           let resolvedValue: string | null = null;
           let source: "lead" | "sample" | "default" | "fallback" = "sample";
-          
+
           // For consultant/agent_config variables, use REAL data from DB
           if (catalogVar.sourceType === "consultant" && consultant) {
             // Navigate path in consultant data
             const pathParts = catalogVar.sourcePath.split(".");
             let value: any = consultant;
-            
+
             for (const part of pathParts) {
               if (value && typeof value === "object" && part in value) {
                 value = value[part];
@@ -493,7 +752,7 @@ router.post(
             // Navigate path in agent config data
             const pathParts = catalogVar.sourcePath.split(".");
             let value: any = agentConfig;
-            
+
             for (const part of pathParts) {
               if (value && typeof value === "object" && part in value) {
                 value = value[part];
@@ -508,7 +767,7 @@ router.post(
               source = "lead"; // Using real agent config data
             }
           }
-          
+
           // If not resolved from DB, try sample data
           if (!resolvedValue) {
             const sampleValue = sampleData?.[varMapping.variableKey];
@@ -517,13 +776,13 @@ router.post(
               source = "sample";
             }
           }
-          
+
           // If still not resolved, try fallback value
           if (!resolvedValue && catalogVar.fallbackValue) {
             resolvedValue = catalogVar.fallbackValue;
             source = "default";
           }
-          
+
           // If still not resolved, use placeholder
           const finalValue = resolvedValue || `{${varMapping.variableKey}}`;
           const missing = !resolvedValue;
@@ -590,14 +849,14 @@ router.post(
             .from(consultantWhatsappConfig)
             .where(eq(consultantWhatsappConfig.id, lead.agentConfigId))
             .limit(1);
-          
+
           agentConfig = configs[0];
         }
 
         // Resolve variables from lead data
         for (const varMapping of variables) {
           const catalogVar = catalogMap.get(varMapping.variableKey)!;
-          
+
           let targetData: any = null;
           switch (catalogVar.sourceType) {
             case "lead":
@@ -621,7 +880,7 @@ router.post(
             // Navigate path
             const pathParts = catalogVar.sourcePath.split(".");
             let value: any = targetData;
-            
+
             for (const part of pathParts) {
               if (value && typeof value === "object" && part in value) {
                 value = value[part];
@@ -803,7 +1062,7 @@ router.post(
       // Get AI provider
       const { getAIProvider } = await import("../../ai/provider-factory");
       const provider = await getAIProvider(consultantId);
-      
+
       if (!provider) {
         return res.status(500).json({
           success: false,
@@ -921,7 +1180,7 @@ Ricorda: rispondi SOLO con il JSON valido.`;
       // Extract variables from bodyText and build variable mappings
       const { extractVariablesFromText } = await import("../../validators/whatsapp/custom-template-schema");
       const extractedVars = extractVariablesFromText(parsedTemplate.data.bodyText);
-      
+
       // Filter to only include valid catalog variables
       const validVariableKeys = catalogVariables.map(v => v.variableKey);
       const validExtractedVars = extractedVars.filter(v => validVariableKeys.includes(v));
@@ -1240,7 +1499,7 @@ router.post(
             if (approvalRequests?.whatsapp?.status) {
               approvalStatus = approvalRequests.whatsapp.status;
             }
-          } catch (e) {}
+          } catch (e) { }
 
           return {
             sid: t.sid,
@@ -1401,4 +1660,7 @@ router.post(
   }
 );
 
+// Note: DEFAULT TEMPLATES ENDPOINTS moved above /:id route to avoid route collision
+
 export default router;
+

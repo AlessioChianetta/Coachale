@@ -1735,27 +1735,15 @@ router.get("/agent-templates", authenticateToken, requireRole("consultant"), asy
         t.templateId.startsWith('HX') && t.templateType === 'twilio'
       );
 
-      // Get template details from Twilio templates if available
-      const templateDetails = await Promise.all(approvedTemplates.map(async (t) => {
-        // Try to find the template name from whatsapp_templates or cache
-        const templateInfo = await db
-          .select({
-            friendlyName: schema.whatsappTemplates.friendlyName,
-            twilioStatus: schema.whatsappTemplates.twilioStatus,
-            bodyText: schema.whatsappTemplates.bodyText,
-          })
-          .from(schema.whatsappTemplates)
-          .where(eq(schema.whatsappTemplates.sid, t.templateId))
-          .limit(1);
-
-        return {
-          templateId: t.templateId,
-          templateType: t.templateType,
-          priority: t.priority,
-          friendlyName: templateInfo[0]?.friendlyName || t.templateId,
-          twilioStatus: templateInfo[0]?.twilioStatus || 'unknown',
-          bodyText: templateInfo[0]?.bodyText || null,
-        };
+      // Get template details - for Twilio templates (HX prefix), we return the ID directly
+      // since there's no local DB table for Twilio template metadata
+      const templateDetails = approvedTemplates.map((t) => ({
+        templateId: t.templateId,
+        templateType: t.templateType,
+        priority: t.priority,
+        friendlyName: t.templateId, // Twilio template SID as name
+        twilioStatus: 'approved', // If assigned, assumed approved
+        bodyText: null, // Not stored locally for Twilio templates
       }));
 
       return {

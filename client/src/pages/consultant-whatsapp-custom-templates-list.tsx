@@ -1,5 +1,5 @@
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -90,9 +90,23 @@ import {
   TrendingUp,
   Bell,
   Cloud,
+  Download,
+  Layers,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
+// Agent type configuration for default templates
+const AGENT_TYPE_CONFIG: Record<string, { label: string; icon: string; color: string; gradient: string }> = {
+  receptionist: { label: "📞 Receptionist", icon: "📞", color: "bg-blue-500", gradient: "from-blue-500 to-cyan-500" },
+  proactive_setter: { label: "🎯 Setter", icon: "🎯", color: "bg-orange-500", gradient: "from-orange-500 to-red-500" },
+  informative_advisor: { label: "📚 Consulente Educativo", icon: "📚", color: "bg-purple-500", gradient: "from-purple-500 to-indigo-500" },
+  customer_success: { label: "❤️ Customer Success", icon: "❤️", color: "bg-pink-500", gradient: "from-pink-500 to-rose-500" },
+  intake_coordinator: { label: "📋 Intake Coordinator", icon: "📋", color: "bg-green-500", gradient: "from-green-500 to-emerald-500" },
+};
+
+type FilterMode = "category" | "agent";
 
 interface TemplateVersion {
   id: string;
@@ -276,7 +290,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [currentPage, setCurrentPage] = useState(1);
-  
+
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [templateToExport, setTemplateToExport] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
@@ -293,6 +307,52 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(true);
   const [localDraftsSectionOpen, setLocalDraftsSectionOpen] = useState(true);
   const [twilioOnlySectionOpen, setTwilioOnlySectionOpen] = useState(true);
+
+  // NEW: Filter mode (category vs agent) and selected agent type
+  const [filterMode, setFilterMode] = useState<FilterMode>("category");
+  const [selectedAgentType, setSelectedAgentType] = useState<string>("receptionist");
+
+  // Query for default templates availability
+  const { data: defaultTemplatesData } = useQuery({
+    queryKey: ["/api/whatsapp/custom-templates/default-templates"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/custom-templates/default-templates", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return null;
+      return response.json();
+    },
+  });
+
+  // Mutation to load default templates for an agent type
+  const loadDefaultsMutation = useMutation({
+    mutationFn: async (agentType: string) => {
+      const response = await fetch(`/api/whatsapp/custom-templates/load-defaults/${agentType}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to load defaults");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "✅ Template Caricati",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/custom-templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/whatsapp/custom-templates/default-templates"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "❌ Errore",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const { data: templatesData, isLoading, error } = useQuery({
     queryKey: ["/api/whatsapp/custom-templates"],
@@ -352,13 +412,19 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const filteredAndSortedTemplates = useMemo(() => {
     let result = [...templates];
 
-    if (selectedCategory !== "all") {
+    // Filter by category when in category mode
+    if (filterMode === "category" && selectedCategory !== "all") {
       result = result.filter((t) => t.templateType === selectedCategory);
+    }
+
+    // Filter by agent type when in agent mode
+    if (filterMode === "agent") {
+      result = result.filter((t: any) => t.targetAgentType === selectedAgentType);
     }
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      result = result.filter((t) => 
+      result = result.filter((t) =>
         t.templateName.toLowerCase().includes(query) ||
         (t.description && t.description.toLowerCase().includes(query))
       );
@@ -380,7 +446,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     });
 
     return result;
-  }, [templates, selectedCategory, searchQuery, sortBy]);
+  }, [templates, filterMode, selectedCategory, selectedAgentType, searchQuery, sortBy]);
 
   const groupedTemplates = useMemo(() => {
     const localDrafts = filteredAndSortedTemplates.filter(t => !t.activeVersion?.twilioContentSid);
@@ -692,7 +758,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
 
   const handleExportWithVerification = async () => {
     if (!selectedAgentId || !templateToExport) return;
-    
+
     try {
       const credentials = await verifyCredentialsMutation.mutateAsync(selectedAgentId);
       if (!credentials.valid) {
@@ -718,11 +784,11 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
   const showNoResults = !isLoading && templates.length > 0 && filteredAndSortedTemplates.length === 0;
 
   const categories = [
-    "all", 
-    "opening", 
-    "followup_gentle", 
-    "stalled", 
-    "customer_success", 
+    "all",
+    "opening",
+    "followup_gentle",
+    "stalled",
+    "customer_success",
     "reactivation",
     "customer_care",
     "venditori",
@@ -746,9 +812,8 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     return (
       <Card
         key={template.id}
-        className={`group relative overflow-hidden border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 animate-in fade-in-50 ${
-          template.archivedAt ? "opacity-60 hover:opacity-100" : ""
-        }`}
+        className={`group relative overflow-hidden border-2 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 animate-in fade-in-50 ${template.archivedAt ? "opacity-60 hover:opacity-100" : ""
+          }`}
       >
         <div className={`absolute top-0 left-0 right-0 h-2 bg-gradient-to-r ${typeConfig.gradient}`} />
 
@@ -759,11 +824,11 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                 {typeConfig.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <CardTitle className="text-lg truncate group-hover:text-purple-600 transition-colors">
+                <CardTitle className="text-base font-semibold group-hover:text-purple-600 transition-colors leading-tight">
                   {template.templateName}
                 </CardTitle>
                 <CardDescription className="line-clamp-2 text-xs mt-1">
-                  {template.description || "Nessuna descrizione"}
+                  {template.description || template.useCase || "Nessuna descrizione"}
                 </CardDescription>
               </div>
             </div>
@@ -784,15 +849,15 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   Duplica
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => handleExportToTwilio(template.id)}
                   disabled={!template.activeVersion || exportMutation.isPending || !!template.activeVersion?.twilioContentSid}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  {template.activeVersion?.twilioContentSid 
-                    ? "Già su Twilio" 
-                    : exportMutation.isPending 
-                      ? "Esportazione..." 
+                  {template.activeVersion?.twilioContentSid
+                    ? "Già su Twilio"
+                    : exportMutation.isPending
+                      ? "Esportazione..."
                       : "Esporta a Twilio"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -818,6 +883,11 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
             <Badge variant="outline" className={`${typeConfig.color} text-white border-0 shadow-sm`}>
               {getTypeLabel(template.templateType)}
             </Badge>
+            {template.useCase && (
+              <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-300">
+                {template.useCase}
+              </Badge>
+            )}
             {template.archivedAt && (
               <Badge variant="secondary" className="border">
                 Archiviato
@@ -860,7 +930,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
               )}
 
               <div className="space-y-2">
-                <div className="text-sm bg-gradient-to-br from-slate-50 to-blue-50/30 p-4 rounded-lg border border-slate-200/60 font-mono text-slate-700 leading-relaxed min-h-[80px] max-h-[120px] overflow-hidden break-words whitespace-pre-wrap">
+                <div className="text-sm bg-gradient-to-br from-slate-50 to-blue-50/30 p-4 rounded-lg border border-slate-200/60 font-mono text-slate-700 leading-relaxed min-h-[100px] max-h-[180px] overflow-y-auto break-words whitespace-pre-wrap">
                   {template.activeVersion.bodyText.split(/(\{[a-zA-Z0-9_]+\})/).map((part, idx) => {
                     if (part.match(/^\{[a-zA-Z0-9_]+\}$/)) {
                       return (
@@ -971,7 +1041,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   Duplica
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => handleExportToTwilio(template.id)}
                   disabled={!template.activeVersion || exportMutation.isPending}
                 >
@@ -1005,7 +1075,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
     const maxVisiblePages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
+
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
@@ -1019,7 +1089,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
         <p className="text-sm text-muted-foreground">
           Mostrando <span className="font-medium">{startIndex + 1}</span>-<span className="font-medium">{endIndex}</span> di <span className="font-medium">{filteredAndSortedTemplates.length}</span> template
         </p>
-        
+
         <div className="flex items-center gap-1">
           <Button
             variant="outline"
@@ -1039,7 +1109,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
             <ChevronLeft className="h-4 w-4" />
             <span className="hidden sm:inline ml-1">Precedente</span>
           </Button>
-          
+
           <div className="flex items-center gap-1 mx-2">
             {pageNumbers.map(page => (
               <Button
@@ -1053,7 +1123,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
               </Button>
             ))}
           </div>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -1115,18 +1185,18 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button
                       onClick={handleFetchTwilioTemplates}
-                        size="lg"
-                        variant="outline"
-                        disabled={fetchTwilioTemplatesMutation.isPending}
-                        className="bg-white/10 border-white/30 text-white hover:bg-white/20"
-                      >
-                        {fetchTwilioTemplatesMutation.isPending ? (
-                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        ) : (
-                          <ExternalLink className="h-5 w-5 mr-2" />
-                        )}
-                        Vedi Template Twilio
-                      </Button>
+                      size="lg"
+                      variant="outline"
+                      disabled={fetchTwilioTemplatesMutation.isPending}
+                      className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                    >
+                      {fetchTwilioTemplatesMutation.isPending ? (
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      ) : (
+                        <ExternalLink className="h-5 w-5 mr-2" />
+                      )}
+                      Vedi Template Twilio
+                    </Button>
                     <Button
                       onClick={handleSyncTwilioStatus}
                       size="lg"
@@ -1222,37 +1292,142 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 p-3 bg-white/80 backdrop-blur-sm rounded-xl border shadow-sm">
-                  {categories.map((cat) => {
-                    const config = CATEGORY_CONFIG[cat];
-                    const count = getCategoryCount(cat);
-                    const isSelected = selectedCategory === cat;
-                    
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`
-                          flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs
-                          transition-all duration-200 border
-                          ${isSelected 
-                            ? `bg-gradient-to-r ${config.gradient} text-white border-transparent shadow-md` 
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:shadow-sm'
-                          }
-                        `}
-                      >
-                        <span className="text-sm">{config.icon}</span>
-                        <span className="hidden sm:inline">{config.label}</span>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs px-1.5 py-0 ${isSelected ? 'bg-white/25 text-white' : 'bg-slate-100'}`}
-                        >
-                          {count}
-                        </Badge>
-                      </button>
-                    );
-                  })}
+                {/* Toggle between Category and Agent view */}
+                <div className="flex items-center gap-2 p-3 bg-white rounded-xl border shadow-sm">
+                  <span className="text-xs font-semibold text-slate-600 mr-2">Visualizza:</span>
+                  <div className="flex items-center border-2 rounded-lg p-0.5">
+                    <Button
+                      variant={filterMode === "category" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilterMode("category")}
+                      className="h-8 gap-1.5"
+                    >
+                      <Layers className="h-3.5 w-3.5" />
+                      Per Categoria
+                    </Button>
+                    <Button
+                      variant={filterMode === "agent" ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => setFilterMode("agent")}
+                      className="h-8 gap-1.5"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      Per Agente
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Category filter (shown when filterMode === "category") */}
+                {filterMode === "category" && (
+                  <div className="flex flex-wrap gap-2 p-3 bg-white/80 backdrop-blur-sm rounded-xl border shadow-sm">
+                    {categories.map((cat) => {
+                      const config = CATEGORY_CONFIG[cat];
+                      const count = getCategoryCount(cat);
+                      const isSelected = selectedCategory === cat;
+
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`
+                            flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs
+                            transition-all duration-200 border
+                            ${isSelected
+                              ? `bg-gradient-to-r ${config.gradient} text-white border-transparent shadow-md`
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                            }
+                          `}
+                        >
+                          <span className="text-sm">{config.icon}</span>
+                          <span className="hidden sm:inline">{config.label}</span>
+                          <Badge
+                            variant="secondary"
+                            className={`text-xs px-1.5 py-0 ${isSelected ? 'bg-white/25 text-white' : 'bg-slate-100'}`}
+                          >
+                            {count}
+                          </Badge>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Agent filter (shown when filterMode === "agent") */}
+                {filterMode === "agent" && (
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap gap-2 p-3 bg-white/80 backdrop-blur-sm rounded-xl border shadow-sm">
+                      {Object.entries(AGENT_TYPE_CONFIG).map(([agentType, config]) => {
+                        const isSelected = selectedAgentType === agentType;
+                        const agentData = defaultTemplatesData?.data?.find((a: any) => a.agentType === agentType);
+                        const loadedCount = agentData?.loadedCount || 0;
+                        const totalCount = agentData?.totalTemplates || 20;
+
+                        return (
+                          <button
+                            key={agentType}
+                            onClick={() => setSelectedAgentType(agentType)}
+                            className={`
+                              flex items-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs
+                              transition-all duration-200 border
+                              ${isSelected
+                                ? `bg-gradient-to-r ${config.gradient} text-white border-transparent shadow-md`
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:shadow-sm'
+                              }
+                            `}
+                          >
+                            <span className="text-sm">{config.icon}</span>
+                            <span className="hidden sm:inline">{config.label.replace(/^.+?\s/, '')}</span>
+                            <Badge
+                              variant="secondary"
+                              className={`text-xs px-1.5 py-0 ${isSelected ? 'bg-white/25 text-white' : loadedCount > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-100'}`}
+                            >
+                              {loadedCount}/{totalCount}
+                            </Badge>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Load defaults button for selected agent */}
+                    {(() => {
+                      const agentData = defaultTemplatesData?.data?.find((a: any) => a.agentType === selectedAgentType);
+                      const allLoaded = agentData?.allLoaded;
+                      const config = AGENT_TYPE_CONFIG[selectedAgentType];
+
+                      return (
+                        <div className="flex items-center justify-between p-3 bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl border shadow-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{config?.icon}</span>
+                            <div>
+                              <p className="font-medium text-sm">{config?.label}</p>
+                              <p className="text-xs text-slate-500">
+                                {allLoaded
+                                  ? "Tutti i template predefiniti sono stati caricati"
+                                  : `${agentData?.loadedCount || 0} di ${agentData?.totalTemplates || 20} template caricati`
+                                }
+                              </p>
+                            </div>
+                          </div>
+                          {!allLoaded && (
+                            <Button
+                              onClick={() => loadDefaultsMutation.mutate(selectedAgentType)}
+                              disabled={loadDefaultsMutation.isPending}
+                              size="sm"
+                              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                            >
+                              {loadDefaultsMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4 mr-2" />
+                              )}
+                              Carica Template Predefiniti
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
 
                 <div className="flex flex-col sm:flex-row gap-3 bg-white/80 backdrop-blur-sm p-3 rounded-xl border shadow-sm">
                   <div className="relative flex-1">
@@ -1264,7 +1439,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                       className="pl-10 border-2 focus-visible:ring-purple-500/20 h-9"
                     />
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
                       <SelectTrigger className="w-[160px] border-2 h-9">
@@ -1544,9 +1719,9 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   const twilioOnlyTemplates = twilioTemplatesData?.twilioTemplates?.filter(
                     (t: any) => t.linkedToLocal === false
                   ) || [];
-                  
+
                   if (twilioOnlyTemplates.length === 0) return null;
-                  
+
                   return (
                     <Collapsible open={twilioOnlySectionOpen} onOpenChange={setTwilioOnlySectionOpen}>
                       <CollapsibleTrigger asChild>
@@ -1575,12 +1750,11 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                                       SID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{template.sid}</code>
                                     </div>
                                   </div>
-                                  <Badge className={`text-xs text-white flex-shrink-0 ${
-                                    template.approvalStatus === 'approved' ? 'bg-green-500' :
+                                  <Badge className={`text-xs text-white flex-shrink-0 ${template.approvalStatus === 'approved' ? 'bg-green-500' :
                                     template.approvalStatus === 'pending' || template.approvalStatus === 'received' ? 'bg-yellow-500' :
-                                    template.approvalStatus === 'rejected' ? 'bg-red-500' :
-                                    'bg-gray-500'
-                                  }`}>
+                                      template.approvalStatus === 'rejected' ? 'bg-red-500' :
+                                        'bg-gray-500'
+                                    }`}>
                                     {template.approvalStatus === 'approved' ? (
                                       <><CheckCircle2 className="h-3 w-3 mr-1" />Approvato</>
                                     ) : template.approvalStatus === 'pending' || template.approvalStatus === 'received' ? (
@@ -1634,16 +1808,15 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                           const isApproved = template.approvalStatus === 'approved';
                           const isPending = template.approvalStatus === 'pending' || template.approvalStatus === 'received';
                           const isRejected = template.approvalStatus === 'rejected';
-                          
+
                           return (
-                            <Card 
-                              key={template.sid} 
-                              className={`border-2 transition-colors ${
-                                isApproved ? 'border-green-200 hover:border-green-300' :
+                            <Card
+                              key={template.sid}
+                              className={`border-2 transition-colors ${isApproved ? 'border-green-200 hover:border-green-300' :
                                 isPending ? 'border-yellow-200 hover:border-yellow-300' :
-                                isRejected ? 'border-red-200 hover:border-red-300' :
-                                'border-slate-200 hover:border-slate-300'
-                              }`}
+                                  isRejected ? 'border-red-200 hover:border-red-300' :
+                                    'border-slate-200 hover:border-slate-300'
+                                }`}
                             >
                               <CardHeader className="pb-3">
                                 <div className="flex items-start justify-between gap-3">
@@ -1655,12 +1828,11 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                                       SID: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">{template.sid}</code>
                                     </div>
                                   </div>
-                                  <Badge className={`text-xs text-white flex-shrink-0 ${
-                                    isApproved ? 'bg-green-500' :
+                                  <Badge className={`text-xs text-white flex-shrink-0 ${isApproved ? 'bg-green-500' :
                                     isPending ? 'bg-yellow-500' :
-                                    isRejected ? 'bg-red-500' :
-                                    'bg-gray-500'
-                                  }`}>
+                                      isRejected ? 'bg-red-500' :
+                                        'bg-gray-500'
+                                    }`}>
                                     {isApproved ? (
                                       <><CheckCircle2 className="h-3 w-3 mr-1" />Approvato</>
                                     ) : isPending ? (
@@ -1746,7 +1918,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
               {selectedAgentId && templateToExport && (() => {
                 const template = templates.find(t => t.id === templateToExport);
                 const selectedAgent = agents.find((a: any) => a.id === selectedAgentId);
-                
+
                 if (!template?.activeVersion || !selectedAgent) return null;
 
                 const resolveTemplate = (text: string) => {
@@ -1823,7 +1995,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
               <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
                 Annulla
               </Button>
-              <Button 
+              <Button
                 onClick={handleExportWithVerification}
                 disabled={!selectedAgentId || verifyCredentialsMutation.isPending || exportMutation.isPending}
               >
@@ -1875,7 +2047,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
               <Button variant="outline" onClick={() => setSyncAgentDialogOpen(false)}>
                 Annulla
               </Button>
-              <Button 
+              <Button
                 onClick={() => syncTwilioMutation.mutate(syncSelectedAgentId)}
                 disabled={!syncSelectedAgentId || syncTwilioMutation.isPending}
               >
@@ -1979,7 +2151,7 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   <Alert variant="destructive" className="bg-red-50 border-red-200">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription className="text-red-800">
-                      <strong>{twilioTemplatesData.orphanedLocalTemplates.length} template locali</strong> hanno SID che non esistono su Twilio. 
+                      <strong>{twilioTemplatesData.orphanedLocalTemplates.length} template locali</strong> hanno SID che non esistono su Twilio.
                       Potrebbero essere stati cancellati o avere SID errati.
                     </AlertDescription>
                   </Alert>
@@ -1989,9 +2161,8 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                   {twilioTemplatesData.twilioTemplates?.map((template: any) => (
                     <div
                       key={template.sid}
-                      className={`border rounded-lg p-4 transition-colors ${
-                        template.linkedToLocal ? 'bg-blue-50/50 border-blue-200' : 'bg-white hover:bg-gray-50'
-                      }`}
+                      className={`border rounded-lg p-4 transition-colors ${template.linkedToLocal ? 'bg-blue-50/50 border-blue-200' : 'bg-white hover:bg-gray-50'
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-3 mb-2">
                         <div className="flex-1 min-w-0">
@@ -2012,16 +2183,15 @@ export default function ConsultantWhatsAppCustomTemplatesList() {
                             </div>
                           )}
                         </div>
-                        <Badge className={`text-xs text-white flex-shrink-0 ${
-                          template.approvalStatus === 'approved' ? 'bg-green-500' :
+                        <Badge className={`text-xs text-white flex-shrink-0 ${template.approvalStatus === 'approved' ? 'bg-green-500' :
                           template.approvalStatus === 'pending' || template.approvalStatus === 'received' ? 'bg-yellow-500' :
-                          template.approvalStatus === 'rejected' ? 'bg-red-500' :
-                          'bg-gray-500'
-                        }`}>
+                            template.approvalStatus === 'rejected' ? 'bg-red-500' :
+                              'bg-gray-500'
+                          }`}>
                           {template.approvalStatus === 'approved' ? 'Approvato' :
-                           template.approvalStatus === 'pending' || template.approvalStatus === 'received' ? 'In Attesa' :
-                           template.approvalStatus === 'rejected' ? 'Rifiutato' :
-                           template.approvalStatus}
+                            template.approvalStatus === 'pending' || template.approvalStatus === 'received' ? 'In Attesa' :
+                              template.approvalStatus === 'rejected' ? 'Rifiutato' :
+                                template.approvalStatus}
                         </Badge>
                       </div>
                       {template.bodyPreview && (
