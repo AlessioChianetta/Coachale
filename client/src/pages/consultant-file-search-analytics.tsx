@@ -18,7 +18,11 @@ import {
   XCircle,
   Loader2,
   ArrowLeft,
-  Quote
+  Quote,
+  MessageSquare,
+  Bot,
+  Users,
+  BookOpen
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -56,6 +60,19 @@ interface FileSearchSettings {
   lastSyncAt: string | null;
   totalDocumentsSynced: number;
   totalUsageCount: number;
+}
+
+interface SyncedDocument {
+  id: string;
+  googleFileId: string;
+  fileName: string;
+  displayName: string;
+  mimeType: string;
+  status: 'pending' | 'processing' | 'indexed' | 'failed';
+  sourceType: 'library' | 'knowledge_base' | 'manual' | 'exercise' | 'consultation' | 'university';
+  sourceId: string | null;
+  uploadedAt: string;
+  storeDisplayName?: string;
 }
 
 interface AnalyticsData {
@@ -96,6 +113,7 @@ interface AnalyticsData {
     responseTimeMs: number;
     createdAt: string;
   }>;
+  documents: SyncedDocument[];
   geminiApiKeyConfigured: boolean;
 }
 
@@ -315,6 +333,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
             <Tabs defaultValue="overview" className="space-y-6">
               <TabsList>
                 <TabsTrigger value="overview">Panoramica</TabsTrigger>
+                <TabsTrigger value="contents">Contenuti</TabsTrigger>
                 <TabsTrigger value="usage">Utilizzo</TabsTrigger>
                 <TabsTrigger value="settings">Impostazioni</TabsTrigger>
               </TabsList>
@@ -393,6 +412,91 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     </CardContent>
                   </Card>
                 </div>
+
+                <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bot className="h-5 w-5 text-emerald-600" />
+                      Moduli che Utilizzano File Search
+                    </CardTitle>
+                    <CardDescription>
+                      File Search è integrato in questi moduli per ricerca semantica intelligente
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="flex items-start gap-3 p-4 bg-white rounded-lg border shadow-sm">
+                        <div className="bg-emerald-100 p-2 rounded-lg">
+                          <MessageSquare className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">AI Assistant Cliente</h4>
+                          <p className="text-sm text-gray-500">Chat AI per clienti con accesso ai documenti</p>
+                          <Badge className="mt-2 bg-emerald-100 text-emerald-700">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Attivo
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3 p-4 bg-white rounded-lg border shadow-sm">
+                        <div className="bg-blue-100 p-2 rounded-lg">
+                          <Users className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">AI Assistant Consulente</h4>
+                          <p className="text-sm text-gray-500">Chat AI per consulenti con knowledge base</p>
+                          <Badge className="mt-2 bg-emerald-100 text-emerald-700">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Attivo
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3 p-4 bg-white rounded-lg border shadow-sm">
+                        <div className="bg-purple-100 p-2 rounded-lg">
+                          <BookOpen className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">Libreria Documenti</h4>
+                          <p className="text-sm text-gray-500">Sincronizzazione automatica documenti</p>
+                          <Badge className="mt-2 bg-emerald-100 text-emerald-700">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Attivo
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-3 p-4 bg-white rounded-lg border shadow-sm">
+                        <div className="bg-amber-100 p-2 rounded-lg">
+                          <Database className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">Knowledge Base</h4>
+                          <p className="text-sm text-gray-500">Documenti consulente indicizzati</p>
+                          <Badge className="mt-2 bg-emerald-100 text-emerald-700">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            Attivo
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-start gap-3">
+                        <Zap className="h-5 w-5 text-blue-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-medium text-blue-900">Come Funziona</h4>
+                          <p className="text-sm text-blue-700 mt-1">
+                            Quando un utente fa una domanda nell'AI Assistant, File Search cerca automaticamente 
+                            nei documenti indicizzati per trovare le informazioni più rilevanti. Questo riduce i token 
+                            utilizzati e migliora la qualità delle risposte con citazioni precise.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {analytics?.dailyStats && analytics.dailyStats.length > 0 && (
                   <Card>
@@ -500,6 +604,139 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     </CardContent>
                   </Card>
                 </div>
+              </TabsContent>
+
+              <TabsContent value="contents" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Documenti Sincronizzati
+                    </CardTitle>
+                    <CardDescription>
+                      Tutti i contenuti indicizzati per la ricerca semantica AI
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {analytics?.documents && analytics.documents.length > 0 ? (
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          <Badge variant="outline" className="bg-emerald-50">
+                            Totale: {analytics.documents.length} documenti
+                          </Badge>
+                          <Badge variant="outline" className="bg-blue-50">
+                            Libreria: {analytics.documents.filter(d => d.sourceType === 'library').length}
+                          </Badge>
+                          <Badge variant="outline" className="bg-purple-50">
+                            Knowledge Base: {analytics.documents.filter(d => d.sourceType === 'knowledge_base').length}
+                          </Badge>
+                          <Badge variant="outline" className="bg-amber-50">
+                            University: {analytics.documents.filter(d => d.sourceType === 'university').length}
+                          </Badge>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b bg-gray-50">
+                                <th className="text-left py-3 px-3 font-medium">Documento</th>
+                                <th className="text-left py-3 px-3 font-medium">Tipo Origine</th>
+                                <th className="text-left py-3 px-3 font-medium">Store</th>
+                                <th className="text-center py-3 px-3 font-medium">Stato</th>
+                                <th className="text-right py-3 px-3 font-medium">Data Sync</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analytics.documents.map((doc) => (
+                                <tr key={doc.id} className="border-b hover:bg-gray-50">
+                                  <td className="py-3 px-3">
+                                    <div>
+                                      <p className="font-medium text-gray-900">{doc.displayName}</p>
+                                      <p className="text-xs text-gray-500 truncate max-w-xs">{doc.fileName}</p>
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    <Badge 
+                                      variant="outline"
+                                      className={
+                                        doc.sourceType === 'library' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                        doc.sourceType === 'knowledge_base' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                        doc.sourceType === 'university' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                        doc.sourceType === 'exercise' ? 'bg-green-50 text-green-700 border-green-200' :
+                                        doc.sourceType === 'consultation' ? 'bg-pink-50 text-pink-700 border-pink-200' :
+                                        'bg-gray-50 text-gray-700 border-gray-200'
+                                      }
+                                    >
+                                      {doc.sourceType === 'library' ? 'Libreria' :
+                                       doc.sourceType === 'knowledge_base' ? 'Knowledge Base' :
+                                       doc.sourceType === 'university' ? 'University' :
+                                       doc.sourceType === 'exercise' ? 'Esercizio' :
+                                       doc.sourceType === 'consultation' ? 'Consultazione' :
+                                       doc.sourceType}
+                                    </Badge>
+                                  </td>
+                                  <td className="py-3 px-3">
+                                    <span className="text-gray-600 text-sm">{doc.storeDisplayName || '-'}</span>
+                                  </td>
+                                  <td className="py-3 px-3 text-center">
+                                    {doc.status === 'indexed' ? (
+                                      <Badge className="bg-emerald-100 text-emerald-700">
+                                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                                        Indicizzato
+                                      </Badge>
+                                    ) : doc.status === 'processing' ? (
+                                      <Badge className="bg-blue-100 text-blue-700">
+                                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                        In elaborazione
+                                      </Badge>
+                                    ) : doc.status === 'failed' ? (
+                                      <Badge className="bg-red-100 text-red-700">
+                                        <XCircle className="h-3 w-3 mr-1" />
+                                        Fallito
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="secondary">
+                                        {doc.status}
+                                      </Badge>
+                                    )}
+                                  </td>
+                                  <td className="py-3 px-3 text-right text-gray-500">
+                                    {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleString('it-IT', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    }) : '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 mb-2">Nessun documento sincronizzato</p>
+                        <p className="text-sm text-gray-400 mb-4">
+                          Vai nelle Impostazioni e clicca "Sincronizza Tutti i Documenti" per iniziare
+                        </p>
+                        <Button
+                          variant="outline"
+                          onClick={() => syncAllMutation.mutate()}
+                          disabled={syncAllMutation.isPending}
+                        >
+                          {syncAllMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                          )}
+                          Sincronizza Ora
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="usage" className="space-y-6">

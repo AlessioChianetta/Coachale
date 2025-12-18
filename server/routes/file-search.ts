@@ -330,6 +330,26 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         )`
       );
     
+    // Fetch all synced documents with store info
+    const documents = await db
+      .select({
+        id: fileSearchDocuments.id,
+        googleFileId: fileSearchDocuments.googleFileId,
+        fileName: fileSearchDocuments.fileName,
+        displayName: fileSearchDocuments.displayName,
+        mimeType: fileSearchDocuments.mimeType,
+        status: fileSearchDocuments.status,
+        sourceType: fileSearchDocuments.sourceType,
+        sourceId: fileSearchDocuments.sourceId,
+        uploadedAt: fileSearchDocuments.uploadedAt,
+        storeDisplayName: fileSearchStores.displayName,
+      })
+      .from(fileSearchDocuments)
+      .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
+      .where(eq(fileSearchStores.ownerId, consultantId))
+      .orderBy(desc(fileSearchDocuments.uploadedAt))
+      .limit(200);
+    
     const totalFileSearchCalls = usageLogs.filter(l => l.usedFileSearch).length;
     const totalClassicRagCalls = usageLogs.filter(l => !l.usedFileSearch).length;
     const totalTokensSaved = usageLogs.reduce((acc, l) => acc + (l.tokensSaved || 0), 0);
@@ -398,6 +418,18 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         tokensSaved: l.tokensSaved,
         responseTimeMs: l.responseTimeMs,
         createdAt: l.createdAt,
+      })),
+      documents: documents.map(d => ({
+        id: d.id,
+        googleFileId: d.googleFileId,
+        fileName: d.fileName,
+        displayName: d.displayName,
+        mimeType: d.mimeType,
+        status: d.status,
+        sourceType: d.sourceType,
+        sourceId: d.sourceId,
+        uploadedAt: d.uploadedAt,
+        storeDisplayName: d.storeDisplayName,
       })),
       geminiApiKeyConfigured: !!process.env.GEMINI_API_KEY,
     });

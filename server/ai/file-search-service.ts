@@ -78,6 +78,11 @@ export class FileSearchService {
     this.apiKey = process.env.GEMINI_API_KEY || null;
     if (this.apiKey) {
       this.client = new GoogleGenAI({ apiKey: this.apiKey });
+      // Log API key configuration for debugging
+      const keyPreview = this.apiKey.substring(0, 10) + '...' + this.apiKey.substring(this.apiKey.length - 4);
+      console.log(`🔑 [FileSearch] Initialized with GEMINI_API_KEY (Google AI Studio): ${keyPreview}`);
+    } else {
+      console.warn(`⚠️ [FileSearch] No GEMINI_API_KEY configured - File Search will not work`);
     }
   }
 
@@ -181,11 +186,18 @@ export class FileSearchService {
         }
       });
 
+      // Poll for operation completion with correct API syntax
       let attempts = 0;
       const maxAttempts = 60;
       while (!operation.done && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000));
-        operation = await client.operations.get(operation);
+        // CRITICAL FIX: Use correct Google API syntax - pass operation name
+        const operationName = typeof operation === 'string' ? operation : (operation as any).name;
+        if (!operationName) {
+          console.error(`❌ [FileSearch] Operation has no name, cannot poll status`);
+          break;
+        }
+        operation = await client.operations.get({ name: operationName });
         attempts++;
         
         if (attempts % 10 === 0) {
