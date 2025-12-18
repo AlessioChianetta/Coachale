@@ -675,6 +675,111 @@ export class FileSearchService {
       }
     };
   }
+
+  /**
+   * Get GoogleGenAI client (for internal use)
+   */
+  getClient(): GoogleGenAI | null {
+    return this.client;
+  }
+
+  /**
+   * Get or create a PRIVATE FileSearchStore for a client
+   * 
+   * Each client has their own private store where ONLY their personal data is indexed.
+   * This ensures complete privacy - Client A's data is never accessible to Client B.
+   * 
+   * @param clientId - The client's user ID
+   * @param consultantId - The consultant's user ID (for reference/association)
+   * @returns Store ID and name, or null if creation fails
+   */
+  async getOrCreateClientStore(clientId: string, consultantId: string): Promise<{ storeId: string; storeName: string } | null> {
+    try {
+      // Check if client already has a private store
+      let clientStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, clientId),
+          eq(fileSearchStores.ownerType, 'client'),
+          eq(fileSearchStores.isActive, true),
+        ),
+      });
+
+      if (clientStore) {
+        console.log(`📦 [FileSearch] Found existing client store for ${clientId}: ${clientStore.googleStoreName}`);
+        return {
+          storeId: clientStore.id,
+          storeName: clientStore.googleStoreName,
+        };
+      }
+
+      // Create new private store for the client
+      console.log(`🔐 [FileSearch] Creating PRIVATE store for client ${clientId}`);
+      
+      const result = await this.createStore({
+        displayName: `Private Store - Client ${clientId.substring(0, 8)}`,
+        ownerId: clientId,
+        ownerType: 'client',
+        description: `Store privato per dati personali del cliente. Consultant: ${consultantId}`,
+      });
+
+      if (!result.success || !result.storeId) {
+        console.error(`❌ [FileSearch] Failed to create client store: ${result.error}`);
+        return null;
+      }
+
+      console.log(`✅ [FileSearch] Created PRIVATE client store: ${result.storeName} (ID: ${result.storeId})`);
+      
+      return {
+        storeId: result.storeId,
+        storeName: result.storeName!,
+      };
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] Error in getOrCreateClientStore:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get store names for a client (includes their private store + consultant's public store)
+   */
+  async getStoreNamesForClient(clientId: string, consultantId: string): Promise<string[]> {
+    const conditions = [];
+    
+    // Client's private store
+    conditions.push(
+      and(
+        eq(fileSearchStores.ownerId, clientId),
+        eq(fileSearchStores.ownerType, 'client'),
+        eq(fileSearchStores.isActive, true)
+      )
+    );
+    
+    // Consultant's store (public/shared content like templates and library)
+    conditions.push(
+      and(
+        eq(fileSearchStores.ownerId, consultantId),
+        eq(fileSearchStores.ownerType, 'consultant'),
+        eq(fileSearchStores.isActive, true)
+      )
+    );
+
+    // System-wide stores
+    conditions.push(
+      and(
+        eq(fileSearchStores.ownerType, 'system'),
+        eq(fileSearchStores.isActive, true)
+      )
+    );
+
+    const stores = await db.query.fileSearchStores.findMany({
+      where: or(...conditions),
+    });
+
+    console.log(`🔍 [FileSearch] getStoreNamesForClient - ClientId: ${clientId}, ConsultantId: ${consultantId}`);
+    console.log(`   📦 Found ${stores.length} stores: ${stores.map(s => `${s.displayName} (${s.ownerType})`).join(', ') || 'nessuno'}`);
+
+    return stores.map(store => store.googleStoreName);
+  }
 }
 
 export const fileSearchService = new FileSearchService();
