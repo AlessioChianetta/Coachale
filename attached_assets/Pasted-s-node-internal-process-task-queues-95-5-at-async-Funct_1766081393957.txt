@@ -1,0 +1,48 @@
+s (node:internal/process/task_queues:95:5)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+🔍 [FileSearch] Creating store for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: "Libreria Consulente"
+❌ [FileSearch] Failed to create store: TypeError: Cannot read properties of undefined (reading 'create')
+    at FileSearchService.createStore (/home/runner/workspace/server/ai/file-search-service.ts:105:51)
+    at Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:59:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+🔍 [FileSearch] Creating store for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: "Libreria Consulente"
+❌ [FileSearch] Failed to create store: TypeError: Cannot read properties of undefined (reading 'create')
+    at FileSearchService.createStore (/home/runner/workspace/server/ai/file-search-service.ts:105:51)
+    at Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:59:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+🔍 [FileSearch] Creating store for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: "Libreria Consulente"
+❌ [FileSearch] Failed to create store: TypeError: Cannot read properties of undefined (reading 'create')
+    at FileSearchService.createStore (/home/runner/workspace/server/ai/file-search-service.ts:105:51)
+    at Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:59:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+🔍 [FileSearch] Creating store for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: "Libreria Consulente"
+❌ [FileSearch] Failed to create store: TypeError: Cannot read properties of undefined (reading 'create')
+    at FileSearchService.createStore (/home/runner/workspace/server/ai/file-search-service.ts:105:51)
+    at Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:59:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+🔍 [FileSearch] Creating store for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b: "Libreria Consulente"
+❌ [FileSearch] Failed to create store: TypeError: Cannot read properties of undefined (reading 'create')
+    at FileSearchService.createStore (/home/runner/workspace/server/ai/file-search-service.ts:105:51)
+    at Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:59:48)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
