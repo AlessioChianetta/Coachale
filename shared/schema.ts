@@ -5516,3 +5516,47 @@ export const insertConsultantAiPreferencesSchema = createInsertSchema(consultant
   createdAt: true,
   updatedAt: true,
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Gemini File Search - RAG Storage for AI Assistant
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const fileSearchStores = pgTable("file_search_stores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  googleStoreName: text("google_store_name").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  ownerId: varchar("owner_id").notNull(),
+  ownerType: text("owner_type").$type<"consultant" | "client" | "system">().notNull(),
+  documentCount: integer("document_count").default(0).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  ownerIdx: index("file_search_stores_owner_idx").on(table.ownerId, table.ownerType),
+}));
+
+export type FileSearchStore = typeof fileSearchStores.$inferSelect;
+export type InsertFileSearchStore = typeof fileSearchStores.$inferInsert;
+
+export const fileSearchDocuments = pgTable("file_search_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  storeId: varchar("store_id").references(() => fileSearchStores.id, { onDelete: "cascade" }).notNull(),
+  googleFileId: text("google_file_id").notNull(),
+  fileName: text("file_name").notNull(),
+  displayName: text("display_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  status: text("status").$type<"pending" | "processing" | "indexed" | "failed">().default("pending").notNull(),
+  sourceType: text("source_type").$type<"library" | "knowledge_base" | "manual">().notNull(),
+  sourceId: varchar("source_id"),
+  chunkingConfig: jsonb("chunking_config").$type<{ maxTokensPerChunk: number; maxOverlapTokens: number }>(),
+  errorMessage: text("error_message"),
+  uploadedAt: timestamp("uploaded_at").default(sql`now()`),
+  indexedAt: timestamp("indexed_at"),
+}, (table) => ({
+  storeIdx: index("file_search_documents_store_idx").on(table.storeId),
+  sourceIdx: index("file_search_documents_source_idx").on(table.sourceType, table.sourceId),
+}));
+
+export type FileSearchDocument = typeof fileSearchDocuments.$inferSelect;
+export type InsertFileSearchDocument = typeof fileSearchDocuments.$inferInsert;
