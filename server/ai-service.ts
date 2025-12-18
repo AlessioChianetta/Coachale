@@ -31,6 +31,7 @@ import {
   OperationAttemptContext,
 } from "./ai/retry-manager";
 import { getAIProvider, AiProviderResult } from "./ai/provider-factory";
+import { fileSearchService } from "./ai/file-search-service";
 
 // DON'T DELETE THIS COMMENT
 // Follow these instructions when using this blueprint:
@@ -792,6 +793,18 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       },
     };
 
+    // Get FileSearch stores for semantic document retrieval
+    const consultantIdForFileSearch = user.consultantId || clientId;
+    const fileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
+      clientId,
+      user.role as 'consultant' | 'client',
+      consultantIdForFileSearch
+    );
+    const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
+    if (fileSearchStoreNames.length > 0) {
+      console.log(`🔍 [FileSearch] Using ${fileSearchStoreNames.length} stores for semantic retrieval`);
+    }
+
     const response = await retryWithBackoff(
       async (ctx: OperationAttemptContext) => {
         return await ai.models.generateContent({
@@ -803,6 +816,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
             role: msg.role === "assistant" ? "model" : "user",
             parts: [{ text: msg.content }],
           })),
+          ...(fileSearchTool && { tools: [fileSearchTool] }),
         });
       },
       retryContext
@@ -1375,7 +1389,19 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
 
-    // Create stream factory function
+    // Get FileSearch stores for semantic document retrieval (Client mode)
+    const consultantIdForFileSearch = user.consultantId || clientId;
+    const fileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
+      clientId,
+      user.role as 'consultant' | 'client',
+      consultantIdForFileSearch
+    );
+    const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
+    if (fileSearchStoreNames.length > 0) {
+      console.log(`🔍 [FileSearch] Using ${fileSearchStoreNames.length} stores for semantic retrieval`);
+    }
+
+    // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: "gemini-2.5-flash",
       contents: geminiMessages.map(msg => ({
@@ -1385,6 +1411,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
       generationConfig: {
         systemInstruction: systemPrompt,
       },
+      ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
 
     // Stream with automatic retry and heartbeat using unified retry manager
@@ -2179,7 +2206,17 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
 
-    // Create stream factory function
+    // Get FileSearch stores for semantic document retrieval (Consultant mode)
+    const consultantFileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
+      consultantId,
+      'consultant'
+    );
+    const consultantFileSearchTool = fileSearchService.buildFileSearchTool(consultantFileSearchStoreNames);
+    if (consultantFileSearchStoreNames.length > 0) {
+      console.log(`🔍 [FileSearch] Consultant using ${consultantFileSearchStoreNames.length} stores for semantic retrieval`);
+    }
+
+    // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
       model: "gemini-2.5-flash",
       contents: geminiMessages.map(msg => ({
@@ -2189,6 +2226,7 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       generationConfig: {
         systemInstruction: systemPrompt,
       },
+      ...(consultantFileSearchTool && { tools: [consultantFileSearchTool] }),
     });
 
     // Stream with automatic retry and heartbeat using unified retry manager

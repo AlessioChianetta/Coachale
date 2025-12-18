@@ -29,6 +29,18 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Multi-tenant isolation ensures data privacy.
 - Supports a "Focused Document" feature for context-aware AI responses.
 - Client Knowledge Base mirrors consultant implementation with identical features.
+## Gemini File Search Integration (RAG)
+- **Google File Search API**: Implements semantic document retrieval using Google's native File Search capabilities for advanced RAG (Retrieval Augmented Generation).
+- **Architecture**:
+  - Each consultant has their own FileSearchStore for their documents
+  - Clients access their consultant's store + system-wide documents
+  - Documents are automatically synced when uploaded to knowledge base
+- **Key Components**:
+  - `server/ai/file-search-service.ts`: Core service with CRUD operations, chunking config, and citation parsing
+  - `server/services/file-search-sync-service.ts`: Auto-syncs libraryDocuments to FileSearchStore
+  - `server/routes/file-search.ts`: API routes for stores management and sync
+- **Database Tables**: `file_search_stores`, `file_search_documents` for tracking indexed content
+- **AI Integration**: FileSearch tool is automatically added to all `generateContent` calls when stores are available, enabling semantic retrieval with automatic citations.
 ## Advanced Consultation Management System
 - **AI-powered Email Automation**: Generates personalized motivational emails via Google Gemini, requiring consultant approval.
 - **AI-Powered Client State Tracking**: Analyzes system context to generate current and ideal client states.

@@ -99,6 +99,7 @@ import clientGoogleDriveRouter from "./routes/client/client-google-drive";
 import adminRouter from "./routes/admin";
 import onboardingRouter from "./routes/onboarding";
 import followupApiRouter from "./routes/followup-api";
+import fileSearchRouter from "./routes/file-search";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
 import { handleWebhook } from "./whatsapp/webhook-handler";
 import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
@@ -7160,6 +7161,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
 
   // Follow-up Automation API routes
   app.use("/api/followup", followupApiRouter);
+
+  // Gemini File Search routes (RAG document retrieval)
+  app.use("/api/file-search", fileSearchRouter);
 
   // Calendar Events routes
   app.get("/api/calendar/events", authenticateToken, async (req: AuthRequest, res) => {
