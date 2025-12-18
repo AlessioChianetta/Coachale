@@ -33,6 +33,14 @@ import {
 } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -143,6 +151,7 @@ export default function ConsultantExercises() {
   const [expandedCategories, setExpandedCategories] = useState<Record<string, Record<string, boolean>>>({});
   const [whatsappConfirmDialog, setWhatsappConfirmDialog] = useState<{ assignment: ExerciseAssignment, message: string } | null>(null);
   const [editConfirmDialog, setEditConfirmDialog] = useState<{ exercise: Exercise, assignments: ExerciseAssignment[] } | null>(null);
+  const [selectedClientForPreview, setSelectedClientForPreview] = useState<ClientWithExercises | null>(null);
   const { toast } = useToast();
 
   // State for selected clients in the ClientSelector component
@@ -1408,731 +1417,364 @@ export default function ConsultantExercises() {
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="assignments" className="space-y-6 mt-6">
-                {/* Layout 2: Sidebar + Main Content */}
-                <div className="flex gap-6">
-                  {/* Left Sidebar - Categories Navigation */}
-                  <div className="w-80 flex-shrink-0">
-                    <Card className="sticky top-6 shadow-lg border-muted/40">
-                      <CardHeader className="pb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                            <Filter size={20} className="text-white" />
-                          </div>
-                          <div>
-                            <CardTitle className="text-lg">Categorie & Corsi</CardTitle>
-                            <p className="text-xs text-muted-foreground mt-1">Filtra per categoria</p>
-                          </div>
-                        </div>
+              <TabsContent value="assignments" className="space-y-4 mt-4">
+                {/* Sticky Header with Search, Filters, and New Exercise Button */}
+                <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b pb-4">
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Search */}
+                    <div className="relative flex-1 min-w-[200px] max-w-sm">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+                      <Input
+                        placeholder="Cerca clienti..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9 h-9 text-sm"
+                        data-testid="input-search-clients"
+                      />
+                    </div>
+
+                    {/* Status Filter */}
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-[140px] h-9" data-testid="select-status-filter">
+                        <SelectValue placeholder="Stato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutti gli stati</SelectItem>
+                        <SelectItem value="active">In corso</SelectItem>
+                        <SelectItem value="completed">Completati</SelectItem>
+                        <SelectItem value="pending">In attesa</SelectItem>
+                        <SelectItem value="returned">Restituiti</SelectItem>
+                        <SelectItem value="submitted">Inviati</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* Category Filter */}
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger className="w-[160px] h-9" data-testid="select-category-filter">
+                        <SelectValue placeholder="Categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte le categorie</SelectItem>
+                        <SelectItem value="post-consulenza">Post Consulenza</SelectItem>
+                        <SelectItem value="metodo-turbo">Metodo Turbo</SelectItem>
+                        <SelectItem value="metodo-hybrid">Metodo Hybrid</SelectItem>
+                        <SelectItem value="newsletter">Metodo Orbitale</SelectItem>
+                        <SelectItem value="finanza-personale">Finanza Personale</SelectItem>
+                        <SelectItem value="vendita">Vendita</SelectItem>
+                        <SelectItem value="marketing">Marketing</SelectItem>
+                        <SelectItem value="risparmio-investimenti">Risparmio</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {/* New Exercise Button */}
+                    <Button
+                      onClick={() => {
+                        setSelectedExercise(null);
+                        setSelectedTemplate(null);
+                        setShowExerciseForm(true);
+                      }}
+                      className="h-9 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                      data-testid="button-new-exercise"
+                    >
+                      <PlusCircle size={16} className="mr-2" />
+                      Nuovo Esercizio
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Main Layout: Sidebar + Table + Preview */}
+                <div className="flex gap-4">
+                  {/* Left Sidebar - Categories */}
+                  <div className="w-48 flex-shrink-0 hidden lg:block">
+                    <Card className="sticky top-20 border shadow-sm">
+                      <CardHeader className="py-3 px-4">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">Categorie</CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-4">
-                        {/* Search */}
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
-                          <Input
-                            placeholder="Cerca clienti..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 h-10 text-sm"
-                            data-testid="input-search-clients"
-                          />
-                        </div>
-
-                        {/* Status Filter */}
-                        <div>
-                          <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Stato</Label>
-                          <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-full h-10" data-testid="select-status-filter">
-                              <SelectValue placeholder="Filtra per stato" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">📊 Tutti gli stati</SelectItem>
-                              <SelectItem value="active">🔄 In corso</SelectItem>
-                              <SelectItem value="completed">✅ Completati</SelectItem>
-                              <SelectItem value="pending">⏳ In attesa</SelectItem>
-                              <SelectItem value="returned">↩️ Restituiti</SelectItem>
-                              <SelectItem value="submitted">📩 Inviati</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <Separator />
-
-                        {/* Categories List */}
-                        <div>
-                          <Label className="text-xs font-semibold text-muted-foreground mb-3 block">Categorie</Label>
-                          <div className="space-y-2">
-                            {/* All Categories */}
-                            <Button
-                              variant={selectedCategory === 'all' ? 'default' : 'ghost'}
-                              className={`w-full justify-start text-left h-auto py-3 px-3 ${selectedCategory === 'all'
-                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700'
-                                : 'hover:bg-muted'
-                                }`}
-                              onClick={() => setSelectedCategory('all')}
-                            >
-                              <div className="flex items-center gap-3 w-full">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedCategory === 'all' ? 'bg-white/20' : 'bg-gradient-to-r from-blue-500 to-purple-600'
-                                  }`}>
-                                  <span className={selectedCategory === 'all' ? 'text-white' : 'text-white'}>📚</span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-sm truncate">Tutte le Categorie</div>
-                                  <div className={`text-xs ${selectedCategory === 'all' ? 'text-white/80' : 'text-muted-foreground'}`}>
-                                    {(() => {
-                                      // Count all assignments that pass the current filters
-                                      const allFilteredAssignments = assignmentsData.filter((a: ExerciseAssignment) => {
-                                        // Filter by search term
-                                        const client = clients.find(c => c.id === a.clientId);
-                                        if (!client) return false;
-
-                                        const matchesSearch = searchTerm === "" ||
-                                          client.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                          client.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                          client.email.toLowerCase().includes(searchTerm.toLowerCase());
-
-                                        if (!matchesSearch) return false;
-
-                                        // Filter by status
-                                        if (statusFilter === "active" && a.status !== 'in_progress') return false;
-                                        if (statusFilter === "completed" && a.status !== 'completed') return false;
-                                        if (statusFilter === "pending" && a.status !== 'pending') return false;
-                                        if (statusFilter === "returned" && a.status !== 'returned') return false;
-                                        if (statusFilter === "submitted" && a.status !== 'submitted') return false;
-
-                                        return true;
-                                      });
-                                      return allFilteredAssignments.length;
-                                    })()} totali
-                                  </div>
-                                </div>
-                              </div>
-                            </Button>
-
-                            {/* Individual Categories */}
-                            {['post-consulenza', 'metodo-turbo', 'metodo-hybrid', 'newsletter', 'finanza-personale', 'vendita', 'marketing', 'imprenditoria', 'risparmio-investimenti', 'contabilità', 'gestione-risorse', 'strategia'].map((category) => {
-                              // Count only assignments from filtered clients
-                              const categoryAssignments = assignmentsData.filter((a: ExerciseAssignment) => {
-                                const exercise = exercises.find((e: Exercise) => e.id === a.exerciseId);
-                                const isInCategory = exercise && exercise.category === category;
-
-                                // Apply same filters as main client list
-                                if (!isInCategory) return false;
-
-                                // Filter by search term
-                                const client = clients.find(c => c.id === a.clientId);
-                                if (!client) return false;
-
-                                const matchesSearch = searchTerm === "" ||
-                                  client.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                  client.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                  client.email.toLowerCase().includes(searchTerm.toLowerCase());
-
-                                if (!matchesSearch) return false;
-
-                                // Filter by status
-                                if (statusFilter === "active" && a.status !== 'in_progress') return false;
-                                if (statusFilter === "completed" && a.status !== 'completed') return false;
-                                if (statusFilter === "pending" && a.status !== 'pending') return false;
-                                if (statusFilter === "returned" && a.status !== 'returned') return false;
-                                if (statusFilter === "submitted" && a.status !== 'submitted') return false;
-
-                                return true;
-                              });
-
-                              if (categoryAssignments.length === 0) return null;
-
-                              return (
-                                <Button
-                                  key={category}
-                                  variant={selectedCategory === category ? 'default' : 'ghost'}
-                                  className={`w-full justify-start text-left h-auto py-3 px-3 ${selectedCategory === category
-                                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700'
-                                    : 'hover:bg-muted'
-                                    }`}
-                                  onClick={() => setSelectedCategory(category)}
-                                >
-                                  <div className="flex items-center gap-3 w-full">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${selectedCategory === category ? 'bg-white/20' : 'bg-muted'
-                                      }`}>
-                                      <span className="text-lg">{getCategoryIcon(category)}</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-sm truncate">{getCategoryLabel(category)}</div>
-                                      <div className={`text-xs ${selectedCategory === category ? 'text-white/80' : 'text-muted-foreground'}`}>
-                                        {categoryAssignments.length} {categoryAssignments.length === 1 ? 'esercizio' : 'esercizi'}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </Button>
-                              );
-                            })}
-                          </div>
+                      <CardContent className="p-2 pt-0">
+                        <div className="space-y-0.5">
+                          {/* All */}
+                          <button
+                            onClick={() => setSelectedCategory('all')}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${selectedCategory === 'all' 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'hover:bg-muted'}`}
+                          >
+                            <span className="mr-2">📚</span>Tutte
+                          </button>
+                          {/* Categories with counts */}
+                          {[
+                            { key: 'post-consulenza', icon: '📝', label: 'Post Consulenza' },
+                            { key: 'newsletter', icon: '🌟', label: 'Finanza' },
+                            { key: 'metodo-turbo', icon: '⚡', label: 'Vendita' },
+                            { key: 'metodo-hybrid', icon: '🔄', label: 'Azienda' },
+                            { key: 'marketing', icon: '📈', label: 'Marketing' },
+                            { key: 'risparmio-investimenti', icon: '💎', label: 'Risparmio' },
+                          ].map(({ key, icon, label }) => {
+                            const count = assignmentsData.filter((a: ExerciseAssignment) => {
+                              const exercise = exercises.find((e: Exercise) => e.id === a.exerciseId);
+                              return exercise && exercise.category === key;
+                            }).length;
+                            if (count === 0) return null;
+                            return (
+                              <button
+                                key={key}
+                                onClick={() => setSelectedCategory(key)}
+                                className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${selectedCategory === key 
+                                  ? 'bg-primary text-primary-foreground' 
+                                  : 'hover:bg-muted'}`}
+                              >
+                                <span><span className="mr-2">{icon}</span>{label}</span>
+                                <span className={`text-xs ${selectedCategory === key ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>{count}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       </CardContent>
                     </Card>
                   </div>
 
-                  {/* Main Content Area - Client List */}
+                  {/* Main Content Area */}
                   <div className="flex-1 min-w-0">
-
-                    <>
-                      {/* Exercise Details View */}
-                      {viewMode === 'details' && selectedExercise && (
-                        <div className="space-y-6 animate-in fade-in-50 duration-300">
-                          {/* Back Navigation */}
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              onClick={handleBackToList}
-                              className="text-muted-foreground hover:text-foreground"
-                              data-testid="button-back-to-list"
-                            >
-                              <ArrowLeft size={16} className="mr-2" />
-                              Torna alla Lista
-                            </Button>
-                          </div>
-
-                          <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-br from-card to-muted/10">
-                            <CardHeader className="pb-6">
-                              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                                <div className="space-y-3">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                                      <BookOpen size={20} className="text-white" />
-                                    </div>
-                                    <div>
-                                      <CardTitle className="text-2xl md:text-3xl font-bold">{selectedExercise.title}</CardTitle>
-                                      <p className="text-muted-foreground mt-1 text-lg">Dettagli Esercizio</p>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-3">
-                                  <Button
-                                    onClick={() => handleEditExercise(selectedExercise)}
-                                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-                                    data-testid="button-edit-from-details"
-                                  >
-                                    <Edit size={16} className="mr-2" />
-                                    Modifica Esercizio
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleDeleteExercise(selectedExercise.id)}
-                                    variant="destructive"
-                                    className="shadow-lg hover:shadow-xl transition-all duration-200"
-                                    data-testid="button-delete-from-details"
-                                  >
-                                    <Trash2 size={16} className="mr-2" />
-                                    Elimina Esercizio
-                                  </Button>
-                                </div>
+                    {/* Pending Reviews Section */}
+                    {assignmentsData.filter((a: ExerciseAssignment) => a.status === 'submitted').length > 0 && (
+                      <Card className="mb-4 border-2 border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20">
+                        <CardHeader className="py-3 px-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center">
+                                <AlertCircle size={20} className="text-white" />
                               </div>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
                               <div>
-                                <h3 className="font-semibold mb-2">Descrizione</h3>
-                                <p className="text-muted-foreground">{selectedExercise.description}</p>
+                                <h3 className="font-semibold text-orange-900 dark:text-orange-100">Esercizi da Revisionare</h3>
+                                <p className="text-xs text-orange-700 dark:text-orange-300">
+                                  {assignmentsData.filter((a: ExerciseAssignment) => a.status === 'submitted').length} esercizi in attesa di revisione
+                                </p>
                               </div>
+                            </div>
+                            <Badge className="bg-orange-500 text-white">
+                              {assignmentsData.filter((a: ExerciseAssignment) => a.status === 'submitted').length}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-2 space-y-2">
+                          {assignmentsData
+                            .filter((a: ExerciseAssignment) => a.status === 'submitted')
+                            .slice(0, 5)
+                            .map((assignment: ExerciseAssignment) => {
+                              const exercise = exercises.find((e: Exercise) => e.id === assignment.exerciseId);
+                              const client = clients.find(c => c.id === assignment.clientId);
+                              if (!exercise || !client) return null;
 
-                              {selectedExercise.workPlatform && selectedExercise.workPlatform.trim() !== '' ? (
-                                <div>
-                                  <h3 className="font-semibold mb-2">Piattaforma di Lavoro</h3>
-                                  <div className="bg-muted p-4 rounded-lg">
-                                    <div className="flex items-center space-x-2">
-                                      <ExternalLink size={16} className="text-blue-500" />
-                                      <a
-                                        href={selectedExercise.workPlatform}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-500 hover:underline"
-                                      >
-                                        {selectedExercise.workPlatform}
-                                      </a>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mt-2">
-                                      Gli studenti useranno questa piattaforma per completare l'esercizio.
+                              return (
+                                <div
+                                  key={assignment.id}
+                                  className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-orange-100 dark:border-orange-900 hover:border-orange-300 transition-colors"
+                                  data-testid={`pending-exercise-${assignment.id}`}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm">{exercise.title}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {client.firstName} {client.lastName} • Consegnato {assignment.submittedAt ? new Date(assignment.submittedAt).toLocaleDateString('it-IT') : 'N/A'}
                                     </p>
                                   </div>
+                                  <Button
+                                    onClick={() => handleReviewAssignment(assignment)}
+                                    className="h-8 px-3 bg-orange-500 hover:bg-orange-600 text-white text-xs ml-2 flex-shrink-0"
+                                    data-testid={`button-review-pending-${assignment.id}`}
+                                  >
+                                    <Eye size={14} className="mr-1" />
+                                    Revisiona
+                                  </Button>
                                 </div>
-                              ) : (
-                                selectedExercise.questions && selectedExercise.questions.length > 0 && (
-                                  <div>
-                                    <h3 className="font-semibold mb-2">Domande ({selectedExercise.questions.length})</h3>
-                                    <div className="space-y-3">
-                                      {selectedExercise.questions.map((question: any, index: number) => (
-                                        <div key={index} className="bg-muted p-4 rounded-lg">
-                                          <h4 className="font-medium mb-1">Domanda {index + 1}</h4>
-                                          <p className="text-sm text-muted-foreground mb-2">{question.question}</p>
-                                          <div className="flex items-center space-x-2">
-                                            <Badge variant="secondary">{question.type}</Badge>
-                                            {question.options && question.options.length > 0 && (
-                                              <Badge variant="outline">{question.options.length} opzioni</Badge>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )
-                              )}
-
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <h3 className="font-semibold mb-2">Statistiche</h3>
-                                  <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Assegnazioni totali:</span>
-                                      <span>{assignmentsData.filter((a: ExerciseAssignment) => a.exerciseId === selectedExercise.id).length}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Completati:</span>
-                                      <span>{assignmentsData.filter((a: ExerciseAssignment) => a.exerciseId === selectedExercise.id && a.status === 'completed').length}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">In corso:</span>
-                                      <span>{assignmentsData.filter((a: ExerciseAssignment) => a.exerciseId === selectedExercise.id && a.status === 'in_progress').length}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div>
-                                  <h3 className="font-semibold mb-2">Informazioni</h3>
-                                  <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Creato:</span>
-                                      <span>{selectedExercise.createdAt ? new Date(selectedExercise.createdAt).toLocaleDateString('it-IT') : 'N/A'}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Tipo:</span>
-                                      <span>{selectedExercise.workPlatform ? 'Piattaforma di Lavoro' : 'Domande'}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      )}
-
-                      {/* Clients List */}
-                      {viewMode === 'list' && (
-                        <div className="space-y-6">
-                          {/* Exercises pending review */}
-                          {assignmentsData.filter((a: ExerciseAssignment) => a.status === 'submitted').length > 0 && (
-                            <Card className="col-span-full border-0 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30 shadow-lg">
-                              <CardHeader className="pb-4">
-                                <div className="flex items-center justify-between">
-                                  <CardTitle className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center shadow-md">
-                                      <AlertCircle size={20} className="text-white" />
-                                    </div>
-                                    <div>
-                                      <span className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                                        Esercizi da Revisionare
-                                      </span>
-                                      <p className="text-sm text-muted-foreground font-normal mt-1">
-                                        {assignmentsData.filter((a: ExerciseAssignment) => a.status === 'submitted').length} {assignmentsData.filter((a: ExerciseAssignment) => a.status === 'submitted').length === 1 ? 'esercizio in attesa' : 'esercizi in attesa'}
-                                      </p>
-                                    </div>
-                                  </CardTitle>
-                                  <Badge className="bg-gradient-to-r from-orange-500 to-red-500 text-white border-0 shadow-md text-base px-4 py-1.5">
-                                    {assignmentsData.filter((a: ExerciseAssignment) => a.status === 'submitted').length}
-                                  </Badge>
-                                </div>
-                              </CardHeader>
-                              <CardContent>
-                                <div className="grid gap-4">
-                                  {assignmentsData
-                                    .filter((a: ExerciseAssignment) => a.status === 'submitted')
-                                    .map((assignment: ExerciseAssignment) => {
-                                      const exercise = exercises.find((e: Exercise) => e.id === assignment.exerciseId);
-                                      if (!exercise) return null;
-
-                                      return (
-                                        <div
-                                          key={assignment.id}
-                                          className="group relative bg-white dark:bg-gray-800 rounded-xl border-2 border-orange-200 dark:border-orange-800 p-4 hover:border-orange-400 dark:hover:border-orange-600 hover:shadow-xl transition-all duration-300"
-                                        >
-                                          <div className="flex items-start gap-4">
-                                            <div className="flex-shrink-0">
-                                              <Avatar className="w-12 h-12 border-2 border-orange-200">
-                                                <AvatarImage src={assignment.client?.avatar} />
-                                                <AvatarFallback className="bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold">
-                                                  {assignment.client?.firstName?.charAt(0)}{assignment.client?.lastName?.charAt(0)}
-                                                </AvatarFallback>
-                                              </Avatar>
-                                            </div>
-
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-start justify-between gap-3 mb-2">
-                                                <div className="flex-1">
-                                                  <h4 className="font-bold text-lg text-foreground group-hover:text-orange-600 transition-colors mb-1">
-                                                    {exercise.title}
-                                                  </h4>
-                                                  <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                                                    <User size={14} />
-                                                    {assignment.client?.firstName} {assignment.client?.lastName}
-                                                  </p>
-                                                </div>
-                                                {exercise.title.includes("(da template)") && (
-                                                  <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200 flex-shrink-0">
-                                                    <BookOpen size={12} className="mr-1" />
-                                                    Template
-                                                  </Badge>
-                                                )}
-                                              </div>
-
-                                              <div className="flex items-center gap-4 mb-3">
-                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full">
-                                                  <Clock size={12} />
-                                                  <span>Consegnato: {assignment.submittedAt ? new Date(assignment.submittedAt).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}</span>
-                                                </div>
-                                                {assignment.dueDate && (
-                                                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full">
-                                                    <Calendar size={12} />
-                                                    <span>Scadenza: {new Date(assignment.dueDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                                                  </div>
-                                                )}
-                                              </div>
-
-                                              <Button
-                                                onClick={() => handleViewExercise(exercise, assignment)}
-                                                className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-md hover:shadow-lg transition-all duration-200"
-                                                data-testid={`button-review-${assignment.id}`}
-                                              >
-                                                <Eye size={16} className="mr-2" />
-                                                Revisiona Esercizio
-                                              </Button>
-                                            </div>
-                                          </div>
-
-                                          {/* Decorative gradient border */}
-                                          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-orange-500/0 via-orange-500/5 to-red-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                                        </div>
-                                      );
-                                    })}
-                                </div>
-                              </CardContent>
-                            </Card>
+                              );
+                            })}
+                          {assignmentsData.filter((a: ExerciseAssignment) => a.status === 'submitted').length > 5 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setStatusFilter('submitted')}
+                              className="w-full h-8 text-xs mt-2"
+                            >
+                              Visualizza tutti ({assignmentsData.filter((a: ExerciseAssignment) => a.status === 'submitted').length - 5} altri)
+                            </Button>
                           )}
+                        </CardContent>
+                      </Card>
+                    )}
 
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                    {/* Clients Table */}
+                    <Card className="border shadow-sm">
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-muted/50 border-b">
+                            <tr>
+                              <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Cliente</th>
+                              <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Esercizi</th>
+                              <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Completati</th>
+                              <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">In Corso</th>
+                              <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Azioni</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
                             {filteredClients.length === 0 ? (
-                              <Card className="border-0 shadow-lg col-span-full">
-                                <CardContent className="p-12 text-center">
-                                  <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <Users className="text-muted-foreground" size={40} />
+                              <tr>
+                                <td colSpan={5} className="px-4 py-12 text-center">
+                                  <div className="flex flex-col items-center">
+                                    <Users className="text-muted-foreground mb-3" size={40} />
+                                    <p className="text-muted-foreground">Nessun cliente trovato</p>
                                   </div>
-                                  <h3 className="text-xl font-semibold mb-3">Nessun cliente trovato</h3>
-                                  <p className="text-muted-foreground text-lg">
-                                    {searchTerm || statusFilter !== "all"
-                                      ? "Prova a modificare i filtri di ricerca."
-                                      : "Non ci sono clienti con esercizi assegnati."}
-                                  </p>
-                                </CardContent>
-                              </Card>
+                                </td>
+                              </tr>
                             ) : (
                               filteredClients.map((client) => (
-                                <Card
-                                  key={client.id}
-                                  className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-card to-muted/5"
-                                  data-testid={`client-card-${client.id}`}
+                                <tr 
+                                  key={client.id} 
+                                  className={`hover:bg-muted/30 cursor-pointer transition-colors ${selectedClientForPreview?.id === client.id ? 'bg-blue-50 dark:bg-blue-950/20' : ''}`}
+                                  onClick={() => setSelectedClientForPreview(client)}
+                                  data-testid={`client-row-${client.id}`}
                                 >
-                                  <CardHeader className="pb-4">
-                                    <div className="space-y-4">
-                                      <div className="flex items-center space-x-3">
-                                        <Avatar className="w-12 h-12 border-2 border-white shadow-md flex-shrink-0">
-                                          <AvatarImage src={client.avatar} />
-                                          <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
-                                            {client.firstName.charAt(0)}{client.lastName.charAt(0)}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 min-w-0">
-                                          <h3 className="text-lg font-semibold truncate">
-                                            {client.firstName} {client.lastName}
-                                          </h3>
-                                          <p className="text-sm text-muted-foreground truncate">{client.email}</p>
-                                        </div>
-                                      </div>
-
-                                      <div className="flex flex-wrap items-center gap-3">
-                                        <Badge className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 shadow-sm flex-shrink-0">
-                                          <Target size={12} className="mr-1.5" />
-                                          {client.totalAssigned} esercizi
-                                        </Badge>
-                                        <div className="flex items-center gap-3 flex-wrap">
-                                          <div className="flex items-center space-x-1 text-sm text-green-600 dark:text-green-400">
-                                            <CheckCircle size={14} />
-                                            <span>{client.completed}</span>
-                                          </div>
-                                          <div className="flex items-center space-x-1 text-sm text-blue-600 dark:text-blue-400">
-                                            <PlayCircle size={14} />
-                                            <span>{client.inProgress}</span>
-                                          </div>
-                                          <div className="flex items-center space-x-1 text-sm text-amber-600 dark:text-amber-400">
-                                            <Clock size={14} />
-                                            <span>{client.pending}</span>
-                                          </div>
-                                          {client.returned > 0 && (
-                                            <div className="flex items-center space-x-1 text-sm text-red-600 dark:text-red-400">
-                                              <ArrowLeft size={14} />
-                                              <span>{client.returned}</span>
-                                            </div>
-                                          )}
-                                          {client.submitted > 0 && (
-                                            <div className="flex items-center space-x-1 text-sm text-orange-600 dark:text-orange-400">
-                                              <AlertCircle size={14} />
-                                              <span>{client.submitted}</span>
-                                            </div>
-                                          )}
-                                        </div>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-3">
+                                      <Avatar className="w-9 h-9 border">
+                                        <AvatarImage src={client.avatar} />
+                                        <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white text-xs font-medium">
+                                          {client.firstName.charAt(0)}{client.lastName.charAt(0)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="min-w-0">
+                                        <p className="font-medium text-sm truncate">{client.firstName} {client.lastName}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{client.email}</p>
                                       </div>
                                     </div>
-                                  </CardHeader>
-
-                                  <CardContent className="pt-2">
-                                    {(() => {
-                                      // Filter assignments by selected category
-                                      const displayAssignments = selectedCategory === 'all'
-                                        ? client.assignments
-                                        : client.assignments.filter((assignment) => {
-                                          const exercise = exercises.find((e: Exercise) => e.id === assignment.exerciseId);
-                                          return exercise && exercise.category === selectedCategory;
-                                        });
-
-                                      if (displayAssignments.length === 0) {
-                                        return (
-                                          <div className="text-center py-8">
-                                            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                              <BookOpen size={24} className="text-muted-foreground" />
-                                            </div>
-                                            <p className="text-muted-foreground text-lg">
-                                              Nessun esercizio in questa categoria
-                                            </p>
-                                          </div>
-                                        );
-                                      }
-
-                                      return (
-                                        <div className="space-y-3">
-                                          {Object.entries(groupAssignmentsByCategory(displayAssignments)).map(([category, categoryAssignments]) => (
-                                            <Collapsible key={category} open={isCategoryExpanded(client.id, category)} onOpenChange={() => toggleCategory(client.id, category)}>
-                                              <CollapsibleTrigger asChild>
-                                                <Button variant="ghost" className="w-full flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-lg transition-all duration-200">
-                                                  <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white">
-                                                      <span className="text-lg">{getCategoryIcon(category)}</span>
-                                                    </div>
-                                                    <div className="text-left">
-                                                      <h4 className="font-semibold text-sm">{getCategoryLabel(category)}</h4>
-                                                      <p className="text-xs text-muted-foreground">
-                                                        {categoryAssignments.length} esercizio{categoryAssignments.length !== 1 ? 'i' : ''}
-                                                      </p>
-                                                    </div>
-                                                  </div>
-                                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                                    {/* Status Icons Grid */}
-                                                    <div className="grid grid-cols-4 gap-1 p-1 bg-muted/30 rounded-md">
-                                                      {categoryAssignments.slice(0, 8).map((assignment, idx) => {
-                                                        const StatusIcon = assignment.status === 'completed' ? CheckCircle :
-                                                          assignment.status === 'submitted' ? AlertCircle :
-                                                            assignment.status === 'returned' ? ArrowLeft :
-                                                              assignment.status === 'in_progress' ? PlayCircle : Clock;
-                                                        const statusColor = assignment.status === 'completed' ? 'text-green-500' :
-                                                          assignment.status === 'submitted' ? 'text-orange-500' :
-                                                            assignment.status === 'returned' ? 'text-red-500' :
-                                                              assignment.status === 'in_progress' ? 'text-blue-500' : 'text-gray-400';
-                                                        return (
-                                                          <div key={assignment.id} className="flex items-center justify-center w-4 h-4">
-                                                            <StatusIcon size={12} className={statusColor} />
-                                                          </div>
-                                                        );
-                                                      })}
-                                                      {categoryAssignments.length > 8 && (
-                                                        <div className="flex items-center justify-center w-4 h-4 text-[10px] text-muted-foreground font-medium">
-                                                          +{categoryAssignments.length - 8}
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                    {/* Chevron */}
-                                                    <div className="flex-shrink-0 ml-1">
-                                                      {isCategoryExpanded(client.id, category) ?
-                                                        <ChevronDown size={16} className="text-muted-foreground" /> :
-                                                        <ChevronRight size={16} className="text-muted-foreground" />
-                                                      }
-                                                    </div>
-                                                  </div>
-                                                </Button>
-                                              </CollapsibleTrigger>
-                                              <CollapsibleContent>
-                                                <div className="space-y-2 mt-2 ml-2 pl-4 border-l-2 border-muted">
-                                                  {[...categoryAssignments]
-                                                    .sort((a: any, b: any) => {
-                                                      // Converti le date in timestamp, gestendo valori null/undefined
-                                                      const getTimestamp = (dateStr: any) => {
-                                                        if (!dateStr) return 0;
-                                                        const timestamp = new Date(dateStr).getTime();
-                                                        return isNaN(timestamp) ? 0 : timestamp;
-                                                      };
-
-                                                      const timestampA = getTimestamp(a.assignedAt);
-                                                      const timestampB = getTimestamp(b.assignedAt);
-
-                                                      // Ordina dal più recente (timestamp più alto) al più vecchio
-                                                      return timestampB - timestampA;
-                                                    })
-                                                    .map((assignment: any) => {
-                                                      const exercise = exercises.find((e: Exercise) => e.id === assignment.exerciseId);
-                                                      if (!exercise) {
-                                                        return (
-                                                          <div
-                                                            key={assignment.id}
-                                                            className="group relative border border-red-300 rounded-lg p-3 bg-red-50 dark:bg-red-950/20"
-                                                            data-testid={`assignment-error-${assignment.id}`}
-                                                          >
-                                                            <div className="flex items-start gap-3">
-                                                              <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
-                                                                <AlertCircle size={12} className="text-white" />
-                                                              </div>
-                                                              <div className="flex-1 min-w-0">
-                                                                <h4 className="font-semibold text-red-700 dark:text-red-300 text-xs">Esercizio non trovato</h4>
-                                                                <p className="text-red-600 dark:text-red-400 text-xs truncate">ID: {assignment.exerciseId}</p>
-                                                              </div>
-                                                            </div>
-                                                          </div>
-                                                        );
-                                                      }
-
-                                                      return (
-                                                        <div
-                                                          key={assignment.id}
-                                                          className="group relative border border-muted/40 rounded-lg p-3 hover:border-blue-300 hover:shadow-md transition-all duration-200 bg-gradient-to-r from-background to-muted/10"
-                                                          data-testid={`assignment-card-${assignment.id}`}
-                                                        >
-                                                          <div className="space-y-3">
-                                                            <div className="flex items-start justify-between gap-3">
-                                                              <div className="flex-1 min-w-0 space-y-1">
-                                                                <div className="flex items-center gap-2">
-                                                                  <h4 className="font-semibold text-sm group-hover:text-blue-600 transition-colors leading-tight flex-1">
-                                                                    {exercise.title}
-                                                                  </h4>
-                                                                  {exercise.title.includes("(da template)") && (
-                                                                    <Badge variant="outline" className="bg-purple-50 text-purple-600 border-purple-200 text-xs flex-shrink-0">
-                                                                      <BookOpen size={8} className="mr-1" />
-                                                                      Template
-                                                                    </Badge>
-                                                                  )}
-                                                                </div>
-                                                                <p className="text-xs text-muted-foreground line-clamp-1">
-                                                                  {exercise.description}
-                                                                </p>
-                                                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                                                                  {getExerciseTypeInfo(exercise)}
-                                                                  <span className="text-xs text-muted-foreground">
-                                                                    Assegnato: {assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString('it-IT') : 'N/A'}
-                                                                  </span>
-                                                                </div>
-                                                              </div>
-                                                              <div className="flex-shrink-0">
-                                                                {getStatusBadge(assignment.status)}
-                                                              </div>
-                                                            </div>
-
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                              <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => handleViewExercise(exercise, assignment)}
-                                                                className="border-blue-200 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-all duration-200 text-xs"
-                                                                data-testid={`button-view-exercise-${assignment.id}`}
-                                                              >
-                                                                <Eye size={12} className="mr-1" />
-                                                                <span className="hidden sm:inline">Visualizza</span>
-                                                                <span className="sm:hidden">View</span>
-                                                              </Button>
-                                                              {assignment.status !== 'pending' ? (
-                                                                <div className="flex items-center gap-1">
-                                                                  <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => handleSendWhatsApp(assignment)}
-                                                                    disabled={assignment.whatsappSent}
-                                                                    className={`transition-all duration-200 text-xs ${assignment.whatsappSent
-                                                                      ? 'border-gray-200 bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
-                                                                      : 'border-green-200 hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-950/50 text-green-600 hover:text-green-700'
-                                                                      }`}
-                                                                    data-testid={`button-whatsapp-${assignment.id}`}
-                                                                  >
-                                                                    <MessageCircle size={12} className="mr-1" />
-                                                                    <span className="hidden sm:inline">
-                                                                      {assignment.whatsappSent ? 'Inviato' : 'WhatsApp'}
-                                                                    </span>
-                                                                    <span className="sm:hidden">
-                                                                      {assignment.whatsappSent ? '✓' : 'WA'}
-                                                                    </span>
-                                                                  </Button>
-                                                                  {assignment.whatsappSent && (
-                                                                    <Button
-                                                                      variant="ghost"
-                                                                      size="sm"
-                                                                      onClick={() => handleReactivateWhatsapp(assignment.id)}
-                                                                      className="w-6 h-6 p-0 text-xs text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                                                                      title="Riattiva WhatsApp"
-                                                                      data-testid={`button-reactivate-whatsapp-${assignment.id}`}
-                                                                    >
-                                                                      ↻
-                                                                    </Button>
-                                                                  )}
-                                                                </div>
-                                                              ) : (
-                                                                <div className="flex items-center justify-center text-xs text-muted-foreground bg-muted rounded-md px-2 py-1">
-                                                                  In attesa
-                                                                </div>
-                                                              )}
-                                                            </div>
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                              <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => handleEditExercise(exercise)}
-                                                                className="border-purple-200 hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 transition-all duration-200 text-xs"
-                                                                data-testid={`button-edit-exercise-${assignment.id}`}
-                                                              >
-                                                                <Edit size={12} className="mr-1" />
-                                                                <span className="hidden sm:inline">Modifica</span>
-                                                                <span className="sm:hidden">Edit</span>
-                                                              </Button>
-                                                              <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-950/50 text-red-600 hover:text-red-700 transition-all duration-200 text-xs"
-                                                                onClick={() => handleDeleteExercise(exercise.id)}
-                                                                data-testid={`button-delete-exercise-${exercise.id}`}
-                                                              >
-                                                                <Trash2 size={12} className="mr-1" />
-                                                                <span className="hidden sm:inline">Elimina</span>
-                                                                <span className="sm:hidden">Del</span>
-                                                              </Button>
-                                                            </div>
-                                                          </div>
-                                                        </div>
-                                                      );
-                                                    })}
-                                                </div>
-                                              </CollapsibleContent>
-                                            </Collapsible>
-                                          ))}
-                                        </div>
-                                      );
-                                    })()}
-                                  </CardContent>
-                                </Card>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <Badge variant="secondary" className="font-medium">{client.totalAssigned}</Badge>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="text-green-600 font-medium">{client.completed}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="text-blue-600 font-medium">{client.inProgress}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedClientForPreview(client);
+                                      }}
+                                    >
+                                      <Eye size={14} />
+                                    </Button>
+                                  </td>
+                                </tr>
                               ))
                             )}
-                          </div>
-                        </div>
-                      )}
-                    </>
+                          </tbody>
+                        </table>
+                      </div>
+                    </Card>
                   </div>
+
+                  {/* Right Preview Panel */}
+                  {selectedClientForPreview && (
+                    <div className="w-80 flex-shrink-0 hidden xl:block">
+                      <Card className="sticky top-20 border shadow-sm">
+                        <CardHeader className="py-3 px-4 border-b">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-sm font-medium">Dettagli Cliente</CardTitle>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 w-6 p-0"
+                              onClick={() => setSelectedClientForPreview(null)}
+                            >
+                              <X size={14} />
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-4">
+                          {/* Client Info */}
+                          <div className="flex items-center gap-3 mb-4">
+                            <Avatar className="w-12 h-12 border-2">
+                              <AvatarImage src={selectedClientForPreview.avatar} />
+                              <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium">
+                                {selectedClientForPreview.firstName.charAt(0)}{selectedClientForPreview.lastName.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold">{selectedClientForPreview.firstName} {selectedClientForPreview.lastName}</p>
+                              <p className="text-xs text-muted-foreground">{selectedClientForPreview.email}</p>
+                            </div>
+                          </div>
+
+                          <Separator className="my-3" />
+
+                          {/* Exercises by Category */}
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Esercizi per Categoria:</p>
+                            <div className="space-y-2">
+                              {Object.entries(groupAssignmentsByCategory(selectedClientForPreview.assignments)).map(([category, categoryAssignments]) => (
+                                <div key={category} className="flex items-center justify-between text-sm p-2 bg-muted/30 rounded-md">
+                                  <div className="flex items-center gap-2">
+                                    <span>{getCategoryIcon(category)}</span>
+                                    <span className="font-medium">{getCategoryLabel(category)}</span>
+                                  </div>
+                                  <Badge variant="outline" className="text-xs">{categoryAssignments.length}</Badge>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <Separator className="my-3" />
+
+                          {/* Stats */}
+                          <div className="grid grid-cols-2 gap-2 text-center">
+                            <div className="p-2 bg-green-50 dark:bg-green-950/30 rounded-md">
+                              <p className="text-lg font-bold text-green-600">{selectedClientForPreview.completed}</p>
+                              <p className="text-xs text-muted-foreground">Completati</p>
+                            </div>
+                            <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded-md">
+                              <p className="text-lg font-bold text-blue-600">{selectedClientForPreview.inProgress}</p>
+                              <p className="text-xs text-muted-foreground">In Corso</p>
+                            </div>
+                            <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded-md">
+                              <p className="text-lg font-bold text-amber-600">{selectedClientForPreview.pending}</p>
+                              <p className="text-xs text-muted-foreground">In Attesa</p>
+                            </div>
+                            <div className="p-2 bg-orange-50 dark:bg-orange-950/30 rounded-md">
+                              <p className="text-lg font-bold text-orange-600">{selectedClientForPreview.submitted}</p>
+                              <p className="text-xs text-muted-foreground">Da Revisionare</p>
+                            </div>
+                          </div>
+
+                          {/* Recent Exercises */}
+                          <Separator className="my-3" />
+                          <p className="text-xs font-medium text-muted-foreground mb-2">Esercizi Recenti:</p>
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {selectedClientForPreview.assignments.slice(0, 5).map((assignment) => {
+                              const exercise = exercises.find((e: Exercise) => e.id === assignment.exerciseId);
+                              if (!exercise) return null;
+                              return (
+                                <div 
+                                  key={assignment.id}
+                                  className="p-2 border rounded-md hover:bg-muted/30 cursor-pointer transition-colors"
+                                  onClick={() => handleViewExercise(exercise, assignment)}
+                                >
+                                  <p className="text-sm font-medium truncate">{exercise.title}</p>
+                                  <div className="flex items-center justify-between mt-1">
+                                    {getStatusBadge(assignment.status)}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
 
