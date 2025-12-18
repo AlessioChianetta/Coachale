@@ -1946,7 +1946,6 @@ export default function ConsultantExercises() {
                             </div>
                           )}
                         </div>
-                        </CardContent>
                       </Card>
                     </div>
                   )}
