@@ -503,4 +503,146 @@ router.post('/log-usage', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * CLIENT FILE SEARCH ROUTES
+ * Allow clients to view File Search status and analytics
+ * They access their consultant's stores automatically
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * GET /api/file-search/client/status
+ * Get File Search status for current client (shows if their consultant has File Search enabled)
+ */
+router.get('/client/status', authenticateToken, requireRole('client'), async (req: AuthRequest, res) => {
+  try {
+    const clientId = req.user!.id;
+    const consultantId = req.user!.consultantId;
+    
+    if (!consultantId) {
+      return res.json({
+        enabled: false,
+        message: 'Nessun consulente associato',
+        stores: [],
+        storeNames: [],
+      });
+    }
+    
+    // Get consultant's File Search stores that this client can access
+    const storeNames = await fileSearchService.getStoreNamesForGeneration(
+      clientId,
+      'client',
+      consultantId
+    );
+    
+    // Get settings from consultant
+    const [settings] = await db
+      .select()
+      .from(fileSearchSettings)
+      .where(eq(fileSearchSettings.consultantId, consultantId))
+      .limit(1);
+    
+    // Get store details
+    const stores = await fileSearchService.getStoresForUser(consultantId, 'consultant');
+    
+    res.json({
+      enabled: (settings?.enabled ?? false) && storeNames.length > 0,
+      message: storeNames.length > 0 
+        ? 'File Search attivo - le tue richieste useranno la ricerca semantica'
+        : 'File Search non configurato dal consulente',
+      storeCount: storeNames.length,
+      storeNames: storeNames,
+      stores: stores.map(s => ({
+        displayName: s.displayName,
+        documentCount: s.documentCount,
+      })),
+      totalDocuments: stores.reduce((sum, s) => sum + (s.documentCount || 0), 0),
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error fetching client status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/file-search/client/analytics
+ * Get File Search usage analytics for client (their own usage)
+ */
+router.get('/client/analytics', authenticateToken, requireRole('client'), async (req: AuthRequest, res) => {
+  try {
+    const clientId = req.user!.id;
+    const consultantId = req.user!.consultantId;
+    const days = parseInt(req.query.days as string) || 30;
+    
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    // Get client's own usage logs
+    const usageLogs = await db
+      .select()
+      .from(fileSearchUsageLogs)
+      .where(and(
+        eq(fileSearchUsageLogs.clientId, clientId),
+        gte(fileSearchUsageLogs.createdAt, startDate)
+      ))
+      .orderBy(desc(fileSearchUsageLogs.createdAt))
+      .limit(100);
+    
+    // Get consultant's stores that client can access
+    let stores: any[] = [];
+    let totalDocuments = 0;
+    
+    if (consultantId) {
+      stores = await db
+        .select()
+        .from(fileSearchStores)
+        .where(eq(fileSearchStores.ownerId, consultantId));
+      
+      const docCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(fileSearchDocuments)
+        .where(
+          sql`${fileSearchDocuments.storeId} IN (
+            SELECT id FROM file_search_stores WHERE owner_id = ${consultantId}
+          )`
+        );
+      totalDocuments = docCount[0]?.count || 0;
+    }
+    
+    const totalFileSearchCalls = usageLogs.filter(l => l.usedFileSearch).length;
+    const totalClassicRagCalls = usageLogs.filter(l => !l.usedFileSearch).length;
+    const totalTokensSaved = usageLogs.reduce((acc, l) => acc + (l.tokensSaved || 0), 0);
+    
+    res.json({
+      summary: {
+        totalCalls: usageLogs.length,
+        fileSearchCalls: totalFileSearchCalls,
+        classicRagCalls: totalClassicRagCalls,
+        fileSearchPercentage: usageLogs.length > 0 
+          ? Math.round((totalFileSearchCalls / usageLogs.length) * 100) 
+          : 0,
+        totalTokensSaved,
+        totalStores: stores.length,
+        totalDocuments,
+      },
+      stores: stores.map(s => ({
+        displayName: s.displayName,
+        documentCount: s.documentCount,
+        isActive: s.isActive,
+      })),
+      recentLogs: usageLogs.slice(0, 20).map(l => ({
+        usedFileSearch: l.usedFileSearch,
+        tokensSaved: l.tokensSaved,
+        responseTimeMs: l.responseTimeMs,
+        createdAt: l.createdAt,
+      })),
+      fileSearchEnabled: stores.length > 0,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error fetching client analytics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

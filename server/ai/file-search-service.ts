@@ -186,22 +186,30 @@ export class FileSearchService {
         }
       });
 
-      // Poll for operation completion with correct API syntax
+      // Poll for operation completion
+      // SDK expects: client.operations.get({ operation }) where operation is the object returned
       let attempts = 0;
       const maxAttempts = 60;
       while (!operation.done && attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000));
-        // CRITICAL FIX: Use correct Google API syntax - pass operation name
-        const operationName = typeof operation === 'string' ? operation : (operation as any).name;
-        if (!operationName) {
-          console.error(`❌ [FileSearch] Operation has no name, cannot poll status`);
-          break;
-        }
-        operation = await client.operations.get({ name: operationName });
         attempts++;
         
-        if (attempts % 10 === 0) {
-          console.log(`⏳ [FileSearch] Upload in progress... (attempt ${attempts}/${maxAttempts})`);
+        try {
+          // Pass the full operation object as per Google GenAI SDK
+          operation = await client.operations.get({ operation });
+          
+          if (attempts % 10 === 0) {
+            console.log(`⏳ [FileSearch] Upload in progress... (attempt ${attempts}/${maxAttempts})`);
+          }
+        } catch (pollError: any) {
+          // Log but continue - sometimes polling can temporarily fail
+          console.warn(`⚠️ [FileSearch] Polling attempt ${attempts} warning:`, pollError.message);
+          
+          // If we've had too many consecutive errors, break
+          if (attempts >= 5 && !operation.done) {
+            console.error(`❌ [FileSearch] Too many polling errors, stopping`);
+            break;
+          }
         }
       }
 
