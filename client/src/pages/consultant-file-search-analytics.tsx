@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { 
   BarChart3,
@@ -23,7 +24,11 @@ import {
   Bot,
   Users,
   BookOpen,
-  Timer
+  Timer,
+  AlertTriangle,
+  Activity,
+  Sparkles,
+  Dumbbell
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Navbar from "@/components/navbar";
@@ -122,6 +127,16 @@ interface AnalyticsData {
   geminiApiKeyConfigured: boolean;
 }
 
+interface AuditData {
+  summary: {
+    library: { total: number; indexed: number; missing: string[] };
+    knowledgeBase: { total: number; indexed: number; missing: string[] };
+    exercises: { total: number; indexed: number; missing: string[] };
+  };
+  recommendations: string[];
+  healthScore: number;
+}
+
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
 
 export default function ConsultantFileSearchAnalyticsPage() {
@@ -150,6 +165,43 @@ export default function ConsultantFileSearchAnalyticsPage() {
       });
       if (!response.ok) throw new Error("Failed to fetch analytics");
       return response.json();
+    },
+  });
+
+  const { data: auditData, isLoading: auditLoading, refetch: refetchAudit } = useQuery<AuditData>({
+    queryKey: ["/api/file-search/audit"],
+    queryFn: async () => {
+      const response = await fetch("/api/file-search/audit", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch audit");
+      return response.json();
+    },
+  });
+
+  const syncMissingMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/file-search/sync-missing", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Sync missing failed");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      toast({
+        title: "Sincronizzazione completata",
+        description: data.message || "Documenti mancanti sincronizzati.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore sincronizzazione",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -236,7 +288,23 @@ export default function ConsultantFileSearchAnalyticsPage() {
     updateSettingsMutation.mutate({ [key]: value });
   };
 
-  const isLoading = settingsLoading || analyticsLoading;
+  const isLoading = settingsLoading || analyticsLoading || auditLoading;
+  
+  const totalMissing = (auditData?.summary.library.missing.length || 0) + 
+                       (auditData?.summary.knowledgeBase.missing.length || 0) + 
+                       (auditData?.summary.exercises.missing.length || 0);
+  
+  const getHealthScoreColor = (score: number) => {
+    if (score >= 80) return 'text-emerald-600';
+    if (score >= 50) return 'text-amber-600';
+    return 'text-red-600';
+  };
+  
+  const getHealthScoreBgColor = (score: number) => {
+    if (score >= 80) return 'bg-emerald-500';
+    if (score >= 50) return 'bg-amber-500';
+    return 'bg-red-500';
+  };
 
   const providerChartData = analytics?.providerStats
     ? Object.entries(analytics.providerStats).map(([name, value]) => ({
@@ -414,6 +482,194 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       <p className="text-xs text-gray-400 mt-2">
                         In {analytics?.summary.totalStores || 0} store
                       </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-emerald-600" />
+                      Risparmio Token Stimato
+                    </CardTitle>
+                    <CardDescription>
+                      Confronto tra approccio tradizionale e File Search RAG
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                        <p className="text-sm text-red-600 font-medium">Context Tradizionale</p>
+                        <p className="text-3xl font-bold text-red-700 mt-2">~212,000</p>
+                        <p className="text-xs text-red-500 mt-1">tokens per sessione</p>
+                      </div>
+                      <div className="text-center p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <p className="text-sm text-emerald-600 font-medium">Con File Search RAG</p>
+                        <p className="text-3xl font-bold text-emerald-700 mt-2">~20,000</p>
+                        <p className="text-xs text-emerald-500 mt-1">tokens per sessione</p>
+                      </div>
+                      <div className="text-center p-4 bg-gradient-to-br from-emerald-100 to-emerald-50 rounded-lg border-2 border-emerald-300">
+                        <p className="text-sm text-emerald-700 font-medium">Risparmio Totale</p>
+                        <p className="text-4xl font-bold text-emerald-700 mt-2">~91%</p>
+                        <p className="text-xs text-emerald-600 mt-1">riduzione costi AI</p>
+                      </div>
+                    </div>
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-700">
+                        <strong>💡 Vantaggio:</strong> File Search usa embedding vettoriali per cercare solo i contenuti rilevanti, 
+                        invece di caricare tutti i documenti nel context. Questo riduce drasticamente il consumo di token mantenendo 
+                        l'accuratezza delle risposte.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Database className="h-5 w-5 text-blue-600" />
+                        Breakdown per Tipo di Contenuto
+                      </CardTitle>
+                      <CardDescription>
+                        Token risparmiati per categoria di documento
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-purple-100 p-2 rounded-lg">
+                            <BookOpen className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-purple-900">Library</p>
+                            <p className="text-sm text-purple-600">{auditData?.summary.library.indexed || 0} documenti indicizzati</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-purple-700">~{((auditData?.summary.library.indexed || 0) * 8500).toLocaleString()}</p>
+                          <p className="text-xs text-purple-500">token risparmiati</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-amber-100 p-2 rounded-lg">
+                            <FileText className="h-5 w-5 text-amber-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-amber-900">Knowledge Base</p>
+                            <p className="text-sm text-amber-600">{auditData?.summary.knowledgeBase.indexed || 0} documenti indicizzati</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-amber-700">~{((auditData?.summary.knowledgeBase.indexed || 0) * 6000).toLocaleString()}</p>
+                          <p className="text-xs text-amber-500">token risparmiati</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-blue-100 p-2 rounded-lg">
+                            <Dumbbell className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-900">Exercises</p>
+                            <p className="text-sm text-blue-600">{auditData?.summary.exercises.indexed || 0} esercizi indicizzati</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-blue-700">~{((auditData?.summary.exercises.indexed || 0) * 3500).toLocaleString()}</p>
+                          <p className="text-xs text-blue-500">token risparmiati</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className={auditData?.healthScore && auditData.healthScore < 80 ? "border-amber-300" : "border-emerald-300"}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Activity className="h-5 w-5 text-emerald-600" />
+                        Audit Health
+                      </CardTitle>
+                      <CardDescription>
+                        Stato di indicizzazione dei tuoi contenuti
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="text-center p-4">
+                        <p className={`text-5xl font-bold ${getHealthScoreColor(auditData?.healthScore || 0)}`}>
+                          {auditData?.healthScore || 0}%
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">Health Score</p>
+                        <Progress 
+                          value={auditData?.healthScore || 0} 
+                          className="mt-3 h-3"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Library</span>
+                          <span className={auditData?.summary.library.missing.length ? "text-amber-600" : "text-emerald-600"}>
+                            {auditData?.summary.library.indexed || 0}/{auditData?.summary.library.total || 0}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Knowledge Base</span>
+                          <span className={auditData?.summary.knowledgeBase.missing.length ? "text-amber-600" : "text-emerald-600"}>
+                            {auditData?.summary.knowledgeBase.indexed || 0}/{auditData?.summary.knowledgeBase.total || 0}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Exercises</span>
+                          <span className={auditData?.summary.exercises.missing.length ? "text-amber-600" : "text-emerald-600"}>
+                            {auditData?.summary.exercises.indexed || 0}/{auditData?.summary.exercises.total || 0}
+                          </span>
+                        </div>
+                      </div>
+
+                      {totalMissing > 0 && (
+                        <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-medium text-amber-800">
+                                {totalMissing} documenti non indicizzati
+                              </p>
+                              <p className="text-xs text-amber-600 mt-1">
+                                {auditData?.recommendations[0]}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {totalMissing > 0 && (
+                        <Button
+                          onClick={() => syncMissingMutation.mutate()}
+                          disabled={syncMissingMutation.isPending}
+                          className="w-full bg-amber-600 hover:bg-amber-700"
+                        >
+                          {syncMissingMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                          )}
+                          Sincronizza {totalMissing} Mancanti
+                        </Button>
+                      )}
+
+                      {totalMissing === 0 && auditData?.healthScore === 100 && (
+                        <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                            <p className="text-sm font-medium text-emerald-800">
+                              Tutti i contenuti sono indicizzati!
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>

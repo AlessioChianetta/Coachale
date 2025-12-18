@@ -1476,6 +1476,159 @@ export class FileSearchSyncService {
       documentCount: store.documentCount || 0,
     };
   }
+
+  /**
+   * Run a Post-Import Audit to verify indexing status of all content
+   * 
+   * @param consultantId - The consultant's user ID
+   * @returns Audit summary with health score and recommendations
+   */
+  static async runPostImportAudit(consultantId: string): Promise<{
+    summary: {
+      library: { total: number; indexed: number; missing: string[] };
+      knowledgeBase: { total: number; indexed: number; missing: string[] };
+      exercises: { total: number; indexed: number; missing: string[] };
+    };
+    recommendations: string[];
+    healthScore: number;
+  }> {
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`🔍 [FileSync] Running Post-Import Audit for consultant ${consultantId}`);
+    console.log(`${'═'.repeat(60)}\n`);
+
+    const libraryResult = await this.auditLibraryDocuments(consultantId);
+    const knowledgeBaseResult = await this.auditKnowledgeDocuments(consultantId);
+    const exercisesResult = await this.auditExercises(consultantId);
+
+    const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total;
+    const totalIndexed = libraryResult.indexed + knowledgeBaseResult.indexed + exercisesResult.indexed;
+    const healthScore = totalDocs > 0 ? Math.round((totalIndexed / totalDocs) * 100) : 100;
+
+    const recommendations: string[] = [];
+
+    if (libraryResult.missing.length > 0) {
+      recommendations.push(`Sincronizza ${libraryResult.missing.length} documenti libreria mancanti`);
+    }
+    if (knowledgeBaseResult.missing.length > 0) {
+      recommendations.push(`Sincronizza ${knowledgeBaseResult.missing.length} documenti knowledge base mancanti`);
+    }
+    if (exercisesResult.missing.length > 0) {
+      recommendations.push(`Sincronizza ${exercisesResult.missing.length} esercizi mancanti`);
+    }
+
+    if (healthScore < 50) {
+      recommendations.push('⚠️ Health Score basso: esegui una sincronizzazione completa');
+    } else if (healthScore < 80) {
+      recommendations.push('💡 Consigliato: sincronizza i contenuti mancanti per migliorare le performance AI');
+    } else if (healthScore === 100) {
+      recommendations.push('✅ Tutti i contenuti sono indicizzati correttamente');
+    }
+
+    console.log(`\n${'═'.repeat(60)}`);
+    console.log(`✅ [FileSync] Post-Import Audit Complete`);
+    console.log(`   📚 Library: ${libraryResult.indexed}/${libraryResult.total} indexed`);
+    console.log(`   📖 Knowledge Base: ${knowledgeBaseResult.indexed}/${knowledgeBaseResult.total} indexed`);
+    console.log(`   🏋️ Exercises: ${exercisesResult.indexed}/${exercisesResult.total} indexed`);
+    console.log(`   🏥 Health Score: ${healthScore}%`);
+    console.log(`${'═'.repeat(60)}\n`);
+
+    return {
+      summary: {
+        library: libraryResult,
+        knowledgeBase: knowledgeBaseResult,
+        exercises: exercisesResult,
+      },
+      recommendations,
+      healthScore,
+    };
+  }
+
+  private static async auditLibraryDocuments(consultantId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: string[];
+  }> {
+    const docs = await db.query.libraryDocuments.findMany({
+      where: eq(libraryDocuments.createdBy, consultantId),
+    });
+
+    const missing: string[] = [];
+    let indexed = 0;
+
+    for (const doc of docs) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('library', doc.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push(doc.title);
+      }
+    }
+
+    return {
+      total: docs.length,
+      indexed,
+      missing,
+    };
+  }
+
+  private static async auditKnowledgeDocuments(consultantId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: string[];
+  }> {
+    const docs = await db.query.consultantKnowledgeDocuments.findMany({
+      where: and(
+        eq(consultantKnowledgeDocuments.consultantId, consultantId),
+        eq(consultantKnowledgeDocuments.status, 'indexed'),
+      ),
+    });
+
+    const missing: string[] = [];
+    let indexed = 0;
+
+    for (const doc of docs) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push(doc.title);
+      }
+    }
+
+    return {
+      total: docs.length,
+      indexed,
+      missing,
+    };
+  }
+
+  private static async auditExercises(consultantId: string): Promise<{
+    total: number;
+    indexed: number;
+    missing: string[];
+  }> {
+    const allExercises = await db.query.exercises.findMany({
+      where: eq(exercises.createdBy, consultantId),
+    });
+
+    const missing: string[] = [];
+    let indexed = 0;
+
+    for (const exercise of allExercises) {
+      const isIndexed = await fileSearchService.isDocumentIndexed('exercise', exercise.id);
+      if (isIndexed) {
+        indexed++;
+      } else {
+        missing.push(exercise.title);
+      }
+    }
+
+    return {
+      total: allExercises.length,
+      indexed,
+      missing,
+    };
+  }
 }
 
 export const fileSearchSyncService = FileSearchSyncService;

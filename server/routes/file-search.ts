@@ -446,6 +446,68 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
 });
 
 /**
+ * GET /api/file-search/audit
+ * Run Post-Import Audit to check indexing status of all content
+ */
+router.get('/audit', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const audit = await fileSearchSyncService.runPostImportAudit(consultantId);
+    res.json(audit);
+  } catch (error: any) {
+    console.error('[FileSearch API] Error running audit:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/sync-missing
+ * Sync only the missing (non-indexed) documents
+ */
+router.post('/sync-missing', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    const audit = await fileSearchSyncService.runPostImportAudit(consultantId);
+    
+    let syncedLibrary = 0;
+    let syncedKnowledge = 0;
+    let syncedExercises = 0;
+    
+    if (audit.summary.library.missing.length > 0) {
+      const libraryResult = await fileSearchSyncService.syncAllLibraryDocuments(consultantId);
+      syncedLibrary = libraryResult.synced;
+    }
+    
+    if (audit.summary.knowledgeBase.missing.length > 0) {
+      const knowledgeResult = await fileSearchSyncService.syncAllConsultantKnowledgeDocuments(consultantId);
+      syncedKnowledge = knowledgeResult.synced;
+    }
+    
+    if (audit.summary.exercises.missing.length > 0) {
+      const exercisesResult = await fileSearchSyncService.syncAllExercises(consultantId);
+      syncedExercises = exercisesResult.synced;
+    }
+    
+    const totalSynced = syncedLibrary + syncedKnowledge + syncedExercises;
+    
+    res.json({
+      success: true,
+      synced: {
+        library: syncedLibrary,
+        knowledgeBase: syncedKnowledge,
+        exercises: syncedExercises,
+        total: totalSynced,
+      },
+      message: `Sincronizzati ${totalSynced} documenti mancanti (Library: ${syncedLibrary}, KB: ${syncedKnowledge}, Exercises: ${syncedExercises})`,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing missing:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/file-search/log-usage
  * Log File Search usage (internal use)
  */
