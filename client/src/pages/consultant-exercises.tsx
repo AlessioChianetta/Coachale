@@ -1903,14 +1903,14 @@ export default function ConsultantExercises() {
                                   selectedClientForPreview.assignments.filter(a => a.status !== 'submitted')
                                 )).map(([category, categoryAssignments]) => (
                                   <details key={category} className="group">
-                                    <summary className="flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors select-none list-none">
+                                    <summary className="flex items-center justify-between p-3 rounded-lg cursor-pointer bg-slate-200 dark:bg-slate-700/50 hover:bg-slate-300 dark:hover:bg-slate-700/70 border border-slate-300 dark:border-slate-600 transition-all select-none list-none shadow-sm">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-sm">{getCategoryIcon(category)}</span>
-                                        <span className="font-medium text-xs text-slate-600 dark:text-slate-300">{getCategoryLabel(category)}</span>
+                                        <span className="text-base">{getCategoryIcon(category)}</span>
+                                        <span className="font-bold text-sm text-slate-700 dark:text-slate-100">{getCategoryLabel(category)}</span>
                                       </div>
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-[10px] text-slate-400">{categoryAssignments.length}</span>
-                                        <ChevronDown size={12} className="text-slate-400 group-open:rotate-180 transition-transform duration-200" />
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold bg-slate-300 dark:bg-slate-600 text-slate-700 dark:text-slate-100 px-2 py-1 rounded-full">{categoryAssignments.length}</span>
+                                        <ChevronDown size={14} className="text-slate-600 dark:text-slate-300 group-open:rotate-180 transition-transform duration-200" />
                                       </div>
                                     </summary>
                                     <div className="pl-6 pr-1 pb-1 space-y-0.5">
