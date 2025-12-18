@@ -1945,6 +1945,7 @@ export default function ConsultantExercises() {
                               <p className="text-xs text-muted-foreground/70 mt-1">Assegna un esercizio a questo cliente</p>
                             </div>
                           )}
+                        </div>
                         </CardContent>
                       </Card>
                     </div>
