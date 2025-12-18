@@ -1,0 +1,45 @@
+
+══════════════════════════════════════════════════════════════════════
+🔄 [FileSync] Starting FULL content sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+══════════════════════════════════════════════════════════════════════
+
+✅ [WHATSAPP POLLING] Poll cycle complete
+🔄 [FileSync] Syncing 86 library documents for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📌 [FileSync] Document already indexed: 20c99d77-fe98-4f90-a72b-7e2a03589399
+📌 [FileSync] Document already indexed: 132478b3-7dea-499b-b6ce-9a52dbdf6822
+📤 [FileSearch] Uploading "Lezione 1: Vendere la Trasformazione: Il Concetto del "Ponte"" to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+❌ [FileSearch] Upload failed: TypeError: Cannot read properties of undefined (reading 'name')
+    at Operations.get (/home/runner/workspace/node_modules/@google/genai/src/operations.ts:81:19)
+    at FileSearchService.uploadDocument (/home/runner/workspace/server/ai/file-search-service.ts:200:45)
+    at async FileSearchService.uploadDocumentFromContent (/home/runner/workspace/server/ai/file-search-service.ts:262:22)
+    at async Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:79:28)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+📤 [FileSearch] Uploading "Lezione 2: Il Lavoro Interiore e la Mentalità dell'Aiuto" to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+❌ [FileSearch] Upload failed: TypeError: Cannot read properties of undefined (reading 'name')
+    at Operations.get (/home/runner/workspace/node_modules/@google/genai/src/operations.ts:81:19)
+    at FileSearchService.uploadDocument (/home/runner/workspace/server/ai/file-search-service.ts:200:45)
+    at async FileSearchService.uploadDocumentFromContent (/home/runner/workspace/server/ai/file-search-service.ts:262:22)
+    at async Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:79:28)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+📤 [FileSearch] Uploading "Lezione 1: Introduzione alla vendita e Obiettivi" to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+❌ [FileSearch] Upload failed: TypeError: Cannot read properties of undefined (reading 'name')
+    at Operations.get (/home/runner/workspace/node_modules/@google/genai/src/operations.ts:81:19)
+    at FileSearchService.uploadDocument (/home/runner/workspace/server/ai/file-search-service.ts:200:45)
+    at async FileSearchService.uploadDocumentFromContent (/home/runner/workspace/server/ai/file-search-service.ts:262:22)
+    at async Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:79:28)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
+📤 [FileSearch] Uploading "Lezione 3: La Pratica Deliberata: Come Diventare un Professionista" to store fileSearchStores/knowledge-base-consulente-juw371zchi3s
+❌ [FileSearch] Upload failed: TypeError: Cannot read properties of undefined (reading 'name')
+    at Operations.get (/home/runner/workspace/node_modules/@google/genai/src/operations.ts:81:19)
+    at FileSearchService.uploadDocument (/home/runner/workspace/server/ai/file-search-service.ts:200:45)
+    at async FileSearchService.uploadDocumentFromContent (/home/runner/workspace/server/ai/file-search-service.ts:262:22)
+    at async Function.syncLibraryDocument (/home/runner/workspace/server/services/file-search-sync-service.ts:79:28)
+    at async Function.syncAllLibraryDocuments (/home/runner/workspace/server/services/file-search-sync-service.ts:117:24)
+    at async Function.syncAllContentForConsultant (/home/runner/workspace/server/services/file-search-sync-service.ts:1013:27)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:139:20)
