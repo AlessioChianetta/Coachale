@@ -5560,3 +5560,47 @@ export const fileSearchDocuments = pgTable("file_search_documents", {
 
 export type FileSearchDocument = typeof fileSearchDocuments.$inferSelect;
 export type InsertFileSearchDocument = typeof fileSearchDocuments.$inferInsert;
+
+export const fileSearchUsageLogs = pgTable("file_search_usage_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  clientId: varchar("client_id").references(() => users.id, { onDelete: "set null" }),
+  requestType: text("request_type").$type<"consultant_chat" | "client_chat" | "whatsapp" | "api">().notNull(),
+  storeNames: jsonb("store_names").$type<string[]>().default([]).notNull(),
+  storeCount: integer("store_count").default(0).notNull(),
+  documentCount: integer("document_count").default(0).notNull(),
+  citationsCount: integer("citations_count").default(0).notNull(),
+  usedFileSearch: boolean("used_file_search").default(false).notNull(),
+  providerUsed: text("provider_used").$type<"google_ai_studio" | "vertex_ai" | "fallback">().notNull(),
+  apiKeySource: text("api_key_source").$type<"env_gemini_key" | "user_key" | "consultant_key">(),
+  tokensSaved: integer("tokens_saved").default(0),
+  responseTimeMs: integer("response_time_ms"),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+}, (table) => ({
+  consultantIdx: index("file_search_usage_logs_consultant_idx").on(table.consultantId),
+  clientIdx: index("file_search_usage_logs_client_idx").on(table.clientId),
+  createdAtIdx: index("file_search_usage_logs_created_at_idx").on(table.createdAt),
+}));
+
+export type FileSearchUsageLog = typeof fileSearchUsageLogs.$inferSelect;
+export type InsertFileSearchUsageLog = typeof fileSearchUsageLogs.$inferInsert;
+
+export const fileSearchSettings = pgTable("file_search_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  enabled: boolean("enabled").default(true).notNull(),
+  autoSyncLibrary: boolean("auto_sync_library").default(true).notNull(),
+  autoSyncKnowledgeBase: boolean("auto_sync_knowledge_base").default(true).notNull(),
+  autoSyncExercises: boolean("auto_sync_exercises").default(false).notNull(),
+  autoSyncConsultations: boolean("auto_sync_consultations").default(false).notNull(),
+  autoSyncUniversity: boolean("auto_sync_university").default(false).notNull(),
+  lastSyncAt: timestamp("last_sync_at"),
+  totalDocumentsSynced: integer("total_documents_synced").default(0).notNull(),
+  totalUsageCount: integer("total_usage_count").default(0).notNull(),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export type FileSearchSettings = typeof fileSearchSettings.$inferSelect;
+export type InsertFileSearchSettings = typeof fileSearchSettings.$inferInsert;
