@@ -795,7 +795,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     const response = await retryWithBackoff(
       async (ctx: OperationAttemptContext) => {
         return await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: "gemini-2.5-flash",
           config: {
             systemInstruction: systemPrompt,
           },
@@ -1377,7 +1377,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
 
     // Create stream factory function
     const makeStreamAttempt = () => aiClient.generateContentStream({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: geminiMessages.map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
@@ -2181,7 +2181,7 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
 
     // Create stream factory function
     const makeStreamAttempt = () => aiClient.generateContentStream({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: geminiMessages.map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
