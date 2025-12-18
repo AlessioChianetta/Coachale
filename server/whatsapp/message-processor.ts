@@ -30,7 +30,7 @@ import { getOrCreateProfile, updateClientProfile } from "../client-profiler";
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent, deleteGoogleCalendarEvent, addAttendeesToGoogleCalendarEvent } from "../google-calendar-service";
 import { decryptJSON } from "../encryption";
 import { resolveInstructionVariables } from "./template-engine";
-import { 
+import {
   getMandatoryBookingBlock,
   CORE_CONVERSATION_RULES_BLOCK,
   BOOKING_CONVERSATION_PHASES_BLOCK,
@@ -56,7 +56,7 @@ const execAsync = promisify(exec);
  */
 function detectExplicitRejection(messageText: string): boolean {
   const normalizedText = messageText.toLowerCase().trim();
-  
+
   const italianPatterns = [
     /\bno\s+grazie\b/,
     /\bnon\s+mi\s+interessa\b/,
@@ -69,7 +69,7 @@ function detectExplicitRejection(messageText: string): boolean {
     /\bcancella\b/,
     /\bnon\s+voglio\b/,
   ];
-  
+
   const englishPatterns = [
     /\bnot\s+interested\b/,
     /\bleave\s+me\s+alone\b/,
@@ -77,15 +77,15 @@ function detectExplicitRejection(messageText: string): boolean {
     /\bunsubscribe\b/,
     /\bstop\s+contacting\b/,
   ];
-  
+
   const allPatterns = [...italianPatterns, ...englishPatterns];
-  
+
   for (const pattern of allPatterns) {
     if (pattern.test(normalizedText)) {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -94,13 +94,13 @@ function detectExplicitRejection(messageText: string): boolean {
  * Optimized for voice audio with proper Opus settings
  */
 async function convertWavToOggAsync(
-  wavFilePath: string, 
-  oggFilePath: string, 
+  wavFilePath: string,
+  oggFilePath: string,
   timeoutMs: number = 120000
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const startTime = Date.now();
-    
+
     // Optimized FFmpeg command for voice/Opus conversion
     // -threads 0: Use all available CPU cores
     // -application voip: Optimize for voice
@@ -123,7 +123,7 @@ async function convertWavToOggAsync(
     });
 
     let stderr = '';
-    
+
     ffmpeg.stderr?.on('data', (data) => {
       stderr += data.toString();
     });
@@ -136,7 +136,7 @@ async function convertWavToOggAsync(
     ffmpeg.on('close', (code) => {
       clearTimeout(timeout);
       const duration = Date.now() - startTime;
-      
+
       if (code === 0) {
         console.log(`✅ FFmpeg conversion completed in ${duration}ms`);
         resolve();
@@ -163,16 +163,16 @@ function calculateWavDuration(wavBuffer: Buffer): number {
   // Bytes 22-23: Number of channels (little-endian uint16)
   // Bytes 34-35: Bits per sample (little-endian uint16)
   // Bytes 40-43: Data size (little-endian uint32)
-  
+
   try {
     const sampleRate = wavBuffer.readUInt32LE(24);
     const channels = wavBuffer.readUInt16LE(22);
     const bitsPerSample = wavBuffer.readUInt16LE(34);
     const dataSize = wavBuffer.readUInt32LE(40);
-    
+
     const bytesPerSample = bitsPerSample / 8;
     const duration = dataSize / (sampleRate * channels * bytesPerSample);
-    
+
     return Math.round(duration);
   } catch (error) {
     console.warn('⚠️ Could not parse WAV header, estimating duration');
@@ -209,25 +209,25 @@ function formatSlotForDisplay(slot: { start: Date | string; end: Date | string }
   const startDate = typeof slot.start === 'string' ? new Date(slot.start) : slot.start;
   const endDate = typeof slot.end === 'string' ? new Date(slot.end) : slot.end;
 
-  const date = startDate.toLocaleDateString('it-IT', { 
+  const date = startDate.toLocaleDateString('it-IT', {
     timeZone: timezone,
     day: '2-digit',
     month: '2-digit',
     year: 'numeric'
   });
 
-  const dayOfWeek = startDate.toLocaleDateString('it-IT', { 
+  const dayOfWeek = startDate.toLocaleDateString('it-IT', {
     timeZone: timezone,
     weekday: 'long'
   });
 
-  const time = startDate.toLocaleTimeString('it-IT', { 
+  const time = startDate.toLocaleTimeString('it-IT', {
     timeZone: timezone,
-    hour: '2-digit', 
+    hour: '2-digit',
     minute: '2-digit'
   });
 
-  const fullDateTime = startDate.toLocaleString('it-IT', { 
+  const fullDateTime = startDate.toLocaleString('it-IT', {
     timeZone: timezone,
     weekday: 'long',
     day: 'numeric',
@@ -482,10 +482,10 @@ async function processPendingMessagesWithRetry(
   } catch (error: any) {
     // Check if error is DB-related
     const errorCode = typeof error?.code === 'string' ? error.code : String(error?.code || '');
-    const isDbError = error?.message?.includes("connection") || 
-                      error?.message?.includes("timeout") ||
-                      error?.message?.includes("pool") ||
-                      errorCode.includes("ECONNREFUSED");
+    const isDbError = error?.message?.includes("connection") ||
+      error?.message?.includes("timeout") ||
+      error?.message?.includes("pool") ||
+      errorCode.includes("ECONNREFUSED");
 
     if (isDbError && retryCount < MAX_RETRIES) {
       const backoffTime = INITIAL_BACKOFF * Math.pow(2, retryCount);
@@ -560,18 +560,18 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
       const pollingLatencyS = (pollingLatencyMs / 1000).toFixed(1);
       console.log(`⏱️ [TIMING] Polling latency: ${pollingLatencyS}s (from webhook to processing)`);
     }
-    
+
     // Step 2.1: Deduplicate pending messages by twilioSid
     // This prevents processing duplicate messages (e.g., from Twilio webhook retries)
     const uniquePending = pending.filter((msg, index, self) =>
       index === self.findIndex(m => m.twilioSid === msg.twilioSid)
     );
-    
+
     const duplicatesCount = pending.length - uniquePending.length;
     if (duplicatesCount > 0) {
       console.log(`🔄 [DEDUP] Filtered ${duplicatesCount} duplicate pending message(s) - processing ${uniquePending.length} unique message(s)`);
     }
-    
+
     if (uniquePending.length > 0) {
       console.log(`🔍 [PENDING] First message twilioSid: ${uniquePending[0].twilioSid}, simulated: ${uniquePending[0].metadata?.simulated || false}, text: "${uniquePending[0].messageText.substring(0, 50)}..."`);
     }
@@ -662,7 +662,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           mediaContentType: msg.mediaContentType,
           metadata: msg.metadata || null, // Preserve metadata from pending (e.g., simulated flag)
         })
-        .onConflictDoNothing({ target: whatsappMessages.twilioSid }); // Skip duplicates silently
+          .onConflictDoNothing({ target: whatsappMessages.twilioSid }); // Skip duplicates silently
       }
 
       // STEP 2: Mark as processed (including duplicates to prevent re-processing)
@@ -699,7 +699,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           mediaContentType: msg.mediaContentType,
           metadata: msg.metadata || null, // Preserve metadata from pending (e.g., simulated flag)
         })
-        .onConflictDoNothing({ target: whatsappMessages.twilioSid }); // Skip duplicates silently
+          .onConflictDoNothing({ target: whatsappMessages.twilioSid }); // Skip duplicates silently
       }
 
       // STEP 2: Send after-hours message
@@ -757,7 +757,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
     if (aiProvider.type === 'vertex') {
       console.log(`   📍 Project: ${aiProvider.projectId}, Location: ${aiProvider.location}`);
     } else {
-      const maskedKey = aiProvider.apiKey.length > 20 
+      const maskedKey = aiProvider.apiKey.length > 20
         ? `${aiProvider.apiKey.substring(0, 10)}...${aiProvider.apiKey.substring(aiProvider.apiKey.length - 4)}`
         : '***masked***';
       console.log(`   🔐 API Key: ${maskedKey}`);
@@ -834,7 +834,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           location: aiProvider.location,
           credentials: aiProvider.credentials
         } : undefined;
-        
+
         await handleIncomingMedia(
           savedMsg.id,
           p.mediaUrl,
@@ -1097,23 +1097,23 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
             console.log(`🤖 [OBJECTION] Calling detectObjection() with provider: ${aiProvider.type}`);
 
             // Validate Vertex AI credentials before using
-            const hasVertexCredentials = aiProvider.type === 'vertex' && 
-                                         aiProvider.projectId && 
-                                         aiProvider.location && 
-                                         aiProvider.credentials;
+            const hasVertexCredentials = aiProvider.type === 'vertex' &&
+              aiProvider.projectId &&
+              aiProvider.location &&
+              aiProvider.credentials;
 
             // Use primary provider (Vertex AI) for objection detection instead of fallback
             const objectionProvider = (aiProvider.type === 'vertex' && hasVertexCredentials)
               ? {
-                  type: 'vertex' as const,
-                  projectId: aiProvider.projectId,
-                  location: aiProvider.location,
-                  credentials: aiProvider.credentials
-                }
+                type: 'vertex' as const,
+                projectId: aiProvider.projectId,
+                location: aiProvider.location,
+                credentials: aiProvider.credentials
+              }
               : {
-                  type: 'studio' as const,
-                  apiKey: objectionApiKey
-                };
+                type: 'studio' as const,
+                apiKey: objectionApiKey
+              };
 
             // Warn if Vertex requested but credentials missing
             if (aiProvider.type === 'vertex' && !hasVertexCredentials) {
@@ -1135,9 +1135,9 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
             break; // Success - exit retry loop
 
           } catch (objectionError: any) {
-            const is503 = objectionError.status === 503 || 
-                          objectionError.message?.includes('overloaded') ||
-                          objectionError.message?.includes('UNAVAILABLE');
+            const is503 = objectionError.status === 503 ||
+              objectionError.message?.includes('overloaded') ||
+              objectionError.message?.includes('UNAVAILABLE');
 
             console.error(`❌ [OBJECTION] Error on attempt ${objectionAttempt}`);
             console.error(`   Error type: ${objectionError?.name || 'Unknown'}`);
@@ -1192,182 +1192,182 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         // This happens BEFORE intent detection so context is preserved even when
         // lead responds with generic messages like "certo", "pomeriggio", etc.
         console.log('📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...');
-      try {
-        const [savedSlots] = await db
-          .select()
-          .from(proposedAppointmentSlots)
-          .where(
-            and(
-              eq(proposedAppointmentSlots.conversationId, conversation.id),
-              eq(proposedAppointmentSlots.usedForBooking, false),
-              sql`${proposedAppointmentSlots.expiresAt} > NOW()`
-            )
-          )
-          .orderBy(desc(proposedAppointmentSlots.proposedAt))
-          .limit(1);
-
-        if (savedSlots && savedSlots.slots) {
-          availableSlots = savedSlots.slots as any[];
-          console.log(`💾 [APPOINTMENT CONTEXT] Retrieved ${availableSlots.length} saved slots from database`);
-          console.log(`📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow`);
-        } else {
-          console.log('📅 [APPOINTMENT CONTEXT] No saved slots found - will fetch from calendar...');
-        }
-      } catch (error: any) {
-        console.error('❌ [APPOINTMENT CONTEXT] Error retrieving saved slots');
-        console.error(`   Conversation ID: ${conversation.id}`);
-        console.error(`   Error type: ${error?.name || 'Unknown'}`);
-        console.error(`   Error message: ${error?.message || error}`);
-        if (error?.stack) {
-          console.error(`   Stack trace:\n${error.stack}`);
-        }
-      }
-
-      // STEP 2: If no saved slots, ALWAYS fetch new slots (not just on appointment_request)
-      // This way slots are ALWAYS available for the AI to propose
-      if (availableSlots.length === 0) {
-        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🔍 [STEP 1] Fetching Available Appointment Slots');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`📅 New appointment request detected for consultant: ${conversation.consultantId}`);
-
-        // ⏱️ Appointment Fetch Timing
-        timings.appointmentFetchStart = performance.now();
-
         try {
-          // Calculate date range (next 7 days)
-          const startDate = new Date();
-          const endDate = new Date();
-          endDate.setDate(endDate.getDate() + 7);
+          const [savedSlots] = await db
+            .select()
+            .from(proposedAppointmentSlots)
+            .where(
+              and(
+                eq(proposedAppointmentSlots.conversationId, conversation.id),
+                eq(proposedAppointmentSlots.usedForBooking, false),
+                sql`${proposedAppointmentSlots.expiresAt} > NOW()`
+              )
+            )
+            .orderBy(desc(proposedAppointmentSlots.proposedAt))
+            .limit(1);
 
-          console.log(`📆 Search range: ${startDate.toLocaleDateString('it-IT')} → ${endDate.toLocaleDateString('it-IT')} (7 days)`);
-          console.log(`🌐 Calling API: /api/calendar/available-slots`);
-
-          // Call available slots endpoint
-          const slotsResponse = await fetch(
-            `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
-            `consultantId=${conversation.consultantId}&` +
-            `startDate=${startDate.toISOString()}&` +
-            `endDate=${endDate.toISOString()}`
-          );
-
-          if (slotsResponse.ok) {
-            const slotsData = await slotsResponse.json();
-            const rawSlots = slotsData.slots || [];
-
-            // Format slots for display and AI context
-            const consultantTimezone = calendarSettings?.timezone || 'Europe/Rome';
-            availableSlots = rawSlots.map((slot: any) => formatSlotForDisplay(slot, consultantTimezone));
-
-            console.log(`\n✅ Found ${availableSlots.length} available slots!`);
-            if (availableSlots.length > 0) {
-              // Group slots by date for better visualization
-              const slotsByDate = availableSlots.reduce((acc: any, slot: any) => {
-                if (!acc[slot.date]) {
-                  acc[slot.date] = [];
-                }
-                acc[slot.date].push(slot);
-                return acc;
-              }, {});
-
-              console.log(`\n📅 Available Slots by Day:\n`);
-              Object.keys(slotsByDate).sort().forEach(date => {
-                const daySlots = slotsByDate[date];
-                const dayOfWeek = daySlots[0].dayOfWeek;
-                console.log(`   📆 ${dayOfWeek} ${date} (${daySlots.length} slots)`);
-                daySlots.forEach((slot: any, i: number) => {
-                  console.log(`      ${i+1}. ${slot.time}`);
-                });
-                console.log('');
-              });
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-            } else {
-              console.log(`⚠️ No available slots found in the next 7 days`);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-            }
-
-            // PERSIST SLOTS: Save to database for future messages (maintains context)
-            if (availableSlots.length > 0) {
-              const expiresAt = new Date();
-              expiresAt.setHours(expiresAt.getHours() + 48); // Slots valid for 48 hours
-
-              // Check if slots already exist for this conversation
-              const [existing] = await db
-                .select()
-                .from(proposedAppointmentSlots)
-                .where(
-                  and(
-                    eq(proposedAppointmentSlots.conversationId, conversation.id),
-                    eq(proposedAppointmentSlots.consultantId, conversation.consultantId)
-                  )
-                )
-                .limit(1);
-
-              if (existing) {
-                // Update existing slots
-                await db
-                  .update(proposedAppointmentSlots)
-                  .set({
-                    slots: availableSlots,
-                    proposedAt: new Date(),
-                    expiresAt,
-                    usedForBooking: false,
-                  })
-                  .where(eq(proposedAppointmentSlots.id, existing.id));
-
-                console.log(`💾 [APPOINTMENT] Updated ${availableSlots.length} existing slots in database (expires in 48h)`);
-              } else {
-                // Insert new slots
-                await db
-                  .insert(proposedAppointmentSlots)
-                  .values({
-                    conversationId: conversation.id,
-                    consultantId: conversation.consultantId,
-                    slots: availableSlots,
-                    proposedAt: new Date(),
-                    expiresAt,
-                    usedForBooking: false,
-                  });
-
-                console.log(`💾 Saved ${availableSlots.length} slots to database (valid for 48 hours)`);
-                console.log(`✅ Slots ready to propose to lead via AI`);
-              }
-            }
+          if (savedSlots && savedSlots.slots) {
+            availableSlots = savedSlots.slots as any[];
+            console.log(`💾 [APPOINTMENT CONTEXT] Retrieved ${availableSlots.length} saved slots from database`);
+            console.log(`📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow`);
           } else {
-            const errorText = await slotsResponse.text();
-            console.error(`\n❌ Failed to fetch slots from API`);
-            console.error(`   Response status: ${slotsResponse.status}`);
-            console.error(`   Error: ${errorText}`);
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            console.log('📅 [APPOINTMENT CONTEXT] No saved slots found - will fetch from calendar...');
           }
-
-          timings.appointmentFetchEnd = performance.now();
-          const appointmentFetchTime = Math.round(timings.appointmentFetchEnd - timings.appointmentFetchStart);
-          console.log(`⏱️  [TIMING] Appointment fetch: ${appointmentFetchTime}ms`);
-
         } catch (error: any) {
-          console.error(`\n❌ Error fetching available slots`);
-          console.error(`   Consultant ID: ${conversation.consultantId}`);
-          console.error(`   Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+          console.error('❌ [APPOINTMENT CONTEXT] Error retrieving saved slots');
+          console.error(`   Conversation ID: ${conversation.id}`);
           console.error(`   Error type: ${error?.name || 'Unknown'}`);
           console.error(`   Error message: ${error?.message || error}`);
           if (error?.stack) {
             console.error(`   Stack trace:\n${error.stack}`);
           }
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-          timings.appointmentFetchEnd = performance.now();
-          const appointmentFetchTime = Math.round(timings.appointmentFetchEnd - timings.appointmentFetchStart);
-          console.log(`⏱️  [TIMING] Appointment fetch (failed): ${appointmentFetchTime}ms`);
         }
-      }
 
-      // Log final state for debugging
-      if (availableSlots.length > 0) {
-        console.log(`✅ [APPOINTMENT CONTEXT] Final state: ${availableSlots.length} slots available for AI prompt`);
-      } else {
-        console.log(`📭 [APPOINTMENT CONTEXT] Final state: No slots available (not in appointment flow)`);
-      }
+        // STEP 2: If no saved slots, ALWAYS fetch new slots (not just on appointment_request)
+        // This way slots are ALWAYS available for the AI to propose
+        if (availableSlots.length === 0) {
+          console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('🔍 [STEP 1] Fetching Available Appointment Slots');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log(`📅 New appointment request detected for consultant: ${conversation.consultantId}`);
+
+          // ⏱️ Appointment Fetch Timing
+          timings.appointmentFetchStart = performance.now();
+
+          try {
+            // Calculate date range (next 7 days)
+            const startDate = new Date();
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + 7);
+
+            console.log(`📆 Search range: ${startDate.toLocaleDateString('it-IT')} → ${endDate.toLocaleDateString('it-IT')} (7 days)`);
+            console.log(`🌐 Calling API: /api/calendar/available-slots`);
+
+            // Call available slots endpoint
+            const slotsResponse = await fetch(
+              `http://localhost:${process.env.PORT || 5000}/api/calendar/available-slots?` +
+              `consultantId=${conversation.consultantId}&` +
+              `startDate=${startDate.toISOString()}&` +
+              `endDate=${endDate.toISOString()}`
+            );
+
+            if (slotsResponse.ok) {
+              const slotsData = await slotsResponse.json();
+              const rawSlots = slotsData.slots || [];
+
+              // Format slots for display and AI context
+              const consultantTimezone = calendarSettings?.timezone || 'Europe/Rome';
+              availableSlots = rawSlots.map((slot: any) => formatSlotForDisplay(slot, consultantTimezone));
+
+              console.log(`\n✅ Found ${availableSlots.length} available slots!`);
+              if (availableSlots.length > 0) {
+                // Group slots by date for better visualization
+                const slotsByDate = availableSlots.reduce((acc: any, slot: any) => {
+                  if (!acc[slot.date]) {
+                    acc[slot.date] = [];
+                  }
+                  acc[slot.date].push(slot);
+                  return acc;
+                }, {});
+
+                console.log(`\n📅 Available Slots by Day:\n`);
+                Object.keys(slotsByDate).sort().forEach(date => {
+                  const daySlots = slotsByDate[date];
+                  const dayOfWeek = daySlots[0].dayOfWeek;
+                  console.log(`   📆 ${dayOfWeek} ${date} (${daySlots.length} slots)`);
+                  daySlots.forEach((slot: any, i: number) => {
+                    console.log(`      ${i + 1}. ${slot.time}`);
+                  });
+                  console.log('');
+                });
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+              } else {
+                console.log(`⚠️ No available slots found in the next 7 days`);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+              }
+
+              // PERSIST SLOTS: Save to database for future messages (maintains context)
+              if (availableSlots.length > 0) {
+                const expiresAt = new Date();
+                expiresAt.setHours(expiresAt.getHours() + 48); // Slots valid for 48 hours
+
+                // Check if slots already exist for this conversation
+                const [existing] = await db
+                  .select()
+                  .from(proposedAppointmentSlots)
+                  .where(
+                    and(
+                      eq(proposedAppointmentSlots.conversationId, conversation.id),
+                      eq(proposedAppointmentSlots.consultantId, conversation.consultantId)
+                    )
+                  )
+                  .limit(1);
+
+                if (existing) {
+                  // Update existing slots
+                  await db
+                    .update(proposedAppointmentSlots)
+                    .set({
+                      slots: availableSlots,
+                      proposedAt: new Date(),
+                      expiresAt,
+                      usedForBooking: false,
+                    })
+                    .where(eq(proposedAppointmentSlots.id, existing.id));
+
+                  console.log(`💾 [APPOINTMENT] Updated ${availableSlots.length} existing slots in database (expires in 48h)`);
+                } else {
+                  // Insert new slots
+                  await db
+                    .insert(proposedAppointmentSlots)
+                    .values({
+                      conversationId: conversation.id,
+                      consultantId: conversation.consultantId,
+                      slots: availableSlots,
+                      proposedAt: new Date(),
+                      expiresAt,
+                      usedForBooking: false,
+                    });
+
+                  console.log(`💾 Saved ${availableSlots.length} slots to database (valid for 48 hours)`);
+                  console.log(`✅ Slots ready to propose to lead via AI`);
+                }
+              }
+            } else {
+              const errorText = await slotsResponse.text();
+              console.error(`\n❌ Failed to fetch slots from API`);
+              console.error(`   Response status: ${slotsResponse.status}`);
+              console.error(`   Error: ${errorText}`);
+              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+            }
+
+            timings.appointmentFetchEnd = performance.now();
+            const appointmentFetchTime = Math.round(timings.appointmentFetchEnd - timings.appointmentFetchStart);
+            console.log(`⏱️  [TIMING] Appointment fetch: ${appointmentFetchTime}ms`);
+
+          } catch (error: any) {
+            console.error(`\n❌ Error fetching available slots`);
+            console.error(`   Consultant ID: ${conversation.consultantId}`);
+            console.error(`   Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+            console.error(`   Error type: ${error?.name || 'Unknown'}`);
+            console.error(`   Error message: ${error?.message || error}`);
+            if (error?.stack) {
+              console.error(`   Stack trace:\n${error.stack}`);
+            }
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+            timings.appointmentFetchEnd = performance.now();
+            const appointmentFetchTime = Math.round(timings.appointmentFetchEnd - timings.appointmentFetchStart);
+            console.log(`⏱️  [TIMING] Appointment fetch (failed): ${appointmentFetchTime}ms`);
+          }
+        }
+
+        // Log final state for debugging
+        if (availableSlots.length > 0) {
+          console.log(`✅ [APPOINTMENT CONTEXT] Final state: ${availableSlots.length} slots available for AI prompt`);
+        } else {
+          console.log(`📭 [APPOINTMENT CONTEXT] Final state: No slots available (not in appointment flow)`);
+        }
 
         // Check for existing confirmed appointment to pass to AI prompt
         const [existingBooking] = await db
@@ -1422,7 +1422,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
             if (leadEntry.status === 'contacted') {
               await db
                 .update(proactiveLeads)
-                .set({ 
+                .set({
                   status: 'responded',
                   updatedAt: new Date(),
                   metadata: {
@@ -1478,7 +1478,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     const resetKeywords = ['ricominciamo', 'reset', 'ripartiamo da capo', 'ricomincia', 'riparti da capo', 'ricominciare'];
     const isResetRequest = resetKeywords.some(keyword => batchedText.toLowerCase().includes(keyword));
 
-    let geminiMessages: Array<{role: "user" | "model", parts: Array<{text: string}>}> = [];
+    let geminiMessages: Array<{ role: "user" | "model", parts: Array<{ text: string }> }> = [];
 
     if (isResetRequest) {
       console.log(`🔄 [STEP 7] Reset requested - clearing ALL conversation data`);
@@ -1512,7 +1512,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
       // STEP 3: Update conversation with reset timestamp
       await db
         .update(whatsappConversations)
-        .set({ 
+        .set({
           lastResetAt: new Date(),
           // Reset lead conversion status if it was a lead
           leadConvertedAt: null
@@ -1534,7 +1534,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
           mediaContentType: msg.mediaContentType,
           metadata: msg.metadata || null,
         })
-        .onConflictDoNothing({ target: whatsappMessages.twilioSid }); // Skip duplicates silently
+          .onConflictDoNothing({ target: whatsappMessages.twilioSid }); // Skip duplicates silently
       }
       console.log(`✅ Saved ${pending.length} inbound reset request message(s) to history`);
 
@@ -1701,9 +1701,9 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         lastError = error;
 
         // Check if it's a 503 error (overloaded)
-        const is503 = error.status === 503 || 
-                      error.message?.includes('overloaded') ||
-                      error.message?.includes('UNAVAILABLE');
+        const is503 = error.status === 503 ||
+          error.message?.includes('overloaded') ||
+          error.message?.includes('UNAVAILABLE');
 
         if (is503) {
           console.log(`⚠️ [RETRY] API overloaded (503) on attempt ${attempt}`);
@@ -1720,7 +1720,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
             await new Promise(resolve => setTimeout(resolve, backoffMs));
           } else {
             console.log(`❌ [RETRY] All ${maxRetries} attempts failed with 503 errors`);
-            const errorMsg = currentProvider.type === 'vertex' 
+            const errorMsg = currentProvider.type === 'vertex'
               ? `Vertex AI overloaded after ${maxRetries} attempts. Please try again later.`
               : `Gemini API overloaded after ${maxRetries} attempts with different keys. Please try again later.`;
             throw new Error(errorMsg);
@@ -1828,14 +1828,14 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     console.log(`✅ [STEP 8] Gemini response received: "${aiResponse.substring(0, 100)}..."`);
 
     console.log(`💾 [STEP 9] Saving AI response to database`);
-    
+
     // Calculate timing metrics for this message
     const geminiTime = Math.round(endTime - startTime);
-    const contextTime = timings.contextBuildEnd > 0 
-      ? Math.round(timings.contextBuildEnd - timings.contextBuildStart) 
+    const contextTime = timings.contextBuildEnd > 0
+      ? Math.round(timings.contextBuildEnd - timings.contextBuildStart)
       : 0;
     const currentTotalTime = Math.round(performance.now() - timings.requestStart);
-    
+
     // Step 9: Save AI response with timing metadata
     const [savedMessage] = await db
       .insert(whatsappMessages)
@@ -1856,10 +1856,10 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     console.log(`✅ [STEP 9] AI response saved with ID: ${savedMessage.id} (timing: ${geminiTime}ms Gemini, ${currentTotalTime}ms total)`);
 
     // Track objection if detected (for leads only AND if objection handling is enabled)
-    if (consultantConfig?.objectionHandlingEnabled !== false && 
-        !conversation.userId && 
-        objectionDetection && 
-        objectionDetection.hasObjection) {
+    if (consultantConfig?.objectionHandlingEnabled !== false &&
+      !conversation.userId &&
+      objectionDetection &&
+      objectionDetection.hasObjection) {
       console.log(`🚩 [OBJECTION TRACKING] Detected ${objectionDetection.objectionType} objection`);
       await trackObjection(
         conversation.id,
@@ -1878,12 +1878,12 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     // Step 9.5: Generate TTS audio response if enabled (Mirror Mode)
     // CRITICAL: TTS generation is fully isolated - any failure falls back to text-only
     let audioMediaUrl: string | null = null;
-    
+
     // Determine if we should send audio and/or text based on audioResponseMode
-    const responseDecision = consultantConfig?.ttsEnabled 
+    const responseDecision = consultantConfig?.ttsEnabled
       ? shouldRespondWithAudio(consultantConfig.audioResponseMode || 'always_text', clientSentAudio)
       : { sendAudio: false, sendText: true };
-    
+
     console.log(`🎛️ [AUDIO DECISION] Mode: ${consultantConfig?.audioResponseMode}, ClientSentAudio: ${clientSentAudio} → sendAudio=${responseDecision.sendAudio}, sendText=${responseDecision.sendText}`);
 
     // Wrap entire TTS flow in isolated try/catch to guarantee text fallback
@@ -1914,40 +1914,40 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         } else {
           // Need to get Vertex AI credentials for TTS (Google AI Studio doesn't support TTS)
           console.log('⚠️  Current provider is Google AI Studio - fetching Vertex AI for TTS...');
-          
+
           // NEW UNIFIED APPROACH: Check SuperAdmin Vertex first, then consultant's own vertexAiSettings
           let foundVertexSettings: { projectId: string; location: string; serviceAccountJson: string } | null = null;
-          
+
           // 1. Check if consultant can use SuperAdmin Vertex
           const [consultant] = await db
             .select({ useSuperadminVertex: users.useSuperadminVertex })
             .from(users)
             .where(eq(users.id, conversation.consultantId))
             .limit(1);
-          
+
           if (consultant?.useSuperadminVertex) {
             const [accessRecord] = await db
               .select({ hasAccess: consultantVertexAccess.hasAccess })
               .from(consultantVertexAccess)
               .where(eq(consultantVertexAccess.consultantId, conversation.consultantId))
               .limit(1);
-            
+
             const hasAccess = accessRecord?.hasAccess ?? true;
-            
+
             if (hasAccess) {
               const [superadminConfig] = await db
                 .select()
                 .from(superadminVertexConfig)
                 .where(eq(superadminVertexConfig.enabled, true))
                 .limit(1);
-              
+
               if (superadminConfig) {
                 console.log('✅ Using SuperAdmin Vertex AI for TTS');
                 foundVertexSettings = superadminConfig;
               }
             }
           }
-          
+
           // 2. Fallback: Check consultant's own vertexAiSettings
           if (!foundVertexSettings) {
             const [consultantVertexSettings] = await db
@@ -1958,7 +1958,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
                 eq(vertexAiSettings.enabled, true)
               ))
               .limit(1);
-            
+
             if (consultantVertexSettings) {
               console.log('✅ Using consultant Vertex AI for TTS');
               foundVertexSettings = consultantVertexSettings;
@@ -2011,15 +2011,15 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         // WhatsApp only supports: OGG/Opus, AMR, AAC/M4A, MP3 (not WAV)
         const oggFileName = wavFileName.replace('.wav', '.ogg');
         const oggFilePath = path.join(audioDir, oggFileName);
-        
+
         console.log('🔧 Converting WAV to OGG/Opus for WhatsApp (async)...');
         try {
           await convertWavToOggAsync(wavFilePath, oggFilePath, 120000); // 2 min timeout for production
           console.log(`✅ OGG file created: ${oggFilePath}`);
-          
+
           // Use OGG file for WhatsApp
           audioMediaUrl = `/uploads/audio/${oggFileName}`;
-          
+
           // Clean up WAV file (keep only OGG for WhatsApp) - ASYNC
           await fsPromises.unlink(wavFilePath);
           console.log(`🗑️ WAV file deleted (keeping OGG for WhatsApp)`);
@@ -2073,26 +2073,26 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
 
     console.log(`📤 [STEP 10] Sending WhatsApp message to ${phoneNumber}`);
     // Step 10: Send WhatsApp message based on responseDecision (text, audio, or both)
-    
+
     // Determine message text:
     // - Full response if sendText=true
     // - Minimal placeholder if sendText=false but audio is being sent (Twilio requires non-empty Body)
     // - Empty string only if nothing is being sent (should not happen)
-    const messageText = responseDecision.sendText 
-      ? aiResponse 
+    const messageText = responseDecision.sendText
+      ? aiResponse
       : (responseDecision.sendAudio && audioMediaUrl ? '🎤' : '');
-    
+
     await sendWhatsAppMessage(
       conversation.consultantId,
       phoneNumber,
       messageText,
       savedMessage.id,
-      { 
+      {
         conversationId: conversation.id,
-        mediaUrl: audioMediaUrl 
+        mediaUrl: audioMediaUrl
       }
     );
-    
+
     // Log what was sent
     const sentTypes = [];
     if (responseDecision.sendText && aiResponse) sentTypes.push('text');
@@ -2121,7 +2121,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
 
       // Cast lastCompletedAction for type-safety
       let lastCompletedAction: LastCompletedAction | null = null;
-      
+
       if (existingBooking) {
         alreadyConfirmed = true;
         existingBookingForModification = existingBooking;
@@ -2153,48 +2153,48 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
 
       // Proceed with extraction for NEW bookings OR MODIFICATIONS/CANCELLATIONS
       if (((!alreadyConfirmed && retrievedSlots && retrievedSlots.length > 0) || alreadyConfirmed)) {
-      
-      // AI PRE-CHECK: Skip heavy extraction if message is not booking-related
-      const preCheckAi = new GoogleGenAI({ apiKey });
-      const shouldAnalyze = await shouldAnalyzeForBooking(userMessage, alreadyConfirmed, preCheckAi);
-      
-      if (!shouldAnalyze) {
-        console.log(`   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "${userMessage.substring(0, 40)}..."`);
-      } else {
-        console.log(`   ✅ [AI PRE-CHECK] Proceeding with booking analysis`);
-        
-        if (alreadyConfirmed) {
-          console.log('📅 [APPOINTMENT MANAGEMENT] Existing appointment detected - checking for MODIFY/CANCEL intent');
+
+        // AI PRE-CHECK: Skip heavy extraction if message is not booking-related
+        const preCheckAi = new GoogleGenAI({ apiKey });
+        const shouldAnalyze = await shouldAnalyzeForBooking(userMessage, alreadyConfirmed, preCheckAi);
+
+        if (!shouldAnalyze) {
+          console.log(`   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "${userMessage.substring(0, 40)}..."`);
         } else {
-          console.log('📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message');
-        }
-        try {
-          // Get last 10 messages to have full context (not just current batch)
-          // CRITICAL: Filter by lastResetAt to prevent AI from seeing pre-reset data
-          const recentMessagesConditions = [eq(whatsappMessages.conversationId, conversation.id)];
+          console.log(`   ✅ [AI PRE-CHECK] Proceeding with booking analysis`);
 
-          if (conversation.lastResetAt) {
-            console.log(`🔄 [EXTRACTION] Filtering messages after reset: ${conversation.lastResetAt}`);
-            recentMessagesConditions.push(sql`${whatsappMessages.createdAt} > ${conversation.lastResetAt}`);
+          if (alreadyConfirmed) {
+            console.log('📅 [APPOINTMENT MANAGEMENT] Existing appointment detected - checking for MODIFY/CANCEL intent');
+          } else {
+            console.log('📅 [APPOINTMENT BOOKING] Attempting to extract appointment confirmation from lead message');
           }
+          try {
+            // Get last 10 messages to have full context (not just current batch)
+            // CRITICAL: Filter by lastResetAt to prevent AI from seeing pre-reset data
+            const recentMessagesConditions = [eq(whatsappMessages.conversationId, conversation.id)];
 
-          const recentMessages = await db
-            .select()
-            .from(whatsappMessages)
-            .where(and(...recentMessagesConditions))
-            .orderBy(desc(whatsappMessages.createdAt))
-            .limit(10);
+            if (conversation.lastResetAt) {
+              console.log(`🔄 [EXTRACTION] Filtering messages after reset: ${conversation.lastResetAt}`);
+              recentMessagesConditions.push(sql`${whatsappMessages.createdAt} > ${conversation.lastResetAt}`);
+            }
 
-          console.log(`📊 [EXTRACTION] Retrieved ${recentMessages.length} messages for extraction${conversation.lastResetAt ? ' (after reset)' : ''}`);
+            const recentMessages = await db
+              .select()
+              .from(whatsappMessages)
+              .where(and(...recentMessagesConditions))
+              .orderBy(desc(whatsappMessages.createdAt))
+              .limit(10);
 
-          // Build conversation context for extraction
-          const conversationContext = recentMessages
-            .reverse()
-            .map(m => `${m.sender === 'client' ? 'LEAD' : 'AI'}: ${m.messageText}`)
-            .join('\n');
+            console.log(`📊 [EXTRACTION] Retrieved ${recentMessages.length} messages for extraction${conversation.lastResetAt ? ' (after reset)' : ''}`);
 
-          // Use AI to extract appointment intent and data from ENTIRE recent conversation
-          const extractionPrompt = alreadyConfirmed ? `
+            // Build conversation context for extraction
+            const conversationContext = recentMessages
+              .reverse()
+              .map(m => `${m.sender === 'client' ? 'LEAD' : 'AI'}: ${m.messageText}`)
+              .join('\n');
+
+            // Use AI to extract appointment intent and data from ENTIRE recent conversation
+            const extractionPrompt = alreadyConfirmed ? `
 Analizza questa conversazione recente di un lead che ha GIÀ un appuntamento confermato:
 
 APPUNTAMENTO ESISTENTE:
@@ -2424,218 +2424,218 @@ REGOLE VALIDAZIONE hasAllData:
 - hasAllData = true SOLO se tutti e 4 sono presenti e non-null
 `;
 
-          console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log('🔍 [STEP 2] Extracting Appointment Data from Conversation');
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log(`📚 Analyzing last ${recentMessages.length} messages for appointment details...`);
-          console.log(`🤖 Using AI model: gemini-2.5-flash`);
+            console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log('🔍 [STEP 2] Extracting Appointment Data from Conversation');
+            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            console.log(`📚 Analyzing last ${recentMessages.length} messages for appointment details...`);
+            console.log(`🤖 Using AI model: gemini-2.5-flash`);
 
-          // Retry with key rotation for appointment extraction
-          const maxExtractionRetries = 3;
-          let extractionKeyId = keyInfo.keyId;
-          let extractionResponse: any;
+            // Retry with key rotation for appointment extraction
+            const maxExtractionRetries = 3;
+            let extractionKeyId = keyInfo.keyId;
+            let extractionResponse: any;
 
-          for (let attempt = 1; attempt <= maxExtractionRetries; attempt++) {
-            try {
-              // Validate Vertex AI credentials
-              const hasVertexCredentials = aiProvider.type === 'vertex' && 
-                                          aiProvider.projectId && 
-                                          aiProvider.location && 
-                                          aiProvider.credentials;
+            for (let attempt = 1; attempt <= maxExtractionRetries; attempt++) {
+              try {
+                // Validate Vertex AI credentials
+                const hasVertexCredentials = aiProvider.type === 'vertex' &&
+                  aiProvider.projectId &&
+                  aiProvider.location &&
+                  aiProvider.credentials;
 
-              // Determine effective provider for this attempt
-              const useVertex = aiProvider.type === 'vertex' && hasVertexCredentials;
-              console.log(`🔄 [EXTRACTION] Attempt ${attempt}/${maxExtractionRetries} with provider: ${useVertex ? 'vertex' : 'studio'}`);
+                // Determine effective provider for this attempt
+                const useVertex = aiProvider.type === 'vertex' && hasVertexCredentials;
+                console.log(`🔄 [EXTRACTION] Attempt ${attempt}/${maxExtractionRetries} with provider: ${useVertex ? 'vertex' : 'studio'}`);
 
-              if (useVertex) {
-                // Use Vertex AI
-                const vertexClient = createVertexGeminiClient(
-                  aiProvider.projectId!,
-                  aiProvider.location!,
-                  aiProvider.credentials!
-                );
-
-                extractionResponse = await vertexClient.generateContent({
-                  contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
-                });
-              } else {
-                // Use Google AI Studio (fallback)
-                if (aiProvider.type === 'vertex' && !hasVertexCredentials) {
-                  console.warn(`⚠️ [EXTRACTION] Vertex AI requested but credentials missing - using Google AI Studio fallback`);
-                }
-
-                // Rotate API key on retry attempts
-                let extractionApiKey = apiKey;
-                if (attempt > 1) {
-                  const newKeyInfo = await selectApiKey(conversation, extractionKeyId);
-                  extractionApiKey = newKeyInfo.apiKey;
-                  extractionKeyId = newKeyInfo.keyId;
-                  console.log(`🔑 [EXTRACTION] Rotated to new API key: ${extractionKeyId.substring(0, 8)}...`);
-                }
-
-                const extractionAi = new GoogleGenAI({ apiKey: extractionApiKey });
-                extractionResponse = await extractionAi.models.generateContent({
-                  model: "gemini-2.5-flash",
-                  contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
-                });
-              }
-
-              console.log(`✅ [EXTRACTION] Success on attempt ${attempt}!`);
-              break; // Success - exit retry loop
-
-            } catch (extractionError: any) {
-              const is503 = extractionError.status === 503 || 
-                            extractionError.message?.includes('overloaded') ||
-                            extractionError.message?.includes('UNAVAILABLE');
-
-              if (is503 && attempt < maxExtractionRetries) {
-                console.log(`⚠️ [EXTRACTION] API overloaded (503) on attempt ${attempt}`);
-                await markKeyAsFailed(extractionKeyId);
-
-                const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-                console.log(`⏱️ [EXTRACTION] Waiting ${backoffMs}ms before rotating...`);
-                await new Promise(resolve => setTimeout(resolve, backoffMs));
-              } else {
-                // Final attempt or non-503 error - throw to outer catch
-                console.error(`❌ [EXTRACTION] Failed after ${attempt} attempt(s): ${extractionError.message}`);
-                throw extractionError;
-              }
-            }
-          }
-
-          if (!extractionResponse) {
-            throw new Error('Failed to extract appointment data after all retries');
-          }
-
-          let extractionText: string;
-          try {
-            if (typeof extractionResponse.text === 'function') {
-              extractionText = extractionResponse.text();
-            } else if (typeof extractionResponse.response?.text === 'function') {
-              extractionText = extractionResponse.response.text();
-            } else if (extractionResponse.text) {
-              extractionText = extractionResponse.text;
-            } else if (extractionResponse.response?.text) {
-              extractionText = extractionResponse.response.text;
-            } else if (extractionResponse.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
-              extractionText = extractionResponse.response.candidates[0].content.parts[0].text;
-            } else if (extractionResponse.candidates?.[0]?.content?.parts?.[0]?.text) {
-              extractionText = extractionResponse.candidates[0].content.parts[0].text;
-            } else {
-              extractionText = "";
-            }
-          } catch (textError: any) {
-            console.error('❌ [EXTRACTION ERROR] Failed to extract text from response:', textError.message);
-            extractionText = "";
-          }
-          console.log(`\n💬 AI Raw Response:\n${extractionText.substring(0, 200)}${extractionText.length > 200 ? '...' : ''}\n`);
-
-          // Parse JSON from AI response
-          const jsonMatch = extractionText.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const extracted = JSON.parse(jsonMatch[0]);
-
-            // Check if this is MODIFY/CANCEL intent (for existing appointments) or booking confirmation
-            if (alreadyConfirmed && extracted.intent) {
-              // GESTIONE MODIFICA/CANCELLAZIONE APPUNTAMENTO ESISTENTE
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('📊 [APPOINTMENT MANAGEMENT] Intent Detection Results');
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log(`🎯 Intent: ${extracted.intent}`);
-              console.log(`📅 New Date: ${extracted.newDate || 'N/A'}`);
-              console.log(`🕐 New Time: ${extracted.newTime || 'N/A'}`);
-              console.log(`💯 Confidence: ${extracted.confidence.toUpperCase()}`);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-              if (extracted.intent === 'MODIFY' && extracted.newDate && extracted.newTime) {
-                // MODIFICA APPUNTAMENTO - RICHIEDE 1 CONFERMA
-                console.log('\n🔄 [MODIFY APPOINTMENT] Starting modification process...');
-
-                // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-                const modifyDetails: ActionDetails = {
-                  newDate: extracted.newDate,
-                  newTime: extracted.newTime
-                };
-                if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY', modifyDetails)) {
-                  console.log(`   ⏭️ [MODIFY APPOINTMENT] Skipping - same modification already completed recently`);
-                  return;
-                }
-
-                // ✅ CHECK CONFERMA: Esegui SOLO se ha confermato almeno 1 volta
-                if (!extracted.confirmedTimes || extracted.confirmedTimes < 1) {
-                  console.log(`⚠️ [MODIFY APPOINTMENT] Insufficient confirmations (${extracted.confirmedTimes || 0}/1)`);
-                  console.log('   AI should ask for confirmation via prompt');
-                  console.log('   Skipping modification - waiting for confirmation\n');
-                  // NON eseguire - lascia che AI continui il flusso di conferma via prompt
-                  return;
-                }
-
-                console.log(`✅ [MODIFY APPOINTMENT] Confirmed ${extracted.confirmedTimes} time(s) - proceeding with modification`);
-
-              // Get settings for timezone and duration
-              const [settings] = await db
-                .select()
-                .from(consultantAvailabilitySettings)
-                .where(eq(consultantAvailabilitySettings.consultantId, conversation.consultantId))
-                .limit(1);
-
-              const timezone = settings?.timezone || "Europe/Rome";
-              const duration = settings?.appointmentDuration || 60;
-
-              // Update Google Calendar event if exists
-              if (existingBookingForModification.googleEventId) {
-                try {
-                  const success = await updateGoogleCalendarEvent(
-                    conversation.consultantId,
-                    existingBookingForModification.googleEventId,
-                    {
-                      startDate: extracted.newDate,
-                      startTime: extracted.newTime,
-                      duration: duration,
-                      timezone: timezone
-                    }
+                if (useVertex) {
+                  // Use Vertex AI
+                  const vertexClient = createVertexGeminiClient(
+                    aiProvider.projectId!,
+                    aiProvider.location!,
+                    aiProvider.credentials!
                   );
 
-                  if (success) {
-                    console.log('✅ [MODIFY APPOINTMENT] Google Calendar event updated successfully');
+                  extractionResponse = await vertexClient.generateContent({
+                    contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
+                  });
+                } else {
+                  // Use Google AI Studio (fallback)
+                  if (aiProvider.type === 'vertex' && !hasVertexCredentials) {
+                    console.warn(`⚠️ [EXTRACTION] Vertex AI requested but credentials missing - using Google AI Studio fallback`);
                   }
-                } catch (gcalError: any) {
-                  console.error('⚠️ [MODIFY APPOINTMENT] Failed to update Google Calendar:', gcalError.message);
+
+                  // Rotate API key on retry attempts
+                  let extractionApiKey = apiKey;
+                  if (attempt > 1) {
+                    const newKeyInfo = await selectApiKey(conversation, extractionKeyId);
+                    extractionApiKey = newKeyInfo.apiKey;
+                    extractionKeyId = newKeyInfo.keyId;
+                    console.log(`🔑 [EXTRACTION] Rotated to new API key: ${extractionKeyId.substring(0, 8)}...`);
+                  }
+
+                  const extractionAi = new GoogleGenAI({ apiKey: extractionApiKey });
+                  extractionResponse = await extractionAi.models.generateContent({
+                    model: "gemini-2.5-flash",
+                    contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
+                  });
+                }
+
+                console.log(`✅ [EXTRACTION] Success on attempt ${attempt}!`);
+                break; // Success - exit retry loop
+
+              } catch (extractionError: any) {
+                const is503 = extractionError.status === 503 ||
+                  extractionError.message?.includes('overloaded') ||
+                  extractionError.message?.includes('UNAVAILABLE');
+
+                if (is503 && attempt < maxExtractionRetries) {
+                  console.log(`⚠️ [EXTRACTION] API overloaded (503) on attempt ${attempt}`);
+                  await markKeyAsFailed(extractionKeyId);
+
+                  const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+                  console.log(`⏱️ [EXTRACTION] Waiting ${backoffMs}ms before rotating...`);
+                  await new Promise(resolve => setTimeout(resolve, backoffMs));
+                } else {
+                  // Final attempt or non-503 error - throw to outer catch
+                  console.error(`❌ [EXTRACTION] Failed after ${attempt} attempt(s): ${extractionError.message}`);
+                  throw extractionError;
                 }
               }
+            }
 
-              // Calculate new end time
-              const [startHour, startMinute] = extracted.newTime.split(':').map(Number);
-              const totalMinutes = startHour * 60 + startMinute + duration;
-              const endHour = Math.floor(totalMinutes / 60) % 24;
-              const endMinute = totalMinutes % 60;
-              const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+            if (!extractionResponse) {
+              throw new Error('Failed to extract appointment data after all retries');
+            }
 
-              // Update database with lastCompletedAction to prevent duplicates
-              await db
-                .update(appointmentBookings)
-                .set({
-                  appointmentDate: extracted.newDate,
-                  appointmentTime: extracted.newTime,
-                  appointmentEndTime: formattedEndTime,
-                  lastCompletedAction: {
-                    type: 'MODIFY' as const,
-                    completedAt: new Date().toISOString(),
-                    triggerMessageId: conversation.id,
-                    details: {
-                      oldDate: existingBookingForModification.appointmentDate,
-                      oldTime: existingBookingForModification.appointmentTime,
-                      newDate: extracted.newDate,
-                      newTime: extracted.newTime
+            let extractionText: string;
+            try {
+              if (typeof extractionResponse.text === 'function') {
+                extractionText = extractionResponse.text();
+              } else if (typeof extractionResponse.response?.text === 'function') {
+                extractionText = extractionResponse.response.text();
+              } else if (extractionResponse.text) {
+                extractionText = extractionResponse.text;
+              } else if (extractionResponse.response?.text) {
+                extractionText = extractionResponse.response.text;
+              } else if (extractionResponse.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                extractionText = extractionResponse.response.candidates[0].content.parts[0].text;
+              } else if (extractionResponse.candidates?.[0]?.content?.parts?.[0]?.text) {
+                extractionText = extractionResponse.candidates[0].content.parts[0].text;
+              } else {
+                extractionText = "";
+              }
+            } catch (textError: any) {
+              console.error('❌ [EXTRACTION ERROR] Failed to extract text from response:', textError.message);
+              extractionText = "";
+            }
+            console.log(`\n💬 AI Raw Response:\n${extractionText.substring(0, 200)}${extractionText.length > 200 ? '...' : ''}\n`);
+
+            // Parse JSON from AI response
+            const jsonMatch = extractionText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const extracted = JSON.parse(jsonMatch[0]);
+
+              // Check if this is MODIFY/CANCEL intent (for existing appointments) or booking confirmation
+              if (alreadyConfirmed && extracted.intent) {
+                // GESTIONE MODIFICA/CANCELLAZIONE APPUNTAMENTO ESISTENTE
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('📊 [APPOINTMENT MANAGEMENT] Intent Detection Results');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log(`🎯 Intent: ${extracted.intent}`);
+                console.log(`📅 New Date: ${extracted.newDate || 'N/A'}`);
+                console.log(`🕐 New Time: ${extracted.newTime || 'N/A'}`);
+                console.log(`💯 Confidence: ${extracted.confidence.toUpperCase()}`);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+                if (extracted.intent === 'MODIFY' && extracted.newDate && extracted.newTime) {
+                  // MODIFICA APPUNTAMENTO - RICHIEDE 1 CONFERMA
+                  console.log('\n🔄 [MODIFY APPOINTMENT] Starting modification process...');
+
+                  // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                  const modifyDetails: ActionDetails = {
+                    newDate: extracted.newDate,
+                    newTime: extracted.newTime
+                  };
+                  if (isActionAlreadyCompleted(lastCompletedAction, 'MODIFY', modifyDetails)) {
+                    console.log(`   ⏭️ [MODIFY APPOINTMENT] Skipping - same modification already completed recently`);
+                    return;
+                  }
+
+                  // ✅ CHECK CONFERMA: Esegui SOLO se ha confermato almeno 1 volta
+                  if (!extracted.confirmedTimes || extracted.confirmedTimes < 1) {
+                    console.log(`⚠️ [MODIFY APPOINTMENT] Insufficient confirmations (${extracted.confirmedTimes || 0}/1)`);
+                    console.log('   AI should ask for confirmation via prompt');
+                    console.log('   Skipping modification - waiting for confirmation\n');
+                    // NON eseguire - lascia che AI continui il flusso di conferma via prompt
+                    return;
+                  }
+
+                  console.log(`✅ [MODIFY APPOINTMENT] Confirmed ${extracted.confirmedTimes} time(s) - proceeding with modification`);
+
+                  // Get settings for timezone and duration
+                  const [settings] = await db
+                    .select()
+                    .from(consultantAvailabilitySettings)
+                    .where(eq(consultantAvailabilitySettings.consultantId, conversation.consultantId))
+                    .limit(1);
+
+                  const timezone = settings?.timezone || "Europe/Rome";
+                  const duration = settings?.appointmentDuration || 60;
+
+                  // Update Google Calendar event if exists
+                  if (existingBookingForModification.googleEventId) {
+                    try {
+                      const success = await updateGoogleCalendarEvent(
+                        conversation.consultantId,
+                        existingBookingForModification.googleEventId,
+                        {
+                          startDate: extracted.newDate,
+                          startTime: extracted.newTime,
+                          duration: duration,
+                          timezone: timezone
+                        }
+                      );
+
+                      if (success) {
+                        console.log('✅ [MODIFY APPOINTMENT] Google Calendar event updated successfully');
+                      }
+                    } catch (gcalError: any) {
+                      console.error('⚠️ [MODIFY APPOINTMENT] Failed to update Google Calendar:', gcalError.message);
                     }
                   }
-                })
-                .where(eq(appointmentBookings.id, existingBookingForModification.id));
 
-              console.log('💾 [MODIFY APPOINTMENT] Database updated with lastCompletedAction');
+                  // Calculate new end time
+                  const [startHour, startMinute] = extracted.newTime.split(':').map(Number);
+                  const totalMinutes = startHour * 60 + startMinute + duration;
+                  const endHour = Math.floor(totalMinutes / 60) % 24;
+                  const endMinute = totalMinutes % 60;
+                  const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
 
-              // Send confirmation message
-              const modifyMessage = `✅ APPUNTAMENTO MODIFICATO!
+                  // Update database with lastCompletedAction to prevent duplicates
+                  await db
+                    .update(appointmentBookings)
+                    .set({
+                      appointmentDate: extracted.newDate,
+                      appointmentTime: extracted.newTime,
+                      appointmentEndTime: formattedEndTime,
+                      lastCompletedAction: {
+                        type: 'MODIFY' as const,
+                        completedAt: new Date().toISOString(),
+                        triggerMessageId: conversation.id,
+                        details: {
+                          oldDate: existingBookingForModification.appointmentDate,
+                          oldTime: existingBookingForModification.appointmentTime,
+                          newDate: extracted.newDate,
+                          newTime: extracted.newTime
+                        }
+                      }
+                    })
+                    .where(eq(appointmentBookings.id, existingBookingForModification.id));
+
+                  console.log('💾 [MODIFY APPOINTMENT] Database updated with lastCompletedAction');
+
+                  // Send confirmation message
+                  const modifyMessage = `✅ APPUNTAMENTO MODIFICATO!
 
 📅 Nuovo appuntamento:
 🗓️ Data: ${extracted.newDate.split('-').reverse().join('/')}
@@ -2645,95 +2645,95 @@ Ti ho aggiornato l'invito al calendario all'indirizzo ${existingBookingForModifi
 
 Ci vediamo alla nuova data! 🚀`;
 
-              const [modifyMsg] = await db
-                .insert(whatsappMessages)
-                .values({
-                  conversationId: conversation.id,
-                  messageText: modifyMessage,
-                  direction: "outbound",
-                  sender: "ai",
-                })
-                .returning();
+                  const [modifyMsg] = await db
+                    .insert(whatsappMessages)
+                    .values({
+                      conversationId: conversation.id,
+                      messageText: modifyMessage,
+                      direction: "outbound",
+                      sender: "ai",
+                    })
+                    .returning();
 
-              await sendWhatsAppMessage(
-                conversation.consultantId,
-                phoneNumber,
-                modifyMessage,
-                modifyMsg.id,
-                { conversationId: conversation.id }
-              );
-
-              console.log('✅ [MODIFY APPOINTMENT] Modification complete and confirmation sent!');
-
-            } else if (extracted.intent === 'CANCEL') {
-              // CANCELLAZIONE APPUNTAMENTO - RICHIEDE 2 CONFERME
-              console.log('\n🗑️ [CANCEL APPOINTMENT] Starting cancellation process...');
-
-              // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-              if (isActionAlreadyCompleted(lastCompletedAction, 'CANCEL')) {
-                console.log(`   ⏭️ [CANCEL APPOINTMENT] Skipping - action already completed recently`);
-                return;
-              }
-
-              // ✅ CHECK CONFERME: Esegui SOLO se ha confermato 2 volte
-              if (!extracted.confirmedTimes || extracted.confirmedTimes < 2) {
-                console.log(`⚠️ [CANCEL APPOINTMENT] Insufficient confirmations (${extracted.confirmedTimes || 0}/2)`);
-                console.log('   AI should continue asking for confirmation via prompt');
-                console.log('   Skipping cancellation - waiting for 2 confirmations\n');
-                // NON eseguire - lascia che AI continui il flusso di conferma via prompt
-                return;
-              }
-
-              console.log(`✅ [CANCEL APPOINTMENT] Confirmed ${extracted.confirmedTimes} times - proceeding with cancellation`);
-
-              // Delete from Google Calendar if exists
-              let calendarDeleteSuccess = true;
-              if (existingBookingForModification.googleEventId) {
-                try {
-                  const success = await deleteGoogleCalendarEvent(
+                  await sendWhatsAppMessage(
                     conversation.consultantId,
-                    existingBookingForModification.googleEventId
+                    phoneNumber,
+                    modifyMessage,
+                    modifyMsg.id,
+                    { conversationId: conversation.id }
                   );
 
-                  if (success) {
-                    console.log('✅ [CANCEL APPOINTMENT] Google Calendar event deleted successfully');
-                  } else {
-                    console.log('⚠️ [CANCEL APPOINTMENT] Failed to delete from Google Calendar');
-                    calendarDeleteSuccess = false;
-                  }
-                } catch (gcalError: any) {
-                  console.error('⚠️ [CANCEL APPOINTMENT] Failed to delete from Google Calendar:', gcalError.message);
-                  calendarDeleteSuccess = false;
-                }
-              }
+                  console.log('✅ [MODIFY APPOINTMENT] Modification complete and confirmation sent!');
 
-              // Update database status to cancelled with lastCompletedAction
-              await db
-                .update(appointmentBookings)
-                .set({
-                  status: 'cancelled',
-                  lastCompletedAction: {
-                    type: 'CANCEL' as const,
-                    completedAt: new Date().toISOString(),
-                    triggerMessageId: conversation.id,
-                    details: {
-                      oldDate: existingBookingForModification.appointmentDate,
-                      oldTime: existingBookingForModification.appointmentTime
+                } else if (extracted.intent === 'CANCEL') {
+                  // CANCELLAZIONE APPUNTAMENTO - RICHIEDE 2 CONFERME
+                  console.log('\n🗑️ [CANCEL APPOINTMENT] Starting cancellation process...');
+
+                  // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                  if (isActionAlreadyCompleted(lastCompletedAction, 'CANCEL')) {
+                    console.log(`   ⏭️ [CANCEL APPOINTMENT] Skipping - action already completed recently`);
+                    return;
+                  }
+
+                  // ✅ CHECK CONFERME: Esegui SOLO se ha confermato 2 volte
+                  if (!extracted.confirmedTimes || extracted.confirmedTimes < 2) {
+                    console.log(`⚠️ [CANCEL APPOINTMENT] Insufficient confirmations (${extracted.confirmedTimes || 0}/2)`);
+                    console.log('   AI should continue asking for confirmation via prompt');
+                    console.log('   Skipping cancellation - waiting for 2 confirmations\n');
+                    // NON eseguire - lascia che AI continui il flusso di conferma via prompt
+                    return;
+                  }
+
+                  console.log(`✅ [CANCEL APPOINTMENT] Confirmed ${extracted.confirmedTimes} times - proceeding with cancellation`);
+
+                  // Delete from Google Calendar if exists
+                  let calendarDeleteSuccess = true;
+                  if (existingBookingForModification.googleEventId) {
+                    try {
+                      const success = await deleteGoogleCalendarEvent(
+                        conversation.consultantId,
+                        existingBookingForModification.googleEventId
+                      );
+
+                      if (success) {
+                        console.log('✅ [CANCEL APPOINTMENT] Google Calendar event deleted successfully');
+                      } else {
+                        console.log('⚠️ [CANCEL APPOINTMENT] Failed to delete from Google Calendar');
+                        calendarDeleteSuccess = false;
+                      }
+                    } catch (gcalError: any) {
+                      console.error('⚠️ [CANCEL APPOINTMENT] Failed to delete from Google Calendar:', gcalError.message);
+                      calendarDeleteSuccess = false;
                     }
                   }
-                })
-                .where(eq(appointmentBookings.id, existingBookingForModification.id));
 
-              console.log('💾 [CANCEL APPOINTMENT] Database updated with lastCompletedAction');
+                  // Update database status to cancelled with lastCompletedAction
+                  await db
+                    .update(appointmentBookings)
+                    .set({
+                      status: 'cancelled',
+                      lastCompletedAction: {
+                        type: 'CANCEL' as const,
+                        completedAt: new Date().toISOString(),
+                        triggerMessageId: conversation.id,
+                        details: {
+                          oldDate: existingBookingForModification.appointmentDate,
+                          oldTime: existingBookingForModification.appointmentTime
+                        }
+                      }
+                    })
+                    .where(eq(appointmentBookings.id, existingBookingForModification.id));
 
-              // Send confirmation message
-              const cancelMessage = calendarDeleteSuccess 
-                ? `✅ APPUNTAMENTO CANCELLATO
+                  console.log('💾 [CANCEL APPOINTMENT] Database updated with lastCompletedAction');
+
+                  // Send confirmation message
+                  const cancelMessage = calendarDeleteSuccess
+                    ? `✅ APPUNTAMENTO CANCELLATO
 
 Ho cancellato il tuo appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime}.
 
 Se in futuro vorrai riprogrammare, sarò qui per aiutarti! 😊`
-                : `⚠️ APPUNTAMENTO CANCELLATO (verifica calendario)
+                    : `⚠️ APPUNTAMENTO CANCELLATO (verifica calendario)
 
 Ho cancellato il tuo appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime} dal sistema.
 
@@ -2741,368 +2741,368 @@ Ho cancellato il tuo appuntamento del ${existingBookingForModification.appointme
 
 Se vuoi riprogrammare in futuro, scrivimi! 😊`;
 
-              const [cancelMsg] = await db
-                .insert(whatsappMessages)
-                .values({
-                  conversationId: conversation.id,
-                  messageText: cancelMessage,
-                  direction: "outbound",
-                  sender: "ai",
-                })
-                .returning();
+                  const [cancelMsg] = await db
+                    .insert(whatsappMessages)
+                    .values({
+                      conversationId: conversation.id,
+                      messageText: cancelMessage,
+                      direction: "outbound",
+                      sender: "ai",
+                    })
+                    .returning();
 
-              await sendWhatsAppMessage(
-                conversation.consultantId,
-                phoneNumber,
-                cancelMessage,
-                cancelMsg.id,
-                { conversationId: conversation.id }
-              );
-
-              console.log('✅ [CANCEL APPOINTMENT] Cancellation complete and confirmation sent!');
-
-            } else if (extracted.intent === 'ADD_ATTENDEES' && extracted.attendees && extracted.attendees.length > 0) {
-              // AGGIUNTA INVITATI - NESSUNA CONFERMA NECESSARIA
-              console.log('\n👥 [ADD ATTENDEES] Starting add attendees process...');
-
-              // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
-              const addAttendeesDetails: ActionDetails = {
-                attendees: extracted.attendees
-              };
-              if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES', addAttendeesDetails)) {
-                console.log(`   ⏭️ [ADD ATTENDEES] Skipping - same attendees already added recently`);
-                return;
-              }
-
-              console.log('   ✅ No confirmation required for adding attendees - proceeding directly');
-              console.log(`   📧 Attendees to add: ${extracted.attendees.join(', ')}`);
-
-              if (existingBookingForModification.googleEventId) {
-                try {
-                  const result = await addAttendeesToGoogleCalendarEvent(
+                  await sendWhatsAppMessage(
                     conversation.consultantId,
-                    existingBookingForModification.googleEventId,
-                    extracted.attendees
+                    phoneNumber,
+                    cancelMessage,
+                    cancelMsg.id,
+                    { conversationId: conversation.id }
                   );
 
-                  console.log(`✅ [ADD ATTENDEES] Google Calendar updated - ${result.added} added, ${result.skipped} already invited`);
+                  console.log('✅ [CANCEL APPOINTMENT] Cancellation complete and confirmation sent!');
 
-                  // Send confirmation message
-                  const addAttendeesMessage = result.added > 0
-                    ? `✅ INVITATI AGGIUNTI!
+                } else if (extracted.intent === 'ADD_ATTENDEES' && extracted.attendees && extracted.attendees.length > 0) {
+                  // AGGIUNTA INVITATI - NESSUNA CONFERMA NECESSARIA
+                  console.log('\n👥 [ADD ATTENDEES] Starting add attendees process...');
+
+                  // CHECK ANTI-DUPLICATO: Verifica se questa azione è già stata completata di recente
+                  const addAttendeesDetails: ActionDetails = {
+                    attendees: extracted.attendees
+                  };
+                  if (isActionAlreadyCompleted(lastCompletedAction, 'ADD_ATTENDEES', addAttendeesDetails)) {
+                    console.log(`   ⏭️ [ADD ATTENDEES] Skipping - same attendees already added recently`);
+                    return;
+                  }
+
+                  console.log('   ✅ No confirmation required for adding attendees - proceeding directly');
+                  console.log(`   📧 Attendees to add: ${extracted.attendees.join(', ')}`);
+
+                  if (existingBookingForModification.googleEventId) {
+                    try {
+                      const result = await addAttendeesToGoogleCalendarEvent(
+                        conversation.consultantId,
+                        existingBookingForModification.googleEventId,
+                        extracted.attendees
+                      );
+
+                      console.log(`✅ [ADD ATTENDEES] Google Calendar updated - ${result.added} added, ${result.skipped} already invited`);
+
+                      // Send confirmation message
+                      const addAttendeesMessage = result.added > 0
+                        ? `✅ INVITATI AGGIUNTI!
 
 Ho aggiunto ${result.added} ${result.added === 1 ? 'invitato' : 'invitati'} all'appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime}.
 
 ${result.skipped > 0 ? `ℹ️ ${result.skipped} ${result.skipped === 1 ? 'era già invitato' : 'erano già invitati'}.\n\n` : ''}📧 Gli inviti Google Calendar sono stati inviati automaticamente! 📬`
-                    : `ℹ️ Tutti gli invitati sono già stati aggiunti all'appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime}. 
+                        : `ℹ️ Tutti gli invitati sono già stati aggiunti all'appuntamento del ${existingBookingForModification.appointmentDate.split('-').reverse().join('/')} alle ${existingBookingForModification.appointmentTime}. 
 
 Nessuna modifica necessaria! ✅`;
 
-                  const [addMsg] = await db
-                    .insert(whatsappMessages)
-                    .values({
-                      conversationId: conversation.id,
-                      messageText: addAttendeesMessage,
-                      direction: "outbound",
-                      sender: "ai",
-                    })
-                    .returning();
+                      const [addMsg] = await db
+                        .insert(whatsappMessages)
+                        .values({
+                          conversationId: conversation.id,
+                          messageText: addAttendeesMessage,
+                          direction: "outbound",
+                          sender: "ai",
+                        })
+                        .returning();
 
-                  await sendWhatsAppMessage(
-                    conversation.consultantId,
-                    phoneNumber,
-                    addAttendeesMessage,
-                    addMsg.id,
-                    { conversationId: conversation.id }
-                  );
+                      await sendWhatsAppMessage(
+                        conversation.consultantId,
+                        phoneNumber,
+                        addAttendeesMessage,
+                        addMsg.id,
+                        { conversationId: conversation.id }
+                      );
 
-                  // Save lastCompletedAction to prevent duplicates
-                  await db
-                    .update(appointmentBookings)
-                    .set({
-                      lastCompletedAction: {
-                        type: 'ADD_ATTENDEES' as const,
-                        completedAt: new Date().toISOString(),
-                        triggerMessageId: conversation.id,
-                        details: {
-                          attendeesAdded: extracted.attendees
-                        }
+                      // Save lastCompletedAction to prevent duplicates
+                      await db
+                        .update(appointmentBookings)
+                        .set({
+                          lastCompletedAction: {
+                            type: 'ADD_ATTENDEES' as const,
+                            completedAt: new Date().toISOString(),
+                            triggerMessageId: conversation.id,
+                            details: {
+                              attendeesAdded: extracted.attendees
+                            }
+                          }
+                        })
+                        .where(eq(appointmentBookings.id, existingBookingForModification.id));
+
+                      console.log('✅ [ADD ATTENDEES] Confirmation message sent with lastCompletedAction saved!');
+
+                    } catch (gcalError: any) {
+                      console.error('⚠️ [ADD ATTENDEES] Failed to add attendees to Google Calendar');
+                      console.error(`   Event ID: ${googleEvent.googleCalendarEventId}`);
+                      console.error(`   Attendee email: ${extracted.email}`);
+                      console.error(`   Error type: ${gcalError?.name || 'Unknown'}`);
+                      console.error(`   Error message: ${gcalError?.message || gcalError}`);
+                      if (gcalError?.stack) {
+                        console.error(`   Stack trace:\n${gcalError.stack}`);
                       }
-                    })
-                    .where(eq(appointmentBookings.id, existingBookingForModification.id));
 
-                  console.log('✅ [ADD ATTENDEES] Confirmation message sent with lastCompletedAction saved!');
-
-                } catch (gcalError: any) {
-                  console.error('⚠️ [ADD ATTENDEES] Failed to add attendees to Google Calendar');
-                  console.error(`   Event ID: ${googleEvent.googleCalendarEventId}`);
-                  console.error(`   Attendee email: ${extracted.email}`);
-                  console.error(`   Error type: ${gcalError?.name || 'Unknown'}`);
-                  console.error(`   Error message: ${gcalError?.message || gcalError}`);
-                  if (gcalError?.stack) {
-                    console.error(`   Stack trace:\n${gcalError.stack}`);
-                  }
-
-                  // Send error message
-                  const errorMessage = `⚠️ Mi dispiace, ho riscontrato un errore nell'aggiungere gli invitati al calendario.
+                      // Send error message
+                      const errorMessage = `⚠️ Mi dispiace, ho riscontrato un errore nell'aggiungere gli invitati al calendario.
 
 Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
 
-                  const [errorMsg] = await db
-                    .insert(whatsappMessages)
-                    .values({
-                      conversationId: conversation.id,
-                      messageText: errorMessage,
-                      direction: "outbound",
-                      sender: "ai",
-                    })
-                    .returning();
+                      const [errorMsg] = await db
+                        .insert(whatsappMessages)
+                        .values({
+                          conversationId: conversation.id,
+                          messageText: errorMessage,
+                          direction: "outbound",
+                          sender: "ai",
+                        })
+                        .returning();
 
-                  await sendWhatsAppMessage(
-                    conversation.consultantId,
-                    phoneNumber,
-                    errorMessage,
-                    errorMsg.id,
-                    { conversationId: conversation.id }
-                  );
+                      await sendWhatsAppMessage(
+                        conversation.consultantId,
+                        phoneNumber,
+                        errorMessage,
+                        errorMsg.id,
+                        { conversationId: conversation.id }
+                      );
+                    }
+                  } else {
+                    console.log('⚠️ [ADD ATTENDEES] No Google Event ID found - cannot add attendees');
+                  }
+
+                } else {
+                  // NONE - just conversation, no action needed
+                  console.log('💬 [APPOINTMENT MANAGEMENT] No modification/cancellation/add attendees intent detected - continuing normal conversation');
                 }
-              } else {
-                console.log('⚠️ [ADD ATTENDEES] No Google Event ID found - cannot add attendees');
-              }
 
-            } else {
-              // NONE - just conversation, no action needed
-              console.log('💬 [APPOINTMENT MANAGEMENT] No modification/cancellation/add attendees intent detected - continuing normal conversation');
-            }
+              } else if (!alreadyConfirmed) {
+                // NUOVA PRENOTAZIONE - logica esistente
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('📊 [STEP 3] Data Extraction Results');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log(`🎯 Confirmation Status: ${extracted.isConfirming ? '✅ YES' : '❌ NO'}`);
+                console.log(`📅 Date:     ${extracted.date ? `✅ ${extracted.date}` : '❌ MISSING'}`);
+                console.log(`🕐 Time:     ${extracted.time ? `✅ ${extracted.time}` : '❌ MISSING'}`);
+                console.log(`📞 Phone:    ${extracted.phone ? `✅ ${extracted.phone}` : '❌ MISSING'}`);
+                console.log(`📧 Email:    ${extracted.email ? `✅ ${extracted.email}` : '❌ MISSING'}`);
+                console.log(`💯 Confidence: ${extracted.confidence.toUpperCase()}`);
+                console.log(`✔️ Complete Data: ${extracted.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-          } else if (!alreadyConfirmed) {
-            // NUOVA PRENOTAZIONE - logica esistente
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('📊 [STEP 3] Data Extraction Results');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log(`🎯 Confirmation Status: ${extracted.isConfirming ? '✅ YES' : '❌ NO'}`);
-            console.log(`📅 Date:     ${extracted.date ? `✅ ${extracted.date}` : '❌ MISSING'}`);
-            console.log(`🕐 Time:     ${extracted.time ? `✅ ${extracted.time}` : '❌ MISSING'}`);
-            console.log(`📞 Phone:    ${extracted.phone ? `✅ ${extracted.phone}` : '❌ MISSING'}`);
-            console.log(`📧 Email:    ${extracted.email ? `✅ ${extracted.email}` : '❌ MISSING'}`);
-            console.log(`💯 Confidence: ${extracted.confidence.toUpperCase()}`);
-            console.log(`✔️ Complete Data: ${extracted.hasAllData ? '✅ YES - Ready to book!' : '❌ NO - Missing fields'}`);
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+                // VALIDAZIONE 1: Check che abbiamo tutti i dati
+                if (extracted.hasAllData && extracted.date && extracted.time && extracted.phone && extracted.email) {
 
-          // VALIDAZIONE 1: Check che abbiamo tutti i dati
-          if (extracted.hasAllData && extracted.date && extracted.time && extracted.phone && extracted.email) {
+                  // VALIDAZIONE 2: Check che la data sia >= oggi
+                  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                  console.log('🔍 [STEP 4] Validating Appointment Date');
+                  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-            // VALIDAZIONE 2: Check che la data sia >= oggi
-            console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('🔍 [STEP 4] Validating Appointment Date');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                  const appointmentDate = new Date(extracted.date);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0); // Reset ore per confronto solo data
+                  appointmentDate.setHours(0, 0, 0, 0); // Reset ore anche per data appuntamento
 
-            const appointmentDate = new Date(extracted.date);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); // Reset ore per confronto solo data
-            appointmentDate.setHours(0, 0, 0, 0); // Reset ore anche per data appuntamento
+                  console.log(`📅 Appointment date: ${extracted.date} (${appointmentDate.toLocaleDateString('it-IT')})`);
+                  console.log(`📅 Today's date: ${today.toISOString().split('T')[0]} (${today.toLocaleDateString('it-IT')})`);
 
-            console.log(`📅 Appointment date: ${extracted.date} (${appointmentDate.toLocaleDateString('it-IT')})`);
-            console.log(`📅 Today's date: ${today.toISOString().split('T')[0]} (${today.toLocaleDateString('it-IT')})`);
+                  if (appointmentDate < today) {
+                    console.log(`\n❌ VALIDATION FAILED: Date is in the past!`);
+                    console.log(`   ⏰ ${Math.abs(Math.floor((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))} days ago`);
+                    console.log(`   🚫 Appointment REJECTED - will not be created`);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-            if (appointmentDate < today) {
-              console.log(`\n❌ VALIDATION FAILED: Date is in the past!`);
-              console.log(`   ⏰ ${Math.abs(Math.floor((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))} days ago`);
-              console.log(`   🚫 Appointment REJECTED - will not be created`);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-              // Invia messaggio WhatsApp automatico che informa l'errore
-              const errorMessage = `⚠️ Mi dispiace, ma la data ${extracted.date.split('-').reverse().join('/')} è nel passato. 
+                    // Invia messaggio WhatsApp automatico che informa l'errore
+                    const errorMessage = `⚠️ Mi dispiace, ma la data ${extracted.date.split('-').reverse().join('/')} è nel passato. 
 
 Oggi è ${new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}.
 
 Per favore scegli una data futura tra quelle che ti ho proposto. 😊`;
 
-              const [errorMsg] = await db
-                .insert(whatsappMessages)
-                .values({
-                  conversationId: conversation.id,
-                  messageText: errorMessage,
-                  direction: "outbound",
-                  sender: "ai",
-                })
-                .returning();
+                    const [errorMsg] = await db
+                      .insert(whatsappMessages)
+                      .values({
+                        conversationId: conversation.id,
+                        messageText: errorMessage,
+                        direction: "outbound",
+                        sender: "ai",
+                      })
+                      .returning();
 
-              await sendWhatsAppMessage(
-                conversation.consultantId,
-                phoneNumber,
-                errorMessage,
-                errorMsg.id,
-                { conversationId: conversation.id }
-              );
+                    await sendWhatsAppMessage(
+                      conversation.consultantId,
+                      phoneNumber,
+                      errorMessage,
+                      errorMsg.id,
+                      { conversationId: conversation.id }
+                    );
 
-              console.log(`📤 [APPOINTMENT BOOKING] Inviato messaggio di errore al lead`);
-            } else {
-              // VALIDAZIONE 3: Tutti i check passati - procedi con booking
-              const daysFromNow = Math.floor((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-              console.log(`\n✅ VALIDATION PASSED: Date is valid!`);
-              console.log(`   📆 ${daysFromNow === 0 ? 'Today' : daysFromNow === 1 ? 'Tomorrow' : `In ${daysFromNow} days`}`);
-              console.log(`   🎯 Proceeding to create appointment...`);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+                    console.log(`📤 [APPOINTMENT BOOKING] Inviato messaggio di errore al lead`);
+                  } else {
+                    // VALIDAZIONE 3: Tutti i check passati - procedi con booking
+                    const daysFromNow = Math.floor((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    console.log(`\n✅ VALIDATION PASSED: Date is valid!`);
+                    console.log(`   📆 ${daysFromNow === 0 ? 'Today' : daysFromNow === 1 ? 'Tomorrow' : `In ${daysFromNow} days`}`);
+                    console.log(`   🎯 Proceeding to create appointment...`);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-              console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('💾 [STEP 5] Creating Appointment Booking');
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log(`📅 Date: ${extracted.date}`);
-              console.log(`🕐 Time: ${extracted.time}`);
-              console.log(`📞 Phone: ${extracted.phone}`);
-              console.log(`📧 Email: ${extracted.email}`);
+                    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('💾 [STEP 5] Creating Appointment Booking');
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log(`📅 Date: ${extracted.date}`);
+                    console.log(`🕐 Time: ${extracted.time}`);
+                    console.log(`📞 Phone: ${extracted.phone}`);
+                    console.log(`📧 Email: ${extracted.email}`);
 
-            // Get consultant availability settings for duration and timezone
-            const [settings] = await db
-              .select()
-              .from(consultantAvailabilitySettings)
-              .where(eq(consultantAvailabilitySettings.consultantId, conversation.consultantId))
-              .limit(1);
+                    // Get consultant availability settings for duration and timezone
+                    const [settings] = await db
+                      .select()
+                      .from(consultantAvailabilitySettings)
+                      .where(eq(consultantAvailabilitySettings.consultantId, conversation.consultantId))
+                      .limit(1);
 
-            const duration = settings?.appointmentDuration || 60;
-            const timezone = settings?.timezone || "Europe/Rome";
+                    const duration = settings?.appointmentDuration || 60;
+                    const timezone = settings?.timezone || "Europe/Rome";
 
-            console.log(`\n📊 [APPOINTMENT DURATION] Configurazione durata appuntamento:`);
-            console.log(`   ⚙️ appointmentDuration dal DB: ${settings?.appointmentDuration} minuti`);
-            console.log(`   ✅ Durata finale utilizzata: ${duration} minuti`);
-            console.log(`   🌍 Timezone: ${timezone}`);
+                    console.log(`\n📊 [APPOINTMENT DURATION] Configurazione durata appuntamento:`);
+                    console.log(`   ⚙️ appointmentDuration dal DB: ${settings?.appointmentDuration} minuti`);
+                    console.log(`   ✅ Durata finale utilizzata: ${duration} minuti`);
+                    console.log(`   🌍 Timezone: ${timezone}`);
 
-            // FIX TIMEZONE BUG: Create appointment datetime correctly in consultant's timezone
-            // Instead of using Date object (which can be ambiguous), we'll work with strings
-            // and let Google Calendar interpret them correctly in the specified timezone
-            const dateTimeString = `${extracted.date}T${extracted.time}:00`;
+                    // FIX TIMEZONE BUG: Create appointment datetime correctly in consultant's timezone
+                    // Instead of using Date object (which can be ambiguous), we'll work with strings
+                    // and let Google Calendar interpret them correctly in the specified timezone
+                    const dateTimeString = `${extracted.date}T${extracted.time}:00`;
 
-            // For display purposes, create a Date object in the consultant's timezone
-            // Using toLocaleString to ensure correct interpretation
-            const tempDate = new Date(dateTimeString);
-            const tzFormatter = new Intl.DateTimeFormat('en-US', {
-              timeZone: timezone,
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: false
-            });
+                    // For display purposes, create a Date object in the consultant's timezone
+                    // Using toLocaleString to ensure correct interpretation
+                    const tempDate = new Date(dateTimeString);
+                    const tzFormatter = new Intl.DateTimeFormat('en-US', {
+                      timeZone: timezone,
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: false
+                    });
 
-            console.log(`\n⏰ [TIME CALCULATION] Calcolo orari appuntamento:`);
-            console.log(`   📅 Data appuntamento: ${extracted.date}`);
-            console.log(`   🕐 Ora inizio: ${extracted.time}`);
-            console.log(`   ⏱️ Durata: ${duration} minuti`);
-            console.log(`   🌍 Timezone: ${timezone}`);
-            console.log(`   📍 DateTime String: ${dateTimeString}`);
-            console.log(`   ⏰ Formatted in ${timezone}: ${tzFormatter.format(tempDate)}`);
+                    console.log(`\n⏰ [TIME CALCULATION] Calcolo orari appuntamento:`);
+                    console.log(`   📅 Data appuntamento: ${extracted.date}`);
+                    console.log(`   🕐 Ora inizio: ${extracted.time}`);
+                    console.log(`   ⏱️ Durata: ${duration} minuti`);
+                    console.log(`   🌍 Timezone: ${timezone}`);
+                    console.log(`   📍 DateTime String: ${dateTimeString}`);
+                    console.log(`   ⏰ Formatted in ${timezone}: ${tzFormatter.format(tempDate)}`);
 
-            // Calculate end time by adding minutes to the start time string
-            // This avoids timezone conversion issues with Date objects
-            // FIX: Handle appointments that cross midnight correctly
-            const [startHour, startMinute] = extracted.time.split(':').map(Number);
-            const totalMinutes = startHour * 60 + startMinute + duration;
-            const endHourRaw = Math.floor(totalMinutes / 60);
-            const endMinute = totalMinutes % 60;
-            const endHour = endHourRaw % 24; // Wrap to 24-hour format
-            const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+                    // Calculate end time by adding minutes to the start time string
+                    // This avoids timezone conversion issues with Date objects
+                    // FIX: Handle appointments that cross midnight correctly
+                    const [startHour, startMinute] = extracted.time.split(':').map(Number);
+                    const totalMinutes = startHour * 60 + startMinute + duration;
+                    const endHourRaw = Math.floor(totalMinutes / 60);
+                    const endMinute = totalMinutes % 60;
+                    const endHour = endHourRaw % 24; // Wrap to 24-hour format
+                    const formattedEndTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
 
-            // Check if appointment crosses midnight
-            const crossesMidnight = endHourRaw >= 24;
-            if (crossesMidnight) {
-              console.log(`   🌙 [MIDNIGHT CROSS] Appointment crosses midnight (${extracted.time} + ${duration}min = next day ${formattedEndTime})`);
-            }
+                    // Check if appointment crosses midnight
+                    const crossesMidnight = endHourRaw >= 24;
+                    if (crossesMidnight) {
+                      console.log(`   🌙 [MIDNIGHT CROSS] Appointment crosses midnight (${extracted.time} + ${duration}min = next day ${formattedEndTime})`);
+                    }
 
-            const [booking] = await db
-              .insert(appointmentBookings)
-              .values({
-                consultantId: conversation.consultantId,
-                conversationId: conversation.id,
-                clientPhone: extracted.phone,
-                clientEmail: extracted.email,
-                appointmentDate: extracted.date,
-                appointmentTime: extracted.time,
-                appointmentEndTime: formattedEndTime,
-                status: 'confirmed',
-                confirmedAt: new Date(),
-              })
-              .returning();
+                    const [booking] = await db
+                      .insert(appointmentBookings)
+                      .values({
+                        consultantId: conversation.consultantId,
+                        conversationId: conversation.id,
+                        clientPhone: extracted.phone,
+                        clientEmail: extracted.email,
+                        appointmentDate: extracted.date,
+                        appointmentTime: extracted.time,
+                        appointmentEndTime: formattedEndTime,
+                        status: 'confirmed',
+                        confirmedAt: new Date(),
+                      })
+                      .returning();
 
-            console.log(`\n✅ Database booking created successfully!`);
-            console.log(`   🆔 Booking ID: ${booking.id}`);
-            console.log(`   📅 Date: ${booking.appointmentDate}`);
-            console.log(`   🕐 Time: ${booking.appointmentTime} - ${formattedEndTime}`);
-            console.log(`   📞 Phone: ${booking.clientPhone}`);
-            console.log(`   📧 Email: ${booking.clientEmail}`);
-            console.log(`   ✅ Status: ${booking.status}`);
+                    console.log(`\n✅ Database booking created successfully!`);
+                    console.log(`   🆔 Booking ID: ${booking.id}`);
+                    console.log(`   📅 Date: ${booking.appointmentDate}`);
+                    console.log(`   🕐 Time: ${booking.appointmentTime} - ${formattedEndTime}`);
+                    console.log(`   📞 Phone: ${booking.clientPhone}`);
+                    console.log(`   📧 Email: ${booking.clientEmail}`);
+                    console.log(`   ✅ Status: ${booking.status}`);
 
-            // Auto-conversion tracking for proactive leads
-            if (conversation.isProactiveLead && conversation.proactiveLeadId) {
-              try {
-                const [updatedLead] = await db
-                  .update(proactiveLeads)
-                  .set({
-                    status: 'converted',
-                    updatedAt: new Date(),
-                    metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify({
-                      convertedAt: new Date().toISOString(),
-                      appointmentBookingId: booking.id,
-                      convertedVia: 'whatsapp_appointment'
-                    })}::jsonb`
-                  })
-                  .where(eq(proactiveLeads.id, conversation.proactiveLeadId))
-                  .returning();
+                    // Auto-conversion tracking for proactive leads
+                    if (conversation.isProactiveLead && conversation.proactiveLeadId) {
+                      try {
+                        const [updatedLead] = await db
+                          .update(proactiveLeads)
+                          .set({
+                            status: 'converted',
+                            updatedAt: new Date(),
+                            metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify({
+                              convertedAt: new Date().toISOString(),
+                              appointmentBookingId: booking.id,
+                              convertedVia: 'whatsapp_appointment'
+                            })}::jsonb`
+                          })
+                          .where(eq(proactiveLeads.id, conversation.proactiveLeadId))
+                          .returning();
 
-                if (updatedLead) {
-                  console.log(`\n🎯 [PROACTIVE CONVERSION] Lead ${conversation.proactiveLeadId} auto-converted to status='converted'`);
-                  console.log(`   📅 Converted at: ${new Date().toISOString()}`);
-                  console.log(`   🆔 Appointment ID: ${booking.id}`);
-                  console.log(`   ✅ Metadata updated with conversion tracking`);
-                } else {
-                  console.warn(`⚠️ [PROACTIVE CONVERSION] Lead ${conversation.proactiveLeadId} not found or already converted`);
-                }
-              } catch (error: any) {
-                console.error(`❌ [PROACTIVE CONVERSION] Failed to update lead status: ${error.message}`);
-              }
-            }
+                        if (updatedLead) {
+                          console.log(`\n🎯 [PROACTIVE CONVERSION] Lead ${conversation.proactiveLeadId} auto-converted to status='converted'`);
+                          console.log(`   📅 Converted at: ${new Date().toISOString()}`);
+                          console.log(`   🆔 Appointment ID: ${booking.id}`);
+                          console.log(`   ✅ Metadata updated with conversion tracking`);
+                        } else {
+                          console.warn(`⚠️ [PROACTIVE CONVERSION] Lead ${conversation.proactiveLeadId} not found or already converted`);
+                        }
+                      } catch (error: any) {
+                        console.error(`❌ [PROACTIVE CONVERSION] Failed to update lead status: ${error.message}`);
+                      }
+                    }
 
-            // Push to Google Calendar WITH EMAIL
-            // FIX: Pass date/time as strings with duration and timezone to avoid UTC confusion
-            try {
-              const googleEvent = await createGoogleCalendarEvent(
-                conversation.consultantId,
-                {
-                  summary: `Consulenza - ${extracted.email}`,
-                  description: `Lead da WhatsApp\nTelefono: ${extracted.phone}\nEmail: ${extracted.email}\n\nConversation ID: ${conversation.id}`,
-                  startDate: extracted.date,
-                  startTime: extracted.time,
-                  duration: duration,
-                  timezone: timezone,
-                  attendees: [extracted.email], // Add client email as attendee
-                }
-              );
+                    // Push to Google Calendar WITH EMAIL
+                    // FIX: Pass date/time as strings with duration and timezone to avoid UTC confusion
+                    try {
+                      const googleEvent = await createGoogleCalendarEvent(
+                        conversation.consultantId,
+                        {
+                          summary: `Consulenza - ${extracted.email}`,
+                          description: `Lead da WhatsApp\nTelefono: ${extracted.phone}\nEmail: ${extracted.email}\n\nConversation ID: ${conversation.id}`,
+                          startDate: extracted.date,
+                          startTime: extracted.time,
+                          duration: duration,
+                          timezone: timezone,
+                          attendees: [extracted.email], // Add client email as attendee
+                        }
+                      );
 
-              // Update booking with Google Event ID
-              await db
-                .update(appointmentBookings)
-                .set({ googleEventId: googleEvent.googleEventId })
-                .where(eq(appointmentBookings.id, booking.id));
+                      // Update booking with Google Event ID
+                      await db
+                        .update(appointmentBookings)
+                        .set({ googleEventId: googleEvent.googleEventId })
+                        .where(eq(appointmentBookings.id, booking.id));
 
-              console.log(`\n💾 Database updated with Google Calendar Event ID`);
-              console.log(`   🆔 Google Event ID: ${googleEvent.googleEventId}`);
+                      console.log(`\n💾 Database updated with Google Calendar Event ID`);
+                      console.log(`   🆔 Google Event ID: ${googleEvent.googleEventId}`);
 
-              // Send automatic confirmation message with Google Meet link
-              // Format appointment date using correct timezone
-              const dateFormatter = new Intl.DateTimeFormat('it-IT', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                timeZone: timezone
-              });
-              // Create a Date object for formatting (will be interpreted in the specified timezone)
-              const appointmentDateObj = new Date(`${extracted.date}T${extracted.time}:00`);
-              const formattedDate = dateFormatter.format(appointmentDateObj);
+                      // Send automatic confirmation message with Google Meet link
+                      // Format appointment date using correct timezone
+                      const dateFormatter = new Intl.DateTimeFormat('it-IT', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        timeZone: timezone
+                      });
+                      // Create a Date object for formatting (will be interpreted in the specified timezone)
+                      const appointmentDateObj = new Date(`${extracted.date}T${extracted.time}:00`);
+                      const formattedDate = dateFormatter.format(appointmentDateObj);
 
-              const confirmationMessage = `✅ APPUNTAMENTO CONFERMATO!
+                      const confirmationMessage = `✅ APPUNTAMENTO CONFERMATO!
 
 📅 Data: ${formattedDate}
 🕐 Orario: ${extracted.time}
@@ -3115,58 +3115,58 @@ ${googleEvent.googleMeetLink ? `\n🎥 Link Google Meet: ${googleEvent.googleMee
 
 Ci vediamo online! 🚀`;
 
-              const [confirmMsg] = await db
-                .insert(whatsappMessages)
-                .values({
-                  conversationId: conversation.id,
-                  messageText: confirmationMessage,
-                  direction: "outbound",
-                  sender: "ai",
-                })
-                .returning();
+                      const [confirmMsg] = await db
+                        .insert(whatsappMessages)
+                        .values({
+                          conversationId: conversation.id,
+                          messageText: confirmationMessage,
+                          direction: "outbound",
+                          sender: "ai",
+                        })
+                        .returning();
 
-              await sendWhatsAppMessage(
-                conversation.consultantId,
-                phoneNumber,
-                confirmationMessage,
-                confirmMsg.id,
-                { conversationId: conversation.id }
-              );
+                      await sendWhatsAppMessage(
+                        conversation.consultantId,
+                        phoneNumber,
+                        confirmationMessage,
+                        confirmMsg.id,
+                        { conversationId: conversation.id }
+                      );
 
-              console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log('✅ [STEP 6] Appointment Confirmation Complete!');
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.log(`🎉 APPOINTMENT SUCCESSFULLY BOOKED!`);
-              console.log(`\n📋 Summary:`);
-              console.log(`   👤 Lead: ${extracted.email} (${extracted.phone})`);
-              console.log(`   📅 Date: ${formattedDate}`);
-              console.log(`   🕐 Time: ${extracted.time} (${duration} min)`);
-              console.log(`   💾 Booking ID: ${booking.id}`);
-              console.log(`   📅 Google Event: ${googleEvent.googleEventId}`);
-              console.log(`   🎥 Meet Link: ${googleEvent.googleMeetLink ? '✅ Generated' : '❌ Not available'}`);
-              console.log(`   📧 Calendar Invite: ✅ Sent to ${extracted.email}`);
-              console.log(`   📱 WhatsApp Confirmation: ✅ Sent to ${phoneNumber}`);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+                      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                      console.log('✅ [STEP 6] Appointment Confirmation Complete!');
+                      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                      console.log(`🎉 APPOINTMENT SUCCESSFULLY BOOKED!`);
+                      console.log(`\n📋 Summary:`);
+                      console.log(`   👤 Lead: ${extracted.email} (${extracted.phone})`);
+                      console.log(`   📅 Date: ${formattedDate}`);
+                      console.log(`   🕐 Time: ${extracted.time} (${duration} min)`);
+                      console.log(`   💾 Booking ID: ${booking.id}`);
+                      console.log(`   📅 Google Event: ${googleEvent.googleEventId}`);
+                      console.log(`   🎥 Meet Link: ${googleEvent.googleMeetLink ? '✅ Generated' : '❌ Not available'}`);
+                      console.log(`   📧 Calendar Invite: ✅ Sent to ${extracted.email}`);
+                      console.log(`   📱 WhatsApp Confirmation: ✅ Sent to ${phoneNumber}`);
+                      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-            } catch (gcalError: any) {
-              console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.error('⚠️ [GOOGLE CALENDAR] Failed to create calendar event');
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-              console.error(`   Consultant ID: ${conversation.consultantId}`);
-              console.error(`   Booking ID: ${booking.id}`);
-              console.error(`   Scheduled time: ${slotDateTime.toISOString()}`);
-              console.error(`   Attendee email: ${extracted.email}`);
-              console.error(`   Error type: ${gcalError?.name || 'Unknown'}`);
-              console.error(`   Error message: ${gcalError?.message || gcalError}`);
-              if (gcalError?.stack) {
-                console.error(`   Stack trace:\n${gcalError.stack}`);
-              }
-              console.log(`   💾 Booking still saved in database (ID: ${booking.id})`);
-              console.log(`   📱 Sending basic confirmation to lead...`);
-              console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+                    } catch (gcalError: any) {
+                      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                      console.error('⚠️ [GOOGLE CALENDAR] Failed to create calendar event');
+                      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                      console.error(`   Consultant ID: ${conversation.consultantId}`);
+                      console.error(`   Booking ID: ${booking.id}`);
+                      console.error(`   Scheduled time: ${slotDateTime.toISOString()}`);
+                      console.error(`   Attendee email: ${extracted.email}`);
+                      console.error(`   Error type: ${gcalError?.name || 'Unknown'}`);
+                      console.error(`   Error message: ${gcalError?.message || gcalError}`);
+                      if (gcalError?.stack) {
+                        console.error(`   Stack trace:\n${gcalError.stack}`);
+                      }
+                      console.log(`   💾 Booking still saved in database (ID: ${booking.id})`);
+                      console.log(`   📱 Sending basic confirmation to lead...`);
+                      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-              // Even without Google Calendar, send basic confirmation
-              const basicConfirmation = `✅ APPUNTAMENTO CONFERMATO!
+                      // Even without Google Calendar, send basic confirmation
+                      const basicConfirmation = `✅ APPUNTAMENTO CONFERMATO!
 
 📅 Data: ${extracted.date.split('-').reverse().join('/')}
 🕐 Orario: ${extracted.time}
@@ -3174,57 +3174,57 @@ Ci vediamo online! 🚀`;
 
 Il tuo appuntamento è stato registrato. Ti contatteremo presto con i dettagli del link per la videocall. A presto! 🚀`;
 
-              const [confirmMsg] = await db
-                .insert(whatsappMessages)
-                .values({
-                  conversationId: conversation.id,
-                  messageText: basicConfirmation,
-                  direction: "outbound",
-                  sender: "ai",
-                })
-                .returning();
+                      const [confirmMsg] = await db
+                        .insert(whatsappMessages)
+                        .values({
+                          conversationId: conversation.id,
+                          messageText: basicConfirmation,
+                          direction: "outbound",
+                          sender: "ai",
+                        })
+                        .returning();
 
-              await sendWhatsAppMessage(
-                conversation.consultantId,
-                phoneNumber,
-                basicConfirmation,
-                confirmMsg.id,
-                { conversationId: conversation.id }
-              );
+                      await sendWhatsAppMessage(
+                        conversation.consultantId,
+                        phoneNumber,
+                        basicConfirmation,
+                        confirmMsg.id,
+                        { conversationId: conversation.id }
+                      );
+                    }
+
+                    // MARK SLOTS AS USED: Update database to mark slots as used
+                    await db
+                      .update(proposedAppointmentSlots)
+                      .set({ usedForBooking: true })
+                      .where(eq(proposedAppointmentSlots.conversationId, conversation.id));
+
+                    console.log(`💾 [APPOINTMENT BOOKING] Marked proposed slots as used`);
+                  } // Chiusura else block validazione data
+                } else if (extracted.isConfirming && !extracted.hasAllData) {
+                  // Lead is confirming but missing some data - AI should ask for missing info
+                  const missingData = [];
+                  if (!extracted.date || !extracted.time) missingData.push('data/ora');
+                  if (!extracted.phone) missingData.push('telefono');
+                  if (!extracted.email) missingData.push('email');
+
+                  console.log(`⚠️ [APPOINTMENT BOOKING] Lead is confirming but missing data: ${missingData.join(', ')}`);
+                  console.log(`📋 [APPOINTMENT BOOKING] Current data - Date: ${extracted.date || 'MISSING'}, Time: ${extracted.time || 'MISSING'}, Phone: ${extracted.phone || 'MISSING'}, Email: ${extracted.email || 'MISSING'}`);
+                } else {
+                  console.log(`ℹ️ [APPOINTMENT BOOKING] Lead is not confirming appointment yet - continue conversation`);
+                }
+              } // Close if (jsonMatch)
+            } // Close try block
+          } catch (extractError: any) {
+            console.error('❌ [APPOINTMENT BOOKING] Error extracting appointment details');
+            console.error(`   Error type: ${extractError?.name || 'Unknown'}`);
+            console.error(`   Error message: ${extractError?.message || extractError}`);
+            if (extractError?.stack) {
+              console.error(`   Stack trace:\n${extractError.stack}`);
             }
-
-              // MARK SLOTS AS USED: Update database to mark slots as used
-              await db
-                .update(proposedAppointmentSlots)
-                .set({ usedForBooking: true })
-                .where(eq(proposedAppointmentSlots.conversationId, conversation.id));
-
-              console.log(`💾 [APPOINTMENT BOOKING] Marked proposed slots as used`);
-            } // Chiusura else block validazione data
-          } else if (extracted.isConfirming && !extracted.hasAllData) {
-            // Lead is confirming but missing some data - AI should ask for missing info
-            const missingData = [];
-            if (!extracted.date || !extracted.time) missingData.push('data/ora');
-            if (!extracted.phone) missingData.push('telefono');
-            if (!extracted.email) missingData.push('email');
-
-            console.log(`⚠️ [APPOINTMENT BOOKING] Lead is confirming but missing data: ${missingData.join(', ')}`);
-            console.log(`📋 [APPOINTMENT BOOKING] Current data - Date: ${extracted.date || 'MISSING'}, Time: ${extracted.time || 'MISSING'}, Phone: ${extracted.phone || 'MISSING'}, Email: ${extracted.email || 'MISSING'}`);
-          } else {
-            console.log(`ℹ️ [APPOINTMENT BOOKING] Lead is not confirming appointment yet - continue conversation`);
+            // Continue processing - this is not a critical error
           }
-        } // Close if (jsonMatch)
-      } // Close try block
-    } catch (extractError: any) {
-      console.error('❌ [APPOINTMENT BOOKING] Error extracting appointment details');
-      console.error(`   Error type: ${extractError?.name || 'Unknown'}`);
-      console.error(`   Error message: ${extractError?.message || extractError}`);
-      if (extractError?.stack) {
-        console.error(`   Stack trace:\n${extractError.stack}`);
-      }
-      // Continue processing - this is not a critical error
-    }
-      } // Close else block for shouldAnalyze pre-check
+        } // Close else block for shouldAnalyze pre-check
       } // Close if ((!alreadyConfirmed && retrievedSlots && retrievedSlots.length > 0) || alreadyConfirmed)
     } // Close if (consultantConfig?.bookingEnabled !== false && !effectiveUserId)
     else if (consultantConfig?.bookingEnabled === false) {
@@ -3257,20 +3257,20 @@ Il tuo appuntamento è stato registrato. Ti contatteremo presto con i dettagli d
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // Calculate individual timings
-    const contextBuildTime = timings.contextBuildEnd > 0 
-      ? Math.round(timings.contextBuildEnd - timings.contextBuildStart) 
+    const contextBuildTime = timings.contextBuildEnd > 0
+      ? Math.round(timings.contextBuildEnd - timings.contextBuildStart)
       : 0;
-    const appointmentFetchTime = timings.appointmentFetchEnd > 0 
-      ? Math.round(timings.appointmentFetchEnd - timings.appointmentFetchStart) 
+    const appointmentFetchTime = timings.appointmentFetchEnd > 0
+      ? Math.round(timings.appointmentFetchEnd - timings.appointmentFetchStart)
       : 0;
-    const objectionDetectionTime = timings.objectionDetectionEnd > 0 
-      ? Math.round(timings.objectionDetectionEnd - timings.objectionDetectionStart) 
+    const objectionDetectionTime = timings.objectionDetectionEnd > 0
+      ? Math.round(timings.objectionDetectionEnd - timings.objectionDetectionStart)
       : 0;
-    const promptBuildTime = timings.promptBuildEnd > 0 
-      ? Math.round(timings.promptBuildEnd - timings.promptBuildStart) 
+    const promptBuildTime = timings.promptBuildEnd > 0
+      ? Math.round(timings.promptBuildEnd - timings.promptBuildStart)
       : 0;
-    const geminiCallTime = timings.geminiCallEnd > 0 
-      ? Math.round(timings.geminiCallEnd - timings.geminiCallStart) 
+    const geminiCallTime = timings.geminiCallEnd > 0
+      ? Math.round(timings.geminiCallEnd - timings.geminiCallStart)
       : 0;
 
     // Calculate percentages
@@ -3355,7 +3355,7 @@ Il tuo appuntamento è stato registrato. Ti contatteremo presto con i dettagli d
                   errorAt: new Date().toISOString(),
                 },
               })
-              .onConflictDoNothing({ target: whatsappMessages.twilioSid });
+                .onConflictDoNothing({ target: whatsappMessages.twilioSid });
             } catch (insertError) {
               console.error(`⚠️ [ERROR RECOVERY] Failed to save message ${msg.twilioSid}:`, insertError);
             }
@@ -3364,7 +3364,7 @@ Il tuo appuntamento è stato registrato. Ti contatteremo presto con i dettagli d
           // Mark all pending messages as processed with error info
           await db
             .update(whatsappPendingMessages)
-            .set({ 
+            .set({
               processedAt: new Date(),
               metadata: sql`COALESCE(metadata, '{}'::jsonb) || ${JSON.stringify({
                 processingFailed: true,
@@ -3418,7 +3418,7 @@ async function selectWhatsAppAIProvider(conversation: any): Promise<
     .from(users)
     .where(eq(users.id, conversation.consultantId))
     .limit(1);
-  
+
   if (consultant?.useSuperadminVertex) {
     // Check consultant_vertex_access (default = true if no record exists)
     const [accessRecord] = await db
@@ -3426,9 +3426,9 @@ async function selectWhatsAppAIProvider(conversation: any): Promise<
       .from(consultantVertexAccess)
       .where(eq(consultantVertexAccess.consultantId, conversation.consultantId))
       .limit(1);
-    
+
     const hasAccess = accessRecord?.hasAccess ?? true;
-    
+
     if (hasAccess) {
       // Get SuperAdmin Vertex config
       const [superadminConfig] = await db
@@ -3436,11 +3436,11 @@ async function selectWhatsAppAIProvider(conversation: any): Promise<
         .from(superadminVertexConfig)
         .where(eq(superadminVertexConfig.enabled, true))
         .limit(1);
-      
+
       if (superadminConfig) {
         try {
           const credentials = await parseServiceAccountJson(superadminConfig.serviceAccountJson);
-          
+
           if (credentials) {
             console.log(`✅ Using SuperAdmin Vertex AI for WhatsApp`);
             return {
@@ -3457,7 +3457,7 @@ async function selectWhatsAppAIProvider(conversation: any): Promise<
       }
     }
   }
-  
+
   // 2. Fallback: Check consultant's own vertexAiSettings
   const [consultantVertexSettings] = await db
     .select()
@@ -3532,7 +3532,7 @@ async function selectApiKey(conversation: any, excludeKeyId?: string): Promise<{
       console.log(`✅ Source: CLIENT personal API key pool`);
       console.log(`   📊 Key rotation: #${currentIndex + 1}/${user.geminiApiKeys.length}`);
       console.log(`   ➡️ Next key will be #${nextIndex + 1}`);
-      return { 
+      return {
         apiKey: user.geminiApiKeys[currentIndex],
         keyId: `client-key-${currentIndex}`
       };
@@ -3834,8 +3834,8 @@ Non mescolare stili diversi - sii coerente dal primo all'ultimo messaggio.
 
 async function buildLeadSystemPrompt(
   consultantConfig?: any,
-  clientProfile?: { 
-    difficultyScore: number; 
+  clientProfile?: {
+    difficultyScore: number;
     totalObjections: number;
     profileType: 'easy' | 'neutral' | 'difficult';
     escalationRequired: boolean;
@@ -3870,7 +3870,7 @@ async function buildLeadSystemPrompt(
         .from(whatsappAgentKnowledgeItems)
         .where(eq(whatsappAgentKnowledgeItems.agentConfigId, consultantConfig.id))
         .orderBy(asc(whatsappAgentKnowledgeItems.order), asc(whatsappAgentKnowledgeItems.createdAt));
-      
+
       if (knowledgeItems.length > 0) {
         console.log(`📚 [KNOWLEDGE BASE] Loaded ${knowledgeItems.length} knowledge items for agent ${consultantConfig.id}`);
       }
@@ -3898,16 +3898,16 @@ Hai accesso ai seguenti documenti e informazioni aziendali.
 Usa queste informazioni per rispondere con precisione alle domande dei lead.
 
 ${knowledgeItems.map((item, index) => {
-  const typeEmoji = item.type === 'text' ? '📝' : item.type === 'pdf' ? '📄' : item.type === 'docx' ? '📄' : '📄';
-  const typeLabel = item.type.toUpperCase();
-  return `
+      const typeEmoji = item.type === 'text' ? '📝' : item.type === 'pdf' ? '📄' : item.type === 'docx' ? '📄' : '📄';
+      const typeLabel = item.type.toUpperCase();
+      return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${typeEmoji} DOCUMENTO ${index + 1}: "${item.title}" (Tipo: ${typeLabel})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ${item.content}
 `;
-}).join('\n')}
+    }).join('\n')}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ IMPORTANTE: Quando rispondi basandoti su questi documenti,
@@ -3974,7 +3974,7 @@ Esempio: "Secondo il documento 'Listino Prezzi 2024'..."
     // Build business positioning header based on businessHeaderMode
     let businessHeader = '';
     const headerMode = consultantConfig?.businessHeaderMode || 'assistant';
-    
+
     switch (headerMode) {
       case 'assistant':
         // Default: AI è l'assistente del consulente
@@ -3988,28 +3988,28 @@ Il tuo approccio è CONSULENZIALE, non pushy. Sei un esperto che ASCOLTA e AIUTA
 ${businessDescription}
 ${consultantBio ? `\n\nIl consulente: ${consultantBio}` : ''}`;
         break;
-      
+
       case 'direct_consultant':
         // AI è il consulente stesso
         businessHeader = `Sei ${consultantConfig.consultantDisplayName || businessName}, consulente specializzato in ${businessDescription || 'supporto ai clienti'}.`;
         break;
-      
+
       case 'direct_professional':
         // AI è un professionista specifico (es: insegnante, coach)
         const roleName = consultantConfig.professionalRole || 'professionista';
         businessHeader = `Sei ${consultantConfig.consultantDisplayName || consultantConfig.businessName || 'il professionista'}, ${roleName}.`;
         break;
-      
+
       case 'custom':
         // Header completamente personalizzato dall'utente
         businessHeader = consultantConfig.customBusinessHeader || '';
         break;
-      
+
       case 'none':
         // Nessun header - il template custom ha controllo totale
         businessHeader = '';
         break;
-      
+
       default:
         // Fallback al comportamento default
         businessHeader = `Sei l'assistente WhatsApp AI di ${businessName}.`;
@@ -4057,13 +4057,13 @@ ${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
     }
 
     // Build mandatory booking block (only if bookingEnabled)
-    const bookingBlock = consultantConfig.bookingEnabled !== false 
+    const bookingBlock = consultantConfig.bookingEnabled !== false
       ? getMandatoryBookingBlock({
-          existingAppointment,
-          availableSlots,
-          timezone,
-          formattedToday
-        })
+        existingAppointment,
+        availableSlots,
+        timezone,
+        formattedToday
+      })
       : '';
 
     // Assemble final prompt in correct order:
@@ -4093,14 +4093,14 @@ ${i + 1}. Tipo: ${obj.objectionType.toUpperCase()}
     }
 
     finalPrompt += '\n\n' + resolvedTemplate;
-    
+
     // Inject booking blocks only if bookingEnabled
     if (consultantConfig.bookingEnabled !== false) {
       finalPrompt += '\n\n' + bookingBlock;
     }
-    
+
     finalPrompt += '\n\n' + CORE_CONVERSATION_RULES_BLOCK;
-    
+
     // Inject booking conversation phases only if bookingEnabled
     if (consultantConfig.bookingEnabled !== false) {
       finalPrompt += '\n\n' + BOOKING_CONVERSATION_PHASES_BLOCK;

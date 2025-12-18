@@ -5445,7 +5445,7 @@ export const followupAiEvaluationLog = pgTable("followup_ai_evaluation_log", {
   outcomePositive: boolean("outcome_positive"), // Did it lead to engagement/conversion?
   
   // Model info
-  modelUsed: text("model_used").default("gemini-2.5-flash").notNull(),
+  modelUsed: text("model_used").default("gemini-3-flash-preview").notNull(),
   tokensUsed: integer("tokens_used"),
   latencyMs: integer("latency_ms"),
   

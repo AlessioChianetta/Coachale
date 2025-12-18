@@ -45,7 +45,7 @@ export interface GeminiClient {
 class VertexAIClientAdapter implements GeminiClient {
   private currentModelName: string;
   public vertexAI?: VertexAI;
-  
+
   constructor(private model: GenerativeModel, modelName: string = 'gemini-2.5-flash') {
     this.currentModelName = modelName;
   }
@@ -57,7 +57,7 @@ class VertexAIClientAdapter implements GeminiClient {
   }): Promise<{ response: { text: () => string } }> {
     // Extract systemInstruction from generationConfig if present
     const { systemInstruction, ...restConfig } = params.generationConfig || {};
-    
+
     // If a different model is requested and we have access to vertexAI, create new model instance
     let modelToUse = this.model;
     if (params.model && params.model !== this.currentModelName && this.vertexAI) {
@@ -66,7 +66,7 @@ class VertexAIClientAdapter implements GeminiClient {
       this.currentModelName = params.model;
       this.model = modelToUse;
     }
-    
+
     const result = await modelToUse.generateContent({
       contents: params.contents,
       generationConfig: restConfig,
@@ -77,27 +77,27 @@ class VertexAIClientAdapter implements GeminiClient {
       response: {
         text: () => {
           // Try multiple fallback strategies for Vertex AI responses
-          
+
           // 1. Native text() method (some Vertex AI responses have this)
           if (typeof result.response?.text === 'function') {
             return result.response.text();
           }
-          
+
           // 2. Direct text string
           if (typeof result.response?.text === 'string') {
             return result.response.text;
           }
-          
+
           // 3. Candidates path (typical Vertex AI structure)
           if (result.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
             return result.response.candidates[0].content.parts[0].text;
           }
-          
+
           // 4. Direct text on result
           if (result.text) {
             return result.text;
           }
-          
+
           // 5. Try iterating through all parts (some responses have text in different parts)
           const candidate = result.response?.candidates?.[0];
           if (candidate?.content?.parts) {
@@ -107,20 +107,20 @@ class VertexAIClientAdapter implements GeminiClient {
               }
             }
           }
-          
+
           // 6. Check for functionCall response (model may have returned a function call instead of text)
           if (candidate?.content?.parts?.[0]?.functionCall) {
             console.log(`⚠️ [VertexAI Adapter] Response contains function call, not text`);
             return JSON.stringify(candidate.content.parts[0].functionCall);
           }
-          
+
           // 7. Check if response was truncated due to MAX_TOKENS
           if (candidate?.finishReason === 'MAX_TOKENS') {
             console.warn(`⚠️ [VertexAI Adapter] Response truncated due to MAX_TOKENS. Increase maxOutputTokens.`);
             // Return empty string instead of throwing - will be handled upstream
             return '';
           }
-          
+
           // All strategies failed - log detailed structure and throw
           console.error(`❌ [VertexAI Adapter] Failed to extract text. Response structure:`, JSON.stringify({
             hasResponse: !!result.response,
@@ -133,7 +133,7 @@ class VertexAIClientAdapter implements GeminiClient {
             candidateParts: candidate?.content?.parts,
             finishReason: candidate?.finishReason,
           }, null, 2));
-          
+
           throw new Error("Failed to extract text from Vertex AI response");
         }
       }
@@ -147,7 +147,7 @@ class VertexAIClientAdapter implements GeminiClient {
   }): Promise<AsyncIterable<{ text?: string }>> {
     // Extract systemInstruction from generationConfig if present
     const { systemInstruction, ...restConfig } = params.generationConfig || {};
-    
+
     // If a different model is requested and we have access to vertexAI, create new model instance
     let modelToUse = this.model;
     if (params.model && params.model !== this.currentModelName && this.vertexAI) {
@@ -156,7 +156,7 @@ class VertexAIClientAdapter implements GeminiClient {
       this.currentModelName = params.model;
       this.model = modelToUse;
     }
-    
+
     const streamResult = await modelToUse.generateContentStream({
       contents: params.contents,
       generationConfig: restConfig,
@@ -179,7 +179,7 @@ class VertexAIClientAdapter implements GeminiClient {
  * Translates the GoogleGenAI API to match the expected interface
  */
 class GeminiClientAdapter implements GeminiClient {
-  constructor(private ai: GoogleGenAI) {}
+  constructor(private ai: GoogleGenAI) { }
 
   async generateContent(params: {
     model: string;
@@ -235,7 +235,7 @@ class GeminiClientAdapter implements GeminiClient {
         for await (const chunk of streamGenerator) {
           // Extract text from chunk and normalize to {text?: string} format
           let text: string | undefined;
-          
+
           if (typeof chunk.text === 'function') {
             text = chunk.text();
           } else if (typeof chunk.text === 'string') {
@@ -243,7 +243,7 @@ class GeminiClientAdapter implements GeminiClient {
           } else if (chunk.candidates?.[0]?.content?.parts?.[0]?.text) {
             text = chunk.candidates[0].content.parts[0].text;
           }
-          
+
           yield { text };
         }
       }
@@ -305,7 +305,7 @@ export async function parseServiceAccountJson(serviceAccountJson: string): Promi
     try {
       const credentials = JSON.parse(serviceAccountJson) as ServiceAccountCredentials;
       console.log("✅ Parsed credentials as plaintext JSON");
-      
+
       // Fix newlines if needed
       if (credentials.private_key && typeof credentials.private_key === 'string') {
         const hasLiteralNewlines = credentials.private_key.includes('\\n');
@@ -314,7 +314,7 @@ export async function parseServiceAccountJson(serviceAccountJson: string): Promi
           console.log("🔍 Converted literal \\n to real newlines");
         }
       }
-      
+
       return credentials;
     } catch (parseError) {
       // Fallback: Try legacy encrypted format
@@ -324,7 +324,7 @@ export async function parseServiceAccountJson(serviceAccountJson: string): Promi
         const credentials = decryptJSON(serviceAccountJson);
         console.log("✅ Decrypted legacy encrypted credentials");
         console.log("⚠️  WARNING: Re-upload credentials to save in plaintext format");
-        
+
         // Fix newlines if needed
         if (credentials.private_key && typeof credentials.private_key === 'string') {
           const hasLiteralNewlines = credentials.private_key.includes('\\n');
@@ -332,7 +332,7 @@ export async function parseServiceAccountJson(serviceAccountJson: string): Promi
             credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
           }
         }
-        
+
         return credentials;
       } catch (decryptError) {
         console.error("❌ Failed both plaintext and decryption");
@@ -362,12 +362,12 @@ async function getParsedCredentials(
 
   // Use shared helper to parse with backward compatibility
   const credentials = await parseServiceAccountJson(serviceAccountJson);
-  
+
   if (!credentials) {
     console.error(`❌ Failed to parse credentials for settings ${settingsId}`);
     return null;
   }
-  
+
   // Validate credentials structure
   if (!credentials.private_key || !credentials.client_email) {
     console.error(`❌ Invalid service account credentials structure for settings ${settingsId}`);
@@ -425,7 +425,7 @@ export function createVertexGeminiClient(
   console.log("  - location:", location);
   console.log("  - model:", modelName);
   console.log("  - credentials:", credentials.client_email);
-  
+
   const vertexAI = new VertexAI({
     project: projectId,
     location: location,
@@ -433,23 +433,23 @@ export function createVertexGeminiClient(
       credentials: credentials,
     },
   });
-  
+
   console.log("✅ VertexAI instance created successfully");
   console.log("🔧 Getting Generative Model...");
-  
+
   const model = vertexAI.preview.getGenerativeModel({
     model: modelName,
   });
-  
+
   console.log("✅ GenerativeModel created successfully");
-  
+
   // Wrap in VertexAI adapter to normalize API
   const adapter = new VertexAIClientAdapter(model, modelName);
-  
+
   // Attach the original vertexAI client for TTS access and dynamic model switching
   adapter.vertexAI = vertexAI;
   (adapter as any).__vertexAI = vertexAI;
-  
+
   return adapter;
 }
 
@@ -513,60 +513,60 @@ async function createVertexAIClient(
  * Create SuperAdmin Vertex AI client
  * Uses the global superadmin_vertex_config table instead of per-consultant vertexAiSettings
  */
-async function createSuperadminVertexClient(): Promise<{ 
-  client: GeminiClient; 
+async function createSuperadminVertexClient(): Promise<{
+  client: GeminiClient;
   vertexClient?: VertexAI;
-  metadata: AiProviderMetadata 
+  metadata: AiProviderMetadata
 } | null> {
   try {
     console.log("🔍 Looking for SuperAdmin Vertex AI configuration...");
-    
+
     // Get the SuperAdmin Vertex configuration (there should only be one)
     const [config] = await db
       .select()
       .from(superadminVertexConfig)
       .where(eq(superadminVertexConfig.enabled, true))
       .limit(1);
-    
+
     if (!config) {
       console.log("⚠️ No enabled SuperAdmin Vertex AI configuration found");
       return null;
     }
-    
+
     console.log(`📋 Found SuperAdmin Vertex AI config: project=${config.projectId}, location=${config.location}`);
-    
+
     // Parse credentials
     const credentials = await parseServiceAccountJson(config.serviceAccountJson);
-    
+
     if (!credentials) {
       console.error("❌ Failed to parse SuperAdmin Vertex AI credentials");
       return null;
     }
-    
+
     // Validate credentials structure
     if (!credentials.private_key || !credentials.client_email) {
       console.error("❌ Invalid SuperAdmin Vertex AI credentials structure");
       return null;
     }
-    
+
     // Create Vertex AI client using shared helper
     const client = createVertexGeminiClient(
       config.projectId,
       config.location,
       credentials
     );
-    
+
     // Extract the original VertexAI client for TTS
     const vertexClient = (client as any).__vertexAI as VertexAI | undefined;
-    
+
     // Create metadata
     const metadata: AiProviderMetadata = {
       name: "Vertex AI (SuperAdmin)",
       managedBy: "admin",
     };
-    
+
     console.log("✅ Created SuperAdmin Vertex AI client successfully");
-    
+
     return {
       client,
       vertexClient,
@@ -592,27 +592,27 @@ async function canUseSuperadminVertex(consultantId: string): Promise<boolean> {
       .from(users)
       .where(eq(users.id, consultantId))
       .limit(1);
-    
+
     if (!consultant || !consultant.useSuperadminVertex) {
       console.log(`⚠️ Consultant ${consultantId} has useSuperadminVertex = false`);
       return false;
     }
-    
+
     // 2. Check consultant_vertex_access (default = true if no record exists)
     const [accessRecord] = await db
       .select({ hasAccess: consultantVertexAccess.hasAccess })
       .from(consultantVertexAccess)
       .where(eq(consultantVertexAccess.consultantId, consultantId))
       .limit(1);
-    
+
     // If no record exists, default to true (all consultants have access by default)
     const hasAccess = accessRecord?.hasAccess ?? true;
-    
+
     if (!hasAccess) {
       console.log(`⚠️ Consultant ${consultantId} has been denied SuperAdmin Vertex access`);
       return false;
     }
-    
+
     console.log(`✅ Consultant ${consultantId} can use SuperAdmin Vertex AI`);
     return true;
   } catch (error: any) {
@@ -786,7 +786,7 @@ export async function getVertexAITokenForLive(
 ): Promise<{ accessToken: string; projectId: string; location: string; modelId: string } | null> {
   try {
     console.log(`🔍 Getting Vertex AI token for Live API - client ${clientId}, consultant ${consultantId}...`);
-    
+
     // Find all enabled Vertex AI settings for the consultant
     const allVertexSettings = await db
       .select()
@@ -813,7 +813,7 @@ export async function getVertexAITokenForLive(
 
         const isConsultantUsingOwnAI = clientId === consultantId;
         const canUse = await checkUsageScope(settings, clientId, isConsultantUsingOwnAI);
-        
+
         if (!canUse) {
           continue;
         }
@@ -850,7 +850,7 @@ export async function getVertexAITokenForLive(
 
         const client = await auth.getClient();
         const tokenResponse = await client.getAccessToken();
-        
+
         if (!tokenResponse.token) {
           console.error(`❌ Failed to get access token from service account`);
           continue;
@@ -955,26 +955,26 @@ export async function getAIProvider(
   if (consultantId) {
     try {
       console.log(`🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...`);
-      
+
       // Determine the consultant to check for SuperAdmin Vertex access
       // If clientId !== consultantId, user is a client - need to get their consultant's settings
       let consultantToCheck = consultantId;
-      
+
       // Check if user is a client (has a different consultantId)
       if (clientId !== consultantId) {
         console.log(`📋 User ${clientId} is a client, checking their consultant ${consultantId}'s settings`);
       } else {
         console.log(`📋 User ${clientId} is the consultant themselves`);
       }
-      
+
       // Check if consultant can use SuperAdmin Vertex
       const canUse = await canUseSuperadminVertex(consultantToCheck);
-      
+
       if (canUse) {
         const result = await createSuperadminVertexClient();
         if (result) {
           console.log(`✅ TIER 0: Successfully created SuperAdmin Vertex AI client`);
-          
+
           return {
             client: result.client,
             vertexClient: result.vertexClient,
@@ -999,7 +999,7 @@ export async function getAIProvider(
   // This allows clients with their own Vertex AI credentials to use them
   try {
     console.log(`🔍 TIER 1: Looking for client-managed Vertex AI (clientId: ${clientId})...`);
-    
+
     const clientVertexSettings = await db
       .select()
       .from(vertexAiSettings)
@@ -1015,12 +1015,12 @@ export async function getAIProvider(
     if (clientVertexSettings.length > 0) {
       const vertexSettings = clientVertexSettings[0];
       console.log(`📋 Found client-managed Vertex AI setting`);
-      
+
       if (isValidAndNotExpired(vertexSettings)) {
         const result = await createVertexAIClient(vertexSettings);
         if (result) {
           console.log(`✅ TIER 1: Successfully created client-managed Vertex AI client`);
-          
+
           updateUsageMetrics(vertexSettings.id);
 
           return {
@@ -1051,9 +1051,9 @@ export async function getAIProvider(
   if (consultantId) {
     try {
       const isConsultantUsingOwnAI = clientId === consultantId;
-      
+
       console.log(`🔍 TIER 2: Finding Vertex AI settings for consultant ${consultantId} (isConsultantUsingOwnAI: ${isConsultantUsingOwnAI})`);
-      
+
       // Get ALL enabled Vertex AI settings for consultant, ordered by managedBy
       // Priority: 'admin' settings first (for clients), then 'self' (for consultant's own use)
       const allVertexSettings = await db
@@ -1071,30 +1071,30 @@ export async function getAIProvider(
         console.log(`⚠️ TIER 2: No Vertex AI settings found for consultant ${consultantId}`);
       } else {
         console.log(`📋 TIER 2: Found ${allVertexSettings.length} Vertex AI setting(s) for consultant`);
-        
+
         // Try each setting until we find one that passes all checks
         for (const vertexSettings of allVertexSettings) {
           try {
             console.log(`🔍 Checking Vertex AI setting: managedBy=${vertexSettings.managedBy}, usageScope=${vertexSettings.usageScope}`);
-            
+
             if (!isValidAndNotExpired(vertexSettings)) {
               console.log(`⚠️ Setting expired or invalid, skipping`);
               continue;
             }
-            
+
             // Check usageScope to determine if this user can use this Vertex AI
             const canUse = await checkUsageScope(vertexSettings, clientId, isConsultantUsingOwnAI);
-            
+
             if (!canUse) {
               console.log(`⚠️ usageScope '${vertexSettings.usageScope}' prevents this user from using this setting, trying next`);
               continue;
             }
-            
+
             // Try to create client with this setting
             const result = await createVertexAIClient(vertexSettings);
             if (result) {
               console.log(`✅ TIER 2: Successfully created Vertex AI client (managedBy: ${vertexSettings.managedBy}, usageScope: ${vertexSettings.usageScope})`);
-              
+
               // Update usage metrics asynchronously
               updateUsageMetrics(vertexSettings.id);
 
@@ -1117,7 +1117,7 @@ export async function getAIProvider(
             // Continue to next setting instead of failing entire tier
           }
         }
-        
+
         console.log(`⚠️ TIER 2: No valid Vertex AI settings available for this user, falling back to TIER 3`);
       }
     } catch (error: any) {
@@ -1131,7 +1131,7 @@ export async function getAIProvider(
   // TIER 3: Fallback to Google AI Studio (use consultant keys if available, otherwise client keys)
   const fallbackUserId = consultantId ?? clientId;
   console.log(`⚠️ TIER 3: No Vertex AI available, falling back to Google AI Studio (user: ${fallbackUserId})`);
-  
+
   const result = await createGoogleAIStudioClient(fallbackUserId);
   if (!result) {
     throw new Error(

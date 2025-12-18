@@ -12,6 +12,7 @@ import { db } from "../db";
 import { conversationStates, followupAiEvaluationLog } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
 import { getAIProvider } from "./provider-factory";
+import { getAgentProfile, buildAgentPersonalityPrompt } from "./agent-profiles";
 // Le regole di sistema NON vengono più usate - l'AI decide tutto
 // import { evaluateSystemRules, RuleEvaluationContext } from "./system-rules-config";
 
@@ -72,10 +73,11 @@ export interface FollowupContext {
 }
 
 export interface FollowupDecision {
-  decision: "send_now" | "schedule" | "skip" | "stop";
-  urgency?: "now" | "tomorrow" | "next_week" | "never";
+  decision: "send_now" | "schedule" | "skip" | "stop" | "silence" | "nurturing";
+  urgency?: "now" | "hours" | "tomorrow" | "days" | "weeks" | "months" | "never";
   scheduledHour?: number;
   scheduledMinute?: number;
+  scheduledDays?: number;           // For long-term scheduling (e.g., 14 = 2 weeks)
   suggestedTemplateId?: string;
   suggestedMessage?: string;
   reasoning: string;
@@ -85,6 +87,11 @@ export interface FollowupDecision {
   stateTransition?: string;
   allowFreeformMessage?: boolean;
   matchedSystemRule?: string;
+  // New fields for AI Director
+  isConversationComplete?: boolean;  // AI detected conversation has reached its goal
+  completionReason?: string;         // Why AI thinks conversation is complete
+  silenceReason?: string;            // Why AI chose to go silent
+  longTermScheduleType?: "nurturing" | "reactivation" | "seasonal";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -126,7 +133,7 @@ async function getPreviousEvaluations(conversationId: string, limit: number = 5)
     .where(eq(followupAiEvaluationLog.conversationId, conversationId))
     .orderBy(desc(followupAiEvaluationLog.createdAt))
     .limit(limit);
-  
+
   return evaluations.map(e => ({
     decision: e.decision,
     reasoning: e.reasoning || '',
@@ -150,7 +157,7 @@ export async function evaluateFollowup(
   consultantId: string
 ): Promise<FollowupDecision> {
   const startTime = Date.now();
-  
+
   try {
     console.log(`🧑‍💼 [FOLLOWUP-ENGINE] Human-Like AI evaluation for conversation ${context.conversationId}`);
     console.log(`   State: ${context.currentState}, Days silent: ${context.daysSilent}, Follow-ups: ${context.followupCount}/${context.maxFollowupsAllowed}`);
@@ -163,20 +170,20 @@ export async function evaluateFollowup(
     // Recupera valutazioni AI precedenti per dare contesto storico all'AI
     const previousEvaluations = await getPreviousEvaluations(context.conversationId, 5);
     console.log(`📜 [FOLLOWUP-ENGINE] Found ${previousEvaluations.length} previous evaluations for context`);
-    
+
     // Arricchisci il context con le valutazioni precedenti
-    const enrichedContext: FollowupContext = { 
-      ...context, 
-      previousEvaluations 
+    const enrichedContext: FollowupContext = {
+      ...context,
+      previousEvaluations
     };
 
     // Costruisci il prompt per l'AI
     const prompt = buildFollowupPrompt(enrichedContext);
-    
+
     // Get AI provider using the unified provider factory
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
     console.log(`🚀 [FOLLOWUP-ENGINE] Using ${aiProviderResult.metadata.name} for evaluation`);
-    
+
     const response = await aiProviderResult.client.generateContent({
       model: "gemini-2.5-flash",
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -186,16 +193,16 @@ export async function evaluateFollowup(
     });
 
     const resultText = response.response.text();
-    
+
     // Validate response before parsing
     if (!resultText || resultText === 'undefined' || typeof resultText !== 'string') {
       console.warn(`⚠️ [FOLLOWUP-ENGINE] Invalid AI response: ${resultText}`);
       return createDefaultSkipDecision("Risposta AI non valida");
     }
-    
+
     const result = JSON.parse(resultText);
     const latencyMs = Date.now() - startTime;
-    
+
     console.log(`✅ [FOLLOWUP-ENGINE] Decision: ${result.decision} (confidence: ${result.confidenceScore})`);
     console.log(`   Reasoning: ${result.reasoning}`);
     console.log(`   Latency: ${latencyMs}ms`);
@@ -204,19 +211,19 @@ export async function evaluateFollowup(
     // Se il lead ha risposto nelle ultime 24h, possiamo usare messaggi liberi
     // Altrimenti dobbiamo usare template approvati
     const canSendFreeform = !context.leadNeverResponded && context.hoursSinceLastInbound < 24;
-    
+
     // Se l'AI ha suggerito un messaggio libero ma non siamo nella finestra 24h,
     // e non ha specificato un template, forziamo l'uso di un template
     let allowFreeformMessage = canSendFreeform;
     let finalSuggestedTemplateId = result.suggestedTemplateId || undefined;
     let finalDecision = result.decision || "skip";
     let finalReasoning = result.reasoning || "Nessun reasoning fornito";
-    
+
     // TASK 1: Forzare template fuori 24h window
     // BUG 3 FIX: Filter only approved templates in auto-selection
     if (result.decision === "send_now" && !canSendFreeform && !result.suggestedTemplateId) {
       console.log(`⚠️ [FOLLOWUP-ENGINE] TASK 1: AI suggested send_now but outside 24h window without template - attempting auto-selection`);
-      
+
       // BUG 3 FIX: Filter for approved templates only (HX prefix for Twilio or twilioStatus === 'approved')
       const approvedTemplates = (context.availableTemplates || []).filter(t => {
         // Twilio templates with HX prefix are pre-approved
@@ -228,7 +235,7 @@ export async function evaluateFollowup(
         const templateWithStatus = t as { id: string; name: string; useCase: string; bodyText: string; twilioStatus?: string };
         return templateWithStatus.twilioStatus === 'approved';
       });
-      
+
       if (approvedTemplates.length > 0) {
         // Seleziona il primo template APPROVATO disponibile
         const autoSelectedTemplate = approvedTemplates[0];
@@ -272,30 +279,38 @@ function buildFollowupPrompt(context: FollowupContext): string {
 
   const messagesHistory = context.lastMessages.length > 0
     ? context.lastMessages.map(m => {
-        const typeLabel = m.messageType 
-          ? (m.messageType === 'template' ? ' [TEMPLATE]' : m.messageType === 'freeform' ? ' [FREEFORM]' : ' [INBOUND]')
-          : '';
-        return `[${m.timestamp}]${typeLabel} ${m.role}: ${m.content}`;
-      }).join('\n')
+      const typeLabel = m.messageType
+        ? (m.messageType === 'template' ? ' [TEMPLATE]' : m.messageType === 'freeform' ? ' [FREEFORM]' : ' [INBOUND]')
+        : '';
+      return `[${m.timestamp}]${typeLabel} ${m.role}: ${m.content}`;
+    }).join('\n')
     : "Nessun messaggio precedente";
 
   // Calcola se siamo nella finestra 24h per messaggi liberi
   const canSendFreeform = !context.leadNeverResponded && context.hoursSinceLastInbound < 24;
-  const window24hStatus = context.leadNeverResponded 
+  const window24hStatus = context.leadNeverResponded
     ? "❌ FUORI FINESTRA - Il lead non ha mai risposto, DEVI usare un Template approvato"
-    : context.hoursSinceLastInbound < 24 
+    : context.hoursSinceLastInbound < 24
       ? `✅ NELLA FINESTRA 24H - Puoi inviare messaggi liberi (il lead ha risposto ${context.hoursSinceLastInbound.toFixed(1)}h fa)`
       : `⚠️ FUORI FINESTRA 24H - Ultima risposta ${context.hoursSinceLastInbound.toFixed(1)}h fa, DEVI usare un Template approvato`;
 
-  return `# SISTEMA DI VALUTAZIONE FOLLOW-UP
+  // Get agent profile for personality
+  const agentProfilePrompt = buildAgentPersonalityPrompt(context.agentType);
+
+  return `# SISTEMA AI DIRECTOR - VALUTAZIONE FOLLOW-UP INTELLIGENTE
+
+${agentProfilePrompt}
+
+---
 
 Analizza questa conversazione WhatsApp e decidi COSA FARE con questo lead.
-Il tuo compito è fornire una valutazione OGGETTIVA basata sui dati disponibili.
+Agisci come un "AI Director" che gestisce relazioni nel lungo periodo (annuale).
 
-**IMPORTANTE:** 
-- Fornisci un'analisi tecnica e oggettiva, NON un discorso in prima persona
-- Il reasoning deve essere una sintesi dei fatti, non un'opinione personale
-- Includi SEMPRE il tempo esatto trascorso dall'ultimo messaggio nel reasoning
+**PRINCIPI FONDAMENTALI:**
+- NON tempestare il lead con messaggi frequenti - ogni messaggio DEVE portare valore
+- Se la conversazione ha raggiunto il suo obiettivo, VAI IN SILENZIO
+- Programma check di cortesia a lungo termine invece di follow-up ravvicinati
+- Rispetta i limiti del tuo profilo agente
 
 ---
 
@@ -347,8 +362,8 @@ ${messagesHistory}
 ## VALUTAZIONI PRECEDENTI
 
 ${context.previousEvaluations && context.previousEvaluations.length > 0
-  ? context.previousEvaluations.map(e => `[${e.timestamp}] Decisione: ${e.decision} (${Math.round(e.confidenceScore * 100)}%) - ${e.reasoning.substring(0, 150)}...`).join('\n')
-  : "Nessuna valutazione precedente"}
+      ? context.previousEvaluations.map(e => `[${e.timestamp}] Decisione: ${e.decision} (${Math.round(e.confidenceScore * 100)}%) - ${e.reasoning.substring(0, 150)}...`).join('\n')
+      : "Nessuna valutazione precedente"}
 
 ---
 
@@ -401,39 +416,76 @@ Considera il tipo di conversazione per determinare l'azione appropriata.
 
 Rispondi con UNA delle seguenti azioni:
 
-1. **send_now** - Invia SUBITO (il momento è perfetto, il lead è caldo)
-2. **schedule** - PROGRAMMA per dopo (domani, settimana prossima) - USA QUESTO se vuoi aspettare prima di contattare
-3. **skip** - NON fare nulla (il lead sta già rispondendo, non serve follow-up aggiuntivo)
-4. **stop** - FERMATI DEFINITIVAMENTE (il lead non è interessato, ha detto no, o è perso)
+### AZIONI IMMEDIATE
+1. **send_now** - Invia SUBITO (il lead è caldo, c'è urgenza)
+2. **schedule** - PROGRAMMA per dopo con urgency specifica
 
-⚠️ **ATTENZIONE:**
-- Se vuoi ASPETTARE prima di mandare un follow-up, usa **"schedule"** con urgency "tomorrow" o "next_week"
-- **"skip"** significa che NON programmi nulla perché non serve (es: il lead sta già rispondendo attivamente)
+### AZIONI DI PAUSA STRATEGICA  
+3. **silence** - VAI IN SILENZIO TEMPORANEO (la conversazione è completa, il lead ha ottenuto ciò che cercava)
+4. **nurturing** - PASSA A MODALITÀ NURTURING (check periodici ogni settimane/mesi)
+5. **skip** - NON fare nulla ora (il lead sta già rispondendo, non serve follow-up)
+6. **stop** - FERMATI DEFINITIVAMENTE (il lead ha detto no esplicitamente)
+
+### URGENCY OPTIONS
+- "now" → invia subito
+- "hours" → tra alcune ore (usa scheduledHour)
+- "tomorrow" → domani
+- "days" → tra X giorni (usa scheduledDays)
+- "weeks" → tra 1-2 settimane (scheduledDays = 7 o 14)
+- "months" → tra 1+ mesi (scheduledDays = 30, 60, 90)
+- "never" → mai più
+
+⚠️ **PRINCIPIO CHIAVE:**
+- Se il lead ha già tutte le informazioni necessarie → **silence** + programma check tra 2 settimane
+- Se non risponde da 3+ tentativi → **nurturing** con scheduledDays = 30-90
+- Ogni messaggio DEVE portare valore nuovo, altrimenti → **silence**
+
+---
+
+## RILEVAMENTO CONVERSAZIONE COMPLETATA
+
+Prima di decidere, analizza se la conversazione ha raggiunto il suo obiettivo naturale:
+
+✅ **SEGNALI DI COMPLETAMENTO:**
+- Il lead ha ottenuto le informazioni che cercava
+- È stata fissata una call/appuntamento
+- Il problema è stato risolto (per supporto)
+- Il lead ha detto "grazie, ho capito tutto" o simili
+- Il lead ha preso una decisione (positiva o negativa)
+
+⚠️ **SE LA CONVERSAZIONE È COMPLETA:**
+- Imposta isConversationComplete = true
+- Usa decision = "silence" o "nurturing"
+- Programma un check di cortesia tra 2-4 settimane (non un follow-up aggressivo!)
 
 ---
 
 ## FORMATO RISPOSTA (JSON)
 
 {
-  "decision": "send_now" | "schedule" | "skip" | "stop",
-  "urgency": "now" | "tomorrow" | "next_week" | "never",
-  "scheduledHour": 9-18 (ora del giorno in cui inviare, decidi TU in base al contesto - es: 9 per mattina, 14 per pomeriggio),
-  "scheduledMinute": 0-59 (minuti, es: 0, 15, 30, 45),
-  "suggestedTemplateId": "OBBLIGATORIO se fuori finestra 24h, ID del template da usare o null se nella finestra e preferisci messaggio libero",
-  "suggestedMessage": "messaggio personalizzato SOLO se sei dentro la finestra 24h e non usi template",
-  "reasoning": "FORMATO OBBLIGATORIO: 'Tempo dall'ultimo messaggio: X ore Y minuti. [Analisi oggettiva della situazione]'",
+  "decision": "send_now" | "schedule" | "silence" | "nurturing" | "skip" | "stop",
+  "urgency": "now" | "hours" | "tomorrow" | "days" | "weeks" | "months" | "never",
+  "scheduledHour": 9-18,
+  "scheduledMinute": 0-59,
+  "scheduledDays": numero di giorni (es: 7 = 1 settimana, 14 = 2 settimane, 30 = 1 mese, 90 = 3 mesi),
+  "suggestedTemplateId": "ID template o null",
+  "suggestedMessage": "messaggio libero solo se in finestra 24h",
+  "reasoning": "Tempo dall'ultimo messaggio: X ore. [Analisi oggettiva]",
   "confidenceScore": 0.0-1.0,
-  "conversationType": "VENDITA" | "ASSISTENZA" | "INFO" | "PRENOTAZIONE" | "ALTRO",
-  "updatedEngagementScore": numero 0-100 o null se non cambia,
-  "updatedConversionProbability": numero 0-1 o null se non cambia,
-  "stateTransition": "nuovo stato suggerito (es: 'ghost', 'closed_lost') o null"
+  "isConversationComplete": true/false,
+  "completionReason": "motivo per cui la conversazione è completa (se applicabile)",
+  "silenceReason": "motivo per cui hai scelto di stare in silenzio (se applicabile)",
+  "longTermScheduleType": "nurturing" | "reactivation" | null,
+  "updatedEngagementScore": 0-100 o null,
+  "updatedConversionProbability": 0-1 o null,
+  "stateTransition": "nuovo stato o null"
 }
 
 ⚠️ RICORDA: 
-- Se sei FUORI dalla finestra 24h, DEVI specificare suggestedTemplateId!
-- scheduledHour: scegli un orario appropriato (9-18) in base al tipo di lead e contesto
-- Il reasoning DEVE iniziare con "Tempo dall'ultimo messaggio: X ore Y minuti"
-- NON scrivere in prima persona. Scrivi un'analisi oggettiva dei fatti.`;
+- Se fuori finestra 24h, DEVI specificare suggestedTemplateId
+- Se conversazione completata, imposta isConversationComplete = true
+- Il reasoning DEVE iniziare con "Tempo dall'ultimo messaggio: X ore"
+- Rispetta i limiti del tuo profilo agente`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -542,7 +594,7 @@ export async function selectBestTemplateWithAI(
   maxRetries: number = 3
 ): Promise<TemplateSelectionResult> {
   console.log(`🎯 [TEMPLATE-AI] Selecting best template for conversation with ${templates.length} options`);
-  
+
   if (templates.length === 0) {
     console.log(`⚠️ [TEMPLATE-AI] No templates available for selection`);
     return {
@@ -551,7 +603,7 @@ export async function selectBestTemplateWithAI(
       confidence: 0
     };
   }
-  
+
   if (templates.length === 1) {
     console.log(`✅ [TEMPLATE-AI] Only one template available, using it directly: ${templates[0].id}`);
     return {
@@ -560,23 +612,23 @@ export async function selectBestTemplateWithAI(
       confidence: 1.0
     };
   }
-  
+
   // Build template summaries for the prompt - show full content for AI to analyze
   // NOTE: We explicitly do NOT show priority to the AI - selection must be content-based
-  const templateSummaries = templates.map((t, index) => 
+  const templateSummaries = templates.map((t, index) =>
     `${index + 1}. ID: "${t.id}"
    Nome: "${t.name}"
    Obiettivo: ${t.goal || 'Non specificato'}
    Tono: ${t.tone || 'Professionale'}
    Testo Completo: "${t.bodyText}"`
   ).join('\n\n');
-  
+
   // Build conversation summary - NO truncation to avoid AI seeing incomplete messages
   const recentMessages = conversationContext.lastMessages
     .slice(-5) // Only last 5 messages
     .map(m => `[${m.role}]: ${m.content}`)
     .join('\n');
-  
+
   const prompt = `Sei un esperto di vendita. Devi scegliere il MIGLIOR template per fare follow-up con questo lead.
 
 CONTESTO LEAD:
@@ -605,35 +657,35 @@ RISPONDI SOLO IN JSON:
 }`;
 
   let lastError: Error | null = null;
-  
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`🔄 [TEMPLATE-AI] Attempt ${attempt}/${maxRetries}`);
-      
+
       // getAIProvider restituisce un client già pronto da usare
       const aiProvider = await getAIProvider(consultantId, consultantId);
-      
+
       if (!aiProvider || !aiProvider.client) {
         throw new Error("No AI provider available");
       }
-      
+
       console.log(`🤖 [TEMPLATE-AI] Using AI provider: ${aiProvider.metadata?.name || aiProvider.source}`);
-      
+
       // Usa direttamente il client già configurato con il formato corretto
       const aiResponse = await aiProvider.client.generateContent({
         model: "gemini-2.5-flash",
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       });
       const responseText = aiResponse.response?.text() || "";
-      
+
       // Parse JSON response
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error("No JSON found in AI response");
       }
-      
+
       const parsedResult = JSON.parse(jsonMatch[0]);
-      
+
       // Validate the selected template exists
       const selectedTemplate = templates.find(t => t.id === parsedResult.selectedTemplateId);
       if (!selectedTemplate) {
@@ -644,20 +696,20 @@ RISPONDI SOLO IN JSON:
           confidence: 0.5
         };
       }
-      
+
       console.log(`✅ [TEMPLATE-AI] Selected template: ${parsedResult.selectedTemplateId} (confidence: ${parsedResult.confidence})`);
       console.log(`   Reasoning: ${parsedResult.reasoning}`);
-      
+
       return {
         selectedTemplateId: parsedResult.selectedTemplateId,
         reasoning: parsedResult.reasoning || "Template selezionato dall'AI",
         confidence: parsedResult.confidence || 0.8
       };
-      
+
     } catch (error) {
       lastError = error as Error;
       console.error(`❌ [TEMPLATE-AI] Attempt ${attempt} failed:`, error);
-      
+
       if (attempt < maxRetries) {
         // Wait before retry with exponential backoff
         const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
@@ -666,7 +718,7 @@ RISPONDI SOLO IN JSON:
       }
     }
   }
-  
+
   // All retries failed - throw error (no fallback to priority as requested)
   throw new Error(`Template AI selection failed after ${maxRetries} attempts: ${lastError?.message}`);
 }
@@ -718,7 +770,7 @@ export async function updateConversationState(
     }
 
     const stateId = existingStates[0].id;
-    
+
     // Prepara l'oggetto di aggiornamento
     const updateData: any = {
       updatedAt: new Date(),
@@ -774,7 +826,7 @@ function groupConversationsByStateAndTemperature(
   conversations: ConversationForEvaluation[]
 ): Map<string, ConversationForEvaluation[]> {
   const groups = new Map<string, ConversationForEvaluation[]>();
-  
+
   for (const conv of conversations) {
     const key = `${conv.currentState}:${conv.temperatureLevel || 'unknown'}`;
     if (!groups.has(key)) {
@@ -782,7 +834,7 @@ function groupConversationsByStateAndTemperature(
     }
     groups.get(key)!.push(conv);
   }
-  
+
   return groups;
 }
 
@@ -795,9 +847,9 @@ function buildBatchPrompt(conversations: ConversationForEvaluation[]): string {
     const templatesInfo = ctx.availableTemplates.length > 0
       ? ctx.availableTemplates.slice(0, 3).map(t => `${t.id}: ${t.name}`).join(', ')
       : "Nessuno";
-    
+
     const lastMsgs = ctx.lastMessages.slice(-3).map(m => `[${m.role}]: ${m.content}`).join(' | ');
-    
+
     return `
 [CONV_${index + 1}] ID: ${conv.conversationId}
 - Lead: ${ctx.leadName || "N/D"}
@@ -845,7 +897,7 @@ export async function evaluateConversationsBatch(
 ): Promise<BatchEvaluationResult[]> {
   const startTime = Date.now();
   const results: BatchEvaluationResult[] = [];
-  
+
   if (conversations.length === 0) {
     return results;
   }
@@ -868,22 +920,22 @@ export async function evaluateConversationsBatch(
 
   // Processa ogni gruppo (o batch all'interno del gruppo)
   const consultantId = needsAiEvaluation[0].consultantId;
-  
+
   try {
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
     console.log(`🚀 [FOLLOWUP-ENGINE-BATCH] Using ${aiProviderResult.metadata.name} for batch evaluation`);
 
     for (const [groupKey, groupConversations] of groups) {
       console.log(`📦 [FOLLOWUP-ENGINE-BATCH] Processing group "${groupKey}" with ${groupConversations.length} conversations`);
-      
+
       // Process in batches of BATCH_SIZE
       for (let i = 0; i < groupConversations.length; i += BATCH_SIZE) {
         const batch = groupConversations.slice(i, i + BATCH_SIZE);
         const batchStartTime = Date.now();
-        
+
         try {
           const prompt = buildBatchPrompt(batch);
-          
+
           const response = await aiProviderResult.client.generateContent({
             model: "gemini-2.5-flash",
             contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -893,7 +945,7 @@ export async function evaluateConversationsBatch(
           });
 
           const resultText = response.response.text();
-          
+
           if (!resultText || resultText === 'undefined' || typeof resultText !== 'string') {
             console.warn(`⚠️ [FOLLOWUP-ENGINE-BATCH] Invalid AI response for batch`);
             for (const conv of batch) {
@@ -905,10 +957,10 @@ export async function evaluateConversationsBatch(
             }
             continue;
           }
-          
+
           const batchResults = JSON.parse(resultText);
           const batchProcessingTime = Date.now() - batchStartTime;
-          
+
           // Map results back to conversation IDs
           const resultMap = new Map<string, any>();
           for (const r of batchResults) {
@@ -916,7 +968,7 @@ export async function evaluateConversationsBatch(
               resultMap.set(r.conversationId, r);
             }
           }
-          
+
           for (const conv of batch) {
             const aiResult = resultMap.get(conv.conversationId);
             if (aiResult) {
@@ -940,9 +992,9 @@ export async function evaluateConversationsBatch(
               });
             }
           }
-          
+
           console.log(`✅ [FOLLOWUP-ENGINE-BATCH] Batch processed: ${batch.length} conversations in ${batchProcessingTime}ms`);
-          
+
         } catch (error) {
           console.error(`❌ [FOLLOWUP-ENGINE-BATCH] Error processing batch:`, error);
           for (const conv of batch) {
@@ -972,10 +1024,10 @@ export async function evaluateConversationsBatch(
   // Persist evaluation logs for all batch results
   for (const result of results) {
     if (!result.conversationId || !result.decision) continue;
-    
+
     const conv = conversations.find(c => c.conversationId === result.conversationId);
     if (!conv) continue;
-    
+
     try {
       await db.insert(followupAiEvaluationLog).values({
         conversationId: result.conversationId,
