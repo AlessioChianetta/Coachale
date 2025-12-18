@@ -137,570 +137,570 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
 
-        {/* Public agent share - no auth required */}
-        <Route path="/share/:slug" component={PublicAgentShare} />
+          {/* Public agent share - no auth required */}
+          <Route path="/share/:slug" component={PublicAgentShare} />
 
-        {/* Public Sales Agent Landing - no auth required */}
-        <Route path="/s/:shareToken" component={PublicSalesAgentLanding} />
+          {/* Public Sales Agent Landing - no auth required */}
+          <Route path="/s/:shareToken" component={PublicSalesAgentLanding} />
 
-        {/* Public Consultation Invite Lobby - no auth required */}
-        <Route path="/invite/:token" component={ConsultationInviteLobby} />
+          {/* Public Consultation Invite Lobby - no auth required */}
+          <Route path="/invite/:token" component={ConsultationInviteLobby} />
 
-        {/* Public Meet Green Room - no auth required */}
-        <Route path="/meet/:token" component={MeetGreenRoom} />
-        
-        {/* Public Video Room - no auth required */}
-        <Route path="/meet/:token/room" component={MeetVideoRoom} />
+          {/* Public Meet Green Room - no auth required */}
+          <Route path="/meet/:token" component={MeetGreenRoom} />
 
-        {/* Realtime test - WebSocket vs SSE */}
-        <Route path="/realtime-test" component={RealtimeTest} />
+          {/* Public Video Room - no auth required */}
+          <Route path="/meet/:token/room" component={MeetVideoRoom} />
 
-      <Route path="/consultant">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantDashboard />
-        </AuthGuard>
-      </Route>
+          {/* Realtime test - WebSocket vs SSE */}
+          <Route path="/realtime-test" component={RealtimeTest} />
 
-      <Route path="/consultant/clients">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantClientsPage />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantDashboard />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/roadmap">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantRoadmap />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/clients">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantClientsPage />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/client/:clientId/roadmap">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantClientRoadmap />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/roadmap">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantRoadmap />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/exercises">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantExercises />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/client/:clientId/roadmap">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantClientRoadmap />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/templates">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantTemplates />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/exercises">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantExercises />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/exercise-templates">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantExerciseTemplates />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/templates">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantTemplates />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/library">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantLibrary />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/exercise-templates">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantExerciseTemplates />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/monitoring">
-        <AuthGuard requiredRole="consultant">
-          <ExerciseMonitoring />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/library">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantLibrary />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/client-daily">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantClientDaily />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/monitoring">
+            <AuthGuard requiredRole="consultant">
+              <ExerciseMonitoring />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/analytics">
-        <AuthGuard requiredRole="consultant">
-          <div className="min-h-screen bg-background">
-            <div className="flex items-center justify-center h-screen">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold mb-4">Analytics</h1>
-                <p className="text-muted-foreground">Pagina in costruzione</p>
+          <Route path="/consultant/client-daily">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantClientDaily />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/analytics">
+            <AuthGuard requiredRole="consultant">
+              <div className="min-h-screen bg-background">
+                <div className="flex items-center justify-center h-screen">
+                  <div className="text-center">
+                    <h1 className="text-2xl font-bold mb-4">Analytics</h1>
+                    <p className="text-muted-foreground">Pagina in costruzione</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </AuthGuard>
-      </Route>
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/appointments">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantAppointments />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/appointments">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantAppointments />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/tasks">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantTasks />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/tasks">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantTasks />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/university">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantUniversity />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/university">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantUniversity />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/smtp-settings">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantSmtpSettings />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/smtp-settings">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantSmtpSettings />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/email-logs">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantEmailLogs />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/email-logs">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantEmailLogs />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/whatsapp">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantWhatsApp />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/whatsapp">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantWhatsApp />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/whatsapp/agent/:agentId">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantWhatsAppAgentConfig />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/whatsapp/agent/:agentId">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantWhatsAppAgentConfig />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/whatsapp-conversations">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantWhatsAppConversations />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/whatsapp-conversations">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantWhatsAppConversations />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/whatsapp-templates">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantWhatsAppTemplates />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/whatsapp-templates">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantWhatsAppTemplates />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/whatsapp/custom-templates/list">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantWhatsAppCustomTemplatesList />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/whatsapp/custom-templates/list">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantWhatsAppCustomTemplatesList />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/whatsapp/custom-templates">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantWhatsAppCustomTemplates />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/whatsapp/custom-templates">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantWhatsAppCustomTemplates />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/whatsapp-agents-chat">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantWhatsAppAgentsChat />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/whatsapp-agents-chat">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantWhatsAppAgentsChat />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/proactive-leads">
-        <AuthGuard requiredRole="consultant">
-          <ProactiveLeadsPage />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/proactive-leads">
+            <AuthGuard requiredRole="consultant">
+              <ProactiveLeadsPage />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/automations">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantAutomationsPage />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/automations">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantAutomationsPage />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/campaigns">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantCampaignsPage />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/campaigns">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantCampaignsPage />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/lead-hub">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantLeadHub />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/lead-hub">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantLeadHub />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/api-settings">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantApiSettings />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/api-settings">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantApiSettings />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/profile-settings">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantProfileSettings />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/profile-settings">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantProfileSettings />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/ai-assistant">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantAIAssistant />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/ai-assistant">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantAIAssistant />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/ai-settings">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantAISettings />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/ai-settings">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantAISettings />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/api-keys-unified">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantApiKeysUnified />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/api-keys-unified">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantApiKeysUnified />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/ai-config">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantAiConfig />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/ai-config">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantAiConfig />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/ai-consultations">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantAIConsultations />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/ai-consultations">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantAIConsultations />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/client-state">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantClientState />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/client-state">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantClientState />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/email-journey">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantEmailJourney />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/email-journey">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantEmailJourney />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-whatsapp">
-        <AuthGuard requiredRole="consultant">
-          <GuideWhatsApp />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-whatsapp">
+            <AuthGuard requiredRole="consultant">
+              <GuideWhatsApp />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-email">
-        <AuthGuard requiredRole="consultant">
-          <GuideEmail />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-email">
+            <AuthGuard requiredRole="consultant">
+              <GuideEmail />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-university">
-        <AuthGuard requiredRole="consultant">
-          <GuideUniversity />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-university">
+            <AuthGuard requiredRole="consultant">
+              <GuideUniversity />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-clients">
-        <AuthGuard requiredRole="consultant">
-          <GuideClients />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-clients">
+            <AuthGuard requiredRole="consultant">
+              <GuideClients />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-calendar">
-        <AuthGuard requiredRole="consultant">
-          <GuideCalendar />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-calendar">
+            <AuthGuard requiredRole="consultant">
+              <GuideCalendar />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-automations">
-        <AuthGuard requiredRole="consultant">
-          <GuideAutomations />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-automations">
+            <AuthGuard requiredRole="consultant">
+              <GuideAutomations />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-templates">
-        <AuthGuard requiredRole="consultant">
-          <GuideTemplates />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-templates">
+            <AuthGuard requiredRole="consultant">
+              <GuideTemplates />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-leads">
-        <AuthGuard requiredRole="consultant">
-          <GuideLeads />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-leads">
+            <AuthGuard requiredRole="consultant">
+              <GuideLeads />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-agents">
-        <AuthGuard requiredRole="consultant">
-          <GuideAgents />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-agents">
+            <AuthGuard requiredRole="consultant">
+              <GuideAgents />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guide-api-keys">
-        <AuthGuard requiredRole="consultant">
-          <GuideApiKeys />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guide-api-keys">
+            <AuthGuard requiredRole="consultant">
+              <GuideApiKeys />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/guides">
-        <AuthGuard requiredRole="consultant">
-          <GuidesHub />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/guides">
+            <AuthGuard requiredRole="consultant">
+              <GuidesHub />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/setup-wizard">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantSetupWizard />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/setup-wizard">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantSetupWizard />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/onboarding-story">
-        <AuthGuard requiredRole="consultant">
-          <OnboardingStory />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/onboarding-story">
+            <AuthGuard requiredRole="consultant">
+              <OnboardingStory />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/knowledge-documents">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantKnowledgeDocuments />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/knowledge-documents">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantKnowledgeDocuments />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/knowledge-apis">
-        <AuthGuard requiredRole="consultant">
-          <ConsultantKnowledgeApis />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultant/knowledge-apis">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantKnowledgeApis />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultant/settings">
-        <AuthGuard requiredRole="consultant">
-          <div className="min-h-screen bg-background">
-            <div className="flex items-center justify-center h-screen">
-              <div className="text-center">
-                <h1 className="text-2xl font-bold mb-4">Impostazioni</h1>
-                <p className="text-muted-foreground">Pagina in costruzione</p>
+          <Route path="/consultant/settings">
+            <AuthGuard requiredRole="consultant">
+              <div className="min-h-screen bg-background">
+                <div className="flex items-center justify-center h-screen">
+                  <div className="text-center">
+                    <h1 className="text-2xl font-bold mb-4">Impostazioni</h1>
+                    <p className="text-muted-foreground">Pagina in costruzione</p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        </AuthGuard>
-      </Route>
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client">
-        <AuthGuard requiredRole="client">
-          <ClientDashboard />
-        </AuthGuard>
-      </Route>
+          <Route path="/client">
+            <AuthGuard requiredRole="client">
+              <ClientDashboard />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/exercises">
-        <AuthGuard requiredRole="client">
-          <ClientExercises />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/exercises">
+            <AuthGuard requiredRole="client">
+              <ClientExercises />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/consultations">
-        <AuthGuard requiredRole="client">
-          <ClientConsultations />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/consultations">
+            <AuthGuard requiredRole="client">
+              <ClientConsultations />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/roadmap">
-        <AuthGuard requiredRole="client">
-          <ClientRoadmap />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/roadmap">
+            <AuthGuard requiredRole="client">
+              <ClientRoadmap />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/library">
-        <AuthGuard requiredRole="client">
-          <ClientLibrary />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/library">
+            <AuthGuard requiredRole="client">
+              <ClientLibrary />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/library/:documentId">
-        <AuthGuard requiredRole="client">
-          <ClientLibraryDocument />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/library/:documentId">
+            <AuthGuard requiredRole="client">
+              <ClientLibraryDocument />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/daily-tasks">
-        <AuthGuard requiredRole="client">
-          <ClientDailyTasks />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/daily-tasks">
+            <AuthGuard requiredRole="client">
+              <ClientDailyTasks />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/university">
-        <AuthGuard requiredRole="client">
-          <ClientUniversity />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/university">
+            <AuthGuard requiredRole="client">
+              <ClientUniversity />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/ai-assistant">
-        <AuthGuard requiredRole="client">
-          <ClientAIAssistant />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/ai-assistant">
+            <AuthGuard requiredRole="client">
+              <ClientAIAssistant />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultation-lobby">
-        <AuthGuard>
-          <ConsultationLobby />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultation-lobby">
+            <AuthGuard>
+              <ConsultationLobby />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/live-consultation" component={LiveConsultation} />
+          <Route path="/live-consultation" component={LiveConsultation} />
 
-      <Route path="/client/ai-consultations-history">
-        <AuthGuard requiredRole="client">
-          <AIConsultationsHistory />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/ai-consultations-history">
+            <AuthGuard requiredRole="client">
+              <AIConsultationsHistory />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/settings">
-        <AuthGuard requiredRole="client">
-          <ClientSettings />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/settings">
+            <AuthGuard requiredRole="client">
+              <ClientSettings />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/calendar">
-        <AuthGuard requiredRole="client">
-          <ClientCalendar />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/calendar">
+            <AuthGuard requiredRole="client">
+              <ClientCalendar />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/sales-agents">
-        <AuthGuard requiredRole="client">
-          <ClientSalesAgentsList />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/sales-agents">
+            <AuthGuard requiredRole="client">
+              <ClientSalesAgentsList />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/human-sellers">
-        <AuthGuard requiredRole="client">
-          <ClientHumanSellersList />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/human-sellers">
+            <AuthGuard requiredRole="client">
+              <ClientHumanSellersList />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/human-sellers/analytics">
-        <AuthGuard requiredRole="client">
-          <ClientHumanSellersAnalyticsDashboard />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/human-sellers/analytics">
+            <AuthGuard requiredRole="client">
+              <ClientHumanSellersAnalyticsDashboard />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/human-sellers/meetings">
-        <AuthGuard requiredRole="client">
-          <ClientHumanSellerMeetings />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/human-sellers/meetings">
+            <AuthGuard requiredRole="client">
+              <ClientHumanSellerMeetings />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/human-sellers/:id/analytics">
-        <AuthGuard requiredRole="client">
-          <ClientSalesAgentAnalytics />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/human-sellers/:id/analytics">
+            <AuthGuard requiredRole="client">
+              <ClientSalesAgentAnalytics />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/human-sellers/:id">
-        <AuthGuard requiredRole="client">
-          <ClientHumanSellerConfig />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/human-sellers/:id">
+            <AuthGuard requiredRole="client">
+              <ClientHumanSellerConfig />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/sales-agents/:agentId/analytics">
-        <AuthGuard requiredRole="client">
-          <ClientSalesAgentAnalytics />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/sales-agents/:agentId/analytics">
+            <AuthGuard requiredRole="client">
+              <ClientSalesAgentAnalytics />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/sales-agents/:agentId/scripts">
-        <AuthGuard requiredRole="client">
-          <ClientScriptManager />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/sales-agents/:agentId/scripts">
+            <AuthGuard requiredRole="client">
+              <ClientScriptManager />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/scripts">
-        <AuthGuard requiredRole="client">
-          <ClientScriptManager />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/scripts">
+            <AuthGuard requiredRole="client">
+              <ClientScriptManager />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/scripts/builder">
-        <AuthGuard requiredRole="client">
-          <ScriptBuilder />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/scripts/builder">
+            <AuthGuard requiredRole="client">
+              <ScriptBuilder />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/analytics/vertex-ai">
-        <AuthGuard requiredRole="client">
-          <ClientVertexAIAnalytics />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/analytics/vertex-ai">
+            <AuthGuard requiredRole="client">
+              <ClientVertexAIAnalytics />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/knowledge-documents">
-        <AuthGuard requiredRole="client">
-          <ClientKnowledgeDocuments />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/knowledge-documents">
+            <AuthGuard requiredRole="client">
+              <ClientKnowledgeDocuments />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/knowledge-apis">
-        <AuthGuard requiredRole="client">
-          <ClientKnowledgeApis />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/knowledge-apis">
+            <AuthGuard requiredRole="client">
+              <ClientKnowledgeApis />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/sales-agents/:agentId">
-        <AuthGuard requiredRole="client">
-          <ClientSalesAgentConfig />
-        </AuthGuard>
-      </Route>
+          <Route path="/client/sales-agents/:agentId">
+            <AuthGuard requiredRole="client">
+              <ClientSalesAgentConfig />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/training/:agentId/:conversationId">
-        <AuthGuard requiredRole="client">
-          <TrainingMapPage />
-        </AuthGuard>
-      </Route>
+          <Route path="/training/:agentId/:conversationId">
+            <AuthGuard requiredRole="client">
+              <TrainingMapPage />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/client/faq" component={ClientFAQ} />
+          <Route path="/client/faq" component={ClientFAQ} />
 
-      {/* Super Admin Routes */}
-      <Route path="/admin">
-        <AuthGuard requiredRole="super_admin">
-          <AdminDashboard />
-        </AuthGuard>
-      </Route>
+          {/* Super Admin Routes */}
+          <Route path="/admin">
+            <AuthGuard requiredRole="super_admin">
+              <AdminDashboard />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/admin/hierarchy">
-        <AuthGuard requiredRole="super_admin">
-          <AdminHierarchy />
-        </AuthGuard>
-      </Route>
+          <Route path="/admin/hierarchy">
+            <AuthGuard requiredRole="super_admin">
+              <AdminHierarchy />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/admin/users">
-        <AuthGuard requiredRole="super_admin">
-          <AdminUsers />
-        </AuthGuard>
-      </Route>
+          <Route path="/admin/users">
+            <AuthGuard requiredRole="super_admin">
+              <AdminUsers />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/admin/settings">
-        <AuthGuard requiredRole="super_admin">
-          <AdminSettings />
-        </AuthGuard>
-      </Route>
+          <Route path="/admin/settings">
+            <AuthGuard requiredRole="super_admin">
+              <AdminSettings />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consultation/:id/fathom">
-        <AuthGuard>
-          <ConsultationFathomViewer />
-        </AuthGuard>
-      </Route>
+          <Route path="/consultation/:id/fathom">
+            <AuthGuard>
+              <ConsultationFathomViewer />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/exercise/:id">
-        <AuthGuard>
-          <ExerciseDetails />
-        </AuthGuard>
-      </Route>
+          <Route path="/exercise/:id">
+            <AuthGuard>
+              <ExerciseDetails />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/consulenti">
-        <AuthGuard fallback={<ConsultantLanding />}>
-          <RoleBasedRedirect />
-        </AuthGuard>
-      </Route>
+          <Route path="/consulenti">
+            <AuthGuard fallback={<ConsultantLanding />}>
+              <RoleBasedRedirect />
+            </AuthGuard>
+          </Route>
 
-      <Route path="/">
-        <AuthGuard fallback={<Home />}>
-          <RoleBasedRedirect />
-        </AuthGuard>
-      </Route>
+          <Route path="/">
+            <AuthGuard fallback={<Home />}>
+              <RoleBasedRedirect />
+            </AuthGuard>
+          </Route>
 
           <Route component={NotFound} />
         </Switch>

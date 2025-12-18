@@ -1466,8 +1466,8 @@ export default function ConsultantExercises() {
                             <Button
                               variant={selectedCategory === 'all' ? 'default' : 'ghost'}
                               className={`w-full justify-start text-left h-auto py-3 px-3 ${selectedCategory === 'all'
-                                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700'
-                                  : 'hover:bg-muted'
+                                ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700'
+                                : 'hover:bg-muted'
                                 }`}
                               onClick={() => setSelectedCategory('all')}
                             >
@@ -1547,8 +1547,8 @@ export default function ConsultantExercises() {
                                   key={category}
                                   variant={selectedCategory === category ? 'default' : 'ghost'}
                                   className={`w-full justify-start text-left h-auto py-3 px-3 ${selectedCategory === category
-                                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700'
-                                      : 'hover:bg-muted'
+                                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:from-blue-700 hover:to-purple-700'
+                                    : 'hover:bg-muted'
                                     }`}
                                   onClick={() => setSelectedCategory(category)}
                                 >
@@ -2057,8 +2057,8 @@ export default function ConsultantExercises() {
                                                                     onClick={() => handleSendWhatsApp(assignment)}
                                                                     disabled={assignment.whatsappSent}
                                                                     className={`transition-all duration-200 text-xs ${assignment.whatsappSent
-                                                                        ? 'border-gray-200 bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
-                                                                        : 'border-green-200 hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-950/50 text-green-600 hover:text-green-700'
+                                                                      ? 'border-gray-200 bg-gray-50 text-gray-400 dark:bg-gray-800 dark:text-gray-500'
+                                                                      : 'border-green-200 hover:border-green-300 hover:bg-green-50 dark:hover:bg-green-950/50 text-green-600 hover:text-green-700'
                                                                       }`}
                                                                     data-testid={`button-whatsapp-${assignment.id}`}
                                                                   >
