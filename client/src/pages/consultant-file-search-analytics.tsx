@@ -22,8 +22,10 @@ import {
   MessageSquare,
   Bot,
   Users,
-  BookOpen
+  BookOpen,
+  Timer
 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -57,6 +59,9 @@ interface FileSearchSettings {
   autoSyncExercises: boolean;
   autoSyncConsultations: boolean;
   autoSyncUniversity: boolean;
+  scheduledSyncEnabled: boolean;
+  scheduledSyncHour: number;
+  lastScheduledSync: string | null;
   lastSyncAt: string | null;
   totalDocumentsSynced: number;
   totalUsageCount: number;
@@ -227,7 +232,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
     },
   });
 
-  const handleToggle = (key: keyof FileSearchSettings, value: boolean) => {
+  const handleToggle = (key: keyof FileSearchSettings, value: boolean | number) => {
     updateSettingsMutation.mutate({ [key]: value });
   };
 
@@ -607,6 +612,70 @@ export default function ConsultantFileSearchAnalyticsPage() {
               </TabsContent>
 
               <TabsContent value="contents" className="space-y-6">
+                {analytics?.documents && analytics.documents.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex flex-col items-center text-center">
+                          <FileText className="h-8 w-8 mb-2 opacity-90" />
+                          <p className="text-3xl font-bold">{analytics.documents.length}</p>
+                          <p className="text-sm opacity-90">Totale Documenti</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex flex-col items-center text-center">
+                          <BookOpen className="h-8 w-8 mb-2 opacity-90" />
+                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'library').length}</p>
+                          <p className="text-sm opacity-90">Libreria</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex flex-col items-center text-center">
+                          <Database className="h-8 w-8 mb-2 opacity-90" />
+                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'knowledge_base').length}</p>
+                          <p className="text-sm opacity-90">Knowledge Base</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex flex-col items-center text-center">
+                          <Zap className="h-8 w-8 mb-2 opacity-90" />
+                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'university').length}</p>
+                          <p className="text-sm opacity-90">University</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex flex-col items-center text-center">
+                          <CheckCircle2 className="h-8 w-8 mb-2 opacity-90" />
+                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'exercise').length}</p>
+                          <p className="text-sm opacity-90">Esercizi</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card className="bg-gradient-to-br from-pink-500 to-pink-600 text-white">
+                      <CardContent className="pt-4 pb-4">
+                        <div className="flex flex-col items-center text-center">
+                          <MessageSquare className="h-8 w-8 mb-2 opacity-90" />
+                          <p className="text-3xl font-bold">{analytics.documents.filter(d => d.sourceType === 'consultation').length}</p>
+                          <p className="text-sm opacity-90">Consultazioni</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -620,20 +689,6 @@ export default function ConsultantFileSearchAnalyticsPage() {
                   <CardContent>
                     {analytics?.documents && analytics.documents.length > 0 ? (
                       <div className="space-y-4">
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          <Badge variant="outline" className="bg-emerald-50">
-                            Totale: {analytics.documents.length} documenti
-                          </Badge>
-                          <Badge variant="outline" className="bg-blue-50">
-                            Libreria: {analytics.documents.filter(d => d.sourceType === 'library').length}
-                          </Badge>
-                          <Badge variant="outline" className="bg-purple-50">
-                            Knowledge Base: {analytics.documents.filter(d => d.sourceType === 'knowledge_base').length}
-                          </Badge>
-                          <Badge variant="outline" className="bg-amber-50">
-                            University: {analytics.documents.filter(d => d.sourceType === 'university').length}
-                          </Badge>
-                        </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
@@ -827,7 +882,51 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     </div>
 
                     <div className="border-t pt-6">
-                      <h4 className="font-medium mb-4">Sincronizzazione Automatica</h4>
+                      <h4 className="font-medium mb-4 flex items-center gap-2">
+                        <Timer className="h-4 w-4" />
+                        Sincronizzazione Automatica Programmata
+                      </h4>
+                      
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 mb-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <Label className="text-base font-medium text-blue-900">Sincronizzazione Giornaliera</Label>
+                            <p className="text-sm text-blue-700">
+                              I documenti verranno sincronizzati automaticamente ogni giorno all'ora selezionata
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Select
+                              value={settings?.scheduledSyncHour?.toString() ?? "3"}
+                              onValueChange={(value) => handleToggle('scheduledSyncHour', parseInt(value))}
+                              disabled={updateSettingsMutation.isPending || !(settings?.scheduledSyncEnabled ?? false)}
+                            >
+                              <SelectTrigger className="w-[120px] bg-white">
+                                <SelectValue placeholder="Ora" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: 24 }, (_, i) => (
+                                  <SelectItem key={i} value={i.toString()}>
+                                    {i.toString().padStart(2, '0')}:00
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Switch
+                              checked={settings?.scheduledSyncEnabled ?? false}
+                              onCheckedChange={(checked) => handleToggle('scheduledSyncEnabled', checked)}
+                              disabled={updateSettingsMutation.isPending}
+                            />
+                          </div>
+                        </div>
+                        {settings?.lastScheduledSync && (
+                          <p className="text-xs text-blue-600 mt-2">
+                            Ultima sincronizzazione programmata: {new Date(settings.lastScheduledSync).toLocaleString('it-IT')}
+                          </p>
+                        )}
+                      </div>
+
+                      <h5 className="font-medium mb-3 text-gray-700">Sorgenti da Sincronizzare</h5>
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
                           <div>

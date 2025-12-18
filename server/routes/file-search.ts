@@ -256,7 +256,9 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
       autoSyncKnowledgeBase,
       autoSyncExercises,
       autoSyncConsultations,
-      autoSyncUniversity
+      autoSyncUniversity,
+      scheduledSyncEnabled,
+      scheduledSyncHour
     } = req.body;
     
     const updateData: Partial<typeof fileSearchSettings.$inferInsert> = {
@@ -269,6 +271,10 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
     if (typeof autoSyncExercises === 'boolean') updateData.autoSyncExercises = autoSyncExercises;
     if (typeof autoSyncConsultations === 'boolean') updateData.autoSyncConsultations = autoSyncConsultations;
     if (typeof autoSyncUniversity === 'boolean') updateData.autoSyncUniversity = autoSyncUniversity;
+    if (typeof scheduledSyncEnabled === 'boolean') updateData.scheduledSyncEnabled = scheduledSyncEnabled;
+    if (typeof scheduledSyncHour === 'number' && scheduledSyncHour >= 0 && scheduledSyncHour <= 23) {
+      updateData.scheduledSyncHour = scheduledSyncHour;
+    }
     
     const [updated] = await db
       .update(fileSearchSettings)
