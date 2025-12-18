@@ -20,8 +20,10 @@ import {
   MessageSquare,
   CheckCircle2,
   AlertCircle,
-  Loader2
+  Loader2,
+  BarChart3
 } from "lucide-react";
+import { useLocation } from "wouter";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
@@ -51,6 +53,7 @@ export default function ConsultantAISettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [geminiApiKeys, setGeminiApiKeys] = useState<string[]>([]);
   const [syncingCategory, setSyncingCategory] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
   
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -398,24 +401,35 @@ export default function ConsultantAISettingsPage() {
             
             <CardContent className="p-6 space-y-6">
               {/* Status */}
-              <div className={`flex items-center gap-3 p-4 rounded-lg ${fileSearchInfo?.hasStore ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
-                {fileSearchInfo?.hasStore ? (
-                  <>
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium text-emerald-800">File Search Attivo</p>
-                      <p className="text-xs text-emerald-600">L'AI usa la ricerca semantica per trovare informazioni rilevanti nei tuoi documenti</p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
-                    <div>
-                      <p className="font-medium text-amber-800">File Search Non Configurato</p>
-                      <p className="text-xs text-amber-600">Sincronizza i tuoi documenti per attivare la ricerca semantica e ridurre i costi</p>
-                    </div>
-                  </>
-                )}
+              <div className={`flex items-center justify-between gap-3 p-4 rounded-lg ${fileSearchInfo?.hasStore ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+                <div className="flex items-center gap-3">
+                  {fileSearchInfo?.hasStore ? (
+                    <>
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-emerald-800">File Search Attivo</p>
+                        <p className="text-xs text-emerald-600">L'AI usa la ricerca semantica per trovare informazioni rilevanti nei tuoi documenti</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-amber-800">File Search Non Configurato</p>
+                        <p className="text-xs text-amber-600">Sincronizza i tuoi documenti per attivare la ricerca semantica e ridurre i costi</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLocation("/consultant/file-search-analytics")}
+                  className="flex-shrink-0 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Analytics
+                </Button>
               </div>
 
               {/* Sync Categories */}

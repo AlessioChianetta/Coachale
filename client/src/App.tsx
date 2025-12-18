@@ -41,6 +41,7 @@ const ConsultantEmailLogs = lazy(() => import("@/pages/consultant-email-logs"));
 const ConsultantAiConfig = lazy(() => import("@/pages/consultant-ai-config"));
 const ConsultantAIAssistant = lazy(() => import("@/pages/consultant-ai-assistant"));
 const ConsultantAISettings = lazy(() => import("@/pages/consultant-ai-settings"));
+const ConsultantFileSearchAnalytics = lazy(() => import("@/pages/consultant-file-search-analytics"));
 const ConsultantApiKeysUnified = lazy(() => import("@/pages/consultant-api-keys-unified"));
 const ConsultantClientState = lazy(() => import("@/pages/consultant-client-state"));
 const ConsultantWhatsApp = lazy(() => import("@/pages/consultant-whatsapp"));
@@ -345,6 +346,12 @@ function Router() {
           <Route path="/consultant/ai-settings">
             <AuthGuard requiredRole="consultant">
               <ConsultantAISettings />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/consultant/file-search-analytics">
+            <AuthGuard requiredRole="consultant">
+              <ConsultantFileSearchAnalytics />
             </AuthGuard>
           </Route>
 

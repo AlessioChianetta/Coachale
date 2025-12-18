@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { fileSearchService } from '../ai/file-search-service';
 import { fileSearchSyncService } from '../services/file-search-sync-service';
+import { db } from '../db';
+import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments } from '../../shared/schema';
+import { eq, desc, sql, and, gte } from 'drizzle-orm';
 
 const router = Router();
 
@@ -203,6 +206,261 @@ router.post('/initialize', authenticateToken, requireRole('consultant'), async (
     });
   } catch (error: any) {
     console.error('[FileSearch API] Error initializing store:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/file-search/settings
+ * Get File Search settings for current consultant
+ */
+router.get('/settings', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    let [settings] = await db
+      .select()
+      .from(fileSearchSettings)
+      .where(eq(fileSearchSettings.consultantId, consultantId))
+      .limit(1);
+    
+    if (!settings) {
+      [settings] = await db
+        .insert(fileSearchSettings)
+        .values({
+          consultantId,
+          enabled: true,
+          autoSyncLibrary: true,
+          autoSyncKnowledgeBase: true,
+        })
+        .returning();
+    }
+    
+    res.json(settings);
+  } catch (error: any) {
+    console.error('[FileSearch API] Error fetching settings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PATCH /api/file-search/settings
+ * Update File Search settings
+ */
+router.patch('/settings', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { 
+      enabled, 
+      autoSyncLibrary, 
+      autoSyncKnowledgeBase,
+      autoSyncExercises,
+      autoSyncConsultations,
+      autoSyncUniversity
+    } = req.body;
+    
+    const updateData: Partial<typeof fileSearchSettings.$inferInsert> = {
+      updatedAt: new Date(),
+    };
+    
+    if (typeof enabled === 'boolean') updateData.enabled = enabled;
+    if (typeof autoSyncLibrary === 'boolean') updateData.autoSyncLibrary = autoSyncLibrary;
+    if (typeof autoSyncKnowledgeBase === 'boolean') updateData.autoSyncKnowledgeBase = autoSyncKnowledgeBase;
+    if (typeof autoSyncExercises === 'boolean') updateData.autoSyncExercises = autoSyncExercises;
+    if (typeof autoSyncConsultations === 'boolean') updateData.autoSyncConsultations = autoSyncConsultations;
+    if (typeof autoSyncUniversity === 'boolean') updateData.autoSyncUniversity = autoSyncUniversity;
+    
+    const [updated] = await db
+      .update(fileSearchSettings)
+      .set(updateData)
+      .where(eq(fileSearchSettings.consultantId, consultantId))
+      .returning();
+    
+    if (!updated) {
+      const [created] = await db
+        .insert(fileSearchSettings)
+        .values({
+          consultantId,
+          ...updateData,
+        })
+        .returning();
+      return res.json(created);
+    }
+    
+    res.json(updated);
+  } catch (error: any) {
+    console.error('[FileSearch API] Error updating settings:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/file-search/analytics
+ * Get File Search usage analytics for consultant
+ */
+router.get('/analytics', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const days = parseInt(req.query.days as string) || 30;
+    
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const usageLogs = await db
+      .select()
+      .from(fileSearchUsageLogs)
+      .where(and(
+        eq(fileSearchUsageLogs.consultantId, consultantId),
+        gte(fileSearchUsageLogs.createdAt, startDate)
+      ))
+      .orderBy(desc(fileSearchUsageLogs.createdAt))
+      .limit(500);
+    
+    const stores = await db
+      .select()
+      .from(fileSearchStores)
+      .where(eq(fileSearchStores.ownerId, consultantId));
+    
+    const totalDocuments = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(fileSearchDocuments)
+      .where(
+        sql`${fileSearchDocuments.storeId} IN (
+          SELECT id FROM file_search_stores WHERE owner_id = ${consultantId}
+        )`
+      );
+    
+    const totalFileSearchCalls = usageLogs.filter(l => l.usedFileSearch).length;
+    const totalClassicRagCalls = usageLogs.filter(l => !l.usedFileSearch).length;
+    const totalTokensSaved = usageLogs.reduce((acc, l) => acc + (l.tokensSaved || 0), 0);
+    const totalCitations = usageLogs.reduce((acc, l) => acc + (l.citationsCount || 0), 0);
+    const avgResponseTime = usageLogs.length > 0 
+      ? Math.round(usageLogs.reduce((acc, l) => acc + (l.responseTimeMs || 0), 0) / usageLogs.length) 
+      : 0;
+    
+    const dailyStats = usageLogs.reduce((acc, log) => {
+      const date = log.createdAt ? new Date(log.createdAt).toISOString().split('T')[0] : 'unknown';
+      if (!acc[date]) {
+        acc[date] = { 
+          date, 
+          fileSearchCalls: 0, 
+          classicRagCalls: 0, 
+          tokensSaved: 0, 
+          citations: 0 
+        };
+      }
+      if (log.usedFileSearch) {
+        acc[date].fileSearchCalls++;
+      } else {
+        acc[date].classicRagCalls++;
+      }
+      acc[date].tokensSaved += log.tokensSaved || 0;
+      acc[date].citations += log.citationsCount || 0;
+      return acc;
+    }, {} as Record<string, { date: string; fileSearchCalls: number; classicRagCalls: number; tokensSaved: number; citations: number }>);
+    
+    const providerStats = usageLogs.reduce((acc, log) => {
+      const provider = log.providerUsed || 'unknown';
+      acc[provider] = (acc[provider] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    res.json({
+      summary: {
+        totalCalls: usageLogs.length,
+        fileSearchCalls: totalFileSearchCalls,
+        classicRagCalls: totalClassicRagCalls,
+        fileSearchPercentage: usageLogs.length > 0 
+          ? Math.round((totalFileSearchCalls / usageLogs.length) * 100) 
+          : 0,
+        totalTokensSaved,
+        totalCitations,
+        avgResponseTimeMs: avgResponseTime,
+        totalStores: stores.length,
+        totalDocuments: totalDocuments[0]?.count || 0,
+      },
+      dailyStats: Object.values(dailyStats).sort((a, b) => a.date.localeCompare(b.date)),
+      providerStats,
+      stores: stores.map(s => ({
+        id: s.id,
+        displayName: s.displayName,
+        documentCount: s.documentCount,
+        isActive: s.isActive,
+        createdAt: s.createdAt,
+      })),
+      recentLogs: usageLogs.slice(0, 50).map(l => ({
+        id: l.id,
+        requestType: l.requestType,
+        usedFileSearch: l.usedFileSearch,
+        providerUsed: l.providerUsed,
+        storeCount: l.storeCount,
+        citationsCount: l.citationsCount,
+        tokensSaved: l.tokensSaved,
+        responseTimeMs: l.responseTimeMs,
+        createdAt: l.createdAt,
+      })),
+      geminiApiKeyConfigured: !!process.env.GEMINI_API_KEY,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error fetching analytics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/log-usage
+ * Log File Search usage (internal use)
+ */
+router.post('/log-usage', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const {
+      consultantId,
+      clientId,
+      requestType,
+      storeNames,
+      storeCount,
+      documentCount,
+      citationsCount,
+      usedFileSearch,
+      providerUsed,
+      apiKeySource,
+      tokensSaved,
+      responseTimeMs,
+      errorMessage,
+    } = req.body;
+    
+    const [log] = await db
+      .insert(fileSearchUsageLogs)
+      .values({
+        consultantId,
+        clientId,
+        requestType,
+        storeNames: storeNames || [],
+        storeCount: storeCount || 0,
+        documentCount: documentCount || 0,
+        citationsCount: citationsCount || 0,
+        usedFileSearch: usedFileSearch || false,
+        providerUsed: providerUsed || 'fallback',
+        apiKeySource,
+        tokensSaved: tokensSaved || 0,
+        responseTimeMs,
+        errorMessage,
+      })
+      .returning();
+    
+    if (usedFileSearch) {
+      await db
+        .update(fileSearchSettings)
+        .set({
+          totalUsageCount: sql`${fileSearchSettings.totalUsageCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(fileSearchSettings.consultantId, consultantId));
+    }
+    
+    res.json({ success: true, logId: log.id });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error logging usage:', error);
     res.status(500).json({ error: error.message });
   }
 });
