@@ -46,7 +46,7 @@ class VertexAIClientAdapter implements GeminiClient {
   private currentModelName: string;
   public vertexAI?: VertexAI;
 
-  constructor(private model: GenerativeModel, modelName: string = 'gemini-2.5-flash') {
+  constructor(private model: GenerativeModel, modelName: string = 'gemini-3-flash-preview') {
     this.currentModelName = modelName;
   }
 
@@ -418,7 +418,7 @@ export function createVertexGeminiClient(
   projectId: string,
   location: string,
   credentials: any,
-  modelName: string = 'gemini-2.5-flash'
+  modelName: string = 'gemini-3-flash-preview'
 ): GeminiClient {
   console.log("🚀 Creating VertexAI instance with Service Account credentials");
   console.log("  - project:", projectId);
