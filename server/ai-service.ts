@@ -429,7 +429,24 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   // Detect intent from message and build user context with smart filtering
   const { detectIntent } = await import('./ai-context-builder');
   const intent = detectIntent(message);
-  const userContext: UserContext = await buildUserContext(clientId, { message, intent, pageContext, focusedDocument });
+  
+  // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE building context
+  const consultantIdForFileSearch = user.consultantId || clientId;
+  const fileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
+    clientId,
+    user.role as 'consultant' | 'client',
+    consultantIdForFileSearch
+  );
+  const hasFileSearch = fileSearchStoreNames.length > 0;
+  
+  // Build context with reduced data if File Search is available
+  const userContext: UserContext = await buildUserContext(clientId, { 
+    message, 
+    intent, 
+    pageContext, 
+    focusedDocument,
+    useFileSearch: hasFileSearch,
+  });
 
   let conversation;
   let conversationHistory: ChatMessage[] = [];
@@ -793,13 +810,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       },
     };
 
-    // Get FileSearch stores for semantic document retrieval
-    const consultantIdForFileSearch = user.consultantId || clientId;
-    const fileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
-      clientId,
-      user.role as 'consultant' | 'client',
-      consultantIdForFileSearch
-    );
+    // Build FileSearch tool from stores already fetched above
     const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
     
     // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO
@@ -1041,7 +1052,25 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     timings.contextBuildStart = performance.now();
     const { detectIntent } = await import('./ai-context-builder');
     const intent = detectIntent(message);
-    const userContext: UserContext = await buildUserContext(clientId, { message, intent, pageContext, focusedDocument });
+    
+    // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE building context
+    // This allows reducing context size when File Search semantic retrieval is available
+    const consultantIdForFileSearch = user.consultantId || clientId;
+    const fileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
+      clientId,
+      user.role as 'consultant' | 'client',
+      consultantIdForFileSearch
+    );
+    const hasFileSearch = fileSearchStoreNames.length > 0;
+    
+    // Build context with reduced data if File Search is available
+    const userContext: UserContext = await buildUserContext(clientId, { 
+      message, 
+      intent, 
+      pageContext, 
+      focusedDocument,
+      useFileSearch: hasFileSearch, // Skip heavy content when File Search can retrieve it
+    });
     timings.contextBuildEnd = performance.now();
 
     contextBuildTime = Math.round(timings.contextBuildEnd - timings.contextBuildStart);
@@ -1423,13 +1452,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
 
-    // Get FileSearch stores for semantic document retrieval (Client mode)
-    const consultantIdForFileSearch = user.consultantId || clientId;
-    const fileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
-      clientId,
-      user.role as 'consultant' | 'client',
-      consultantIdForFileSearch
-    );
+    // Build FileSearch tool from stores already fetched above
     const fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
     
     // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO (CLIENT STREAMING)
