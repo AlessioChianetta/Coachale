@@ -1,0 +1,183 @@
+ [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+🔍 Finding AI provider for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...
+📋 User 7e40b56c-2cc8-4515-b843-dc105e478f38 is a client, checking their consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b's settings
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b can use SuperAdmin Vertex AI
+🔍 Looking for SuperAdmin Vertex AI configuration...
+📋 Found SuperAdmin Vertex AI config: project=gen-lang-client-0278434337, location=us-central1
+✅ Parsed credentials as plaintext JSON
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created SuperAdmin Vertex AI client successfully
+✅ TIER 0: Successfully created SuperAdmin Vertex AI client
+🔄 Building context for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: general, sessionType: normal)
+📚 Including ALL 87 exercises in context (no limits applied)
+📚 Prepared 87 exercise metadata (content will be loaded on-demand when asked)
+📚 Found 81 documents linked to exercises
+📚 Total library documents included in context: 5 (intent: general)
+🏦 Fetching finance data for giusy.dattilo@gmail.com
+[PercorsoCapitale] Client initialized for user: gi***@gmail.com
+[PercorsoCapitale] req-1 Cache MISS for dashboard (user: gi***@gmail.com), fetching from API... (stats: 0/1 hits)
+[PercorsoCapitale] req-2 Cache MISS for categoryBudgets (user: gi***@gmail.com), fetching from API... (stats: 0/2 hits)
+[PercorsoCapitale] req-3 Cache MISS for transactions (user: gi***@gmail.com), fetching from API... (stats: 0/3 hits)
+[PercorsoCapitale] req-4 Cache MISS for accountArchitecture (user: gi***@gmail.com), fetching from API... (stats: 0/4 hits)
+[PercorsoCapitale] req-5 Cache MISS for budgetSettings (user: gi***@gmail.com), fetching from API... (stats: 0/5 hits)
+[PercorsoCapitale] req-6 Cache MISS for investments (user: gi***@gmail.com), fetching from API... (stats: 0/6 hits)
+[PercorsoCapitale] req-7 Cache MISS for goals (user: gi***@gmail.com), fetching from API... (stats: 0/7 hits)
+[PercorsoCapitale] req-2 Cached categoryBudgets for 3600s (1066ms response time)
+[PercorsoCapitale] req-5 Cached budgetSettings for 86400s (1192ms response time)
+[PercorsoCapitale] req-7 Cached goals for 21600s (1296ms response time)
+[PercorsoCapitale] req-6 Cached investments for 14400s (1302ms response time)
+[PercorsoCapitale] req-3 Cached transactions for 3600s (1314ms response time)
+[PercorsoCapitale] req-4 Cached accountArchitecture for 86400s (1325ms response time)
+[PercorsoCapitale] req-1 Cached dashboard for 300s (1675ms response time)
+📊 [ProcessBudgets] Month 2025-12: Found 27 expense transactions
+📊 [ProcessBudgets] Month 2025-12: Found 27 expense transactions
+📊 [ProcessBudgets] Month 2025-11: Found 42 expense transactions
+📊 [ProcessBudgets] Month 2025-10: Found 27 expense transactions
+📊 [MultiMonth] Analyzing 175 transactions
+📅 [MultiMonth] Date range: 2025-08-08 → 2026-01-02
+📅 [MultiMonth] Target months: 2025-07, 2025-08, 2025-09, 2025-10, 2025-11, 2025-12
+🔍 [FilterTransactions] Filtering for month 2025-07:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 0
+📊 [ProcessBudgets] Month 2025-07: Found 0 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-08:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 4
+   - Date range: 2025-08-27 → 2025-08-08
+📊 [ProcessBudgets] Month 2025-08: Found 3 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-09:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 43
+   - Date range: 2025-09-29 → 2025-09-02
+📊 [ProcessBudgets] Month 2025-09: Found 33 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-10:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 43
+   - Date range: 2025-10-31 → 2025-10-01
+📊 [ProcessBudgets] Month 2025-10: Found 27 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-11:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 53
+   - Date range: 2025-11-29 → 2025-11-01
+📊 [ProcessBudgets] Month 2025-11: Found 42 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-12:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 31
+   - Date range: 2025-12-18 → 2025-12-01
+📊 [ProcessBudgets] Month 2025-12: Found 27 expense transactions
+✅ Finance data fetched and transformed successfully (5 accounts, 8 budgets, 10 transactions)
+📊 Momentum stats: 15 check-ins (15 productive, 100% rate), streak: 2 days
+📅 Calendar stats: 0 total upcoming (0 ongoing, 0 today, 0 this week)
+📚 [Knowledge Base] Loading ALL knowledge content for client (no filtering)...
+📚 [Client Knowledge Base] Loaded 0 documents and 0 APIs for client 7e40b56c-2cc8-4515-b843-dc105e478f38
+ℹ️ [Knowledge Base] No documents or API data uploaded yet
+💾 Stored fresh context in cache for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: general)
+⏱️  [TIMING] Context building: 5445ms
+📚 ALWAYS loading exercise content - AI must have FULL Google Docs access...
+📋 Generic exercise query - FULL CONTENT (no limits)
+⏱️  [TIMING] Exercise scraping: 2ms
+⏱️  [TIMING] Prompt building: 23ms
+
+📊 Token Usage Estimation (Intent: general):
+  - System Prompt: ~212,392 tokens
+  - User Message: ~1 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~212,393 tokens
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~212,392 tokens)
+══════════════════════════════════════════════════════════════════════
+
+💰 Finance Data: 13,285 tokens (6.3%)
+📚 Exercises: 92,750 tokens (43.7%)
+📖 Library Docs: 1,573 tokens (0.7%)
+💬 Consultations: 41,700 tokens (19.6%)
+🎯 Goals & Tasks: 12 tokens (0.0%)
+⚡ Momentum & Calendar: 64 tokens (0.0%)
+🗺️  Roadmap: 2,458 tokens (1.2%)
+📚 Knowledge Base: 41 tokens (0.0%)
+👤 User Profile & Base: 5,055 tokens (2.4%)
+
+🎓 UNIVERSITY: 110,793 tokens (52.2%)
+   └─ Overall Progress: 17 tokens
+   └─ 📅 Anno 1 – Metodo Turbo: 912 tokens
+      └─ Q1 – Le Fondamenta della Tua Attività: 88 tokens (1 moduli, 3 lezioni)
+      └─ Q2 – Metodo Turbo: Diventa Invincibile a Vendere: 615 tokens (8 moduli, 28 lezioni)
+   └─ 📅 Anno 1 - Metodo Orbitale - Da 0 a 1.000.000 : 757 tokens
+      └─ Q1 - Le Fondamenta: 83 tokens (1 moduli, 13 lezioni)
+      └─ Q2 - Costruzione della Ricchezza: 86 tokens (1 moduli, 13 lezioni)
+      └─ Q3 - Ottimizzazione e Vita da Comandante: 88 tokens (1 moduli, 14 lezioni)
+      └─ Q4 - Eredità e Comando Perpetuo: 86 tokens (1 moduli, 13 lezioni)
+
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+📚 AI MODE: RAG CLASSICO (Context Injection) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores FileSearch: NESSUNO
+   ❌ Tool fileSearch: NON ATTIVO
+   📄 Tutto il contesto viene iniettato nel system prompt (~212,392 tokens)
+══════════════════════════════════════════════════════════════════════
+
+🔄 AI stream attempt 1/6...
+5:03:48 PM [express] POST /api/activity/session/heartbeat 200 in 438ms :: {"success":true,"lastActiv…
+❌ AI streaming error on attempt 1: [VertexAI.ClientError]: got status: 429 Too Many Requests. {"error":{"code":429,"message":"Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.","status":"RESOURCE_EXHAUSTED"}}
+❌ Errore nel processing AI streaming: ClientError: [VertexAI.ClientError]: got status: 429 Too Many Requests. {"error":{"code":429,"message":"Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.","status":"RESOURCE_EXHAUSTED"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:47:21)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    ... 5 lines matching cause stack trace ...
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:6594:26) {
+  stackTrace: GoogleApiError: Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.
+      at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:49:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+      at async generateContentStream (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/generate_content.ts:150:3)
+      at async VertexAIClientAdapter.generateContentStream (/home/runner/workspace/server/ai/provider-factory.ts:160:26)
+      at async streamWithBackoff (/home/runner/workspace/server/ai/retry-manager.ts:275:30)
+      at async streamWithRetriesAdapter (/home/runner/workspace/server/ai-service.ts:53:20)
+      at async Module.sendChatMessageStream (/home/runner/workspace/server/ai-service.ts:1490:22)
+      at async <anonymous> (/home/runner/workspace/server/routes.ts:6594:26) {
+    code: 429,
+    status: 'RESOURCE_EXHAUSTED',
+    errorDetails: undefined
+  },
+  [cause]: GoogleApiError: Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.
+      at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:49:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+      at async generateContentStream (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/generate_content.ts:150:3)
+      at async VertexAIClientAdapter.generateContentStream (/home/runner/workspace/server/ai/provider-factory.ts:160:26)
+      at async streamWithBackoff (/home/runner/workspace/server/ai/retry-manager.ts:275:30)
+      at async streamWithRetriesAdapter (/home/runner/workspace/server/ai-service.ts:53:20)
+      at async Module.sendChatMessageStream (/home/runner/workspace/server/ai-service.ts:1490:22)
+      at async <anonymous> (/home/runner/workspace/server/routes.ts:6594:26) {
+    code: 429,
+    status: 'RESOURCE_EXHAUSTED',
+    errorDetails: undefined
+  }
+}
+5:03:58 PM [express] POST /api/ai/chat 200 in 23530ms
+5:03:59 PM [express] GET /api/ai/conversations 200 in 574ms :: [{"id":"4ded531e-b096-458e-b05f-d6365…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
