@@ -11,6 +11,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { extractTextFromFile, type VertexAICredentials } from "../services/document-processor";
 import { parseServiceAccountJson } from "../ai/provider-factory";
+import { fileSearchSyncService } from "../services/file-search-sync-service";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -264,6 +265,11 @@ router.post(
             .where(eq(consultantKnowledgeDocuments.id, documentId));
 
           console.log(`✅ [KNOWLEDGE DOCUMENTS] Document indexed: "${title}"`);
+          
+          // Auto-sync to FileSearchStore for semantic AI search
+          fileSearchSyncService.onKnowledgeDocumentIndexed(documentId, consultantId)
+            .then(() => console.log(`🔍 [FileSearch] Document auto-synced to FileSearchStore: "${title}"`))
+            .catch(err => console.warn(`⚠️ [FileSearch] Auto-sync failed for "${title}":`, err.message));
         } catch (extractError: any) {
           console.error(`❌ [KNOWLEDGE DOCUMENTS] Text extraction failed:`, extractError.message);
           await db
