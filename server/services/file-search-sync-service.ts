@@ -26,7 +26,7 @@ import {
   users,
 } from "../../shared/schema";
 import { fileSearchService } from "../ai/file-search-service";
-import { eq, and, desc, isNotNull } from "drizzle-orm";
+import { eq, and, desc, isNotNull, inArray } from "drizzle-orm";
 
 export class FileSearchSyncService {
   /**
@@ -1932,22 +1932,38 @@ export class FileSearchSyncService {
     const allExercises = await db.select({ id: exercises.id, title: exercises.title })
       .from(exercises).where(eq(exercises.createdBy, consultantId));
     
-    // University lessons via join
-    const universityLessonsList = await db.select({ id: universityLessons.id, title: universityLessons.title })
-      .from(universityLessons)
-      .innerJoin(universityModules, eq(universityLessons.moduleId, universityModules.id))
-      .innerJoin(universityTrimesters, eq(universityModules.trimesterId, universityTrimesters.id))
-      .innerJoin(universityYears, eq(universityTrimesters.yearId, universityYears.id))
-      .where(eq(universityYears.createdBy, consultantId));
+    // University lessons via join - get all years for consultant first, then get lessons
+    const consultantYears = await db.select({ id: universityYears.id })
+      .from(universityYears).where(eq(universityYears.createdBy, consultantId));
+    const yearIds = consultantYears.map(y => y.id);
+    
+    let universityLessonsList: { id: string; title: string }[] = [];
+    if (yearIds.length > 0) {
+      const trimesters = await db.select({ id: universityTrimesters.id })
+        .from(universityTrimesters).where(inArray(universityTrimesters.yearId, yearIds));
+      const trimesterIds = trimesters.map(t => t.id);
+      
+      if (trimesterIds.length > 0) {
+        const modules = await db.select({ id: universityModules.id })
+          .from(universityModules).where(inArray(universityModules.trimesterId, trimesterIds));
+        const moduleIds = modules.map(m => m.id);
+        
+        if (moduleIds.length > 0) {
+          universityLessonsList = await db.select({ id: universityLessons.id, title: universityLessons.title })
+            .from(universityLessons).where(inArray(universityLessons.moduleId, moduleIds));
+        }
+      }
+    }
 
     // Get indexed documents from file_search_documents for this consultant
-    const indexedDocs = await db.select({ sourceType: fileSearchDocuments.sourceType, sourceId: fileSearchDocuments.sourceId })
+    const indexedDocsRaw = await db.select()
       .from(fileSearchDocuments)
       .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
       .where(and(
         eq(fileSearchStores.ownerId, consultantId),
         eq(fileSearchDocuments.status, 'indexed')
       ));
+    const indexedDocs = indexedDocsRaw.map(r => ({ sourceType: r.file_search_documents.sourceType, sourceId: r.file_search_documents.sourceId }));
 
     const indexedLibraryIds = new Set(indexedDocs.filter(d => d.sourceType === 'library').map(d => d.sourceId));
     const indexedKnowledgeIds = new Set(indexedDocs.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
@@ -1995,10 +2011,11 @@ export class FileSearchSyncService {
         .from(clientKnowledgeDocuments).where(eq(clientKnowledgeDocuments.clientId, client.id));
 
       // Get indexed for this client
-      const clientIndexed = await db.select({ sourceType: fileSearchDocuments.sourceType, sourceId: fileSearchDocuments.sourceId })
+      const clientIndexedRaw = await db.select()
         .from(fileSearchDocuments)
         .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
         .where(and(eq(fileSearchDocuments.clientId, client.id), eq(fileSearchDocuments.status, 'indexed')));
+      const clientIndexed = clientIndexedRaw.map(r => ({ sourceType: r.file_search_documents.sourceType, sourceId: r.file_search_documents.sourceId }));
 
       const indexedSubmissionIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
       const indexedConsultationIds = new Set(clientIndexed.filter(d => d.sourceType === 'consultation').map(d => d.sourceId));
