@@ -29,12 +29,14 @@ export interface GeminiClient {
     model: string;
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
+    tools?: any[];
   }): Promise<{ response: { text: () => string } }>;
 
   generateContentStream(params: {
     model: string;
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
+    tools?: any[];
   }): Promise<AsyncIterable<{ text?: string }>>;
 }
 
@@ -185,12 +187,17 @@ class GeminiClientAdapter implements GeminiClient {
     model: string;
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
+    tools?: any[];
   }): Promise<{ response: { text: () => string } }> {
     // NEW API: Call ai.models.generateContent directly (no getGenerativeModel)
+    // Include tools for File Search support (Google AI Studio only)
     const result = await this.ai.models.generateContent({
       model: params.model,
       contents: params.contents,
-      config: params.generationConfig,
+      config: {
+        ...params.generationConfig,
+        ...(params.tools && params.tools.length > 0 && { tools: params.tools }),
+      },
     });
 
     // Normalize response format
@@ -220,12 +227,17 @@ class GeminiClientAdapter implements GeminiClient {
     model: string;
     contents: Array<{ role: string; parts: Array<{ text: string }> }>;
     generationConfig?: any;
+    tools?: any[];
   }): Promise<AsyncIterable<{ text?: string }>> {
     // NEW API: generateContentStream returns AsyncGenerator directly
+    // Include tools for File Search support (Google AI Studio only)
     const streamGenerator = await this.ai.models.generateContentStream({
       model: params.model,
       contents: params.contents,
-      config: params.generationConfig,
+      config: {
+        ...params.generationConfig,
+        ...(params.tools && params.tools.length > 0 && { tools: params.tools }),
+      },
     });
 
     // Normalize streaming response: yield {text: chunk} objects
@@ -1170,4 +1182,82 @@ export function getCacheStats(): {
       activatedAt: entry.activatedAt,
     })),
   };
+}
+
+/**
+ * Get Google AI Studio client specifically for File Search operations
+ * File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
+ * 
+ * This function bypasses the normal tier selection and returns a Google AI Studio
+ * client when File Search stores are available.
+ * 
+ * @param userId - User ID (consultant or client)
+ * @returns Google AI Studio client with metadata, or null if API key not available
+ */
+export async function getGoogleAIStudioClientForFileSearch(
+  userId: string
+): Promise<{ client: GeminiClient; metadata: AiProviderMetadata } | null> {
+  console.log(`\n${'═'.repeat(70)}`);
+  console.log(`🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)`);
+  console.log(`${'═'.repeat(70)}`);
+  console.log(`   📦 Provider: Google AI Studio (@google/genai)`);
+  console.log(`   ✅ File Search API: SUPPORTED`);
+  console.log(`   ⚠️  Vertex AI: NOT compatible with File Search`);
+  console.log(`${'═'.repeat(70)}\n`);
+  
+  try {
+    // First check for environment API key (GEMINI_API_KEY)
+    const envApiKey = process.env.GEMINI_API_KEY;
+    if (envApiKey) {
+      console.log(`✅ Using GEMINI_API_KEY from environment for File Search`);
+      
+      const ai = new GoogleGenAI({ apiKey: envApiKey });
+      const client = new GeminiClientAdapter(ai);
+      
+      return {
+        client,
+        metadata: {
+          name: "Google AI Studio (File Search)",
+        },
+      };
+    }
+    
+    // Fallback to user's API keys
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      console.error(`❌ User ${userId} not found for File Search client`);
+      return null;
+    }
+
+    const apiKeys = user.geminiApiKeys || [];
+    const currentIndex = user.geminiApiKeyIndex || 0;
+
+    if (apiKeys.length === 0) {
+      console.error(`❌ No Gemini API keys available for File Search`);
+      return null;
+    }
+
+    const validIndex = currentIndex % apiKeys.length;
+    const apiKey = apiKeys[validIndex];
+
+    console.log(`✅ Using user's Gemini API key for File Search`);
+    
+    const ai = new GoogleGenAI({ apiKey });
+    const client = new GeminiClientAdapter(ai);
+
+    return {
+      client,
+      metadata: {
+        name: "Google AI Studio (File Search)",
+      },
+    };
+  } catch (error: any) {
+    console.error(`❌ Failed to create Google AI Studio client for File Search:`, error.message);
+    return null;
+  }
 }

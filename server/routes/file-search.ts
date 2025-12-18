@@ -145,4 +145,66 @@ router.post('/sync-all', authenticateToken, requireRole('consultant'), async (re
   }
 });
 
+/**
+ * POST /api/file-search/initialize
+ * Quick endpoint to create an empty FileSearchStore for a consultant
+ * Use this before syncing documents to test File Search functionality
+ */
+router.post('/initialize', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    
+    // Check if store already exists
+    const existingStores = await fileSearchService.getStoresForUser(consultantId, 'consultant');
+    if (existingStores.length > 0) {
+      console.log(`✅ [FileSearch API] Store already exists for consultant ${consultantId}`);
+      return res.json({
+        success: true,
+        message: 'Store già esistente',
+        store: existingStores[0],
+        isNew: false,
+      });
+    }
+    
+    // Check if GEMINI_API_KEY is configured
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(400).json({
+        success: false,
+        error: 'GEMINI_API_KEY non configurata. File Search richiede Google AI Studio.',
+      });
+    }
+    
+    // Create new store
+    console.log(`🔧 [FileSearch API] Creating new store for consultant ${consultantId}`);
+    const result = await fileSearchService.createStore({
+      displayName: 'Knowledge Base Consulente',
+      ownerId: consultantId,
+      ownerType: 'consultant',
+      description: 'Store per ricerca semantica AI (File Search)',
+    });
+    
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: result.error || 'Errore durante la creazione dello store',
+      });
+    }
+    
+    // Fetch the created store
+    const newStore = await fileSearchService.getStore(result.storeId!);
+    
+    console.log(`✅ [FileSearch API] Store created successfully: ${result.storeId}`);
+    res.json({
+      success: true,
+      message: 'Store creato con successo! Ora puoi sincronizzare i documenti.',
+      store: newStore,
+      isNew: true,
+      nextStep: 'Chiama /api/file-search/sync-all per sincronizzare tutti i documenti',
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error initializing store:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

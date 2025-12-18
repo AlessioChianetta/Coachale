@@ -30,7 +30,7 @@ import {
   AiRetryContext,
   OperationAttemptContext,
 } from "./ai/retry-manager";
-import { getAIProvider, AiProviderResult } from "./ai/provider-factory";
+import { getAIProvider, AiProviderResult, getGoogleAIStudioClientForFileSearch } from "./ai/provider-factory";
 import { fileSearchService } from "./ai/file-search-service";
 
 // DON'T DELETE THIS COMMENT
@@ -1050,17 +1050,8 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     // Extract consultantId (from user.consultantId or fallback to clientId)
     const consultantId = user.consultantId || clientId;
 
-    // Get AI provider using 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
-    aiProviderResult = await getAIProvider(clientId, consultantId);
-    const { client: aiClient, metadata: providerMetadata } = aiProviderResult;
-
-    // Detect intent from message and build user context with smart filtering
-    timings.contextBuildStart = performance.now();
-    const { detectIntent } = await import('./ai-context-builder');
-    const intent = detectIntent(message);
-    
-    // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE building context
-    // This allows reducing context size when File Search semantic retrieval is available
+    // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE selecting provider
+    // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
     const consultantIdForFileSearch = user.consultantId || clientId;
     const fileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
       clientId,
@@ -1068,6 +1059,36 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
       consultantIdForFileSearch
     );
     const hasFileSearch = fileSearchStoreNames.length > 0;
+
+    // Get AI provider - Use Google AI Studio if File Search is active, otherwise 3-tier system
+    let aiClient: any;
+    let providerMetadata: AiProviderMetadata;
+    
+    if (hasFileSearch) {
+      // 🔍 FILE SEARCH MODE: Force Google AI Studio (Vertex AI doesn't support File Search)
+      const fileSearchProvider = await getGoogleAIStudioClientForFileSearch(consultantIdForFileSearch);
+      if (fileSearchProvider) {
+        aiClient = fileSearchProvider.client;
+        providerMetadata = fileSearchProvider.metadata;
+        aiProviderResult = { client: aiClient, metadata: providerMetadata, source: 'google' };
+      } else {
+        // Fallback to normal provider if Google AI Studio not available
+        console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider`);
+        aiProviderResult = await getAIProvider(clientId, consultantId);
+        aiClient = aiProviderResult.client;
+        providerMetadata = aiProviderResult.metadata;
+      }
+    } else {
+      // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
+      aiProviderResult = await getAIProvider(clientId, consultantId);
+      aiClient = aiProviderResult.client;
+      providerMetadata = aiProviderResult.metadata;
+    }
+
+    // Detect intent from message and build user context with smart filtering
+    timings.contextBuildStart = performance.now();
+    const { detectIntent } = await import('./ai-context-builder');
+    const intent = detectIntent(message);
     
     // Build context with reduced data if File Search is available
     const userContext: UserContext = await buildUserContext(clientId, { 
@@ -2212,9 +2233,38 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
       throw new Error("Utente non autorizzato");
     }
 
-    // Get AI provider using 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
-    aiProviderResult = await getAIProvider(consultantId, consultantId);
-    const { client: aiClient, metadata: providerMetadata } = aiProviderResult;
+    // 🔍 FILE SEARCH: Check if consultant has FileSearchStore BEFORE selecting provider
+    // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
+    const consultantFileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
+      consultantId,
+      'consultant'
+    );
+    const hasConsultantFileSearch = consultantFileSearchStoreNames.length > 0;
+
+    // Get AI provider - Use Google AI Studio if File Search is active, otherwise 3-tier system
+    let aiClient: any;
+    let providerMetadata: AiProviderMetadata;
+    
+    if (hasConsultantFileSearch) {
+      // 🔍 FILE SEARCH MODE: Force Google AI Studio (Vertex AI doesn't support File Search)
+      const fileSearchProvider = await getGoogleAIStudioClientForFileSearch(consultantId);
+      if (fileSearchProvider) {
+        aiClient = fileSearchProvider.client;
+        providerMetadata = fileSearchProvider.metadata;
+        aiProviderResult = { client: aiClient, metadata: providerMetadata, source: 'google' };
+      } else {
+        // Fallback to normal provider if Google AI Studio not available
+        console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider`);
+        aiProviderResult = await getAIProvider(consultantId, consultantId);
+        aiClient = aiProviderResult.client;
+        providerMetadata = aiProviderResult.metadata;
+      }
+    } else {
+      // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
+      aiProviderResult = await getAIProvider(consultantId, consultantId);
+      aiClient = aiProviderResult.client;
+      providerMetadata = aiProviderResult.metadata;
+    }
 
     // Build consultant context with smart filtering (intent detection happens inside buildConsultantContext)
     timings.contextBuildStart = performance.now();
@@ -2309,11 +2359,7 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
     timings.geminiCallStart = performance.now();
     let accumulatedMessage = "";
 
-    // Get FileSearch stores for semantic document retrieval (Consultant mode)
-    const consultantFileSearchStoreNames = await fileSearchService.getStoreNamesForGeneration(
-      consultantId,
-      'consultant'
-    );
+    // Build FileSearch tool from stores already fetched above (reuse consultantFileSearchStoreNames)
     const consultantFileSearchTool = fileSearchService.buildFileSearchTool(consultantFileSearchStoreNames);
     
     // 📊 LOG DISTINTIVO: FILE SEARCH vs RAG CLASSICO (CONSULTANT)
