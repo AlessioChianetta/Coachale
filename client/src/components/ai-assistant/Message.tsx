@@ -610,6 +610,9 @@ export function Message({ message, onActionClick }: MessageProps) {
     let processed = escapedContent
       .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900 dark:text-white">$1</strong>')
       .replace(/`([^`]+)`/g, '<code class="px-2 py-0.5 mx-0.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded text-sm font-mono text-indigo-700 dark:text-indigo-300">$1</code>')
+      .replace(/^###\s+(.+)$/gm, '<h3 class="mt-4 mb-2 text-lg font-bold text-gray-900 dark:text-white">$1</h3>')
+      .replace(/^---$/gm, '<hr class="my-4 border-t border-gray-300 dark:border-gray-600" />')
+      .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em class="italic text-gray-700 dark:text-gray-300">$1</em>')
       .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline inline-flex items-center gap-1 font-medium">$1<svg class="h-3 w-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg></a>');
 
     const lines = processed.split('\n');

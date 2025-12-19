@@ -712,6 +712,7 @@ export class FileSearchSyncService {
 
   /**
    * Sync a single university lesson to FileSearchStore
+   * INCLUDES linked library document content for full-text search
    */
   static async syncUniversityLesson(
     lessonId: string,
@@ -743,6 +744,23 @@ export class FileSearchSyncService {
         return { success: true };
       }
 
+      // CRITICAL FIX: Load the linked library document content if exists
+      let linkedDocument: { title: string; content: string | null; contentType: string | null; videoUrl: string | null } | null = null;
+      if (lesson.libraryDocumentId) {
+        const libDoc = await db.query.libraryDocuments.findFirst({
+          where: eq(libraryDocuments.id, lesson.libraryDocumentId),
+        });
+        if (libDoc) {
+          linkedDocument = {
+            title: libDoc.title,
+            content: libDoc.content,
+            contentType: libDoc.contentType,
+            videoUrl: libDoc.videoUrl,
+          };
+          console.log(`📚 [FileSync] Found linked library document for lesson "${lesson.title}": "${libDoc.title}" (${libDoc.content?.length || 0} chars)`);
+        }
+      }
+
       // Get or create consultant store
       let consultantStore = await db.query.fileSearchStores.findFirst({
         where: and(
@@ -772,8 +790,8 @@ export class FileSearchSyncService {
         }
       }
 
-      // Build lesson content for indexing
-      const content = this.buildLessonContent(lesson);
+      // Build lesson content for indexing (now includes library document content!)
+      const content = this.buildLessonContent(lesson, linkedDocument);
       
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
@@ -784,7 +802,8 @@ export class FileSearchSyncService {
       });
 
       if (uploadResult.success) {
-        console.log(`✅ [FileSync] Lesson synced: ${lesson.title}`);
+        const contentSize = content.length;
+        console.log(`✅ [FileSync] Lesson synced: ${lesson.title} (${contentSize} chars${linkedDocument ? ', includes library doc' : ''})`);
       }
 
       return uploadResult.success 
@@ -798,8 +817,12 @@ export class FileSearchSyncService {
 
   /**
    * Build searchable content from a university lesson
+   * INCLUDES linked library document content for comprehensive semantic search
    */
-  private static buildLessonContent(lesson: any): string {
+  private static buildLessonContent(
+    lesson: any, 
+    linkedDocument?: { title: string; content: string | null; contentType: string | null; videoUrl: string | null } | null
+  ): string {
     const parts: string[] = [];
     
     // Build hierarchy path
@@ -825,11 +848,18 @@ export class FileSearchSyncService {
     }
     
     if (lesson.content) {
-      parts.push(`\n## Contenuto\n${lesson.content}`);
+      parts.push(`\n## Contenuto Base\n${lesson.content}`);
     }
     
-    if (lesson.videoUrl) {
-      parts.push(`\n## Video\n${lesson.videoUrl}`);
+    // CRITICAL: Include the full library document content (this is where the 100k+ tokens are!)
+    if (linkedDocument?.content) {
+      parts.push(`\n## Contenuto Completo della Lezione\n`);
+      parts.push(`Documento: ${linkedDocument.title}`);
+      parts.push(`\n${linkedDocument.content}`);
+    }
+    
+    if (lesson.videoUrl || linkedDocument?.videoUrl) {
+      parts.push(`\n## Video\n${lesson.videoUrl || linkedDocument?.videoUrl}`);
     }
     
     return parts.join('\n');

@@ -592,8 +592,8 @@ dal sistema "Software Orbitale" (il software di gestione finanziaria).
 💰 DATI FINANZIARI VIA FILE SEARCH (RAG)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-I dati finanziari del cliente sono disponibili tramite File Search.
-Usa il tool fileSearch per cercare informazioni su:
+I dati finanziari del cliente sono disponibili tramite ricerca semantica nei documenti indicizzati.
+Puoi accedere automaticamente a:
 - Dashboard finanziaria (patrimonio, liquidità, entrate/uscite)
 - Budget categorie e spese
 - Conti bancari e architettura finanziaria
@@ -601,8 +601,8 @@ Usa il tool fileSearch per cercare informazioni su:
 - Investimenti e obiettivi finanziari
 - Analisi storica multi-mese
 
-Quando rispondi a domande finanziarie, cerca prima i dati nel File Search
-e cita sempre "Software Orbitale" come fonte.
+Quando rispondi a domande finanziarie, i dati vengono cercati automaticamente.
+Cita sempre "Software Orbitale" come fonte.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : `
@@ -904,8 +904,8 @@ Progressi:
 - Completate: ${userContext.university.overallProgress.completedLessons}
 - Progresso: ${userContext.university.overallProgress.progressPercentage}%
 
-Hai ${userContext.university.assignedYears.length} anni universitari assegnati disponibili via File Search.
-Usa il tool fileSearch per cercare contenuti specifici delle lezioni.
+Hai ${userContext.university.assignedYears.length} anni universitari assegnati.
+I contenuti delle lezioni sono accessibili automaticamente tramite ricerca semantica.
 ` : ''}
 
 ${!hasFileSearch && userContext.exercises.all.length > 0 ? `
@@ -994,8 +994,8 @@ ${userContext.exercises.all.map(e => {
 ` : hasFileSearch && userContext.exercises.all.length > 0 ? `
 📚 ESERCIZI VIA FILE SEARCH (RAG)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Hai ${userContext.exercises.all.length} esercizi assegnati disponibili via File Search.
-Usa il tool fileSearch per cercare contenuti specifici degli esercizi.
+Hai ${userContext.exercises.all.length} esercizi assegnati.
+I contenuti degli esercizi sono accessibili automaticamente tramite ricerca semantica.
 Dashboard rapida:
   * Totale: ${userContext.exercises.all.length}
   * Pendenti: ${userContext.exercises.all.filter(e => e.status === 'pending' || e.status === 'in_progress').length}
@@ -1046,8 +1046,8 @@ ${userContext.consultations.recent.map(c => {
 ` : hasFileSearch && userContext.consultations.recent.length > 0 ? `
 📞 CONSULENZE VIA FILE SEARCH (RAG)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Hai ${userContext.consultations.recent.length} consulenze recenti disponibili via File Search.
-Usa il tool fileSearch per cercare contenuti specifici delle consulenze, riepiloghi e trascrizioni.
+Hai ${userContext.consultations.recent.length} consulenze recenti.
+I contenuti delle consulenze sono accessibili automaticamente tramite ricerca semantica.
 ` : ''}
 
 ${userContext.consultationTasks && userContext.consultationTasks.length > 0 ? `
@@ -1362,6 +1362,11 @@ ${allContext}
 4. **RISPOSTE AGLI ESERCIZI**:
    - Se chiede "qual è la mia risposta all'esercizio X?" leggi ESATTAMENTE la sua risposta dai dati
    - NON interpretare o modificare le risposte fornite
+
+5. **MAI MOSTRARE CODICE O JSON NELLE RISPOSTE**:
+   - NON mostrare MAI oggetti JSON, codice, o sintassi tecnica nelle risposte
+   - NON menzionare MAI nomi di tool o chiamate API (es: "fileSearch", "action", "parameters")
+   - Le ricerche avvengono AUTOMATICAMENTE - rispondi direttamente con i risultati
 
 LINEE GUIDA:
 1. Rispondi in italiano in modo chiaro, amichevole e professionale
@@ -2409,6 +2414,11 @@ ${allContext}
 4. **RISPOSTE AGLI ESERCIZI**:
    - Se chiede "qual è la mia risposta all'esercizio X?" leggi ESATTAMENTE la sua risposta dai dati
    - NON interpretare o modificare le risposte fornite
+
+5. **MAI MOSTRARE CODICE O JSON NELLE RISPOSTE**:
+   - NON mostrare MAI oggetti JSON, codice, o sintassi tecnica nelle risposte
+   - NON menzionare MAI nomi di tool o chiamate API (es: "fileSearch", "action", "parameters")
+   - Le ricerche avvengono AUTOMATICAMENTE - rispondi direttamente con i risultati
 
 LINEE GUIDA:
 1. Rispondi in italiano in modo informale, amichevole e diretto (usa "tu")

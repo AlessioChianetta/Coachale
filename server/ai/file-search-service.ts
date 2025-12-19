@@ -67,8 +67,8 @@ export interface Citation {
 }
 
 const DEFAULT_CHUNKING_CONFIG: ChunkingConfig = {
-  maxTokensPerChunk: 512,
-  maxOverlapTokens: 64,
+  maxTokensPerChunk: 400,
+  maxOverlapTokens: 40,
 };
 
 export class FileSearchService {
