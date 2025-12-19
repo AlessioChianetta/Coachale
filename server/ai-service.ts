@@ -140,17 +140,16 @@ function logTokenBreakdown(
     console.log(`   💰 Finance Data: ${breakdown.financeData.toLocaleString()} tokens`);
     console.log(`   🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens`);
     console.log(`   ⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens`);
-    console.log(`   🗺️  Roadmap: ${breakdown.roadmap.toLocaleString()} tokens`);
     console.log(`   👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens`);
-    console.log(`   🎓 University: ${breakdown.university.toLocaleString()} tokens`);
     
     console.log(`\n🔍 VIA FILE SEARCH RAG (non nel prompt, cercati su richiesta):`);
     console.log(`   📚 Exercises: ${breakdown.exercises.toLocaleString()} tokens → via RAG`);
     console.log(`   📖 Library Docs: ${breakdown.library.toLocaleString()} tokens → via RAG`);
     console.log(`   💬 Consultations: ${breakdown.consultations.toLocaleString()} tokens → via RAG`);
     console.log(`   📚 Knowledge Base: ${breakdown.knowledgeBase.toLocaleString()} tokens → via RAG`);
+    console.log(`   🎓 University: ${breakdown.university.toLocaleString()} tokens → via RAG`);
     
-    const ragTokens = breakdown.exercises + breakdown.library + breakdown.consultations + breakdown.knowledgeBase;
+    const ragTokens = breakdown.exercises + breakdown.library + breakdown.consultations + breakdown.knowledgeBase + breakdown.university;
     console.log(`\n   💰 RISPARMIO: ~${ragTokens.toLocaleString()} tokens spostati su File Search`);
   } else {
     // File Search non attivo - tutto nel prompt
@@ -160,7 +159,6 @@ function logTokenBreakdown(
     console.log(`💬 Consultations: ${breakdown.consultations.toLocaleString()} tokens (${((breakdown.consultations / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens (${((breakdown.goals / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens (${((breakdown.momentum / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`🗺️  Roadmap: ${breakdown.roadmap.toLocaleString()} tokens (${((breakdown.roadmap / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`📚 Knowledge Base: ${breakdown.knowledgeBase.toLocaleString()} tokens (${((breakdown.knowledgeBase / systemPromptTokens) * 100).toFixed(1)}%)`);
     console.log(`👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens (${((breakdown.base / systemPromptTokens) * 100).toFixed(1)}%)`);
 
@@ -191,7 +189,6 @@ function calculateTokenBreakdown(userContext: UserContext, intent: string): {
   university: number;
   consultations: number;
   goals: number;
-  roadmap: number;
   base: number;
   momentum: number;
   knowledgeBase: number; // Added Knowledge Base tokens for CLIENT
@@ -250,10 +247,6 @@ function calculateTokenBreakdown(userContext: UserContext, intent: string): {
     reflection: userContext.daily?.todayReflection || null
   });
   const goalsTokens = estimateTokens(goalsStr);
-
-  // Roadmap
-  const roadmapStr = JSON.stringify(userContext.roadmap);
-  const roadmapTokens = estimateTokens(roadmapStr);
 
   // Momentum & Calendar data (New section) - includes detailed check-ins
   const momentumStr = JSON.stringify({
@@ -346,7 +339,6 @@ function calculateTokenBreakdown(userContext: UserContext, intent: string): {
     university: universityTokens,
     consultations: consultationsTokens,
     goals: goalsTokens,
-    roadmap: roadmapTokens,
     momentum: momentumTokens,
     knowledgeBase: knowledgeBaseTokens,
     base: baseTokens,

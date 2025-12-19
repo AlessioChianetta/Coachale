@@ -19,10 +19,6 @@ import {
   universityLessons,
   universityProgress,
   universityYearClientAssignments,
-  roadmapPhases,
-  roadmapGroups,
-  roadmapItems,
-  clientRoadmapProgress,
   libraryCategories,
   libraryDocuments,
   libraryCategoryClientAssignments,
@@ -305,24 +301,6 @@ export interface UserContext {
     status: string;
     targetDate: string | null;
   }>;
-  roadmap: {
-    phases: Array<{
-      id: string;
-      title: string;
-      objective: string;
-      groups: Array<{
-        id: string;
-        title: string;
-        items: Array<{
-          id: string;
-          title: string;
-          description: string;
-          completed: boolean;
-          grade: number | null;
-        }>;
-      }>;
-    }>;
-  };
   library: {
     documents: Array<{
       id: string;
@@ -1068,124 +1046,7 @@ export async function buildUserContext(
   }
 
   // ========================================
-  // PHASE 3: Optimize Roadmap (eliminate N+1)
-  // ========================================
-  const phases = await db
-    .select()
-    .from(roadmapPhases)
-    .orderBy(roadmapPhases.sortOrder);
-
-  const roadmapData = [];
-  const phaseIds = phases.map(p => p.id);
-
-  if (phaseIds.length > 0) {
-    // Bulk fetch all groups for all phases
-    const allGroups = await db
-      .select()
-      .from(roadmapGroups)
-      .where(inArray(roadmapGroups.phaseId, phaseIds))
-      .orderBy(roadmapGroups.sortOrder);
-
-    const groupIds = allGroups.map(g => g.id);
-
-    if (groupIds.length > 0) {
-      // Bulk fetch all items for all groups
-      const allItems = await db
-        .select({
-          id: roadmapItems.id,
-          title: roadmapItems.title,
-          description: roadmapItems.description,
-          groupId: roadmapItems.groupId,
-          sortOrder: roadmapItems.sortOrder,
-        })
-        .from(roadmapItems)
-        .where(inArray(roadmapItems.groupId, groupIds))
-        .orderBy(roadmapItems.sortOrder);
-
-      const itemIds = allItems.map(i => i.id);
-
-      // Bulk fetch all progress for all items
-      let allRoadmapProgress: any[] = [];
-      if (itemIds.length > 0) {
-        allRoadmapProgress = await db
-          .select()
-          .from(clientRoadmapProgress)
-          .where(and(
-            eq(clientRoadmapProgress.clientId, clientId),
-            inArray(clientRoadmapProgress.itemId, itemIds)
-          ));
-      }
-
-      // Create lookup maps
-      const roadmapProgressMap = new Map(allRoadmapProgress.map(p => [p.itemId, p]));
-      const itemsByGroup = new Map<string, any[]>();
-      const groupsByPhase = new Map<string, any[]>();
-
-      // Group items by group
-      allItems.forEach(item => {
-        if (!itemsByGroup.has(item.groupId)) {
-          itemsByGroup.set(item.groupId, []);
-        }
-        itemsByGroup.get(item.groupId)!.push(item);
-      });
-
-      // Group groups by phase
-      allGroups.forEach(group => {
-        if (!groupsByPhase.has(group.phaseId)) {
-          groupsByPhase.set(group.phaseId, []);
-        }
-        groupsByPhase.get(group.phaseId)!.push(group);
-      });
-
-      // Reassemble the hierarchy
-      for (const phase of phases) {
-        const groups = groupsByPhase.get(phase.id) || [];
-        const groupsWithItems = [];
-
-        for (const group of groups) {
-          const items = itemsByGroup.get(group.id) || [];
-          const itemsWithProgress = [];
-
-          for (const item of items) {
-            const progress = roadmapProgressMap.get(item.id);
-            itemsWithProgress.push({
-              id: item.id,
-              title: item.title,
-              description: item.description,
-              completed: progress?.isCompleted || false,
-              grade: progress?.grade || null,
-            });
-          }
-
-          groupsWithItems.push({
-            id: group.id,
-            title: group.title,
-            items: itemsWithProgress,
-          });
-        }
-
-        roadmapData.push({
-          id: phase.id,
-          title: phase.title,
-          objective: phase.objective,
-          groups: groupsWithItems,
-        });
-      }
-    } else {
-      // No groups, just add phases
-      for (const phase of phases) {
-        roadmapData.push({
-          id: phase.id,
-          title: phase.title,
-          objective: phase.objective,
-          groups: [],
-        });
-      }
-    }
-  }
-
-  // ========================================
-  // PHASE 4: Optimize Library (eliminate N+1)
+  // PHASE 3: Optimize Library (eliminate N+1)
   // ========================================
 
   // Step 1: Get documents from assigned library categories
@@ -1915,9 +1776,6 @@ export async function buildUserContext(
       status: g.status,
       targetDate: g.targetDate ? g.targetDate.toISOString() : null,
     })),
-    roadmap: {
-      phases: roadmapData,
-    },
     library: {
       documents: libraryDocs,
     },

@@ -38,7 +38,8 @@ import {
   Folder,
   Plus,
   AlertCircle,
-  ClipboardCheck
+  ClipboardCheck,
+  Wallet
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -425,6 +426,35 @@ export default function ConsultantFileSearchAnalyticsPage() {
       toast({
         title: "Elemento sincronizzato!",
         description: "L'elemento è stato aggiunto al File Search.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Errore sincronizzazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const syncFinancialMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      const response = await fetch(`/api/file-search/sync-financial/${clientId}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Sync failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+      toast({
+        title: "Dati finanziari sincronizzati!",
+        description: "I dati finanziari sono stati aggiunti al File Search.",
       });
     },
     onError: (error: any) => {
@@ -2192,6 +2222,57 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         );
                       })
                     )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Wallet className="h-5 w-5 text-emerald-600" />
+                      Dati Finanziari Clienti
+                    </CardTitle>
+                    <CardDescription>
+                      Sincronizza i dati finanziari dei clienti (da Percorso Capitale) nel File Search
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(!auditData?.clients || auditData.clients.length === 0) ? (
+                      <p className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg text-center">
+                        Nessun cliente disponibile
+                      </p>
+                    ) : (
+                      auditData.clients.map(client => (
+                        <div key={`financial-${client.clientId}`} className="flex items-center justify-between p-3 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <Wallet className="h-4 w-4 text-emerald-600" />
+                            <div>
+                              <span className="font-medium text-emerald-900">{client.clientName}</span>
+                              <span className="text-sm text-gray-500 ml-2">({client.clientEmail})</span>
+                            </div>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => syncFinancialMutation.mutate(client.clientId)}
+                            disabled={syncFinancialMutation.isPending}
+                            className="border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                          >
+                            {syncFinancialMutation.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <>
+                                <RefreshCw className="h-3 w-3 mr-1" />
+                                Sync Dati Finanziari
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                    <p className="text-xs text-gray-500 mt-4 flex items-center gap-2">
+                      <AlertCircle className="h-3 w-3" />
+                      I dati finanziari vengono recuperati da Percorso Capitale e salvati nello store privato di ogni cliente
+                    </p>
                   </CardContent>
                 </Card>
 

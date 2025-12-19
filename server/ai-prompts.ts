@@ -310,7 +310,8 @@ Durante le consulenze settimanali live (90 minuti totali):
 }
 
 // Build full user data context for Live API (sent as chunked messages after setup)
-export function buildUserDataContextForLive(userContext: UserContext): string {
+export function buildUserDataContextForLive(userContext: UserContext, options?: { hasFileSearch?: boolean }): string {
+  const hasFileSearch = options?.hasFileSearch ?? false;
   const relevantDocs = userContext.library.documents;
 
   return `
@@ -330,7 +331,7 @@ per fornire risposte personalizzate e consulenza specifica.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${userContext.financeData ? `
+${!hasFileSearch && userContext.financeData ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚨 DATI FINANZIARI REALI - SOFTWARE ORBITALE 🚨  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -372,6 +373,9 @@ ${userContext.financeData.transactions.slice(0, 10).map(t =>
 ` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : hasFileSearch && userContext.financeData ? `
+💰 DATI FINANZIARI VIA FILE SEARCH
+I dati finanziari sono disponibili via File Search RAG.
 ` : ''}
 
 ${userContext.user ? `
@@ -549,7 +553,7 @@ usa SEMPRE questa data corrente, NON i dati dalle transazioni finanziarie.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-${userContext.financeData ? `
+${!hasFileSearch && userContext.financeData ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚨 IMPORTANTE - LEGGI QUESTO PRIMA DI TUTTO 🚨  
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -584,6 +588,23 @@ dal sistema "Software Orbitale" (il software di gestione finanziaria).
      I dati aggiornati mostrano..."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : hasFileSearch && userContext.financeData ? `
+💰 DATI FINANZIARI VIA FILE SEARCH (RAG)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+I dati finanziari del cliente sono disponibili tramite File Search.
+Usa il tool fileSearch per cercare informazioni su:
+- Dashboard finanziaria (patrimonio, liquidità, entrate/uscite)
+- Budget categorie e spese
+- Conti bancari e architettura finanziaria
+- Transazioni (con filtri per data/categoria)
+- Investimenti e obiettivi finanziari
+- Analisi storica multi-mese
+
+Quando rispondi a domande finanziarie, cerca prima i dati nel File Search
+e cita sempre "Software Orbitale" come fonte.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ` : `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ℹ️ NOTA DATI FINANZIARI
@@ -602,7 +623,7 @@ Quando rispondi a domande finanziarie, SPECIFICA sempre:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `}
 
-${userContext.financeData ? `
+${!hasFileSearch && userContext.financeData ? `
 💰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💰 SECTION 1: DATI SOFTWARE ORBITALE
 💰━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -838,6 +859,7 @@ Dashboard:
 - Task di oggi da completare: ${userContext.dashboard.todayTasks}
 - Consulenze in programma: ${userContext.dashboard.upcomingConsultations}
 
+${!hasFileSearch ? `
 Università - Progressi:
 - Totale lezioni: ${userContext.university.overallProgress.totalLessons}
 - Lezioni completate: ${userContext.university.overallProgress.completedLessons}
@@ -874,6 +896,17 @@ ${module.lessons.map(lesson => {
 - Se INSISTE ("dammi tutte" / "elenco completo") → mostra tutte (ordinate per modulo/trimestre)
 - Se chiede dettagli di UNA lezione specifica → mostra contenuto completo
 ` : 'Nessun corso universitario assegnato.'}
+` : hasFileSearch && userContext.university.assignedYears.length > 0 ? `
+🎓 UNIVERSITY VIA FILE SEARCH (RAG)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Progressi:
+- Totale lezioni: ${userContext.university.overallProgress.totalLessons}
+- Completate: ${userContext.university.overallProgress.completedLessons}
+- Progresso: ${userContext.university.overallProgress.progressPercentage}%
+
+Hai ${userContext.university.assignedYears.length} anni universitari assegnati disponibili via File Search.
+Usa il tool fileSearch per cercare contenuti specifici delle lezioni.
+` : ''}
 
 ${!hasFileSearch && userContext.exercises.all.length > 0 ? `
 Esercizi (${userContext.exercises.all.length} totali):

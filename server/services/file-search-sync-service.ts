@@ -25,7 +25,10 @@ import {
   universityYears,
   consultations,
   users,
+  userFinanceSettings,
 } from "../../shared/schema";
+import { PercorsoCapitaleClient } from "../percorso-capitale-client";
+import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
 import { fileSearchService } from "../ai/file-search-service";
 import { eq, and, desc, isNotNull, inArray } from "drizzle-orm";
 import { scrapeGoogleDoc } from "../web-scraper";
@@ -2594,6 +2597,220 @@ export class FileSearchSyncService {
     }
 
     return { total: docs.length, indexed, missing };
+  }
+
+  // ============================================================
+  // CLIENT FINANCIAL DATA SYNC
+  // ============================================================
+
+  /**
+   * Sync client's financial data (from Percorso Capitale) to their PRIVATE FileSearchStore
+   * 
+   * @param clientId - The client's user ID
+   * @param consultantId - The consultant's user ID
+   */
+  static async syncClientFinancialData(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`💰 [FileSync] Syncing financial data for client ${clientId.substring(0, 8)}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      // Check if already indexed
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('financial_data', clientId);
+      if (isAlreadyIndexed) {
+        console.log(`📌 [FileSync] Financial data already indexed for client: ${clientId.substring(0, 8)}`);
+        return { success: true };
+      }
+
+      // Get client's finance settings
+      const [financeConfig] = await db.select()
+        .from(userFinanceSettings)
+        .where(eq(userFinanceSettings.userId, clientId));
+
+      if (!financeConfig || !financeConfig.isEnabled || !financeConfig.percorsoCapitaleEmail) {
+        return { success: false, error: 'Finance settings not configured for this client' };
+      }
+
+      const apiKey = process.env.PERCORSO_CAPITALE_API_KEY;
+      const baseUrl = process.env.PERCORSO_CAPITALE_BASE_URL;
+
+      if (!apiKey || !baseUrl) {
+        return { success: false, error: 'Percorso Capitale API not configured' };
+      }
+
+      // Fetch financial data from Percorso Capitale
+      const pcClient = PercorsoCapitaleClient.getInstance(apiKey, baseUrl, financeConfig.percorsoCapitaleEmail);
+      
+      const [dashboardRaw, budgetsRaw, transactionsRaw, accountArchRaw, investmentsRaw, goalsRaw] = await Promise.all([
+        pcClient.getDashboard(),
+        pcClient.getCategoryBudgets(),
+        pcClient.getTransactions(),
+        pcClient.getAccountArchitecture(),
+        pcClient.getInvestments(),
+        pcClient.getGoals(),
+      ]);
+
+      // Process data
+      const processedDashboard = dashboardRaw ? PercorsoCapitaleDataProcessor.processDashboard(dashboardRaw) : null;
+      const processedAccountArch = accountArchRaw ? PercorsoCapitaleDataProcessor.processAccountArchitecture(accountArchRaw) : null;
+      const processedBudgets = (budgetsRaw && transactionsRaw) ? PercorsoCapitaleDataProcessor.processCategoryBudgets(budgetsRaw, transactionsRaw) : null;
+      const processedGoals = goalsRaw ? PercorsoCapitaleDataProcessor.processGoals(goalsRaw) : null;
+      const processedInvestments = investmentsRaw ? PercorsoCapitaleDataProcessor.processInvestments(investmentsRaw) : null;
+
+      // Build content for indexing
+      const content = this.buildFinancialDataContent({
+        dashboard: processedDashboard,
+        accounts: processedAccountArch,
+        budgets: processedBudgets,
+        transactions: transactionsRaw?.slice(0, 100), // Limit to 100 recent transactions
+        investments: processedInvestments,
+        goals: processedGoals,
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Get or create the client's PRIVATE store
+      const clientStore = await fileSearchService.getOrCreateClientStore(clientId, consultantId);
+      if (!clientStore) {
+        return { success: false, error: 'Failed to get or create client private store' };
+      }
+
+      // Upload to client's PRIVATE store
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: content,
+        displayName: `[FINANCIAL DATA] Dati Finanziari - ${new Date().toLocaleDateString('it-IT')}`,
+        storeId: clientStore.storeId,
+        sourceType: 'financial_data',
+        sourceId: clientId, // Use clientId as sourceId for uniqueness
+        clientId: clientId,
+      });
+
+      if (uploadResult.success) {
+        console.log(`✅ [FileSync] Financial data synced to PRIVATE store for client: ${clientId.substring(0, 8)}`);
+      }
+
+      return uploadResult.success 
+        ? { success: true }
+        : { success: false, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing client financial data:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Build searchable content from financial data
+   */
+  private static buildFinancialDataContent(data: {
+    dashboard: any;
+    accounts: any;
+    budgets: any;
+    transactions: any[];
+    investments: any;
+    goals: any;
+    updatedAt: string;
+  }): string {
+    const parts: string[] = [];
+    
+    parts.push(`# Dati Finanziari Cliente`);
+    parts.push(`Ultimo aggiornamento: ${new Date(data.updatedAt).toLocaleString('it-IT')}`);
+    
+    // Dashboard
+    if (data.dashboard) {
+      parts.push(`\n## Dashboard Finanziaria`);
+      parts.push(`- Patrimonio Netto: €${data.dashboard.netWorth?.toLocaleString('it-IT') || 'N/A'}`);
+      parts.push(`- Liquidità Disponibile: €${data.dashboard.availableLiquidity?.toLocaleString('it-IT') || 'N/A'}`);
+      parts.push(`- Entrate Mensili: €${data.dashboard.monthlyIncome?.toLocaleString('it-IT') || 'N/A'}`);
+      parts.push(`- Spese Mensili: €${data.dashboard.monthlyExpenses?.toLocaleString('it-IT') || 'N/A'}`);
+      parts.push(`- Tasso di Risparmio: ${data.dashboard.savingsRate?.toFixed(1) || 'N/A'}%`);
+      parts.push(`- Cash Flow Mensile Disponibile: €${data.dashboard.availableMonthlyFlow?.toLocaleString('it-IT') || 'N/A'}`);
+    }
+
+    // Accounts
+    if (data.accounts && data.accounts.accountsWithAllocations) {
+      parts.push(`\n## Conti Bancari`);
+      parts.push(`Totale Liquidità: €${data.accounts.totalBalance?.toLocaleString('it-IT') || 'N/A'}`);
+      data.accounts.accountsWithAllocations.forEach((acc: any) => {
+        parts.push(`- ${acc.name} (${acc.type}): €${acc.balance?.toLocaleString('it-IT') || '0'}`);
+      });
+    }
+
+    // Budgets
+    if (data.budgets && Array.isArray(data.budgets) && data.budgets.length > 0) {
+      parts.push(`\n## Budget Categorie`);
+      data.budgets.forEach((b: any) => {
+        const status = b.status === 'over' ? '🔴' : b.status === 'warning' ? '🟡' : '🟢';
+        parts.push(`- ${status} ${b.category}: €${b.spent || '0'}/€${b.monthlyBudget || '0'} (${b.percentage || '0'}%)`);
+      });
+    }
+
+    // Recent Transactions
+    if (data.transactions && data.transactions.length > 0) {
+      parts.push(`\n## Transazioni Recenti (ultime ${data.transactions.length})`);
+      data.transactions.slice(0, 50).forEach((t: any) => {
+        const sign = t.type === 'income' ? '+' : '-';
+        parts.push(`- ${t.date}: ${sign}€${Math.abs(parseFloat(t.amount || '0')).toLocaleString('it-IT')} - ${t.description} (${t.category})`);
+      });
+    }
+
+    // Investments
+    if (data.investments && data.investments.portfolios) {
+      parts.push(`\n## Investimenti`);
+      parts.push(`Valore Totale Portafoglio: €${data.investments.totalValue?.toLocaleString('it-IT') || 'N/A'}`);
+      if (data.investments.portfolios && data.investments.portfolios.length > 0) {
+        data.investments.portfolios.forEach((p: any) => {
+          parts.push(`- ${p.name}: €${p.currentValue?.toLocaleString('it-IT') || '0'}`);
+        });
+      }
+    }
+
+    // Goals
+    if (data.goals && data.goals.goals && data.goals.goals.length > 0) {
+      parts.push(`\n## Obiettivi Finanziari`);
+      data.goals.goals.forEach((g: any) => {
+        const progress = g.targetAmount ? ((g.currentAmount / g.targetAmount) * 100).toFixed(1) : '0';
+        parts.push(`- ${g.name}: €${g.currentAmount?.toLocaleString('it-IT') || '0'}/€${g.targetAmount?.toLocaleString('it-IT') || '0'} (${progress}%)`);
+      });
+    }
+    
+    return parts.join('\n');
+  }
+
+  /**
+   * Check if a client has financial data indexed
+   */
+  static async isClientFinancialDataIndexed(clientId: string): Promise<boolean> {
+    return await fileSearchService.isDocumentIndexed('financial_data', clientId);
+  }
+
+  /**
+   * Delete and re-sync client financial data (force update)
+   */
+  static async resyncClientFinancialData(
+    clientId: string,
+    consultantId: string,
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Delete existing financial data document
+      const existingDocs = await db.select()
+        .from(fileSearchDocuments)
+        .where(and(
+          eq(fileSearchDocuments.sourceType, 'financial_data'),
+          eq(fileSearchDocuments.sourceId, clientId),
+        ));
+
+      for (const doc of existingDocs) {
+        await fileSearchService.deleteDocument(doc.id);
+      }
+
+      // Sync fresh data
+      return await this.syncClientFinancialData(clientId, consultantId);
+    } catch (error: any) {
+      console.error('[FileSync] Error resyncing client financial data:', error);
+      return { success: false, error: error.message };
+    }
   }
 
   /**

@@ -671,6 +671,79 @@ router.post('/sync-missing', authenticateToken, requireRole('consultant'), async
 });
 
 /**
+ * POST /api/file-search/sync-financial/:clientId
+ * Sync financial data for a specific client
+ */
+router.post('/sync-financial/:clientId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientId } = req.params;
+    
+    if (!clientId) {
+      return res.status(400).json({ error: 'clientId is required' });
+    }
+    
+    const result = await fileSearchSyncService.syncClientFinancialData(clientId, consultantId);
+    
+    if (result.success) {
+      res.json({ success: true, message: `Dati finanziari sincronizzati per il cliente` });
+    } else {
+      res.status(500).json({ success: false, error: result.error });
+    }
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing client financial data:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/resync-financial/:clientId
+ * Force re-sync financial data for a specific client (delete and recreate)
+ */
+router.post('/resync-financial/:clientId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const consultantId = req.user!.id;
+    const { clientId } = req.params;
+    
+    if (!clientId) {
+      return res.status(400).json({ error: 'clientId is required' });
+    }
+    
+    const result = await fileSearchSyncService.resyncClientFinancialData(clientId, consultantId);
+    
+    if (result.success) {
+      res.json({ success: true, message: `Dati finanziari ri-sincronizzati per il cliente` });
+    } else {
+      res.status(500).json({ success: false, error: result.error });
+    }
+  } catch (error: any) {
+    console.error('[FileSearch API] Error resyncing client financial data:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/file-search/financial-status/:clientId
+ * Check if financial data is indexed for a specific client
+ */
+router.get('/financial-status/:clientId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const { clientId } = req.params;
+    
+    if (!clientId) {
+      return res.status(400).json({ error: 'clientId is required' });
+    }
+    
+    const isIndexed = await fileSearchSyncService.isClientFinancialDataIndexed(clientId);
+    
+    res.json({ clientId, isIndexed });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error checking financial status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/file-search/log-usage
  * Log File Search usage (internal use)
  */
