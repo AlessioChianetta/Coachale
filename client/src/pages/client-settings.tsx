@@ -3,6 +3,7 @@ import Sidebar from "@/components/sidebar";
 import Navbar from "@/components/navbar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import FinanceSettings from "@/components/FinanceSettings";
+import ExternalServicesSettings from "@/components/ExternalServicesSettings";
 import { Settings } from "lucide-react";
 import { AIAssistant } from "@/components/ai-assistant/AIAssistant";
 import { usePageContext } from "@/hooks/use-page-context";
@@ -11,7 +12,6 @@ export default function ClientSettings() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // AI Assistant context
   const pageContext = usePageContext({
     pageType: "settings",
   });
@@ -23,7 +23,6 @@ export default function ClientSettings() {
         <Sidebar role="client" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
         <div className="flex-1 p-4 md:p-8 overflow-y-auto bg-transparent">
-          {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-2">
               <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
@@ -40,14 +39,13 @@ export default function ClientSettings() {
             </div>
           </div>
 
-          {/* Finance Settings Section */}
-          <div className="max-w-4xl">
+          <div className="max-w-4xl space-y-6">
             <FinanceSettings />
+            <ExternalServicesSettings />
           </div>
         </div>
       </div>
 
-      {/* AI Assistant */}
       <AIAssistant pageContext={pageContext} />
     </div>
   );

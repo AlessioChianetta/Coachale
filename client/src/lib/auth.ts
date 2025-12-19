@@ -13,6 +13,7 @@ export interface AuthUser {
   isActive?: boolean;
   profileId?: string;
   consultantId?: string | null;
+  siteUrl?: string | null;
 }
 
 export const getToken = (): string | null => {

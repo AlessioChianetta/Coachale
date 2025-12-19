@@ -326,6 +326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: user.isActive,
           profileId: activeProfile.id,
           consultantId: activeProfile.consultantId || user.consultantId,
+          siteUrl: user.siteUrl,
         },
       });
     } catch (error: any) {
@@ -394,6 +395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: user.isActive,
           profileId: profile.id,
           consultantId: profile.consultantId || user.consultantId,
+          siteUrl: user.siteUrl,
         },
       });
     } catch (error: any) {

@@ -174,4 +174,53 @@ router.delete("/", authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
+// External Services - SiteAle URL configuration
+const siteUrlSchema = z.object({
+  siteUrl: z.string().url("URL non valido").optional().or(z.literal("")),
+});
+
+router.get("/site-url", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const user = await storage.getUser(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    res.json({ siteUrl: user.siteUrl || "" });
+  } catch (error: any) {
+    console.error(`[SiteUrl] GET error:`, error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post("/site-url", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { siteUrl } = siteUrlSchema.parse(req.body);
+    
+    console.log(`[SiteUrl] Updating for user ${userId}: ${siteUrl || "(empty)"}`);
+    
+    // Update user's siteUrl
+    const { db, schema } = await import("../db");
+    const { eq } = await import("drizzle-orm");
+    
+    await db.update(schema.users)
+      .set({ siteUrl: siteUrl || null })
+      .where(eq(schema.users.id, userId));
+    
+    console.log(`[SiteUrl] Updated successfully for user ${userId}`);
+    
+    res.json({ 
+      success: true, 
+      siteUrl: siteUrl || null,
+      message: "URL del sito aggiornato con successo" 
+    });
+  } catch (error: any) {
+    console.error(`[SiteUrl] POST error:`, error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

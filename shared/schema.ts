@@ -42,6 +42,9 @@ export const users = pgTable("users", {
   // Vertex AI Inheritance - consultants can use SuperAdmin's Vertex or their own
   useSuperadminVertex: boolean("use_superadmin_vertex").default(true), // If true, consultant uses SuperAdmin's Vertex; if false, uses their own
 
+  // External Services Configuration
+  siteUrl: text("site_url"), // Custom site URL for SiteAle external service (e.g., client's website)
+
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
