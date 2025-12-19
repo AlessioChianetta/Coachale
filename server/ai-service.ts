@@ -5,7 +5,8 @@
 import { performance } from 'perf_hooks';
 import { GoogleGenAI } from "@google/genai";
 import { db } from "./db";
-import { aiConversations, aiMessages, aiUserPreferences, users } from "../shared/schema";
+import { aiConversations, aiMessages, aiUserPreferences, users, superadminGeminiConfig } from "../shared/schema";
+import { decrypt } from "./encryption";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { buildUserContext, UserContext } from "./ai-context-builder";
 import { buildSystemPrompt, AIMode, ConsultantType } from "./ai-prompts";
@@ -37,6 +38,18 @@ import { fileSearchService } from "./ai/file-search-service";
 // Follow these instructions when using this blueprint:
 // - Note that the newest Gemini model series is "gemini-2.5-flash" or gemini-2.5-pro"
 //   - do not change this unless explicitly requested by the user
+
+// Gemini 3 Flash Preview for text chat (testing new model)
+// Set USE_GEMINI_3 to false to revert to legacy model if issues arise
+const USE_GEMINI_3 = true;
+const GEMINI_3_MODEL = "gemini-3-flash-preview";
+const GEMINI_3_THINKING_LEVEL: "minimal" | "low" | "medium" | "high" = "low";
+
+// Legacy model for fallback and Live API (Gemini 3 does NOT support Live API)
+const GEMINI_LEGACY_MODEL = "gemini-2.5-flash";
+
+// Get the appropriate model for text chat
+const TEXT_CHAT_MODEL = USE_GEMINI_3 ? GEMINI_3_MODEL : GEMINI_LEGACY_MODEL;
 
 // Streaming adapter: wraps streamWithBackoff and maps AiRetryEvent to ChatStreamChunk
 async function* streamWithRetriesAdapter(
@@ -346,18 +359,79 @@ function calculateTokenBreakdown(userContext: UserContext, intent: string): {
   };
 }
 
-// Get current API key from user's rotation array
+// Cache per le keys del SuperAdmin (evita query ripetute)
+let superAdminGeminiKeysCache: { keys: string[]; enabled: boolean; fetchedAt: number } | null = null;
+const SUPERADMIN_GEMINI_CACHE_TTL = 60000; // 1 minuto
+
+async function getSuperAdminGeminiKeys(): Promise<{ keys: string[]; enabled: boolean } | null> {
+  // Check cache
+  if (superAdminGeminiKeysCache && Date.now() - superAdminGeminiKeysCache.fetchedAt < SUPERADMIN_GEMINI_CACHE_TTL) {
+    return { keys: superAdminGeminiKeysCache.keys, enabled: superAdminGeminiKeysCache.enabled };
+  }
+  
+  try {
+    const config = await db.select().from(superadminGeminiConfig).limit(1);
+    if (!config.length || !config[0].enabled) {
+      superAdminGeminiKeysCache = { keys: [], enabled: false, fetchedAt: Date.now() };
+      return null;
+    }
+    
+    // Decrypt the keys
+    const decryptedKeysJson = decrypt(config[0].apiKeysEncrypted);
+    const keys = JSON.parse(decryptedKeysJson) as string[];
+    
+    superAdminGeminiKeysCache = { keys, enabled: true, fetchedAt: Date.now() };
+    return { keys, enabled: true };
+  } catch (error) {
+    console.error("[AI-SERVICE] Error fetching SuperAdmin Gemini keys:", error);
+    return null;
+  }
+}
+
+// Get current API key from user's rotation array or SuperAdmin config (async version)
+async function getCurrentApiKeyAsync(
+  user: { 
+    geminiApiKeys: string[] | null; 
+    geminiApiKeyIndex: number | null;
+    useSuperadminGemini?: boolean | null;
+  },
+  superAdminKeys?: string[] | null
+): Promise<{ apiKey: string; source: 'superadmin' | 'user' | 'env' }> {
+  
+  // Priority 1: SuperAdmin keys (if user opted in and keys available)
+  if (user.useSuperadminGemini !== false && superAdminKeys && superAdminKeys.length > 0) {
+    // Use random rotation for SuperAdmin keys
+    const index = Math.floor(Math.random() * superAdminKeys.length);
+    return { apiKey: superAdminKeys[index], source: 'superadmin' };
+  }
+  
+  // Priority 2: User's own keys
+  const apiKeys = user.geminiApiKeys || [];
+  const currentIndex = user.geminiApiKeyIndex || 0;
+  
+  if (apiKeys.length > 0) {
+    const validIndex = currentIndex % apiKeys.length;
+    return { apiKey: apiKeys[validIndex], source: 'user' };
+  }
+  
+  // Priority 3: Environment variable fallback
+  const defaultKey = process.env.GEMINI_API_KEY || "";
+  if (!defaultKey) {
+    throw new Error("API_KEY_MISSING");
+  }
+  return { apiKey: defaultKey, source: 'env' };
+}
+
+// Keep backward compatible sync version
 function getCurrentApiKey(user: { geminiApiKeys: string[] | null; geminiApiKeyIndex: number | null }): string {
   const apiKeys = user.geminiApiKeys || [];
   const currentIndex = user.geminiApiKeyIndex || 0;
 
-  // If user has API keys, use the current one in rotation
   if (apiKeys.length > 0) {
     const validIndex = currentIndex % apiKeys.length;
     return apiKeys[validIndex];
   }
 
-  // Otherwise, use the default environment API key
   const defaultKey = process.env.GEMINI_API_KEY || "";
   if (!defaultKey) {
     throw new Error("API_KEY_MISSING");
@@ -876,12 +950,20 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     }
     console.log(`${'═'.repeat(70)}\n`);
 
+    // Log model being used for text chat
+    console.log(`[AI] Using model: ${TEXT_CHAT_MODEL} with thinking_level: ${USE_GEMINI_3 ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'}`);
+
     const response = await retryWithBackoff(
       async (ctx: OperationAttemptContext) => {
         return await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: TEXT_CHAT_MODEL,
           config: {
             systemInstruction: systemPrompt,
+            ...(USE_GEMINI_3 && {
+              thinkingConfig: {
+                thinkingLevel: GEMINI_3_THINKING_LEVEL
+              }
+            }),
           },
           contents: geminiMessages.map(msg => ({
             role: msg.role === "assistant" ? "model" : "user",
@@ -1531,15 +1613,23 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     }
     console.log(`${'═'.repeat(70)}\n`);
 
+    // Log model being used for text chat (CLIENT streaming)
+    console.log(`[AI] Using model: ${TEXT_CHAT_MODEL} with thinking_level: ${USE_GEMINI_3 ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'} [CLIENT STREAMING]`);
+
     // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
-      model: "gemini-2.5-flash",
+      model: TEXT_CHAT_MODEL,
       contents: geminiMessages.map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
       })),
       generationConfig: {
         systemInstruction: systemPrompt,
+        ...(USE_GEMINI_3 && {
+          thinkingConfig: {
+            thinkingLevel: GEMINI_3_THINKING_LEVEL
+          }
+        }),
       },
       ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
@@ -2408,15 +2498,23 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
     }
     console.log(`${'═'.repeat(70)}\n`);
 
+    // Log model being used for text chat (CONSULTANT streaming)
+    console.log(`[AI] Using model: ${TEXT_CHAT_MODEL} with thinking_level: ${USE_GEMINI_3 ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'} [CONSULTANT STREAMING]`);
+
     // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
-      model: "gemini-2.5-flash",
+      model: TEXT_CHAT_MODEL,
       contents: geminiMessages.map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
       })),
       generationConfig: {
         systemInstruction: systemPrompt,
+        ...(USE_GEMINI_3 && {
+          thinkingConfig: {
+            thinkingLevel: GEMINI_3_THINKING_LEVEL
+          }
+        }),
       },
       ...(consultantFileSearchTool && { tools: [consultantFileSearchTool] }),
     });

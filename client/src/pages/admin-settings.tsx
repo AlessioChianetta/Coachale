@@ -30,12 +30,16 @@ import {
   Users,
   RefreshCw,
   Link,
+  Plus,
+  Trash2,
+  AlertCircle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import Navbar from "@/components/navbar";
 import AdminSidebar from "@/components/layout/AdminSidebar";
 import { getAuthHeaders } from "@/lib/auth";
@@ -94,6 +98,13 @@ interface TurnConfig {
   } | null;
 }
 
+interface GeminiConfig {
+  id: string;
+  apiKeys: string[];
+  apiKeyCount: number;
+  enabled: boolean;
+}
+
 export default function AdminSettings() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -126,6 +137,12 @@ export default function AdminSettings() {
   const [isSavingTurn, setIsSavingTurn] = useState(false);
   const [isTestingTurn, setIsTestingTurn] = useState(false);
   const [turnGuideOpen, setTurnGuideOpen] = useState(false);
+
+  const [geminiFormData, setGeminiFormData] = useState({
+    apiKeys: [''],
+    enabled: true,
+  });
+  const [isSavingGemini, setIsSavingGemini] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -249,6 +266,17 @@ export default function AdminSettings() {
     },
   });
 
+  const { data: geminiConfigData, isLoading: isLoadingGeminiConfig, refetch: refetchGeminiConfig } = useQuery({
+    queryKey: ["/api/admin/superadmin/gemini-config"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/superadmin/gemini-config", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Errore nel caricamento configurazione Gemini");
+      return response.json();
+    },
+  });
+
   const consultantList: ConsultantVertexAccess[] = (consultantAccessData?.consultants || []).map((c: any) => ({
     ...c,
     vertexAccessEnabled: c.hasAccess ?? true, // Map hasAccess to vertexAccessEnabled for UI
@@ -283,6 +311,17 @@ export default function AdminSettings() {
       });
     }
   }, [turnConfigData]);
+
+  useEffect(() => {
+    if (geminiConfigData?.config) {
+      setGeminiFormData({
+        apiKeys: geminiConfigData.config.apiKeys?.length > 0 
+          ? geminiConfigData.config.apiKeys 
+          : [''],
+        enabled: geminiConfigData.config.enabled ?? true,
+      });
+    }
+  }, [geminiConfigData]);
 
   const oauthConfig: GoogleOAuthConfig = oauthData || {
     configured: false,
@@ -495,6 +534,54 @@ export default function AdminSettings() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleSaveGeminiConfig = async () => {
+    setIsSavingGemini(true);
+    try {
+      const validKeys = geminiFormData.apiKeys.filter(k => k.trim().length > 0);
+      if (validKeys.length === 0) {
+        toast({ title: "Errore", description: "Inserisci almeno una API key", variant: "destructive" });
+        setIsSavingGemini(false);
+        return;
+      }
+      
+      const response = await fetch("/api/admin/superadmin/gemini-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ apiKeys: validKeys, enabled: geminiFormData.enabled }),
+      });
+      
+      if (!response.ok) throw new Error("Errore nel salvataggio");
+      
+      toast({ title: "Successo", description: "Configurazione Gemini salvata con successo." });
+      refetchGeminiConfig();
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSavingGemini(false);
+    }
+  };
+
+  const handleAddGeminiKey = () => {
+    if (geminiFormData.apiKeys.length < 10) {
+      setGeminiFormData(prev => ({ ...prev, apiKeys: [...prev.apiKeys, ''] }));
+    }
+  };
+
+  const handleRemoveGeminiKey = (index: number) => {
+    setGeminiFormData(prev => ({
+      ...prev,
+      apiKeys: prev.apiKeys.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleGeminiKeyChange = (index: number, value: string) => {
+    setGeminiFormData(prev => ({
+      ...prev,
+      apiKeys: prev.apiKeys.map((k, i) => i === index ? value : k)
+    }));
   };
 
   const handleSaveTurnConfig = async () => {
@@ -1252,6 +1339,111 @@ export default function AdminSettings() {
                     </Button>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Google AI Studio SuperAdmin Configuration */}
+            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 lg:col-span-2">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-blue-600 rounded-xl">
+                    <Key className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      Configurazione Google AI Studio (SuperAdmin)
+                    </CardTitle>
+                    <CardDescription>
+                      Configura le API keys Gemini per tutti i consulenti della piattaforma
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {isLoadingGeminiConfig ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between p-4 bg-white rounded-lg border">
+                      <div>
+                        <Label className="text-base font-medium">Abilitato</Label>
+                        <p className="text-sm text-gray-500">
+                          {geminiFormData.enabled 
+                            ? "I consulenti possono usare queste API keys" 
+                            : "Configurazione disabilitata"}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={geminiFormData.enabled}
+                        onCheckedChange={(checked) => setGeminiFormData(prev => ({ ...prev, enabled: checked }))}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">API Keys ({geminiFormData.apiKeys.length}/10)</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleAddGeminiKey}
+                          disabled={geminiFormData.apiKeys.length >= 10}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Aggiungi Key
+                        </Button>
+                      </div>
+
+                      {geminiFormData.apiKeys.map((key, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-gray-500 w-6">#{index + 1}</span>
+                          <Input
+                            type="password"
+                            value={key}
+                            onChange={(e) => handleGeminiKeyChange(index, e.target.value)}
+                            placeholder="AIzaSy..."
+                            className="flex-1"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveGeminiKey(index)}
+                            disabled={geminiFormData.apiKeys.length <= 1}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Alert className="bg-blue-50 border-blue-200">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-sm text-blue-800">
+                        Le API keys vengono ruotate automaticamente per distribuire il carico.
+                        I consulenti possono scegliere di usare queste keys o le proprie.
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="flex justify-end gap-3 pt-4 border-t">
+                      <Button
+                        onClick={handleSaveGeminiConfig}
+                        disabled={isSavingGemini}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600"
+                      >
+                        {isSavingGemini ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-2" />
+                        )}
+                        Salva Configurazione
+                      </Button>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 

@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { authenticateToken, requireSuperAdmin, type AuthRequest } from "../middleware/auth";
 import { db } from "../db";
-import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles } from "../../shared/schema";
+import { users, systemSettings, adminAuditLog, consultations, exerciseAssignments, consultantAvailabilitySettings, superadminVertexConfig, consultantVertexAccess, adminTurnConfig, userRoleProfiles, superadminGeminiConfig } from "../../shared/schema";
 import { eq, and, sql, desc, count, isNull, isNotNull } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { getAdminTurnConfig, saveAdminTurnConfig } from "../services/turn-config-service";
+import { encrypt, decrypt } from "../encryption";
 
 const router = Router();
 
@@ -1202,6 +1203,151 @@ router.delete(
       });
     } catch (error: any) {
       console.error("Delete admin TURN config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SuperAdmin Gemini API Keys Configuration - Centralized Gemini keys for consultants
+// ═══════════════════════════════════════════════════════════════════════════
+
+function maskApiKey(key: string): string {
+  if (!key || key.length < 10) return '***';
+  return key.substring(0, 8) + '...' + key.substring(key.length - 4);
+}
+
+router.get(
+  "/admin/superadmin/gemini-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [config] = await db
+        .select()
+        .from(superadminGeminiConfig)
+        .limit(1);
+
+      if (!config) {
+        return res.json({ success: true, config: null });
+      }
+
+      const decryptedKeys = JSON.parse(decrypt(config.apiKeysEncrypted)) as string[];
+      const maskedKeys = decryptedKeys.map((key: string) => maskApiKey(key));
+
+      res.json({
+        success: true,
+        config: {
+          id: config.id,
+          enabled: config.enabled,
+          apiKeys: maskedKeys,
+          apiKeyCount: decryptedKeys.length,
+          createdAt: config.createdAt,
+          updatedAt: config.updatedAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("Get superadmin gemini config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.post(
+  "/admin/superadmin/gemini-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const { apiKeys, enabled } = req.body;
+
+      if (!apiKeys || !Array.isArray(apiKeys) || apiKeys.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "At least one API key is required",
+        });
+      }
+
+      const encryptedKeys = encrypt(JSON.stringify(apiKeys));
+
+      const [existing] = await db
+        .select()
+        .from(superadminGeminiConfig)
+        .limit(1);
+
+      if (existing) {
+        await db
+          .update(superadminGeminiConfig)
+          .set({
+            apiKeysEncrypted: encryptedKeys,
+            enabled: enabled ?? true,
+            updatedAt: new Date(),
+          })
+          .where(eq(superadminGeminiConfig.id, existing.id));
+      } else {
+        await db.insert(superadminGeminiConfig).values({
+          apiKeysEncrypted: encryptedKeys,
+          enabled: enabled ?? true,
+        });
+      }
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: existing ? "update_superadmin_gemini_config" : "create_superadmin_gemini_config",
+        targetType: "setting",
+        targetId: "superadmin_gemini_config",
+        details: { keyCount: apiKeys.length, enabled: enabled ?? true },
+      });
+
+      console.log(`✅ SuperAdmin Gemini config saved with ${apiKeys.length} API keys`);
+
+      res.json({
+        success: true,
+        message: "Gemini API keys saved successfully",
+      });
+    } catch (error: any) {
+      console.error("Save superadmin gemini config error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+router.delete(
+  "/admin/superadmin/gemini-config",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req: AuthRequest, res) => {
+    try {
+      const [existingConfig] = await db
+        .select({ id: superadminGeminiConfig.id })
+        .from(superadminGeminiConfig)
+        .limit(1);
+
+      if (!existingConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "No Gemini config found",
+        });
+      }
+
+      await db.delete(superadminGeminiConfig).where(eq(superadminGeminiConfig.id, existingConfig.id));
+
+      await db.insert(adminAuditLog).values({
+        adminId: req.user!.id,
+        action: "delete_superadmin_gemini_config",
+        targetType: "setting",
+        targetId: existingConfig.id,
+        details: {},
+      });
+
+      console.log(`✅ Deleted SuperAdmin Gemini config`);
+
+      res.json({
+        success: true,
+        message: "Gemini configuration deleted successfully",
+      });
+    } catch (error: any) {
+      console.error("Delete superadmin gemini config error:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   }

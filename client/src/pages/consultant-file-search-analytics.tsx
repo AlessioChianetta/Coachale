@@ -78,6 +78,7 @@ interface FileSearchSettings {
   autoSyncUniversity: boolean;
   autoSyncClientKnowledge: boolean;
   autoSyncExerciseResponses: boolean;
+  autoSyncFinancial: boolean;
   scheduledSyncEnabled: boolean;
   scheduledSyncHour: number;
   lastScheduledSync: string | null;
@@ -1759,6 +1760,18 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           <Switch
                             checked={settings?.autoSyncClientKnowledge ?? false}
                             onCheckedChange={(checked) => handleToggle('autoSyncClientKnowledge', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Dati Finanziari Clienti</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente i dati finanziari dei clienti (Percorso Capitale)</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncFinancial ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncFinancial', checked)}
                             disabled={updateSettingsMutation.isPending}
                           />
                         </div>

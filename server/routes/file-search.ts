@@ -264,6 +264,7 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
       autoSyncConsultations,
       autoSyncUniversity,
       autoSyncExerciseResponses,
+      autoSyncFinancial,
       autoSyncClientKnowledge,
       scheduledSyncEnabled,
       scheduledSyncHour
@@ -280,6 +281,7 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
     if (typeof autoSyncConsultations === 'boolean') updateData.autoSyncConsultations = autoSyncConsultations;
     if (typeof autoSyncUniversity === 'boolean') updateData.autoSyncUniversity = autoSyncUniversity;
     if (typeof autoSyncExerciseResponses === 'boolean') updateData.autoSyncExerciseResponses = autoSyncExerciseResponses;
+    if (typeof autoSyncFinancial === 'boolean') updateData.autoSyncFinancial = autoSyncFinancial;
     if (typeof autoSyncClientKnowledge === 'boolean') updateData.autoSyncClientKnowledge = autoSyncClientKnowledge;
     if (typeof scheduledSyncEnabled === 'boolean') updateData.scheduledSyncEnabled = scheduledSyncEnabled;
     if (typeof scheduledSyncHour === 'number' && scheduledSyncHour >= 0 && scheduledSyncHour <= 23) {

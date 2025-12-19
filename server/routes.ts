@@ -7055,6 +7055,73 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
     }
   });
 
+  // GET /api/consultant/gemini-preference - Get consultant's Gemini API preference
+  app.get("/api/consultant/gemini-preference", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      const [consultant] = await db
+        .select({
+          useSuperadminGemini: schema.users.useSuperadminGemini,
+          geminiApiKeys: schema.users.geminiApiKeys,
+        })
+        .from(schema.users)
+        .where(eq(schema.users.id, consultantId))
+        .limit(1);
+
+      if (!consultant) {
+        return res.status(404).json({ success: false, message: "Consultant not found" });
+      }
+
+      const [superadminConfig] = await db
+        .select({ enabled: schema.superadminGeminiConfig.enabled })
+        .from(schema.superadminGeminiConfig)
+        .limit(1);
+
+      const superAdminGeminiAvailable = !!superadminConfig && superadminConfig.enabled !== false;
+      const hasOwnGeminiKeys = (consultant.geminiApiKeys?.length ?? 0) > 0;
+
+      res.json({
+        success: true,
+        useSuperAdminGemini: consultant.useSuperadminGemini ?? true,
+        hasOwnGeminiKeys: hasOwnGeminiKeys,
+        superAdminGeminiAvailable: superAdminGeminiAvailable,
+      });
+    } catch (error: any) {
+      console.error("Error fetching consultant gemini preference:", error);
+      res.status(500).json({ success: false, message: error.message || "Failed to fetch preference" });
+    }
+  });
+
+  // PUT /api/consultant/gemini-preference - Toggle consultant's useSuperadminGemini preference
+  app.put("/api/consultant/gemini-preference", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const { useSuperadminGemini } = req.body;
+
+      if (typeof useSuperadminGemini !== "boolean") {
+        return res.status(400).json({ success: false, message: "useSuperadminGemini must be a boolean" });
+      }
+
+      await db
+        .update(schema.users)
+        .set({ useSuperadminGemini })
+        .where(eq(schema.users.id, req.user!.id));
+
+      console.log(`✅ Consultant ${req.user!.id} updated useSuperadminGemini to ${useSuperadminGemini}`);
+
+      res.json({
+        success: true,
+        useSuperadminGemini,
+        message: useSuperadminGemini 
+          ? "Ora utilizzi le API keys Gemini del SuperAdmin" 
+          : "Ora utilizzi le tue API keys Gemini personali",
+      });
+    } catch (error: any) {
+      console.error("Error updating consultant gemini preference:", error);
+      res.status(500).json({ success: false, message: error.message || "Failed to update preference" });
+    }
+  });
+
   // Web scraping endpoint - REMOVED for security (SSRF protection)
   // Scraping is only done internally for exercise platforms
 

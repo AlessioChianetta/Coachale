@@ -982,6 +982,46 @@ export default function ConsultantApiKeysUnified() {
     }
   };
 
+  // Gemini Preference query - determines if consultant uses SuperAdmin Gemini keys or own
+  const { data: geminiPreference, isLoading: isLoadingGeminiPreference } = useQuery({
+    queryKey: ["/api/consultant/gemini-preference"],
+    queryFn: async () => {
+      const response = await fetch("/api/consultant/gemini-preference", {
+        credentials: "include",
+      });
+      if (response.status === 404) return { useSuperAdminGemini: true, superAdminGeminiAvailable: false, hasOwnGeminiKeys: false };
+      if (!response.ok) throw new Error("Errore nel caricamento preferenza Gemini");
+      return response.json();
+    },
+  });
+
+  const [isSavingGeminiPreference, setIsSavingGeminiPreference] = useState(false);
+
+  const handleToggleGeminiPreference = async () => {
+    setIsSavingGeminiPreference(true);
+    try {
+      const newValue = !geminiPreference?.useSuperAdminGemini;
+      const response = await fetch("/api/consultant/gemini-preference", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ useSuperAdminGemini: newValue }),
+      });
+      if (!response.ok) throw new Error("Errore nel salvataggio");
+      queryClient.invalidateQueries({ queryKey: ["/api/consultant/gemini-preference"] });
+      toast({
+        title: newValue ? "SuperAdmin Gemini abilitato" : "Gemini personale abilitato",
+        description: newValue 
+          ? "Userai le API keys Gemini del SuperAdmin"
+          : "Userai le tue API keys Gemini personali",
+      });
+    } catch (error: any) {
+      toast({ title: "Errore", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSavingGeminiPreference(false);
+    }
+  };
+
   useEffect(() => {
     if (vertexAiData?.settings) {
       setVertexFormData({
@@ -2213,8 +2253,18 @@ export default function ConsultantApiKeysUnified() {
                           </CardDescription>
                         </div>
                       </div>
-                      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
-                        Fallback
+                      <Badge variant="outline" className={
+                        geminiPreference?.useSuperAdminGemini && geminiPreference?.superAdminGeminiAvailable
+                          ? "bg-blue-50 text-blue-700 border-blue-300"
+                          : geminiPreference?.hasOwnGeminiKeys
+                          ? "bg-green-50 text-green-700 border-green-300"
+                          : "bg-gray-50 text-gray-700 border-gray-300"
+                      }>
+                        {geminiPreference?.useSuperAdminGemini && geminiPreference?.superAdminGeminiAvailable
+                          ? "Gemini SuperAdmin"
+                          : geminiPreference?.hasOwnGeminiKeys
+                          ? "Gemini Personale"
+                          : "Non configurato"}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -2228,81 +2278,113 @@ export default function ConsultantApiKeysUnified() {
                       </AlertDescription>
                     </Alert>
 
-                    {/* API Keys management */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-medium flex items-center gap-2">
-                          <Bot className="h-4 w-4 text-blue-600" />
-                          Le tue API Keys ({geminiApiKeys.length}/10)
-                        </Label>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={handleAddApiKey}
-                          disabled={geminiApiKeys.length >= 10}
-                          className="text-xs"
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Aggiungi Key
-                        </Button>
-                      </div>
-
-                      {geminiApiKeys.length === 0 ? (
-                        <div className="text-sm text-slate-500 italic py-8 text-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
-                          <Bot className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                          <p className="font-medium text-slate-600 mb-1">Nessuna API key configurata</p>
-                          <p className="text-xs">Clicca "Aggiungi Key" per iniziare</p>
+                    {/* SuperAdmin Gemini Toggle */}
+                    {geminiPreference?.superAdminGeminiAvailable && (
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center gap-3">
+                          <Key className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="font-medium text-blue-800">Usa Gemini API Keys del SuperAdmin</p>
+                            <p className="text-sm text-blue-600">
+                              Usa la configurazione centralizzata invece di configurare le tue API keys
+                            </p>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="space-y-3 max-h-96 overflow-y-auto">
-                          {geminiApiKeys.map((apiKey, index) => (
-                            <div key={index} className="flex items-center gap-2 bg-slate-50 p-3 rounded-lg hover:bg-slate-100 transition-colors">
-                              <div className="flex-shrink-0 w-8 text-center">
-                                <span className="text-xs font-medium text-slate-500">#{index + 1}</span>
-                              </div>
-                              <Input
-                                type="password"
-                                value={apiKey}
-                                onChange={(e) => handleApiKeyChange(index, e.target.value)}
-                                className="flex-1 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
-                                placeholder={`API Key ${index + 1}`}
-                              />
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleRemoveApiKey(index)}
-                                className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                        <Switch
+                          checked={geminiPreference?.useSuperAdminGemini ?? true}
+                          onCheckedChange={handleToggleGeminiPreference}
+                          disabled={isSavingGeminiPreference}
+                        />
+                      </div>
+                    )}
+
+                    {geminiPreference?.useSuperAdminGemini && geminiPreference?.superAdminGeminiAvailable ? (
+                      <Alert className="bg-blue-50 border-blue-200">
+                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                        <AlertDescription className="text-sm text-blue-800">
+                          Stai usando le API keys Gemini centralizzate del SuperAdmin. 
+                          Non è necessario configurare le tue API keys.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <>
+                        {/* API Keys management */}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium flex items-center gap-2">
+                              <Bot className="h-4 w-4 text-blue-600" />
+                              Le tue API Keys ({geminiApiKeys.length}/10)
+                            </Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleAddApiKey}
+                              disabled={geminiApiKeys.length >= 10}
+                              className="text-xs"
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Aggiungi Key
+                            </Button>
+                          </div>
+
+                          {geminiApiKeys.length === 0 ? (
+                            <div className="text-sm text-slate-500 italic py-8 text-center border-2 border-dashed border-slate-200 rounded-lg bg-slate-50">
+                              <Bot className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                              <p className="font-medium text-slate-600 mb-1">Nessuna API key configurata</p>
+                              <p className="text-xs">Clicca "Aggiungi Key" per iniziare</p>
                             </div>
-                          ))}
+                          ) : (
+                            <div className="space-y-3 max-h-96 overflow-y-auto">
+                              {geminiApiKeys.map((apiKey, index) => (
+                                <div key={index} className="flex items-center gap-2 bg-slate-50 p-3 rounded-lg hover:bg-slate-100 transition-colors">
+                                  <div className="flex-shrink-0 w-8 text-center">
+                                    <span className="text-xs font-medium text-slate-500">#{index + 1}</span>
+                                  </div>
+                                  <Input
+                                    type="password"
+                                    value={apiKey}
+                                    onChange={(e) => handleApiKeyChange(index, e.target.value)}
+                                    className="flex-1 border-slate-200 focus:border-blue-400 focus:ring-blue-400"
+                                    placeholder={`API Key ${index + 1}`}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRemoveApiKey(index)}
+                                    className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p className="text-xs text-blue-800 flex items-start gap-2">
+                              <Sparkles className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                              <span>
+                                Le API keys verranno ruotate automaticamente ad ogni interazione per distribuire il carico. 
+                                Puoi aggiungere fino a 10 keys per massimizzare la capacità.
+                              </span>
+                            </p>
+                          </div>
                         </div>
-                      )}
 
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <p className="text-xs text-blue-800 flex items-start gap-2">
-                          <Sparkles className="h-4 w-4 flex-shrink-0 mt-0.5" />
-                          <span>
-                            Le API keys verranno ruotate automaticamente ad ogni interazione per distribuire il carico. 
-                            Puoi aggiungere fino a 10 keys per massimizzare la capacità.
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Buttons */}
-                    <div className="flex justify-end gap-3 pt-4 border-t">
-                      <Button
-                        onClick={handleGeminiSave}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                      >
-                        <Save className="h-4 w-4 mr-2" />
-                        Salva Modifiche
-                      </Button>
-                    </div>
+                        {/* Buttons */}
+                        <div className="flex justify-end gap-3 pt-4 border-t">
+                          <Button
+                            onClick={handleGeminiSave}
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            Salva Modifiche
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

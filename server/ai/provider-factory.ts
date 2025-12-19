@@ -9,12 +9,46 @@
 import { GoogleGenAI } from "@google/genai";
 import { VertexAI, GenerativeModel } from "@google-cloud/vertexai";
 import { db } from "../db";
-import { vertexAiSettings, vertexAiClientAccess, users, superadminVertexConfig, consultantVertexAccess } from "../../shared/schema";
+import { vertexAiSettings, vertexAiClientAccess, users, superadminVertexConfig, consultantVertexAccess, superadminGeminiConfig } from "../../shared/schema";
 import { eq, and, gt, sql } from "drizzle-orm";
 import { AiProviderMetadata } from "./retry-manager";
+import { decrypt } from "../encryption";
 import fs from "fs";
 import path from "path";
 import os from "os";
+
+/**
+ * Cache for SuperAdmin Gemini keys (avoids repeated DB queries)
+ */
+let superAdminGeminiKeysCache: { keys: string[]; enabled: boolean; fetchedAt: number } | null = null;
+const SUPERADMIN_GEMINI_CACHE_TTL = 60000; // 1 minute
+
+/**
+ * Get SuperAdmin Gemini API keys from database with caching
+ */
+async function getSuperAdminGeminiKeys(): Promise<{ keys: string[]; enabled: boolean } | null> {
+  if (superAdminGeminiKeysCache && Date.now() - superAdminGeminiKeysCache.fetchedAt < SUPERADMIN_GEMINI_CACHE_TTL) {
+    return { keys: superAdminGeminiKeysCache.keys, enabled: superAdminGeminiKeysCache.enabled };
+  }
+  
+  try {
+    const config = await db.select().from(superadminGeminiConfig).limit(1);
+    if (!config.length || !config[0].enabled) {
+      superAdminGeminiKeysCache = { keys: [], enabled: false, fetchedAt: Date.now() };
+      return null;
+    }
+    
+    const decryptedKeysJson = decrypt(config[0].apiKeysEncrypted);
+    const keys = JSON.parse(decryptedKeysJson) as string[];
+    
+    superAdminGeminiKeysCache = { keys, enabled: true, fetchedAt: Date.now() };
+    console.log(`✅ [SuperAdmin Gemini] Loaded ${keys.length} API keys from config`);
+    return { keys, enabled: true };
+  } catch (error) {
+    console.error("[SuperAdmin Gemini] Error fetching keys:", error);
+    return null;
+  }
+}
 
 /**
  * AI provider source (tier)
@@ -635,14 +669,23 @@ async function canUseSuperadminVertex(consultantId: string): Promise<boolean> {
 
 /**
  * Create Google AI Studio client (fallback)
+ * Uses 3-tier API key priority:
+ * 1. SuperAdmin Gemini keys (if user.useSuperadminGemini = true and keys available)
+ * 2. User's own Gemini keys (with rotation)
+ * 3. Environment variable fallback
  */
 async function createGoogleAIStudioClient(
   clientId: string
 ): Promise<{ client: GeminiClient; metadata: AiProviderMetadata } | null> {
   try {
-    // Get user's API keys
+    // Get user's API keys AND useSuperadminGemini preference
     const [user] = await db
-      .select()
+      .select({
+        id: users.id,
+        geminiApiKeys: users.geminiApiKeys,
+        geminiApiKeyIndex: users.geminiApiKeyIndex,
+        useSuperadminGemini: users.useSuperadminGemini,
+      })
       .from(users)
       .where(eq(users.id, clientId))
       .limit(1);
@@ -651,20 +694,41 @@ async function createGoogleAIStudioClient(
       throw new Error("User not found");
     }
 
-    // Get current API key from rotation
-    const apiKeys = user.geminiApiKeys || [];
-    const currentIndex = user.geminiApiKeyIndex || 0;
-
     let apiKey: string;
-    if (apiKeys.length > 0) {
-      const validIndex = currentIndex % apiKeys.length;
-      apiKey = apiKeys[validIndex];
-    } else {
-      // Use default environment API key
+    let keySource: 'superadmin' | 'user' | 'env' = 'env';
+
+    // Priority 1: SuperAdmin Gemini keys (if user opted in and keys available)
+    if (user.useSuperadminGemini !== false) {
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys && superAdminKeys.keys.length > 0) {
+        const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+        apiKey = superAdminKeys.keys[index];
+        keySource = 'superadmin';
+        console.log(`🔑 [AI] Using SuperAdmin Gemini key (${index + 1}/${superAdminKeys.keys.length})`);
+      }
+    }
+
+    // Priority 2: User's own keys (with rotation)
+    if (!apiKey) {
+      const userApiKeys = user.geminiApiKeys || [];
+      const currentIndex = user.geminiApiKeyIndex || 0;
+
+      if (userApiKeys.length > 0) {
+        const validIndex = currentIndex % userApiKeys.length;
+        apiKey = userApiKeys[validIndex];
+        keySource = 'user';
+        console.log(`🔑 [AI] Using user's Gemini key (${validIndex + 1}/${userApiKeys.length})`);
+      }
+    }
+
+    // Priority 3: Environment variable fallback
+    if (!apiKey) {
       apiKey = process.env.GEMINI_API_KEY || "";
       if (!apiKey) {
         throw new Error("No Gemini API key available");
       }
+      keySource = 'env';
+      console.log(`🔑 [AI] Using environment Gemini key`);
     }
 
     // Create Google AI Studio GoogleGenAI instance
@@ -673,12 +737,16 @@ async function createGoogleAIStudioClient(
     // Wrap in adapter to normalize API
     const client = new GeminiClientAdapter(ai);
 
-    // Create metadata
+    // Create metadata with source info
     const metadata: AiProviderMetadata = {
-      name: "Google AI Studio",
+      name: keySource === 'superadmin' 
+        ? "Google AI Studio (SuperAdmin)" 
+        : keySource === 'user' 
+          ? "Google AI Studio (User Keys)" 
+          : "Google AI Studio",
     };
 
-    console.log(`✅ Created Google AI Studio client for user ${clientId}`);
+    console.log(`✅ Created Google AI Studio client for user ${clientId} [source: ${keySource}]`);
 
     return {
       client,

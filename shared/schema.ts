@@ -42,6 +42,9 @@ export const users = pgTable("users", {
   // Vertex AI Inheritance - consultants can use SuperAdmin's Vertex or their own
   useSuperadminVertex: boolean("use_superadmin_vertex").default(true), // If true, consultant uses SuperAdmin's Vertex; if false, uses their own
 
+  // Gemini AI Inheritance - consultants can use SuperAdmin's Gemini API keys or their own
+  useSuperadminGemini: boolean("use_superadmin_gemini").default(true), // If true, consultant uses SuperAdmin's Gemini; if false, uses their own
+
   // External Services Configuration
   siteUrl: text("site_url"), // Custom site URL for SiteAle external service (e.g., client's website)
 
@@ -557,6 +560,16 @@ export const consultantVertexAccess = pgTable("consultant_vertex_access", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   consultantId: varchar("consultant_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
   hasAccess: boolean("has_access").notNull().default(true), // Whether this consultant can use SuperAdmin's Vertex AI
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// SuperAdmin Gemini Config - Centralized Gemini API keys managed by SuperAdmin
+// Consultants can choose to use these centralized keys instead of their own
+export const superadminGeminiConfig = pgTable("superadmin_gemini_config", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  apiKeysEncrypted: text("api_keys_encrypted").notNull(), // JSON array of encrypted API keys
+  enabled: boolean("enabled").notNull().default(true),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
@@ -1925,6 +1938,10 @@ export type InsertAdminTurnConfig = typeof adminTurnConfig.$inferInsert;
 // Consultant Vertex Access types
 export type ConsultantVertexAccess = typeof consultantVertexAccess.$inferSelect;
 export type InsertConsultantVertexAccess = typeof consultantVertexAccess.$inferInsert;
+
+// SuperAdmin Gemini Config types
+export type SuperadminGeminiConfig = typeof superadminGeminiConfig.$inferSelect;
+export type InsertSuperadminGeminiConfig = typeof superadminGeminiConfig.$inferInsert;
 
 // WhatsApp Gemini API Keys types
 export type WhatsappGeminiApiKeys = typeof whatsappGeminiApiKeys.$inferSelect;
@@ -5606,6 +5623,7 @@ export const fileSearchSettings = pgTable("file_search_settings", {
   autoSyncUniversity: boolean("auto_sync_university").default(false).notNull(),
   autoSyncClientKnowledge: boolean("auto_sync_client_knowledge").default(false).notNull(),
   autoSyncExerciseResponses: boolean("auto_sync_exercise_responses").default(false).notNull(),
+  autoSyncFinancial: boolean("auto_sync_financial").default(false).notNull(),
   scheduledSyncEnabled: boolean("scheduled_sync_enabled").default(false).notNull(),
   scheduledSyncHour: integer("scheduled_sync_hour").default(3).notNull(),
   lastScheduledSync: timestamp("last_scheduled_sync"),
