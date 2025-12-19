@@ -167,6 +167,19 @@ export class FileSearchSyncService {
         sourceId: documentId,
       });
 
+      // CASCADE: Se questo documento è collegato a una lezione universitaria, sincronizza anche quella
+      if (uploadResult.success) {
+        const linkedLesson = await db.query.universityLessons.findFirst({
+          where: eq(universityLessons.libraryDocumentId, documentId),
+        });
+        
+        if (linkedLesson) {
+          console.log(`🔗 [FileSync] Document linked to lesson "${linkedLesson.title}" - triggering cascade sync`);
+          // Forza re-sync della lezione (delete + recreate per aggiornare il contenuto)
+          await this.syncUniversityLesson(linkedLesson.id, consultantId, true); // true = force update
+        }
+      }
+
       return uploadResult.success 
         ? { success: true }
         : { success: false, error: uploadResult.error };
@@ -717,38 +730,61 @@ export class FileSearchSyncService {
   static async syncUniversityLesson(
     lessonId: string,
     consultantId: string,
+    forceUpdate: boolean = false,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const lesson = await db.query.universityLessons.findFirst({
         where: eq(universityLessons.id, lessonId),
-        with: {
-          module: {
-            with: {
-              trimester: {
-                with: {
-                  year: true
-                }
-              }
-            }
-          }
-        }
       });
 
       if (!lesson) {
         return { success: false, error: 'Lesson not found' };
       }
 
+      // Load hierarchy with separate queries (no relations defined in schema)
+      let lessonWithHierarchy: any = { ...lesson, module: null };
+      if (lesson.moduleId) {
+        const module = await db.query.universityModules.findFirst({
+          where: eq(universityModules.id, lesson.moduleId),
+        });
+        if (module) {
+          lessonWithHierarchy.module = { ...module, trimester: null };
+          if (module.trimesterId) {
+            const trimester = await db.query.universityTrimesters.findFirst({
+              where: eq(universityTrimesters.id, module.trimesterId),
+            });
+            if (trimester) {
+              lessonWithHierarchy.module.trimester = { ...trimester, year: null };
+              if (trimester.yearId) {
+                const year = await db.query.universityYears.findFirst({
+                  where: eq(universityYears.id, trimester.yearId),
+                });
+                if (year) {
+                  lessonWithHierarchy.module.trimester.year = year;
+                }
+              }
+            }
+          }
+        }
+      }
+
       const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('university_lesson', lessonId);
-      if (isAlreadyIndexed) {
+      if (isAlreadyIndexed && !forceUpdate) {
         console.log(`📌 [FileSync] Lesson already indexed: ${lessonId}`);
         return { success: true };
       }
 
+      // Se forceUpdate, elimina il documento esistente prima di ricreare
+      if (isAlreadyIndexed && forceUpdate) {
+        console.log(`🔄 [FileSync] Force updating lesson: ${lessonId} - deleting old version`);
+        await fileSearchService.deleteDocumentBySource('university_lesson', lessonId);
+      }
+
       // CRITICAL FIX: Load the linked library document content if exists
       let linkedDocument: { title: string; content: string | null; contentType: string | null; videoUrl: string | null } | null = null;
-      if (lesson.libraryDocumentId) {
+      if (lessonWithHierarchy.libraryDocumentId) {
         const libDoc = await db.query.libraryDocuments.findFirst({
-          where: eq(libraryDocuments.id, lesson.libraryDocumentId),
+          where: eq(libraryDocuments.id, lessonWithHierarchy.libraryDocumentId),
         });
         if (libDoc) {
           linkedDocument = {
@@ -757,7 +793,7 @@ export class FileSearchSyncService {
             contentType: libDoc.contentType,
             videoUrl: libDoc.videoUrl,
           };
-          console.log(`📚 [FileSync] Found linked library document for lesson "${lesson.title}": "${libDoc.title}" (${libDoc.content?.length || 0} chars)`);
+          console.log(`📚 [FileSync] Found linked library document for lesson "${lessonWithHierarchy.title}": "${libDoc.title}" (${libDoc.content?.length || 0} chars)`);
         }
       }
 
@@ -791,11 +827,11 @@ export class FileSearchSyncService {
       }
 
       // Build lesson content for indexing (now includes library document content!)
-      const content = this.buildLessonContent(lesson, linkedDocument);
+      const content = this.buildLessonContent(lessonWithHierarchy, linkedDocument);
       
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
-        displayName: `[LESSON] ${lesson.title}`,
+        displayName: `[LESSON] ${lessonWithHierarchy.title}`,
         storeId: consultantStore.id,
         sourceType: 'university_lesson',
         sourceId: lessonId,
@@ -803,7 +839,7 @@ export class FileSearchSyncService {
 
       if (uploadResult.success) {
         const contentSize = content.length;
-        console.log(`✅ [FileSync] Lesson synced: ${lesson.title} (${contentSize} chars${linkedDocument ? ', includes library doc' : ''})`);
+        console.log(`✅ [FileSync] Lesson synced: ${lessonWithHierarchy.title} (${contentSize} chars${linkedDocument ? ', includes library doc' : ''})`);
       }
 
       return uploadResult.success 
@@ -879,20 +915,8 @@ export class FileSearchSyncService {
       // Get all years for this consultant
       const years = await db.query.universityYears.findMany();
       
-      // Get all lessons through the hierarchy
-      const allLessons = await db.query.universityLessons.findMany({
-        with: {
-          module: {
-            with: {
-              trimester: {
-                with: {
-                  year: true
-                }
-              }
-            }
-          }
-        }
-      });
+      // Get all lessons (syncUniversityLesson loads hierarchy data separately)
+      const allLessons = await db.query.universityLessons.findMany();
 
       let synced = 0;
       let failed = 0;

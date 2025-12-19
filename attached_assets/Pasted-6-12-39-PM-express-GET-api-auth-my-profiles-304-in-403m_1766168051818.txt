@@ -1,0 +1,96 @@
+6:12:39 PM [express] GET /api/auth/my-profiles 304 in 403ms :: {"profiles":[{"id":"7f5fc5ea-8d5c-420…
+6:12:42 PM [express] GET /api/auth/my-profiles 304 in 403ms :: {"profiles":[{"id":"7f5fc5ea-8d5c-420…
+🔐 [FileSearch] Including client's private store for user 7e40b56c-2cc8-4515-b843-dc105e478f38
+🔍 [FileSearch] getStoreNamesForGeneration - Role: client, UserId: 7e40b56c-2cc8-4515-b843-dc105e478f38, ConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📦 Found 2 unique stores: Private Store - Client 7e40b56c, Knowledge Base Consulente
+
+══════════════════════════════════════════════════════════════════════
+🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)
+══════════════════════════════════════════════════════════════════════
+   📦 Provider: Google AI Studio (@google/genai)
+   ✅ File Search API: SUPPORTED
+   ⚠️  Vertex AI: NOT compatible with File Search
+══════════════════════════════════════════════════════════════════════
+
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Gemini key for File Search (1/1)
+✅ Using cached context for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: general, sessionType: normal, age: 224s)
+⏱️  [TIMING] Context building: 1ms
+🔍 [FileSearch] Exercises indexed check: 10/10 checked, using FileSearch: true
+⏱️  [TIMING] Exercise scraping: 1009ms
+⏱️  [TIMING] Prompt building: 6ms
+
+📊 Token Usage Estimation (Intent: general):
+  - System Prompt: ~3,635 tokens
+  - User Message: ~20 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~3,655 tokens
+  - File Search Mode: ✅ ACTIVE (RAG via stores)
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~3,635 tokens)
+══════════════════════════════════════════════════════════════════════
+
+📍 NEL SYSTEM PROMPT (3,635 tokens):
+   💰 Finance Data: 13,285 tokens
+   🎯 Goals & Tasks: 12 tokens
+   ⚡ Momentum & Calendar: 17 tokens
+   👤 User Profile & Base: 5,055 tokens
+
+🔍 VIA FILE SEARCH RAG (non nel prompt, cercati su richiesta):
+   📚 Exercises: 93,881 tokens → via RAG
+   📖 Library Docs: 1,573 tokens → via RAG
+   💬 Consultations: 43,439 tokens → via RAG
+   📚 Knowledge Base: 41 tokens → via RAG
+   🎓 University: 10,102 tokens → via RAG
+
+   💰 RISPARMIO: ~149,036 tokens spostati su File Search
+
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 2
+      1. fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n
+      2. fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~138,934 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~142,569 a ~3,635 tokens
+══════════════════════════════════════════════════════════════════════
+
+[AI] Using model: gemini-3-flash-preview with thinking_level: low [CLIENT STREAMING]
+[AI] Provider: Google AI Studio -> Gemini 3 Flash
+🔄 AI stream attempt 1/6...
+6:12:54 PM [express] POST /api/activity/session/heartbeat 200 in 311ms :: {"success":true,"lastActiv…
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ AI streaming completed successfully on attempt 1
+⏱️  [TIMING] Gemini API call (with streaming): 5111ms
+✅ AI streaming completed for message 5146a71d-2a6c-4b37-9272-1cfae9198075
+
+──────────────────────────────────────────────────────────────────────
+🔍 FILE SEARCH STREAMING SUMMARY [CLIENT]
+──────────────────────────────────────────────────────────────────────
+   📦 Stores attivi: 2
+   ⚠️  Nota: In modalità streaming, le citazioni non sono disponibili
+      nel response object. File Search è stato configurato come tool.
+   📄 Se la risposta cita documenti specifici, Gemini ha usato File Search.
+──────────────────────────────────────────────────────────────────────
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE TIMING BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [0ms → 1ms] Context Building (1ms)
+   [1ms → 1010ms] Exercise Scraping (1009ms)
+   [1010ms → 1016ms] Prompt Building (6ms)
+   [1016ms → 8443ms] Gemini API Call (5111ms)
+   ────────────────────────────────────────────────────────────────────
+   ⏱️  TOTAL: 8.44s (8443ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6:12:57 PM [express] POST /api/ai
