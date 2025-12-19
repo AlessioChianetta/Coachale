@@ -79,6 +79,7 @@ interface ConversationTimeline {
   currentState?: string;
   window24hExpiresAt?: string;
   consecutiveNoReplyCount?: number;
+  nextScheduledCheck?: string;
   events: TimelineEvent[];
 }
 
@@ -120,6 +121,65 @@ function formatCountdown(expiresAt?: string): { text: string; isExpired: boolean
   const isUrgent = hours < 2;
   if (hours > 0) return { text: `${hours}h`, isExpired: false, isUrgent };
   return { text: `${minutes}m`, isExpired: false, isUrgent };
+}
+
+function formatAiCheckCountdown(nextCheck?: string): { text: string; isPast: boolean; isImminent: boolean } | null {
+  if (!nextCheck) return null;
+  const now = new Date();
+  const checkTime = new Date(nextCheck);
+  const diffMs = checkTime.getTime() - now.getTime();
+  if (diffMs <= 0) {
+    const pastMs = Math.abs(diffMs);
+    const pastMinutes = Math.floor(pastMs / (1000 * 60));
+    if (pastMinutes < 2) return { text: 'analisi...', isPast: true, isImminent: false };
+    if (pastMinutes < 60) return { text: `${pastMinutes}m fa`, isPast: true, isImminent: false };
+    const pastHours = Math.floor(pastMinutes / 60);
+    return { text: `${pastHours}h fa`, isPast: true, isImminent: false };
+  }
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const isImminent = diffMs < 60 * 60 * 1000;
+  if (hours > 0) return { text: `tra ${hours}h ${minutes}m`, isPast: false, isImminent };
+  return { text: `tra ${minutes}m`, isPast: false, isImminent };
+}
+
+function getAiStatusInfo(
+  conversation: ConversationTimeline,
+  aiCountdown: { text: string; isPast: boolean; isImminent: boolean } | null
+): { text: string; color: string; icon: 'brain' | 'stop' | 'pause' | 'clock' } | null {
+  const noReplyCount = conversation.consecutiveNoReplyCount || 0;
+  const countdown = formatCountdown(conversation.window24hExpiresAt);
+  const isWindowExpired = countdown?.isExpired;
+  
+  if (noReplyCount >= 3) {
+    return { text: 'Fermato (max tentativi)', color: 'border-red-300 bg-red-50 text-red-700', icon: 'stop' };
+  }
+  
+  if (conversation.currentStatus === 'stopped') {
+    return { text: 'Stop manuale', color: 'border-red-300 bg-red-50 text-red-700', icon: 'stop' };
+  }
+  
+  if (isWindowExpired) {
+    return { text: 'Solo template', color: 'border-orange-300 bg-orange-50 text-orange-700', icon: 'pause' };
+  }
+  
+  if (!aiCountdown) {
+    return { text: 'In attesa', color: 'border-gray-300 bg-gray-50 text-gray-700', icon: 'clock' };
+  }
+  
+  if (aiCountdown.isPast) {
+    return { 
+      text: aiCountdown.text, 
+      color: 'border-purple-300 bg-purple-50 text-purple-700 animate-pulse', 
+      icon: 'brain' 
+    };
+  }
+  
+  return { 
+    text: aiCountdown.text, 
+    color: aiCountdown.isImminent ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-300 bg-gray-50 text-gray-700', 
+    icon: 'clock' 
+  };
 }
 
 function getEventLabel(type: string, decision?: string): string {
@@ -517,6 +577,23 @@ function EventDetailCard({ event, isLast }: { event: TimelineEvent; isLast?: boo
 }
 
 function DetailPanel({ conversation }: { conversation: ConversationTimeline | null }) {
+  const [aiCountdown, setAiCountdown] = useState<{ text: string; isPast: boolean; isImminent: boolean } | null>(null);
+
+  useEffect(() => {
+    if (!conversation?.nextScheduledCheck) {
+      setAiCountdown(null);
+      return;
+    }
+
+    const updateCountdown = () => {
+      setAiCountdown(formatAiCheckCountdown(conversation.nextScheduledCheck));
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 30000);
+    return () => clearInterval(interval);
+  }, [conversation?.nextScheduledCheck]);
+
   if (!conversation) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -567,6 +644,19 @@ function DetailPanel({ conversation }: { conversation: ConversationTimeline | nu
               {conversation.consecutiveNoReplyCount}/3 no reply
             </Badge>
           )}
+          {(() => {
+            const aiStatus = getAiStatusInfo(conversation, aiCountdown);
+            if (!aiStatus) return null;
+            const IconComponent = aiStatus.icon === 'stop' ? XCircle : 
+                                  aiStatus.icon === 'pause' ? AlertTriangle : 
+                                  aiStatus.icon === 'brain' ? Brain : Clock;
+            return (
+              <Badge variant="outline" className={`text-xs ${aiStatus.color}`}>
+                <IconComponent className="h-3 w-3 mr-1" />
+                AI: {aiStatus.text}
+              </Badge>
+            );
+          })()}
           <Badge variant="outline" className="text-xs">
             via {conversation.agentName}
           </Badge>

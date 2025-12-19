@@ -856,7 +856,30 @@ export async function processScheduledMessages(messageIds?: string[]): Promise<v
           continue;
         }
 
-        await sendFollowupMessage(message);
+        // ATOMIC CLAIM: Mark as 'sending' before sending to prevent race conditions
+        // This prevents duplicate sends if the scheduler runs twice before completion
+        const claimedResult = await db
+          .update(scheduledFollowupMessages)
+          .set({
+            status: 'sending',
+            lastAttemptAt: new Date()
+          })
+          .where(
+            and(
+              eq(scheduledFollowupMessages.id, message.id),
+              eq(scheduledFollowupMessages.status, 'pending')
+            )
+          )
+          .returning();
+        
+        if (claimedResult.length === 0) {
+          console.log(`⏭️ [FOLLOWUP-SCHEDULER] Message ${message.id} already claimed by another process`);
+          metrics.skipped++;
+          continue;
+        }
+
+        // Use the claimed result which has updated status, not the stale message object
+        await sendFollowupMessage(claimedResult[0]);
         
         if (consultantId) {
           recordMessageSent(consultantId);
@@ -923,6 +946,7 @@ export async function processScheduledMessages(messageIds?: string[]): Promise<v
           await db
             .update(scheduledFollowupMessages)
             .set({
+              status: 'pending', // Reset to pending so it can be picked up again
               attemptCount,
               lastAttemptAt: new Date(),
               errorMessage: error.message,

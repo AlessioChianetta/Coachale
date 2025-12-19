@@ -1120,6 +1120,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         currentState: schema.conversationStates.currentState,
         temperatureLevel: schema.conversationStates.temperatureLevel,
         consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
+        lastAiEvaluationAt: schema.conversationStates.lastAiEvaluationAt,
       })
       .from(schema.followupAiEvaluationLog)
       .innerJoin(
@@ -1198,6 +1199,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         temperatureLevel: schema.conversationStates.temperatureLevel,
         currentState: schema.conversationStates.currentState,
         consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
+        lastAiEvaluationAt: schema.conversationStates.lastAiEvaluationAt,
       })
       .from(schema.scheduledFollowupMessages)
       .innerJoin(
@@ -1285,6 +1287,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         currentState: log.currentState,
         temperatureLevel: log.temperatureLevel || 'warm',
         consecutiveNoReplyCount: log.consecutiveNoReplyCount || 0,
+        lastAiEvaluationAt: log.lastAiEvaluationAt,
         window24hExpiresAt: log.window24hExpiresAt,
         canSendFreeform: log.canSendFreeform,
         status: log.decision === 'stop' ? 'stopped' :
@@ -1332,6 +1335,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         temperatureLevel: msg.temperatureLevel || 'warm',
         currentState: msg.currentState,
         consecutiveNoReplyCount: msg.consecutiveNoReplyCount || 0,
+        lastAiEvaluationAt: msg.lastAiEvaluationAt,
       });
     }
 
@@ -1359,6 +1363,27 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       filteredEvents = filteredEvents.filter(e => e.type === 'message_scheduled');
     }
 
+    // Helper function to calculate next scheduled check based on temperature
+    const calculateNextScheduledCheck = (lastEvalAt: Date | null, temperature: string): Date | null => {
+      if (!lastEvalAt) return null;
+      const lastEval = new Date(lastEvalAt);
+      switch (temperature) {
+        case 'hot':
+        case 'warm':
+          return new Date(lastEval.getTime() + 5 * 60 * 1000); // Every 5 minutes
+        case 'cold':
+          return new Date(lastEval.getTime() + 2 * 60 * 60 * 1000); // Every 2 hours
+        case 'ghost':
+          // Daily at 10:00, calculate next occurrence
+          const next = new Date(lastEval);
+          next.setHours(10, 0, 0, 0);
+          if (next <= new Date()) next.setDate(next.getDate() + 1);
+          return next;
+        default:
+          return new Date(lastEval.getTime() + 5 * 60 * 1000);
+      }
+    };
+
     // Group by conversation for timeline view
     const groupedByConversation: Record<string, any> = {};
     for (const event of filteredEvents.slice(0, limit)) {
@@ -1374,10 +1399,34 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
           currentState: event.currentState,
           window24hExpiresAt: event.window24hExpiresAt,
           consecutiveNoReplyCount: event.consecutiveNoReplyCount || 0,
+          lastAiEvaluationAt: event.lastAiEvaluationAt,
+          nextScheduledCheck: null,
           events: [],
         };
       }
-      groupedByConversation[event.conversationId].events.push(event);
+      
+      // Track the most recent lastAiEvaluationAt across all events
+      const group = groupedByConversation[event.conversationId];
+      if (event.lastAiEvaluationAt) {
+        const eventEvalTime = new Date(event.lastAiEvaluationAt).getTime();
+        const currentEvalTime = group.lastAiEvaluationAt 
+          ? new Date(group.lastAiEvaluationAt).getTime() 
+          : 0;
+        if (eventEvalTime > currentEvalTime) {
+          group.lastAiEvaluationAt = event.lastAiEvaluationAt;
+        }
+      }
+      
+      group.events.push(event);
+    }
+    
+    // After grouping, compute nextScheduledCheck using the most recent lastAiEvaluationAt
+    for (const conversationId of Object.keys(groupedByConversation)) {
+      const group = groupedByConversation[conversationId];
+      group.nextScheduledCheck = calculateNextScheduledCheck(
+        group.lastAiEvaluationAt,
+        group.temperatureLevel || 'warm'
+      );
     }
 
     res.json({
