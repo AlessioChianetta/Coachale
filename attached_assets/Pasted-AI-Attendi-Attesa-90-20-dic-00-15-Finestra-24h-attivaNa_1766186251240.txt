@@ -1,0 +1,28 @@
+AI: Attendi
+Attesa
+90%
+20 dic 00:15
+Finestra 24h attivaNascondi dettagli
+Ragionamento AI
+Tempo dall'ultimo messaggio: circa 1 ora. L'ultimo messaggio della conversazione è stato inviato dall'AI, che ha fornito una nuova spiegazione e opzioni al lead. Secondo i principi fondamentali, se l'ultimo messaggio è nostro, si deve attendere la risposta del lead. Il lead ha risposto attivamente in precedenza, anche se con qualche difficoltà a esprimere i suoi bisogni, e il suo ultimo messaggio ('bho') è stato subito seguito dalla nostra nuova chiarificazione. Inviare un altro messaggio ora sarebbe contrario al principio di non tempestare il lead e rispettare il suo tempo. Abbiamo ancora 2 follow-up disponibili secondo i dati contestuali ('3 di 5 massimi'), ma non è il momento di usarli proattivamente, bensì di attendere la reazione del lead alla nostra ultima comunicazione.
+AI: Attendi
+Attesa
+95%
+20 dic 00:15
+Finestra 24h attivaNascondi dettagli
+Ragionamento AI
+Tempo dall'ultimo messaggio dell'AI: pochi minuti. Il lead ha risposto con un "bho" alla domanda precedente, indicando confusione. L'AI ha immediatamente risposto chiarendo la domanda e fornendo esempi. Il lead non ha ancora avuto il tempo di rispondere a questa ultima chiarificazione dell'AI. La conversazione è attiva e il lead sta rispondendo, quindi è fondamentale attendere la sua prossima reazione prima di inviare un nuovo messaggio, per non tempestarlo.
+AI Eval
+Attivo
+95%
+20 dic 00:15
+Finestra 24h attivaNascondi dettagli
+Ragionamento AI
+Tempo dall'ultimo messaggio: 1.0770322222222222 ore. Il profilo agente 'Setter Proattivo' ha un limite massimo di 2 follow-up prima di una pausa lunga. Nella conversazione corrente, l'AI ha inviato 5 messaggi consecutivi per la qualifica del lead (chiedendo obiettivo e poi ostacoli) dopo il primo messaggio del lead. Dopo il quinto messaggio dell'AI, il lead ha risposto con un non-risposta significativa ('bho'), indicando confusione o una difficoltà nel proseguire la qualifica in questo momento. L'agente non deve 'insistere' e deve 'qualificare rapidamente, non stalkerare'. Superato il limite implicito di follow-up per una qualifica continua e ricevuta una risposta che indica un blocco, la strategia più appropriata è passare alla modalità nurturing come indicato dal profilo (ogni 90 giorni). Questo rispetta il tempo del lead e le regole del profilo per le pause lunghe.
+AI: Attendi
+Attesa
+95%
+20 dic 00:15
+Finestra 24h attivaNascondi dettagli
+Ragionamento AI
+Tempo dall'ultimo messaggio: 0.0 ore. Il lead ha appena risposto con 'bho', indicando incertezza. L'AI ha prontamente chiarito e riformulato la domanda sul 'blocco' con esempi. La conversazione è attiva e il lead sta interagendo. Non è opportuno inviare un nuovo messaggio subito, bensì attendere la risposta del lead alla recente chiarificazione dell'AI. Ciò rispetta il principio di non 'tempestare' il lead e di dare valore ad ogni messaggio.
