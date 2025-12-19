@@ -1,0 +1,116 @@
+ [WHATSAPP POLLING] Poll cycle complete
+🔐 [FileSearch] Including client's private store for user 7e40b56c-2cc8-4515-b843-dc105e478f38
+🔍 [FileSearch] getStoreNamesForGeneration - Role: client, UserId: 7e40b56c-2cc8-4515-b843-dc105e478f38, ConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📦 Found 2 unique stores: Private Store - Client 7e40b56c, Knowledge Base Consulente
+
+══════════════════════════════════════════════════════════════════════
+🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)
+══════════════════════════════════════════════════════════════════════
+   📦 Provider: Google AI Studio (@google/genai)
+   ✅ File Search API: SUPPORTED
+   ⚠️  Vertex AI: NOT compatible with File Search
+══════════════════════════════════════════════════════════════════════
+
+✅ Using GEMINI_API_KEY from environment for File Search
+🔄 Building context for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: university, sessionType: normal)
+📚 Including ALL 0 exercises in context (no limits applied)
+📚 Prepared 0 exercise metadata (content will be loaded on-demand when asked)
+📚 Found 0 documents linked to exercises
+📚 Total library documents included in context: 5 (intent: university)
+📊 Momentum stats: 14 check-ins (14 productive, 100% rate), streak: 0 days
+📅 Calendar stats: 0 total upcoming (0 ongoing, 0 today, 0 this week)
+📚 [Knowledge Base] Loading ALL knowledge content for client (no filtering)...
+📚 [Client Knowledge Base] Loaded 0 documents and 0 APIs for client 7e40b56c-2cc8-4515-b843-dc105e478f38
+ℹ️ [Knowledge Base] No documents or API data uploaded yet
+💾 Stored fresh context in cache for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: university)
+⏱️  [TIMING] Context building: 2347ms
+⏱️  [TIMING] Exercise scraping: 0ms
+⏱️  [TIMING] Prompt building: 7ms
+
+📊 Token Usage Estimation (Intent: university):
+  - System Prompt: ~27,033 tokens
+  - User Message: ~12 tokens
+  - Conversation History: ~1,408 tokens
+  - Total Estimated: ~28,453 tokens
+  - File Search Mode: ❌ OFF (full content in prompt)
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~27,033 tokens)
+══════════════════════════════════════════════════════════════════════
+
+💰 Finance Data: 0 tokens (0.0%)
+📚 Exercises: 3 tokens (0.0%)
+📖 Library Docs: 1,573 tokens (5.8%)
+💬 Consultations: 41,700 tokens (154.3%)
+🎯 Goals & Tasks: 12 tokens (0.0%)
+⚡ Momentum & Calendar: 17 tokens (0.1%)
+🗺️  Roadmap: 2,458 tokens (9.1%)
+📚 Knowledge Base: 41 tokens (0.2%)
+👤 User Profile & Base: 5,055 tokens (18.7%)
+
+🎓 UNIVERSITY: 10,102 tokens (37.4%)
+   └─ Overall Progress: 17 tokens
+   └─ 📅 Anno 1 – Metodo Turbo: 912 tokens
+      └─ Q1 – Le Fondamenta della Tua Attività: 88 tokens (1 moduli, 3 lezioni)
+      └─ Q2 – Metodo Turbo: Diventa Invincibile a Vendere: 615 tokens (8 moduli, 28 lezioni)
+   └─ 📅 Anno 1 - Metodo Orbitale - Da 0 a 1.000.000 : 757 tokens
+      └─ Q1 - Le Fondamenta: 83 tokens (1 moduli, 13 lezioni)
+      └─ Q2 - Costruzione della Ricchezza: 86 tokens (1 moduli, 13 lezioni)
+      └─ Q3 - Ottimizzazione e Vita da Comandante: 88 tokens (1 moduli, 14 lezioni)
+      └─ Q4 - Eredità e Comando Perpetuo: 86 tokens (1 moduli, 13 lezioni)
+
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 2
+      1. fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n
+      2. fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~43,317 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~70,350 a ~27,033 tokens
+══════════════════════════════════════════════════════════════════════
+
+🔄 AI stream attempt 1/6...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ AI streaming completed successfully on attempt 1
+⏱️  [TIMING] Gemini API call (with streaming): 24795ms
+✅ AI streaming completed for message 245514ee-1601-4141-ab7c-fc1996fb852d
+
+──────────────────────────────────────────────────────────────────────
+🔍 FILE SEARCH STREAMING SUMMARY [CLIENT]
+──────────────────────────────────────────────────────────────────────
+   📦 Stores attivi: 2
+   ⚠️  Nota: In modalità streaming, le citazioni non sono disponibili
+      nel response object. File Search è stato configurato come tool.
+   📄 Se la risposta cita documenti specifici, Gemini ha usato File Search.
+──────────────────────────────────────────────────────────────────────
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE TIMING BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [0ms → 2347ms] Context Building (2347ms)
+   [2347ms → 2347ms] Exercise Scraping (0ms)
+   [2347ms → 2354ms] Prompt Building (7ms)
+   [2354ms → 29619ms] Gemini API Call (24795ms)
+   ────────────────────────────────────────────────────────────────────
+   ⏱️  TOTAL: 29.62s (29619ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3:45:38 PM [express] POST /api/ai/chat 200 in 29825ms

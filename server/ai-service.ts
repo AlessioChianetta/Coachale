@@ -823,16 +823,19 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     const userMessageTokens = estimateTokens(enhancedMessage);
     const historyTokens = conversationHistory.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
     const totalEstimatedTokens = systemPromptTokens + userMessageTokens + historyTokens;
+    
+    // Determine if File Search is active based on stores availability
+    const hasActiveFileSearch = fileSearchStoreNames.length > 0;
 
     console.log(`\n📊 Token Usage Estimation (Intent: ${intent}):`);
     console.log(`  - System Prompt: ~${systemPromptTokens.toLocaleString()} tokens`);
     console.log(`  - User Message: ~${userMessageTokens.toLocaleString()} tokens`);
     console.log(`  - Conversation History: ~${historyTokens.toLocaleString()} tokens`);
     console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
-    console.log(`  - File Search Mode: ${exercisesIndexedInFileSearch ? '✅ ACTIVE (exercises/consultations via RAG)' : '❌ OFF (full content in prompt)'}`);
+    console.log(`  - File Search Mode: ${hasActiveFileSearch ? '✅ ACTIVE (RAG via stores)' : '❌ OFF (full content in prompt)'}`);
 
     // Log token breakdown with File Search awareness
-    logTokenBreakdown(breakdown, systemPromptTokens, exercisesIndexedInFileSearch);
+    logTokenBreakdown(breakdown, systemPromptTokens, hasActiveFileSearch);
 
     // Prepare messages for Gemini
     const geminiMessages = [
@@ -1486,16 +1489,19 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     const userMessageTokens = estimateTokens(enhancedMessage);
     const historyTokens = conversationHistory.reduce((sum, msg) => sum + estimateTokens(msg.content), 0);
     const totalEstimatedTokens = systemPromptTokens + userMessageTokens + historyTokens;
+    
+    // Determine if File Search is active based on stores availability (for client streaming)
+    const hasActiveFileSearchClient = fileSearchStoreNames.length > 0;
 
     console.log(`\n📊 Token Usage Estimation (Intent: ${intent}):`);
     console.log(`  - System Prompt: ~${systemPromptTokens.toLocaleString()} tokens`);
     console.log(`  - User Message: ~${userMessageTokens.toLocaleString()} tokens`);
     console.log(`  - Conversation History: ~${historyTokens.toLocaleString()} tokens`);
     console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
-    console.log(`  - File Search Mode: ${exercisesIndexedInFileSearch ? '✅ ACTIVE (exercises/consultations via RAG)' : '❌ OFF (full content in prompt)'}`);
+    console.log(`  - File Search Mode: ${hasActiveFileSearchClient ? '✅ ACTIVE (RAG via stores)' : '❌ OFF (full content in prompt)'}`);
 
     // Log token breakdown with File Search awareness
-    logTokenBreakdown(breakdown, systemPromptTokens, exercisesIndexedInFileSearch);
+    logTokenBreakdown(breakdown, systemPromptTokens, hasActiveFileSearchClient);
 
     // Prepare messages for Gemini
     const geminiMessages = [
