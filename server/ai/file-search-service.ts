@@ -386,9 +386,10 @@ export class FileSearchService {
     content: string;
     displayName: string;
     storeId: string;
-    sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'manual';
+    sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual';
     sourceId?: string;
     clientId?: string;
+    userId?: string;
     chunkingConfig?: ChunkingConfig;
     skipHashCheck?: boolean;
     customMetadata?: {
@@ -424,6 +425,7 @@ export class FileSearchService {
         sourceType: params.sourceType,
         sourceId: params.sourceId,
         clientId: params.clientId,
+        userId: params.userId,
         contentHash,
         contentSize,
         chunkingConfig: params.chunkingConfig,
@@ -441,6 +443,7 @@ export class FileSearchService {
 
   /**
    * Upload document with hash tracking (internal method)
+   * Now uses getClientForUser to support 3-tier key system (SuperAdmin -> User -> Environment)
    */
   private async uploadDocumentWithHash(params: {
     filePath: string;
@@ -449,6 +452,7 @@ export class FileSearchService {
     sourceType: string;
     sourceId?: string;
     clientId?: string;
+    userId?: string;
     contentHash: string;
     contentSize: number;
     chunkingConfig?: ChunkingConfig;
@@ -462,9 +466,9 @@ export class FileSearchService {
       tags?: string[];
     };
   }): Promise<FileSearchUploadResult> {
-    const client = this.getClient();
+    const client = await this.getClientForUser(params.userId);
     if (!client) {
-      return { success: false, error: 'FileSearch client not available (missing GEMINI_API_KEY)' };
+      return { success: false, error: 'FileSearch client not available (no API key configured - check SuperAdmin, User, or Environment keys)' };
     }
 
     try {
@@ -786,7 +790,7 @@ export class FileSearchService {
       mimeType: doc.mimeType,
       status: doc.status as 'pending' | 'processing' | 'indexed' | 'failed',
       uploadedAt: doc.uploadedAt!,
-      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'manual',
+      sourceType: doc.sourceType as 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual',
       sourceId: doc.sourceId || undefined,
       contentHash: doc.contentHash || undefined,
       clientId: doc.clientId || undefined,
@@ -796,7 +800,7 @@ export class FileSearchService {
   /**
    * Check if a document is already indexed
    */
-  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'manual', sourceId: string): Promise<boolean> {
+  async isDocumentIndexed(sourceType: 'library' | 'knowledge_base' | 'exercise' | 'consultation' | 'university' | 'university_lesson' | 'financial_data' | 'manual', sourceId: string): Promise<boolean> {
     const doc = await db.query.fileSearchDocuments.findFirst({
       where: and(
         eq(fileSearchDocuments.sourceType, sourceType),

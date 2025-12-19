@@ -268,13 +268,27 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [syncLogs, setSyncLogs] = useState<SyncLogEntry[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncConsoleOpen, setSyncConsoleOpen] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    if (logContainerRef.current) {
+    if (logContainerRef.current && shouldAutoScroll) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [syncLogs]);
+    }, [syncLogs, shouldAutoScroll]);
+    const handleScrollConsole = () => {
+    if (logContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = logContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setShouldAutoScroll(isAtBottom);
+    }
+    };
+    const jumpToBottom = () => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+      setShouldAutoScroll(true);
+    }
+    };
   
   const addSyncLog = (type: SyncLogEntry['type'], message: string, extra?: Partial<SyncLogEntry>) => {
     setSyncLogs(prev => [...prev, {
@@ -1966,7 +1980,8 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             </div>
                             <div 
                               ref={logContainerRef}
-                              className="p-3 max-h-64 overflow-y-auto font-mono text-xs space-y-1"
+                              onScroll={handleScrollConsole}
+                              className="p-3 max-h-96 overflow-y-auto font-mono text-xs space-y-1"
                             >
                               {syncLogs.map(log => (
                                 <div 
@@ -1998,6 +2013,19 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 </div>
                               )}
                             </div>
+
+                            {!shouldAutoScroll && syncLogs.length > 0 && (
+                              <div className="flex justify-center pt-2 pb-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={jumpToBottom}
+                                  className="text-xs h-6"
+                                >
+                                  ⬇️ Vai all'ultimo messaggio
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}

@@ -175,6 +175,7 @@ export class FileSearchSyncService {
         storeId: consultantStore.id,
         sourceType: 'library',
         sourceId: documentId,
+        userId: consultantId,
       });
 
       // CASCADE: Se questo documento è collegato a una lezione universitaria, sincronizza anche quella
@@ -355,6 +356,7 @@ export class FileSearchSyncService {
         storeId: consultantStore.id,
         sourceType: 'knowledge_base',
         sourceId: documentId,
+        userId: consultantId,
       });
 
       if (uploadResult.success) {
@@ -589,6 +591,7 @@ export class FileSearchSyncService {
         storeId: consultantStore.id,
         sourceType: 'exercise',
         sourceId: exerciseId,
+        userId: consultantId,
       });
 
       if (uploadResult.success) {
@@ -845,6 +848,7 @@ export class FileSearchSyncService {
         storeId: consultantStore.id,
         sourceType: 'university_lesson',
         sourceId: lessonId,
+        userId: consultantId,
       });
 
       if (uploadResult.success) {
@@ -1074,6 +1078,7 @@ export class FileSearchSyncService {
         storeId: consultantStore.id,
         sourceType: 'consultation',
         sourceId: consultationId,
+        userId: consultantId,
       });
 
       if (uploadResult.success) {
@@ -1431,6 +1436,7 @@ export class FileSearchSyncService {
         sourceType: 'exercise',
         sourceId: submissionId,
         clientId: clientId,
+        userId: clientId,
       });
 
       if (uploadResult.success) {
@@ -1566,6 +1572,7 @@ export class FileSearchSyncService {
         sourceType: 'consultation',
         sourceId: consultationId,
         clientId: clientId,
+        userId: clientId,
       });
 
       if (uploadResult.success) {
@@ -2048,6 +2055,7 @@ export class FileSearchSyncService {
         sourceType: 'knowledge_base',
         sourceId: documentId,
         clientId: clientId,
+        userId: clientId,
       });
 
       if (uploadResult.success) {
@@ -2753,8 +2761,9 @@ export class FileSearchSyncService {
         displayName: `[FINANCIAL DATA] Dati Finanziari - ${new Date().toLocaleDateString('it-IT')}`,
         storeId: clientStore.storeId,
         sourceType: 'financial_data',
-        sourceId: clientId, // Use clientId as sourceId for uniqueness
+        sourceId: clientId,
         clientId: clientId,
+        userId: clientId,
       });
 
       if (uploadResult.success) {
