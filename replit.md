@@ -54,6 +54,13 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - All AI endpoints **MUST** use `buildSystemPrompt()` from `server/ai-prompts.ts` as `systemInstruction` for Gemini to ensure comprehensive context.
 ## Token Optimization Strategy
 - Hybrid approach focusing on intent detection, conditional database queries, intent-scoped caching, and dynamic exercise scraping limits to reduce AI token consumption.
+- **File Search RAG Token Reduction**: When File Search is enabled (`hasFileSearch=true`), large data sections are excluded from system prompts and retrieved on-demand via semantic search:
+  - University lessons: Excluded from prompt, available via RAG
+  - Exercises and consultations: Excluded from prompt, available via RAG
+  - Financial data (Percorso Capitale): Excluded from prompt, available via RAG
+  - This reduces token consumption from ~111k to ~15-20k per request
+- **Financial Data Sync**: Client financial data from Percorso Capitale can be synced to the client's private FileSearchStore via `/api/file-search/sync-financial/:clientId`. UI available in File Search Analytics page.
+- **Roadmap Removed**: Roadmap data was removed from context builder as it was loaded but never used in prompts.
 ## WhatsApp Business Integration
 - Full-featured WhatsApp messaging via Twilio API with AI-powered responses, rich media, and automatic API key rotation. Includes multi-tenant config, dual message delivery, message debouncing, Gemini AI responses, client/lead recognition, real-time dashboard, objection detection, dynamic client profiling, and proactive lead management.
 - Supports dynamic document/knowledge management for WhatsApp AI agents.
