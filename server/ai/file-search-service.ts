@@ -154,6 +154,15 @@ export class FileSearchService {
     sourceType: 'library' | 'knowledge_base' | 'manual';
     sourceId?: string;
     chunkingConfig?: ChunkingConfig;
+    customMetadata?: {
+      docType?: string;
+      category?: string;
+      moduleId?: string;
+      yearId?: string;
+      trimesterId?: string;
+      lessonId?: string;
+      tags?: string[];
+    };
   }): Promise<FileSearchUploadResult> {
     const client = this.ensureClient();
     
@@ -230,6 +239,7 @@ export class FileSearchService {
         sourceType: params.sourceType,
         sourceId: params.sourceId || null,
         chunkingConfig: chunkConfig,
+        customMetadata: params.customMetadata || null,
       }).returning();
 
       await db.update(fileSearchStores)
@@ -288,6 +298,15 @@ export class FileSearchService {
     clientId?: string;
     chunkingConfig?: ChunkingConfig;
     skipHashCheck?: boolean;
+    customMetadata?: {
+      docType?: string;
+      category?: string;
+      moduleId?: string;
+      yearId?: string;
+      trimesterId?: string;
+      lessonId?: string;
+      tags?: string[];
+    };
   }): Promise<FileSearchUploadResult> {
     const contentHash = this.calculateContentHash(params.content);
     const contentSize = params.content.length;
@@ -315,6 +334,7 @@ export class FileSearchService {
         contentHash,
         contentSize,
         chunkingConfig: params.chunkingConfig,
+        customMetadata: params.customMetadata,
       });
 
       return result;
@@ -339,6 +359,15 @@ export class FileSearchService {
     contentHash: string;
     contentSize: number;
     chunkingConfig?: ChunkingConfig;
+    customMetadata?: {
+      docType?: string;
+      category?: string;
+      moduleId?: string;
+      yearId?: string;
+      trimesterId?: string;
+      lessonId?: string;
+      tags?: string[];
+    };
   }): Promise<FileSearchUploadResult> {
     const client = this.getClient();
     if (!client) {
@@ -413,6 +442,7 @@ export class FileSearchService {
         contentHash: params.contentHash,
         contentSize: params.contentSize,
         chunkingConfig: chunkConfig,
+        customMetadata: params.customMetadata || null,
         indexedAt: new Date(),
         lastModifiedAt: new Date(),
       }).returning();

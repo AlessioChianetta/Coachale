@@ -5573,6 +5573,15 @@ export const fileSearchDocuments = pgTable("file_search_documents", {
   contentSize: integer("content_size"),
   clientId: varchar("client_id").references(() => users.id, { onDelete: "set null" }),
   chunkingConfig: jsonb("chunking_config").$type<{ maxTokensPerChunk: number; maxOverlapTokens: number }>(),
+  customMetadata: jsonb("custom_metadata").$type<{
+    docType?: string;
+    category?: string;
+    moduleId?: string;
+    yearId?: string;
+    trimesterId?: string;
+    lessonId?: string;
+    tags?: string[];
+  }>(),
   errorMessage: text("error_message"),
   uploadedAt: timestamp("uploaded_at").default(sql`now()`),
   indexedAt: timestamp("indexed_at"),
