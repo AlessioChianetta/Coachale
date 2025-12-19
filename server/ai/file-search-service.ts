@@ -17,11 +17,12 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { db } from "../db";
-import { fileSearchStores, fileSearchDocuments } from "../../shared/schema";
+import { fileSearchStores, fileSearchDocuments, users } from "../../shared/schema";
 import { eq, and, desc, inArray, or } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
+import { getSuperAdminGeminiKeys } from "./provider-factory";
 
 export interface ChunkingConfig {
   maxTokensPerChunk: number;
@@ -72,26 +73,118 @@ const DEFAULT_CHUNKING_CONFIG: ChunkingConfig = {
 };
 
 export class FileSearchService {
-  private client: GoogleGenAI | null = null;
-  private apiKey: string | null = null;
+  private envClient: GoogleGenAI | null = null;
+  private envApiKey: string | null = null;
 
   constructor() {
-    this.apiKey = process.env.GEMINI_API_KEY || null;
-    if (this.apiKey) {
-      this.client = new GoogleGenAI({ apiKey: this.apiKey });
-      // Log API key configuration for debugging
-      const keyPreview = this.apiKey.substring(0, 10) + '...' + this.apiKey.substring(this.apiKey.length - 4);
-      console.log(`🔑 [FileSearch] Initialized with GEMINI_API_KEY (Google AI Studio): ${keyPreview}`);
+    this.envApiKey = process.env.GEMINI_API_KEY || null;
+    if (this.envApiKey) {
+      this.envClient = new GoogleGenAI({ apiKey: this.envApiKey });
+      const keyPreview = this.envApiKey.substring(0, 10) + '...' + this.envApiKey.substring(this.envApiKey.length - 4);
+      console.log(`🔑 [FileSearch] Environment fallback initialized: ${keyPreview}`);
     } else {
-      console.warn(`⚠️ [FileSearch] No GEMINI_API_KEY configured - File Search will not work`);
+      console.log(`ℹ️ [FileSearch] No GEMINI_API_KEY in env - will use 3-tier key system`);
     }
   }
 
-  private ensureClient(): GoogleGenAI {
-    if (!this.client) {
-      throw new Error('File Search Service: No Gemini API key configured. Set GEMINI_API_KEY environment variable.');
+  /**
+   * Get GoogleGenAI client for a specific user using 3-tier priority system:
+   * 1. SuperAdmin keys (if available and user.useSuperadminGemini !== false)
+   * 2. User's own keys (user.geminiApiKeys)
+   * 3. Environment fallback (process.env.GEMINI_API_KEY)
+   */
+  async getClientForUser(userId?: string): Promise<GoogleGenAI | null> {
+    if (!userId) {
+      return this.envClient;
     }
-    return this.client;
+
+    try {
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!user) {
+        console.warn(`⚠️ [FileSearch] User ${userId} not found, falling back to env key`);
+        return this.envClient;
+      }
+
+      // Priority 1: SuperAdmin keys (if user opted in)
+      if (user.useSuperadminGemini !== false) {
+        const superAdminKeys = await getSuperAdminGeminiKeys();
+        if (superAdminKeys && superAdminKeys.keys.length > 0) {
+          const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+          const apiKey = superAdminKeys.keys[index];
+          console.log(`✅ [FileSearch] Using SuperAdmin Gemini key for user ${userId} (${index + 1}/${superAdminKeys.keys.length})`);
+          return new GoogleGenAI({ apiKey });
+        }
+      }
+
+      // Priority 2: User's own API keys
+      const apiKeys = user.geminiApiKeys || [];
+      if (apiKeys.length > 0) {
+        const currentIndex = user.geminiApiKeyIndex || 0;
+        const validIndex = currentIndex % apiKeys.length;
+        const apiKey = apiKeys[validIndex];
+        console.log(`✅ [FileSearch] Using user's own Gemini key for user ${userId}`);
+        return new GoogleGenAI({ apiKey });
+      }
+
+      // Priority 3: Environment fallback
+      if (this.envClient) {
+        console.log(`✅ [FileSearch] Using env GEMINI_API_KEY fallback for user ${userId}`);
+        return this.envClient;
+      }
+
+      console.error(`❌ [FileSearch] No Gemini API key available for user ${userId}`);
+      return null;
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] Error getting client for user ${userId}:`, error.message);
+      return this.envClient;
+    }
+  }
+
+  /**
+   * Check if at least one source of API keys is available
+   */
+  async isApiKeyConfigured(userId?: string): Promise<boolean> {
+    // Check env key first
+    if (this.envApiKey) {
+      return true;
+    }
+
+    // Check superadmin keys
+    const superAdminKeys = await getSuperAdminGeminiKeys();
+    if (superAdminKeys && superAdminKeys.keys.length > 0) {
+      return true;
+    }
+
+    // Check user's own keys if userId provided
+    if (userId) {
+      try {
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+        
+        if (user && user.geminiApiKeys && user.geminiApiKeys.length > 0) {
+          return true;
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    return false;
+  }
+
+  private ensureClient(): GoogleGenAI {
+    if (!this.envClient) {
+      throw new Error('File Search Service: No Gemini API key configured. Set GEMINI_API_KEY environment variable or configure SuperAdmin/User keys.');
+    }
+    return this.envClient;
   }
 
   /**
@@ -794,9 +887,10 @@ export class FileSearchService {
 
   /**
    * Get GoogleGenAI client (for internal use)
+   * @deprecated Use getClientForUser(userId) for proper 3-tier key selection
    */
   getClient(): GoogleGenAI | null {
-    return this.client;
+    return this.envClient;
   }
 
   /**

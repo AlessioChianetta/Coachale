@@ -26,7 +26,7 @@ const SUPERADMIN_GEMINI_CACHE_TTL = 60000; // 1 minute
 /**
  * Get SuperAdmin Gemini API keys from database with caching
  */
-async function getSuperAdminGeminiKeys(): Promise<{ keys: string[]; enabled: boolean } | null> {
+export async function getSuperAdminGeminiKeys(): Promise<{ keys: string[]; enabled: boolean } | null> {
   if (superAdminGeminiKeysCache && Date.now() - superAdminGeminiKeysCache.fetchedAt < SUPERADMIN_GEMINI_CACHE_TTL) {
     return { keys: superAdminGeminiKeysCache.keys, enabled: superAdminGeminiKeysCache.enabled };
   }

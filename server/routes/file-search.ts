@@ -540,7 +540,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         consultantStore,
         clientStores: clientStoresData,
       },
-      geminiApiKeyConfigured: !!process.env.GEMINI_API_KEY,
+      geminiApiKeyConfigured: await fileSearchService.isApiKeyConfigured(consultantId),
     });
   } catch (error: any) {
     console.error('[FileSearch API] Error fetching analytics:', error);
