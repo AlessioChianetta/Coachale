@@ -4,7 +4,7 @@ import { fileSearchService } from '../ai/file-search-service';
 import { fileSearchSyncService } from '../services/file-search-sync-service';
 import { db } from '../db';
 import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users } from '../../shared/schema';
-import { eq, desc, sql, and, gte, isNull, isNotNull } from 'drizzle-orm';
+import { eq, desc, sql, and, gte, isNull, isNotNull, inArray } from 'drizzle-orm';
 
 const router = Router();
 
@@ -326,47 +326,7 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       .orderBy(desc(fileSearchUsageLogs.createdAt))
       .limit(500);
     
-    const stores = await db
-      .select()
-      .from(fileSearchStores)
-      .where(eq(fileSearchStores.ownerId, consultantId));
-    
-    const totalDocuments = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(fileSearchDocuments)
-      .where(
-        sql`${fileSearchDocuments.storeId} IN (
-          SELECT id FROM file_search_stores WHERE owner_id = ${consultantId}
-        )`
-      );
-    
-    // Fetch all synced documents with store info
-    const documents = await db
-      .select({
-        id: fileSearchDocuments.id,
-        googleFileId: fileSearchDocuments.googleFileId,
-        fileName: fileSearchDocuments.fileName,
-        displayName: fileSearchDocuments.displayName,
-        mimeType: fileSearchDocuments.mimeType,
-        status: fileSearchDocuments.status,
-        sourceType: fileSearchDocuments.sourceType,
-        sourceId: fileSearchDocuments.sourceId,
-        uploadedAt: fileSearchDocuments.uploadedAt,
-        storeDisplayName: fileSearchStores.displayName,
-        storeId: fileSearchDocuments.storeId,
-        clientId: fileSearchDocuments.clientId,
-      })
-      .from(fileSearchDocuments)
-      .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
-      .where(eq(fileSearchStores.ownerId, consultantId))
-      .orderBy(desc(fileSearchDocuments.uploadedAt))
-      .limit(500);
-    
-    // Build hierarchical data structure
-    const consultantDocs = documents.filter(d => !d.clientId);
-    const clientDocs = documents.filter(d => d.clientId);
-    
-    // Get ALL clients for this consultant (not just those with documents)
+    // Get ALL clients for this consultant FIRST (needed for store queries)
     const allClients = await db
       .select({ 
         id: users.id, 
@@ -380,16 +340,64 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         eq(users.role, 'client')
       ));
     
+    const clientIds = allClients.map(c => c.id);
+    const allOwnerIds = [consultantId, ...clientIds];
+    
+    // Get ALL stores: consultant store + client private stores
+    const stores = await db
+      .select()
+      .from(fileSearchStores)
+      .where(inArray(fileSearchStores.ownerId, allOwnerIds));
+    
+    // Get store IDs for counting documents
+    const storeIds = stores.map(s => s.id);
+    const totalDocuments = storeIds.length > 0 
+      ? await db
+          .select({ count: sql<number>`count(*)` })
+          .from(fileSearchDocuments)
+          .where(inArray(fileSearchDocuments.storeId, storeIds))
+      : [{ count: 0 }];
+    
+    // Fetch all synced documents with store info (consultant + clients)
+    const documents = await db
+      .select({
+        id: fileSearchDocuments.id,
+        googleFileId: fileSearchDocuments.googleFileId,
+        fileName: fileSearchDocuments.fileName,
+        displayName: fileSearchDocuments.displayName,
+        mimeType: fileSearchDocuments.mimeType,
+        status: fileSearchDocuments.status,
+        sourceType: fileSearchDocuments.sourceType,
+        sourceId: fileSearchDocuments.sourceId,
+        uploadedAt: fileSearchDocuments.uploadedAt,
+        storeDisplayName: fileSearchStores.displayName,
+        storeId: fileSearchDocuments.storeId,
+        storeOwnerId: fileSearchStores.ownerId,
+        clientId: fileSearchDocuments.clientId,
+      })
+      .from(fileSearchDocuments)
+      .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
+      .where(inArray(fileSearchStores.ownerId, allOwnerIds))
+      .orderBy(desc(fileSearchDocuments.uploadedAt))
+      .limit(1000);
+    
+    // Build hierarchical data structure
+    // Consultant docs = docs in consultant's store (storeOwnerId = consultantId)
+    const consultantDocs = documents.filter(d => d.storeOwnerId === consultantId);
+    // Client docs = docs in client stores (storeOwnerId = clientId)
+    const clientDocs = documents.filter(d => d.storeOwnerId !== consultantId);
+    
     // Build client info map
     const clientInfoMap: Record<string, { name: string; email: string }> = {};
     allClients.forEach(u => {
       clientInfoMap[u.id] = { name: `${u.firstName} ${u.lastName}`, email: u.email };
     });
     
-    // Build consultant store data
+    // Build consultant store data - find the consultant's own store
+    const consultantStoreRecord = stores.find(s => s.ownerId === consultantId);
     const consultantStore = {
-      storeId: stores[0]?.id || '',
-      storeName: stores[0]?.displayName || 'Store Globale Consulente',
+      storeId: consultantStoreRecord?.id || '',
+      storeName: consultantStoreRecord?.displayName || 'Store Globale Consulente',
       documents: {
         library: consultantDocs.filter(d => d.sourceType === 'library'),
         knowledgeBase: consultantDocs.filter(d => d.sourceType === 'knowledge_base'),
@@ -406,8 +414,9 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
     };
     
     // Build client stores data - include ALL clients, even those without documents
+    // Client docs are in stores where storeOwnerId = client.id (private stores)
     const clientStoresData = allClients.map(client => {
-      const clientDocuments = clientDocs.filter(d => d.clientId === client.id);
+      const clientDocuments = clientDocs.filter(d => d.storeOwnerId === client.id);
       const clientStore = stores.find(s => s.ownerId === client.id);
       
       return {

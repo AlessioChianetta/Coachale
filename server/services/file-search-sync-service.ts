@@ -1182,21 +1182,28 @@ export class FileSearchSyncService {
       // Extract text from uploaded files (Word, PDF, etc.)
       const extractedFileContents: Array<{ fileName: string; content: string }> = [];
       
+      // Helper to normalize file path - add 'uploads/' prefix if missing
+      const normalizeFilePath = (fp: string): string => {
+        if (fp.startsWith('uploads/') || fp.startsWith('/')) return fp;
+        return `uploads/${fp}`;
+      };
+
       // Check for uploaded files in answers
       if (submission.answers && Array.isArray(submission.answers)) {
         for (const answer of submission.answers) {
           if (answer.uploadedFiles && Array.isArray(answer.uploadedFiles)) {
-            for (const filePath of answer.uploadedFiles) {
+            for (const rawPath of answer.uploadedFiles) {
               try {
-                const fileName = filePath.split('/').pop() || filePath;
-                console.log(`🔍 [FileSync] Extracting text from uploaded file: ${fileName}`);
+                const filePath = normalizeFilePath(rawPath);
+                const fileName = filePath.split('/').pop() || rawPath;
+                console.log(`🔍 [FileSync] Extracting text from uploaded file: ${filePath}`);
                 const extractedText = await extractTextFromFile(filePath);
                 if (extractedText && extractedText.trim().length > 0) {
                   extractedFileContents.push({ fileName, content: extractedText });
                   console.log(`✅ [FileSync] Extracted ${extractedText.length} chars from ${fileName}`);
                 }
               } catch (extractError: any) {
-                console.warn(`⚠️ [FileSync] Failed to extract text from ${filePath}: ${extractError.message}`);
+                console.warn(`⚠️ [FileSync] Failed to extract text from ${rawPath}: ${extractError.message}`);
               }
             }
           }
@@ -1205,17 +1212,18 @@ export class FileSearchSyncService {
       
       // Also check attachments array
       if (submission.attachments && Array.isArray(submission.attachments)) {
-        for (const filePath of submission.attachments) {
+        for (const rawPath of submission.attachments) {
           try {
-            const fileName = filePath.split('/').pop() || filePath;
-            console.log(`🔍 [FileSync] Extracting text from attachment: ${fileName}`);
+            const filePath = normalizeFilePath(rawPath);
+            const fileName = filePath.split('/').pop() || rawPath;
+            console.log(`🔍 [FileSync] Extracting text from attachment: ${filePath}`);
             const extractedText = await extractTextFromFile(filePath);
             if (extractedText && extractedText.trim().length > 0) {
               extractedFileContents.push({ fileName, content: extractedText });
               console.log(`✅ [FileSync] Extracted ${extractedText.length} chars from ${fileName}`);
             }
           } catch (extractError: any) {
-            console.warn(`⚠️ [FileSync] Failed to extract text from attachment ${filePath}: ${extractError.message}`);
+            console.warn(`⚠️ [FileSync] Failed to extract text from attachment ${rawPath}: ${extractError.message}`);
           }
         }
       }
@@ -2094,14 +2102,17 @@ export class FileSearchSyncService {
     }
 
     // Get indexed documents from file_search_documents for this consultant
-    const indexedDocsRaw = await db.select()
+    const indexedDocsRaw = await db.select({
+      sourceType: fileSearchDocuments.sourceType,
+      sourceId: fileSearchDocuments.sourceId,
+    })
       .from(fileSearchDocuments)
       .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
       .where(and(
         eq(fileSearchStores.ownerId, consultantId),
         eq(fileSearchDocuments.status, 'indexed')
       ));
-    const indexedDocs = indexedDocsRaw.map(r => ({ sourceType: r.file_search_documents.sourceType, sourceId: r.file_search_documents.sourceId }));
+    const indexedDocs = indexedDocsRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
 
     const indexedLibraryIds = new Set(indexedDocs.filter(d => d.sourceType === 'library').map(d => d.sourceId));
     const indexedKnowledgeIds = new Set(indexedDocs.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
@@ -2149,11 +2160,14 @@ export class FileSearchSyncService {
         .from(clientKnowledgeDocuments).where(eq(clientKnowledgeDocuments.clientId, client.id));
 
       // Get indexed for this client
-      const clientIndexedRaw = await db.select()
+      const clientIndexedRaw = await db.select({
+        sourceType: fileSearchDocuments.sourceType,
+        sourceId: fileSearchDocuments.sourceId,
+      })
         .from(fileSearchDocuments)
         .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
         .where(and(eq(fileSearchDocuments.clientId, client.id), eq(fileSearchDocuments.status, 'indexed')));
-      const clientIndexed = clientIndexedRaw.map(r => ({ sourceType: r.file_search_documents.sourceType, sourceId: r.file_search_documents.sourceId }));
+      const clientIndexed = clientIndexedRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
 
       const indexedSubmissionIds = new Set(clientIndexed.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
       const indexedConsultationIds = new Set(clientIndexed.filter(d => d.sourceType === 'consultation').map(d => d.sourceId));
