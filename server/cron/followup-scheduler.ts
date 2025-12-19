@@ -1908,7 +1908,7 @@ async function checkHasInboundAfterLastOutbound(conversationId: string): Promise
  * BUG 2 FIX: Use twilioSid matching instead of sentAt (which can be null)
  * Each message is classified as 'template', 'freeform', or 'inbound'
  */
-async function getLastMessages(
+export async function getLastMessages(
   conversationId: string, 
   limit: number = 10
 ): Promise<Array<{ role: string; content: string; timestamp: string; messageType: 'template' | 'freeform' | 'inbound' }>> {
@@ -2174,7 +2174,7 @@ RISPONDI CON SOLO IL TESTO DEL MESSAGGIO (niente JSON, niente formattazione, sol
   }
 }
 
-async function getAvailableTemplates(
+export async function getAvailableTemplates(
   consultantId: string,
   agentConfigId: string | null
 ): Promise<Array<{ id: string; name: string; useCase: string; bodyText: string; twilioStatus: string }>> {

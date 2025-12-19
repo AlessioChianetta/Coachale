@@ -5523,6 +5523,11 @@ export const consultantAiPreferences = pgTable("consultant_ai_preferences", {
   allowAiToWriteFreeformMessages: boolean("allow_ai_to_write_freeform_messages").default(true).notNull(),
   logAiReasoning: boolean("log_ai_reasoning").default(true).notNull(),
 
+  // === INTELLIGENT RETRY CONFIGURATION ===
+  maxNoReplyBeforeDormancy: integer("max_no_reply_before_dormancy").default(3).notNull(), // 2-5: dopo quanti messaggi ignorati il lead entra in dormienza
+  dormancyDurationDays: integer("dormancy_duration_days").default(90).notNull(), // 14-180: durata dormienza in giorni
+  finalAttemptAfterDormancy: boolean("final_attempt_after_dormancy").default(true).notNull(), // se tentare ultimo contatto dopo dormienza
+
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
