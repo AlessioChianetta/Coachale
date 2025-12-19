@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,22 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
 import {
   Activity,
   User,
-  ChevronDown,
-  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Send,
   XCircle,
   Clock,
@@ -35,9 +32,11 @@ import {
   Search,
   Calendar,
   Filter,
+  FileText,
+  RotateCcw,
 } from "lucide-react";
 import { Link } from "wouter";
-import { useSendMessageNow, useFollowupAgents, useActivityLog, usePendingQueue, type ActivityLogFilters, type PendingQueueItem } from "@/hooks/useFollowupApi";
+import { useSendMessageNow, useFollowupAgents, useActivityLog, usePendingQueue, type ActivityLogFilters } from "@/hooks/useFollowupApi";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -140,11 +139,11 @@ function getEventLabel(type: string, decision?: string): string {
 
 function getEventIcon(type: string) {
   switch (type) {
-    case 'message_sent': return <Send className="h-3 w-3 text-green-600" />;
-    case 'message_failed': return <AlertTriangle className="h-3 w-3 text-red-600" />;
-    case 'message_scheduled': return <Clock className="h-3 w-3 text-blue-600" />;
-    case 'ai_evaluation': return <Brain className="h-3 w-3 text-purple-600" />;
-    default: return <Activity className="h-3 w-3 text-gray-600" />;
+    case 'message_sent': return <Send className="h-4 w-4 text-green-600" />;
+    case 'message_failed': return <AlertTriangle className="h-4 w-4 text-red-600" />;
+    case 'message_scheduled': return <Clock className="h-4 w-4 text-blue-600" />;
+    case 'ai_evaluation': return <Brain className="h-4 w-4 text-purple-600" />;
+    default: return <Activity className="h-4 w-4 text-gray-600" />;
   }
 }
 
@@ -169,35 +168,47 @@ function SendNowButton({ messageId, canSendFreeform, hasApprovedTemplate }: {
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={handleSendNow}
-      disabled={sendNow.isPending || !canSend}
-      className={`h-6 px-2 text-xs ${!canSend ? 'opacity-50' : 'text-blue-600 hover:bg-blue-50'}`}
-    >
-      {sendNow.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSendNow}
+            disabled={sendNow.isPending || !canSend}
+            className={`h-7 px-2 text-xs ${canSend ? 'text-green-600 hover:bg-green-50' : 'text-gray-400'}`}
+          >
+            {sendNow.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+            <span className="ml-1">Invia ora</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">
+            {!canSend ? "Fuori finestra 24h e template non approvato" :
+              canSendFreeform ? "Finestra 24h attiva" : "Template approvato"}
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
 function RetryButton({ messageId }: { messageId: string }) {
   const { toast } = useToast();
-  const [isRetrying, setIsRetrying] = useState(false);
   const queryClient = useQueryClient();
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const handleRetry = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsRetrying(true);
     try {
-      const response = await fetch(`/api/followup/messages/${messageId}/retry`, {
-        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }
+      const res = await fetch(`/api/followup/messages/${messageId}/retry`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
       });
-      const result = await response.json();
-      if (result.success) {
-        toast({ title: "Riprogrammato", description: "Ritentativo schedulato" });
-        queryClient.invalidateQueries({ queryKey: ['activity-log'] });
-      } else throw new Error(result.message);
+      if (!res.ok) throw new Error((await res.json()).message || 'Errore');
+      toast({ title: "Ritentato", description: "Messaggio reinviato!" });
+      queryClient.invalidateQueries({ queryKey: ['/api/followup/activity-log'] });
     } catch (error: any) {
       toast({ title: "Errore", description: error.message, variant: "destructive" });
     } finally {
@@ -206,40 +217,44 @@ function RetryButton({ messageId }: { messageId: string }) {
   };
 
   return (
-    <Button variant="ghost" size="sm" onClick={handleRetry} disabled={isRetrying} className="h-6 px-2 text-xs text-orange-600 hover:bg-orange-50">
-      {isRetrying ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+    <Button variant="ghost" size="sm" onClick={handleRetry} disabled={isRetrying} className="h-7 px-2 text-xs text-orange-600 hover:bg-orange-50">
+      {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+      <span className="ml-1">Riprova</span>
     </Button>
   );
 }
 
 function SimulateAiButton({ conversationId }: { conversationId: string }) {
   const { toast } = useToast();
-  const [isSimulating, setIsSimulating] = useState(false);
   const queryClient = useQueryClient();
+  const [isSimulating, setIsSimulating] = useState(false);
 
   const handleSimulate = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsSimulating(true);
     try {
-      const response = await fetch(`/api/followup/conversations/${conversationId}/simulate-ai-followup`, {
-        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', ...getAuthHeaders() }
+      const res = await fetch(`/api/followup/simulate-ai/${conversationId}`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
       });
-      const result = await response.json();
-      if (result.success) {
-        toast({ title: `📤 ${result.message}`, description: result.messagePreview ? `"${result.messagePreview}..."` : undefined });
-        queryClient.invalidateQueries({ queryKey: ['activity-log'] });
-        queryClient.invalidateQueries({ queryKey: ['followup-conversations'] });
-      } else throw new Error(result.message);
+      if (!res.ok) throw new Error((await res.json()).message || 'Errore');
+      const data = await res.json();
+      toast({
+        title: `AI: ${data.decision}`,
+        description: data.reasoning?.substring(0, 100) + (data.reasoning?.length > 100 ? '...' : ''),
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/followup/activity-log'] });
     } catch (error: any) {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      toast({ title: "Errore simulazione", description: error.message, variant: "destructive" });
     } finally {
       setIsSimulating(false);
     }
   };
 
   return (
-    <Button variant="ghost" size="sm" onClick={handleSimulate} disabled={isSimulating} className="h-6 px-2 text-xs text-purple-600 hover:bg-purple-50">
-      {isSimulating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3" />}
+    <Button variant="ghost" size="sm" onClick={handleSimulate} disabled={isSimulating} className="h-7 px-2 text-xs text-purple-600 hover:bg-purple-50">
+      {isSimulating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
+      <span className="ml-1">Simula AI</span>
     </Button>
   );
 }
@@ -248,229 +263,318 @@ function PendingQueuePanel() {
   const { data, isLoading, error } = usePendingQueue();
 
   if (isLoading) return (
-    <Card className="mb-4">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Clock className="h-4 w-4" /> Prossimi Controlli
-        </CardTitle>
-      </CardHeader>
-      <CardContent><div className="animate-pulse h-4 bg-muted rounded w-3/4"></div></CardContent>
-    </Card>
+    <div className="p-3 border-b">
+      <div className="animate-pulse h-4 bg-muted rounded w-3/4"></div>
+    </div>
   );
 
   if (error || !data || data.agents.length === 0) return null;
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Clock className="h-4 w-4" /> Prossimi Controlli
-          <Badge variant="secondary" className="ml-auto">{data.totalPending} attivi</Badge>
-          {data.totalDormant > 0 && <Badge variant="outline" className="text-orange-600">{data.totalDormant} pausa</Badge>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {data.agents.slice(0, 3).map((agent) => (
-          <div key={agent.agentId} className="text-xs">
-            <span className="font-medium">{agent.agentName}</span>
-            <span className="text-muted-foreground ml-2">({agent.pending.length} lead)</span>
+    <div className="p-3 border-b bg-muted/30">
+      <div className="flex items-center gap-2 text-sm">
+        <Clock className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium">Prossimi Controlli</span>
+        <Badge variant="secondary" className="ml-auto">{data.totalPending} attivi</Badge>
+        {data.totalDormant > 0 && <Badge variant="outline" className="text-orange-600">{data.totalDormant} pausa</Badge>}
+      </div>
+    </div>
+  );
+}
+
+function LeadListItem({ 
+  conversation, 
+  isSelected, 
+  onSelect 
+}: { 
+  conversation: ConversationTimeline; 
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const statusConfig = getStatusConfig(conversation.currentStatus);
+  const countdown = formatCountdown(conversation.window24hExpiresAt);
+  const noReplyCount = conversation.consecutiveNoReplyCount || 0;
+  const latestEvent = conversation.events[0];
+
+  return (
+    <div
+      onClick={onSelect}
+      className={`p-3 border-b cursor-pointer transition-colors ${
+        isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-muted/50'
+      }`}
+    >
+      <div className="flex items-start gap-2">
+        <span className="text-lg">{getTemperatureEmoji(conversation.temperatureLevel)}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-medium text-sm truncate">{conversation.leadName}</span>
+            {noReplyCount > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                noReplyCount >= 3 ? 'bg-red-100 text-red-700' : noReplyCount >= 2 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {noReplyCount}/3
+              </span>
+            )}
           </div>
-        ))}
+          {conversation.leadPhone && (
+            <div className="text-xs text-muted-foreground truncate">{conversation.leadPhone}</div>
+          )}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <Badge className={`${statusConfig.color} text-[10px] px-1.5 py-0`}>
+              {statusConfig.label}
+            </Badge>
+            {countdown && (
+              <span className={`text-[10px] px-1 py-0.5 rounded ${
+                countdown.isExpired ? 'bg-red-100 text-red-700' : countdown.isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+              }`}>
+                {countdown.text}
+              </span>
+            )}
+            {latestEvent?.templateId && (
+              <span className={`text-[9px] px-1 py-0.5 rounded ${
+                latestEvent.templateTwilioStatus === 'approved' ? 'bg-green-50 text-green-700 border border-green-200' :
+                latestEvent.templateTwilioStatus === 'pending' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                'bg-gray-50 text-gray-600 border border-gray-200'
+              }`}>
+                TPL
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="text-right text-xs text-muted-foreground">
+          {latestEvent && format(new Date(latestEvent.timestamp), "dd/MM", { locale: it })}
+          <div>{latestEvent && format(new Date(latestEvent.timestamp), "HH:mm", { locale: it })}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EventDetailCard({ event }: { event: TimelineEvent }) {
+  const statusConfig = getStatusConfig(event.status);
+
+  return (
+    <Card className="mb-3">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-1">{getEventIcon(event.type)}</div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <span className="font-medium">{getEventLabel(event.type, event.decision)}</span>
+              <span className="text-sm text-muted-foreground">
+                {format(new Date(event.timestamp), "dd MMM yyyy HH:mm:ss", { locale: it })}
+              </span>
+              {event.confidenceScore !== undefined && (
+                <Badge variant="outline" className="text-xs">
+                  {Math.round(event.confidenceScore * 100)}% conf.
+                </Badge>
+              )}
+              <Badge className={`${statusConfig.color} text-xs`}>
+                {statusConfig.label}
+              </Badge>
+            </div>
+
+            {event.templateId && (
+              <div className="mb-2 p-2 bg-muted/50 rounded text-sm">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Template:</span>
+                  <span>{event.templateName || event.templateId}</span>
+                  <Badge className={`text-[10px] ${
+                    event.templateTwilioStatus === 'approved' ? 'bg-green-100 text-green-700' :
+                    event.templateTwilioStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                    event.templateTwilioStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                    {event.templateTwilioStatus === 'approved' ? 'Approvato' :
+                     event.templateTwilioStatus === 'pending' ? 'In attesa' :
+                     event.templateTwilioStatus === 'rejected' ? 'Rifiutato' : 'Non sincronizzato'}
+                  </Badge>
+                </div>
+              </div>
+            )}
+
+            {!event.templateId && event.canSendFreeform && (
+              <div className="mb-2 inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
+                <Brain className="h-3 w-3" />
+                Messaggio generato dall'AI (finestra 24h attiva)
+              </div>
+            )}
+
+            {event.reasoning && (
+              <div className="mb-2">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Ragionamento AI:</div>
+                <div className="text-sm bg-muted/30 p-3 rounded whitespace-pre-wrap">
+                  {event.reasoning}
+                </div>
+              </div>
+            )}
+
+            {event.aiSelectedTemplateReasoning && (
+              <div className="mb-2">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Scelta Template:</div>
+                <div className="text-sm bg-blue-50 p-3 rounded whitespace-pre-wrap text-blue-900">
+                  {event.aiSelectedTemplateReasoning}
+                </div>
+              </div>
+            )}
+
+            {event.messagePreview && (
+              <div className="mb-2">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Messaggio:</div>
+                <div className="text-sm bg-green-50 p-3 rounded border-l-2 border-green-400 whitespace-pre-wrap">
+                  {event.messagePreview}
+                </div>
+              </div>
+            )}
+
+            {event.errorMessage && (
+              <div className="mb-2">
+                <div className="text-xs font-medium text-red-600 mb-1">Errore:</div>
+                <div className="text-sm bg-red-50 p-3 rounded text-red-700 whitespace-pre-wrap">
+                  {event.errorMessage}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-3">
+              {event.type === 'message_scheduled' && event.status === 'scheduled' && (
+                <SendNowButton
+                  messageId={event.id.replace('msg-', '')}
+                  canSendFreeform={event.canSendFreeform}
+                  hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
+                />
+              )}
+              {event.type === 'message_failed' && (
+                <RetryButton messageId={event.id.replace('msg-', '')} />
+              )}
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function ActivityTableRow({ conversation }: { conversation: ConversationTimeline }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const statusConfig = getStatusConfig(conversation.currentStatus);
+function DetailPanel({ conversation }: { conversation: ConversationTimeline | null }) {
+  const [eventPage, setEventPage] = useState(0);
+  const eventsPerPage = 10;
+
+  useEffect(() => {
+    setEventPage(0);
+  }, [conversation?.conversationId]);
+
+  if (!conversation) {
+    return (
+      <div className="h-full flex items-center justify-center text-muted-foreground">
+        <div className="text-center">
+          <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
+          <p>Seleziona un lead per vedere i dettagli</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalEvents = conversation.events.length;
+  const totalPages = Math.ceil(totalEvents / eventsPerPage);
+  const startIdx = eventPage * eventsPerPage;
+  const paginatedEvents = conversation.events.slice(startIdx, startIdx + eventsPerPage);
   const countdown = formatCountdown(conversation.window24hExpiresAt);
-  const latestEvent = conversation.events[0];
-  const scheduledEvent = conversation.events.find(e => e.type === 'message_scheduled' && e.status === 'scheduled');
-  const failedEvent = conversation.events.find(e => e.type === 'message_failed');
-  const noReplyCount = conversation.consecutiveNoReplyCount || 0;
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <TableRow className="cursor-pointer hover:bg-muted/50">
-          <TableCell className="py-2">
-            <div className="flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="text-sm cursor-help">{getTemperatureEmoji(conversation.temperatureLevel)}</span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs capitalize">{conversation.temperatureLevel || 'warm'}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-medium text-sm truncate max-w-[120px]">{conversation.leadName}</span>
-                  {noReplyCount > 0 && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                            noReplyCount >= 3 ? 'bg-red-100 text-red-700' : noReplyCount >= 2 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
-                          }`}>
-                            {noReplyCount}/3
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">{noReplyCount} tentativi senza risposta</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </div>
-                {conversation.leadPhone && (
-                  <div className="text-xs text-muted-foreground truncate">{conversation.leadPhone}</div>
-                )}
-              </div>
-            </div>
-          </TableCell>
-          <TableCell className="py-2">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {latestEvent && getEventIcon(latestEvent.type)}
-              <span className="text-xs">{latestEvent ? getEventLabel(latestEvent.type, latestEvent.decision) : '-'}</span>
-              {latestEvent?.templateId && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className={`text-[9px] px-1 py-0.5 rounded ${
-                        latestEvent.templateTwilioStatus === 'approved' ? 'bg-green-50 text-green-700 border border-green-200' :
-                        latestEvent.templateTwilioStatus === 'pending' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
-                        latestEvent.templateTwilioStatus === 'rejected' ? 'bg-red-50 text-red-700 border border-red-200' :
-                        'bg-gray-50 text-gray-600 border border-gray-200'
-                      }`}>
-                        TPL
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">
-                        Template: {latestEvent.templateName || 'N/A'}
-                        <br />
-                        Stato: {latestEvent.templateTwilioStatus === 'approved' ? 'Approvato' :
-                               latestEvent.templateTwilioStatus === 'pending' ? 'In attesa' :
-                               latestEvent.templateTwilioStatus === 'rejected' ? 'Rifiutato' : 'Non sincronizzato'}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-              {latestEvent && !latestEvent.templateId && latestEvent.canSendFreeform && (
-                <span className="text-[9px] px-1 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">AI</span>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="py-2">
-            <div className="flex items-center gap-1 flex-wrap">
-              <Badge className={`${statusConfig.color} text-[10px] px-1.5 py-0`}>
-                {statusConfig.label}
-              </Badge>
-              {countdown && (
-                <span className={`text-[10px] px-1 py-0.5 rounded ${
-                  countdown.isExpired ? 'bg-red-100 text-red-700' : countdown.isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
-                }`}>
-                  {countdown.text}
+    <div className="h-full flex flex-col">
+      <div className="p-4 border-b bg-muted/30">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-2xl">{getTemperatureEmoji(conversation.temperatureLevel)}</span>
+          <div>
+            <h2 className="text-lg font-semibold">{conversation.leadName}</h2>
+            {conversation.leadPhone && (
+              <p className="text-sm text-muted-foreground">{conversation.leadPhone}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge className={getStatusConfig(conversation.currentStatus).color}>
+            {getStatusConfig(conversation.currentStatus).label}
+          </Badge>
+          {countdown && (
+            <span className={`text-xs px-2 py-1 rounded ${
+              countdown.isExpired ? 'bg-red-100 text-red-700' : countdown.isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+            }`}>
+              Finestra 24h: {countdown.text}
+            </span>
+          )}
+          {conversation.consecutiveNoReplyCount !== undefined && conversation.consecutiveNoReplyCount > 0 && (
+            <span className={`text-xs px-2 py-1 rounded ${
+              conversation.consecutiveNoReplyCount >= 3 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+            }`}>
+              {conversation.consecutiveNoReplyCount}/3 senza risposta
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground">
+            via <strong>{conversation.agentName}</strong>
+          </span>
+        </div>
+        <div className="flex gap-2 mt-3">
+          <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
+            <Button variant="outline" size="sm" className="gap-1">
+              <MessageSquare className="h-4 w-4" /> Apri Chat
+            </Button>
+          </Link>
+          <SimulateAiButton conversationId={conversation.conversationId} />
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium text-sm">{totalEvents} Eventi</h3>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEventPage(p => Math.max(0, p - 1))}
+                  disabled={eventPage === 0}
+                  className="h-7 w-7 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {eventPage + 1} / {totalPages}
                 </span>
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="py-2">
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-muted-foreground">
-                {latestEvent ? format(new Date(latestEvent.timestamp), "dd/MM HH:mm", { locale: it }) : '-'}
-              </span>
-              {scheduledEvent && (
-                <SendNowButton
-                  messageId={scheduledEvent.id.replace('msg-', '')}
-                  canSendFreeform={scheduledEvent.canSendFreeform}
-                  hasApprovedTemplate={scheduledEvent.templateTwilioStatus === 'approved'}
-                />
-              )}
-              {failedEvent && !scheduledEvent && (
-                <RetryButton messageId={failedEvent.id.replace('msg-', '')} />
-              )}
-            </div>
-          </TableCell>
-          <TableCell className="py-2 w-8">
-            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </TableCell>
-        </TableRow>
-      </CollapsibleTrigger>
-      <CollapsibleContent asChild>
-        <TableRow className="bg-muted/30">
-          <TableCell colSpan={5} className="py-3">
-            <div className="space-y-2">
-              <div className="text-xs text-muted-foreground mb-2">
-                via <span className="font-medium">{conversation.agentName}</span> • {conversation.events.length} eventi
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEventPage(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={eventPage >= totalPages - 1}
+                  className="h-7 w-7 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-              
-              {conversation.events.slice(0, 5).map((event) => (
-                <div key={event.id} className="flex items-start gap-2 text-xs p-2 bg-background rounded border">
-                  {getEventIcon(event.type)}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium">{getEventLabel(event.type, event.decision)}</span>
-                      <span className="text-muted-foreground">{format(new Date(event.timestamp), "dd MMM HH:mm", { locale: it })}</span>
-                      {event.confidenceScore !== undefined && (
-                        <span className="text-muted-foreground">({Math.round(event.confidenceScore * 100)}%)</span>
-                      )}
-                    </div>
-                    {event.reasoning && (
-                      <p className="text-muted-foreground mt-1 line-clamp-2">{event.reasoning}</p>
-                    )}
-                    {event.messagePreview && (
-                      <p className="text-muted-foreground mt-1 italic line-clamp-1">"{event.messagePreview}"</p>
-                    )}
-                    {event.errorMessage && (
-                      <p className="text-red-600 mt-1">Errore: {event.errorMessage}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {event.type === 'message_scheduled' && event.status === 'scheduled' && (
-                      <SendNowButton
-                        messageId={event.id.replace('msg-', '')}
-                        canSendFreeform={event.canSendFreeform}
-                        hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
-                      />
-                    )}
-                    {event.type === 'message_failed' && (
-                      <RetryButton messageId={event.id.replace('msg-', '')} />
-                    )}
-                  </div>
-                </div>
-              ))}
-              
-              <div className="flex gap-2 pt-2 border-t">
-                <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
-                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
-                    <MessageSquare className="h-3 w-3" /> Chat
-                  </Button>
-                </Link>
-                <SimulateAiButton conversationId={conversation.conversationId} />
-              </div>
-            </div>
-          </TableCell>
-        </TableRow>
-      </CollapsibleContent>
-    </Collapsible>
+            )}
+          </div>
+
+          {paginatedEvents.map((event) => (
+            <EventDetailCard key={event.id} event={event} />
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
   );
 }
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-2">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="flex items-center gap-4 p-3">
+    <div className="space-y-2 p-3">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-3 p-3 border rounded">
           <Skeleton className="h-8 w-8 rounded-full" />
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-16" />
+          <div className="flex-1">
+            <Skeleton className="h-4 w-24 mb-1" />
+            <Skeleton className="h-3 w-32" />
+          </div>
         </div>
       ))}
     </div>
@@ -484,7 +588,7 @@ export function LiveActivityFeed() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
   const filters: ActivityLogFilters = useMemo(() => ({
     filter: filter !== 'all' ? filter : undefined,
@@ -506,12 +610,27 @@ export function LiveActivityFeed() {
   };
 
   const hasActiveFilters = agentId || search || dateFrom || dateTo;
-  const visibleTimeline = data?.timeline?.slice(0, visibleCount) || [];
-  const hasMore = (data?.timeline?.length || 0) > visibleCount;
+  const timeline = data?.timeline || [];
+  const selectedConversation = timeline.find((c: ConversationTimeline) => c.conversationId === selectedConversationId) || null;
+
+  useEffect(() => {
+    if (timeline.length > 0 && !selectedConversationId) {
+      setSelectedConversationId(timeline[0].conversationId);
+    }
+  }, [timeline, selectedConversationId]);
+
+  useEffect(() => {
+    if (selectedConversationId && timeline.length > 0) {
+      const exists = timeline.some((c: ConversationTimeline) => c.conversationId === selectedConversationId);
+      if (!exists) {
+        setSelectedConversationId(timeline[0]?.conversationId || null);
+      }
+    }
+  }, [timeline, selectedConversationId]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div className="h-[calc(100vh-180px)] flex flex-col">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList>
             <TabsTrigger value="all" className="text-xs">Tutti</TabsTrigger>
@@ -540,7 +659,7 @@ export function LiveActivityFeed() {
       </div>
 
       {showAdvancedFilters && (
-        <Card className="p-4">
+        <Card className="p-4 mb-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
@@ -583,16 +702,14 @@ export function LiveActivityFeed() {
         </Card>
       )}
 
-      {isLoading && <LoadingSkeleton />}
-
       {error && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 bg-red-50 mb-4">
           <CardContent className="p-4 text-center text-red-600">Errore nel caricamento</CardContent>
         </Card>
       )}
 
-      {!isLoading && !error && data?.timeline?.length === 0 && (
-        <Card>
+      {!isLoading && !error && timeline.length === 0 && (
+        <Card className="flex-1">
           <CardContent className="py-8 text-center">
             <Activity className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
             <p className="text-muted-foreground text-sm">
@@ -602,41 +719,37 @@ export function LiveActivityFeed() {
         </Card>
       )}
 
-      {!isLoading && !error && visibleTimeline.length > 0 && (
-        <>
-          <PendingQueuePanel />
-          
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="text-xs">Lead</TableHead>
-                  <TableHead className="text-xs">Azione</TableHead>
-                  <TableHead className="text-xs">Stato</TableHead>
-                  <TableHead className="text-xs">Data</TableHead>
-                  <TableHead className="w-8"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visibleTimeline.map((conversation: ConversationTimeline) => (
-                  <ActivityTableRow key={conversation.conversationId} conversation={conversation} />
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
-
-          {hasMore && (
-            <div className="text-center">
-              <Button variant="outline" size="sm" onClick={() => setVisibleCount(prev => prev + 20)}>
-                Carica altri ({(data?.timeline?.length || 0) - visibleCount} rimanenti)
-              </Button>
-            </div>
-          )}
-
-          <p className="text-xs text-center text-muted-foreground">
-            {visibleTimeline.length} di {data?.timeline?.length || 0} conversazioni ({data?.total || 0} eventi)
-          </p>
-        </>
+      {(isLoading || (!error && timeline.length > 0)) && (
+        <Card className="flex-1 overflow-hidden">
+          <ResizablePanelGroup direction="horizontal">
+            <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
+              <div className="h-full flex flex-col border-r">
+                <PendingQueuePanel />
+                <div className="px-3 py-2 border-b text-xs text-muted-foreground">
+                  {timeline.length} conversazioni ({data?.total || 0} eventi)
+                </div>
+                {isLoading ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <ScrollArea className="flex-1">
+                    {timeline.map((conversation: ConversationTimeline) => (
+                      <LeadListItem
+                        key={conversation.conversationId}
+                        conversation={conversation}
+                        isSelected={selectedConversationId === conversation.conversationId}
+                        onSelect={() => setSelectedConversationId(conversation.conversationId)}
+                      />
+                    ))}
+                  </ScrollArea>
+                )}
+              </div>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={65}>
+              <DetailPanel conversation={selectedConversation} />
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </Card>
       )}
     </div>
   );
