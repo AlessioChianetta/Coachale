@@ -122,7 +122,7 @@ import {
   isGoogleCalendarConnected,
   buildBaseUrlFromRequest
 } from "./google-calendar-service";
-import { encrypt, decrypt, encryptForConsultant, decryptForConsultant } from "./encryption";
+import { encrypt, decrypt, encryptForConsultant, decryptForConsultant, generateEncryptionSalt } from "./encryption";
 import { getTurnCredentialsForMeeting } from "./services/turn-config-service";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
@@ -8498,15 +8498,24 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         return res.status(400).json({ success: false, message: "Auth Token è obbligatorio" });
       }
 
-      // Get consultant's encryption salt
+      // Get or create consultant's encryption salt
       const [consultant] = await db
         .select({ encryptionSalt: schema.users.encryptionSalt })
         .from(schema.users)
         .where(eq(schema.users.id, consultantId))
         .limit(1);
 
-      if (!consultant?.encryptionSalt) {
-        return res.status(400).json({ success: false, message: "Encryption salt non configurato per questo utente. Contatta il supporto." });
+      let encryptionSalt = consultant?.encryptionSalt;
+      
+      // Auto-create encryption salt if missing
+      if (!encryptionSalt) {
+        console.log(`🔐 [Twilio Settings] Creating encryption salt for consultant ${consultantId}`);
+        encryptionSalt = generateEncryptionSalt();
+        await db
+          .update(schema.users)
+          .set({ encryptionSalt })
+          .where(eq(schema.users.id, consultantId));
+        console.log(`✅ [Twilio Settings] Encryption salt created successfully`);
       }
 
       const updateData: any = {
@@ -8515,7 +8524,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       };
 
       // Encrypt the auth token for storage
-      const encryptedToken = encryptForConsultant(authToken, consultant.encryptionSalt);
+      const encryptedToken = encryptForConsultant(authToken, encryptionSalt);
       updateData.twilioAuthToken = encryptedToken;
       console.log("🔐 [Twilio Settings] Encrypted auth token - original length:", authToken.length, "encrypted length:", encryptedToken.length);
 

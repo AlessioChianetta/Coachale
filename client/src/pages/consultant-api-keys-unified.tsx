@@ -4959,28 +4959,6 @@ export default function ConsultantApiKeysUnified() {
                         ) : null}
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="twilioWhatsappNumber">Numero WhatsApp</Label>
-                        <Input
-                          id="twilioWhatsappNumber"
-                          type="text"
-                          placeholder="+393500220129"
-                          value={twilioFormData.whatsappNumber}
-                          onChange={(e) => {
-                            setTwilioFormData(prev => ({ ...prev, whatsappNumber: e.target.value }));
-                            setTwilioValidationErrors(prev => ({ ...prev, whatsappNumber: undefined }));
-                          }}
-                          className={twilioValidationErrors.whatsappNumber ? "border-red-500" : ""}
-                        />
-                        {twilioValidationErrors.whatsappNumber ? (
-                          <p className="text-xs text-red-500">{twilioValidationErrors.whatsappNumber}</p>
-                        ) : (
-                          <p className="text-xs text-gray-500">
-                            Formato internazionale con prefisso (es: +393500220129)
-                          </p>
-                        )}
-                      </div>
-
                       <div className="flex flex-col sm:flex-row gap-3 pt-4">
                         <Button
                           variant="outline"
