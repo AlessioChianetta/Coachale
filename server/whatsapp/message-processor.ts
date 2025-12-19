@@ -16,6 +16,7 @@ import {
   consultantVertexAccess,
   vertexAiSettings,
   conversationStates,
+  scheduledFollowupMessages,
 } from "../../shared/schema";
 import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
@@ -845,6 +846,51 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           vertexCreds
         );
       }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CRITICAL FIX: Reset intelligente quando lead risponde (via polling)
+    // Stesso comportamento del webhook-handler.ts per consistenza
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (inboundMessages.length > 0) {
+      // 1. Cancella tutti i messaggi follow-up programmati per questa conversazione
+      const cancelledMessages = await db
+        .update(scheduledFollowupMessages)
+        .set({
+          status: 'cancelled',
+          cancelledAt: new Date(),
+          cancelReason: 'user_replied'
+        })
+        .where(
+          and(
+            eq(scheduledFollowupMessages.conversationId, conversation.id),
+            eq(scheduledFollowupMessages.status, 'pending')
+          )
+        )
+        .returning({ id: scheduledFollowupMessages.id });
+      
+      if (cancelledMessages.length > 0) {
+        console.log(`🛑 [FOLLOWUP-CANCEL] Lead ha risposto! Cancellati ${cancelledMessages.length} messaggi programmati per conversazione ${conversation.id}`);
+      }
+      
+      // 2. Reset conversationState: temperatura HOT, contatori azzerati
+      await db
+        .update(conversationStates)
+        .set({
+          consecutiveNoReplyCount: 0,
+          lastReplyAt: new Date(),
+          dormantUntil: null,
+          permanentlyExcluded: false,
+          dormantReason: null,
+          hasEverReplied: true,
+          temperatureLevel: 'hot',
+          warmFollowupCount: 0,
+          lastWarmFollowupAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(conversationStates.conversationId, conversation.id));
+      
+      console.log(`🔄 [INTELLIGENT-RESET] Lead responded via polling! Reset: consecutiveNoReplyCount=0, hasEverReplied=true, temperatureLevel=HOT for ${conversation.id}`);
     }
 
     // Detect if client sent audio message (for Mirror mode TTS response)
