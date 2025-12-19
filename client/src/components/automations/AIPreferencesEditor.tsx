@@ -23,6 +23,8 @@ import {
   Moon,
   AlertTriangle,
   RotateCcw,
+  Heart,
+  Flame,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,6 +41,10 @@ interface AIPreferences {
   maxNoReplyBeforeDormancy: number;
   dormancyDurationDays: number;
   finalAttemptAfterDormancy: boolean;
+  maxWarmFollowups: number;
+  warmFollowupDelayHours: number;
+  engagedGhostThresholdDays: number;
+  prioritizeEngagedLeads: boolean;
 }
 
 const defaultPreferences: AIPreferences = {
@@ -46,6 +52,10 @@ const defaultPreferences: AIPreferences = {
   maxNoReplyBeforeDormancy: 3,
   dormancyDurationDays: 90,
   finalAttemptAfterDormancy: true,
+  maxWarmFollowups: 2,
+  warmFollowupDelayHours: 4,
+  engagedGhostThresholdDays: 14,
+  prioritizeEngagedLeads: true,
 };
 
 function getIconComponent(iconName: string) {
@@ -219,6 +229,10 @@ export function AIPreferencesEditor() {
         maxNoReplyBeforeDormancy: savedPreferences.maxNoReplyBeforeDormancy ?? 3,
         dormancyDurationDays: savedPreferences.dormancyDurationDays ?? 90,
         finalAttemptAfterDormancy: savedPreferences.finalAttemptAfterDormancy ?? true,
+        maxWarmFollowups: savedPreferences.maxWarmFollowups ?? 2,
+        warmFollowupDelayHours: savedPreferences.warmFollowupDelayHours ?? 4,
+        engagedGhostThresholdDays: savedPreferences.engagedGhostThresholdDays ?? 14,
+        prioritizeEngagedLeads: savedPreferences.prioritizeEngagedLeads ?? true,
       });
       setHasChanges(false);
     }
@@ -375,6 +389,116 @@ export function AIPreferencesEditor() {
                 Invia un ultimo messaggio dopo il periodo di dormienza prima di escludere definitivamente il lead
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-rose-200 dark:border-rose-800">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-rose-500" />
+              <CardTitle className="text-lg">Engaged Lead Configuration</CardTitle>
+            </div>
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || updateMutation.isPending}
+              size="sm"
+              className="gap-2"
+            >
+              {updateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Salva
+            </Button>
+          </div>
+          <CardDescription>
+            Configura il comportamento per i lead che hanno risposto almeno una volta (lead "caldi")
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center space-x-3 p-4 bg-rose-50 dark:bg-rose-950/30 rounded-lg border border-rose-200 dark:border-rose-800">
+            <Checkbox
+              id="prioritizeEngagedLeads"
+              checked={preferences.prioritizeEngagedLeads}
+              onCheckedChange={(checked) => handleCheckboxChange("prioritizeEngagedLeads", !!checked)}
+            />
+            <div className="flex-1">
+              <Label htmlFor="prioritizeEngagedLeads" className="cursor-pointer font-medium flex items-center gap-2">
+                <Flame className="h-4 w-4 text-orange-500" />
+                Priorità ai lead engaged
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                I lead che hanno risposto almeno una volta ricevono attenzione prioritaria (check ogni 30 min invece di 2 ore)
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <Label className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-rose-500" />
+                Max warm follow-up per conversazione
+              </Label>
+              <div className="flex items-center gap-4">
+                <Slider
+                  value={[preferences.maxWarmFollowups]}
+                  onValueChange={(v) => handleSliderChange("maxWarmFollowups", v[0])}
+                  min={1}
+                  max={5}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-lg font-bold w-8 text-center">{preferences.maxWarmFollowups}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Numero massimo di follow-up "caldi" quando un lead engaged non risponde subito
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-rose-500" />
+                Delay warm follow-up (ore)
+              </Label>
+              <div className="flex items-center gap-4">
+                <Slider
+                  value={[preferences.warmFollowupDelayHours]}
+                  onValueChange={(v) => handleSliderChange("warmFollowupDelayHours", v[0])}
+                  min={2}
+                  max={12}
+                  step={1}
+                  className="flex-1"
+                />
+                <span className="text-lg font-bold w-8 text-center">{preferences.warmFollowupDelayHours}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Attendi {preferences.warmFollowupDelayHours} ore prima di inviare un warm follow-up
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <Label className="flex items-center gap-2">
+              <Moon className="h-4 w-4 text-rose-500" />
+              Soglia ghost per lead engaged (giorni)
+            </Label>
+            <div className="flex items-center gap-4">
+              <Slider
+                value={[preferences.engagedGhostThresholdDays]}
+                onValueChange={(v) => handleSliderChange("engagedGhostThresholdDays", v[0])}
+                min={7}
+                max={30}
+                step={1}
+                className="flex-1 max-w-md"
+              />
+              <span className="text-lg font-bold w-12 text-center">{preferences.engagedGhostThresholdDays}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              I lead engaged diventano "ghost" solo dopo {preferences.engagedGhostThresholdDays} giorni di silenzio (vs 7 giorni per lead normali)
+            </p>
           </div>
         </CardContent>
       </Card>

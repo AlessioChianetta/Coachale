@@ -26,6 +26,8 @@ import {
   Phone,
   Timer,
   Moon,
+  Heart,
+  Flame,
 } from "lucide-react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -40,6 +42,8 @@ interface ConversationOption {
   followupCount: number;
   consecutiveNoReplyCount: number;
   temperatureLevel: string | null;
+  hasEverReplied: boolean;
+  warmFollowupCount: number;
 }
 
 interface ConversationDetails {
@@ -58,6 +62,9 @@ interface ConversationDetails {
   engagementScore: number | null;
   window24hExpiresAt: string | null;
   canSendFreeform: boolean;
+  hasEverReplied: boolean;
+  warmFollowupCount: number;
+  lastWarmFollowupAt: string | null;
 }
 
 interface EvaluateNowResponse {
@@ -245,7 +252,15 @@ export function LiveTestCockpit() {
             {selectedDetails && (
               <div className="mt-4 p-4 bg-muted/50 rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">{selectedDetails.leadName || selectedDetails.phoneNumber}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{selectedDetails.leadName || selectedDetails.phoneNumber}</span>
+                    {selectedDetails.hasEverReplied && (
+                      <Badge className="bg-rose-100 text-rose-700 border-rose-300">
+                        <Heart className="h-3 w-3 mr-1" />
+                        Engaged
+                      </Badge>
+                    )}
+                  </div>
                   {getTemperatureBadge(selectedDetails.temperatureLevel)}
                 </div>
                 <div className="flex items-center gap-2 text-sm">
@@ -273,6 +288,21 @@ export function LiveTestCockpit() {
                     <span className="font-medium">{selectedDetails.consecutiveNoReplyCount}/3</span>
                   </div>
                 </div>
+                {selectedDetails.hasEverReplied && (
+                  <div className="grid grid-cols-2 gap-2 text-sm p-2 bg-rose-50 dark:bg-rose-950/30 rounded border border-rose-200 dark:border-rose-800">
+                    <div className="flex items-center gap-1">
+                      <Flame className="h-3 w-3 text-orange-500" />
+                      <span className="text-muted-foreground">Warm follow-up:</span>{" "}
+                      <span className="font-medium">{selectedDetails.warmFollowupCount}</span>
+                    </div>
+                    {selectedDetails.lastWarmFollowupAt && (
+                      <div>
+                        <span className="text-muted-foreground">Ultimo warm:</span>{" "}
+                        <span>{format(new Date(selectedDetails.lastWarmFollowupAt), "d MMM HH:mm", { locale: it })}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {selectedDetails.lastMessageAt && (
                   <div className="text-sm">
                     <span className="text-muted-foreground">Ultimo messaggio:</span>{" "}

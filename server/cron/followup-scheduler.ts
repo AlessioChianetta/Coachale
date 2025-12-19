@@ -18,6 +18,7 @@ import {
   whatsappTemplateAssignments,
   whatsappTemplateVersions,
   consultantWhatsappConfig,
+  consultantAiPreferences,
   users,
   proactiveLeads
 } from '../../shared/schema';
@@ -139,6 +140,82 @@ function recordMessageSent(consultantId: string): void {
     });
   } else {
     entry.count++;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Consultant AI Preferences Cache
+// ═══════════════════════════════════════════════════════════════════════════
+
+interface ConsultantRetryConfig {
+  maxNoReplyBeforeDormancy: number;
+  dormancyDurationDays: number;
+  finalAttemptAfterDormancy: boolean;
+  maxWarmFollowups: number;
+  warmFollowupDelayHours: number;
+  engagedGhostThresholdDays: number;
+  prioritizeEngagedLeads: boolean;
+}
+
+const DEFAULT_RETRY_CONFIG: ConsultantRetryConfig = {
+  maxNoReplyBeforeDormancy: 3,
+  dormancyDurationDays: 90,
+  finalAttemptAfterDormancy: true,
+  maxWarmFollowups: 2,
+  warmFollowupDelayHours: 4,
+  engagedGhostThresholdDays: 14,
+  prioritizeEngagedLeads: true,
+};
+
+// Cache preferences per consultant for 5 minutes
+const preferencesCache = new Map<string, { config: ConsultantRetryConfig; expiresAt: number }>();
+const PREFERENCES_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Get consultant's retry configuration from database or use defaults
+ */
+async function getConsultantRetryConfig(consultantId: string): Promise<ConsultantRetryConfig> {
+  // Check cache first
+  const cached = preferencesCache.get(consultantId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.config;
+  }
+  
+  try {
+    const [prefs] = await db
+      .select({
+        maxNoReplyBeforeDormancy: consultantAiPreferences.maxNoReplyBeforeDormancy,
+        dormancyDurationDays: consultantAiPreferences.dormancyDurationDays,
+        finalAttemptAfterDormancy: consultantAiPreferences.finalAttemptAfterDormancy,
+        maxWarmFollowups: consultantAiPreferences.maxWarmFollowups,
+        warmFollowupDelayHours: consultantAiPreferences.warmFollowupDelayHours,
+        engagedGhostThresholdDays: consultantAiPreferences.engagedGhostThresholdDays,
+        prioritizeEngagedLeads: consultantAiPreferences.prioritizeEngagedLeads,
+      })
+      .from(consultantAiPreferences)
+      .where(eq(consultantAiPreferences.consultantId, consultantId))
+      .limit(1);
+    
+    const config: ConsultantRetryConfig = {
+      maxNoReplyBeforeDormancy: prefs?.maxNoReplyBeforeDormancy ?? DEFAULT_RETRY_CONFIG.maxNoReplyBeforeDormancy,
+      dormancyDurationDays: prefs?.dormancyDurationDays ?? DEFAULT_RETRY_CONFIG.dormancyDurationDays,
+      finalAttemptAfterDormancy: prefs?.finalAttemptAfterDormancy ?? DEFAULT_RETRY_CONFIG.finalAttemptAfterDormancy,
+      maxWarmFollowups: prefs?.maxWarmFollowups ?? DEFAULT_RETRY_CONFIG.maxWarmFollowups,
+      warmFollowupDelayHours: prefs?.warmFollowupDelayHours ?? DEFAULT_RETRY_CONFIG.warmFollowupDelayHours,
+      engagedGhostThresholdDays: prefs?.engagedGhostThresholdDays ?? DEFAULT_RETRY_CONFIG.engagedGhostThresholdDays,
+      prioritizeEngagedLeads: prefs?.prioritizeEngagedLeads ?? DEFAULT_RETRY_CONFIG.prioritizeEngagedLeads,
+    };
+    
+    // Cache the result
+    preferencesCache.set(consultantId, {
+      config,
+      expiresAt: Date.now() + PREFERENCES_CACHE_TTL_MS,
+    });
+    
+    return config;
+  } catch (error) {
+    console.error(`[RETRY-CONFIG] Error fetching preferences for consultant ${consultantId}:`, error);
+    return DEFAULT_RETRY_CONFIG;
   }
 }
 
@@ -1258,10 +1335,11 @@ export async function findCandidateConversations(
       continue;
     }
     
-    // 3. Check if reached 3 consecutive no-reply attempts (trigger dormancy)
+    // 3. Check if reached consecutive no-reply threshold (trigger dormancy)
+    // Note: actual threshold is loaded from consultant preferences in evaluateConversation
     if (state.consecutiveNoReplyCount >= 3 && !state.dormantUntil) {
-      console.log(`⏸️ [CANDIDATE] ${state.conversationId}: Reached 3 consecutive no-reply, should enter dormancy`);
-      // This will be handled in evaluateConversation
+      console.log(`⏸️ [CANDIDATE] ${state.conversationId}: High consecutive no-reply count (${state.consecutiveNoReplyCount}), will check dormancy threshold`);
+      // This will be handled in evaluateConversation with consultant-specific threshold
     }
     
     // LEGACY CHECK RIMOSSO: ora usa solo la logica intelligente (consecutiveNoReplyCount + dormancy)
@@ -1351,13 +1429,16 @@ async function findEngagedColdCandidates(): Promise<CandidateConversation[]> {
 async function evaluateConversation(
   candidate: CandidateConversation
 ): Promise<'scheduled' | 'skipped' | 'stopped'> {
+  // Load consultant's retry configuration from database
+  const retryConfig = await getConsultantRetryConfig(candidate.consultantId);
+  
   console.log(`🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation ${candidate.conversationId}`);
   console.log(`   State: ${candidate.currentState}, Days silent: ${candidate.daysSilent}, Hours silent: ${candidate.hoursSilent.toFixed(1)}`);
-  console.log(`   📊 Follow-ups: ${candidate.followupCount} total | 🆕 Consecutive no-reply: ${candidate.consecutiveNoReplyCount}/3 → Dormancy`);
+  console.log(`   📊 Follow-ups: ${candidate.followupCount} total | 🆕 Consecutive no-reply: ${candidate.consecutiveNoReplyCount}/${retryConfig.maxNoReplyBeforeDormancy} → Dormancy`);
   console.log(`   😴 Status: ${candidate.permanentlyExcluded ? '🚫 PERMANENTLY EXCLUDED' : candidate.dormantUntil && new Date(candidate.dormantUntil) > new Date() ? `DORMANT until ${candidate.dormantUntil.toISOString()}` : 'ACTIVE'}`);
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // NEW INTELLIGENT RETRY LOGIC
+  // NEW INTELLIGENT RETRY LOGIC (uses consultant's configurable preferences)
   // ═══════════════════════════════════════════════════════════════════════════
   
   // 1. Check if permanently excluded
@@ -1375,14 +1456,15 @@ async function evaluateConversation(
   }
   
   // 3. Check if dormancy just ended (was dormant, now it's time to try once more)
-  if (candidate.dormantUntil && candidate.dormantUntil <= now && candidate.consecutiveNoReplyCount >= 3) {
-    // Check if this is the final attempt after dormancy (consecutiveNoReplyCount >= 4 means we already tried once after dormancy)
-    if (candidate.consecutiveNoReplyCount >= 4) {
+  const maxNoReply = retryConfig.maxNoReplyBeforeDormancy;
+  if (candidate.dormantUntil && candidate.dormantUntil <= now && candidate.consecutiveNoReplyCount >= maxNoReply) {
+    // Check if this is the final attempt after dormancy (consecutiveNoReplyCount >= maxNoReply+1 means we already tried once after dormancy)
+    if (candidate.consecutiveNoReplyCount >= maxNoReply + 1) {
       console.log(`🚫 [INTELLIGENT-RETRY] Final attempt after dormancy already sent. Lead did not reply. PERMANENT EXCLUSION.`);
       
       await updateConversationState(candidate.conversationId, {
         permanentlyExcluded: true,
-        dormantReason: 'Nessuna risposta dopo tentativo finale post-dormienza (4+ tentativi totali)',
+        dormantReason: `Nessuna risposta dopo tentativo finale post-dormienza (${candidate.consecutiveNoReplyCount}+ tentativi totali)`,
         lastAiEvaluationAt: new Date(),
         aiRecommendation: `[INTELLIGENT-RETRY] Esclusione permanente: nessuna risposta dopo il tentativo finale post-dormienza`,
       } as any);
@@ -1391,33 +1473,33 @@ async function evaluateConversation(
       return 'stopped';
     }
     
-    console.log(`⏰ [INTELLIGENT-RETRY] Dormancy period ended! This is the FINAL attempt after 3-month break.`);
-    // Allow one more attempt, consecutiveNoReplyCount will increment to 4
+    console.log(`⏰ [INTELLIGENT-RETRY] Dormancy period ended! This is the FINAL attempt after ${retryConfig.dormancyDurationDays}-day break.`);
+    // Allow one more attempt, consecutiveNoReplyCount will increment
     // Next evaluation will trigger permanent exclusion if no reply
   }
   
-  // 4. Check if reached 3 consecutive no-replies (should enter dormancy)
-  if (candidate.consecutiveNoReplyCount >= 3 && !candidate.dormantUntil) {
-    console.log(`⏸️ [INTELLIGENT-RETRY] Reached 3 consecutive no-reply attempts. Entering 3-month dormancy.`);
+  // 4. Check if reached consecutive no-replies threshold (should enter dormancy)
+  if (candidate.consecutiveNoReplyCount >= maxNoReply && !candidate.dormantUntil) {
+    console.log(`⏸️ [INTELLIGENT-RETRY] Reached ${maxNoReply} consecutive no-reply attempts. Entering ${retryConfig.dormancyDurationDays}-day dormancy.`);
     
     const dormantUntilDate = new Date();
-    dormantUntilDate.setMonth(dormantUntilDate.getMonth() + 3); // 3 months dormancy
+    dormantUntilDate.setDate(dormantUntilDate.getDate() + retryConfig.dormancyDurationDays);
     
     await updateConversationState(candidate.conversationId, {
       currentState: 'ghost',
       previousState: candidate.currentState,
       lastAiEvaluationAt: new Date(),
-      aiRecommendation: `[INTELLIGENT-RETRY] 3 tentativi senza risposta. Dormienza attivata fino a ${dormantUntilDate.toLocaleDateString('it-IT')}`,
+      aiRecommendation: `[INTELLIGENT-RETRY] ${maxNoReply} tentativi senza risposta. Dormienza attivata fino a ${dormantUntilDate.toLocaleDateString('it-IT')}`,
       dormantUntil: dormantUntilDate,
-      dormantReason: 'Nessuna risposta dopo 3 tentativi consecutivi',
+      dormantReason: `Nessuna risposta dopo ${maxNoReply} tentativi consecutivi`,
     } as any);
     
     console.log(`😴 [INTELLIGENT-RETRY] Lead ${candidate.conversationId} now dormant until ${dormantUntilDate.toISOString()}`);
     return 'stopped';
   }
   
-  // LEGACY SAFETY NET RIMOSSO: ora usa solo la logica intelligente
-  // La logica è: 3 tentativi senza risposta → dormienza 3 mesi → 1 tentativo finale → esclusione permanente
+  // Uses consultant's configurable preferences:
+  // maxNoReply tentativi senza risposta → dormienza N giorni → 1 tentativo finale → esclusione permanente
   
   // Bug 3 Fix: Safety check for applicableRules that could be undefined
   const applicableRules = candidate.applicableRules;
