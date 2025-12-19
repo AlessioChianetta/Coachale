@@ -5302,6 +5302,11 @@ export const conversationStates = pgTable("conversation_states", {
   // Temperature segmentation for scalability (hot=<2h, warm=<24h, cold=<7d, ghost=>7d)
   temperatureLevel: text("temperature_level").$type<"hot" | "warm" | "cold" | "ghost">().default("warm"),
 
+  // === ENGAGED LEAD TRACKING (NEW) ===
+  hasEverReplied: boolean("has_ever_replied").default(false).notNull(), // Lead ha mai risposto almeno 1 volta
+  warmFollowupCount: integer("warm_followup_count").default(0).notNull(), // Contatore warm follow-up inviati dentro finestra 24h
+  lastWarmFollowupAt: timestamp("last_warm_followup_at"), // Ultimo warm follow-up inviato
+
   stateChangedAt: timestamp("state_changed_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -5527,6 +5532,13 @@ export const consultantAiPreferences = pgTable("consultant_ai_preferences", {
   maxNoReplyBeforeDormancy: integer("max_no_reply_before_dormancy").default(3).notNull(), // 2-5: dopo quanti messaggi ignorati il lead entra in dormienza
   dormancyDurationDays: integer("dormancy_duration_days").default(90).notNull(), // 14-180: durata dormienza in giorni
   finalAttemptAfterDormancy: boolean("final_attempt_after_dormancy").default(true).notNull(), // se tentare ultimo contatto dopo dormienza
+
+  // === WARM FOLLOW-UP CONFIGURATION (NEW) ===
+  maxWarmFollowups: integer("max_warm_followups").default(2).notNull(), // 1-5: massimo warm follow-up dentro finestra 24h
+  warmFollowupDelayHours: integer("warm_followup_delay_hours").default(4).notNull(), // 2-12: ore tra un warm follow-up e l'altro
+  engagedColdCheckIntervalMinutes: integer("engaged_cold_check_interval_minutes").default(30).notNull(), // 15-60: frequenza check per lead che hanno risposto
+  engagedGhostThresholdDays: integer("engaged_ghost_threshold_days").default(14).notNull(), // 7-30: giorni prima che lead engaged diventi ghost (vs 7 per non-engaged)
+  prioritizeEngagedLeads: boolean("prioritize_engaged_leads").default(true).notNull(), // se dare priorità ai lead che hanno risposto almeno 1 volta
 
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),
