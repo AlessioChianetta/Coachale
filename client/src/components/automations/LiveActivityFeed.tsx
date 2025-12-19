@@ -27,7 +27,14 @@ import {
   Zap,
   Search,
   Calendar,
-  Filter
+  Filter,
+  Timer,
+  MessageCircle,
+  Ban,
+  FileText,
+  ThumbsUp,
+  ThumbsDown,
+  Info
 } from "lucide-react";
 import { Link } from "wouter";
 import { useSendMessageNow, useFollowupAgents, useActivityLog, usePendingQueue, type ActivityLogFilters, type PendingQueueItem } from "@/hooks/useFollowupApi";
@@ -165,6 +172,131 @@ function getEventIcon(type: string) {
     default:
       return <Activity className="h-4 w-4 text-gray-600" />;
   }
+}
+
+interface ReasoningInsight {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  color: string;
+}
+
+function parseReasoningInsights(reasoning: string): ReasoningInsight[] {
+  const insights: ReasoningInsight[] = [];
+  
+  // Tempo dall'ultimo messaggio
+  const timeMatch = reasoning.match(/Tempo dall'ultimo messaggio:\s*~?([\d.,]+)\s*(ore|minuti|giorni)/i);
+  if (timeMatch) {
+    const value = timeMatch[1];
+    const unit = timeMatch[2];
+    insights.push({
+      icon: <Timer className="h-3 w-3" />,
+      label: "Silenzio",
+      value: `${value} ${unit}`,
+      color: parseFloat(value.replace(',', '.')) > 24 ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"
+    });
+  }
+  
+  // Finestra 24h WhatsApp
+  if (reasoning.includes('fuori dalla finestra 24h') || reasoning.includes('fuori finestra')) {
+    insights.push({
+      icon: <Ban className="h-3 w-3" />,
+      label: "24h",
+      value: "Scaduta",
+      color: "bg-red-100 text-red-700"
+    });
+  } else if (reasoning.includes('dentro la finestra 24h') || reasoning.includes('finestra 24h attiva')) {
+    insights.push({
+      icon: <CheckCircle className="h-3 w-3" />,
+      label: "24h",
+      value: "Attiva",
+      color: "bg-green-100 text-green-700"
+    });
+  }
+  
+  // Template necessario
+  if (reasoning.includes('template approvato') || reasoning.includes('necessario utilizzare un template')) {
+    insights.push({
+      icon: <FileText className="h-3 w-3" />,
+      label: "Tipo",
+      value: "Template",
+      color: "bg-purple-100 text-purple-700"
+    });
+  } else if (reasoning.includes('messaggio libero') || reasoning.includes('freeform')) {
+    insights.push({
+      icon: <MessageCircle className="h-3 w-3" />,
+      label: "Tipo",
+      value: "Libero",
+      color: "bg-green-100 text-green-700"
+    });
+  }
+  
+  // Risposta del lead
+  if (reasoning.includes('ha risposto positivamente') || reasoning.includes('lead ha risposto')) {
+    insights.push({
+      icon: <ThumbsUp className="h-3 w-3" />,
+      label: "Lead",
+      value: "Ha risposto",
+      color: "bg-green-100 text-green-700"
+    });
+  }
+  if (reasoning.includes('non ha risposto')) {
+    insights.push({
+      icon: <ThumbsDown className="h-3 w-3" />,
+      label: "Ultimo msg",
+      value: "No risposta",
+      color: "bg-yellow-100 text-yellow-700"
+    });
+  }
+  
+  return insights;
+}
+
+function StructuredReasoning({ reasoning, eventId, showFull, onToggle }: {
+  reasoning: string;
+  eventId: string;
+  showFull: boolean;
+  onToggle: () => void;
+}) {
+  const insights = parseReasoningInsights(reasoning);
+  
+  return (
+    <div className="mt-2 space-y-2">
+      {insights.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {insights.map((insight, idx) => (
+            <div
+              key={idx}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${insight.color}`}
+            >
+              {insight.icon}
+              <span className="opacity-70">{insight.label}:</span>
+              <span>{insight.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      <Collapsible open={showFull} onOpenChange={onToggle}>
+        <div className="flex items-center gap-2">
+          <CollapsibleTrigger asChild>
+            <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+              <Info className="h-3 w-3" />
+              <span>{showFull ? 'Nascondi analisi AI' : 'Mostra analisi AI'}</span>
+              {showFull ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+        <CollapsibleContent>
+          <div className="mt-2 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
+            <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">
+              {reasoning}
+            </p>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
 }
 
 function getEventLabel(type: string, decision?: string) {
@@ -662,22 +794,12 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                       )}
 
                       {event.reasoning && (
-                        <div className="mt-0.5">
-                          <p className={`text-xs text-muted-foreground ${showFullReasoning[event.id] ? '' : 'line-clamp-2'}`}>
-                            {event.reasoning}
-                          </p>
-                          {event.reasoning.length > 100 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowFullReasoning(prev => ({ ...prev, [event.id]: !prev[event.id] }));
-                              }}
-                              className="text-xs text-blue-600 hover:underline mt-0.5"
-                            >
-                              {showFullReasoning[event.id] ? 'Mostra meno' : 'Mostra tutto'}
-                            </button>
-                          )}
-                        </div>
+                        <StructuredReasoning
+                          reasoning={event.reasoning}
+                          eventId={event.id}
+                          showFull={showFullReasoning[event.id] || false}
+                          onToggle={() => setShowFullReasoning(prev => ({ ...prev, [event.id]: !prev[event.id] }))}
+                        />
                       )}
 
                       {event.messagePreview && (
