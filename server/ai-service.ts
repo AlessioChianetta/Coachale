@@ -124,6 +124,65 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+// Helper function to log token breakdown with File Search awareness
+function logTokenBreakdown(
+  breakdown: ReturnType<typeof calculateTokenBreakdown>,
+  systemPromptTokens: number,
+  hasFileSearch: boolean
+): void {
+  console.log(`\n${'═'.repeat(70)}`);
+  console.log(`📊 SYSTEM PROMPT BREAKDOWN (~${systemPromptTokens.toLocaleString()} tokens)`);
+  console.log(`${'═'.repeat(70)}`);
+
+  if (hasFileSearch) {
+    // File Search attivo - mostra cosa è nel prompt vs cosa è su RAG
+    console.log(`\n📍 NEL SYSTEM PROMPT (${systemPromptTokens.toLocaleString()} tokens):`);
+    console.log(`   💰 Finance Data: ${breakdown.financeData.toLocaleString()} tokens`);
+    console.log(`   🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens`);
+    console.log(`   ⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens`);
+    console.log(`   🗺️  Roadmap: ${breakdown.roadmap.toLocaleString()} tokens`);
+    console.log(`   👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens`);
+    console.log(`   🎓 University: ${breakdown.university.toLocaleString()} tokens`);
+    
+    console.log(`\n🔍 VIA FILE SEARCH RAG (non nel prompt, cercati su richiesta):`);
+    console.log(`   📚 Exercises: ${breakdown.exercises.toLocaleString()} tokens → via RAG`);
+    console.log(`   📖 Library Docs: ${breakdown.library.toLocaleString()} tokens → via RAG`);
+    console.log(`   💬 Consultations: ${breakdown.consultations.toLocaleString()} tokens → via RAG`);
+    console.log(`   📚 Knowledge Base: ${breakdown.knowledgeBase.toLocaleString()} tokens → via RAG`);
+    
+    const ragTokens = breakdown.exercises + breakdown.library + breakdown.consultations + breakdown.knowledgeBase;
+    console.log(`\n   💰 RISPARMIO: ~${ragTokens.toLocaleString()} tokens spostati su File Search`);
+  } else {
+    // File Search non attivo - tutto nel prompt
+    console.log(`\n💰 Finance Data: ${breakdown.financeData.toLocaleString()} tokens (${((breakdown.financeData / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`📚 Exercises: ${breakdown.exercises.toLocaleString()} tokens (${((breakdown.exercises / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`📖 Library Docs: ${breakdown.library.toLocaleString()} tokens (${((breakdown.library / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`💬 Consultations: ${breakdown.consultations.toLocaleString()} tokens (${((breakdown.consultations / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens (${((breakdown.goals / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens (${((breakdown.momentum / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`🗺️  Roadmap: ${breakdown.roadmap.toLocaleString()} tokens (${((breakdown.roadmap / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`📚 Knowledge Base: ${breakdown.knowledgeBase.toLocaleString()} tokens (${((breakdown.knowledgeBase / systemPromptTokens) * 100).toFixed(1)}%)`);
+    console.log(`👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens (${((breakdown.base / systemPromptTokens) * 100).toFixed(1)}%)`);
+
+    // University breakdown
+    console.log(`\n🎓 UNIVERSITY: ${breakdown.university.toLocaleString()} tokens (${((breakdown.university / systemPromptTokens) * 100).toFixed(1)}%)`);
+    if (breakdown.universityBreakdown) {
+      console.log(`   └─ Overall Progress: ${breakdown.universityBreakdown.overallProgress.toLocaleString()} tokens`);
+
+      for (const year of breakdown.universityBreakdown.years) {
+        console.log(`   └─ 📅 ${year.yearTitle}: ${year.totalYearTokens.toLocaleString()} tokens`);
+
+        for (const trimester of year.trimesters) {
+          const totalLessons = trimester.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+          console.log(`      └─ ${trimester.trimesterTitle}: ${trimester.totalTrimesterTokens.toLocaleString()} tokens (${trimester.modules.length} moduli, ${totalLessons} lezioni)`);
+        }
+      }
+    }
+  }
+
+  console.log(`\n${'═'.repeat(70)}\n`);
+}
+
 // Calculate detailed token breakdown by context section
 function calculateTokenBreakdown(userContext: UserContext, intent: string): {
   financeData: number;
@@ -772,39 +831,8 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
     console.log(`  - File Search Mode: ${exercisesIndexedInFileSearch ? '✅ ACTIVE (exercises/consultations via RAG)' : '❌ OFF (full content in prompt)'}`);
 
-    // ═══════════════════════════════════════════════════════════════════
-    // 📊 TOKEN BREAKDOWN - System Prompt Analysis
-    // ═══════════════════════════════════════════════════════════════════
-    console.log(`\n${'═'.repeat(70)}`);
-    console.log(`📊 SYSTEM PROMPT BREAKDOWN (~${systemPromptTokens.toLocaleString()} tokens)`);
-    console.log(`${'═'.repeat(70)}`);
-
-    console.log(`\n💰 Finance Data: ${breakdown.financeData.toLocaleString()} tokens (${((breakdown.financeData / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`📚 Exercises: ${breakdown.exercises.toLocaleString()} tokens (${((breakdown.exercises / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`📖 Library Docs: ${breakdown.library.toLocaleString()} tokens (${((breakdown.library / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`💬 Consultations: ${breakdown.consultations.toLocaleString()} tokens (${((breakdown.consultations / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens (${((breakdown.goals / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens (${((breakdown.momentum / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`🗺️  Roadmap: ${breakdown.roadmap.toLocaleString()} tokens (${((breakdown.roadmap / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`📚 Knowledge Base: ${breakdown.knowledgeBase.toLocaleString()} tokens (${((breakdown.knowledgeBase / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens (${((breakdown.base / systemPromptTokens) * 100).toFixed(1)}%)`);
-
-    // University - solo riepilogo per anno/trimestre, NON singole lezioni
-    console.log(`\n🎓 UNIVERSITY: ${breakdown.university.toLocaleString()} tokens (${((breakdown.university / systemPromptTokens) * 100).toFixed(1)}%)`);
-    if (breakdown.universityBreakdown) {
-      console.log(`   └─ Overall Progress: ${breakdown.universityBreakdown.overallProgress.toLocaleString()} tokens`);
-
-      for (const year of breakdown.universityBreakdown.years) {
-        console.log(`   └─ 📅 ${year.yearTitle}: ${year.totalYearTokens.toLocaleString()} tokens`);
-
-        for (const trimester of year.trimesters) {
-          const totalLessons = trimester.modules.reduce((sum, m) => sum + m.lessons.length, 0);
-          console.log(`      └─ ${trimester.trimesterTitle}: ${trimester.totalTrimesterTokens.toLocaleString()} tokens (${trimester.modules.length} moduli, ${totalLessons} lezioni)`);
-        }
-      }
-    }
-
-    console.log(`\n${'═'.repeat(70)}\n`);
+    // Log token breakdown with File Search awareness
+    logTokenBreakdown(breakdown, systemPromptTokens, exercisesIndexedInFileSearch);
 
     // Prepare messages for Gemini
     const geminiMessages = [
@@ -1466,39 +1494,8 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
     console.log(`  - File Search Mode: ${exercisesIndexedInFileSearch ? '✅ ACTIVE (exercises/consultations via RAG)' : '❌ OFF (full content in prompt)'}`);
 
-    // ═══════════════════════════════════════════════════════════════════
-    // 📊 TOKEN BREAKDOWN - System Prompt Analysis
-    // ═══════════════════════════════════════════════════════════════════
-    console.log(`\n${'═'.repeat(70)}`);
-    console.log(`📊 SYSTEM PROMPT BREAKDOWN (~${systemPromptTokens.toLocaleString()} tokens)`);
-    console.log(`${'═'.repeat(70)}`);
-
-    console.log(`\n💰 Finance Data: ${breakdown.financeData.toLocaleString()} tokens (${((breakdown.financeData / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`📚 Exercises: ${breakdown.exercises.toLocaleString()} tokens (${((breakdown.exercises / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`📖 Library Docs: ${breakdown.library.toLocaleString()} tokens (${((breakdown.library / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`💬 Consultations: ${breakdown.consultations.toLocaleString()} tokens (${((breakdown.consultations / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`🎯 Goals & Tasks: ${breakdown.goals.toLocaleString()} tokens (${((breakdown.goals / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`⚡ Momentum & Calendar: ${breakdown.momentum.toLocaleString()} tokens (${((breakdown.momentum / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`🗺️  Roadmap: ${breakdown.roadmap.toLocaleString()} tokens (${((breakdown.roadmap / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`📚 Knowledge Base: ${breakdown.knowledgeBase.toLocaleString()} tokens (${((breakdown.knowledgeBase / systemPromptTokens) * 100).toFixed(1)}%)`);
-    console.log(`👤 User Profile & Base: ${breakdown.base.toLocaleString()} tokens (${((breakdown.base / systemPromptTokens) * 100).toFixed(1)}%)`);
-
-    // University - solo riepilogo per anno/trimestre, NON singole lezioni
-    console.log(`\n🎓 UNIVERSITY: ${breakdown.university.toLocaleString()} tokens (${((breakdown.university / systemPromptTokens) * 100).toFixed(1)}%)`);
-    if (breakdown.universityBreakdown) {
-      console.log(`   └─ Overall Progress: ${breakdown.universityBreakdown.overallProgress.toLocaleString()} tokens`);
-
-      for (const year of breakdown.universityBreakdown.years) {
-        console.log(`   └─ 📅 ${year.yearTitle}: ${year.totalYearTokens.toLocaleString()} tokens`);
-
-        for (const trimester of year.trimesters) {
-          const totalLessons = trimester.modules.reduce((sum, m) => sum + m.lessons.length, 0);
-          console.log(`      └─ ${trimester.trimesterTitle}: ${trimester.totalTrimesterTokens.toLocaleString()} tokens (${trimester.modules.length} moduli, ${totalLessons} lezioni)`);
-        }
-      }
-    }
-
-    console.log(`\n${'═'.repeat(70)}\n`);
+    // Log token breakdown with File Search awareness
+    logTokenBreakdown(breakdown, systemPromptTokens, exercisesIndexedInFileSearch);
 
     // Prepare messages for Gemini
     const geminiMessages = [
