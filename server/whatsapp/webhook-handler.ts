@@ -298,6 +298,7 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
     // ═══════════════════════════════════════════════════════════════════════════
     // FASE 4: Reset intelligente contatori quando lead risponde
     // Questo azzera consecutiveNoReplyCount, rimuove dormienza/esclusione
+    // E IMPOSTA hasEverReplied=true + temperatureLevel='hot' per priorità massima
     // ═══════════════════════════════════════════════════════════════════════════
     await db
       .update(conversationStates)
@@ -307,11 +308,17 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
         dormantUntil: null,
         permanentlyExcluded: false,
         dormantReason: null,
+        // NEW: Set hasEverReplied to true and temperature to HOT
+        hasEverReplied: true,
+        temperatureLevel: 'hot',
+        // Reset warm followup counter for new engagement window
+        warmFollowupCount: 0,
+        lastWarmFollowupAt: null,
         updatedAt: new Date(),
       })
       .where(eq(conversationStates.conversationId, conversation.id));
     
-    console.log(`🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, dormant=null, excluded=false for ${conversation.id}`);
+    console.log(`🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, hasEverReplied=true, temperatureLevel=HOT, dormant=null for ${conversation.id}`);
   }
 
   if (!conversation.aiEnabled) {

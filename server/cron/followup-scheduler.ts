@@ -41,15 +41,18 @@ let evaluationJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
 let coldLeadsJob: cron.ScheduledTask | null = null;
 let ghostLeadsJob: cron.ScheduledTask | null = null;
+let engagedColdLeadsJob: cron.ScheduledTask | null = null;
 let isEvaluationRunning = false;
 let isProcessingRunning = false;
 let isColdLeadsRunning = false;
 let isGhostLeadsRunning = false;
+let isEngagedColdLeadsRunning = false;
 
 const EVALUATION_INTERVAL = '*/5 * * * *'; // Every 5 minutes - HOT/WARM leads
 const PROCESSING_INTERVAL = '* * * * *';   // Every minute
 const COLD_LEADS_INTERVAL = '0 */2 * * *'; // Every 2 hours - COLD leads
 const GHOST_LEADS_INTERVAL = '0 10 * * *'; // Daily at 10:00 - GHOST leads
+const ENGAGED_COLD_LEADS_INTERVAL = '*/30 * * * *'; // Every 30 minutes - engaged leads that went cold
 const TIMEZONE = 'Europe/Rome';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -222,11 +225,15 @@ export type TemperatureLevel = "hot" | "warm" | "cold" | "ghost";
  * @param hoursSinceLastInbound - Ore trascorse dall'ultimo messaggio del lead
  * @returns TemperatureLevel - hot, warm, cold, o ghost
  */
-export function calculateTemperature(hoursSinceLastInbound: number): TemperatureLevel {
+export function calculateTemperature(hoursSinceLastInbound: number, hasEverReplied: boolean = false, engagedGhostThresholdDays: number = 14): TemperatureLevel {
   if (hoursSinceLastInbound < 2) return "hot";        // < 2 ore: lead molto attivo
   if (hoursSinceLastInbound < 24) return "warm";      // < 24 ore: ancora dentro finestra WhatsApp
-  if (hoursSinceLastInbound < 168) return "cold";     // < 7 giorni: lead freddo
-  return "ghost";                                      // > 7 giorni: fantasma
+  
+  // Lead engaged (ha risposto almeno 1 volta) ha threshold più alto per diventare ghost
+  const ghostThresholdHours = hasEverReplied ? (engagedGhostThresholdDays * 24) : 168; // 14 giorni vs 7 giorni
+  
+  if (hoursSinceLastInbound < ghostThresholdHours) return "cold";
+  return "ghost";
 }
 
 export function initFollowupScheduler(): void {
@@ -289,10 +296,24 @@ export function initFollowupScheduler(): void {
     timezone: TIMEZONE
   });
 
+  // ENGAGED COLD leads evaluation - every 30 minutes (high priority leads that went cold)
+  engagedColdLeadsJob = cron.schedule(ENGAGED_COLD_LEADS_INTERVAL, async () => {
+    console.log('⏰ [FOLLOWUP-SCHEDULER] ENGAGED COLD leads evaluation cycle triggered');
+    try {
+      await runEngagedColdLeadsEvaluation();
+    } catch (error) {
+      console.error('❌ [FOLLOWUP-SCHEDULER] Error in ENGAGED COLD leads evaluation cycle:', error);
+    }
+  }, {
+    scheduled: true,
+    timezone: TIMEZONE
+  });
+
   console.log('✅ [FOLLOWUP-SCHEDULER] Scheduler initialized successfully');
   console.log(`   🔥 HOT/WARM: ${EVALUATION_INTERVAL} (every 5 minutes)`);
   console.log(`   ❄️  COLD: ${COLD_LEADS_INTERVAL} (every 2 hours)`);
   console.log(`   👻 GHOST: ${GHOST_LEADS_INTERVAL} (daily at 10:00)`);
+  console.log(`   🔥❄️ ENGAGED COLD: ${ENGAGED_COLD_LEADS_INTERVAL} (every 30 minutes)`);
   console.log(`   📋 Processing: ${PROCESSING_INTERVAL} (every minute)`);
 }
 
@@ -321,6 +342,12 @@ export function stopFollowupScheduler(): void {
     ghostLeadsJob.stop();
     ghostLeadsJob = null;
     console.log('   ✅ GHOST leads job stopped');
+  }
+  
+  if (engagedColdLeadsJob) {
+    engagedColdLeadsJob.stop();
+    engagedColdLeadsJob = null;
+    console.log('   ✅ ENGAGED COLD leads job stopped');
   }
   
   console.log('✅ [FOLLOWUP-SCHEDULER] Scheduler stopped');
@@ -541,6 +568,54 @@ export async function runGhostLeadsEvaluation(): Promise<void> {
     
   } finally {
     isGhostLeadsRunning = false;
+  }
+}
+
+/**
+ * Run evaluation for ENGAGED COLD leads only (every 30 minutes)
+ * These are leads that responded at least once but are now cold - they deserve more attention
+ */
+export async function runEngagedColdLeadsEvaluation(): Promise<void> {
+  if (isEngagedColdLeadsRunning) {
+    console.log('⚠️ [FOLLOWUP-SCHEDULER] Engaged cold leads evaluation already running, skipping...');
+    return;
+  }
+
+  isEngagedColdLeadsRunning = true;
+  const startTime = Date.now();
+  
+  try {
+    console.log('🔥❄️ [FOLLOWUP-SCHEDULER] Starting ENGAGED COLD leads evaluation cycle...');
+    
+    // Find cold leads that have ever replied (high priority)
+    const candidateConversations = await findEngagedColdCandidates();
+    
+    console.log(`📊 [FOLLOWUP-SCHEDULER] Found ${candidateConversations.length} ENGAGED COLD candidate conversations`);
+    
+    if (candidateConversations.length === 0) {
+      console.log('💤 [FOLLOWUP-SCHEDULER] No ENGAGED COLD conversations to evaluate');
+      return;
+    }
+
+    let processed = 0;
+    let scheduled = 0;
+
+    for (const conversation of candidateConversations) {
+      try {
+        const result = await evaluateConversation(conversation);
+        processed++;
+        if (result === 'scheduled') scheduled++;
+      } catch (error) {
+        console.error(`❌ [FOLLOWUP-SCHEDULER] Error evaluating engaged cold conversation ${conversation.conversationId}:`, error);
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`📈 [FOLLOWUP-SCHEDULER] ENGAGED COLD leads evaluation completed in ${duration}ms`);
+    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}`);
+    
+  } finally {
+    isEngagedColdLeadsRunning = false;
   }
 }
 
@@ -806,6 +881,10 @@ interface CandidateConversation {
   dormantUntil: Date | null;
   permanentlyExcluded: boolean;
   dormantReason: string | null;
+  // NEW: Engaged lead priority fields
+  hasEverReplied?: boolean;
+  warmFollowupCount?: number;
+  lastWarmFollowupAt?: Date | null;
 }
 
 /**
@@ -1076,6 +1155,10 @@ export async function findCandidateConversations(
       nextFollowupScheduledAt: conversationStates.nextFollowupScheduledAt,
       lastFollowupAt: conversationStates.lastFollowupAt,
       temperatureLevel: conversationStates.temperatureLevel,
+      // NEW: Engaged lead priority fields
+      hasEverReplied: conversationStates.hasEverReplied,
+      warmFollowupCount: conversationStates.warmFollowupCount,
+      lastWarmFollowupAt: conversationStates.lastWarmFollowupAt,
       // NEW: Intelligent retry logic fields
       consecutiveNoReplyCount: conversationStates.consecutiveNoReplyCount,
       lastReplyAt: conversationStates.lastReplyAt,
@@ -1241,10 +1324,28 @@ export async function findCandidateConversations(
       dormantUntil: state.dormantUntil ? new Date(state.dormantUntil) : null,
       permanentlyExcluded: state.permanentlyExcluded,
       dormantReason: state.dormantReason,
+      // NEW: Engaged lead priority fields
+      hasEverReplied: state.hasEverReplied,
+      warmFollowupCount: state.warmFollowupCount,
+      lastWarmFollowupAt: state.lastWarmFollowupAt ? new Date(state.lastWarmFollowupAt) : null,
     });
   }
 
   return candidates;
+}
+
+async function findEngagedColdCandidates(): Promise<CandidateConversation[]> {
+  console.log('🔍 [FOLLOWUP-SCHEDULER] Finding engaged cold candidates (hasEverReplied=true, temp=cold)...');
+  
+  // Use findCandidateConversations but filter for hasEverReplied=true after
+  const coldCandidates = await findCandidateConversations(undefined, ['cold']);
+  
+  // Filter only those that have ever replied
+  const engagedColdCandidates = coldCandidates.filter(c => c.hasEverReplied === true);
+  
+  console.log(`🔥❄️ [FOLLOWUP-SCHEDULER] Filtered to ${engagedColdCandidates.length} engaged cold leads (from ${coldCandidates.length} total cold)`);
+  
+  return engagedColdCandidates;
 }
 
 async function evaluateConversation(
