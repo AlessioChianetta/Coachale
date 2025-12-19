@@ -270,7 +270,7 @@ export default function AdminSettings() {
     queryKey: ["/api/admin/superadmin/gemini-config"],
     queryFn: async () => {
       const response = await fetch("/api/admin/superadmin/gemini-config", {
-        credentials: "include",
+        headers: getAuthHeaders(),
       });
       if (!response.ok) throw new Error("Errore nel caricamento configurazione Gemini");
       return response.json();
@@ -548,8 +548,10 @@ export default function AdminSettings() {
       
       const response = await fetch("/api/admin/superadmin/gemini-config", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: { 
+          ...getAuthHeaders(),
+          "Content-Type": "application/json" 
+        },
         body: JSON.stringify({ apiKeys: validKeys, enabled: geminiFormData.enabled }),
       });
       
