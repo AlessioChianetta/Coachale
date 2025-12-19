@@ -1,0 +1,54 @@
+Mario Rossi
++39333124434567
+via Marco setter
+👻 Ghost
+5 eventi recenti
+24h scaduta
+Programmato
+Messaggio programmato
+20 dic 11:00
+33.6o
+24h scaduta
+Template
+
+Template
+✅
+Ciao {{1}}! 👋 Sono {{2}} di {{3}}. Ti scrivo riguardo alla tua iscrizione e al tuo interesse per: {{4}}. Il nostro scopo è aiutarti a raggiungere il tuo obiettivo: {{5}}. Per partire col piede giusto e non sprecare il tuo tempo, posso chiederti: cosa ti ha spinto a iscriverti? 😃
+
+▼ tutto
+La situazione attuale è che il lead non ha risposto per 1 giorno all'ultima domanda di qualificazione ('qual è il problema più grande che stai affrontando...'). Entrambi i template disponibili sono stati già utilizzati nella conversazione e non sono ideali per fare un follow-up specifico sulla domanda posta. Il Template 2 (HX5e6d27c6d82026f3620247262ef67340) è particolarmente problematico perché chiede 'Ti va di dirmi con un sì o no se posso tenerti aggiornato?' quando il lead ha già risposto 'certo' a una domanda simile in precedenza, rendendo il messaggio contraddittorio e potenzialmente irritante. Il Template 1 (HX922112cd9b1d531c5be56772acd50034), sebbene ponga una domanda iniziale ('cosa ti ha spinto a iscriverti?') che è già stata posta indirettamente e superata, è meno dannoso per la relazione in quanto non contraddice esplicitamente una risposta precedente del lead. Tra le due opzioni non ideali, è la meno peggiore perché non ignora direttamente l'engagement espresso dal lead con 'certo'. Tuttavia, sarebbe preferibile un follow-up che richiami direttamente la domanda precedente.
+
+Invia Ora
+Valutazione AI
+19 dic 10:01
+27.9o
+Risposta+
+
+Confidenza: 90%
+Valutazione AI
+19 dic 10:00
+33.6o
+24h scaduta
+Template
+
+Confidenza: 90%
+Messaggio INVIATO
+18 dic 00:23
+0o
+Template
+No risposta
+
+Template
+✅
+Ciao {{1}}, ci tenevo solo a risentirti per capire se hai avuto modo di leggere il mio messaggio precedente 😊 So che le giornate sono sempre piene, ma mi farebbe piacere capire se {{2}} è ancora una priorità per te, così da non disturbarti inutilmente. Ti va di dirmi con un sì o no se posso tenerti aggiornato?
+
+▼ tutto
+Il template con ID 'HX922112cd9b1d531c5be56772acd50034' è il messaggio iniziale che è già stato inviato al lead. Non può quindi essere utilizzato come follow-up. Il template con ID 'HX5e6d27c6d82026f3620247262ef67340' è l'unico template disponibile il cui obiettivo dichiarato è un follow-up. Sebbene lo stato 'Giorni senza risposta: 0' renda il suo contenuto leggermente prematuro (chiedere 'se hai avuto modo di leggere il mio messaggio precedente' dopo 0 giorni), è l'unica opzione tra quelle fornite che è strutturata e finalizzata a un follow-up, in contrapposizione al messaggio iniziale già spedito.
+
+Valutazione AI
+18 dic 00:22
+0o
+Template
+No risposta
+
+Confidenza: 90%
