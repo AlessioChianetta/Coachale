@@ -541,7 +541,30 @@ export async function evaluateWithHumanLikeAI(
       return createDefaultDecision("Risposta AI non valida");
     }
     
-    const result = JSON.parse(resultText);
+    let result;
+    try {
+      result = JSON.parse(resultText);
+    } catch (jsonError) {
+      console.error(`❌ [HUMAN-AI] JSON PARSE ERROR for ${context.conversationId}:`);
+      console.error(`   Error: ${jsonError}`);
+      console.error(`   Raw response length: ${resultText.length} chars`);
+      console.error(`   Raw response (first 1000 chars): ${resultText.substring(0, 1000)}`);
+      console.error(`   Raw response (last 500 chars): ${resultText.substring(Math.max(0, resultText.length - 500))}`);
+      
+      // Try to extract JSON from markdown code blocks
+      const jsonMatch = resultText.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        try {
+          result = JSON.parse(jsonMatch[1].trim());
+          console.log(`✅ [HUMAN-AI] Recovered JSON from markdown code block`);
+        } catch (recoveryError) {
+          console.error(`❌ [HUMAN-AI] Recovery also failed: ${recoveryError}`);
+          return createDefaultDecision(`Errore JSON: ${jsonError}`);
+        }
+      } else {
+        return createDefaultDecision(`Errore JSON: ${jsonError}`);
+      }
+    }
     const latencyMs = Date.now() - startTime;
     
     console.log(`✅ [HUMAN-AI] Decision: ${result.decision} (confidence: ${result.confidenceScore})`);

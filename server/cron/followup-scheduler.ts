@@ -52,8 +52,75 @@ let isEngagedColdLeadsRunning = false;
 // ═══════════════════════════════════════════════════════════════════════════
 // In-Memory Evaluation Locks (prevents race conditions in parallel evaluations)
 // ═══════════════════════════════════════════════════════════════════════════
-const evaluationLocks = new Map<string, number>();
+const evaluationLocks = new Map<string, { timestamp: number; caller: string; cycleId: string }>();
 const EVALUATION_LOCK_TIMEOUT_MS = 60000; // 1 minute timeout
+
+// Track evaluation calls for debugging multiple evaluations
+let globalEvalCounter = 0;
+const recentEvalCalls = new Map<string, { count: number; timestamps: number[]; callers: string[] }>();
+
+function trackEvaluationCall(conversationId: string, caller: string): void {
+  globalEvalCounter++;
+  const now = Date.now();
+  const existing = recentEvalCalls.get(conversationId) || { count: 0, timestamps: [], callers: [] };
+  
+  // Keep only last 5 minutes of data
+  const fiveMinutesAgo = now - 5 * 60 * 1000;
+  const recentTimestamps = existing.timestamps.filter(t => t > fiveMinutesAgo);
+  const recentCallers = existing.callers.slice(-10);
+  
+  recentTimestamps.push(now);
+  recentCallers.push(`${caller}@${new Date(now).toISOString()}`);
+  
+  recentEvalCalls.set(conversationId, {
+    count: existing.count + 1,
+    timestamps: recentTimestamps,
+    callers: recentCallers
+  });
+  
+  // Alert if more than 2 evaluations in 5 minutes for same conversation
+  if (recentTimestamps.length > 2) {
+    console.warn(`⚠️ [EVAL-TRACKER] MULTIPLE EVALUATIONS DETECTED for ${conversationId}:`);
+    console.warn(`   Total: ${recentTimestamps.length} in last 5 minutes`);
+    console.warn(`   Callers: ${recentCallers.join(' → ')}`);
+    console.warn(`   Stack: ${new Error().stack?.split('\n').slice(2, 6).join('\n')}`);
+  }
+}
+
+function cleanupEvaluationTracking(conversationId: string): void {
+  // Remove tracking for completed evaluations after 10 minutes
+  const entry = recentEvalCalls.get(conversationId);
+  if (entry) {
+    const now = Date.now();
+    const tenMinutesAgo = now - 10 * 60 * 1000;
+    const recentTimestamps = entry.timestamps.filter(t => t > tenMinutesAgo);
+    
+    if (recentTimestamps.length === 0) {
+      recentEvalCalls.delete(conversationId);
+    } else {
+      entry.timestamps = recentTimestamps;
+    }
+  }
+}
+
+// Periodic cleanup of stale tracking data (every 10 minutes)
+setInterval(() => {
+  const now = Date.now();
+  const tenMinutesAgo = now - 10 * 60 * 1000;
+  
+  for (const [convId, entry] of recentEvalCalls.entries()) {
+    const recentTimestamps = entry.timestamps.filter(t => t > tenMinutesAgo);
+    if (recentTimestamps.length === 0) {
+      recentEvalCalls.delete(convId);
+    } else {
+      entry.timestamps = recentTimestamps;
+    }
+  }
+  
+  if (recentEvalCalls.size > 0) {
+    console.log(`🧹 [EVAL-TRACKER] Cleanup: ${recentEvalCalls.size} active tracking entries`);
+  }
+}, 10 * 60 * 1000);
 
 const EVALUATION_INTERVAL = '*/5 * * * *'; // Every 5 minutes - HOT/WARM leads
 const PROCESSING_INTERVAL = '* * * * *';   // Every minute
@@ -487,9 +554,9 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
         // LOCK CHECK: Prevent parallel evaluations of the same conversation
         const existingLock = evaluationLocks.get(lockKey);
         const now = Date.now();
-        if (existingLock && (now - existingLock) < EVALUATION_LOCK_TIMEOUT_MS) {
-          console.log(`📋 [EVAL-STEP 1] ${conversation.conversationId}: FAILED - Lock held (started ${((now - existingLock)/1000).toFixed(1)}s ago)`);
-          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress (started ${((now - existingLock)/1000).toFixed(1)}s ago)`);
+        if (existingLock && (now - existingLock.timestamp) < EVALUATION_LOCK_TIMEOUT_MS) {
+          console.log(`📋 [EVAL-STEP 1] ${conversation.conversationId}: FAILED - Lock held by ${existingLock.caller} (cycle: ${existingLock.cycleId}, started ${((now - existingLock.timestamp)/1000).toFixed(1)}s ago)`);
+          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress`);
           skipped++;
           metrics.skipped++;
           continue;
@@ -511,9 +578,12 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
         }
         console.log(`📋 [EVAL-STEP 2] ${conversation.conversationId}: PASSED - Debounce cleared`);
         
+        // Track this evaluation call for debugging
+        trackEvaluationCall(lockKey, `${filterLabel}-cycle-${cycleId}`);
+        
         // Set lock before evaluation
-        evaluationLocks.set(lockKey, Date.now());
-        console.log(`📋 [EVAL-STEP 3] ${conversation.conversationId}: Lock acquired, checking temperature (hours since inbound: ${conversation.hoursSinceLastInbound.toFixed(1)})`);
+        evaluationLocks.set(lockKey, { timestamp: Date.now(), caller: `${filterLabel}-cycle`, cycleId });
+        console.log(`📋 [EVAL-STEP 3] ${conversation.conversationId}: Lock acquired (caller: ${filterLabel}-cycle-${cycleId}), checking temperature (hours since inbound: ${conversation.hoursSinceLastInbound.toFixed(1)})`);
         
         // Calculate and update temperature if changed
         const newTemperature = calculateTemperature(conversation.hoursSinceLastInbound);
@@ -620,14 +690,15 @@ export async function runColdLeadsEvaluation(): Promise<void> {
     let temperatureUpdates = 0;
     let skipped = 0;
 
+    const coldCycleId = `cold_${Date.now()}`;
     for (const conversation of candidateConversations) {
       const lockKey = conversation.conversationId;
       try {
         // LOCK CHECK: Prevent parallel evaluations of the same conversation
         const existingLock = evaluationLocks.get(lockKey);
         const now = Date.now();
-        if (existingLock && (now - existingLock) < EVALUATION_LOCK_TIMEOUT_MS) {
-          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress (started ${((now - existingLock)/1000).toFixed(1)}s ago)`);
+        if (existingLock && (now - existingLock.timestamp) < EVALUATION_LOCK_TIMEOUT_MS) {
+          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress by ${existingLock.caller} (cycle: ${existingLock.cycleId}, started ${((now - existingLock.timestamp)/1000).toFixed(1)}s ago)`);
           skipped++;
           continue;
         }
@@ -643,8 +714,9 @@ export async function runColdLeadsEvaluation(): Promise<void> {
           }
         }
         
-        // Set lock before evaluation
-        evaluationLocks.set(lockKey, Date.now());
+        // Track and set lock before evaluation
+        trackEvaluationCall(lockKey, "cold-leads-cycle");
+        evaluationLocks.set(lockKey, { timestamp: Date.now(), caller: "cold-leads-cycle", cycleId: coldCycleId });
         
         // Calculate and update temperature if changed
         const newTemperature = calculateTemperature(conversation.hoursSinceLastInbound);
@@ -709,14 +781,15 @@ export async function runGhostLeadsEvaluation(): Promise<void> {
     let scheduled = 0;
     let skipped = 0;
 
+    const ghostCycleId = `ghost_${Date.now()}`;
     for (const conversation of candidateConversations) {
       const lockKey = conversation.conversationId;
       try {
         // LOCK CHECK: Prevent parallel evaluations of the same conversation
         const existingLock = evaluationLocks.get(lockKey);
         const now = Date.now();
-        if (existingLock && (now - existingLock) < EVALUATION_LOCK_TIMEOUT_MS) {
-          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress (started ${((now - existingLock)/1000).toFixed(1)}s ago)`);
+        if (existingLock && (now - existingLock.timestamp) < EVALUATION_LOCK_TIMEOUT_MS) {
+          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress by ${existingLock.caller} (cycle: ${existingLock.cycleId}, started ${((now - existingLock.timestamp)/1000).toFixed(1)}s ago)`);
           skipped++;
           continue;
         }
@@ -732,8 +805,9 @@ export async function runGhostLeadsEvaluation(): Promise<void> {
           }
         }
         
-        // Set lock before evaluation
-        evaluationLocks.set(lockKey, Date.now());
+        // Track and set lock before evaluation
+        trackEvaluationCall(lockKey, "ghost-leads-cycle");
+        evaluationLocks.set(lockKey, { timestamp: Date.now(), caller: "ghost-leads-cycle", cycleId: ghostCycleId });
         
         // For ghost leads, we primarily want to mark them or attempt reactivation
         const result = await evaluateConversation(conversation);
@@ -784,16 +858,17 @@ export async function runEngagedColdLeadsEvaluation(): Promise<void> {
 
     let processed = 0;
     let scheduled = 0;
-
     let skipped = 0;
+
+    const engagedColdCycleId = `engaged_cold_${Date.now()}`;
     for (const conversation of candidateConversations) {
       const lockKey = conversation.conversationId;
       try {
         // LOCK CHECK: Prevent parallel evaluations of the same conversation
         const existingLock = evaluationLocks.get(lockKey);
         const now = Date.now();
-        if (existingLock && (now - existingLock) < EVALUATION_LOCK_TIMEOUT_MS) {
-          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress (started ${((now - existingLock)/1000).toFixed(1)}s ago)`);
+        if (existingLock && (now - existingLock.timestamp) < EVALUATION_LOCK_TIMEOUT_MS) {
+          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress by ${existingLock.caller} (cycle: ${existingLock.cycleId}, started ${((now - existingLock.timestamp)/1000).toFixed(1)}s ago)`);
           skipped++;
           continue;
         }
@@ -809,8 +884,9 @@ export async function runEngagedColdLeadsEvaluation(): Promise<void> {
           }
         }
         
-        // Set lock before evaluation
-        evaluationLocks.set(lockKey, Date.now());
+        // Track and set lock before evaluation
+        trackEvaluationCall(lockKey, "engaged-cold-cycle");
+        evaluationLocks.set(lockKey, { timestamp: Date.now(), caller: "engaged-cold-cycle", cycleId: engagedColdCycleId });
         
         const result = await evaluateConversation(conversation);
         processed++;

@@ -200,7 +200,30 @@ export async function evaluateFollowup(
       return createDefaultSkipDecision("Risposta AI non valida");
     }
 
-    const result = JSON.parse(resultText);
+    let result;
+    try {
+      result = JSON.parse(resultText);
+    } catch (jsonError) {
+      console.error(`❌ [FOLLOWUP-ENGINE] JSON PARSE ERROR for ${context.conversationId}:`);
+      console.error(`   Error: ${jsonError}`);
+      console.error(`   Raw response length: ${resultText.length} chars`);
+      console.error(`   Raw response (first 1000 chars): ${resultText.substring(0, 1000)}`);
+      console.error(`   Raw response (last 500 chars): ${resultText.substring(Math.max(0, resultText.length - 500))}`);
+      
+      // Try to extract JSON from markdown code blocks
+      const jsonMatch = resultText.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (jsonMatch) {
+        try {
+          result = JSON.parse(jsonMatch[1].trim());
+          console.log(`✅ [FOLLOWUP-ENGINE] Recovered JSON from markdown code block`);
+        } catch (recoveryError) {
+          console.error(`❌ [FOLLOWUP-ENGINE] Recovery also failed: ${recoveryError}`);
+          return createDefaultSkipDecision(`Errore JSON: ${jsonError}`);
+        }
+      } else {
+        return createDefaultSkipDecision(`Errore JSON: ${jsonError}`);
+      }
+    }
     const latencyMs = Date.now() - startTime;
 
     console.log(`✅ [FOLLOWUP-ENGINE] Decision: ${result.decision} (confidence: ${result.confidenceScore})`);
