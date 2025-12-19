@@ -744,6 +744,7 @@ export async function buildUserContext(
       const platformUrl = e.workPlatformUrl || e.workPlatform;
       exerciseMap.set(e.id, {
         id: e.id,
+        exerciseId: e.exerciseId, // FIX: Include original exercise ID for File Search lookup
         title: e.exerciseTitle || '',
         category: e.exerciseCategory || '',
         dueDate: e.dueDate ? e.dueDate.toISOString() : null,

@@ -611,6 +611,16 @@ export class FileSearchService {
           eq(fileSearchStores.isActive, true)
         )
       );
+      
+      // FIX: Also include client's own private store (where exercises and consultations are indexed)
+      conditions.push(
+        and(
+          eq(fileSearchStores.ownerId, userId),
+          eq(fileSearchStores.ownerType, 'client'),
+          eq(fileSearchStores.isActive, true)
+        )
+      );
+      console.log(`🔐 [FileSearch] Including client's private store for user ${userId}`);
     }
 
     // Always include system-wide stores

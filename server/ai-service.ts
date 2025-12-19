@@ -512,7 +512,8 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     let exercisesIndexedInFileSearch = false;
     if (hasFileSearch && userContext.exercises.all.length > 0) {
       // Check how many exercises are indexed in File Search
-      const exerciseIds = userContext.exercises.all.map(e => e.id);
+      // FIX: Use exerciseId (original exercise ID) instead of id (assignment ID) for File Search lookup
+      const exerciseIds = userContext.exercises.all.map(e => e.exerciseId).filter(Boolean);
       let indexedCount = 0;
       for (const exerciseId of exerciseIds.slice(0, 10)) { // Check first 10 max
         const isIndexed = await fileSearchService.isDocumentIndexed('exercise', exerciseId);
@@ -752,8 +753,8 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       }
     }
 
-    // Build system prompt
-    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext);
+    // Build system prompt (with hasFileSearch flag to omit exercises/consultations when using RAG)
+    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: exercisesIndexedInFileSearch });
 
     // Calculate detailed token breakdown by section
     const breakdown = calculateTokenBreakdown(userContext, intent);
@@ -769,6 +770,7 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     console.log(`  - User Message: ~${userMessageTokens.toLocaleString()} tokens`);
     console.log(`  - Conversation History: ~${historyTokens.toLocaleString()} tokens`);
     console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
+    console.log(`  - File Search Mode: ${exercisesIndexedInFileSearch ? '✅ ACTIVE (exercises/consultations via RAG)' : '❌ OFF (full content in prompt)'}`);
 
     // ═══════════════════════════════════════════════════════════════════
     // 📊 TOKEN BREAKDOWN - System Prompt Analysis
@@ -1203,7 +1205,8 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     // Check if exercises are indexed in File Search before deciding to scrape
     let exercisesIndexedInFileSearch = false;
     if (hasFileSearch && userContext.exercises.all.length > 0) {
-      const exerciseIds = userContext.exercises.all.map(e => e.id);
+      // FIX: Use exerciseId (original exercise ID) instead of id (assignment ID) for File Search lookup
+      const exerciseIds = userContext.exercises.all.map(e => e.exerciseId).filter(Boolean);
       let indexedCount = 0;
       for (const exerciseId of exerciseIds.slice(0, 10)) {
         const isIndexed = await fileSearchService.isDocumentIndexed('exercise', exerciseId);
@@ -1439,9 +1442,9 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     exerciseScrapingTime = Math.round(timings.exerciseScrapingEnd - timings.exerciseScrapingStart);
     console.log(`⏱️  [TIMING] Exercise scraping: ${exerciseScrapingTime}ms`);
 
-    // Build system prompt
+    // Build system prompt (with hasFileSearch flag to omit exercises/consultations when using RAG)
     timings.promptBuildStart = performance.now();
-    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext);
+    const systemPrompt = buildSystemPrompt(mode, consultantType || null, userContext, pageContext, { hasFileSearch: exercisesIndexedInFileSearch });
 
     // Calculate detailed token breakdown by section
     const breakdown = calculateTokenBreakdown(userContext, intent);
@@ -1461,6 +1464,7 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     console.log(`  - User Message: ~${userMessageTokens.toLocaleString()} tokens`);
     console.log(`  - Conversation History: ~${historyTokens.toLocaleString()} tokens`);
     console.log(`  - Total Estimated: ~${totalEstimatedTokens.toLocaleString()} tokens`);
+    console.log(`  - File Search Mode: ${exercisesIndexedInFileSearch ? '✅ ACTIVE (exercises/consultations via RAG)' : '❌ OFF (full content in prompt)'}`);
 
     // ═══════════════════════════════════════════════════════════════════
     // 📊 TOKEN BREAKDOWN - System Prompt Analysis

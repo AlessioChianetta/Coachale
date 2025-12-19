@@ -530,10 +530,11 @@ export function buildSystemPrompt(
   mode: AIMode,
   consultantType: ConsultantType | null,
   userContext: UserContext,
-  pageContext?: PageContext
+  pageContext?: PageContext,
+  options?: { hasFileSearch?: boolean }
 ): string {
-  // No optimization - show ALL exercises and documents to give AI full access
-  const relevantDocs = userContext.library.documents;
+  const hasFileSearch = options?.hasFileSearch ?? false;
+  const relevantDocs = hasFileSearch ? [] : userContext.library.documents;
 
   const baseContext = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -874,7 +875,7 @@ ${module.lessons.map(lesson => {
 - Se chiede dettagli di UNA lezione specifica → mostra contenuto completo
 ` : 'Nessun corso universitario assegnato.'}
 
-${userContext.exercises.all.length > 0 ? `
+${!hasFileSearch && userContext.exercises.all.length > 0 ? `
 Esercizi (${userContext.exercises.all.length} totali):
 ${userContext.exercises.all.map(e => {
   const statusEmoji = e.status === 'completed' ? '✅' : e.status === 'in_progress' ? '🔄' : e.status === 'pending' ? '⏳' : e.status === 'returned' ? '🔙' : '📋';
@@ -887,14 +888,12 @@ ${userContext.exercises.all.map(e => {
   }
   if (e.workPlatform) {
     description += `\n  📎 Link piattaforma esterna: ${e.workPlatform}`;
-    // Include full content if available from Google Docs scraping
     if (e.workPlatformContent) {
       description += `\n  📄 CONTENUTO COMPLETO DEL DOCUMENTO:\n${e.workPlatformContent}`;
     } else {
       description += `\n  💡 NOTA: Se l'utente chiede dettagli su questo esercizio, il contenuto potrebbe essere recuperato automaticamente. Se non disponibile, suggerisci di cliccare sul link.`;
     }
   }
-  // Show internal questions if available (especially when no external platform)
   if (e.questions && e.questions.length > 0) {
     description += `\n  📝 DOMANDE DELL'ESERCIZIO (${e.questions.length} ${e.questions.length === 1 ? 'domanda' : 'domande'}):`;
     e.questions.forEach((q: any, idx: number) => {
@@ -916,14 +915,12 @@ ${userContext.exercises.all.map(e => {
          → Non limitarti a fare altre domande, ma dagli esempi concreti e soluzioni specifiche
          → Sii generoso e aiutalo davvero a completare l'esercizio`;
   }
-  // Add consultant feedback if available
   if (e.consultantFeedback && e.consultantFeedback.length > 0) {
     description += `\n  💬 Feedback del Consulente:`;
     e.consultantFeedback.forEach((f, idx) => {
       description += `\n    ${idx + 1}. "${f.feedback}" (${new Date(f.timestamp).toLocaleDateString('it-IT')})`;
     });
   }
-  // Add question grades if available
   if (e.questionGrades && e.questionGrades.length > 0) {
     description += `\n  📊 Voti per Domanda:`;
     e.questionGrades.forEach((q, idx) => {
@@ -931,17 +928,13 @@ ${userContext.exercises.all.map(e => {
       if (q.feedback) description += ` - Feedback: "${q.feedback}"`;
     });
   }
-  // Add client notes if available
   if (e.clientNotes) {
     description += `\n  📝 Note del Cliente: "${e.clientNotes}"`;
   }
-  // Add answers if available
   if (e.answers && e.answers.length > 0) {
     if (userContext.financeData && isFinancialExercise(e.category)) {
-      // Esercizio finanziario + Software Orbitale = NASCONDI numeri
       description += `\n  ✍️ Risposte: [NASCOSTE - usa Software Orbitale per dati finanziari reali]`;
     } else {
-      // Mostra risposte normally
       description += `\n  ✍️ Risposte del Cliente (${e.answers.length} domande):`;
       e.answers.forEach((a, idx) => {
         const answer = Array.isArray(a.answer) ? a.answer.join(', ') : a.answer;
@@ -965,6 +958,17 @@ ${userContext.exercises.all.map(e => {
   * Inviati (in attesa di feedback): ${userContext.exercises.all.filter(e => e.status === 'submitted').length}
   * Completati: ${userContext.exercises.all.filter(e => e.status === 'completed').length}
 - Se chiede dettagli di UN esercizio specifico → mostra contenuto completo
+` : hasFileSearch && userContext.exercises.all.length > 0 ? `
+📚 ESERCIZI VIA FILE SEARCH (RAG)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Hai ${userContext.exercises.all.length} esercizi assegnati disponibili via File Search.
+Usa il tool fileSearch per cercare contenuti specifici degli esercizi.
+Dashboard rapida:
+  * Totale: ${userContext.exercises.all.length}
+  * Pendenti: ${userContext.exercises.all.filter(e => e.status === 'pending' || e.status === 'in_progress').length}
+  * Restituiti: ${userContext.exercises.all.filter(e => e.status === 'returned').length}
+  * Inviati: ${userContext.exercises.all.filter(e => e.status === 'submitted').length}
+  * Completati: ${userContext.exercises.all.filter(e => e.status === 'completed').length}
 ` : ''}
 
 ${userContext.dailyActivity.todayTasks.length > 0 ? `
@@ -984,15 +988,13 @@ Consulenze in Programma:
 ${userContext.consultations.upcoming.map(c => `- ${new Date(c.scheduledAt).toLocaleString('it-IT')} (${c.duration} minuti)`).join('\n')}
 ` : ''}
 
-${userContext.consultations.recent.length > 0 ? `
+${!hasFileSearch && userContext.consultations.recent.length > 0 ? `
 Consulenze Recenti Completate (${userContext.consultations.recent.length}):
 ${userContext.consultations.recent.map(c => {
   let info = `- 📅 ${new Date(c.scheduledAt).toLocaleString('it-IT')}`;
   if (c.notes) info += `\n  📝 Note: ${c.notes}`;
   if (c.summaryEmail) {
-    // Extract text from HTML email (remove HTML tags for cleaner display)
     const emailText = c.summaryEmail.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    // Show first 2000 characters of the summary email
     const preview = emailText.length > 2000 ? emailText.substring(0, 2000) + '...' : emailText;
     info += `\n  📧 RIEPILOGO EMAIL CONSULENZA:\n${preview}`;
   }
@@ -1008,6 +1010,11 @@ ${userContext.consultations.recent.map(c => {
 - Usa ENTRAMBI per comprendere il contesto completo: i riepiloghi per le azioni e decisioni, le trascrizioni per i dettagli
 - Quando l'utente chiede "cosa abbiamo discusso?" o "quali azioni devo fare?", consulta i RIEPILOGHI EMAIL
 - I riepiloghi email sono stati generati dall'AI analizzando le trascrizioni, quindi sono già organizzati e strutturati
+` : hasFileSearch && userContext.consultations.recent.length > 0 ? `
+📞 CONSULENZE VIA FILE SEARCH (RAG)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Hai ${userContext.consultations.recent.length} consulenze recenti disponibili via File Search.
+Usa il tool fileSearch per cercare contenuti specifici delle consulenze, riepiloghi e trascrizioni.
 ` : ''}
 
 ${userContext.consultationTasks && userContext.consultationTasks.length > 0 ? `

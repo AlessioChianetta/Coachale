@@ -1,0 +1,168 @@
+🔐 [FileSearch] Including client's private store for user 7e40b56c-2cc8-4515-b843-dc105e478f38
+🔍 [FileSearch] getStoreNamesForGeneration - Role: client, UserId: 7e40b56c-2cc8-4515-b843-dc105e478f38, ConsultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   📦 Found 2 unique stores: Private Store - Client 7e40b56c, Knowledge Base Consulente
+
+══════════════════════════════════════════════════════════════════════
+🔍 FILE SEARCH MODE: Switching to Google AI Studio (required for File Search)
+══════════════════════════════════════════════════════════════════════
+   📦 Provider: Google AI Studio (@google/genai)
+   ✅ File Search API: SUPPORTED
+   ⚠️  Vertex AI: NOT compatible with File Search
+══════════════════════════════════════════════════════════════════════
+
+✅ Using GEMINI_API_KEY from environment for File Search
+🔄 Building context for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: general, sessionType: normal)
+📚 Including ALL 87 exercises in context (no limits applied)
+📚 Prepared 87 exercise metadata (content will be loaded on-demand when asked)
+📚 Found 81 documents linked to exercises
+📚 Total library documents included in context: 5 (intent: general)
+🏦 Fetching finance data for giusy.dattilo@gmail.com
+[PercorsoCapitale] Client initialized for user: gi***@gmail.com
+[PercorsoCapitale] req-1 Cache MISS for dashboard (user: gi***@gmail.com), fetching from API... (stats: 0/1 hits)
+[PercorsoCapitale] req-2 Cache MISS for categoryBudgets (user: gi***@gmail.com), fetching from API... (stats: 0/2 hits)
+[PercorsoCapitale] req-3 Cache MISS for transactions (user: gi***@gmail.com), fetching from API... (stats: 0/3 hits)
+[PercorsoCapitale] req-4 Cache MISS for accountArchitecture (user: gi***@gmail.com), fetching from API... (stats: 0/4 hits)
+[PercorsoCapitale] req-5 Cache MISS for budgetSettings (user: gi***@gmail.com), fetching from API... (stats: 0/5 hits)
+[PercorsoCapitale] req-6 Cache MISS for investments (user: gi***@gmail.com), fetching from API... (stats: 0/6 hits)
+[PercorsoCapitale] req-7 Cache MISS for goals (user: gi***@gmail.com), fetching from API... (stats: 0/7 hits)
+[PercorsoCapitale] req-6 Cached investments for 86400s (883ms response time)
+[PercorsoCapitale] req-2 Cached categoryBudgets for 86400s (1023ms response time)
+[PercorsoCapitale] req-7 Cached goals for 86400s (1127ms response time)
+[PercorsoCapitale] req-5 Cached budgetSettings for 86400s (1132ms response time)
+[PercorsoCapitale] req-3 Cached transactions for 86400s (1257ms response time)
+[PercorsoCapitale] req-4 Cached accountArchitecture for 86400s (1511ms response time)
+[PercorsoCapitale] req-1 Cached dashboard for 86400s (1531ms response time)
+📊 [ProcessBudgets] Month 2025-12: Found 27 expense transactions
+📊 [ProcessBudgets] Month 2025-12: Found 27 expense transactions
+📊 [ProcessBudgets] Month 2025-11: Found 42 expense transactions
+📊 [ProcessBudgets] Month 2025-10: Found 27 expense transactions
+📊 [MultiMonth] Analyzing 175 transactions
+📅 [MultiMonth] Date range: 2025-08-08 → 2026-01-02
+📅 [MultiMonth] Target months: 2025-07, 2025-08, 2025-09, 2025-10, 2025-11, 2025-12
+🔍 [FilterTransactions] Filtering for month 2025-07:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 0
+📊 [ProcessBudgets] Month 2025-07: Found 0 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-08:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 4
+   - Date range: 2025-08-27 → 2025-08-08
+📊 [ProcessBudgets] Month 2025-08: Found 3 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-09:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 43
+   - Date range: 2025-09-29 → 2025-09-02
+📊 [ProcessBudgets] Month 2025-09: Found 33 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-10:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 43
+   - Date range: 2025-10-31 → 2025-10-01
+📊 [ProcessBudgets] Month 2025-10: Found 27 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-11:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 53
+   - Date range: 2025-11-29 → 2025-11-01
+📊 [ProcessBudgets] Month 2025-11: Found 42 expense transactions
+🔍 [FilterTransactions] Filtering for month 2025-12:
+   - Total transactions before filter: 175
+   - Transactions after type filter: 175
+   - Transactions matching month: 31
+   - Date range: 2025-12-18 → 2025-12-01
+📊 [ProcessBudgets] Month 2025-12: Found 27 expense transactions
+✅ Finance data fetched and transformed successfully (5 accounts, 8 budgets, 10 transactions)
+📊 Momentum stats: 15 check-ins (15 productive, 100% rate), streak: 0 days
+📅 Calendar stats: 0 total upcoming (0 ongoing, 0 today, 0 this week)
+📚 [Knowledge Base] Loading ALL knowledge content for client (no filtering)...
+📚 [Client Knowledge Base] Loaded 0 documents and 0 APIs for client 7e40b56c-2cc8-4515-b843-dc105e478f38
+ℹ️ [Knowledge Base] No documents or API data uploaded yet
+💾 Stored fresh context in cache for client 7e40b56c-2cc8-4515-b843-dc105e478f38 (intent: general)
+⏱️  [TIMING] Context building: 3886ms
+🔍 [FileSearch] Exercises indexed check: 10/10 checked, using FileSearch: true
+⏱️  [TIMING] Exercise scraping: 1018ms
+⏱️  [TIMING] Prompt building: 12ms
+
+📊 Token Usage Estimation (Intent: general):
+  - System Prompt: ~111,660 tokens
+  - User Message: ~1 tokens
+  - Conversation History: ~0 tokens
+  - Total Estimated: ~111,661 tokens
+
+══════════════════════════════════════════════════════════════════════
+📊 SYSTEM PROMPT BREAKDOWN (~111,660 tokens)
+══════════════════════════════════════════════════════════════════════
+
+💰 Finance Data: 13,285 tokens (11.9%)
+📚 Exercises: 93,881 tokens (84.1%)
+📖 Library Docs: 1,573 tokens (1.4%)
+💬 Consultations: 41,700 tokens (37.3%)
+🎯 Goals & Tasks: 12 tokens (0.0%)
+⚡ Momentum & Calendar: 17 tokens (0.0%)
+🗺️  Roadmap: 2,458 tokens (2.2%)
+📚 Knowledge Base: 41 tokens (0.0%)
+👤 User Profile & Base: 5,055 tokens (4.5%)
+
+🎓 UNIVERSITY: 10,102 tokens (9.0%)
+   └─ Overall Progress: 17 tokens
+   └─ 📅 Anno 1 – Metodo Turbo: 912 tokens
+      └─ Q1 – Le Fondamenta della Tua Attività: 88 tokens (1 moduli, 3 lezioni)
+      └─ Q2 – Metodo Turbo: Diventa Invincibile a Vendere: 615 tokens (8 moduli, 28 lezioni)
+   └─ 📅 Anno 1 - Metodo Orbitale - Da 0 a 1.000.000 : 757 tokens
+      └─ Q1 - Le Fondamenta: 83 tokens (1 moduli, 13 lezioni)
+      └─ Q2 - Costruzione della Ricchezza: 86 tokens (1 moduli, 13 lezioni)
+      └─ Q3 - Ottimizzazione e Vita da Comandante: 88 tokens (1 moduli, 14 lezioni)
+      └─ Q4 - Eredità e Comando Perpetuo: 86 tokens (1 moduli, 13 lezioni)
+
+══════════════════════════════════════════════════════════════════════
+
+
+══════════════════════════════════════════════════════════════════════
+🔍 AI MODE: FILE SEARCH SEMANTIC (Gemini RAG) [CLIENT]
+══════════════════════════════════════════════════════════════════════
+   📦 Stores disponibili: 2
+      1. fileSearchStores/private-store-client-7e40b5-g2rbtd1xrc4n
+      2. fileSearchStores/knowledge-base-consulente-juw371zchi3s
+   ✅ Tool fileSearch: ATTIVO
+   📄 Il modello cercherà semanticamente nei documenti indicizzati
+   💰 RISPARMIO TOKENS: ~137,195 tokens (esercizi+library+consultazioni+KB)
+   📉 System prompt ridotto: da ~248,855 a ~111,660 tokens
+══════════════════════════════════════════════════════════════════════
+
+🔄 AI stream attempt 1/6...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+✅ AI streaming completed successfully on attempt 1
+⏱️  [TIMING] Gemini API call (with streaming): 3238ms
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+✅ AI streaming completed for message 3e2197e8-55df-4ff4-92d8-5f1dc0da8201
+
+──────────────────────────────────────────────────────────────────────
+🔍 FILE SEARCH STREAMING SUMMARY [CLIENT]
+──────────────────────────────────────────────────────────────────────
+   📦 Stores attivi: 2
+   ⚠️  Nota: In modalità streaming, le citazioni non sono disponibili
+      nel response object. File Search è stato configurato come tool.
+   📄 Se la risposta cita documenti specifici, Gemini ha usato File Search.
+──────────────────────────────────────────────────────────────────────
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE TIMING BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   [0ms → 3886ms] Context Building (3886ms)
+   [3886ms → 4904ms] Exercise Scraping (1018ms)
+   [4904ms → 4916ms] Prompt Building (12ms)
+   [4916ms → 9594ms] Gemini API Call (3238ms)
+   ────────────────────────────────────────────────────────────────────
+   ⏱️  TOTAL: 9.59s (9594ms)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1:53:00 PM [express] POST /api/ai/chat 200 in 9797ms
