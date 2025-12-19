@@ -1,0 +1,43 @@
+[AI] Using model: gemini-3-flash-preview with thinking_level: low [CONSULTANT STREAMING]
+🔄 AI stream attempt 1/6...
+🔄 Switching model from gemini-2.5-flash to gemini-3-flash-preview
+❌ AI streaming error on attempt 1: [VertexAI.ClientError]: got status: 404 Not Found. {"error":{"code":404,"message":"Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-3-flash-preview` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions","status":"NOT_FOUND"}}
+❌ Errore nel processing Consultant AI streaming: ClientError: [VertexAI.ClientError]: got status: 404 Not Found. {"error":{"code":404,"message":"Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-3-flash-preview` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions","status":"NOT_FOUND"}}
+    at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:47:21)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    ... 5 lines matching cause stack trace ...
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:6821:26) {
+  stackTrace: GoogleApiError: Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-3-flash-preview` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+      at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:49:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+      at async generateContentStream (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/generate_content.ts:150:3)
+      at async VertexAIClientAdapter.generateContentStream (/home/runner/workspace/server/ai/provider-factory.ts:196:26)
+      at async streamWithBackoff (/home/runner/workspace/server/ai/retry-manager.ts:275:30)
+      at async streamWithRetriesAdapter (/home/runner/workspace/server/ai-service.ts:66:20)
+      at async Module.sendConsultantChatMessageStream (/home/runner/workspace/server/ai-service.ts:2523:22)
+      at async <anonymous> (/home/runner/workspace/server/routes.ts:6821:26) {
+    code: 404,
+    status: 'NOT_FOUND',
+    errorDetails: undefined
+  },
+  [cause]: GoogleApiError: Publisher Model `projects/gen-lang-client-0278434337/locations/us-central1/publishers/google/models/gemini-3-flash-preview` was not found or your project does not have access to it. Please ensure you are using a valid model version. For more information, see: https://cloud.google.com/vertex-ai/generative-ai/docs/learn/model-versions
+      at throwErrorIfNotOK (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/post_fetch_processing.ts:49:9)
+      at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+      at async generateContentStream (/home/runner/workspace/node_modules/@google-cloud/vertexai/src/functions/generate_content.ts:150:3)
+      at async VertexAIClientAdapter.generateContentStream (/home/runner/workspace/server/ai/provider-factory.ts:196:26)
+      at async streamWithBackoff (/home/runner/workspace/server/ai/retry-manager.ts:275:30)
+      at async streamWithRetriesAdapter (/home/runner/workspace/server/ai-service.ts:66:20)
+      at async Module.sendConsultantChatMessageStream (/home/runner/workspace/server/ai-service.ts:2523:22)
+      at async <anonymous> (/home/runner/workspace/server/routes.ts:6821:26) {
+    code: 404,
+    status: 'NOT_FOUND',
+    errorDetails: undefined
+  }
+}
+5:15:59 PM [express] POST /api/consultant/ai/chat 200 in 4845ms
+5:15:59 PM [express] GET /api/consultant/ai/conversations 200 in 409ms :: [{"id":"d3f742a8-bc0b-49c5…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages

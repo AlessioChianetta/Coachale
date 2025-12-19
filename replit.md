@@ -75,10 +75,13 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 ## Checkpoint Validation System (Sales Coaching)
 - 3-tier status system (VALIDATED, VAGUE, MISSING) with sticky validation logic and manual validation via UI. AI skips already-validated items.
 ## Gemini Model Configuration
-- **Text Chat Model**: `gemini-3-flash-preview` (experimental, with `thinking_level: "low"`)
-- **Rollback Flag**: `USE_GEMINI_3` in `ai-service.ts` allows quick rollback to `gemini-2.5-flash`
+- **Dynamic Model Selection**: Model is selected based on provider type:
+  - **Google AI Studio**: Uses `gemini-3-flash-preview` with `thinking_level: "low"` (experimental)
+  - **Vertex AI**: Uses `gemini-2.5-flash` (stable, as Gemini 3 may not be enabled in all Vertex AI projects)
+- **Configuration Flag**: `USE_GEMINI_3_FOR_STUDIO` in `ai-service.ts` controls Gemini 3 for Google AI Studio
+- **Model Selection Function**: `getTextChatModel(providerName)` returns appropriate model based on provider
 - **Live API Model**: `gemini-live-2.5-flash-native-audio` (GA - December 12, 2025)
-- **Platform**: Vertex AI
+- **Platform**: Vertex AI or Google AI Studio (determined by 3-tier priority system)
 - **Features**: Native audio (30 HD voices, 24 languages), Affective Dialog, improved barge-in, robust function calling, session resumption, proactive audio (preview).
 - **Post-Resume Silence**: AI audio output is suppressed after WebSocket reconnection until the user speaks first to prevent erroneous responses.
 ## Video Copilot Turn-Taking System

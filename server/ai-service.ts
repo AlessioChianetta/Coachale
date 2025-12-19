@@ -40,16 +40,28 @@ import { fileSearchService } from "./ai/file-search-service";
 //   - do not change this unless explicitly requested by the user
 
 // Gemini 3 Flash Preview for text chat (testing new model)
-// Set USE_GEMINI_3 to false to revert to legacy model if issues arise
-const USE_GEMINI_3 = true;
+// Set USE_GEMINI_3 to true to enable Gemini 3 for Google AI Studio only
+// NOTE: gemini-3-flash-preview is available on Google AI Studio but may not be enabled on all Vertex AI projects
+const USE_GEMINI_3_FOR_STUDIO = true;
 const GEMINI_3_MODEL = "gemini-3-flash-preview";
 const GEMINI_3_THINKING_LEVEL: "minimal" | "low" | "medium" | "high" = "low";
 
-// Legacy model for fallback and Live API (Gemini 3 does NOT support Live API)
+// Legacy model for Vertex AI and Live API (Gemini 3 does NOT support Live API)
 const GEMINI_LEGACY_MODEL = "gemini-2.5-flash";
 
-// Get the appropriate model for text chat
-const TEXT_CHAT_MODEL = USE_GEMINI_3 ? GEMINI_3_MODEL : GEMINI_LEGACY_MODEL;
+// Get the appropriate model for text chat based on provider
+// providerName: 'Vertex AI (tuo)' | 'Vertex AI (admin)' | 'Google AI Studio'
+function getTextChatModel(providerName: string): { model: string; useThinking: boolean } {
+  // Use Gemini 3 Flash Preview only for Google AI Studio (Vertex AI doesn't support it yet in all projects)
+  const isGoogleAIStudio = providerName === 'Google AI Studio';
+  if (USE_GEMINI_3_FOR_STUDIO && isGoogleAIStudio) {
+    return { model: GEMINI_3_MODEL, useThinking: true };
+  }
+  return { model: GEMINI_LEGACY_MODEL, useThinking: false };
+}
+
+// Default model for backward compatibility (uses legacy)
+const TEXT_CHAT_MODEL = GEMINI_LEGACY_MODEL;
 
 // Streaming adapter: wraps streamWithBackoff and maps AiRetryEvent to ChatStreamChunk
 async function* streamWithRetriesAdapter(
@@ -950,16 +962,18 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
     }
     console.log(`${'═'.repeat(70)}\n`);
 
-    // Log model being used for text chat
-    console.log(`[AI] Using model: ${TEXT_CHAT_MODEL} with thinking_level: ${USE_GEMINI_3 ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'}`);
+    // Select model dynamically - this section uses Google AI Studio directly
+    const { model: clientModel, useThinking: clientUseThinking } = getTextChatModel('Google AI Studio');
+    console.log(`[AI] Using model: ${clientModel} with thinking_level: ${clientUseThinking ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'}`);
+    console.log(`[AI] Provider: Google AI Studio -> ${clientUseThinking ? 'Gemini 3 Flash' : 'Gemini 2.5 Flash'}`);
 
     const response = await retryWithBackoff(
       async (ctx: OperationAttemptContext) => {
         return await ai.models.generateContent({
-          model: TEXT_CHAT_MODEL,
+          model: clientModel,
           config: {
             systemInstruction: systemPrompt,
-            ...(USE_GEMINI_3 && {
+            ...(clientUseThinking && {
               thinkingConfig: {
                 thinkingLevel: GEMINI_3_THINKING_LEVEL
               }
@@ -1613,19 +1627,21 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     }
     console.log(`${'═'.repeat(70)}\n`);
 
-    // Log model being used for text chat (CLIENT streaming)
-    console.log(`[AI] Using model: ${TEXT_CHAT_MODEL} with thinking_level: ${USE_GEMINI_3 ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'} [CLIENT STREAMING]`);
+    // Select model dynamically based on provider (Gemini 3 only for Google AI Studio)
+    const { model: clientStreamModel, useThinking: clientStreamUseThinking } = getTextChatModel(providerMetadata.name);
+    console.log(`[AI] Using model: ${clientStreamModel} with thinking_level: ${clientStreamUseThinking ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'} [CLIENT STREAMING]`);
+    console.log(`[AI] Provider: ${providerMetadata.name} -> ${clientStreamUseThinking ? 'Gemini 3 Flash' : 'Gemini 2.5 Flash'}`);
 
     // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
-      model: TEXT_CHAT_MODEL,
+      model: clientStreamModel,
       contents: geminiMessages.map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
       })),
       generationConfig: {
         systemInstruction: systemPrompt,
-        ...(USE_GEMINI_3 && {
+        ...(clientStreamUseThinking && {
           thinkingConfig: {
             thinkingLevel: GEMINI_3_THINKING_LEVEL
           }
@@ -2498,19 +2514,21 @@ export async function* sendConsultantChatMessageStream(request: ConsultantChatRe
     }
     console.log(`${'═'.repeat(70)}\n`);
 
-    // Log model being used for text chat (CONSULTANT streaming)
-    console.log(`[AI] Using model: ${TEXT_CHAT_MODEL} with thinking_level: ${USE_GEMINI_3 ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'} [CONSULTANT STREAMING]`);
+    // Select model dynamically based on provider (Gemini 3 only for Google AI Studio)
+    const { model: selectedModel, useThinking } = getTextChatModel(providerMetadata.name);
+    console.log(`[AI] Using model: ${selectedModel} with thinking_level: ${useThinking ? GEMINI_3_THINKING_LEVEL : 'N/A (legacy)'} [CONSULTANT STREAMING]`);
+    console.log(`[AI] Provider: ${providerMetadata.name} -> ${useThinking ? 'Gemini 3 Flash' : 'Gemini 2.5 Flash'}`);
 
     // Create stream factory function with optional FileSearch tool
     const makeStreamAttempt = () => aiClient.generateContentStream({
-      model: TEXT_CHAT_MODEL,
+      model: selectedModel,
       contents: geminiMessages.map(msg => ({
         role: msg.role === "assistant" ? "model" : "user",
         parts: [{ text: msg.content }],
       })),
       generationConfig: {
         systemInstruction: systemPrompt,
-        ...(USE_GEMINI_3 && {
+        ...(useThinking && {
           thinkingConfig: {
             thinkingLevel: GEMINI_3_THINKING_LEVEL
           }
