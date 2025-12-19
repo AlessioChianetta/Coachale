@@ -1420,7 +1420,46 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       group.events.push(event);
     }
     
-    // After grouping, compute nextScheduledCheck using the most recent lastAiEvaluationAt
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CRITICAL FIX: Fetch CURRENT conversationStates values for all grouped conversations
+    // The events contain historical temperature values from when the event occurred,
+    // but we need the CURRENT temperature (e.g., when a lead replies, webhook sets it to 'hot')
+    // ═══════════════════════════════════════════════════════════════════════════
+    const conversationIds = Object.keys(groupedByConversation);
+    if (conversationIds.length > 0) {
+      const currentStates = await db
+        .select({
+          conversationId: schema.conversationStates.conversationId,
+          temperatureLevel: schema.conversationStates.temperatureLevel,
+          consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
+          currentState: schema.conversationStates.currentState,
+          lastAiEvaluationAt: schema.conversationStates.lastAiEvaluationAt,
+        })
+        .from(schema.conversationStates)
+        .where(inArray(schema.conversationStates.conversationId, conversationIds));
+      
+      // Update grouped data with CURRENT values from database
+      for (const state of currentStates) {
+        const group = groupedByConversation[state.conversationId];
+        if (group) {
+          group.temperatureLevel = state.temperatureLevel || 'warm';
+          group.consecutiveNoReplyCount = state.consecutiveNoReplyCount || 0;
+          group.currentState = state.currentState;
+          // Use the most recent lastAiEvaluationAt (either from events or current state)
+          if (state.lastAiEvaluationAt) {
+            const stateEvalTime = new Date(state.lastAiEvaluationAt).getTime();
+            const groupEvalTime = group.lastAiEvaluationAt 
+              ? new Date(group.lastAiEvaluationAt).getTime() 
+              : 0;
+            if (stateEvalTime > groupEvalTime) {
+              group.lastAiEvaluationAt = state.lastAiEvaluationAt;
+            }
+          }
+        }
+      }
+    }
+    
+    // After updating with current state, compute nextScheduledCheck using ACTUAL temperature
     for (const conversationId of Object.keys(groupedByConversation)) {
       const group = groupedByConversation[conversationId];
       group.nextScheduledCheck = calculateNextScheduledCheck(
