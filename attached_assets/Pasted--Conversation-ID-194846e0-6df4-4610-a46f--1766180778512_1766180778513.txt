@@ -1,0 +1,507 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 194846e0-6df4-4610-a46f-f668e61951ec
+👤 User Type: LEAD
+✅ Parsed credentials as plaintext JSON
+✅ Using SuperAdmin Vertex AI for WhatsApp
+✅ Selected AI Provider: vertex
+   📍 Project: gen-lang-client-0278434337, Location: us-central1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 Selecting from consultant global API key pool...
+❌ No active API keys found!
+⚠️ [API KEY] Failed to get fallback Google AI Studio key for Vertex AI - media/objection processing may be limited
+   Error: No active API keys available for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b. Please configure Gemini API keys in WhatsApp settings.
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message 76c47bb4-acec-422e-8801-8dd42db554c9: "si scusami avevo il telefono spento, volevo capire..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+🧪 [TEST MODE] Override attivo: lead
+🧪 [TEST MODE] Simulando lead
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "si scusami avevo il telefono spento, volevo capire come raggiungere la libertà f..."
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+
+🚨 Detecting objections in message...
+🔄 [OBJECTION] Attempt 1/3
+🔑 [OBJECTION] Using current API key: vertex-n...
+🤖 [OBJECTION] Calling detectObjection() with provider: vertex
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+9:43:42 PM [express] GET /api/whatsapp/conversations 200 in 504ms :: {"conversations":[{"id":"194846…
+9:43:42 PM [express] GET /api/whatsapp/conversations/194846e0-6df4-4610-a46f-f668e61951ec/messages 2…
+⚠️ [OBJECTION-DETECTOR] Invalid AI response: undefined
+✅ [OBJECTION] ✅ SUCCESS - No objections detected
+⏱️  [TIMING] Objection detection: 3276ms
+👤 Fetching/creating lead profile...
+✅ Lead profile: neutral (difficulty: 5/10)
+📋 Fetching recent objections...
+✅ Found 0 recent objection(s)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+📅 [APPOINTMENT CONTEXT] No saved slots found - will fetch from calendar...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [STEP 1] Fetching Available Appointment Slots
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 New appointment request detected for consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📆 Search range: 19/12/2025 → 26/12/2025 (7 days)
+🌐 Calling API: /api/calendar/available-slots
+
+🔍 [SLOT GENERATION DEBUG] First slot created:
+   📅 Date: 2025-12-19
+   🕐 Working hours: 09:00 - 18:00
+   🌍 Timezone setting: Europe/Rome
+   📍 Slot Start (UTC): 2025-12-19T09:00:00.000Z
+   🌐 Slot Start (Local): 19/12/2025, 10:00:00
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+🔗 [GOOGLE CALENDAR] Using GLOBAL OAuth credentials. Redirect URI: https://e5da21a7-cd72-4315-aaed-29d353f0bcb0-00-3ov2cfz1bfgyx.worf.replit.dev/api/calendar-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+📅 Fetching events from calendar: primary
+📅 Found 19 existing events on Google Calendar
+✅ Filtered to 15 truly available slots (excluding conflicts)
+📅 [AVAILABLE SLOTS] Parametri richiesta:
+   - consultantId: 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+   - Data inizio (startDate): 2025-12-19T21:43:44.158Z
+   - Data fine (endDate): 2025-12-26T21:43:44.158Z
+   - Data corrente (now): 2025-12-19T21:43:44.994Z
+📅 [AVAILABLE SLOTS] Risultati calcolo:
+   - Slot teorici generati: 54
+   - Slot dopo filtro minNotice/maxAdvance: 45
+   - Slot finali disponibili: 15
+📅 [AVAILABLE SLOTS] Primi 3 slot disponibili:
+   1. lunedì 22 dicembre 2025 alle ore 14:00
+   2. lunedì 22 dicembre 2025 alle ore 15:00
+   3. martedì 23 dicembre 2025 alle ore 09:00
+9:43:44 PM [express] GET /api/calendar/available-slots 200 in 835ms :: {"slots":[{"start":"2025-12-2…
+
+✅ Found 15 available slots!
+
+📅 Available Slots by Day:
+
+   📆 lunedì 22/12/2025 (2 slots)
+      1. 15:00
+      2. 16:00
+
+   📆 martedì 23/12/2025 (2 slots)
+      1. 10:00
+      2. 11:00
+
+   📆 mercoledì 24/12/2025 (3 slots)
+      1. 10:00
+      2. 11:00
+      3. 18:00
+
+   📆 giovedì 25/12/2025 (4 slots)
+      1. 10:00
+      2. 11:00
+      3. 15:00
+      4. 16:00
+
+   📆 venerdì 26/12/2025 (4 slots)
+      1. 10:00
+      2. 11:00
+      3. 15:00
+      4. 16:00
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💾 Saved 15 slots to database (valid for 48 hours)
+✅ Slots ready to propose to lead via AI
+⏱️  [TIMING] Appointment fetch: 1053ms
+✅ [APPOINTMENT CONTEXT] Final state: 15 slots available for AI prompt
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=true, conversation.proactiveLeadId=dc7366d2-fa9d-4725-b59e-bfffb286d80e
+🎯 [PROACTIVE LEAD] Found lead data: Mario Rossi
+📋 Lead Info: {"email":"mario.rossi@test.com","fonte":"hubdigital-test","uncino":"abbiamo visto che ti sei iscritto ai nostri contenuti per capire come raggiungere dai 100.000 ai 500.000 nei prossimi 2-4 anni","country":"Italia","desideri":"v","dateAdded":"2025-12-18T00:00:03.035Z","obiettivi":"raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni","companyName":"Test SRL","ghlContactId":"contact_test456","ghlLocationId":"loc_test123"}
+🎯 Ideal State: più tranquillità e la tua libertà finanziaria
+✅ [PROACTIVE LEAD] Updated status to 'responded'
+📝 [PROMPT DEBUG] Building prompt with isProactiveAgent=true, isProactiveLead=true
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: false
+   agentInstructions length: 0 chars
+   selectedTemplate: null
+❌ [TEMPLATE ENGINE] Using LEGACY HARDCODED prompt
+   Reason: enabled=false, hasInstructions=false
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 3 historical messages
+🧠 [STEP 8] Calling Gemini AI (model: gemini-2.5-flash)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~8,365 tokens (33,459 chars)
+   💬 User Message: ~23 tokens (90 chars)
+   📜 History: ~239 tokens (955 chars)
+   🔢 TOTALE INPUT: ~8,627 tokens
+
+🔄 [RETRY] Attempt 1/3
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+9:43:47 PM [express] GET /api/whatsapp/conversations 304 in 507ms :: {"conversations":[{"id":"194846…
+9:43:48 PM [express] GET /api/whatsapp/conversations/194846e0-6df4-4610-a46f-f668e61951ec/messages 3…
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 5679ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [ 'response' ]
+📦 response.response keys: [ 'text' ]
+📊 response.response.candidates: 0
+✅ response.response.text is a function - calling it...
+📝 Extracted text length: 559
+📝 Extracted text preview: Ciao Mario, nessun problema, ci mancherebbe! Anzi, grazie per aver risposto! 😊
+Fantastico, la libertà finanziaria è un obiettivo che condividiamo pienamente. Qui in Orbitale aiutiamo imprenditori, pr
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~140 tokens (559 chars)
+   🔢 TOTALE (input + output): ~8,767 tokens
+   ⏱️  Tempo di risposta: 5678ms
+   💰 Costo stimato: $0.017534 (input + output)
+
+✅ [STEP 8] Gemini response received: "Ciao Mario, nessun problema, ci mancherebbe! Anzi, grazie per aver risposto! 😊
+Fantastico, la liber..."
+💾 [STEP 9] Saving AI response to database
+✅ [STEP 9] AI response saved with ID: 94a2051e-6fb6-489d-9e3f-9bcd648c6ec8 (timing: 5678ms Gemini, 11917ms total)
+🎛️ [AUDIO DECISION] Mode: always_text, ClientSentAudio: false → sendAudio=false, sendText=true
+
+📝 [TTS SKIP] TTS disabled or not needed (ttsEnabled=false, mode=always_text, clientAudio=false)
+
+📤 [STEP 10] Sending WhatsApp message to +393336664567
+✅ Using agent from existing conversation: Marco setter (760bb513-098f-4722-b02a-a700160c2fc3)
+
+🔒 ═══════════════════════════════════════════════════════════
+🔒 DRY RUN MODE - Agent: Marco setter
+🔒 No real messages will be sent (simulated only)
+🔒 ═══════════════════════════════════════════════════════════
+📱 Using From number: whatsapp:+393500220129 (Agent: Marco setter)
+📤 [DRY RUN] Would send WhatsApp message as plain text
+📋 Message Details:
+   From: whatsapp:+393500220129
+   To: whatsapp:+393336664567
+   Text length: 559 chars
+
+📝 Message content:
+────────────────────────────────────────────────────────────
+Ciao Mario, nessun problema, ci mancherebbe! Anzi, grazie per aver risposto! 😊
+Fantastico, la libertà finanziaria è un obiettivo che condividiamo pienamente. Qui in Orbitale aiutiamo imprenditori, professionisti e dipendenti a costruire un patrimonio solido che va dai 100.000 ai 500.000 euro in 2-4 anni, proprio per raggiungere più tranquillità e, appunto, la libertà finanziaria.
+
+Per capire bene come potremmo aiutarti, volevo chiederti: qual è il problema più grande che stai riscontrando in questo momento per raggiungere la tua libertà finanziaria? 🤔
+────────────────────────────────────────────────────────────
+✅ [DRY RUN] Simulated plain text message: DRY_RUN_PLAINTEXT_1766180631733_s4pp8
+🔒 ═══════════════════════════════════════════════════════════
+
+✅ [STEP 10] WhatsApp message sent: text
+💾 [APPOINTMENT BOOKING] Retrieved 15 proposed slots from database
+   ⏭️ [PRE-CHECK] No clear booking indicators - skipping
+   ⏭️ [AI PRE-CHECK] Skip extraction - message not booking-related: "si scusami avevo il telefono spento, vol..."
+✔️ [STEP 11] Marking 1 pending messages as processed
+✅ Processed 1 messages for +393336664567
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏱️  PERFORMANCE BREAKDOWN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Appointment Fetch:        1053ms  (8.3%)
+🚨 Objection Detection:      3276ms  (25.7%)
+🤖 Gemini API Call:          5679ms  (44.6%)
+─────────────────────────────────────────────────────────────
+⏰ TOTAL TIME:              12735ms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+9:43:53 PM [express] GET /api/whatsapp/conversations 200 in 504ms :: {"conversations":[{"id":"194846…
+9:43:54 PM [express] GET /api/whatsapp/conversations/194846e0-6df4-4610-a46f-f668e61951ec/messages 2…
+9:43:59 PM [express] GET /api/whatsapp/conversations 304 in 505ms :: {"conversations":[{"id":"194846…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+9:44:00 PM [express] GET /api/whatsapp/conversations/194846e0-6df4-4610-a46f-f668e61951ec/messages 3…
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+9:44:05 PM [express] GET /api/whatsapp/conversations 304 in 504ms :: {"conversations":[{"id":"194846…
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:44:05 PM [express] GET /api/whatsapp/conversations/194846e0-6df4-4610-a46f-f668e61951ec/messages 3…
+9:44:06 PM [express] GET /api/automation-rules 200 in 25ms
+9:44:06 PM [express] GET /api/auth/my-profiles 304 in 302ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+9:44:07 PM [express] GET /api/auth/my-profiles 304 in 302ms :: {"profiles":[{"id":"fd732f27-d63b-4e8…
+🔄 [FOLLOWUP-API] Manual trigger requested by consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔍 [FOLLOWUP-SCHEDULER] Starting ALL follow-up evaluation cycle...
+🧠 [FOLLOWUP-SCHEDULER] AI-ONLY mode: Found 4 consultants with active WhatsApp configs
+✅ [FILTER-CHECK] Excluding closed states: 'closed_won', 'closed_lost' from candidate search
+📊 [CANDIDATE] 1cfa7e1c-b049-4dd2-876c-eef1e57a8d11: leadNeverResponded=false, hoursSinceLastInbound=40.0h, lastInbound=2025-12-18T05:42:43.931Z
+📊 [CANDIDATE] 194846e0-6df4-4610-a46f-f668e61951ec: leadNeverResponded=false, hoursSinceLastInbound=0.0h, lastInbound=2025-12-19T21:43:40.388Z
+📊 [FOLLOWUP-SCHEDULER] Found 1 ALL candidate conversations
+🌡️ [TEMPERATURE] Conversazione 194846e0-6df4-4610-a46f-f668e61951ec: ghost → hot
+🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation 194846e0-6df4-4610-a46f-f668e61951ec
+   State: new, Days silent: 1, Hours silent: 44.5
+   📊 Follow-ups: 3 total | 🆕 Consecutive no-reply: 2/3 → Dormancy
+   😴 Status: ACTIVE
+   📋 Applicable rules: 0 (Sistema AI attivo - le regole sono opzionali)
+🤖 [FOLLOWUP-SCHEDULER] Nessuna regola esplicita - Sistema AI "Marco" attivo per 194846e0-6df4-4610-a46f-f668e61951ec
+🧑‍💼 [FOLLOWUP-ENGINE] Human-Like AI evaluation for conversation 194846e0-6df4-4610-a46f-f668e61951ec
+   State: new, Days silent: 1, Follow-ups: 3/5
+   Mode: AI-ONLY (no hardcoded rules)
+📜 [FOLLOWUP-ENGINE] Found 3 previous evaluations for context
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is the consultant themselves
+✅ Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b can use SuperAdmin Vertex AI
+🔍 Looking for SuperAdmin Vertex AI configuration...
+📋 Found SuperAdmin Vertex AI config: project=gen-lang-client-0278434337, location=us-central1
+✅ Parsed credentials as plaintext JSON
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created SuperAdmin Vertex AI client successfully
+✅ TIER 0: Successfully created SuperAdmin Vertex AI client
+🚀 [FOLLOWUP-ENGINE] Using Vertex AI (SuperAdmin) for evaluation
+✅ [FOLLOWUP-ENGINE] Decision: skip (confidence: 0.95)
+   Reasoning: Tempo dall'ultimo messaggio: 0.0 ore. Il lead ha appena risposto positivamente ("volevo capire come raggiungere la libertà finanziaria") e l'AI ha inviato una domanda di discovery qualificativa ("qual è il problema più grande che stai riscontrando?"). È opportuno attendere la risposta del lead per non tempestarlo, poiché la conversazione è attiva e il prossimo messaggio dell'AI deve portare nuovo valore. Siamo all'interno della finestra 24h, ma non è necessario inviare un altro messaggio in questo momento, in linea con il principio di non stalkerare e rispettare il tempo del lead. La conversazione è in una fase di scoperta attiva.
+   Latency: 17384ms
+📝 [AI-UPDATES] Applying 2 AI-suggested update(s) for 194846e0-6df4-4610-a46f-f668e61951ec:
+   • engagementScore: 50 → 70
+   • conversionProbability: 0.50 → 0.70
+🔄 [FOLLOWUP-ENGINE] Updating conversation state for 194846e0-6df4-4610-a46f-f668e61951ec
+   Updates: {
+  "engagementScore": 70,
+  "conversionProbability": 0.7
+}
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+✅ [FOLLOWUP-ENGINE] Conversation state updated successfully
+📝 [FOLLOWUP-ENGINE] Logging decision for conversation 194846e0-6df4-4610-a46f-f668e61951ec
+✅ [FOLLOWUP-ENGINE] Decision logged successfully
+🔄 [FOLLOWUP-ENGINE] Updating conversation state for 194846e0-6df4-4610-a46f-f668e61951ec
+   Updates: {
+  "lastAiEvaluationAt": "2025-12-19T21:44:31.003Z",
+  "aiRecommendation": "Tempo dall'ultimo messaggio: 0.0 ore. Il lead ha appena risposto positivamente (\"volevo capire come raggiungere la libertà finanziaria\") e l'AI ha inviato una domanda di discovery qualificativa (\"qual è il problema più grande che stai riscontrando?\"). È opportuno attendere la risposta del lead per non tempestarlo, poiché la conversazione è attiva e il prossimo messaggio dell'AI deve portare nuovo valore. Siamo all'interno della finestra 24h, ma non è necessario inviare un altro messaggio in questo momento, in linea con il principio di non stalkerare e rispettare il tempo del lead. La conversazione è in una fase di scoperta attiva."
+}
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+✅ [FOLLOWUP-ENGINE] Conversation state updated successfully
+⏭️ [FOLLOWUP-SCHEDULER] Skipped follow-up for 194846e0-6df4-4610-a46f-f668e61951ec: Tempo dall'ultimo messaggio: 0.0 ore. Il lead ha appena risposto positivamente ("volevo capire come raggiungere la libertà finanziaria") e l'AI ha inviato una domanda di discovery qualificativa ("qual è il problema più grande che stai riscontrando?"). È opportuno attendere la risposta del lead per non tempestarlo, poiché la conversazione è attiva e il prossimo messaggio dell'AI deve portare nuovo valore. Siamo all'interno della finestra 24h, ma non è necessario inviare un altro messaggio in questo momento, in linea con il principio di non stalkerare e rispettare il tempo del lead. La conversazione è in una fase di scoperta attiva.
+[FOLLOWUP-SCHEDULER] Evaluation Cycle cycle_1766180650419_gxkeg1: 20.792s
+📈 [FOLLOWUP-SCHEDULER] ALL evaluation cycle completed
+   ⏱️  Duration: 20792ms
+   📊 Processed: 1/1
+   🌡️  Temperature updates: 1
+   📅 Scheduled: 0
+   ⏭️  Skipped: 1
+   🛑 Stopped: 0
+   ❌ Errors: 0
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+📊 [FOLLOWUP-SCHEDULER] Cycle Metrics Report
+📊 [FOLLOWUP-SCHEDULER] ───────────────────────────────────────
+📊 [FOLLOWUP-SCHEDULER] Timestamp: 2025-12-19T21:44:31.212Z
+📊 [FOLLOWUP-SCHEDULER] Cycle ID: cycle_1766180650419_gxkeg1
+📊 [FOLLOWUP-SCHEDULER] Type: evaluation_all
+📊 [FOLLOWUP-SCHEDULER] Duration: 20792ms
+📊 [FOLLOWUP-SCHEDULER] Processed: 1
+📊 [FOLLOWUP-SCHEDULER] Success: 0
+📊 [FOLLOWUP-SCHEDULER] Errors: 0
+📊 [FOLLOWUP-SCHEDULER] Skipped: 1
+📊 [FOLLOWUP-SCHEDULER] Rate Limited: 0
+📊 [FOLLOWUP-SCHEDULER] Error Rate: 0.0%
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+9:44:31 PM [express] POST /api/followup/trigger-evaluation 200 in 20997ms :: {"success":true,"messag…
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:44:37 PM [express] GET /api/followup/activity-log 200 in 1302ms :: {"timeline":[{"conversationId":…
+9:44:38 PM [express] GET /api/followup/dashboard-stats 304 in 818ms :: {"awaitingFollowup":2,"sentTo…
+9:44:40 PM [express] GET /api/followup/activity-log 304 in 798ms :: {"timeline":[{"conversationId":"…
+9:44:56 PM [express] POST /api/activity/session/heartbeat 200 in 1046ms :: {"success":true,"lastActi…
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-12-19T21:45:00.028Z
+⏰ [FOLLOWUP-SCHEDULER] HOT/WARM evaluation cycle triggered
+🔍 [FOLLOWUP-SCHEDULER] Starting HOT/WARM follow-up evaluation cycle...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📊 [CALENDAR SYNC] Syncing 1 consultant(s)...
+
+🔄 [CALENDAR SYNC] Starting sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+🔗 [GOOGLE CALENDAR] Using GLOBAL OAuth credentials. Redirect URI: https://e5da21a7-cd72-4315-aaed-29d353f0bcb0-00-3ov2cfz1bfgyx.worf.replit.dev/api/calendar-settings/oauth/callback
+🧠 [FOLLOWUP-SCHEDULER] AI-ONLY mode: Found 4 consultants with active WhatsApp configs
+✅ [FILTER-CHECK] Excluding closed states: 'closed_won', 'closed_lost' from candidate search
+🌡️ [FOLLOWUP-SCHEDULER] Filtering by temperature: hot, warm
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+✅ Using saved calendar ID from settings: primary
+📊 [CANDIDATE] 194846e0-6df4-4610-a46f-f668e61951ec: leadNeverResponded=false, hoursSinceLastInbound=0.0h, lastInbound=2025-12-19T21:43:40.388Z
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+✅ [CALENDAR SYNC] No confirmed appointments to sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b in the next 90 days
+📊 [FOLLOWUP-SCHEDULER] Found 1 HOT/WARM candidate conversations
+🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation 194846e0-6df4-4610-a46f-f668e61951ec
+   State: new, Days silent: 1, Hours silent: 44.6
+   📊 Follow-ups: 3 total | 🆕 Consecutive no-reply: 2/3 → Dormancy
+   😴 Status: ACTIVE
+   📋 Applicable rules: 0 (Sistema AI attivo - le regole sono opzionali)
+🤖 [FOLLOWUP-SCHEDULER] Nessuna regola esplicita - Sistema AI "Marco" attivo per 194846e0-6df4-4610-a46f-f668e61951ec
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+
+✅ [CALENDAR SYNC] Sync cycle complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+🧑‍💼 [FOLLOWUP-ENGINE] Human-Like AI evaluation for conversation 194846e0-6df4-4610-a46f-f668e61951ec
+   State: new, Days silent: 1, Follow-ups: 3/5
+   Mode: AI-ONLY (no hardcoded rules)
+📜 [FOLLOWUP-ENGINE] Found 4 previous evaluations for context
+🔍 Finding AI provider for client 0c73bbe5-51e1-4108-866b-6be7a52fce3b (consultant: 0c73bbe5-51e1-4108-866b-6be7a52fce3b)...
+📋 Client preferred AI provider: vertex_admin
+🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...
+📋 User 0c73bbe5-51e1-4108-866b-6be7a52fce3b is the consultant themselves
+✅ Consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b can use SuperAdmin Vertex AI
+🔍 Looking for SuperAdmin Vertex AI configuration...
+📋 Found SuperAdmin Vertex AI config: project=gen-lang-client-0278434337, location=us-central1
+✅ Parsed credentials as plaintext JSON
+🚀 Creating VertexAI instance with Service Account credentials
+  - project: gen-lang-client-0278434337
+  - location: us-central1
+  - model: gemini-2.5-flash
+  - credentials: vertex-ai-service-account@gen-lang-client-0278434337.iam.gserviceaccount.com
+✅ VertexAI instance created successfully
+🔧 Getting Generative Model...
+✅ GenerativeModel created successfully
+✅ Created SuperAdmin Vertex AI client successfully
+✅ TIER 0: Successfully created SuperAdmin Vertex AI client
+🚀 [FOLLOWUP-ENGINE] Using Vertex AI (SuperAdmin) for evaluation
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:45:07 PM [express] GET /api/followup/pending-queue 304 in 408ms :: {"agents":[{"agentId":"760bb513…
+9:45:09 PM [express] GET /api/followup/dashboard-stats 304 in 811ms :: {"awaitingFollowup":2,"sentTo…
+9:45:12 PM [express] GET /api/followup/activity-log 304 in 1226ms :: {"timeline":[{"conversationId":…
+✅ [FOLLOWUP-ENGINE] Decision: skip (confidence: 0.98)
+   Reasoning: Tempo dall'ultimo messaggio: ~0.0 ore. L'AI ha appena inviato una domanda di qualificazione (quale il problema più grande) in risposta al lead. È opportuno attendere che il lead risponda a questa domanda prima di intraprendere qualsiasi altra azione. Inviare un nuovo messaggio ora sarebbe in conflitto con il principio di non 'tempestare' il lead e di rispettare i suoi tempi. Il lead è engaged e ha risposto da poco.
+   Latency: 14497ms
+📝 [AI-UPDATES] Applying 2 AI-suggested update(s) for 194846e0-6df4-4610-a46f-f668e61951ec:
+   • engagementScore: 70 → 70
+   • conversionProbability: 0.70 → 0.70
+🔄 [FOLLOWUP-ENGINE] Updating conversation state for 194846e0-6df4-4610-a46f-f668e61951ec
+   Updates: {
+  "engagementScore": 70,
+  "conversionProbability": 0.7
+}
+✅ [FOLLOWUP-ENGINE] Conversation state updated successfully
+📝 [FOLLOWUP-ENGINE] Logging decision for conversation 194846e0-6df4-4610-a46f-f668e61951ec
+✅ [FOLLOWUP-ENGINE] Decision logged successfully
+🔄 [FOLLOWUP-ENGINE] Updating conversation state for 194846e0-6df4-4610-a46f-f668e61951ec
+   Updates: {
+  "lastAiEvaluationAt": "2025-12-19T21:45:17.170Z",
+  "aiRecommendation": "Tempo dall'ultimo messaggio: ~0.0 ore. L'AI ha appena inviato una domanda di qualificazione (quale il problema più grande) in risposta al lead. È opportuno attendere che il lead risponda a questa domanda prima di intraprendere qualsiasi altra azione. Inviare un nuovo messaggio ora sarebbe in conflitto con il principio di non 'tempestare' il lead e di rispettare i suoi tempi. Il lead è engaged e ha risposto da poco."
+}
+✅ [FOLLOWUP-ENGINE] Conversation state updated successfully
+⏭️ [FOLLOWUP-SCHEDULER] Skipped follow-up for 194846e0-6df4-4610-a46f-f668e61951ec: Tempo dall'ultimo messaggio: ~0.0 ore. L'AI ha appena inviato una domanda di qualificazione (quale il problema più grande) in risposta al lead. È opportuno attendere che il lead risponda a questa domanda prima di intraprendere qualsiasi altra azione. Inviare un nuovo messaggio ora sarebbe in conflitto con il principio di non 'tempestare' il lead e di rispettare i suoi tempi. Il lead è engaged e ha risposto da poco.
+[FOLLOWUP-SCHEDULER] Evaluation Cycle cycle_1766180700032_6xeds6: 17.342s
+📈 [FOLLOWUP-SCHEDULER] HOT/WARM evaluation cycle completed
+   ⏱️  Duration: 17343ms
+   📊 Processed: 1/1
+   🌡️  Temperature updates: 0
+   📅 Scheduled: 0
+   ⏭️  Skipped: 1
+   🛑 Stopped: 0
+   ❌ Errors: 0
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+📊 [FOLLOWUP-SCHEDULER] Cycle Metrics Report
+📊 [FOLLOWUP-SCHEDULER] ───────────────────────────────────────
+📊 [FOLLOWUP-SCHEDULER] Timestamp: 2025-12-19T21:45:17.375Z
+📊 [FOLLOWUP-SCHEDULER] Cycle ID: cycle_1766180700032_6xeds6
+📊 [FOLLOWUP-SCHEDULER] Type: evaluation_hot/warm
+📊 [FOLLOWUP-SCHEDULER] Duration: 17343ms
+📊 [FOLLOWUP-SCHEDULER] Processed: 1
+📊 [FOLLOWUP-SCHEDULER] Success: 0
+📊 [FOLLOWUP-SCHEDULER] Errors: 0
+📊 [FOLLOWUP-SCHEDULER] Skipped: 1
+📊 [FOLLOWUP-SCHEDULER] Rate Limited: 0
+📊 [FOLLOWUP-SCHEDULER] Error Rate: 0.0%
+📊 [FOLLOWUP-SCHEDULER] ═══════════════════════════════════════
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:45:40 PM [express] GET /api/followup/dashboard-stats 304 in 811ms :: {"awaitingFollowup":2,"sentTo…
+9:45:43 PM [express] GET /api/followup/activity-log 200 in 1236ms :: {"timeline":[{"conversationId":…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+9:46:08 PM [express] GET /api/followup/pending-queue 304 in 408ms :: {"agents":[{"agentId":"760bb513…
+9:46:11 PM [express] GET /api/followup/dashboard-stats 304 in 811ms :: {"awaitingFollowup":2,"sentTo…
+9:46:15 PM [express] GET /api/followup/activity-log 304 in 1239ms :: {"timeline":[{"conversationId":…
+🔄 [WHATSAPP POLLING] Starting poll cycle...

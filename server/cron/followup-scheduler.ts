@@ -476,6 +476,18 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
       try {
         metrics.processed++;
         
+        // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
+        const DEBOUNCE_MINUTES = 5;
+        if (conversation.lastAiEvaluationAt) {
+          const minutesSinceLastEval = (Date.now() - new Date(conversation.lastAiEvaluationAt).getTime()) / (1000 * 60);
+          if (minutesSinceLastEval < DEBOUNCE_MINUTES) {
+            console.log(`⏭️ [DEBOUNCE] ${conversation.conversationId}: SKIPPED - Evaluated ${minutesSinceLastEval.toFixed(1)} min ago (debounce: ${DEBOUNCE_MINUTES} min)`);
+            skipped++;
+            metrics.skipped++;
+            continue;
+          }
+        }
+        
         // Calculate and update temperature if changed
         const newTemperature = calculateTemperature(conversation.hoursSinceLastInbound);
         if (conversation.temperatureLevel !== newTemperature) {
@@ -566,9 +578,21 @@ export async function runColdLeadsEvaluation(): Promise<void> {
     let processed = 0;
     let scheduled = 0;
     let temperatureUpdates = 0;
+    let skipped = 0;
 
     for (const conversation of candidateConversations) {
       try {
+        // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
+        const DEBOUNCE_MINUTES = 5;
+        if (conversation.lastAiEvaluationAt) {
+          const minutesSinceLastEval = (Date.now() - new Date(conversation.lastAiEvaluationAt).getTime()) / (1000 * 60);
+          if (minutesSinceLastEval < DEBOUNCE_MINUTES) {
+            console.log(`⏭️ [DEBOUNCE] ${conversation.conversationId}: SKIPPED - Evaluated ${minutesSinceLastEval.toFixed(1)} min ago`);
+            skipped++;
+            continue;
+          }
+        }
+        
         // Calculate and update temperature if changed
         const newTemperature = calculateTemperature(conversation.hoursSinceLastInbound);
         if (conversation.temperatureLevel !== newTemperature) {
@@ -594,7 +618,7 @@ export async function runColdLeadsEvaluation(): Promise<void> {
 
     const duration = Date.now() - startTime;
     console.log(`📈 [FOLLOWUP-SCHEDULER] COLD leads evaluation completed in ${duration}ms`);
-    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}, Temp updates: ${temperatureUpdates}`);
+    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}, Temp updates: ${temperatureUpdates}, Skipped (debounce): ${skipped}`);
     
   } finally {
     isColdLeadsRunning = false;
@@ -627,9 +651,21 @@ export async function runGhostLeadsEvaluation(): Promise<void> {
 
     let processed = 0;
     let scheduled = 0;
+    let skipped = 0;
 
     for (const conversation of candidateConversations) {
       try {
+        // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
+        const DEBOUNCE_MINUTES = 5;
+        if (conversation.lastAiEvaluationAt) {
+          const minutesSinceLastEval = (Date.now() - new Date(conversation.lastAiEvaluationAt).getTime()) / (1000 * 60);
+          if (minutesSinceLastEval < DEBOUNCE_MINUTES) {
+            console.log(`⏭️ [DEBOUNCE] ${conversation.conversationId}: SKIPPED - Evaluated ${minutesSinceLastEval.toFixed(1)} min ago`);
+            skipped++;
+            continue;
+          }
+        }
+        
         // For ghost leads, we primarily want to mark them or attempt reactivation
         const result = await evaluateConversation(conversation);
         processed++;
@@ -641,7 +677,7 @@ export async function runGhostLeadsEvaluation(): Promise<void> {
 
     const duration = Date.now() - startTime;
     console.log(`📈 [FOLLOWUP-SCHEDULER] GHOST leads evaluation completed in ${duration}ms`);
-    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}`);
+    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}, Skipped (debounce): ${skipped}`);
     
   } finally {
     isGhostLeadsRunning = false;
@@ -677,8 +713,20 @@ export async function runEngagedColdLeadsEvaluation(): Promise<void> {
     let processed = 0;
     let scheduled = 0;
 
+    let skipped = 0;
     for (const conversation of candidateConversations) {
       try {
+        // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
+        const DEBOUNCE_MINUTES = 5;
+        if (conversation.lastAiEvaluationAt) {
+          const minutesSinceLastEval = (Date.now() - new Date(conversation.lastAiEvaluationAt).getTime()) / (1000 * 60);
+          if (minutesSinceLastEval < DEBOUNCE_MINUTES) {
+            console.log(`⏭️ [DEBOUNCE] ${conversation.conversationId}: SKIPPED - Evaluated ${minutesSinceLastEval.toFixed(1)} min ago`);
+            skipped++;
+            continue;
+          }
+        }
+        
         const result = await evaluateConversation(conversation);
         processed++;
         if (result === 'scheduled') scheduled++;
@@ -689,6 +737,7 @@ export async function runEngagedColdLeadsEvaluation(): Promise<void> {
 
     const duration = Date.now() - startTime;
     console.log(`📈 [FOLLOWUP-SCHEDULER] ENGAGED COLD leads evaluation completed in ${duration}ms`);
+    console.log(`   ⏭️ Skipped (debounce): ${skipped}`);
     console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}`);
     
   } finally {
@@ -962,6 +1011,8 @@ interface CandidateConversation {
   hasEverReplied?: boolean;
   warmFollowupCount?: number;
   lastWarmFollowupAt?: Date | null;
+  // NEW: Debounce field to prevent duplicate AI evaluations
+  lastAiEvaluationAt?: Date | null;
 }
 
 /**
@@ -1236,6 +1287,8 @@ export async function findCandidateConversations(
       hasEverReplied: conversationStates.hasEverReplied,
       warmFollowupCount: conversationStates.warmFollowupCount,
       lastWarmFollowupAt: conversationStates.lastWarmFollowupAt,
+      // NEW: Debounce field
+      lastAiEvaluationAt: conversationStates.lastAiEvaluationAt,
       // NEW: Intelligent retry logic fields
       consecutiveNoReplyCount: conversationStates.consecutiveNoReplyCount,
       lastReplyAt: conversationStates.lastReplyAt,
@@ -1406,6 +1459,8 @@ export async function findCandidateConversations(
       hasEverReplied: state.hasEverReplied,
       warmFollowupCount: state.warmFollowupCount,
       lastWarmFollowupAt: state.lastWarmFollowupAt ? new Date(state.lastWarmFollowupAt) : null,
+      // NEW: Debounce field
+      lastAiEvaluationAt: state.lastAiEvaluationAt ? new Date(state.lastAiEvaluationAt) : null,
     });
   }
 
