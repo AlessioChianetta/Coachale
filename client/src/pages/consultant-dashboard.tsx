@@ -1,10 +1,10 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import { 
   Users, 
   Calendar,
@@ -26,7 +26,11 @@ import {
   Bot,
   FileSearch,
   Flame,
-  ChevronRight
+  ChevronRight,
+  TrendingUp,
+  CheckCircle,
+  RotateCcw,
+  Activity
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
@@ -36,6 +40,8 @@ import { useRoleSwitch } from "@/hooks/use-role-switch";
 import { useClientPriorityScore } from "@/hooks/useClientPriorityScore";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { format, isThisWeek, parseISO } from "date-fns";
+import { it } from "date-fns/locale";
 
 interface AttentionItem {
   id: string;
@@ -55,6 +61,16 @@ interface NavigationSection {
   bgColor: string;
   count?: number;
   badge?: string;
+}
+
+interface KPICard {
+  title: string;
+  value: number | string;
+  icon: React.ComponentType<any>;
+  color: string;
+  bgGradient: string;
+  change?: string;
+  changeType?: "positive" | "negative" | "neutral";
 }
 
 export default function ConsultantDashboard() {
@@ -94,6 +110,22 @@ export default function ConsultantDashboard() {
     },
   });
 
+  const { data: consultantStats } = useQuery<{
+    activeClients: number;
+    completedExercises: number;
+    completionRate: number;
+    todayConsultations: number;
+  }>({
+    queryKey: ["/api/stats/consultant"],
+    queryFn: async () => {
+      const response = await fetch("/api/stats/consultant", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) return { activeClients: 0, completedExercises: 0, completionRate: 0, todayConsultations: 0 };
+      return response.json();
+    },
+  });
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return "Buongiorno";
@@ -102,8 +134,90 @@ export default function ConsultantDashboard() {
   };
 
   const pendingExercises = useMemo(() => {
-    return assignments.filter((a: any) => a.status === "pending" || a.status === "in_progress");
+    return assignments.filter((a: any) => a.status === "pending" || a.status === "returned");
   }, [assignments]);
+
+  const exercisesToReview = useMemo(() => {
+    return assignments.filter((a: any) => a.status === "pending" || a.status === "returned" || a.status === "in_progress");
+  }, [assignments]);
+
+  const completedExercises = useMemo(() => {
+    return assignments.filter((a: any) => a.status === "completed");
+  }, [assignments]);
+
+  const weekConsultations = useMemo(() => {
+    return appointments.filter((apt: any) => {
+      try {
+        const aptDate = apt.startTime ? parseISO(apt.startTime) : new Date(apt.date);
+        return isThisWeek(aptDate, { weekStartsOn: 1 });
+      } catch {
+        return false;
+      }
+    });
+  }, [appointments]);
+
+  const recentClients = useMemo(() => {
+    const sortedClients = [...clients].sort((a: any, b: any) => {
+      const dateA = a.updatedAt || a.createdAt || 0;
+      const dateB = b.updatedAt || b.createdAt || 0;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
+    return sortedClients.slice(0, 3);
+  }, [clients]);
+
+  const upcomingAppointments = useMemo(() => {
+    const now = new Date();
+    return appointments
+      .filter((apt: any) => {
+        const aptDate = apt.startTime ? new Date(apt.startTime) : new Date(apt.date);
+        return aptDate > now;
+      })
+      .sort((a: any, b: any) => {
+        const dateA = a.startTime ? new Date(a.startTime) : new Date(a.date);
+        const dateB = b.startTime ? new Date(b.startTime) : new Date(b.date);
+        return dateA.getTime() - dateB.getTime();
+      })
+      .slice(0, 3);
+  }, [appointments]);
+
+  const kpiCards: KPICard[] = useMemo(() => [
+    {
+      title: "Clienti Attivi",
+      value: clients.length,
+      icon: Users,
+      color: "text-blue-600",
+      bgGradient: "from-blue-500/10 via-blue-500/5 to-transparent",
+    },
+    {
+      title: "Esercizi da Revisionare",
+      value: exercisesToReview.length,
+      icon: FileText,
+      color: "text-amber-600",
+      bgGradient: "from-amber-500/10 via-amber-500/5 to-transparent",
+    },
+    {
+      title: "Consulenze Settimana",
+      value: weekConsultations.length,
+      icon: Calendar,
+      color: "text-emerald-600",
+      bgGradient: "from-emerald-500/10 via-emerald-500/5 to-transparent",
+    },
+    {
+      title: "Lead Prioritari",
+      value: highPriorityClients?.length || 0,
+      icon: Target,
+      color: "text-red-600",
+      bgGradient: "from-red-500/10 via-red-500/5 to-transparent",
+    },
+  ], [clients.length, exercisesToReview.length, weekConsultations.length, highPriorityClients]);
+
+  const exerciseProgress = useMemo(() => {
+    const total = assignments.length;
+    const completed = completedExercises.length;
+    const pending = exercisesToReview.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, pending, percentage };
+  }, [assignments.length, completedExercises.length, exercisesToReview.length]);
 
   const attentionItems: AttentionItem[] = useMemo(() => {
     const items: AttentionItem[] = [];
@@ -267,6 +381,15 @@ export default function ConsultantDashboard() {
     }
   };
 
+  const formatAppointmentTime = (apt: any) => {
+    try {
+      const date = apt.startTime ? new Date(apt.startTime) : new Date(apt.date);
+      return format(date, "dd MMM, HH:mm", { locale: it });
+    } catch {
+      return "Data non disponibile";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20" data-testid="consultant-dashboard">
       {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
@@ -281,7 +404,7 @@ export default function ConsultantDashboard() {
         />
 
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
             
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -320,6 +443,33 @@ export default function ConsultantDashboard() {
               </div>
             </div>
 
+            {/* KPI Header Strip */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              {kpiCards.map((kpi, index) => (
+                <Card 
+                  key={index}
+                  className={cn(
+                    "relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02]",
+                    `bg-gradient-to-br ${kpi.bgGradient}`
+                  )}
+                >
+                  <CardContent className="p-4 sm:p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <p className="text-xs sm:text-sm font-medium text-muted-foreground">{kpi.title}</p>
+                        <p className="text-2xl sm:text-3xl font-bold tracking-tight">{kpi.value}</p>
+                      </div>
+                      <div className={cn(
+                        "p-2 sm:p-3 rounded-xl bg-background/50 backdrop-blur-sm shadow-sm",
+                      )}>
+                        <kpi.icon className={cn("h-5 w-5 sm:h-6 sm:w-6", kpi.color)} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
             {/* Search/AI Bar */}
             <div className="relative group">
               <div 
@@ -328,8 +478,8 @@ export default function ConsultantDashboard() {
               >
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500/20 via-purple-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative bg-card border border-border/50 rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-primary/30">
-                    <p className="text-lg sm:text-xl text-muted-foreground mb-3">
+                  <div className="relative bg-card border border-border/50 rounded-2xl p-4 sm:p-5 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-primary/30">
+                    <p className="text-base sm:text-lg text-muted-foreground mb-2">
                       Cosa vuoi fare oggi?
                     </p>
                     <div className="flex items-center gap-3 bg-muted/50 rounded-xl px-4 py-3 border border-border/50">
@@ -347,7 +497,7 @@ export default function ConsultantDashboard() {
 
             {/* Quick Actions */}
             <div>
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Azioni Rapide
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -373,7 +523,7 @@ export default function ConsultantDashboard() {
             {/* Requires Attention */}
             {attentionItems.length > 0 && (
               <div>
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-3">
                   <Flame className="h-5 w-5 text-orange-500" />
                   <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                     Richiede Attenzione
@@ -414,9 +564,165 @@ export default function ConsultantDashboard() {
               </div>
             )}
 
+            {/* Operational Panels Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Recent Clients */}
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-500/5 to-transparent">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-blue-500" />
+                      Attività Recente
+                    </CardTitle>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-xs"
+                      onClick={() => setLocation("/consultant/clients")}
+                    >
+                      Vedi tutti
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {recentClients.length > 0 ? (
+                    recentClients.map((client: any) => (
+                      <div 
+                        key={client.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors cursor-pointer"
+                        onClick={() => setLocation(`/consultant/clients`)}
+                      >
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-blue-500/10 text-blue-600 text-sm font-medium">
+                            {client.firstName?.[0]}{client.lastName?.[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {client.firstName} {client.lastName}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {client.email}
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground text-sm">
+                      Nessun cliente recente
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Upcoming Appointments */}
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-500/5 to-transparent">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-emerald-500" />
+                      Prossimi Appuntamenti
+                    </CardTitle>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-xs"
+                      onClick={() => setLocation("/consultant/appointments")}
+                    >
+                      Vedi tutti
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {upcomingAppointments.length > 0 ? (
+                    upcomingAppointments.map((apt: any) => (
+                      <div 
+                        key={apt.id}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-background/50 hover:bg-background/80 transition-colors cursor-pointer"
+                        onClick={() => setLocation("/consultant/appointments")}
+                      >
+                        <div className="p-2 rounded-lg bg-emerald-500/10">
+                          <Clock className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {apt.title || apt.clientName || "Appuntamento"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatAppointmentTime(apt)}
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground text-sm">
+                      Nessun appuntamento in programma
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Exercise Trends */}
+              <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-500/5 to-transparent">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-purple-500" />
+                      Trend Esercizi
+                    </CardTitle>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-xs"
+                      onClick={() => setLocation("/consultant/exercises")}
+                    >
+                      Dettagli
+                      <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Completamento</span>
+                      <span className="font-semibold">{exerciseProgress.percentage}%</span>
+                    </div>
+                    <Progress value={exerciseProgress.percentage} className="h-2" />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-emerald-500/10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle className="h-4 w-4 text-emerald-600" />
+                        <span className="text-xs text-muted-foreground">Completati</span>
+                      </div>
+                      <p className="text-xl font-bold text-emerald-600">{exerciseProgress.completed}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-amber-500/10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <RotateCcw className="h-4 w-4 text-amber-600" />
+                        <span className="text-xs text-muted-foreground">In Attesa</span>
+                      </div>
+                      <p className="text-xl font-bold text-amber-600">{exerciseProgress.pending}</p>
+                    </div>
+                  </div>
+
+                  <div className="text-center pt-2">
+                    <p className="text-xs text-muted-foreground">
+                      Totale: <span className="font-medium">{exerciseProgress.total}</span> esercizi assegnati
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
             {/* Navigation Sections Grid */}
             <div>
-              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Tutte le Sezioni
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
