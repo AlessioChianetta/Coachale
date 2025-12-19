@@ -1,0 +1,29 @@
+📌 [FileSync] Document already indexed: 179433b2-6655-481c-8ff7-abc1f101a061
+📌 [FileSync] Document already indexed: 61310e5f-a8e3-46a6-89ab-b5f3fd56af9a
+📌 [FileSync] Document already indexed: 3e77851c-9fc8-4182-bada-53d4b0e8a274
+📌 [FileSync] Document already indexed: 7a9d8d53-22f7-49a4-bacf-dc65e89a5fcb
+📌 [FileSync] Document already indexed: 0db027e3-c841-47b9-a12d-bcf0060cda42
+📌 [FileSync] Document already indexed: 0070af5c-aeb4-4d4c-b0d4-2d868da7a58d
+📌 [FileSync] Document already indexed: d230df32-a44f-44e6-bf0d-ffa3c4b34b73
+📌 [FileSync] Document already indexed: 48effd73-4cd8-4d28-80a7-234e5a419a46
+📌 [FileSync] Document already indexed: 5079ed36-dcd6-487b-a742-6d4e17442ac5
+📌 [FileSync] Document already indexed: ab4d4f33-8797-4dd7-8732-a7a122075f39
+📌 [FileSync] Document already indexed: e060325f-be6e-49bd-b718-b4ba7c109c36
+📌 [FileSync] Document already indexed: 4484b234-70ef-46ee-b27d-03546a8d3f37
+📌 [FileSync] Document already indexed: f3760a37-c3df-4972-93d3-39877ef530b2
+📌 [FileSync] Document already indexed: a9c0d4ca-3099-4bc4-afec-e0bc91487396
+📌 [FileSync] Document already indexed: 8b7a02b4-cc42-4bee-b534-d834f15c8773
+📌 [FileSync] Document already indexed: 699a0c5f-8ee3-4545-ad0b-b377909dcc5c
+📌 [FileSync] Document already indexed: 87424409-e692-4294-b978-01ffdc6b826c
+📌 [FileSync] Document already indexed: 7954040f-2365-45b5-a989-824e0ebbbb06
+📌 [FileSync] Document already indexed: 44555082-08b1-47c2-ad04-2e0f9352c652
+📌 [FileSync] Document already indexed: 7ffadda1-353e-4cd4-9e71-55b9065f1043
+📌 [FileSync] Document already indexed: f037b1ed-37d1-48d0-abcd-1840c0e7e3e1
+📌 [FileSync] Document already indexed: d70ebfda-825e-4825-8cb6-d0438ae0341c
+📌 [FileSync] Document already indexed: 0cce5e34-d507-466a-b8b7-e82d63fc02d0
+📌 [FileSync] Document already indexed: 228b2619-62ca-4592-bc0a-c38ba39b263c
+📌 [FileSync] Document already indexed: 7f031eb5-eecf-4a43-93a5-a17b029bfedd
+📌 [FileSync] Document already indexed: e5ab2f5e-0e93-43da-8851-2e2a0070cc7e
+📌 [FileSync] Document already indexed: 26344861-cc71-46a9-8a62-92d9d5a708e7
+✅ [FileSync] Complete - Synced: 86/86, Failed: 0
+🔄 [FileSync] Syncing 1 knowledge documents for consultant 0c73bb

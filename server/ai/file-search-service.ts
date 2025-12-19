@@ -92,6 +92,9 @@ export class FileSearchService {
    * 1. SuperAdmin keys (if available and user.useSuperadminGemini !== false)
    * 2. User's own keys (user.geminiApiKeys)
    * 3. Environment fallback (process.env.GEMINI_API_KEY)
+   * 
+   * NOTE: File Search API requires Google AI Studio keys. If the key doesn't support
+   * fileSearchStores, we fall back to the environment key which is known to work.
    */
   async getClientForUser(userId?: string): Promise<GoogleGenAI | null> {
     if (!userId) {
@@ -116,8 +119,14 @@ export class FileSearchService {
         if (superAdminKeys && superAdminKeys.keys.length > 0) {
           const index = Math.floor(Math.random() * superAdminKeys.keys.length);
           const apiKey = superAdminKeys.keys[index];
-          console.log(`✅ [FileSearch] Using SuperAdmin Gemini key for user ${userId} (${index + 1}/${superAdminKeys.keys.length})`);
-          return new GoogleGenAI({ apiKey });
+          const testClient = new GoogleGenAI({ apiKey });
+          
+          if (testClient.fileSearchStores) {
+            console.log(`✅ [FileSearch] Using SuperAdmin Gemini key for user ${userId} (${index + 1}/${superAdminKeys.keys.length})`);
+            return testClient;
+          } else {
+            console.warn(`⚠️ [FileSearch] SuperAdmin key does not support File Search API, falling back to env key`);
+          }
         }
       }
 
@@ -127,8 +136,14 @@ export class FileSearchService {
         const currentIndex = user.geminiApiKeyIndex || 0;
         const validIndex = currentIndex % apiKeys.length;
         const apiKey = apiKeys[validIndex];
-        console.log(`✅ [FileSearch] Using user's own Gemini key for user ${userId}`);
-        return new GoogleGenAI({ apiKey });
+        const testClient = new GoogleGenAI({ apiKey });
+        
+        if (testClient.fileSearchStores) {
+          console.log(`✅ [FileSearch] Using user's own Gemini key for user ${userId}`);
+          return testClient;
+        } else {
+          console.warn(`⚠️ [FileSearch] User key does not support File Search API, falling back to env key`);
+        }
       }
 
       // Priority 3: Environment fallback
