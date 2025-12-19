@@ -1119,6 +1119,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         leadLastName: schema.proactiveLeads.lastName,
         currentState: schema.conversationStates.currentState,
         temperatureLevel: schema.conversationStates.temperatureLevel,
+        consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
       })
       .from(schema.followupAiEvaluationLog)
       .innerJoin(
@@ -1196,6 +1197,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         templateTwilioStatus: schema.whatsappTemplateVersions.twilioStatus,
         temperatureLevel: schema.conversationStates.temperatureLevel,
         currentState: schema.conversationStates.currentState,
+        consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
       })
       .from(schema.scheduledFollowupMessages)
       .innerJoin(
@@ -1282,6 +1284,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         matchedRuleReason: log.matchedRuleReason,
         currentState: log.currentState,
         temperatureLevel: log.temperatureLevel || 'warm',
+        consecutiveNoReplyCount: log.consecutiveNoReplyCount || 0,
         window24hExpiresAt: log.window24hExpiresAt,
         canSendFreeform: log.canSendFreeform,
         status: log.decision === 'stop' ? 'stopped' :
@@ -1328,6 +1331,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         aiSelectedTemplateReasoning: msg.aiSelectedTemplateReasoning,
         temperatureLevel: msg.temperatureLevel || 'warm',
         currentState: msg.currentState,
+        consecutiveNoReplyCount: msg.consecutiveNoReplyCount || 0,
       });
     }
 
@@ -1369,6 +1373,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
           temperatureLevel: event.temperatureLevel || 'warm',
           currentState: event.currentState,
           window24hExpiresAt: event.window24hExpiresAt,
+          consecutiveNoReplyCount: event.consecutiveNoReplyCount || 0,
           events: [],
         };
       }

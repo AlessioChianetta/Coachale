@@ -79,6 +79,7 @@ interface ConversationTimeline {
   temperatureLevel?: 'hot' | 'warm' | 'cold' | 'ghost';
   currentState?: string;
   window24hExpiresAt?: string;
+  consecutiveNoReplyCount?: number;
   events: TimelineEvent[];
 }
 
@@ -285,6 +286,9 @@ function ActivityTableRow({ conversation }: { conversation: ConversationTimeline
   const statusConfig = getStatusConfig(conversation.currentStatus);
   const countdown = formatCountdown(conversation.window24hExpiresAt);
   const latestEvent = conversation.events[0];
+  const scheduledEvent = conversation.events.find(e => e.type === 'message_scheduled' && e.status === 'scheduled');
+  const failedEvent = conversation.events.find(e => e.type === 'message_failed');
+  const noReplyCount = conversation.consecutiveNoReplyCount || 0;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -292,9 +296,36 @@ function ActivityTableRow({ conversation }: { conversation: ConversationTimeline
         <TableRow className="cursor-pointer hover:bg-muted/50">
           <TableCell className="py-2">
             <div className="flex items-center gap-2">
-              <span className="text-sm">{getTemperatureEmoji(conversation.temperatureLevel)}</span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="text-sm cursor-help">{getTemperatureEmoji(conversation.temperatureLevel)}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs capitalize">{conversation.temperatureLevel || 'warm'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <div className="min-w-0">
-                <div className="font-medium text-sm truncate max-w-[150px]">{conversation.leadName}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-sm truncate max-w-[120px]">{conversation.leadName}</span>
+                  {noReplyCount > 0 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                            noReplyCount >= 3 ? 'bg-red-100 text-red-700' : noReplyCount >= 2 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {noReplyCount}/3
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">{noReplyCount} tentativi senza risposta</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
                 {conversation.leadPhone && (
                   <div className="text-xs text-muted-foreground truncate">{conversation.leadPhone}</div>
                 )}
@@ -302,13 +333,41 @@ function ActivityTableRow({ conversation }: { conversation: ConversationTimeline
             </div>
           </TableCell>
           <TableCell className="py-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {latestEvent && getEventIcon(latestEvent.type)}
               <span className="text-xs">{latestEvent ? getEventLabel(latestEvent.type, latestEvent.decision) : '-'}</span>
+              {latestEvent?.templateId && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className={`text-[9px] px-1 py-0.5 rounded ${
+                        latestEvent.templateTwilioStatus === 'approved' ? 'bg-green-50 text-green-700 border border-green-200' :
+                        latestEvent.templateTwilioStatus === 'pending' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                        latestEvent.templateTwilioStatus === 'rejected' ? 'bg-red-50 text-red-700 border border-red-200' :
+                        'bg-gray-50 text-gray-600 border border-gray-200'
+                      }`}>
+                        TPL
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">
+                        Template: {latestEvent.templateName || 'N/A'}
+                        <br />
+                        Stato: {latestEvent.templateTwilioStatus === 'approved' ? 'Approvato' :
+                               latestEvent.templateTwilioStatus === 'pending' ? 'In attesa' :
+                               latestEvent.templateTwilioStatus === 'rejected' ? 'Rifiutato' : 'Non sincronizzato'}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {latestEvent && !latestEvent.templateId && latestEvent.canSendFreeform && (
+                <span className="text-[9px] px-1 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">AI</span>
+              )}
             </div>
           </TableCell>
           <TableCell className="py-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <Badge className={`${statusConfig.color} text-[10px] px-1.5 py-0`}>
                 {statusConfig.label}
               </Badge>
@@ -321,8 +380,22 @@ function ActivityTableRow({ conversation }: { conversation: ConversationTimeline
               )}
             </div>
           </TableCell>
-          <TableCell className="py-2 text-xs text-muted-foreground">
-            {latestEvent ? format(new Date(latestEvent.timestamp), "dd/MM HH:mm", { locale: it }) : '-'}
+          <TableCell className="py-2">
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-muted-foreground">
+                {latestEvent ? format(new Date(latestEvent.timestamp), "dd/MM HH:mm", { locale: it }) : '-'}
+              </span>
+              {scheduledEvent && (
+                <SendNowButton
+                  messageId={scheduledEvent.id.replace('msg-', '')}
+                  canSendFreeform={scheduledEvent.canSendFreeform}
+                  hasApprovedTemplate={scheduledEvent.templateTwilioStatus === 'approved'}
+                />
+              )}
+              {failedEvent && !scheduledEvent && (
+                <RetryButton messageId={failedEvent.id.replace('msg-', '')} />
+              )}
+            </div>
           </TableCell>
           <TableCell className="py-2 w-8">
             {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
