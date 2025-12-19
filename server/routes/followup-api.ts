@@ -1362,6 +1362,7 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         groupedByConversation[event.conversationId] = {
           conversationId: event.conversationId,
           leadName: event.leadName,
+          leadPhone: event.phoneNumber,
           agentName: event.agentName,
           agentId: event.agentId,
           currentStatus: event.status,

@@ -72,6 +72,7 @@ interface TimelineEvent {
 interface ConversationTimeline {
   conversationId: string;
   leadName: string;
+  leadPhone?: string;
   agentName: string;
   agentId?: string;
   currentStatus: string;
@@ -680,9 +681,14 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                 <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full">
                   <User className="h-5 w-5 text-gray-600" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                     {conversation.leadName}
+                    {conversation.leadPhone && (
+                      <Badge variant="secondary" className="text-xs font-normal">
+                        {conversation.leadPhone}
+                      </Badge>
+                    )}
                     <Badge variant="outline" className="text-xs font-normal">
                       via {conversation.agentName}
                     </Badge>
