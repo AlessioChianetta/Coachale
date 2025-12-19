@@ -873,7 +873,7 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
         console.log(`🛑 [FOLLOWUP-CANCEL] Lead ha risposto! Cancellati ${cancelledMessages.length} messaggi programmati per conversazione ${conversation.id}`);
       }
       
-      // 2. Reset conversationState: temperatura HOT, contatori azzerati
+      // 2. Reset conversationState: temperatura HOT, contatori azzerati, lastAiEvaluationAt resettato
       await db
         .update(conversationStates)
         .set({
@@ -886,11 +886,12 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           temperatureLevel: 'hot',
           warmFollowupCount: 0,
           lastWarmFollowupAt: null,
+          lastAiEvaluationAt: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(conversationStates.conversationId, conversation.id));
       
-      console.log(`🔄 [INTELLIGENT-RESET] Lead responded via polling! Reset: consecutiveNoReplyCount=0, hasEverReplied=true, temperatureLevel=HOT for ${conversation.id}`);
+      console.log(`🔄 [INTELLIGENT-RESET] Lead responded via polling! Reset: consecutiveNoReplyCount=0, hasEverReplied=true, temperatureLevel=HOT, lastAiEvaluationAt=NOW for ${conversation.id}`);
     }
 
     // Detect if client sent audio message (for Mirror mode TTS response)

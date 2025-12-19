@@ -299,6 +299,7 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
     // FASE 4: Reset intelligente contatori quando lead risponde
     // Questo azzera consecutiveNoReplyCount, rimuove dormienza/esclusione
     // E IMPOSTA hasEverReplied=true + temperatureLevel='hot' per priorità massima
+    // E RESETTA lastAiEvaluationAt per far ripartire il countdown AI
     // ═══════════════════════════════════════════════════════════════════════════
     await db
       .update(conversationStates)
@@ -314,11 +315,13 @@ export async function handleWebhook(webhookBody: TwilioWebhookBody): Promise<voi
         // Reset warm followup counter for new engagement window
         warmFollowupCount: 0,
         lastWarmFollowupAt: null,
+        // Reset lastAiEvaluationAt to restart AI countdown
+        lastAiEvaluationAt: new Date(),
         updatedAt: new Date(),
       })
       .where(eq(conversationStates.conversationId, conversation.id));
     
-    console.log(`🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, hasEverReplied=true, temperatureLevel=HOT, dormant=null for ${conversation.id}`);
+    console.log(`🔄 [INTELLIGENT-RETRY] Lead responded! Reset: consecutiveNoReplyCount=0, hasEverReplied=true, temperatureLevel=HOT, lastAiEvaluationAt=NOW for ${conversation.id}`);
   }
 
   if (!conversation.aiEnabled) {
