@@ -1657,6 +1657,11 @@ async function evaluateConversation(
         0, 0
       );
       
+      await updateConversationState(candidate.conversationId, {
+        lastAiEvaluationAt: new Date(),
+        aiRecommendation: reasoningMessage,
+      });
+      
       return 'skipped';
     }
     
@@ -1836,6 +1841,11 @@ async function evaluateConversation(
         'system-validation',
         0, 0
       );
+      
+      await updateConversationState(candidate.conversationId, {
+        lastAiEvaluationAt: new Date(),
+        aiRecommendation: aiDecisionReasoningMessage,
+      });
       
       return 'skipped';
     }
