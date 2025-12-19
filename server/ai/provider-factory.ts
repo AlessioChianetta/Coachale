@@ -1274,7 +1274,7 @@ export async function getGoogleAIStudioClientForFileSearch(
   console.log(`${'═'.repeat(70)}\n`);
   
   try {
-    // First check for environment API key (GEMINI_API_KEY)
+    // Priority 1: Environment API key (GEMINI_API_KEY)
     const envApiKey = process.env.GEMINI_API_KEY;
     if (envApiKey) {
       console.log(`✅ Using GEMINI_API_KEY from environment for File Search`);
@@ -1285,12 +1285,12 @@ export async function getGoogleAIStudioClientForFileSearch(
       return {
         client,
         metadata: {
-          name: "Google AI Studio (File Search)",
+          name: "Google AI Studio",
         },
       };
     }
     
-    // Fallback to user's API keys
+    // Get user to check preferences
     const [user] = await db
       .select()
       .from(users)
@@ -1302,11 +1302,32 @@ export async function getGoogleAIStudioClientForFileSearch(
       return null;
     }
 
+    // Priority 2: SuperAdmin Gemini keys (if user opted in)
+    if (user.useSuperadminGemini !== false) {
+      const superAdminKeys = await getSuperAdminGeminiKeys();
+      if (superAdminKeys && superAdminKeys.keys.length > 0) {
+        const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+        const apiKey = superAdminKeys.keys[index];
+        console.log(`✅ Using SuperAdmin Gemini key for File Search (${index + 1}/${superAdminKeys.keys.length})`);
+        
+        const ai = new GoogleGenAI({ apiKey });
+        const client = new GeminiClientAdapter(ai);
+        
+        return {
+          client,
+          metadata: {
+            name: "Google AI Studio",
+          },
+        };
+      }
+    }
+
+    // Priority 3: User's own API keys
     const apiKeys = user.geminiApiKeys || [];
     const currentIndex = user.geminiApiKeyIndex || 0;
 
     if (apiKeys.length === 0) {
-      console.error(`❌ No Gemini API keys available for File Search`);
+      console.error(`❌ No Gemini API keys available for File Search (no env, no superadmin, no user keys)`);
       return null;
     }
 
@@ -1321,7 +1342,7 @@ export async function getGoogleAIStudioClientForFileSearch(
     return {
       client,
       metadata: {
-        name: "Google AI Studio (File Search)",
+        name: "Google AI Studio",
       },
     };
   } catch (error: any) {
