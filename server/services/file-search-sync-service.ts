@@ -34,13 +34,15 @@ import { eq, and, desc, isNotNull, inArray } from "drizzle-orm";
 import { scrapeGoogleDoc } from "../web-scraper";
 import { extractTextFromFile } from "./document-processor";
 
-export type SyncEventType = 'start' | 'progress' | 'error' | 'complete';
+export type SyncEventType = 'start' | 'progress' | 'error' | 'complete' | 'all_complete';
 
 export interface SyncProgressEvent {
   type: SyncEventType;
   item?: string;
   current?: number;
   total?: number;
+  synced?: number;
+  totalSynced?: number;
   category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'client_data';
   error?: string;
   consultantId: string;
@@ -101,6 +103,14 @@ export class SyncProgressEmitter extends EventEmitter {
       category,
       total,
       current: total,
+      consultantId,
+    });
+  }
+
+  emitAllComplete(consultantId: string, totalSynced: number): void {
+    this.emitProgress({
+      type: 'all_complete',
+      totalSynced,
       consultantId,
     });
   }
@@ -1264,6 +1274,10 @@ export class FileSearchSyncService {
       clientsProcessed++;
     }
 
+    const totalSynced = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
+      universityResult.synced + consultationsResult.synced + 
+      totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced;
+    
     console.log(`\n${'═'.repeat(70)}`);
     console.log(`✅ [FileSync] FULL content sync complete for consultant ${consultantId}`);
     console.log(`   📚 Library: ${libraryResult.synced}/${libraryResult.total} synced`);
@@ -1276,6 +1290,8 @@ export class FileSearchSyncService {
     console.log(`      📚 Client Knowledge: ${totalClientKnowledge.synced}/${totalClientKnowledge.total} synced`);
     console.log(`      📞 Client Consultations: ${totalClientConsultations.synced}/${totalClientConsultations.total} synced`);
     console.log(`${'═'.repeat(70)}\n`);
+
+    syncProgressEmitter.emitAllComplete(consultantId, totalSynced);
 
     return {
       library: libraryResult,

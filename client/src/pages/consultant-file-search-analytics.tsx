@@ -47,7 +47,7 @@ import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
 import { getAuthHeaders } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
@@ -243,6 +243,16 @@ interface AuditData {
 
 const COLORS = ['#10b981', '#6366f1', '#f59e0b', '#ef4444'];
 
+interface SyncLogEntry {
+  id: string;
+  timestamp: Date;
+  type: 'info' | 'progress' | 'success' | 'error' | 'complete';
+  message: string;
+  category?: string;
+  current?: number;
+  total?: number;
+}
+
 export default function ConsultantFileSearchAnalyticsPage() {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -254,6 +264,138 @@ export default function ConsultantFileSearchAnalyticsPage() {
   const [clientStoresOpen, setClientStoresOpen] = useState(true);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
   const [openClients, setOpenClients] = useState<Record<string, boolean>>({});
+  
+  const [syncLogs, setSyncLogs] = useState<SyncLogEntry[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncConsoleOpen, setSyncConsoleOpen] = useState(false);
+  const logContainerRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [syncLogs]);
+  
+  const addSyncLog = (type: SyncLogEntry['type'], message: string, extra?: Partial<SyncLogEntry>) => {
+    setSyncLogs(prev => [...prev, {
+      id: `${Date.now()}-${Math.random()}`,
+      timestamp: new Date(),
+      type,
+      message,
+      ...extra
+    }]);
+  };
+  
+  const startSyncWithSSE = async () => {
+    setIsSyncing(true);
+    setSyncConsoleOpen(true);
+    setSyncLogs([]);
+    
+    addSyncLog('info', 'Avvio sincronizzazione...');
+    
+    let eventSource: EventSource | null = null;
+    let sseConnected = false;
+    
+    try {
+      const tokenResponse = await fetch("/api/file-search/sync-token", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      
+      if (tokenResponse.ok) {
+        const { token } = await tokenResponse.json();
+        eventSource = new EventSource(`/api/file-search/sync-events?token=${token}`);
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'connected') {
+              sseConnected = true;
+              addSyncLog('info', 'Console in tempo reale attiva');
+            } else if (data.type === 'start') {
+              addSyncLog('info', `Inizio sync ${data.category}: ${data.total} elementi`, { category: data.category, total: data.total });
+            } else if (data.type === 'progress') {
+              addSyncLog('progress', `[${data.category}] ${data.current}/${data.total}: ${data.item}`, { 
+                category: data.category, 
+                current: data.current, 
+                total: data.total 
+              });
+            } else if (data.type === 'error') {
+              addSyncLog('error', `Errore: ${data.error} - ${data.item || ''}`, { category: data.category });
+            } else if (data.type === 'complete') {
+              const synced = data.synced || data.current || 0;
+              addSyncLog('success', `Completato ${data.category}: ${synced}/${data.total} sincronizzati`, { category: data.category });
+            } else if (data.type === 'all_complete') {
+              addSyncLog('complete', `Sincronizzazione completata! Totale: ${data.totalSynced} documenti`);
+              eventSource?.close();
+              setIsSyncing(false);
+              queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+              queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+              toast({
+                title: "Sincronizzazione completata",
+                description: `${data.totalSynced} documenti sincronizzati con successo.`,
+              });
+            }
+          } catch (e) {
+            console.error('Error parsing SSE:', e);
+          }
+        };
+        
+        eventSource.onerror = () => {
+          if (!sseConnected) {
+            addSyncLog('info', 'Console in tempo reale non disponibile, sincronizzazione in corso...');
+          }
+          eventSource?.close();
+          eventSource = null;
+        };
+      } else {
+        addSyncLog('info', 'Sincronizzazione senza console in tempo reale...');
+      }
+    } catch (e) {
+      addSyncLog('info', 'Sincronizzazione senza console in tempo reale...');
+    }
+    
+    try {
+      const response = await fetch("/api/file-search/sync-all", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Sync failed");
+      }
+      
+      const result = await response.json();
+      
+      setTimeout(() => {
+        eventSource?.close();
+        setIsSyncing(false);
+        if (!sseConnected) {
+          const totalSynced = (result.library?.synced || 0) + (result.knowledgeBase?.synced || 0) + 
+            (result.exercises?.synced || 0) + (result.university?.synced || 0) + (result.consultations?.synced || 0);
+          addSyncLog('complete', `Sincronizzazione completata! ${totalSynced} documenti sincronizzati`);
+        }
+        queryClient.invalidateQueries({ queryKey: ["/api/file-search/analytics"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/file-search/audit"] });
+        toast({
+          title: "Sincronizzazione completata",
+          description: result.message || "Documenti sincronizzati con successo",
+        });
+      }, 1000);
+      
+    } catch (error: any) {
+      eventSource?.close();
+      setIsSyncing(false);
+      addSyncLog('error', `Errore: ${error.message}`);
+      toast({
+        title: "Errore sincronizzazione",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
   
   const toggleCategory = (key: string) => {
     setOpenCategories(prev => ({ ...prev, [key]: !prev[key] }));
@@ -1782,18 +1924,84 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       <h4 className="font-medium mb-4">Sincronizzazione Manuale</h4>
                       <div className="flex flex-col sm:flex-row gap-3">
                         <Button
-                          onClick={() => syncAllMutation.mutate()}
-                          disabled={syncAllMutation.isPending}
+                          onClick={startSyncWithSSE}
+                          disabled={isSyncing}
                           className="flex-1"
                         >
-                          {syncAllMutation.isPending ? (
+                          {isSyncing ? (
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                           ) : (
                             <RefreshCw className="h-4 w-4 mr-2" />
                           )}
                           Sincronizza Tutti i Documenti
                         </Button>
+                        {syncLogs.length > 0 && (
+                          <Button
+                            variant="outline"
+                            onClick={() => setSyncConsoleOpen(!syncConsoleOpen)}
+                          >
+                            {syncConsoleOpen ? <ChevronDown className="h-4 w-4 mr-2" /> : <ChevronRight className="h-4 w-4 mr-2" />}
+                            Console
+                          </Button>
+                        )}
                       </div>
+                      
+                      {syncConsoleOpen && syncLogs.length > 0 && (
+                        <div className="mt-4">
+                          <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
+                            <div className="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700">
+                              <span className="text-sm font-mono text-gray-300 flex items-center gap-2">
+                                <Activity className="h-4 w-4" />
+                                Console Sincronizzazione
+                                {isSyncing && <Loader2 className="h-3 w-3 animate-spin text-emerald-400" />}
+                              </span>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setSyncLogs([])}
+                                className="h-6 text-gray-400 hover:text-white"
+                              >
+                                Pulisci
+                              </Button>
+                            </div>
+                            <div 
+                              ref={logContainerRef}
+                              className="p-3 max-h-64 overflow-y-auto font-mono text-xs space-y-1"
+                            >
+                              {syncLogs.map(log => (
+                                <div 
+                                  key={log.id} 
+                                  className={`flex items-start gap-2 ${
+                                    log.type === 'error' ? 'text-red-400' :
+                                    log.type === 'success' ? 'text-emerald-400' :
+                                    log.type === 'complete' ? 'text-blue-400 font-bold' :
+                                    log.type === 'progress' ? 'text-gray-400' :
+                                    'text-gray-300'
+                                  }`}
+                                >
+                                  <span className="text-gray-500 flex-shrink-0">
+                                    {log.timestamp.toLocaleTimeString('it-IT')}
+                                  </span>
+                                  <span className="flex-shrink-0">
+                                    {log.type === 'error' ? '❌' :
+                                     log.type === 'success' ? '✅' :
+                                     log.type === 'complete' ? '🎉' :
+                                     log.type === 'progress' ? '📄' :
+                                     'ℹ️'}
+                                  </span>
+                                  <span className="break-all">{log.message}</span>
+                                </div>
+                              ))}
+                              {isSyncing && (
+                                <div className="text-emerald-400 animate-pulse">
+                                  ▌ In elaborazione...
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
                       {settings?.lastSyncAt && (
                         <p className="text-sm text-gray-500 mt-3 flex items-center gap-2">
                           <Clock className="h-4 w-4" />

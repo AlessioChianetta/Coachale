@@ -1,10 +1,22 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { authenticateToken, requireRole, type AuthRequest } from '../middleware/auth';
 import { fileSearchService } from '../ai/file-search-service';
 import { fileSearchSyncService } from '../services/file-search-sync-service';
 import { db } from '../db';
 import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users } from '../../shared/schema';
 import { eq, desc, sql, and, gte, isNull, isNotNull, inArray } from 'drizzle-orm';
+import crypto from 'crypto';
+
+const sseTokenStore = new Map<string, { consultantId: string; expiresAt: number }>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, data] of sseTokenStore.entries()) {
+    if (data.expiresAt < now) {
+      sseTokenStore.delete(token);
+    }
+  }
+}, 60000);
 
 const router = Router();
 
@@ -1060,16 +1072,48 @@ router.get('/client/documents', authenticateToken, requireRole('client'), async 
 });
 
 /**
+ * POST /api/file-search/sync-token
+ * Generate a short-lived token for SSE connection
+ * This is more secure than passing JWT in query params
+ */
+router.post('/sync-token', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  const consultantId = req.user!.id;
+  
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = Date.now() + 5 * 60 * 1000;
+  
+  sseTokenStore.set(token, { consultantId, expiresAt });
+  
+  res.json({ token, expiresIn: 300 });
+});
+
+/**
  * GET /api/file-search/sync-events
  * SSE endpoint for real-time sync progress updates
+ * 
+ * Authentication: Uses short-lived token from /sync-token endpoint
+ * Token is kept valid for TTL to allow EventSource automatic reconnects
+ * Token is invalidated when connection closes normally
  * 
  * Event format:
  * data: {"type":"progress","item":"Document Name","current":5,"total":20,"category":"library"}
  * 
- * Event types: 'start', 'progress', 'error', 'complete'
+ * Event types: 'start', 'progress', 'error', 'complete', 'all_complete'
  */
-router.get('/sync-events', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
-  const consultantId = req.user!.id;
+router.get('/sync-events', async (req: Request, res: Response) => {
+  const token = req.query.token as string;
+  
+  if (!token) {
+    return res.status(401).json({ error: 'SSE token required' });
+  }
+  
+  const tokenData = sseTokenStore.get(token);
+  if (!tokenData || tokenData.expiresAt < Date.now()) {
+    sseTokenStore.delete(token);
+    return res.status(401).json({ error: 'Invalid or expired SSE token' });
+  }
+  
+  const consultantId = tokenData.consultantId;
   
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -1089,6 +1133,10 @@ router.get('/sync-events', authenticateToken, requireRole('consultant'), async (
   const eventHandler = (event: any) => {
     const { consultantId: _, ...eventData } = event;
     res.write(`data: ${JSON.stringify(eventData)}\n\n`);
+    
+    if (event.type === 'all_complete') {
+      sseTokenStore.delete(token);
+    }
   };
 
   syncProgressEmitter.on(`sync:${consultantId}`, eventHandler);
@@ -1096,6 +1144,7 @@ router.get('/sync-events', authenticateToken, requireRole('consultant'), async (
   req.on('close', () => {
     clearInterval(heartbeatInterval);
     syncProgressEmitter.off(`sync:${consultantId}`, eventHandler);
+    sseTokenStore.delete(token);
     res.end();
   });
 });
