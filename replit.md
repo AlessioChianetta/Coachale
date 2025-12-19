@@ -24,6 +24,8 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Categorized Sidebar Navigation for consultants with state persistence.
 ## AI Integration - Percorso Capitale
 - Provides personalized financial insights using real-time financial data. Designed for graceful degradation.
+- **Daily Pre-fetch Scheduler**: Runs at 6:00 AM to warm cache for all users with active finance settings, eliminating per-prompt latency (~16s reduction).
+- **External Services Sidebar**: ContractAle, ConOrbitale, CrmAle links + configurable SiteAle URL per user.
 ## AI Knowledge Base System
 - Enables both consultants and clients to upload internal documents (PDF, DOCX, TXT) and configure external API integrations for AI context. Features include automatic text extraction, indexing, priority-based ranking, document preview, optional AI summaries, custom tags, and usage tracking.
 - Multi-tenant isolation ensures data privacy.
@@ -35,12 +37,16 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - Each consultant has their own FileSearchStore for their documents
   - Clients access their consultant's store + system-wide documents
   - Documents are automatically synced when uploaded to knowledge base
+  - **Mixed-role support**: Users who are both consultants AND clients access both their own stores AND their parent consultant's stores
 - **Key Components**:
   - `server/ai/file-search-service.ts`: Core service with CRUD operations, chunking config, and citation parsing
-  - `server/services/file-search-sync-service.ts`: Auto-syncs libraryDocuments to FileSearchStore
-  - `server/routes/file-search.ts`: API routes for stores management and sync
+  - `server/services/file-search-sync-service.ts`: Auto-syncs libraryDocuments to FileSearchStore with SSE progress events
+  - `server/routes/file-search.ts`: API routes for stores management, sync, and SSE real-time updates
 - **Database Tables**: `file_search_stores`, `file_search_documents` for tracking indexed content
 - **AI Integration**: FileSearch tool is automatically added to all `generateContent` calls when stores are available, enabling semantic retrieval with automatic citations.
+- **Real-time Sync Progress**: SSE endpoint `/api/file-search/sync-events` streams sync progress with heartbeat
+- **Hierarchical Analytics UI**: Contents organized by category (Library by type, University by Year>Trimester>Module>Lesson, KB by format, Exercises by category, Consultations by client)
+- **Client Documents Page**: Clients can view all AI-accessible documents at `/client/documents`
 ## Advanced Consultation Management System
 - **AI-powered Email Automation**: Generates personalized motivational emails via Google Gemini, requiring consultant approval.
 - **AI-Powered Client State Tracking**: Analyzes system context to generate current and ideal client states.

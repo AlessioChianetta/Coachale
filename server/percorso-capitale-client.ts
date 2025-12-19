@@ -25,14 +25,16 @@ export class PercorsoCapitaleClient {
   private cacheMisses: number = 0;
   private requestCount: number = 0;
 
+  // TTL extended to last until next scheduler run (6:00 AM daily)
+  // Pre-fetch scheduler populates cache, so TTL should be ~24h
   private readonly TTL_CONFIG = {
-    dashboard: 5 * 60 * 1000,
-    categoryBudgets: 60 * 60 * 1000,
-    transactions: 60 * 60 * 1000,
-    accountArchitecture: 24 * 60 * 60 * 1000,
-    budgetSettings: 24 * 60 * 60 * 1000,
-    investments: 4 * 60 * 60 * 1000,
-    goals: 6 * 60 * 60 * 1000,
+    dashboard: 24 * 60 * 60 * 1000,      // 24h (was 5 min) - pre-fetched daily
+    categoryBudgets: 24 * 60 * 60 * 1000, // 24h (was 1h)
+    transactions: 24 * 60 * 60 * 1000,    // 24h (was 1h)
+    accountArchitecture: 24 * 60 * 60 * 1000, // 24h (unchanged)
+    budgetSettings: 24 * 60 * 60 * 1000,  // 24h (unchanged)
+    investments: 24 * 60 * 60 * 1000,     // 24h (was 4h)
+    goals: 24 * 60 * 60 * 1000,           // 24h (was 6h)
   };
 
   private constructor(apiKey: string, baseUrl: string, userEmail: string) {

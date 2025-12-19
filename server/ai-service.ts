@@ -505,13 +505,27 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
   });
 
   try {
-    // SEMPRE carica contenuto esercizi - l'AI deve avere accesso COMPLETO ai Google Docs
     let enhancedMessage = message;
     const messageLower = message.toLowerCase();
 
-    // SEMPRE carica esercizi se ce ne sono (rimossa condizione parole chiave)
-    if (userContext.exercises.all.length > 0) {
-      console.log('📚 ALWAYS loading exercise content - AI must have FULL Google Docs access...');
+    // Check if exercises are indexed in File Search before deciding to scrape
+    let exercisesIndexedInFileSearch = false;
+    if (hasFileSearch && userContext.exercises.all.length > 0) {
+      // Check how many exercises are indexed in File Search
+      const exerciseIds = userContext.exercises.all.map(e => e.id);
+      let indexedCount = 0;
+      for (const exerciseId of exerciseIds.slice(0, 10)) { // Check first 10 max
+        const isIndexed = await fileSearchService.isDocumentIndexed('exercise', exerciseId);
+        if (isIndexed) indexedCount++;
+      }
+      // Consider exercises indexed if at least 50% are in File Search
+      exercisesIndexedInFileSearch = indexedCount >= Math.min(5, exerciseIds.length * 0.5);
+      console.log(`🔍 [FileSearch] Exercises indexed check: ${indexedCount}/${Math.min(10, exerciseIds.length)} checked, using FileSearch: ${exercisesIndexedInFileSearch}`);
+    }
+
+    // Load exercise content ONLY if NOT indexed in File Search
+    if (userContext.exercises.all.length > 0 && !exercisesIndexedInFileSearch) {
+      console.log('📚 Loading exercise content - exercises NOT in File Search, need full Google Docs access...');
 
       // Try to find which exercise(s) the user is referring to
       const matchedExercises = userContext.exercises.all.filter(exercise => {
@@ -1186,9 +1200,22 @@ export async function* sendChatMessageStream(request: ChatRequest): AsyncGenerat
     // Update conversational context
     updateConversationalContext(conversation.id, mentionedExerciseIds, modificationHintDetected);
 
-    // SEMPRE carica esercizi se ce ne sono (rimossa condizione parole chiave)
-    if (userContext.exercises.all.length > 0) {
-      console.log('📚 ALWAYS loading exercise content - AI must have FULL Google Docs access...');
+    // Check if exercises are indexed in File Search before deciding to scrape
+    let exercisesIndexedInFileSearch = false;
+    if (hasFileSearch && userContext.exercises.all.length > 0) {
+      const exerciseIds = userContext.exercises.all.map(e => e.id);
+      let indexedCount = 0;
+      for (const exerciseId of exerciseIds.slice(0, 10)) {
+        const isIndexed = await fileSearchService.isDocumentIndexed('exercise', exerciseId);
+        if (isIndexed) indexedCount++;
+      }
+      exercisesIndexedInFileSearch = indexedCount >= Math.min(5, exerciseIds.length * 0.5);
+      console.log(`🔍 [FileSearch] Exercises indexed check: ${indexedCount}/${Math.min(10, exerciseIds.length)} checked, using FileSearch: ${exercisesIndexedInFileSearch}`);
+    }
+
+    // Load exercise content ONLY if NOT indexed in File Search
+    if (userContext.exercises.all.length > 0 && !exercisesIndexedInFileSearch) {
+      console.log('📚 Loading exercise content - exercises NOT in File Search, need full Google Docs access...');
 
       // Try to find which exercise(s) the user is referring to
       const matchedExercises = userContext.exercises.all.filter(exercise => {
