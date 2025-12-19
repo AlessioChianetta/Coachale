@@ -778,48 +778,59 @@ function ConversationCard({ conversation }: { conversation: ConversationTimeline
                       )}
 
                       {event.messagePreview && (
-                        <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <MessageSquare className="h-3 w-3" />
-                              {event.templateName ? `Template: ${event.templateName}` : 'Messaggio AI'}
-                            </p>
+                        <div className="mt-2 relative">
+                          <div className="flex items-center gap-2 mb-1.5">
                             {(() => {
                               const templateStatus = getTemplateStatusConfig(event.templateTwilioStatus, !!event.templateId);
+                              const isTemplate = !!event.templateId;
                               return (
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <span className={`text-xs flex items-center gap-1 ${templateStatus.color}`}>
-                                        <span>{templateStatus.icon}</span>
-                                        <span className="hidden sm:inline">{templateStatus.label}</span>
+                                      <span className={`text-xs font-medium flex items-center gap-1 px-1.5 py-0.5 rounded ${
+                                        isTemplate 
+                                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' 
+                                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                      }`}>
+                                        {isTemplate ? <FileText className="h-3 w-3" /> : <MessageCircle className="h-3 w-3" />}
+                                        {isTemplate ? 'Template' : 'AI'}
+                                        <span className={templateStatus.color}>{templateStatus.icon}</span>
                                       </span>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>{templateStatus.tooltip}</p>
+                                      <p>{isTemplate ? `${event.templateName}` : 'Messaggio generato dall\'AI'}</p>
+                                      <p className="text-xs opacity-70">{templateStatus.tooltip}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
                               );
                             })()}
                           </div>
-                          <p className={`text-xs italic ${showFullMessagePreview[event.id] ? '' : 'line-clamp-3'}`}>"{event.messagePreview}"</p>
-                          {event.messagePreview.length > 150 && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowFullMessagePreview(prev => ({ ...prev, [event.id]: !prev[event.id] }));
-                              }}
-                              className="text-xs text-blue-600 hover:underline mt-1"
-                            >
-                              {showFullMessagePreview[event.id] ? 'Mostra meno' : 'Mostra tutto'}
-                            </button>
-                          )}
-                          {event.aiSelectedTemplateReasoning && (
-                            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5 flex items-center gap-1">
-                              <Brain className="h-3 w-3" />
-                              <span className="font-medium">AI:</span> {event.aiSelectedTemplateReasoning}
+                          
+                          <div className="pl-3 border-l-2 border-gray-200 dark:border-gray-700">
+                            <p className={`text-xs text-muted-foreground leading-relaxed ${showFullMessagePreview[event.id] ? '' : 'line-clamp-2'}`}>
+                              {event.messagePreview}
                             </p>
+                            {event.messagePreview.length > 100 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowFullMessagePreview(prev => ({ ...prev, [event.id]: !prev[event.id] }));
+                                }}
+                                className="text-xs text-blue-600 hover:underline mt-0.5"
+                              >
+                                {showFullMessagePreview[event.id] ? '▲ meno' : '▼ tutto'}
+                              </button>
+                            )}
+                          </div>
+                          
+                          {event.aiSelectedTemplateReasoning && (
+                            <div className="mt-1.5 pl-3 border-l-2 border-purple-200 dark:border-purple-800">
+                              <p className="text-xs text-purple-600 dark:text-purple-400 flex items-start gap-1">
+                                <Brain className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                <span className="leading-relaxed">{event.aiSelectedTemplateReasoning}</span>
+                              </p>
+                            </div>
                           )}
                         </div>
                       )}
