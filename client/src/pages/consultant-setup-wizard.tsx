@@ -426,20 +426,20 @@ export default function ConsultantSetupWizard() {
         headers: getAuthHeaders(),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Test failed");
+      if (!res.ok) throw new Error(data.message || data.error || "Test failed");
       return { ...data, stepName };
     },
     onSuccess: (data) => {
       triggerMiniConfetti();
       toast({
-        title: `🎉 ${data.stepName} Verificato`,
+        title: `${data.stepName} Verificato`,
         description: data.message,
       });
       refetch();
     },
     onError: (error: Error) => {
       toast({
-        title: "Test Fallito",
+        title: "Configurazione Incompleta",
         description: error.message,
         variant: "destructive",
       });
