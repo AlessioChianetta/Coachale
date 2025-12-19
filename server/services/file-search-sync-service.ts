@@ -27,6 +27,8 @@ import {
 } from "../../shared/schema";
 import { fileSearchService } from "../ai/file-search-service";
 import { eq, and, desc, isNotNull, inArray } from "drizzle-orm";
+import { scrapeGoogleDoc } from "../web-scraper";
+import { extractTextFromFile } from "./document-processor";
 
 export class FileSearchSyncService {
   /**
@@ -447,8 +449,22 @@ export class FileSearchSyncService {
         }
       }
 
-      // Build exercise content for indexing
-      const content = this.buildExerciseContent(exercise);
+      // Scrape workPlatform content if it's a Google Doc URL
+      let workPlatformContent: string | null = null;
+      if (exercise.workPlatform && exercise.workPlatform.includes('docs.google.com')) {
+        try {
+          console.log(`🔍 [FileSync] Scraping Google Doc for exercise: ${exercise.title}`);
+          workPlatformContent = await scrapeGoogleDoc(exercise.workPlatform);
+          if (workPlatformContent) {
+            console.log(`✅ [FileSync] Scraped ${workPlatformContent.length} chars from Google Doc`);
+          }
+        } catch (scrapeError: any) {
+          console.warn(`⚠️ [FileSync] Failed to scrape Google Doc for ${exercise.title}: ${scrapeError.message}`);
+        }
+      }
+
+      // Build exercise content for indexing (including scraped content)
+      const content = this.buildExerciseContent(exercise, workPlatformContent);
       
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
         content: content,
@@ -473,8 +489,10 @@ export class FileSearchSyncService {
 
   /**
    * Build searchable content from an exercise
+   * @param exercise - The exercise object
+   * @param workPlatformContent - Optional scraped content from workPlatform (Google Doc)
    */
-  private static buildExerciseContent(exercise: any): string {
+  private static buildExerciseContent(exercise: any, workPlatformContent?: string | null): string {
     const parts: string[] = [];
     
     parts.push(`# ${exercise.title}`);
@@ -502,7 +520,12 @@ export class FileSearchSyncService {
     }
     
     if (exercise.workPlatform) {
-      parts.push(`\n## Piattaforma di lavoro\n${exercise.workPlatform}`);
+      parts.push(`\n## Piattaforma di lavoro\nURL: ${exercise.workPlatform}`);
+    }
+
+    // Include scraped content from Google Doc if available
+    if (workPlatformContent) {
+      parts.push(`\n## Contenuto Documento\n${workPlatformContent}`);
     }
     
     return parts.join('\n');
@@ -1000,7 +1023,7 @@ export class FileSearchSyncService {
   }
 
   /**
-   * Sync ALL content for a consultant (library + knowledge base + exercises + university + consultations)
+   * Sync ALL content for a consultant (library + knowledge base + exercises + university + consultations + client private data)
    */
   static async syncAllContentForConsultant(consultantId: string): Promise<{
     library: { total: number; synced: number; failed: number; errors: string[] };
@@ -1008,16 +1031,62 @@ export class FileSearchSyncService {
     exercises: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
     university: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
     consultations: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
+    clientPrivateData?: {
+      clientsProcessed: number;
+      exerciseResponses: { total: number; synced: number; failed: number };
+      clientKnowledge: { total: number; synced: number; failed: number };
+      clientConsultations: { total: number; synced: number; failed: number };
+    };
   }> {
     console.log(`\n${'═'.repeat(70)}`);
     console.log(`🔄 [FileSync] Starting FULL content sync for consultant ${consultantId}`);
     console.log(`${'═'.repeat(70)}\n`);
 
+    // Sync consultant's global resources
     const libraryResult = await this.syncAllLibraryDocuments(consultantId);
     const knowledgeResult = await this.syncAllConsultantKnowledgeDocuments(consultantId);
     const exercisesResult = await this.syncAllExercises(consultantId);
     const universityResult = await this.syncAllUniversityLessons(consultantId);
     const consultationsResult = await this.syncAllConsultations(consultantId);
+
+    // Sync client private data (exercise responses, client knowledge, client consultations)
+    console.log(`\n${'─'.repeat(70)}`);
+    console.log(`🔐 [FileSync] Syncing CLIENT PRIVATE data...`);
+    console.log(`${'─'.repeat(70)}`);
+
+    const clients = await db
+      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(and(eq(users.consultantId, consultantId), eq(users.role, 'client')));
+
+    let clientsProcessed = 0;
+    let totalExerciseResponses = { total: 0, synced: 0, failed: 0 };
+    let totalClientKnowledge = { total: 0, synced: 0, failed: 0 };
+    let totalClientConsultations = { total: 0, synced: 0, failed: 0 };
+
+    for (const client of clients) {
+      console.log(`   📋 Processing client: ${client.firstName} ${client.lastName} (${client.id.substring(0, 8)}...)`);
+      
+      // Sync exercise responses to client's private store
+      const exerciseResponsesResult = await this.syncAllClientExerciseResponses(client.id, consultantId);
+      totalExerciseResponses.total += exerciseResponsesResult.total;
+      totalExerciseResponses.synced += exerciseResponsesResult.synced;
+      totalExerciseResponses.failed += exerciseResponsesResult.failed;
+
+      // Sync client knowledge documents to client's private store
+      const clientKnowledgeResult = await this.syncAllClientKnowledgeDocuments(client.id, consultantId);
+      totalClientKnowledge.total += clientKnowledgeResult.total;
+      totalClientKnowledge.synced += clientKnowledgeResult.synced;
+      totalClientKnowledge.failed += clientKnowledgeResult.failed;
+
+      // Sync client consultations to client's private store
+      const clientConsultationsResult = await this.syncAllClientConsultations(client.id, consultantId);
+      totalClientConsultations.total += clientConsultationsResult.total;
+      totalClientConsultations.synced += clientConsultationsResult.synced;
+      totalClientConsultations.failed += clientConsultationsResult.failed;
+
+      clientsProcessed++;
+    }
 
     console.log(`\n${'═'.repeat(70)}`);
     console.log(`✅ [FileSync] FULL content sync complete for consultant ${consultantId}`);
@@ -1026,6 +1095,10 @@ export class FileSearchSyncService {
     console.log(`   🏋️ Exercises: ${exercisesResult.synced}/${exercisesResult.total} synced`);
     console.log(`   🎓 University: ${universityResult.synced}/${universityResult.total} synced`);
     console.log(`   📞 Consultations: ${consultationsResult.synced}/${consultationsResult.total} synced`);
+    console.log(`   🔐 Client Private Data (${clientsProcessed} clients):`);
+    console.log(`      📝 Exercise Responses: ${totalExerciseResponses.synced}/${totalExerciseResponses.total} synced`);
+    console.log(`      📚 Client Knowledge: ${totalClientKnowledge.synced}/${totalClientKnowledge.total} synced`);
+    console.log(`      📞 Client Consultations: ${totalClientConsultations.synced}/${totalClientConsultations.total} synced`);
     console.log(`${'═'.repeat(70)}\n`);
 
     return {
@@ -1034,6 +1107,12 @@ export class FileSearchSyncService {
       exercises: exercisesResult,
       university: universityResult,
       consultations: consultationsResult,
+      clientPrivateData: {
+        clientsProcessed,
+        exerciseResponses: totalExerciseResponses,
+        clientKnowledge: totalClientKnowledge,
+        clientConsultations: totalClientConsultations,
+      },
     };
   }
 
@@ -1100,8 +1179,49 @@ export class FileSearchSyncService {
         return { success: false, error: 'Failed to get or create client private store' };
       }
 
-      // Build content from the submission
-      const content = this.buildExerciseSubmissionContent(exercise, submission, assignment);
+      // Extract text from uploaded files (Word, PDF, etc.)
+      const extractedFileContents: Array<{ fileName: string; content: string }> = [];
+      
+      // Check for uploaded files in answers
+      if (submission.answers && Array.isArray(submission.answers)) {
+        for (const answer of submission.answers) {
+          if (answer.uploadedFiles && Array.isArray(answer.uploadedFiles)) {
+            for (const filePath of answer.uploadedFiles) {
+              try {
+                const fileName = filePath.split('/').pop() || filePath;
+                console.log(`🔍 [FileSync] Extracting text from uploaded file: ${fileName}`);
+                const extractedText = await extractTextFromFile(filePath);
+                if (extractedText && extractedText.trim().length > 0) {
+                  extractedFileContents.push({ fileName, content: extractedText });
+                  console.log(`✅ [FileSync] Extracted ${extractedText.length} chars from ${fileName}`);
+                }
+              } catch (extractError: any) {
+                console.warn(`⚠️ [FileSync] Failed to extract text from ${filePath}: ${extractError.message}`);
+              }
+            }
+          }
+        }
+      }
+      
+      // Also check attachments array
+      if (submission.attachments && Array.isArray(submission.attachments)) {
+        for (const filePath of submission.attachments) {
+          try {
+            const fileName = filePath.split('/').pop() || filePath;
+            console.log(`🔍 [FileSync] Extracting text from attachment: ${fileName}`);
+            const extractedText = await extractTextFromFile(filePath);
+            if (extractedText && extractedText.trim().length > 0) {
+              extractedFileContents.push({ fileName, content: extractedText });
+              console.log(`✅ [FileSync] Extracted ${extractedText.length} chars from ${fileName}`);
+            }
+          } catch (extractError: any) {
+            console.warn(`⚠️ [FileSync] Failed to extract text from attachment ${filePath}: ${extractError.message}`);
+          }
+        }
+      }
+
+      // Build content from the submission (including extracted file contents)
+      const content = this.buildExerciseSubmissionContent(exercise, submission, assignment, extractedFileContents);
 
       // Upload to client's PRIVATE store
       const uploadResult = await fileSearchService.uploadDocumentFromContent({
@@ -1128,8 +1248,17 @@ export class FileSearchSyncService {
 
   /**
    * Build searchable content from an exercise submission
+   * @param exercise - The exercise definition
+   * @param submission - The submission object
+   * @param assignment - The assignment object
+   * @param extractedFileContents - Optional array of extracted text from uploaded files
    */
-  private static buildExerciseSubmissionContent(exercise: any, submission: any, assignment: any): string {
+  private static buildExerciseSubmissionContent(
+    exercise: any, 
+    submission: any, 
+    assignment: any,
+    extractedFileContents?: Array<{ fileName: string; content: string }>
+  ): string {
     const parts: string[] = [];
     
     parts.push(`# Risposta Esercizio: ${exercise.title}`);
@@ -1171,6 +1300,15 @@ export class FileSearchSyncService {
       parts.push(`\n## Feedback del consulente`);
       assignment.consultantFeedback.forEach((fb: any) => {
         parts.push(`- ${fb.feedback}`);
+      });
+    }
+
+    // Include extracted content from uploaded files (Word, PDF, etc.)
+    if (extractedFileContents && extractedFileContents.length > 0) {
+      parts.push(`\n## Contenuto File Allegati`);
+      extractedFileContents.forEach((file) => {
+        parts.push(`\n### File: ${file.fileName}`);
+        parts.push(file.content);
       });
     }
     
@@ -1968,7 +2106,7 @@ export class FileSearchSyncService {
     const indexedLibraryIds = new Set(indexedDocs.filter(d => d.sourceType === 'library').map(d => d.sourceId));
     const indexedKnowledgeIds = new Set(indexedDocs.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
     const indexedExerciseIds = new Set(indexedDocs.filter(d => d.sourceType === 'exercise').map(d => d.sourceId));
-    const indexedUniversityIds = new Set(indexedDocs.filter(d => d.sourceType === 'university').map(d => d.sourceId));
+    const indexedUniversityIds = new Set(indexedDocs.filter(d => d.sourceType === 'university_lesson').map(d => d.sourceId));
 
     // Calculate missing
     const libraryMissing = libraryDocs.filter(d => !indexedLibraryIds.has(d.id)).map(d => ({ id: d.id, title: d.title, type: d.type || 'document' }));
