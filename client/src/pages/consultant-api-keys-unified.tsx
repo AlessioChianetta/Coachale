@@ -987,7 +987,7 @@ export default function ConsultantApiKeysUnified() {
     queryKey: ["/api/consultant/gemini-preference"],
     queryFn: async () => {
       const response = await fetch("/api/consultant/gemini-preference", {
-        credentials: "include",
+        headers: getAuthHeaders(),
       });
       if (response.status === 404) return { useSuperAdminGemini: true, superAdminGeminiAvailable: false, hasOwnGeminiKeys: false };
       if (!response.ok) throw new Error("Errore nel caricamento preferenza Gemini");
@@ -1003,8 +1003,10 @@ export default function ConsultantApiKeysUnified() {
       const newValue = !geminiPreference?.useSuperAdminGemini;
       const response = await fetch("/api/consultant/gemini-preference", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: { 
+          ...getAuthHeaders(),
+          "Content-Type": "application/json" 
+        },
         body: JSON.stringify({ useSuperAdminGemini: newValue }),
       });
       if (!response.ok) throw new Error("Errore nel salvataggio");
