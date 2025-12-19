@@ -40,9 +40,9 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - Documents are automatically synced when uploaded to knowledge base
   - **Mixed-role support**: Users who are both consultants AND clients access both their own stores AND their parent consultant's stores
 - **Key Components**:
-  - `server/ai/file-search-service.ts`: Core service with CRUD operations, chunking config, and citation parsing
-  - `server/services/file-search-sync-service.ts`: Auto-syncs libraryDocuments to FileSearchStore with SSE progress events
-  - `server/routes/file-search.ts`: API routes for stores management, sync, and SSE real-time updates
+  - `server/ai/file-search-service.ts`: Core service with CRUD operations, chunking config, citation parsing, and 3-tier Gemini API key system (`getClientForUser(userId)`)
+  - `server/services/file-search-sync-service.ts`: Auto-syncs libraryDocuments to FileSearchStore with SSE progress events. Supports cascade sync: when library documents sync, linked university lessons auto-update via `syncUniversityLesson(forceUpdate=true)`
+  - `server/routes/file-search.ts`: API routes for stores management, sync, and SSE real-time updates. Analytics endpoint uses `isApiKeyConfigured(userId)` for 3-tier key verification
 - **Database Tables**: `file_search_stores`, `file_search_documents` for tracking indexed content
 - **AI Integration**: FileSearch tool is automatically added to all `generateContent` calls when stores are available, enabling semantic retrieval with automatic citations.
 - **Real-time Sync Progress**: SSE endpoint `/api/file-search/sync-events` streams sync progress with heartbeat
