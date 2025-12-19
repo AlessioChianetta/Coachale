@@ -578,6 +578,7 @@ export interface IStorage {
   createUserFinanceSettings(settings: InsertUserFinanceSettings): Promise<UserFinanceSettings>;
   updateUserFinanceSettings(userId: string, updates: Partial<InsertUserFinanceSettings>): Promise<UserFinanceSettings | null>;
   deleteUserFinanceSettings(userId: string): Promise<boolean>;
+  getAllActiveFinanceSettings(): Promise<UserFinanceSettings[]>;
 
   // Calendar Events operations
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
@@ -1065,7 +1066,8 @@ export class DatabaseStorage implements IStorage {
     const consultations = await db.select()
       .from(schema.consultations)
       .leftJoin(schema.users, eq(schema.consultations.consultantId, schema.users.id))
-      .where(eq(schema.consultations.clientId, clientId));
+      .where(eq(schema.consultations.clientId, clientId))
+      .orderBy(desc(schema.consultations.scheduledAt));
 
     return consultations.map(row => ({
       ...row.consultations,
@@ -3962,6 +3964,19 @@ export class DatabaseStorage implements IStorage {
     } catch (error: any) {
       console.error("Error deleting user finance settings:", error);
       return false;
+    }
+  }
+
+  async getAllActiveFinanceSettings(): Promise<UserFinanceSettings[]> {
+    try {
+      const settings = await db
+        .select()
+        .from(schema.userFinanceSettings)
+        .where(eq(schema.userFinanceSettings.isEnabled, true));
+      return settings;
+    } catch (error: any) {
+      console.error("Error fetching all active finance settings:", error);
+      return [];
     }
   }
 

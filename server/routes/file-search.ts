@@ -11,13 +11,19 @@ const router = Router();
 /**
  * GET /api/file-search/stores
  * Get all FileSearchStores for current user
+ * 
+ * Handles edge cases:
+ * - Pure consultant: returns their own stores
+ * - Pure client: returns their consultant's stores
+ * - Mixed consultant+client (like Fernando): returns BOTH their own stores AND parent consultant's stores
  */
 router.get('/stores', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user!.id;
     const role = req.user!.role as 'consultant' | 'client';
+    const consultantId = req.user!.consultantId; // May be set even if role is 'consultant' (mixed case)
     
-    const stores = await fileSearchService.getStoresForUser(userId, role);
+    const stores = await fileSearchService.getStoresForUser(userId, role, consultantId);
     res.json(stores);
   } catch (error: any) {
     console.error('[FileSearch API] Error fetching stores:', error);
@@ -860,6 +866,120 @@ router.get('/client/analytics', authenticateToken, requireRole('client'), async 
     });
   } catch (error: any) {
     console.error('[FileSearch API] Error fetching client analytics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/file-search/client/documents
+ * Get ALL File Search documents accessible to the client (consultant's shared store + client's private store)
+ * This shows the client what documents the AI has access to when answering questions
+ */
+router.get('/client/documents', authenticateToken, requireRole('client'), async (req: AuthRequest, res) => {
+  try {
+    const clientId = req.user!.id;
+    const consultantId = req.user!.consultantId;
+    
+    if (!consultantId) {
+      return res.json({
+        success: true,
+        documents: [],
+        summary: {
+          total: 0,
+          bySourceType: {},
+          consultantDocs: 0,
+          clientDocs: 0,
+        },
+        message: 'Nessun consulente associato',
+      });
+    }
+    
+    const ownerIds = [consultantId, clientId];
+    
+    const stores = await db
+      .select()
+      .from(fileSearchStores)
+      .where(inArray(fileSearchStores.ownerId, ownerIds));
+    
+    if (stores.length === 0) {
+      return res.json({
+        success: true,
+        documents: [],
+        summary: {
+          total: 0,
+          bySourceType: {},
+          consultantDocs: 0,
+          clientDocs: 0,
+        },
+        message: 'Nessuno store File Search configurato',
+      });
+    }
+    
+    const storeIds = stores.map(s => s.id);
+    
+    const documents = await db
+      .select({
+        id: fileSearchDocuments.id,
+        fileName: fileSearchDocuments.fileName,
+        displayName: fileSearchDocuments.displayName,
+        mimeType: fileSearchDocuments.mimeType,
+        status: fileSearchDocuments.status,
+        sourceType: fileSearchDocuments.sourceType,
+        sourceId: fileSearchDocuments.sourceId,
+        uploadedAt: fileSearchDocuments.uploadedAt,
+        indexedAt: fileSearchDocuments.indexedAt,
+        contentSize: fileSearchDocuments.contentSize,
+        storeId: fileSearchDocuments.storeId,
+        storeDisplayName: fileSearchStores.displayName,
+        storeOwnerId: fileSearchStores.ownerId,
+        storeOwnerType: fileSearchStores.ownerType,
+      })
+      .from(fileSearchDocuments)
+      .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
+      .where(inArray(fileSearchDocuments.storeId, storeIds))
+      .orderBy(desc(fileSearchDocuments.uploadedAt));
+    
+    const consultantDocs = documents.filter(d => d.storeOwnerId === consultantId);
+    const clientDocs = documents.filter(d => d.storeOwnerId === clientId);
+    
+    const bySourceType: Record<string, number> = {};
+    documents.forEach(d => {
+      const type = d.sourceType || 'other';
+      bySourceType[type] = (bySourceType[type] || 0) + 1;
+    });
+    
+    const formattedDocs = documents.map(d => ({
+      id: d.id,
+      name: d.displayName || d.fileName,
+      fileName: d.fileName,
+      mimeType: d.mimeType,
+      status: d.status,
+      sourceType: d.sourceType,
+      sourceId: d.sourceId,
+      syncedAt: d.indexedAt || d.uploadedAt,
+      contentSize: d.contentSize,
+      isFromConsultant: d.storeOwnerId === consultantId,
+      storeDisplayName: d.storeDisplayName,
+    }));
+    
+    res.json({
+      success: true,
+      documents: formattedDocs,
+      summary: {
+        total: documents.length,
+        bySourceType,
+        consultantDocs: consultantDocs.length,
+        clientDocs: clientDocs.length,
+      },
+      stores: stores.map(s => ({
+        id: s.id,
+        displayName: s.displayName,
+        ownerType: s.ownerType,
+        documentCount: s.documentCount,
+      })),
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error fetching client documents:', error);
     res.status(500).json({ error: error.message });
   }
 });

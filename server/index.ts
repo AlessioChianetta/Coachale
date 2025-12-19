@@ -2,7 +2,8 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { sendAutomatedEmails } from "./services/email-scheduler";
-import { ensureEmailScheduler } from "./services/scheduler-registry";
+import { ensureEmailScheduler, ensureScheduler } from "./services/scheduler-registry";
+import { runFinanceDataPrefetch } from "./services/finance-data-scheduler";
 import { storage } from "./storage";
 import { startWhatsAppPolling } from "./whatsapp/polling-service";
 import { startGhostConversationCleanup } from "./whatsapp/cleanup-ghost-conversations";
@@ -316,5 +317,49 @@ app.use((req, res, next) => {
     log("✅ Follow-up scheduler started");
   } else {
     log("⚡ Follow-up scheduler is disabled (set FOLLOWUP_SCHEDULER_ENABLED=true to enable)");
+  }
+
+  // Setup Finance Data Pre-fetch Scheduler (Daily at 6:00 AM)
+  const financePrefetchEnabled = process.env.FINANCE_PREFETCH_ENABLED !== "false";
+  const financePrefetchSchedule = process.env.FINANCE_PREFETCH_SCHEDULE || "0 6 * * *";
+  
+  if (financePrefetchEnabled) {
+    const registrationId = Math.random().toString(36).substring(7);
+    const processInfo = `PID:${process.pid} | RegID:${registrationId}`;
+    
+    log(`💰 [${processInfo}] Finance data pre-fetch scheduler enabled - schedule: ${financePrefetchSchedule}`);
+    
+    ensureScheduler(
+      "finance-prefetch",
+      financePrefetchSchedule,
+      async () => {
+        const executionId = Math.random().toString(36).substring(7);
+        log(`💰 [PID:${process.pid} | ExecID:${executionId}] ⏰ Cron job triggered - Running finance data pre-fetch...`);
+        try {
+          const result = await runFinanceDataPrefetch();
+          log(`💰 [ExecID:${executionId}] Pre-fetch completed: ${result.success}/${result.total} users`);
+        } catch (error: any) {
+          console.error(`❌ [ExecID:${executionId}] Error in finance data pre-fetch:`, error);
+        }
+      },
+      registrationId
+    );
+    
+    log(`✅ [${processInfo}] Finance data pre-fetch scheduler registration completed`);
+    
+    // Optional: Run immediately on startup if flag is set
+    if (process.env.FINANCE_PREFETCH_RUN_ON_STARTUP === "true") {
+      log("💰 Running finance data pre-fetch on startup...");
+      setTimeout(async () => {
+        try {
+          const result = await runFinanceDataPrefetch();
+          log(`💰 Startup pre-fetch completed: ${result.success}/${result.total} users`);
+        } catch (error: any) {
+          console.error("❌ Error in startup finance data pre-fetch:", error);
+        }
+      }, 10000); // Wait 10 seconds after startup
+    }
+  } else {
+    log("💰 Finance data pre-fetch scheduler is disabled (set FINANCE_PREFETCH_ENABLED=true to enable)");
   }
 })();

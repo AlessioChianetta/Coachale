@@ -243,6 +243,7 @@ const clientItems: SidebarItemWithChildren[] = [
     children: [
       { name: "Documenti", href: "/client/knowledge-documents", icon: FileText, color: "text-teal-600" },
       { name: "API Esterne", href: "/client/knowledge-apis", icon: Zap, color: "text-cyan-600" },
+      { name: "Documenti AI", href: "/client/documents", icon: FileSearch, color: "text-violet-600" },
     ]
   },
 ];

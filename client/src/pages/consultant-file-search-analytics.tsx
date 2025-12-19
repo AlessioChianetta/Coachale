@@ -1042,6 +1042,78 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                           (hData?.consultantStore.totals.university || 0);
                   const clientsTotal = hData?.clientStores.reduce((sum, c) => sum + c.totals.total, 0) || 0;
                   
+                  const groupByDocumentType = (docs: SyncedDocument[]) => {
+                    const groups: Record<string, SyncedDocument[]> = {};
+                    docs.forEach(doc => {
+                      const type = doc.mimeType?.includes('pdf') ? 'PDF' :
+                                   doc.mimeType?.includes('word') || doc.mimeType?.includes('document') ? 'Documenti Word' :
+                                   doc.mimeType?.includes('sheet') || doc.mimeType?.includes('excel') ? 'Fogli di Calcolo' :
+                                   doc.mimeType?.includes('presentation') || doc.mimeType?.includes('powerpoint') ? 'Presentazioni' :
+                                   doc.mimeType?.includes('text') ? 'Testo' :
+                                   doc.mimeType?.includes('image') ? 'Immagini' :
+                                   'Altri Documenti';
+                      if (!groups[type]) groups[type] = [];
+                      groups[type].push(doc);
+                    });
+                    return groups;
+                  };
+                  
+                  const groupUniversityByHierarchy = (docs: SyncedDocument[]) => {
+                    const hierarchy: Record<string, Record<string, Record<string, SyncedDocument[]>>> = {};
+                    docs.forEach(doc => {
+                      const parts = doc.displayName.split(' > ').map(p => p.trim());
+                      const year = parts[0] || 'Anno Sconosciuto';
+                      const trimester = parts[1] || 'Trimestre Sconosciuto';
+                      const module = parts[2] || 'Modulo Sconosciuto';
+                      
+                      if (!hierarchy[year]) hierarchy[year] = {};
+                      if (!hierarchy[year][trimester]) hierarchy[year][trimester] = {};
+                      if (!hierarchy[year][trimester][module]) hierarchy[year][trimester][module] = [];
+                      hierarchy[year][trimester][module].push(doc);
+                    });
+                    return hierarchy;
+                  };
+                  
+                  const groupKnowledgeByType = (docs: SyncedDocument[]) => {
+                    const groups: Record<string, SyncedDocument[]> = {};
+                    docs.forEach(doc => {
+                      const type = doc.mimeType?.includes('pdf') ? 'Documenti PDF' :
+                                   doc.mimeType?.includes('word') || doc.mimeType?.includes('document') ? 'Documenti Word' :
+                                   doc.mimeType?.includes('text') ? 'Documenti di Testo' :
+                                   'Altri Formati';
+                      if (!groups[type]) groups[type] = [];
+                      groups[type].push(doc);
+                    });
+                    return groups;
+                  };
+                  
+                  const groupExercisesByCategory = (docs: SyncedDocument[]) => {
+                    const groups: Record<string, SyncedDocument[]> = {};
+                    docs.forEach(doc => {
+                      const nameParts = doc.displayName.split(':');
+                      const category = nameParts.length > 1 ? nameParts[0].trim() : 'Esercizi Generali';
+                      if (!groups[category]) groups[category] = [];
+                      groups[category].push(doc);
+                    });
+                    return groups;
+                  };
+                  
+                  const getSyncStatusBadge = (docs: SyncedDocument[]) => {
+                    const synced = docs.filter(d => d.status === 'indexed').length;
+                    const total = docs.length;
+                    const allSynced = synced === total;
+                    return (
+                      <Badge variant="outline" className={`ml-2 ${allSynced ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                        {synced}/{total}
+                      </Badge>
+                    );
+                  };
+                  
+                  const libraryGroups = hData ? groupByDocumentType(hData.consultantStore.documents.library) : {};
+                  const universityHierarchy = hData ? groupUniversityByHierarchy(hData.consultantStore.documents.university) : {};
+                  const knowledgeGroups = hData ? groupKnowledgeByType(hData.consultantStore.documents.knowledgeBase) : {};
+                  const exerciseGroups = hData ? groupExercisesByCategory(hData.consultantStore.documents.exercises) : {};
+                  
                   return (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1096,7 +1168,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             Visualizzazione Gerarchica Contenuti
                           </CardTitle>
                           <CardDescription>
-                            Esplora i documenti organizzati per Store Globale e Store Privati Clienti
+                            Contenuti organizzati per tipologia con struttura gerarchica
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -1109,98 +1181,186 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                   <span className="font-semibold text-blue-900">Store Globale Consulente</span>
                                   <Badge className="ml-auto bg-blue-200 text-blue-800">{consultantTotal} documenti</Badge>
                                 </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                                <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                                  
                                   <Collapsible open={openCategories['library']} onOpenChange={() => toggleCategory('library')}>
-                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                                      {openCategories['library'] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
-                                      <BookOpen className="h-4 w-4 text-blue-600" />
-                                      <span className="text-gray-800">Libreria</span>
-                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.library}</Badge>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100">
+                                      {openCategories['library'] ? <ChevronDown className="h-4 w-4 text-blue-600" /> : <ChevronRight className="h-4 w-4 text-blue-600" />}
+                                      <BookOpen className="h-5 w-5 text-blue-600" />
+                                      <span className="font-medium text-gray-800">Libreria Documenti</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.library)}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.library} doc</Badge>
                                     </CollapsibleTrigger>
-                                    <CollapsibleContent className="ml-8 mt-1 space-y-1">
-                                      {hData.consultantStore.documents.library.map(doc => (
-                                        <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
-                                          <FileText className="h-3 w-3 text-gray-400" />
-                                          <span className="truncate flex-1">{doc.displayName}</span>
-                                          <Badge className="text-xs bg-emerald-100 text-emerald-700">
-                                            {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
-                                          </Badge>
-                                        </div>
-                                      ))}
-                                      {hData.consultantStore.documents.library.length === 0 && (
-                                        <p className="text-gray-400 text-sm p-2">Nessun documento</p>
-                                      )}
-                                    </CollapsibleContent>
-                                  </Collapsible>
-
-                                  <Collapsible open={openCategories['kb']} onOpenChange={() => toggleCategory('kb')}>
-                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                                      {openCategories['kb'] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
-                                      <Brain className="h-4 w-4 text-purple-600" />
-                                      <span className="text-gray-800">Knowledge Base</span>
-                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.knowledgeBase}</Badge>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="ml-8 mt-1 space-y-1">
-                                      {hData.consultantStore.documents.knowledgeBase.map(doc => (
-                                        <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
-                                          <FileText className="h-3 w-3 text-gray-400" />
-                                          <span className="truncate flex-1">{doc.displayName}</span>
-                                          <Badge className="text-xs bg-emerald-100 text-emerald-700">
-                                            {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
-                                          </Badge>
-                                        </div>
-                                      ))}
-                                      {hData.consultantStore.documents.knowledgeBase.length === 0 && (
-                                        <p className="text-gray-400 text-sm p-2">Nessun documento</p>
-                                      )}
-                                    </CollapsibleContent>
-                                  </Collapsible>
-
-                                  <Collapsible open={openCategories['exercises']} onOpenChange={() => toggleCategory('exercises')}>
-                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                                      {openCategories['exercises'] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
-                                      <Dumbbell className="h-4 w-4 text-green-600" />
-                                      <span className="text-gray-800">Esercizi Template</span>
-                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.exercises}</Badge>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="ml-8 mt-1 space-y-1">
-                                      {hData.consultantStore.documents.exercises.map(doc => (
-                                        <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
-                                          <FileText className="h-3 w-3 text-gray-400" />
-                                          <span className="truncate flex-1">{doc.displayName}</span>
-                                          <Badge className="text-xs bg-emerald-100 text-emerald-700">
-                                            {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
-                                          </Badge>
-                                        </div>
-                                      ))}
-                                      {hData.consultantStore.documents.exercises.length === 0 && (
-                                        <p className="text-gray-400 text-sm p-2">Nessun documento</p>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-2">
+                                      {Object.keys(libraryGroups).length > 0 ? (
+                                        Object.entries(libraryGroups).map(([type, docs]) => (
+                                          <Collapsible key={type} open={openCategories[`lib-${type}`]} onOpenChange={() => toggleCategory(`lib-${type}`)}>
+                                            <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                              {openCategories[`lib-${type}`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                              <Folder className="h-4 w-4 text-blue-500" />
+                                              <span className="text-sm text-gray-700">{type}</span>
+                                              {getSyncStatusBadge(docs)}
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                              {docs.map(doc => (
+                                                <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                                  <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                                  <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                                  <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                            </CollapsibleContent>
+                                          </Collapsible>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento in libreria</p>
                                       )}
                                     </CollapsibleContent>
                                   </Collapsible>
 
                                   <Collapsible open={openCategories['university']} onOpenChange={() => toggleCategory('university')}>
-                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                                      {openCategories['university'] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
-                                      <GraduationCap className="h-4 w-4 text-amber-600" />
-                                      <span className="text-gray-800">University</span>
-                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.university}</Badge>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-100">
+                                      {openCategories['university'] ? <ChevronDown className="h-4 w-4 text-amber-600" /> : <ChevronRight className="h-4 w-4 text-amber-600" />}
+                                      <GraduationCap className="h-5 w-5 text-amber-600" />
+                                      <span className="font-medium text-gray-800">University</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.university)}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.university} lezioni</Badge>
                                     </CollapsibleTrigger>
-                                    <CollapsibleContent className="ml-8 mt-1 space-y-1">
-                                      {hData.consultantStore.documents.university.map(doc => (
-                                        <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-sm">
-                                          <FileText className="h-3 w-3 text-gray-400" />
-                                          <span className="truncate flex-1">{doc.displayName}</span>
-                                          <Badge className="text-xs bg-emerald-100 text-emerald-700">
-                                            {doc.status === 'indexed' ? 'Indicizzato' : doc.status}
-                                          </Badge>
-                                        </div>
-                                      ))}
-                                      {hData.consultantStore.documents.university.length === 0 && (
-                                        <p className="text-gray-400 text-sm p-2">Nessun documento</p>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-2">
+                                      {Object.keys(universityHierarchy).length > 0 ? (
+                                        Object.entries(universityHierarchy).map(([year, trimesters]) => (
+                                          <Collapsible key={year} open={openCategories[`uni-${year}`]} onOpenChange={() => toggleCategory(`uni-${year}`)}>
+                                            <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-amber-50 rounded-lg transition-colors border-l-2 border-amber-300">
+                                              {openCategories[`uni-${year}`] ? <ChevronDown className="h-3 w-3 text-amber-600" /> : <ChevronRight className="h-3 w-3 text-amber-600" />}
+                                              <Folder className="h-4 w-4 text-amber-500" />
+                                              <span className="text-sm font-medium text-gray-700">{year}</span>
+                                              <Badge variant="outline" className="ml-auto text-xs bg-amber-50">
+                                                {Object.values(trimesters).reduce((sum, mods) => sum + Object.values(mods).reduce((s, l) => s + l.length, 0), 0)} lezioni
+                                              </Badge>
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                              {Object.entries(trimesters).map(([trimester, modules]) => (
+                                                <Collapsible key={trimester} open={openCategories[`uni-${year}-${trimester}`]} onOpenChange={() => toggleCategory(`uni-${year}-${trimester}`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                                    {openCategories[`uni-${year}-${trimester}`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <Folder className="h-3 w-3 text-amber-400" />
+                                                    <span className="text-xs text-gray-600">{trimester}</span>
+                                                    <Badge variant="outline" className="ml-auto text-xs">
+                                                      {Object.values(modules).reduce((s, l) => s + l.length, 0)} lezioni
+                                                    </Badge>
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {Object.entries(modules).map(([module, lessons]) => (
+                                                      <Collapsible key={module} open={openCategories[`uni-${year}-${trimester}-${module}`]} onOpenChange={() => toggleCategory(`uni-${year}-${trimester}-${module}`)}>
+                                                        <CollapsibleTrigger className="flex items-center gap-2 w-full p-1.5 hover:bg-gray-50 rounded transition-colors">
+                                                          {openCategories[`uni-${year}-${trimester}-${module}`] ? <ChevronDown className="h-2 w-2 text-gray-400" /> : <ChevronRight className="h-2 w-2 text-gray-400" />}
+                                                          <BookOpen className="h-3 w-3 text-amber-400" />
+                                                          <span className="text-xs text-gray-600 truncate">{module}</span>
+                                                          {getSyncStatusBadge(lessons)}
+                                                        </CollapsibleTrigger>
+                                                        <CollapsibleContent className="ml-5 mt-1 space-y-0.5">
+                                                          {lessons.map(doc => (
+                                                            <div key={doc.id} className="flex items-center gap-2 p-1.5 bg-gray-50 hover:bg-gray-100 rounded text-xs transition-colors">
+                                                              <FileText className="h-2.5 w-2.5 text-gray-400 flex-shrink-0" />
+                                                              <span className="truncate flex-1 text-gray-600" title={doc.displayName}>
+                                                                {doc.displayName.split(' > ').pop()}
+                                                              </span>
+                                                              <Badge className={`text-[10px] px-1 flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                                {doc.status === 'indexed' ? <CheckCircle2 className="h-2.5 w-2.5" /> : <Clock className="h-2.5 w-2.5" />}
+                                                              </Badge>
+                                                            </div>
+                                                          ))}
+                                                        </CollapsibleContent>
+                                                      </Collapsible>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              ))}
+                                            </CollapsibleContent>
+                                          </Collapsible>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessuna lezione university sincronizzata</p>
                                       )}
                                     </CollapsibleContent>
                                   </Collapsible>
+
+                                  <Collapsible open={openCategories['kb']} onOpenChange={() => toggleCategory('kb')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-purple-50 rounded-lg transition-colors border border-transparent hover:border-purple-100">
+                                      {openCategories['kb'] ? <ChevronDown className="h-4 w-4 text-purple-600" /> : <ChevronRight className="h-4 w-4 text-purple-600" />}
+                                      <Brain className="h-5 w-5 text-purple-600" />
+                                      <span className="font-medium text-gray-800">Knowledge Base</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.knowledgeBase)}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.knowledgeBase} doc</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-2">
+                                      {Object.keys(knowledgeGroups).length > 0 ? (
+                                        Object.entries(knowledgeGroups).map(([type, docs]) => (
+                                          <Collapsible key={type} open={openCategories[`kb-${type}`]} onOpenChange={() => toggleCategory(`kb-${type}`)}>
+                                            <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                              {openCategories[`kb-${type}`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                              <Folder className="h-4 w-4 text-purple-500" />
+                                              <span className="text-sm text-gray-700">{type}</span>
+                                              {getSyncStatusBadge(docs)}
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                              {docs.map(doc => (
+                                                <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                                  <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                                  <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                                  <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                            </CollapsibleContent>
+                                          </Collapsible>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun documento knowledge base</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
+                                  <Collapsible open={openCategories['exercises']} onOpenChange={() => toggleCategory('exercises')}>
+                                    <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 hover:bg-green-50 rounded-lg transition-colors border border-transparent hover:border-green-100">
+                                      {openCategories['exercises'] ? <ChevronDown className="h-4 w-4 text-green-600" /> : <ChevronRight className="h-4 w-4 text-green-600" />}
+                                      <Dumbbell className="h-5 w-5 text-green-600" />
+                                      <span className="font-medium text-gray-800">Esercizi Template</span>
+                                      {getSyncStatusBadge(hData.consultantStore.documents.exercises)}
+                                      <Badge variant="outline" className="ml-auto">{hData.consultantStore.totals.exercises} esercizi</Badge>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-6 mt-2 space-y-2">
+                                      {Object.keys(exerciseGroups).length > 0 ? (
+                                        Object.entries(exerciseGroups).map(([category, docs]) => (
+                                          <Collapsible key={category} open={openCategories[`ex-${category}`]} onOpenChange={() => toggleCategory(`ex-${category}`)}>
+                                            <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                                              {openCategories[`ex-${category}`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                              <Folder className="h-4 w-4 text-green-500" />
+                                              <span className="text-sm text-gray-700">{category}</span>
+                                              {getSyncStatusBadge(docs)}
+                                            </CollapsibleTrigger>
+                                            <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                              {docs.map(doc => (
+                                                <div key={doc.id} className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded text-sm transition-colors">
+                                                  <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                                  <span className="truncate flex-1" title={doc.displayName}>{doc.displayName}</span>
+                                                  <Badge className={`text-xs flex-shrink-0 ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                    {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                  </Badge>
+                                                </div>
+                                              ))}
+                                            </CollapsibleContent>
+                                          </Collapsible>
+                                        ))
+                                      ) : (
+                                        <p className="text-gray-400 text-sm p-2 italic">Nessun esercizio template</p>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+
                                 </CollapsibleContent>
                               </Collapsible>
 
@@ -1208,52 +1368,104 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                 <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors">
                                   {clientStoresOpen ? <ChevronDown className="h-5 w-5 text-purple-600" /> : <ChevronRight className="h-5 w-5 text-purple-600" />}
                                   <Users className="h-5 w-5 text-purple-600" />
-                                  <span className="font-semibold text-purple-900">Store Privati Clienti</span>
-                                  <Badge className="ml-auto bg-purple-200 text-purple-800">{hData.clientStores.length} clienti</Badge>
+                                  <span className="font-semibold text-purple-900">Consulenze per Cliente</span>
+                                  <Badge className="ml-auto bg-purple-200 text-purple-800">
+                                    {hData.clientStores.filter(c => c.hasDocuments).length}/{hData.clientStores.length} clienti
+                                  </Badge>
                                 </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                                <CollapsibleContent className="mt-2 ml-4 space-y-2">
                                   {hData.clientStores.length > 0 ? (
                                     hData.clientStores.map(client => (
                                       <Collapsible key={client.clientId} open={openClients[client.clientId]} onOpenChange={() => toggleClient(client.clientId)}>
-                                        <CollapsibleTrigger className={`flex items-center gap-2 w-full p-2 rounded-lg transition-colors ${client.hasDocuments ? 'hover:bg-gray-50' : 'hover:bg-amber-50 border border-dashed border-amber-200'}`}>
+                                        <CollapsibleTrigger className={`flex items-center gap-2 w-full p-2.5 rounded-lg transition-colors border ${client.hasDocuments ? 'hover:bg-gray-50 border-gray-200' : 'hover:bg-amber-50 border-dashed border-amber-200 bg-amber-25'}`}>
                                           {openClients[client.clientId] ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
                                           <User className={`h-4 w-4 ${client.hasDocuments ? 'text-purple-600' : 'text-amber-500'}`} />
                                           <span className="text-gray-800 font-medium">{client.clientName}</span>
-                                          <span className="text-gray-400 text-sm">({client.clientEmail})</span>
+                                          <span className="text-gray-400 text-xs hidden md:inline">({client.clientEmail})</span>
                                           {client.hasDocuments ? (
-                                            <Badge variant="outline" className="ml-auto">{client.totals.total} doc</Badge>
+                                            <Badge variant="outline" className="ml-auto bg-emerald-50 text-emerald-700 border-emerald-200">
+                                              <CheckCircle2 className="h-3 w-3 mr-1" />{client.totals.total} doc
+                                            </Badge>
                                           ) : (
-                                            <Badge variant="outline" className="ml-auto bg-amber-50 text-amber-700 border-amber-200">Non sincronizzato</Badge>
+                                            <Badge variant="outline" className="ml-auto bg-amber-50 text-amber-700 border-amber-200">
+                                              <AlertCircle className="h-3 w-3 mr-1" />Da sincronizzare
+                                            </Badge>
                                           )}
                                         </CollapsibleTrigger>
-                                        <CollapsibleContent className="ml-8 mt-1 p-3 bg-gray-50 rounded-lg space-y-2">
+                                        <CollapsibleContent className="ml-8 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
                                           {client.hasDocuments ? (
-                                            <>
-                                              <div className="flex items-center justify-between text-sm">
-                                                <span className="flex items-center gap-2">
-                                                  <Dumbbell className="h-3 w-3 text-green-600" />
-                                                  Risposte Esercizi
-                                                </span>
-                                                <Badge variant="outline">{client.totals.exerciseResponses}</Badge>
-                                              </div>
-                                              <div className="flex items-center justify-between text-sm">
-                                                <span className="flex items-center gap-2">
-                                                  <MessageSquare className="h-3 w-3 text-pink-600" />
-                                                  Note Consulenze
-                                                </span>
-                                                <Badge variant="outline">{client.totals.consultationNotes}</Badge>
-                                              </div>
-                                              <div className="flex items-center justify-between text-sm">
-                                                <span className="flex items-center gap-2">
-                                                  <Brain className="h-3 w-3 text-purple-600" />
-                                                  Knowledge Docs
-                                                </span>
-                                                <Badge variant="outline">{client.totals.knowledgeBase}</Badge>
-                                              </div>
-                                            </>
+                                            <div className="space-y-3">
+                                              {client.totals.exerciseResponses > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-ex`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-ex`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-ex`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <Dumbbell className="h-4 w-4 text-green-600" />
+                                                    <span className="text-sm text-gray-700">Risposte Esercizi</span>
+                                                    {getSyncStatusBadge(client.documents.exerciseResponses)}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {client.documents.exerciseResponses.map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {client.totals.consultationNotes > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-cons`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-cons`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-cons`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <MessageSquare className="h-4 w-4 text-pink-600" />
+                                                    <span className="text-sm text-gray-700">Note Consulenze</span>
+                                                    {getSyncStatusBadge(client.documents.consultationNotes)}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {client.documents.consultationNotes.map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {client.totals.knowledgeBase > 0 && (
+                                                <Collapsible open={openCategories[`client-${client.clientId}-kb`]} onOpenChange={() => toggleCategory(`client-${client.clientId}-kb`)}>
+                                                  <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 hover:bg-white rounded-lg transition-colors">
+                                                    {openCategories[`client-${client.clientId}-kb`] ? <ChevronDown className="h-3 w-3 text-gray-500" /> : <ChevronRight className="h-3 w-3 text-gray-500" />}
+                                                    <Brain className="h-4 w-4 text-purple-600" />
+                                                    <span className="text-sm text-gray-700">Knowledge Docs</span>
+                                                    {getSyncStatusBadge(client.documents.knowledgeBase)}
+                                                  </CollapsibleTrigger>
+                                                  <CollapsibleContent className="ml-6 mt-1 space-y-1">
+                                                    {client.documents.knowledgeBase.map(doc => (
+                                                      <div key={doc.id} className="flex items-center gap-2 p-2 bg-white rounded text-sm">
+                                                        <FileText className="h-3 w-3 text-gray-400" />
+                                                        <span className="truncate flex-1">{doc.displayName}</span>
+                                                        <Badge className={`text-xs ${doc.status === 'indexed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                          {doc.status === 'indexed' ? <CheckCircle2 className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                                                        </Badge>
+                                                      </div>
+                                                    ))}
+                                                  </CollapsibleContent>
+                                                </Collapsible>
+                                              )}
+                                              {client.totals.exerciseResponses === 0 && client.totals.consultationNotes === 0 && client.totals.knowledgeBase === 0 && (
+                                                <p className="text-gray-500 text-sm text-center py-2">Nessun documento categorizzato</p>
+                                              )}
+                                            </div>
                                           ) : (
-                                            <div className="text-center py-2">
-                                              <p className="text-amber-600 text-sm mb-2">Nessun documento sincronizzato per questo cliente</p>
+                                            <div className="text-center py-3">
+                                              <AlertTriangle className="h-8 w-8 text-amber-400 mx-auto mb-2" />
+                                              <p className="text-amber-600 text-sm font-medium mb-1">Nessun documento sincronizzato</p>
                                               <p className="text-gray-500 text-xs mb-3">Contenuti disponibili per la sincronizzazione:</p>
                                               <div className="flex flex-wrap justify-center gap-2">
                                                 <Badge variant="outline" className="text-xs"><Dumbbell className="h-3 w-3 mr-1" />Risposte Esercizi</Badge>
@@ -1267,7 +1479,10 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                       </Collapsible>
                                     ))
                                   ) : (
-                                    <p className="text-gray-400 text-sm p-2">Nessun cliente associato a questo consulente</p>
+                                    <div className="text-center py-6">
+                                      <Users className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                                      <p className="text-gray-400 text-sm">Nessun cliente associato</p>
+                                    </div>
                                   )}
                                 </CollapsibleContent>
                               </Collapsible>

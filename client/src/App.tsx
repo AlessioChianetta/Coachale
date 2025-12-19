@@ -110,6 +110,7 @@ const MeetVideoRoom = lazy(() => import("@/pages/meet-video-room"));
 const ClientVertexAIAnalytics = lazy(() => import("./pages/client-vertex-ai-analytics"));
 const ClientKnowledgeDocuments = lazy(() => import("./pages/client-knowledge-documents"));
 const ClientKnowledgeApis = lazy(() => import("./pages/client-knowledge-apis"));
+const ClientFileSearchDocuments = lazy(() => import("./pages/client-file-search-documents"));
 const TrainingMapPage = lazy(() => import("@/pages/training-map"));
 
 const AdminDashboard = lazy(() => import("@/pages/admin-dashboard"));
@@ -643,6 +644,12 @@ function Router() {
           <Route path="/client/knowledge-apis">
             <AuthGuard requiredRole="client">
               <ClientKnowledgeApis />
+            </AuthGuard>
+          </Route>
+
+          <Route path="/client/documents">
+            <AuthGuard requiredRole="client">
+              <ClientFileSearchDocuments />
             </AuthGuard>
           </Route>
 

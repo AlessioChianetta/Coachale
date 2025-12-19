@@ -488,18 +488,70 @@ export class FileSearchService {
 
   /**
    * Get stores for a user (consultant or client)
+   * 
+   * Edge cases handled:
+   * - Pure consultant: returns their own stores
+   * - Pure client: returns their consultant's stores (via consultantId)
+   * - Mixed consultant+client: returns BOTH their own stores AND parent consultant's stores
    */
-  async getStoresForUser(userId: string, userRole: 'consultant' | 'client'): Promise<FileSearchStoreInfo[]> {
+  async getStoresForUser(userId: string, userRole: 'consultant' | 'client', consultantId?: string): Promise<FileSearchStoreInfo[]> {
+    const conditions = [];
+
+    if (userRole === 'consultant') {
+      // Always include consultant's own stores
+      conditions.push(
+        and(
+          eq(fileSearchStores.ownerId, userId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+          eq(fileSearchStores.isActive, true)
+        )
+      );
+      
+      // FIX: If consultant ALSO has a consultantId (meaning they're also a client),
+      // include their parent consultant's stores too
+      if (consultantId && consultantId !== userId) {
+        conditions.push(
+          and(
+            eq(fileSearchStores.ownerId, consultantId),
+            eq(fileSearchStores.ownerType, 'consultant'),
+            eq(fileSearchStores.isActive, true)
+          )
+        );
+      }
+    } else if (userRole === 'client' && consultantId) {
+      // Pure client: include their consultant's stores
+      conditions.push(
+        and(
+          eq(fileSearchStores.ownerId, consultantId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+          eq(fileSearchStores.isActive, true)
+        )
+      );
+    } else {
+      // Fallback: just look for user's own stores
+      conditions.push(
+        and(
+          eq(fileSearchStores.ownerId, userId),
+          eq(fileSearchStores.ownerType, userRole),
+          eq(fileSearchStores.isActive, true)
+        )
+      );
+    }
+
     const stores = await db.query.fileSearchStores.findMany({
-      where: and(
-        eq(fileSearchStores.ownerId, userId),
-        eq(fileSearchStores.ownerType, userRole),
-        eq(fileSearchStores.isActive, true)
-      ),
+      where: conditions.length > 1 ? or(...conditions) : conditions[0],
       orderBy: [desc(fileSearchStores.createdAt)],
     });
 
-    return stores.map(store => ({
+    // Deduplicate by store id (in case same store matched multiple conditions)
+    const uniqueStores = stores.reduce((acc, store) => {
+      if (!acc.find(s => s.id === store.id)) {
+        acc.push(store);
+      }
+      return acc;
+    }, [] as typeof stores);
+
+    return uniqueStores.map(store => ({
       id: store.id,
       name: store.googleStoreName,
       displayName: store.displayName,
@@ -517,12 +569,19 @@ export class FileSearchService {
    * Logic:
    * - Consultants: their own stores + system stores
    * - Clients: their consultant's stores + system stores
+   * - Mixed (consultant who is also a client): BOTH their own stores AND their parent consultant's stores
+   * 
+   * Edge cases handled:
+   * - Pure consultant (no client profile): only their own stores + system
+   * - Pure client: only their consultant's stores + system
+   * - Mixed consultant+client (like Fernando): BOTH stores + system, deduplicated
    */
   async getStoreNamesForGeneration(userId: string, userRole: 'consultant' | 'client', consultantId?: string): Promise<string[]> {
     const conditions = [];
     
     // User-specific stores (consultant or their consultant for clients)
     if (userRole === 'consultant') {
+      // Always include consultant's own stores
       conditions.push(
         and(
           eq(fileSearchStores.ownerId, userId),
@@ -530,7 +589,21 @@ export class FileSearchService {
           eq(fileSearchStores.isActive, true)
         )
       );
+      
+      // FIX: If consultant ALSO has a consultantId (meaning they're also a client of another consultant),
+      // include their parent consultant's stores too
+      if (consultantId && consultantId !== userId) {
+        conditions.push(
+          and(
+            eq(fileSearchStores.ownerId, consultantId),
+            eq(fileSearchStores.ownerType, 'consultant'),
+            eq(fileSearchStores.isActive, true)
+          )
+        );
+        console.log(`🔗 [FileSearch] Consultant ${userId} is also a client of ${consultantId} - including both stores`);
+      }
     } else if (userRole === 'client' && consultantId) {
+      // Pure client: include their consultant's stores
       conditions.push(
         and(
           eq(fileSearchStores.ownerId, consultantId),
@@ -548,15 +621,18 @@ export class FileSearchService {
       )
     );
 
-    // FIX: Use OR to combine all conditions (was using only first condition before!)
+    // Use OR to combine all conditions
     const stores = await db.query.fileSearchStores.findMany({
       where: conditions.length > 1 ? or(...conditions) : conditions[0],
     });
 
-    console.log(`🔍 [FileSearch] getStoreNamesForGeneration - Role: ${userRole}, UserId: ${userId}, ConsultantId: ${consultantId || 'N/A'}`);
-    console.log(`   📦 Found ${stores.length} stores: ${stores.map(s => s.displayName).join(', ') || 'nessuno'}`);
+    // Deduplicate store names (in case the same store is matched by multiple conditions)
+    const uniqueStoreNames = [...new Set(stores.map(store => store.googleStoreName))];
 
-    return stores.map(store => store.googleStoreName);
+    console.log(`🔍 [FileSearch] getStoreNamesForGeneration - Role: ${userRole}, UserId: ${userId}, ConsultantId: ${consultantId || 'N/A'}`);
+    console.log(`   📦 Found ${uniqueStoreNames.length} unique stores: ${stores.map(s => s.displayName).join(', ') || 'nessuno'}`);
+
+    return uniqueStoreNames;
   }
 
   /**
