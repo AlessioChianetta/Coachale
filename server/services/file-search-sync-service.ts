@@ -8,6 +8,7 @@
  * - Client Knowledge Documents (for client's AI assistant)
  */
 
+import { EventEmitter } from "events";
 import { db } from "../db";
 import { 
   libraryDocuments, 
@@ -29,6 +30,80 @@ import { fileSearchService } from "../ai/file-search-service";
 import { eq, and, desc, isNotNull, inArray } from "drizzle-orm";
 import { scrapeGoogleDoc } from "../web-scraper";
 import { extractTextFromFile } from "./document-processor";
+
+export type SyncEventType = 'start' | 'progress' | 'error' | 'complete';
+
+export interface SyncProgressEvent {
+  type: SyncEventType;
+  item?: string;
+  current?: number;
+  total?: number;
+  category?: 'library' | 'knowledge_base' | 'exercises' | 'university' | 'consultations' | 'client_data';
+  error?: string;
+  consultantId: string;
+}
+
+export class SyncProgressEmitter extends EventEmitter {
+  private static instance: SyncProgressEmitter;
+
+  private constructor() {
+    super();
+    this.setMaxListeners(100);
+  }
+
+  static getInstance(): SyncProgressEmitter {
+    if (!SyncProgressEmitter.instance) {
+      SyncProgressEmitter.instance = new SyncProgressEmitter();
+    }
+    return SyncProgressEmitter.instance;
+  }
+
+  emitProgress(event: SyncProgressEvent): void {
+    this.emit(`sync:${event.consultantId}`, event);
+  }
+
+  emitStart(consultantId: string, category: SyncProgressEvent['category'], total: number): void {
+    this.emitProgress({
+      type: 'start',
+      category,
+      total,
+      current: 0,
+      consultantId,
+    });
+  }
+
+  emitItemProgress(consultantId: string, category: SyncProgressEvent['category'], item: string, current: number, total: number): void {
+    this.emitProgress({
+      type: 'progress',
+      category,
+      item,
+      current,
+      total,
+      consultantId,
+    });
+  }
+
+  emitError(consultantId: string, category: SyncProgressEvent['category'], error: string): void {
+    this.emitProgress({
+      type: 'error',
+      category,
+      error,
+      consultantId,
+    });
+  }
+
+  emitComplete(consultantId: string, category: SyncProgressEvent['category'], total: number): void {
+    this.emitProgress({
+      type: 'complete',
+      category,
+      total,
+      current: total,
+      consultantId,
+    });
+  }
+}
+
+export const syncProgressEmitter = SyncProgressEmitter.getInstance();
 
 export class FileSearchSyncService {
   /**
@@ -115,20 +190,26 @@ export class FileSearchSyncService {
       let synced = 0;
       let failed = 0;
       const errors: string[] = [];
+      let processed = 0;
 
       console.log(`🔄 [FileSync] Syncing ${docs.length} library documents for consultant ${consultantId}`);
+      syncProgressEmitter.emitStart(consultantId, 'library', docs.length);
 
       for (const doc of docs) {
         const result = await this.syncLibraryDocument(doc.id, consultantId);
+        processed++;
         if (result.success) {
           synced++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'library', doc.title, processed, docs.length);
         } else {
           failed++;
           errors.push(`${doc.title}: ${result.error}`);
+          syncProgressEmitter.emitError(consultantId, 'library', `${doc.title}: ${result.error}`);
         }
       }
 
       console.log(`✅ [FileSync] Complete - Synced: ${synced}/${docs.length}, Failed: ${failed}`);
+      syncProgressEmitter.emitComplete(consultantId, 'library', docs.length);
 
       return {
         total: docs.length,
@@ -138,6 +219,7 @@ export class FileSearchSyncService {
       };
     } catch (error: any) {
       console.error('[FileSync] Bulk sync error:', error);
+      syncProgressEmitter.emitError(consultantId, 'library', error.message);
       return {
         total: 0,
         synced: 0,
@@ -284,27 +366,35 @@ export class FileSearchSyncService {
       let synced = 0;
       let failed = 0;
       let skipped = 0;
+      let processed = 0;
       const errors: string[] = [];
 
       console.log(`🔄 [FileSync] Syncing ${docs.length} knowledge documents for consultant ${consultantId}`);
+      syncProgressEmitter.emitStart(consultantId, 'knowledge_base', docs.length);
 
       for (const doc of docs) {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', doc.id);
         if (isAlreadyIndexed) {
           skipped++;
+          processed++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', doc.title, processed, docs.length);
           continue;
         }
 
         const result = await this.syncConsultantKnowledgeDocument(doc.id, consultantId);
+        processed++;
         if (result.success) {
           synced++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', doc.title, processed, docs.length);
         } else {
           failed++;
           errors.push(`${doc.title}: ${result.error}`);
+          syncProgressEmitter.emitError(consultantId, 'knowledge_base', `${doc.title}: ${result.error}`);
         }
       }
 
       console.log(`✅ [FileSync] Knowledge Base sync complete - Synced: ${synced}, Skipped: ${skipped}, Failed: ${failed}`);
+      syncProgressEmitter.emitComplete(consultantId, 'knowledge_base', docs.length);
 
       return {
         total: docs.length,
@@ -315,6 +405,7 @@ export class FileSearchSyncService {
       };
     } catch (error: any) {
       console.error('[FileSync] Knowledge bulk sync error:', error);
+      syncProgressEmitter.emitError(consultantId, 'knowledge_base', error.message);
       return {
         total: 0,
         synced: 0,
@@ -549,25 +640,32 @@ export class FileSearchSyncService {
       let synced = 0;
       let failed = 0;
       let skipped = 0;
+      let processed = 0;
       const errors: string[] = [];
 
       console.log(`\n${'═'.repeat(60)}`);
       console.log(`🏋️ [FileSync] Syncing ${allExercises.length} exercises for consultant ${consultantId}`);
       console.log(`${'═'.repeat(60)}\n`);
+      syncProgressEmitter.emitStart(consultantId, 'exercises', allExercises.length);
 
       for (const exercise of allExercises) {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', exercise.id);
         if (isAlreadyIndexed) {
           skipped++;
+          processed++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'exercises', exercise.title, processed, allExercises.length);
           continue;
         }
 
         const result = await this.syncExercise(exercise.id, consultantId);
+        processed++;
         if (result.success) {
           synced++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'exercises', exercise.title, processed, allExercises.length);
         } else {
           failed++;
           errors.push(`${exercise.title}: ${result.error}`);
+          syncProgressEmitter.emitError(consultantId, 'exercises', `${exercise.title}: ${result.error}`);
         }
         
         // Small delay to avoid rate limiting
@@ -583,6 +681,7 @@ export class FileSearchSyncService {
       console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
       console.log(`   ❌ Failed: ${failed}`);
       console.log(`${'═'.repeat(60)}\n`);
+      syncProgressEmitter.emitComplete(consultantId, 'exercises', allExercises.length);
 
       return {
         total: allExercises.length,
@@ -593,6 +692,7 @@ export class FileSearchSyncService {
       };
     } catch (error: any) {
       console.error('[FileSync] Exercises bulk sync error:', error);
+      syncProgressEmitter.emitError(consultantId, 'exercises', error.message);
       return {
         total: 0,
         synced: 0,
@@ -764,25 +864,32 @@ export class FileSearchSyncService {
       let synced = 0;
       let failed = 0;
       let skipped = 0;
+      let processed = 0;
       const errors: string[] = [];
 
       console.log(`\n${'═'.repeat(60)}`);
       console.log(`🎓 [FileSync] Syncing ${allLessons.length} university lessons`);
       console.log(`${'═'.repeat(60)}\n`);
+      syncProgressEmitter.emitStart(consultantId, 'university', allLessons.length);
 
       for (const lesson of allLessons) {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('university_lesson', lesson.id);
         if (isAlreadyIndexed) {
           skipped++;
+          processed++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processed, allLessons.length);
           continue;
         }
 
         const result = await this.syncUniversityLesson(lesson.id, consultantId);
+        processed++;
         if (result.success) {
           synced++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processed, allLessons.length);
         } else {
           failed++;
           errors.push(`${lesson.title}: ${result.error}`);
+          syncProgressEmitter.emitError(consultantId, 'university', `${lesson.title}: ${result.error}`);
         }
         
         // Small delay to avoid rate limiting
@@ -798,6 +905,7 @@ export class FileSearchSyncService {
       console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
       console.log(`   ❌ Failed: ${failed}`);
       console.log(`${'═'.repeat(60)}\n`);
+      syncProgressEmitter.emitComplete(consultantId, 'university', allLessons.length);
 
       return {
         total: allLessons.length,
@@ -808,6 +916,7 @@ export class FileSearchSyncService {
       };
     } catch (error: any) {
       console.error('[FileSync] University lessons bulk sync error:', error);
+      syncProgressEmitter.emitError(consultantId, 'university', error.message);
       return {
         total: 0,
         synced: 0,
@@ -968,25 +1077,33 @@ export class FileSearchSyncService {
       let synced = 0;
       let failed = 0;
       let skipped = 0;
+      let processed = 0;
       const errors: string[] = [];
 
       console.log(`\n${'═'.repeat(60)}`);
       console.log(`📞 [FileSync] Syncing ${consultationsWithContent.length} consultations for consultant ${consultantId}`);
       console.log(`${'═'.repeat(60)}\n`);
+      syncProgressEmitter.emitStart(consultantId, 'consultations', consultationsWithContent.length);
 
       for (const consultation of consultationsWithContent) {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('consultation', consultation.id);
+        const consultationLabel = `Consultation ${new Date(consultation.scheduledAt).toLocaleDateString('it-IT')}`;
         if (isAlreadyIndexed) {
           skipped++;
+          processed++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'consultations', consultationLabel, processed, consultationsWithContent.length);
           continue;
         }
 
         const result = await this.syncConsultation(consultation.id, consultantId);
+        processed++;
         if (result.success) {
           synced++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'consultations', consultationLabel, processed, consultationsWithContent.length);
         } else {
           failed++;
           errors.push(`Consultation ${consultation.id}: ${result.error}`);
+          syncProgressEmitter.emitError(consultantId, 'consultations', `${consultationLabel}: ${result.error}`);
         }
         
         // Small delay to avoid rate limiting
@@ -1002,6 +1119,7 @@ export class FileSearchSyncService {
       console.log(`   ⏭️  Skipped (already indexed): ${skipped}`);
       console.log(`   ❌ Failed: ${failed}`);
       console.log(`${'═'.repeat(60)}\n`);
+      syncProgressEmitter.emitComplete(consultantId, 'consultations', consultationsWithContent.length);
 
       return {
         total: consultationsWithContent.length,
@@ -1012,6 +1130,7 @@ export class FileSearchSyncService {
       };
     } catch (error: any) {
       console.error('[FileSync] Consultations bulk sync error:', error);
+      syncProgressEmitter.emitError(consultantId, 'consultations', error.message);
       return {
         total: 0,
         synced: 0,

@@ -864,4 +864,45 @@ router.get('/client/analytics', authenticateToken, requireRole('client'), async 
   }
 });
 
+/**
+ * GET /api/file-search/sync-events
+ * SSE endpoint for real-time sync progress updates
+ * 
+ * Event format:
+ * data: {"type":"progress","item":"Document Name","current":5,"total":20,"category":"library"}
+ * 
+ * Event types: 'start', 'progress', 'error', 'complete'
+ */
+router.get('/sync-events', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  const consultantId = req.user!.id;
+  
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  res.write(`data: ${JSON.stringify({ type: 'connected', consultantId })}\n\n`);
+
+  const heartbeatInterval = setInterval(() => {
+    res.write(`:heartbeat\n\n`);
+  }, 30000);
+
+  const { syncProgressEmitter } = await import('../services/file-search-sync-service');
+
+  const eventHandler = (event: any) => {
+    const { consultantId: _, ...eventData } = event;
+    res.write(`data: ${JSON.stringify(eventData)}\n\n`);
+  };
+
+  syncProgressEmitter.on(`sync:${consultantId}`, eventHandler);
+
+  req.on('close', () => {
+    clearInterval(heartbeatInterval);
+    syncProgressEmitter.off(`sync:${consultantId}`, eventHandler);
+    res.end();
+  });
+});
+
 export default router;
