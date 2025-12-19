@@ -1,126 +1,78 @@
-import { useState, lazy, Suspense } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { 
   Users, 
-  CheckCircle, 
-  PieChart, 
-  CalendarDays, 
-  Plus, 
-  UserPlus, 
-  CalendarPlus,
-  TrendingUp,
-  TrendingDown,
-  MoreHorizontal,
-  Play,
-  Trophy,
-  Medal,
-  Star,
-  MessageCircle,
-  BarChart3,
-  Activity,
-  GraduationCap,
-  Target,
   Calendar,
-  AlertTriangle
+  MessageSquare,
+  Mail,
+  UserPlus,
+  Phone,
+  Sparkles,
+  Target,
+  GraduationCap,
+  BookOpen,
+  Settings,
+  Bell,
+  Search,
+  ArrowRight,
+  AlertCircle,
+  Clock,
+  FileText,
+  Bot,
+  FileSearch,
+  Flame,
+  ChevronRight
 } from "lucide-react";
 import Navbar from "@/components/navbar";
 import Sidebar from "@/components/sidebar";
-import ExerciseForm from "@/components/exercise-form";
-import ActivityDashboard from "@/components/activity-dashboard";
-import UniversityOverview from "@/components/university-overview";
-import { ConsultantAIAssistant } from "@/components/ai-assistant/ConsultantAIAssistant";
-import { ClientsNeedAttention } from "@/components/ClientsNeedAttention";
-import { TopPerformers } from "@/components/TopPerformers";
-import { LeadPipelineView } from "@/components/LeadPipelineView";
-import { StatsOverview } from "@/components/StatsOverview";
-import { PageLoader } from "@/components/page-loader";
-import { InteractiveIntroBanner } from "@/components/onboarding/InteractiveIntroBanner";
-import { useClientPriorityScore } from "@/hooks/useClientPriorityScore";
-import { apiRequest } from "@/lib/queryClient";
-import { getAuthHeaders } from "@/lib/auth";
-import { useToast } from "@/hooks/use-toast";
+import { getAuthHeaders, getAuthUser } from "@/lib/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useRoleSwitch } from "@/hooks/use-role-switch";
-import { type Exercise, type ExerciseAssignment, type User } from "@shared/schema";
+import { useClientPriorityScore } from "@/hooks/useClientPriorityScore";
 import { useLocation } from "wouter";
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
-const AnalyticsDashboard = lazy(() => import("@/components/analytics-dashboard"));
+interface AttentionItem {
+  id: string;
+  type: "exercise" | "lead" | "appointment";
+  title: string;
+  description: string;
+  urgency: "high" | "medium" | "low";
+  actionUrl: string;
+  timeAgo?: string;
+}
 
+interface NavigationSection {
+  name: string;
+  href: string;
+  icon: React.ComponentType<any>;
+  color: string;
+  bgColor: string;
+  count?: number;
+  badge?: string;
+}
 
 export default function ConsultantDashboard() {
   const isMobile = useIsMobile();
-  const [showExerciseForm, setShowExerciseForm] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("active");
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { showRoleSwitch, currentRole, handleRoleSwitch } = useRoleSwitch();
+  const user = getAuthUser();
 
-  // Client-centric priority scoring system (3 livelli)
   const {
     highPriorityClients,
-    mediumPriorityClients,
-    lowPriorityClients,
-    topPerformers,
-    hasError: priorityError,
-    error: priorityErrorDetails,
   } = useClientPriorityScore();
 
-  // Fetch dashboard stats
-  const { data: stats } = useQuery({
-    queryKey: ["/api/stats/consultant"],
-    queryFn: async () => {
-      const response = await fetch("/api/stats/consultant", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch stats");
-      return response.json();
-    },
-  });
-
-  // Fetch consultant's exercises
-  const { data: exercises = [] } = useQuery({
-    queryKey: ["/api/exercises"],
-    queryFn: async () => {
-      const response = await fetch("/api/exercises", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch exercises");
-      return response.json();
-    },
-  });
-
-  // Fetch exercise assignments
   const { data: assignments = [] } = useQuery<any[]>({
     queryKey: ["/api/exercise-assignments/consultant"],
   });
 
-  // Fetch clients
-  const { data: clients = [], isLoading: clientsLoading } = useQuery<User[]>({
+  const { data: clients = [] } = useQuery<any[]>({
     queryKey: ["/api/clients"],
     queryFn: async () => {
       const response = await fetch("/api/clients", {
@@ -131,469 +83,379 @@ export default function ConsultantDashboard() {
     },
   });
 
-  // Fetch university stats for all clients
-  const { data: universityStats = [] } = useQuery<any[]>({
-    queryKey: ["/api/university/stats/overview"],
-  });
-
-  // Fetch active sessions for real-time status
-  const { data: activeSessions } = useQuery<any[]>({
-    queryKey: ["/api/sessions/active"],
-    refetchInterval: 10000, // Refetch every 10 seconds
-  });
-
-  // Check interactive intro onboarding status
-  const { data: interactiveIntroStatus } = useQuery<{
-    success: boolean;
-    data: { completed: boolean; completedAt: string | null; responses: any };
-  }>({
-    queryKey: ["/api/consultant/onboarding/interactive-intro/status"],
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
-
-  const showInteractiveIntroBanner = interactiveIntroStatus?.data?.completed === false;
-
-  // Create exercise mutation
-  const createExerciseMutation = useMutation({
-    mutationFn: async ({ exerciseData, files }: { exerciseData: any, files: File[] }) => {
-      const formData = new FormData();
-
-      // Add exercise data
-      Object.entries(exerciseData).forEach(([key, value]) => {
-        if (key === 'questions') {
-          formData.append(key, JSON.stringify(value));
-        } else if (key === 'selectedClients') {
-          formData.append(key, JSON.stringify(value));
-        } else if (key === 'attachments') {
-          // Skip attachments here, they're handled separately
-        } else if (value !== null && value !== undefined) {
-          formData.append(key, value as string);
-        }
-      });
-
-      // Add files
-      files.forEach(file => {
-        formData.append('attachments', file);
-      });
-
-      const response = await fetch("/api/exercises", {
-        method: "POST",
+  const { data: appointments = [] } = useQuery<any[]>({
+    queryKey: ["/api/appointments/upcoming"],
+    queryFn: async () => {
+      const response = await fetch("/api/appointments/upcoming", {
         headers: getAuthHeaders(),
-        body: formData,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create exercise");
-      }
+      if (!response.ok) return [];
       return response.json();
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/exercises"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/exercise-assignments/consultant"] });
-      setShowExerciseForm(false);
-      toast({
-        title: "Successo",
-        description: data.message || "Esercizio creato e assegnato con successo",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Errore",
-        description: error.message || "Errore durante la creazione dell'esercizio",
-        variant: "destructive",
-      });
-    },
   });
 
-  const handleCreateExercise = (exerciseData: any, files: File[]) => {
-    createExerciseMutation.mutate({ exerciseData, files });
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Buongiorno";
+    if (hour < 18) return "Buon pomeriggio";
+    return "Buonasera";
   };
 
-  // Get recent activity from assignments
-  const recentActivity = assignments
-    .sort((a: any, b: any) => new Date(a.assignedAt).getTime() - new Date(b.assignedAt).getTime())
-    .slice(0, 4);
+  const pendingExercises = useMemo(() => {
+    return assignments.filter((a: any) => a.status === "pending" || a.status === "in_progress");
+  }, [assignments]);
 
-  // Top performing clients
-  const topClients = assignments.reduce((acc: any[], assignment: any) => {
-    const existing = acc.find(c => c.id === assignment.client.id);
-    if (existing) {
-      existing.totalAssignments++;
-      if (assignment.status === 'completed') existing.completedAssignments++;
-    } else {
-      acc.push({
-        ...assignment.client,
-        totalAssignments: 1,
-        completedAssignments: assignment.status === 'completed' ? 1 : 0,
+  const attentionItems: AttentionItem[] = useMemo(() => {
+    const items: AttentionItem[] = [];
+    
+    pendingExercises.slice(0, 3).forEach((assignment: any) => {
+      items.push({
+        id: `exercise-${assignment.id}`,
+        type: "exercise",
+        title: `Esercizio in attesa`,
+        description: `${assignment.client?.firstName || 'Cliente'} - ${assignment.exercise?.title || 'Esercizio'}`,
+        urgency: assignment.status === "pending" ? "high" : "medium",
+        actionUrl: "/consultant/exercises",
+        timeAgo: assignment.assignedAt ? new Date(assignment.assignedAt).toLocaleDateString('it-IT') : undefined
       });
+    });
+
+    highPriorityClients?.slice(0, 2).forEach((client: any) => {
+      items.push({
+        id: `lead-${client.id}`,
+        type: "lead",
+        title: "Cliente prioritario",
+        description: `${client.firstName} ${client.lastName} richiede attenzione`,
+        urgency: "high",
+        actionUrl: `/consultant/clients`,
+      });
+    });
+
+    appointments?.slice(0, 2).forEach((apt: any) => {
+      items.push({
+        id: `apt-${apt.id}`,
+        type: "appointment",
+        title: "Appuntamento in arrivo",
+        description: apt.title || `Con ${apt.clientName || 'Cliente'}`,
+        urgency: "medium",
+        actionUrl: "/consultant/appointments",
+        timeAgo: apt.startTime ? new Date(apt.startTime).toLocaleDateString('it-IT') : undefined
+      });
+    });
+
+    return items.slice(0, 5);
+  }, [pendingExercises, highPriorityClients, appointments]);
+
+  const navigationSections: NavigationSection[] = [
+    { 
+      name: "AI Assistant", 
+      href: "/consultant/ai-assistant", 
+      icon: Sparkles, 
+      color: "text-fuchsia-500",
+      bgColor: "bg-fuchsia-500/10 hover:bg-fuchsia-500/20",
+      badge: "AI"
+    },
+    { 
+      name: "Clienti", 
+      href: "/consultant/clients", 
+      icon: Users, 
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10 hover:bg-blue-500/20",
+      count: clients.length
+    },
+    { 
+      name: "Calendario", 
+      href: "/consultant/appointments", 
+      icon: Calendar, 
+      color: "text-orange-500",
+      bgColor: "bg-orange-500/10 hover:bg-orange-500/20",
+    },
+    { 
+      name: "Email Journey", 
+      href: "/consultant/ai-config", 
+      icon: Mail, 
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-500/10 hover:bg-emerald-500/20",
+    },
+    { 
+      name: "Lead Hub", 
+      href: "/consultant/lead-hub", 
+      icon: Target, 
+      color: "text-red-500",
+      bgColor: "bg-red-500/10 hover:bg-red-500/20",
+      badge: "HUB"
+    },
+    { 
+      name: "Agent Setup", 
+      href: "/consultant/whatsapp", 
+      icon: Bot, 
+      color: "text-green-500",
+      bgColor: "bg-green-500/10 hover:bg-green-500/20",
+    },
+    { 
+      name: "Formazione", 
+      href: "/consultant/university", 
+      icon: GraduationCap, 
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10 hover:bg-amber-500/20",
+    },
+    { 
+      name: "Knowledge Base", 
+      href: "/consultant/knowledge-documents", 
+      icon: BookOpen, 
+      color: "text-indigo-500",
+      bgColor: "bg-indigo-500/10 hover:bg-indigo-500/20",
+    },
+    { 
+      name: "File Search", 
+      href: "/consultant/file-search-analytics", 
+      icon: FileSearch, 
+      color: "text-cyan-500",
+      bgColor: "bg-cyan-500/10 hover:bg-cyan-500/20",
+      badge: "RAG"
+    },
+    { 
+      name: "Impostazioni", 
+      href: "/consultant/api-keys-unified", 
+      icon: Settings, 
+      color: "text-gray-500",
+      bgColor: "bg-gray-500/10 hover:bg-gray-500/20",
+    },
+  ];
+
+  const quickActions = [
+    { 
+      name: "Chatta con AI", 
+      icon: MessageSquare, 
+      onClick: () => setLocation("/consultant/ai-assistant"),
+      gradient: "from-fuchsia-500 to-purple-600"
+    },
+    { 
+      name: "Nuovo Cliente", 
+      icon: UserPlus, 
+      onClick: () => setLocation("/consultant/clients"),
+      gradient: "from-blue-500 to-cyan-600"
+    },
+    { 
+      name: "Chiama Lead", 
+      icon: Phone, 
+      onClick: () => setLocation("/consultant/lead-hub"),
+      gradient: "from-green-500 to-emerald-600"
+    },
+    { 
+      name: "Invia Email", 
+      icon: Mail, 
+      onClick: () => setLocation("/consultant/ai-config"),
+      gradient: "from-orange-500 to-red-600"
+    },
+  ];
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case "high": return "bg-red-500/10 border-red-500/30 text-red-600 dark:text-red-400";
+      case "medium": return "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400";
+      default: return "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400";
     }
-    return acc;
-  }, [])
-  .map((client: any) => ({
-    ...client,
-    completionRate: client.totalAssignments > 0 ? (client.completedAssignments / client.totalAssignments) * 100 : 0,
-  }))
-  .sort((a: any, b: any) => b.completionRate - a.completionRate)
-  .slice(0, 3);
-
-  // Filter clients based on search and status
-  const filteredClients = clients.filter(client => {
-    const matchesSearch = 
-      client.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client.email.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = 
-      filterStatus === "all" ? true :
-      filterStatus === "active" ? client.isActive :
-      !client.isActive;
-
-    return matchesSearch && matchesStatus;
-  });
-
-  // Check if client is currently active (based on activity sessions)
-  const isClientActive = (clientId: string) => {
-    const clientSession = activeSessions?.find(s => s.userId === clientId);
-    if (!clientSession) return false;
-
-    const lastActivity = new Date(clientSession.lastActivity);
-    const now = new Date();
-    const diffMinutes = (now.getTime() - lastActivity.getTime()) / (1000 * 60);
-
-    return diffMinutes < 10; // Active if last activity was less than 10 minutes ago
   };
 
-  if (showExerciseForm) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar onMenuClick={() => setSidebarOpen(true)} />
-        <div className="flex h-[calc(100vh-80px)]">
-          <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
-          <div className="flex-1 p-4 md:p-6 overflow-y-auto">
-            <div className="flex justify-center">
-              <ExerciseForm
-                onSubmit={handleCreateExercise}
-                onCancel={() => setShowExerciseForm(false)}
-                isLoading={createExerciseMutation.isPending}
-              />
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "exercise": return FileText;
+      case "lead": return Target;
+      case "appointment": return Clock;
+      default: return AlertCircle;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20" data-testid="consultant-dashboard">
+      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
+      <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
+        <Sidebar 
+          role="consultant" 
+          isOpen={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          showRoleSwitch={showRoleSwitch} 
+          currentRole={currentRole} 
+          onRoleSwitch={handleRoleSwitch} 
+        />
+
+        <div className="flex-1 overflow-y-auto">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">👋</span>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                    {getGreeting()}, {user?.firstName || 'Consulente'}
+                  </h1>
+                  <p className="text-muted-foreground text-sm">
+                    Ecco cosa succede oggi nel tuo business
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative"
+                  onClick={() => setLocation("/consultant/ai-config")}
+                >
+                  <Bell className="h-5 w-5" />
+                  {attentionItems.length > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center font-bold">
+                      {attentionItems.length}
+                    </span>
+                  )}
+                </Button>
+                <Avatar className="h-10 w-10 ring-2 ring-primary/20">
+                  <AvatarImage src={user?.avatar || undefined} />
+                  <AvatarFallback className="bg-gradient-to-br from-primary to-primary/60 text-white font-semibold">
+                    {user?.firstName?.[0]}{user?.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
             </div>
+
+            {/* Search/AI Bar */}
+            <div className="relative group">
+              <div 
+                className="w-full cursor-pointer"
+                onClick={() => setLocation("/consultant/ai-assistant")}
+              >
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500/20 via-purple-500/20 to-blue-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="relative bg-card border border-border/50 rounded-2xl p-4 sm:p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:border-primary/30">
+                    <p className="text-lg sm:text-xl text-muted-foreground mb-3">
+                      Cosa vuoi fare oggi?
+                    </p>
+                    <div className="flex items-center gap-3 bg-muted/50 rounded-xl px-4 py-3 border border-border/50">
+                      <Search className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-muted-foreground flex-1">Cerca o chiedi all'AI...</span>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-background/50 px-2 py-1 rounded-lg border">
+                        <Sparkles className="h-3 w-3 text-fuchsia-500" />
+                        <span>AI</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                Azioni Rapide
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {quickActions.map((action, index) => (
+                  <button
+                    key={index}
+                    onClick={action.onClick}
+                    className="group relative overflow-hidden rounded-xl p-4 text-left transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <div className={cn(
+                      "absolute inset-0 bg-gradient-to-br opacity-90 group-hover:opacity-100 transition-opacity",
+                      action.gradient
+                    )} />
+                    <div className="relative z-10 text-white">
+                      <action.icon className="h-6 w-6 mb-2" />
+                      <p className="font-medium text-sm">{action.name}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Requires Attention */}
+            {attentionItems.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Flame className="h-5 w-5 text-orange-500" />
+                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                    Richiede Attenzione
+                  </h2>
+                  <Badge variant="secondary" className="text-xs">
+                    {attentionItems.length}
+                  </Badge>
+                </div>
+                <Card className="border-orange-500/20 bg-gradient-to-br from-orange-500/5 to-transparent">
+                  <CardContent className="p-4 space-y-2">
+                    {attentionItems.map((item) => {
+                      const IconComponent = getTypeIcon(item.type);
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => setLocation(item.actionUrl)}
+                          className={cn(
+                            "w-full flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 hover:scale-[1.01] text-left",
+                            getUrgencyColor(item.urgency)
+                          )}
+                        >
+                          <div className="p-2 rounded-lg bg-background/50">
+                            <IconComponent className="h-4 w-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">{item.title}</p>
+                            <p className="text-xs opacity-80 truncate">{item.description}</p>
+                          </div>
+                          {item.timeAgo && (
+                            <span className="text-xs opacity-60 whitespace-nowrap">{item.timeAgo}</span>
+                          )}
+                          <ChevronRight className="h-4 w-4 opacity-50" />
+                        </button>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Navigation Sections Grid */}
+            <div>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+                Tutte le Sezioni
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {navigationSections.map((section, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setLocation(section.href)}
+                    className={cn(
+                      "group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-xl border border-border/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]",
+                      section.bgColor
+                    )}
+                  >
+                    <div className={cn(
+                      "p-3 rounded-xl mb-2 transition-transform duration-300 group-hover:scale-110",
+                      section.bgColor.replace("hover:", "")
+                    )}>
+                      <section.icon className={cn("h-6 w-6", section.color)} />
+                    </div>
+                    <span className="text-sm font-medium text-center">{section.name}</span>
+                    {section.count !== undefined && (
+                      <Badge variant="secondary" className="mt-1.5 text-xs">
+                        {section.count}
+                      </Badge>
+                    )}
+                    {section.badge && (
+                      <Badge className="mt-1.5 text-xs bg-gradient-to-r from-primary to-primary/80">
+                        {section.badge}
+                      </Badge>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer spacer */}
+            <div className="h-8" />
           </div>
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-background" data-testid="consultant-dashboard">
-      {isMobile && <Navbar onMenuClick={() => setSidebarOpen(true)} />}
-      <div className={`flex ${isMobile ? 'h-[calc(100vh-80px)]' : 'h-screen'}`}>
-        <Sidebar role="consultant" isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} showRoleSwitch={showRoleSwitch} currentRole={currentRole} onRoleSwitch={handleRoleSwitch} />
-
-        <div className="flex-1 p-6 overflow-y-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-heading font-bold text-foreground mb-2">
-              Dashboard Consulente
-            </h1>
-            <p className="text-muted-foreground">
-              Monitora i progressi dei tuoi clienti e gestisci gli esercizi
-            </p>
-          </div>
-
-          {/* Interactive Intro Banner - Shows if onboarding not completed */}
-          {showInteractiveIntroBanner && <InteractiveIntroBanner />}
-
-          {/* Main Dashboard Tabs */}
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="overview" className="flex items-center space-x-2" data-testid="tab-dashboard-overview">
-                <Activity size={18} />
-                <span>Panoramica</span>
-              </TabsTrigger>
-              <TabsTrigger value="activity" className="flex items-center space-x-2" data-testid="tab-dashboard-activity">
-                <Users size={18} />
-                <span>Attività Clienti</span>
-              </TabsTrigger>
-              <TabsTrigger value="university" className="flex items-center space-x-2" data-testid="tab-dashboard-university">
-                <Trophy size={18} />
-                <span>Università</span>
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Overview Tab Content - CLIENT-CENTRIC */}
-            <TabsContent value="overview" className="space-y-8">
-              
-              {/* Error state for priority scoring */}
-              {priorityError && priorityErrorDetails && (
-                <Card className="border-red-500/50 bg-red-500/5">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <AlertTriangle className="w-5 h-5 text-red-500" />
-                      <p className="text-sm font-medium text-red-600">
-                        Impossibile caricare dati priorità clienti: {priorityErrorDetails.source}
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {priorityErrorDetails.message}
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Clients Need Attention Section - 3 livelli */}
-              <ClientsNeedAttention
-                highPriorityClients={highPriorityClients}
-                mediumPriorityClients={mediumPriorityClients}
-                lowPriorityClients={lowPriorityClients}
-              />
-
-              {/* Grid: Top Performers + Lead Pipeline */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <TopPerformers topPerformers={topPerformers} />
-                <LeadPipelineView />
-              </div>
-
-              {/* Stats Overview at the bottom */}
-              <StatsOverview />
-
-              {/* Old Stats Cards - Keeping for reference but hidden */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 hidden">
-            <Card data-testid="stat-active-clients">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Clienti Attivi</p>
-                    <p className="text-3xl font-bold text-foreground" data-testid="text-active-clients">
-                      {stats?.activeClients || clients.length}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Users className="text-primary" size={24} />
-                  </div>
-                </div>
-                <div className="flex items-center mt-4 text-sm">
-                  <TrendingUp className="text-success mr-1" size={16} />
-                  <span className="text-success">+2.5%</span>
-                  <span className="text-muted-foreground ml-2">vs mese scorso</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="stat-completed-exercises">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Esercizi Completati</p>
-                    <p className="text-3xl font-bold text-foreground" data-testid="text-completed-exercises">
-                      {stats?.completedExercises || 0}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="text-success" size={24} />
-                  </div>
-                </div>
-                <div className="flex items-center mt-4 text-sm">
-                  <TrendingUp className="text-success mr-1" size={16} />
-                  <span className="text-success">+12%</span>
-                  <span className="text-muted-foreground ml-2">questa settimana</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="stat-completion-rate">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Tasso Completamento</p>
-                    <p className="text-3xl font-bold text-foreground" data-testid="text-completion-rate">
-                      {stats?.completionRate || 0}%
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center">
-                    <PieChart className="text-secondary" size={24} />
-                  </div>
-                </div>
-                <div className="flex items-center mt-4 text-sm">
-                  <TrendingUp className="text-success mr-1" size={16} />
-                  <span className="text-success">+5%</span>
-                  <span className="text-muted-foreground ml-2">vs media</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="stat-today-consultations">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Consulenze Oggi</p>
-                    <p className="text-3xl font-bold text-foreground" data-testid="text-today-consultations">
-                      {stats?.todayConsultations || 0}
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
-                    <CalendarDays className="text-accent" size={24} />
-                  </div>
-                </div>
-                <div className="flex items-center mt-4 text-sm">
-                  <span className="text-muted-foreground">2 in programma</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Client Activity */}
-            <div className="lg:col-span-2">
-              <Card data-testid="card-recent-activity">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-heading">Attività Recente Clienti</CardTitle>
-                    <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                      Vedi tutto
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {recentActivity.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Users size={48} className="mx-auto mb-4 opacity-50" />
-                        <p>Nessuna attività recente</p>
-                        <p className="text-sm">Le attività dei clienti appariranno qui</p>
-                      </div>
-                    ) : (
-                      recentActivity.map((assignment: any, index: number) => (
-                        <div 
-                          key={assignment.id} 
-                          className="flex items-center space-x-4 p-4 hover:bg-muted/50 rounded-lg transition-colors"
-                          data-testid={`activity-item-${index}`}
-                        >
-                          <Avatar className="w-10 h-10">
-                            <AvatarImage src={assignment.client.avatar} />
-                            <AvatarFallback>
-                              {assignment.client.firstName[0]}{assignment.client.lastName[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-foreground">
-                              {assignment.client.firstName} {assignment.client.lastName} ha ricevuto "{assignment.exercise.title}"
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(assignment.assignedAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className={`${
-                            assignment.status === 'completed' ? 'text-success' : 
-                            assignment.status === 'in_progress' ? 'text-accent' : 'text-primary'
-                          }`}>
-                            {assignment.status === 'completed' ? <CheckCircle size={20} /> :
-                             assignment.status === 'in_progress' ? <Play size={20} /> :
-                             <MessageCircle size={20} />}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Quick Actions & Top Clients */}
-            <div className="space-y-6">
-              {/* Quick Actions */}
-              <Card data-testid="card-quick-actions">
-                <CardHeader>
-                  <CardTitle className="text-lg font-heading">Azioni Rapide</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <Button 
-                      className="w-full justify-center" 
-                      onClick={() => setShowExerciseForm(true)}
-                      data-testid="button-create-exercise"
-                    >
-                      <Plus size={18} className="mr-2" />
-                      Crea Esercizio
-                    </Button>
-
-                    <Button variant="secondary" className="w-full justify-center" asChild>
-                      <a href="/consultant/clients">
-                        <Users size={18} className="mr-2" />
-                        Visualizza Clienti
-                      </a>
-                    </Button>
-
-                    <Button variant="outline" className="w-full justify-center" data-testid="button-schedule-consultation">
-                      <CalendarPlus size={18} className="mr-2" />
-                      Pianifica Consulenza
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Top Clients */}
-              <Card data-testid="card-top-clients">
-                <CardHeader>
-                  <CardTitle className="text-lg font-heading">Top Clienti del Mese</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {topClients.length === 0 ? (
-                      <div className="text-center py-4 text-muted-foreground">
-                        <Trophy size={32} className="mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Nessun cliente attivo</p>
-                      </div>
-                    ) : (
-                      topClients.map((client: any, index: number) => (
-                        <div key={client.id} className="flex items-center space-x-3" data-testid={`top-client-${index}`}>
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={client.avatar} />
-                            <AvatarFallback className="text-xs">
-                              {client.firstName[0]}{client.lastName[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-foreground">
-                              {client.firstName} {client.lastName[0]}.
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {Math.round(client.completionRate)}% completamento
-                            </p>
-                          </div>
-                          <div className={`${
-                            index === 0 ? 'text-success' : 
-                            index === 1 ? 'text-secondary' : 'text-accent'
-                          }`}>
-                            {index === 0 ? <Trophy size={16} /> :
-                             index === 1 ? <Medal size={16} /> :
-                             <Star size={16} />}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-        </TabsContent>
-
-        {/* University Tab Content */}
-        <TabsContent value="university" className="space-y-6">
-          <UniversityOverview />
-        </TabsContent>
-
-        {/* Activity Monitoring Tab Content */}
-        <TabsContent value="activity">
-          <ActivityDashboard />
-        </TabsContent>
-      </Tabs>
     </div>
-  </div>
-  <ConsultantAIAssistant />
-</div>
-);
+  );
 }
