@@ -350,120 +350,173 @@ function LeadListItem({
   );
 }
 
-function EventDetailCard({ event }: { event: TimelineEvent }) {
+function EventDetailCard({ event, isLast }: { event: TimelineEvent; isLast?: boolean }) {
   const statusConfig = getStatusConfig(event.status);
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const getEventColor = (type: string) => {
+    switch (type) {
+      case 'message_sent': return 'border-green-400 bg-green-50';
+      case 'message_failed': return 'border-red-400 bg-red-50';
+      case 'message_scheduled': return 'border-blue-400 bg-blue-50';
+      case 'message_cancelled': return 'border-gray-400 bg-gray-50';
+      case 'ai_evaluation': return 'border-purple-400 bg-purple-50';
+      default: return 'border-gray-300 bg-gray-50';
+    }
+  };
+
+  const hasExpandableContent = event.reasoning || event.aiSelectedTemplateReasoning || event.messagePreview;
 
   return (
-    <Card className="mb-3">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <div className="mt-1">{getEventIcon(event.type)}</div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              <span className="font-medium">{getEventLabel(event.type, event.decision)}</span>
-              <span className="text-sm text-muted-foreground">
-                {format(new Date(event.timestamp), "dd MMM yyyy HH:mm:ss", { locale: it })}
-              </span>
-              {event.confidenceScore !== undefined && (
-                <Badge variant="outline" className="text-xs">
-                  {Math.round(event.confidenceScore * 100)}% conf.
-                </Badge>
-              )}
-              <Badge className={`${statusConfig.color} text-xs`}>
-                {statusConfig.label}
+    <div className="relative pl-6">
+      {/* Timeline line */}
+      {!isLast && (
+        <div className="absolute left-[11px] top-8 bottom-0 w-0.5 bg-border" />
+      )}
+      
+      {/* Timeline dot */}
+      <div className={`absolute left-0 top-2 w-6 h-6 rounded-full flex items-center justify-center border-2 bg-background ${
+        event.type === 'message_sent' ? 'border-green-500' :
+        event.type === 'message_failed' ? 'border-red-500' :
+        event.type === 'message_scheduled' ? 'border-blue-500' :
+        event.type === 'ai_evaluation' ? 'border-purple-500' :
+        'border-gray-400'
+      }`}>
+        {getEventIcon(event.type)}
+      </div>
+
+      <div className={`ml-4 mb-4 rounded-lg border-l-3 p-3 ${getEventColor(event.type)}`}>
+        {/* Header row */}
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm">{getEventLabel(event.type, event.decision)}</span>
+            <Badge className={`${statusConfig.color} text-[10px] px-1.5 py-0`}>
+              {statusConfig.label}
+            </Badge>
+            {event.confidenceScore !== undefined && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white/50">
+                {Math.round(event.confidenceScore * 100)}%
               </Badge>
-            </div>
-
-            {event.templateId && (
-              <div className="mb-2 p-2 bg-muted/50 rounded text-sm">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Template:</span>
-                  <span>{event.templateName || event.templateId}</span>
-                  <Badge className={`text-[10px] ${
-                    event.templateTwilioStatus === 'approved' ? 'bg-green-100 text-green-700' :
-                    event.templateTwilioStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    event.templateTwilioStatus === 'rejected' ? 'bg-red-100 text-red-700' :
-                    'bg-gray-100 text-gray-600'
-                  }`}>
-                    {event.templateTwilioStatus === 'approved' ? 'Approvato' :
-                     event.templateTwilioStatus === 'pending' ? 'In attesa' :
-                     event.templateTwilioStatus === 'rejected' ? 'Rifiutato' : 'Non sincronizzato'}
-                  </Badge>
-                </div>
-              </div>
             )}
-
-            {!event.templateId && event.canSendFreeform && (
-              <div className="mb-2 inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs">
-                <Brain className="h-3 w-3" />
-                Messaggio generato dall'AI (finestra 24h attiva)
-              </div>
-            )}
-
-            {event.reasoning && (
-              <div className="mb-2">
-                <div className="text-xs font-medium text-muted-foreground mb-1">Ragionamento AI:</div>
-                <div className="text-sm bg-muted/30 p-3 rounded whitespace-pre-wrap">
-                  {event.reasoning}
-                </div>
-              </div>
-            )}
-
-            {event.aiSelectedTemplateReasoning && (
-              <div className="mb-2">
-                <div className="text-xs font-medium text-muted-foreground mb-1">Scelta Template:</div>
-                <div className="text-sm bg-blue-50 p-3 rounded whitespace-pre-wrap text-blue-900">
-                  {event.aiSelectedTemplateReasoning}
-                </div>
-              </div>
-            )}
-
-            {event.messagePreview && (
-              <div className="mb-2">
-                <div className="text-xs font-medium text-muted-foreground mb-1">Messaggio:</div>
-                <div className="text-sm bg-green-50 p-3 rounded border-l-2 border-green-400 whitespace-pre-wrap">
-                  {event.messagePreview}
-                </div>
-              </div>
-            )}
-
-            {event.errorMessage && (
-              <div className="mb-2">
-                <div className="text-xs font-medium text-red-600 mb-1">Errore:</div>
-                <div className="text-sm bg-red-50 p-3 rounded text-red-700 whitespace-pre-wrap">
-                  {event.errorMessage}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-2 mt-3">
-              {event.type === 'message_scheduled' && event.status === 'scheduled' && (
-                <SendNowButton
-                  messageId={event.id.replace('msg-', '')}
-                  canSendFreeform={event.canSendFreeform}
-                  hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
-                />
-              )}
-              {event.type === 'message_failed' && (
-                <RetryButton messageId={event.id.replace('msg-', '')} />
-              )}
-            </div>
           </div>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {format(new Date(event.timestamp), "dd MMM HH:mm", { locale: it })}
+          </span>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Template info - compact */}
+        {event.templateId && (
+          <div className="flex items-center gap-2 text-xs mb-2 bg-white/50 rounded px-2 py-1">
+            <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <span className="truncate">{event.templateName || event.templateId}</span>
+            <Badge className={`text-[9px] px-1 py-0 flex-shrink-0 ${
+              event.templateTwilioStatus === 'approved' ? 'bg-green-100 text-green-700' :
+              event.templateTwilioStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+              event.templateTwilioStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+              'bg-gray-100 text-gray-600'
+            }`}>
+              {event.templateTwilioStatus === 'approved' ? 'OK' :
+               event.templateTwilioStatus === 'pending' ? 'Attesa' :
+               event.templateTwilioStatus === 'rejected' ? 'No' : '?'}
+            </Badge>
+          </div>
+        )}
+
+        {/* Freeform indicator */}
+        {!event.templateId && event.canSendFreeform && (
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] mb-2">
+            <Brain className="h-2.5 w-2.5" />
+            Finestra 24h attiva
+          </div>
+        )}
+
+        {/* Error message - always visible */}
+        {event.errorMessage && (
+          <div className="text-xs bg-red-100 text-red-700 p-2 rounded mb-2">
+            <strong>Errore:</strong> {event.errorMessage}
+          </div>
+        )}
+
+        {/* Expandable content */}
+        {hasExpandableContent && (
+          <>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-xs text-primary hover:underline flex items-center gap-1 mb-1"
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronLeft className="h-3 w-3 rotate-90" />
+                  Nascondi dettagli
+                </>
+              ) : (
+                <>
+                  <ChevronRight className="h-3 w-3 rotate-90" />
+                  Mostra dettagli
+                </>
+              )}
+            </button>
+
+            {isExpanded && (
+              <div className="space-y-2 mt-2 pt-2 border-t border-current/10">
+                {event.reasoning && (
+                  <div>
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      Ragionamento AI
+                    </div>
+                    <div className="text-xs bg-white/70 p-2 rounded whitespace-pre-wrap leading-relaxed">
+                      {event.reasoning}
+                    </div>
+                  </div>
+                )}
+
+                {event.aiSelectedTemplateReasoning && (
+                  <div>
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      Scelta Template
+                    </div>
+                    <div className="text-xs bg-blue-100/70 p-2 rounded whitespace-pre-wrap leading-relaxed text-blue-900">
+                      {event.aiSelectedTemplateReasoning}
+                    </div>
+                  </div>
+                )}
+
+                {event.messagePreview && (
+                  <div>
+                    <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      Messaggio
+                    </div>
+                    <div className="text-xs bg-green-100/70 p-2 rounded border-l-2 border-green-500 whitespace-pre-wrap leading-relaxed">
+                      {event.messagePreview}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Actions */}
+        {(event.type === 'message_scheduled' && event.status === 'scheduled') || event.type === 'message_failed' ? (
+          <div className="flex gap-2 mt-2 pt-2 border-t border-current/10">
+            {event.type === 'message_scheduled' && event.status === 'scheduled' && (
+              <SendNowButton
+                messageId={event.id.replace('msg-', '')}
+                canSendFreeform={event.canSendFreeform}
+                hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
+              />
+            )}
+            {event.type === 'message_failed' && (
+              <RetryButton messageId={event.id.replace('msg-', '')} />
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
 function DetailPanel({ conversation }: { conversation: ConversationTimeline | null }) {
-  const [eventPage, setEventPage] = useState(0);
-  const eventsPerPage = 10;
-
-  useEffect(() => {
-    setEventPage(0);
-  }, [conversation?.conversationId]);
-
   if (!conversation) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground">
@@ -476,48 +529,53 @@ function DetailPanel({ conversation }: { conversation: ConversationTimeline | nu
   }
 
   const totalEvents = conversation.events.length;
-  const totalPages = Math.ceil(totalEvents / eventsPerPage);
-  const startIdx = eventPage * eventsPerPage;
-  const paginatedEvents = conversation.events.slice(startIdx, startIdx + eventsPerPage);
   const countdown = formatCountdown(conversation.window24hExpiresAt);
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b bg-muted/30">
-        <div className="flex items-center gap-3 mb-2">
-          <span className="text-2xl">{getTemperatureEmoji(conversation.temperatureLevel)}</span>
-          <div>
-            <h2 className="text-lg font-semibold">{conversation.leadName}</h2>
+      {/* Header */}
+      <div className="p-4 border-b bg-gradient-to-r from-muted/50 to-muted/30">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="text-3xl">{getTemperatureEmoji(conversation.temperatureLevel)}</div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold truncate">{conversation.leadName}</h2>
             {conversation.leadPhone && (
               <p className="text-sm text-muted-foreground">{conversation.leadPhone}</p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge className={getStatusConfig(conversation.currentStatus).color}>
+        
+        {/* Status badges */}
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          <Badge className={`${getStatusConfig(conversation.currentStatus).color} font-medium`}>
             {getStatusConfig(conversation.currentStatus).label}
           </Badge>
           {countdown && (
-            <span className={`text-xs px-2 py-1 rounded ${
-              countdown.isExpired ? 'bg-red-100 text-red-700' : countdown.isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+            <Badge variant="outline" className={`text-xs ${
+              countdown.isExpired ? 'border-red-300 bg-red-50 text-red-700' : 
+              countdown.isUrgent ? 'border-orange-300 bg-orange-50 text-orange-700' : 
+              'border-green-300 bg-green-50 text-green-700'
             }`}>
-              Finestra 24h: {countdown.text}
-            </span>
+              <Clock className="h-3 w-3 mr-1" />
+              24h: {countdown.text}
+            </Badge>
           )}
           {conversation.consecutiveNoReplyCount !== undefined && conversation.consecutiveNoReplyCount > 0 && (
-            <span className={`text-xs px-2 py-1 rounded ${
-              conversation.consecutiveNoReplyCount >= 3 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+            <Badge variant="outline" className={`text-xs ${
+              conversation.consecutiveNoReplyCount >= 3 ? 'border-red-300 bg-red-50 text-red-700' : 'border-orange-300 bg-orange-50 text-orange-700'
             }`}>
-              {conversation.consecutiveNoReplyCount}/3 senza risposta
-            </span>
+              {conversation.consecutiveNoReplyCount}/3 no reply
+            </Badge>
           )}
-          <span className="text-xs text-muted-foreground">
-            via <strong>{conversation.agentName}</strong>
-          </span>
+          <Badge variant="outline" className="text-xs">
+            via {conversation.agentName}
+          </Badge>
         </div>
-        <div className="flex gap-2 mt-3">
+        
+        {/* Actions */}
+        <div className="flex gap-2">
           <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
-            <Button variant="outline" size="sm" className="gap-1">
+            <Button variant="default" size="sm" className="gap-1.5">
               <MessageSquare className="h-4 w-4" /> Apri Chat
             </Button>
           </Link>
@@ -525,40 +583,34 @@ function DetailPanel({ conversation }: { conversation: ConversationTimeline | nu
         </div>
       </div>
 
+      {/* Timeline header */}
+      <div className="px-4 py-2 border-b bg-muted/20 flex items-center justify-between">
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          <Activity className="h-4 w-4" />
+          Cronologia Completa
+        </h3>
+        <Badge variant="secondary" className="text-xs">
+          {totalEvents} eventi
+        </Badge>
+      </div>
+
+      {/* Full timeline - no pagination */}
       <ScrollArea className="flex-1">
         <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium text-sm">{totalEvents} Eventi</h3>
-            {totalPages > 1 && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEventPage(p => Math.max(0, p - 1))}
-                  disabled={eventPage === 0}
-                  className="h-7 w-7 p-0"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-xs text-muted-foreground">
-                  {eventPage + 1} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setEventPage(p => Math.min(totalPages - 1, p + 1))}
-                  disabled={eventPage >= totalPages - 1}
-                  className="h-7 w-7 p-0"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {paginatedEvents.map((event) => (
-            <EventDetailCard key={event.id} event={event} />
+          {conversation.events.map((event, index) => (
+            <EventDetailCard 
+              key={event.id} 
+              event={event} 
+              isLast={index === conversation.events.length - 1}
+            />
           ))}
+          
+          {totalEvents === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Nessun evento ancora</p>
+            </div>
+          )}
         </div>
       </ScrollArea>
     </div>

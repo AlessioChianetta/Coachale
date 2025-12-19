@@ -3144,14 +3144,15 @@ async function sendFollowupMessage(
   const nextCheckDate = new Date();
   nextCheckDate.setHours(nextCheckDate.getHours() + cooldownHours);
   
+  // FIX: Cap consecutiveNoReplyCount to max 3 to prevent values like 4/3
   await updateConversationState(message.conversationId, {
     followupCount: sql`followup_count + 1` as any,
-    consecutiveNoReplyCount: sql`consecutive_no_reply_count + 1` as any,
+    consecutiveNoReplyCount: sql`LEAST(COALESCE(consecutive_no_reply_count, 0) + 1, 3)` as any,
     lastFollowupAt: new Date(),
     nextFollowupScheduledAt: nextCheckDate,
   });
   
-  console.log(`📊 [FOLLOWUP-SCHEDULER] Updated state: followupCount+1, consecutiveNoReplyCount+1, nextCheck=${nextCheckDate.toISOString()} (cooldown: ${cooldownHours}h)`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Updated state: followupCount+1, consecutiveNoReplyCount+1 (capped at 3), nextCheck=${nextCheckDate.toISOString()} (cooldown: ${cooldownHours}h)`);
 }
 
 export function isSchedulerRunning(): boolean {
