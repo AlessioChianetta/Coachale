@@ -18,6 +18,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Role-based access control** (consultant/client/super_admin) via middleware.
 - **Secure password handling** using bcrypt.
 - **Super Admin System**: Centralized management of consultants and clients, with global OAuth and TURN server configurations. All admin actions are logged.
+  - **SuperAdmin Gemini API Keys**: Centralized Gemini API key management via `/api/admin/superadmin/gemini-config`. Keys are encrypted and stored in `superadminGeminiConfig` table. Consultants can opt-in via `useSuperadminGemini` field to use centralized keys instead of personal ones. 3-tier priority: SuperAdmin keys → User keys → Environment variable fallback.
 ## UI/UX Decisions
 - Uses `shadcn/ui` and `Tailwind CSS` for modern, accessible, and responsive design.
 - Interactive guided tours via `Driver.js` for onboarding.
@@ -73,8 +74,10 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - Unified analytics for AI agents and human sellers. Session state (transcripts, checkpoints, phases) stored in the database with debounced saves and automatic restoration.
 ## Checkpoint Validation System (Sales Coaching)
 - 3-tier status system (VALIDATED, VAGUE, MISSING) with sticky validation logic and manual validation via UI. AI skips already-validated items.
-## Gemini Live API Configuration
-- **Model**: `gemini-live-2.5-flash-native-audio` (GA - December 12, 2025)
+## Gemini Model Configuration
+- **Text Chat Model**: `gemini-3-flash-preview` (experimental, with `thinking_level: "low"`)
+- **Rollback Flag**: `USE_GEMINI_3` in `ai-service.ts` allows quick rollback to `gemini-2.5-flash`
+- **Live API Model**: `gemini-live-2.5-flash-native-audio` (GA - December 12, 2025)
 - **Platform**: Vertex AI
 - **Features**: Native audio (30 HD voices, 24 languages), Affective Dialog, improved barge-in, robust function calling, session resumption, proactive audio (preview).
 - **Post-Resume Silence**: AI audio output is suppressed after WebSocket reconnection until the user speaks first to prevent erroneous responses.
