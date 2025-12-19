@@ -1,0 +1,48 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 [CALENDAR SYNC] Starting sync cycle...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 [PROACTIVE OUTREACH] Starting scheduled run at 2025-12-19T23:05:00.020Z
+⏰ [FOLLOWUP-SCHEDULER] HOT/WARM evaluation cycle triggered
+🔍 [FOLLOWUP-SCHEDULER] Starting HOT/WARM follow-up evaluation cycle...
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send
+💤 [FOLLOWUP-SCHEDULER] No pending messages
+🧠 [FOLLOWUP-SCHEDULER] AI-ONLY mode: Found 4 consultants with active WhatsApp configs
+✅ [FILTER-CHECK] Excluding closed states: 'closed_won', 'closed_lost' from candidate search
+🌡️ [FOLLOWUP-SCHEDULER] Filtering by temperature: hot, warm
+📋 Found 0 pending leads to contact (first message only)
+✅ No pending leads to process at this time
+📊 [CALENDAR SYNC] Syncing 1 consultant(s)...
+
+🔄 [CALENDAR SYNC] Starting sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+📊 [CANDIDATE] 1cfa7e1c-b049-4dd2-876c-eef1e57a8d11: leadNeverResponded=false, hoursSinceLastInbound=0.1h, lastInbound=2025-12-19T23:00:14.855Z
+📊 [WHATSAPP POLLING] Polling 7 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+📊 [CANDIDATE] 194846e0-6df4-4610-a46f-f668e61951ec: leadNeverResponded=false, hoursSinceLastInbound=0.1h, lastInbound=2025-12-19T23:00:30.519Z
+📊 [FOLLOWUP-SCHEDULER] Found 0 HOT/WARM candidate conversations
+💤 [FOLLOWUP-SCHEDULER] No HOT/WARM conversations to evaluate
+✅ [GOOGLE CALENDAR] Found global OAuth credentials. Client ID: 830305191681-70020p0...
+🔗 [GOOGLE CALENDAR] Using GLOBAL OAuth credentials. Redirect URI: https://e5da21a7-cd72-4315-aaed-29d353f0bcb0-00-3ov2cfz1bfgyx.worf.replit.dev/api/calendar-settings/oauth/callback
+✅ Using saved calendar ID from settings: primary
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+✅ [CALENDAR SYNC] No confirmed appointments to sync for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b in the next 90 days
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+
+✅ [CALENDAR SYNC] Sync cycle complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+11:05:02 PM [express] POST /api/activity/session/heartbeat 200 in 307ms :: {"success":true,"lastActiv…
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+✅ [WHATSAPP POLLING] Poll cycle complete
+11:05:05 PM [express] GET /api/followup/pending-queue 304 in 403ms :: {"agents":[{"agentId":"760bb513…
+11:05:11 PM [express] GET /api/followup/activity-log 304 in 1433ms :: {"timeline":[{"conversationId":…
+11:05:11 PM [express] GET /api/followup/dashboard-stats 304 in 1030ms :: {"awaitingFollowup":2,"sentT…
