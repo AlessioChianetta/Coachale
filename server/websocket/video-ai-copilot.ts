@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { db } from '../db';
 import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, users, humanSellerScriptAssignments, humanSellerMeetingTraining, type HumanSellerMeetingTraining } from '@shared/schema';
 import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
-import { getAIProvider, getModelForProviderName } from '../ai/provider-factory';
+import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
 import { SalesManagerAgent, type SalesManagerAnalysis, type ArchetypeState, type ConversationMessage, type BusinessContext } from '../ai/sales-manager-agent';
 import { parseScriptContentToStructure } from '../ai/sales-script-structure-parser';
@@ -748,8 +748,11 @@ async function performTranscription(
 
   console.log(`🎯 [Trascrizione] Inviando richiesta a Gemini con prompt italiano...`);
 
+  const { model, useThinking, thinkingLevel } = getModelWithThinking(cachedProvider.metadata?.name || 'Vertex AI');
+  console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
   const response = await cachedProvider.client.generateContent({
-    model: getModelForProviderName(cachedProvider.metadata?.name || 'Vertex AI'),
+    model,
     contents: [
       {
         role: 'user',
@@ -764,6 +767,7 @@ async function performTranscription(
       maxOutputTokens: 2000,
       topP: 1,
       topK: 1,  // Forza il modello a scegliere sempre la parola più probabile
+      ...(useThinking && { thinkingConfig: { thinkingLevel } }),
     }
   });
 
@@ -873,8 +877,11 @@ async function analyzeSentiment(
       return 'neutral';
     }
 
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(cachedProvider.metadata?.name || 'Vertex AI');
+    console.log(`   🧠 [Sentiment] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
     const response = await cachedProvider.client.generateContent({
-      model: getModelForProviderName(cachedProvider.metadata?.name || 'Vertex AI'),
+      model,
       contents: [
         {
           role: 'user',
@@ -897,6 +904,7 @@ Response (one word only):`
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 10,
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       }
     });
 
@@ -943,12 +951,16 @@ Based on the conversation, provide ONE brief, actionable suggestion for the sale
 Keep it under 50 words. Be specific and practical.
 Format: Just the suggestion text, no prefixes.`;
 
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(cachedProvider.metadata?.name || 'Vertex AI');
+    console.log(`   🧠 [Suggestion] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
     const response = await cachedProvider.client.generateContent({
-      model: getModelForProviderName(cachedProvider.metadata?.name || 'Vertex AI'),
+      model,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 100,
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       }
     });
 
@@ -994,12 +1006,16 @@ If no objection detected, respond with:
 
 Response (JSON only):`;
 
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(cachedProvider.metadata?.name || 'Vertex AI');
+    console.log(`   🧠 [Objection] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
     const response = await cachedProvider.client.generateContent({
-      model: getModelForProviderName(cachedProvider.metadata?.name || 'Vertex AI'),
+      model,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 150,
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       }
     });
 

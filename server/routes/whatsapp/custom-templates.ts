@@ -1060,7 +1060,7 @@ router.post(
       const { description } = validationResult.data;
 
       // Get AI provider
-      const { getAIProvider } = await import("../../ai/provider-factory");
+      const { getAIProvider, getModelWithThinking } = await import("../../ai/provider-factory");
       const provider = await getAIProvider(consultantId);
 
       if (!provider) {
@@ -1120,8 +1120,11 @@ Ricorda: rispondi SOLO con il JSON valido.`;
 
       console.log(`🤖 [AI TEMPLATE] Generating template for consultant ${consultantId}`);
 
+      const { model, useThinking, thinkingLevel } = getModelWithThinking(provider.metadata?.name || 'Vertex AI');
+      console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
       const result = await provider.client.generateContent({
-        model: "gemini-2.0-flash",
+        model,
         contents: [
           { role: "user", parts: [{ text: userPrompt }] }
         ],
@@ -1129,6 +1132,7 @@ Ricorda: rispondi SOLO con il JSON valido.`;
           systemInstruction: systemPrompt,
           temperature: 0.7,
           maxOutputTokens: 1024,
+          ...(useThinking && { thinkingConfig: { thinkingLevel } }),
         },
       });
 

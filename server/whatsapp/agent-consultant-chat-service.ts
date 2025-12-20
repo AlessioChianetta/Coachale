@@ -5,7 +5,7 @@
  */
 
 import { storage } from '../storage';
-import { getAIProvider, getModelForProviderName } from '../ai/provider-factory';
+import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 import { db } from '../db';
 import * as schema from '@shared/schema';
 import { eq, and, asc } from 'drizzle-orm';
@@ -496,8 +496,11 @@ Confermi definitivamente la cancellazione?"
     console.log('\n🤖 [STEP 7] Generating AI response (streaming)...');
     console.log(`📊 Input - History: ${geminiMessages.length} messages, New message: "${messageContent.substring(0, 50)}..."`);
 
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+    console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
     const streamResult = await aiProvider.client.generateContentStream({
-      model: getModelForProviderName(aiProvider.metadata.name),
+      model,
       contents: [
         ...geminiMessages,
         {
@@ -511,6 +514,7 @@ Confermi definitivamente la cancellazione?"
         topP: 0.95,
         topK: 40,
         maxOutputTokens: 2048,
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       },
     });
 
@@ -574,8 +578,11 @@ export async function generateConversationTitle(
 
     // Generate title
     console.log('🤖 Generating title...');
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+    console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
     const response = await aiProvider.client.generateContent({
-      model: getModelForProviderName(aiProvider.metadata.name),
+      model,
       contents: [
         {
           role: 'user',
@@ -598,6 +605,7 @@ Titolo:`
       generationConfig: {
         temperature: 0.3,
         maxOutputTokens: 20,
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       },
     });
 

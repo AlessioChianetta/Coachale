@@ -1,4 +1,4 @@
-import { GeminiClient } from "../ai/provider-factory";
+import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
 
 const DUPLICATE_ACTION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minuti
 
@@ -101,7 +101,8 @@ export function isActionAlreadyCompleted(
 export async function shouldAnalyzeForBooking(
   message: string,
   hasExistingBooking: boolean,
-  aiClient: GeminiClient
+  aiClient: GeminiClient,
+  providerName?: string
 ): Promise<boolean> {
   const trimmedMessage = message.trim();
   
@@ -133,9 +134,13 @@ REGOLE IMPORTANTI:
 
 Rispondi SOLO: SÌ oppure NO`;
 
+      const { model, useThinking, thinkingLevel } = getModelWithThinking(providerName || 'Vertex AI');
+      console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
       const response = await aiClient.generateContent({
-        model: "gemini-2.5-flash",
+        model,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
+        ...(useThinking && { generationConfig: { thinkingConfig: { thinkingLevel } } }),
       });
       
       const answer = extractResponseText(response).trim().toUpperCase();

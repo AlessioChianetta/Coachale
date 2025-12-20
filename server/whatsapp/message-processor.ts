@@ -21,7 +21,7 @@ import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
 import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL } from "../ai/provider-factory";
+import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, getModelWithThinking } from "../ai/provider-factory";
 import { sendWhatsAppMessage } from "./twilio-client";
 import { nanoid } from "nanoid";
 import { handleIncomingMedia } from "./media-handler";
@@ -1595,7 +1595,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     }));
     console.log(`📚 [STEP 7] Found ${history.length} historical messages${conversation.lastResetAt ? ' (after reset)' : ''}`);
 
-    console.log(`🧠 [STEP 8] Calling Gemini AI (model: gemini-2.5-flash)`);
+    console.log(`🧠 [STEP 8] Calling Gemini AI (model selection based on provider)`);
 
     // Step 8: Generate AI response with retry logic
     const userMessage = mediaContext ? `${batchedText}\n${mediaContext}` : batchedText;
@@ -1648,15 +1648,18 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
         // Create AI client and call API based on provider type
         if (currentProvider.type === 'vertex') {
           // For Vertex AI, use shared helper that creates @google-cloud/vertexai client
+          const { model: vertexModel, useThinking: vertexUseThinking, thinkingLevel: vertexThinkingLevel } = getModelWithThinking('Vertex AI');
+          console.log(`   🧠 [AI] Vertex AI - Using model: ${vertexModel}, thinking: ${vertexUseThinking ? `enabled (${vertexThinkingLevel})` : 'disabled'}`);
+
           const vertexClient = createVertexGeminiClient(
             currentProvider.projectId,
             currentProvider.location,
             currentProvider.credentials,
-            'gemini-2.5-flash'
+            vertexModel
           );
 
           response = await vertexClient.generateContent({
-            model: "gemini-2.5-flash",
+            model: vertexModel,
             contents: [
               ...geminiMessages,
               {
@@ -1666,16 +1669,21 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
             ],
             generationConfig: {
               systemInstruction: systemPrompt,
+              ...(vertexUseThinking && { thinkingConfig: { thinkingLevel: vertexThinkingLevel } }),
             },
           });
         } else {
           // For Google AI Studio, use @google/genai with API key
+          const { model: studioModel, useThinking: studioUseThinking, thinkingLevel: studioThinkingLevel } = getModelWithThinking('Google AI Studio');
+          console.log(`   🧠 [AI] Google AI Studio - Using model: ${studioModel}, thinking: ${studioUseThinking ? `enabled (${studioThinkingLevel})` : 'disabled'}`);
+
           const ai = new GoogleGenAI({ apiKey: currentProvider.apiKey });
 
           response = await ai.models.generateContent({
-            model: GEMINI_3_MODEL,
+            model: studioModel,
             config: {
               systemInstruction: systemPrompt,
+              ...(studioUseThinking && { thinkingConfig: { thinkingLevel: studioThinkingLevel } }),
             },
             contents: [
               ...geminiMessages,

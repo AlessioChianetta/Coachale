@@ -2,7 +2,7 @@ import { db } from "../db";
 import { appointmentBookings, consultantAvailabilitySettings, users } from "../../shared/schema";
 import { eq } from "drizzle-orm";
 import { createGoogleCalendarEvent } from "../google-calendar-service";
-import { GeminiClient } from "../ai/provider-factory";
+import { GeminiClient, getModelWithThinking } from "../ai/provider-factory";
 import { sendEmail } from "../services/email-scheduler";
 
 export interface BookingExtractionResult {
@@ -329,7 +329,8 @@ export async function extractBookingDataFromConversation(
   messages: ConversationMessage[],
   existingBooking: ExistingBooking | null,
   aiClient: GeminiClient,
-  timezone: string = "Europe/Rome"
+  timezone: string = "Europe/Rome",
+  providerName?: string
 ): Promise<BookingExtractionResult | BookingModificationResult | null> {
   const conversationContext = buildConversationContext(messages);
   
@@ -341,10 +342,14 @@ export async function extractBookingDataFromConversation(
   console.log(`   Mode: ${existingBooking ? 'MODIFICATION' : 'NEW BOOKING'}`);
   console.log(`   Timezone: ${timezone}`);
 
+  const { model, useThinking, thinkingLevel } = getModelWithThinking(providerName || 'Vertex AI');
+  console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
   try {
     const response = await aiClient.generateContent({
-      model: "gemini-2.5-flash",
+      model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
+      ...(useThinking && { generationConfig: { thinkingConfig: { thinkingLevel } } }),
     });
 
     let responseText = "";
