@@ -187,8 +187,9 @@ export async function exportTemplateToTwilio(
     console.log(`   Version: ${activeVersion.versionNumber}`);
     console.log(`   Variables: ${variables.length}`);
 
+    // Use snake_case for API compatibility (Twilio REST API expects friendly_name)
     const content = await twilioClient.content.v1.contents.create({
-      friendlyName,
+      friendly_name: friendlyName,
       language: "it",
       variables: twilioVariables,
       types: {
@@ -196,7 +197,7 @@ export async function exportTemplateToTwilio(
           body: convertedBody,
         },
       },
-    });
+    } as any);
 
     console.log(`✅ [TWILIO EXPORT] Content created successfully: ${content.sid}`);
 
