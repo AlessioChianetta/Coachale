@@ -18,7 +18,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { db } from "../db";
 import { fileSearchStores, fileSearchDocuments, users } from "../../shared/schema";
-import { eq, and, desc, inArray, or } from "drizzle-orm";
+import { eq, and, desc, inArray, or, sql } from "drizzle-orm";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
@@ -632,29 +632,108 @@ export class FileSearchService {
 
   /**
    * Delete a document from a FileSearchStore
+   * First deletes from Google API, then from local database
    */
   async deleteDocument(documentId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const doc = await db.query.fileSearchDocuments.findFirst({
         where: eq(fileSearchDocuments.id, documentId),
       });
+      if (!doc) return { success: false, error: 'Document not found' };
 
-      if (!doc) {
-        return { success: false, error: 'Document not found' };
+      const store = await db.query.fileSearchStores.findFirst({
+        where: eq(fileSearchStores.id, doc.storeId),
+      });
+      if (!store) return { success: false, error: 'Store not found' };
+
+      const ai = await this.getClientForUser(store.ownerId);
+      if (ai) {
+        try {
+          const documentName = `fileSearchStores/${store.googleStoreName}/documents/${doc.googleFileId}`;
+          await ai.fileSearchStores.documents.delete({ name: documentName, config: { force: true } });
+          console.log(`🗑️ [FileSearch] Deleted from Google: ${documentName}`);
+        } catch (googleError: any) {
+          if (!googleError.message?.includes('not found')) {
+            console.error(`❌ [FileSearch] Google delete failed:`, googleError.message);
+            return { success: false, error: `Google API error: ${googleError.message}` };
+          }
+          console.log(`⚠️ [FileSearch] Document not found on Google, cleaning up DB only`);
+        }
       }
 
       await db.delete(fileSearchDocuments).where(eq(fileSearchDocuments.id, documentId));
-
+      
       await db.update(fileSearchStores)
-        .set({ documentCount: Math.max(0, (await this.getStore(doc.storeId))?.documentCount || 1) - 1 })
+        .set({ documentCount: Math.max(0, (store.documentCount || 1) - 1) })
         .where(eq(fileSearchStores.id, doc.storeId));
 
       console.log(`🗑️ [FileSearch] Document deleted: ${documentId}`);
-
       return { success: true };
     } catch (error: any) {
       console.error(`❌ [FileSearch] Delete failed:`, error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Reconcile documents by source type - removes orphaned documents
+   * that no longer exist in the source system
+   * 
+   * @param storeId - The FileSearchStore ID
+   * @param sourceType - The source type to reconcile (e.g., 'whatsapp_agent_knowledge')
+   * @param validSourceIds - Array of source IDs that should exist (empty = remove all)
+   * @returns Reconciliation results
+   */
+  async reconcileBySourceType(
+    storeId: string, 
+    sourceType: string, 
+    validSourceIds: string[]
+  ): Promise<{ removed: number; errors: string[] }> {
+    try {
+      let orphanedDocs;
+      if (validSourceIds.length === 0) {
+        orphanedDocs = await db
+          .select()
+          .from(fileSearchDocuments)
+          .where(and(
+            eq(fileSearchDocuments.storeId, storeId),
+            eq(fileSearchDocuments.sourceType, sourceType as any)
+          ));
+      } else {
+        orphanedDocs = await db
+          .select()
+          .from(fileSearchDocuments)
+          .where(and(
+            eq(fileSearchDocuments.storeId, storeId),
+            eq(fileSearchDocuments.sourceType, sourceType as any),
+            sql`${fileSearchDocuments.sourceId} IS NOT NULL`,
+            sql`${fileSearchDocuments.sourceId} NOT IN (${sql.join(validSourceIds.map(id => sql`${id}`), sql`, `)})`
+          ));
+      }
+
+      if (orphanedDocs.length === 0) {
+        return { removed: 0, errors: [] };
+      }
+
+      console.log(`🧹 [FileSearch] Reconciling ${orphanedDocs.length} orphaned ${sourceType} documents`);
+
+      let removed = 0;
+      const errors: string[] = [];
+
+      for (const doc of orphanedDocs) {
+        const result = await this.deleteDocument(doc.id);
+        if (result.success) {
+          removed++;
+        } else {
+          errors.push(`Failed to delete ${doc.id}: ${result.error}`);
+        }
+      }
+
+      console.log(`🧹 [FileSearch] Reconciliation complete: ${removed}/${orphanedDocs.length} removed`);
+      return { removed, errors };
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] Reconciliation failed:`, error);
+      return { removed: 0, errors: [error.message] };
     }
   }
 
