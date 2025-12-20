@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { WhatsAppMessageBubble } from "@/components/whatsapp/WhatsAppMessageBubble";
+import { PublicAgentMessage } from "@/components/whatsapp/PublicAgentMessage";
 import { TypingIndicator } from "@/components/whatsapp/TypingIndicator";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, Send, Loader2, Lock, AlertCircle, MessageCircle, Info, Building2, User, Mic, Camera, X, Sparkles } from "lucide-react";
@@ -853,14 +854,14 @@ export default function PublicAgentShare() {
                         ease: "easeOut"
                       }}
                     >
-                      <WhatsAppMessageBubble
+                      <PublicAgentMessage
                         message={{
                           id: message.id,
-                          text: message.content,
-                          sender: message.role === 'user' ? 'client' : 'ai',
-                          direction,
+                          role: message.role,
+                          content: message.content,
                           createdAt: new Date(message.createdAt),
                         }}
+                        agentName={metadata.agentName}
                       />
                       {message.audioUrl && (
                         <motion.div 
@@ -892,14 +893,14 @@ export default function PublicAgentShare() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <WhatsAppMessageBubble
+                  <PublicAgentMessage
                     message={{
                       id: optimisticMessage.id,
-                      text: optimisticMessage.content,
-                      sender: 'client',
-                      direction: 'outbound',
+                      role: 'user',
+                      content: optimisticMessage.content,
                       createdAt: optimisticMessage.createdAt,
                     }}
+                    agentName={metadata.agentName}
                   />
                 </motion.div>
               )}
@@ -930,14 +931,14 @@ export default function PublicAgentShare() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <WhatsAppMessageBubble
+                  <PublicAgentMessage
                     message={{
                       id: streamingMessage.id,
-                      text: streamingMessage.content,
-                      sender: 'ai',
-                      direction: 'inbound',
+                      role: 'agent',
+                      content: streamingMessage.content,
                       createdAt: streamingMessage.createdAt,
                     }}
+                    agentName={metadata.agentName}
                   />
                 </motion.div>
               )}
