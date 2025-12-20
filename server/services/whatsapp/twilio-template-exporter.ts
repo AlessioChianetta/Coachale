@@ -200,24 +200,63 @@ export async function exportTemplateToTwilio(
 
     console.log(`✅ [TWILIO EXPORT] Content created successfully: ${content.sid}`);
 
-    // 8. Save twilioContentSid and update status in DB
+    // 8. Submit template for WhatsApp approval
+    let approvalStatus = "pending_approval";
+    try {
+      console.log(`📤 [TWILIO EXPORT] Submitting template for WhatsApp approval...`);
+      
+      const approval = await twilioClient.content.v1
+        .contents(content.sid)
+        .approvalCreate
+        .create({
+          name: sanitizedName,
+          category: "UTILITY",
+        });
+
+      console.log(`✅ [TWILIO EXPORT] Approval request submitted!`);
+      console.log(`   WhatsApp Status: ${approval.whatsapp?.status || 'pending'}`);
+      
+      // Map Twilio approval status to our status
+      const twilioStatus = approval.whatsapp?.status?.toLowerCase();
+      if (twilioStatus === 'approved') {
+        approvalStatus = 'approved';
+      } else if (twilioStatus === 'rejected') {
+        approvalStatus = 'rejected';
+      } else {
+        approvalStatus = 'pending_approval';
+      }
+    } catch (approvalError: any) {
+      console.error(`⚠️ [TWILIO EXPORT] Approval submission failed:`, approvalError.message);
+      console.log(`   Template created but not submitted for approval. You can sync later.`);
+      approvalStatus = "draft";
+    }
+
+    // 9. Save twilioContentSid and update status in DB
     await db
       .update(whatsappTemplateVersions)
       .set({
         twilioContentSid: content.sid,
-        twilioStatus: "pending_approval",
+        twilioStatus: approvalStatus,
         lastSyncedAt: new Date(),
       })
       .where(eq(whatsappTemplateVersions.id, activeVersion.id));
 
-    console.log(`💾 [TWILIO EXPORT] Database updated with SID: ${content.sid}`);
+    console.log(`💾 [TWILIO EXPORT] Database updated with SID: ${content.sid}, Status: ${approvalStatus}`);
 
-    // 9. Return success
+    // 10. Return success
+    const statusMessage = approvalStatus === 'pending_approval' 
+      ? "Template inviato per approvazione! Meta impiegherà 1-48 ore."
+      : approvalStatus === 'approved'
+      ? "Template approvato immediatamente!"
+      : approvalStatus === 'draft'
+      ? "Template creato su Twilio ma non inviato per approvazione. Sincronizza per riprovare."
+      : "Template in elaborazione.";
+
     return {
       success: true,
       twilioContentSid: content.sid,
       friendlyName,
-      message: `Template esportato con successo! SID: ${content.sid}. Meta impiegherà 1-48 ore per l'approvazione.`,
+      message: `${statusMessage} SID: ${content.sid}`,
     };
   } catch (error: any) {
     console.error(`❌ [TWILIO EXPORT] Error creating content:`, error);
