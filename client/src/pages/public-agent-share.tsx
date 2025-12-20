@@ -196,31 +196,26 @@ export default function PublicAgentShare() {
   
   const rawMessages: Message[] = conversationResponse?.messages || [];
   
-  // FIX DUPLICAZIONE: Filtra i messaggi che corrispondono all'optimisticMessage
-  // per evitare di mostrare duplicati durante la transizione optimistic -> reale
+  // FIX DUPLICAZIONE: Filtra il messaggio ottimistico una volta che arriva dal server
+  // Usa l'ID ottimistico per identificare quando il messaggio reale è arrivato
+  const [confirmedOptimisticId, setConfirmedOptimisticId] = useState<string | null>(null);
+  
   const messages = useMemo(() => {
-    if (!optimisticMessage) return rawMessages;
+    // Se c'è un optimisticMessage attivo, controlla se il suo contenuto è già nei messaggi reali
+    if (optimisticMessage) {
+      const optimisticContent = optimisticMessage.content.trim();
+      const hasMatchingMessage = rawMessages.some(msg => 
+        msg.role === 'user' && msg.content.trim() === optimisticContent
+      );
+      
+      // Se troviamo un messaggio corrispondente, rimuovi l'optimistic
+      if (hasMatchingMessage) {
+        // Scheduliamo la rimozione dell'optimistic per il prossimo ciclo
+        setTimeout(() => setOptimisticMessage(null), 0);
+      }
+    }
     
-    // Filtra eventuali messaggi che hanno lo stesso contenuto dell'optimistic
-    // e sono stati creati negli ultimi 30 secondi (per evitare falsi positivi)
-    const optimisticContent = optimisticMessage.content.trim();
-    const optimisticTime = optimisticMessage.createdAt.getTime();
-    const threshold = 30000; // 30 secondi
-    
-    return rawMessages.filter(msg => {
-      // Se non è un messaggio utente, non filtrare
-      if (msg.role !== 'user') return true;
-      
-      // Se il contenuto non corrisponde, non filtrare
-      if (msg.content.trim() !== optimisticContent) return true;
-      
-      // Se è troppo vecchio, non filtrare (non è il duplicato dell'optimistic)
-      const msgTime = new Date(msg.createdAt).getTime();
-      if (Math.abs(msgTime - optimisticTime) > threshold) return true;
-      
-      // Questo è probabilmente il duplicato, filtralo
-      return false;
-    });
+    return rawMessages;
   }, [rawMessages, optimisticMessage]);
   
   // Send message mutation
@@ -299,6 +294,9 @@ export default function PublicAgentShare() {
                 
                 // Solo dopo che i messaggi sono arrivati, pulisci streaming
                 setStreamingMessage(null);
+                
+                // Ritorna per risolvere la promise e permettere onSuccess di funzionare
+                return;
               } else if (data.type === 'error') {
                 throw new Error(data.error);
               }
