@@ -18,7 +18,7 @@
 import { db } from "../db";
 import { conversationStates, followupAiEvaluationLog, whatsappMessages, consultantAiPreferences } from "../../shared/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { getAIProvider } from "./provider-factory";
+import { getAIProvider, getModelForProviderName } from "./provider-factory";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSULTANT AI PREFERENCES
@@ -526,7 +526,7 @@ export async function evaluateWithHumanLikeAI(
     console.log(`🚀 [HUMAN-AI] Using ${aiProviderResult.metadata.name} for evaluation`);
     
     const response = await aiProviderResult.client.generateContent({
-      model: "gemini-2.5-flash",
+      model: getModelForProviderName(aiProviderResult.metadata.name),
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         responseMimeType: "application/json",

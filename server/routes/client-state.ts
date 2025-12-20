@@ -6,6 +6,7 @@ import { z } from "zod";
 import { buildUserContext } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
 import { GoogleGenAI } from "@google/genai";
+import { GEMINI_3_MODEL } from "../ai/provider-factory";
 import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq, sql as drizzleSql } from "drizzle-orm";
@@ -298,7 +299,7 @@ Rispondi SOLO con JSON valido:
     console.log(`🤖 [AI STATE] Calling Gemini API with systemInstruction...`);
     const genai = new GoogleGenAI({ apiKey });
     const result = await genai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: GEMINI_3_MODEL,
       config: {
         temperature: 0.7,
         maxOutputTokens: 250000,

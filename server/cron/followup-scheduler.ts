@@ -33,7 +33,7 @@ import {
   type TemplateForSelection,
   createStudioProvider
 } from '../ai/followup-decision-engine';
-import { getAIProvider } from '../ai/provider-factory';
+import { getAIProvider, getModelForProviderName } from '../ai/provider-factory';
 import { sendWhatsAppMessage, fetchMultipleTwilioTemplateBodies, fetchTwilioTemplateBody } from '../whatsapp/twilio-client';
 import { decryptForConsultant } from '../encryption';
 
@@ -1569,7 +1569,7 @@ async function evaluateConversation(
     candidate.conversationId,
     context,
     decision,
-    'gemini-2.5-flash'
+    getModelForProviderName(aiProviderResult.metadata.name)
   );
 
   if (decision.decision === 'send_now' || decision.decision === 'schedule') {
@@ -2155,7 +2155,7 @@ RISPONDI CON SOLO IL TESTO DEL MESSAGGIO (niente JSON, niente formattazione, sol
     console.log(`🚀 [FOLLOWUP-SCHEDULER] Using ${aiProviderResult.metadata.name} for freeform message generation`);
     
     const response = await aiProviderResult.client.generateContent({
-      model: "gemini-2.5-flash",
+      model: getModelForProviderName(aiProviderResult.metadata.name),
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
     
@@ -2505,7 +2505,7 @@ Genera il messaggio di follow-up:`;
 
   try {
     const result = await aiProvider.client.generateContent({
-      model: 'gemini-2.5-flash',
+      model: getModelForProviderName(aiProvider.metadata.name),
       systemInstruction: systemPrompt,
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
       generationConfig: {

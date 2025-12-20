@@ -470,7 +470,7 @@ router.post(
       console.log(`   - Is Proactive Agent: ${isProactiveAgent ? 'YES' : 'NO'}`);
       console.log(`   - Base Template: ${baseTemplate ? `YES (${baseTemplate.length} chars)` : 'NO - will use default template'}`);
 
-      const { getAIProvider } = await import("../../ai/provider-factory");
+      const { getAIProvider, getModelForProviderName } = await import("../../ai/provider-factory");
       const providerResult = await getAIProvider(consultantId, consultantId);
 
       if (!providerResult || !providerResult.client) {
@@ -751,7 +751,7 @@ ISTRUZIONI DI ADATTAMENTO
 GENERA ORA il template ADATTATO. Restituisci SOLO le istruzioni complete, senza commenti.`;
 
       const result = await providerResult.client.generateContent({
-        model: "gemini-2.5-flash",
+        model: getModelForProviderName(providerResult.metadata.name),
         contents: [
           {
             role: "user",
@@ -859,7 +859,7 @@ async function enhanceInstructionsWithAI(
   }
 
   // Import AI provider (already uses Vertex AI as default with Gemini fallback)
-  const { getAIProvider } = await import("../../ai/provider-factory");
+  const { getAIProvider, getModelForProviderName } = await import("../../ai/provider-factory");
   
   // Get AI provider (Vertex AI first, then fallback to Gemini)
   const providerResult = await getAIProvider(consultantId, consultantId);
@@ -998,7 +998,7 @@ Restituisci SOLO le istruzioni migliorate, senza commenti o spiegazioni aggiunti
 
   // Call AI for enhancement using GeminiClient interface
   const result = await providerResult.client.generateContent({
-    model: "gemini-2.5-flash",
+    model: getModelForProviderName(providerResult.metadata.name),
     contents: [
       {
         role: "user",

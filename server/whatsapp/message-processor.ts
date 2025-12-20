@@ -21,7 +21,7 @@ import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
 import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson } from "../ai/provider-factory";
+import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL } from "../ai/provider-factory";
 import { sendWhatsAppMessage } from "./twilio-client";
 import { nanoid } from "nanoid";
 import { handleIncomingMedia } from "./media-handler";
@@ -1673,7 +1673,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
           const ai = new GoogleGenAI({ apiKey: currentProvider.apiKey });
 
           response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: GEMINI_3_MODEL,
             config: {
               systemInstruction: systemPrompt,
             },
@@ -2475,7 +2475,7 @@ REGOLE VALIDAZIONE hasAllData:
 
                   const extractionAi = new GoogleGenAI({ apiKey: extractionApiKey });
                   extractionResponse = await extractionAi.models.generateContent({
-                    model: "gemini-2.5-flash",
+                    model: GEMINI_3_MODEL,
                     contents: [{ role: "user", parts: [{ text: extractionPrompt }] }],
                   });
                 }

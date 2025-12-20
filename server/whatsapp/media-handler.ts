@@ -4,6 +4,7 @@ import path from "path";
 import sharp from "sharp";
 import { GoogleGenAI } from "@google/genai";
 import { VertexAI } from "@google-cloud/vertexai";
+import { GEMINI_3_MODEL, GEMINI_LEGACY_MODEL } from "../ai/provider-factory";
 import { PDFParse } from "pdf-parse";
 import { db } from "../db";
 import { whatsappMessages, whatsappMediaFiles, consultantWhatsappConfig } from "../../shared/schema";
@@ -148,7 +149,7 @@ async function processImageWithVision(
     const ai = new GoogleGenAI({ apiKey });
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: GEMINI_3_MODEL,
       contents: [
         {
           role: "user",
@@ -230,7 +231,7 @@ async function analyzeDocumentText(text: string, apiKey: string): Promise<string
     const ai = new GoogleGenAI({ apiKey });
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: GEMINI_3_MODEL,
       config: {
         systemInstruction: `Sei un assistente AI specializzato in analisi documenti.
 Analizza il testo fornito e identifica:
@@ -343,7 +344,7 @@ async function transcribeAudio(
         const ai = new GoogleGenAI({ apiKey });
 
         const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: GEMINI_3_MODEL,
           contents: [
             {
               role: "user",

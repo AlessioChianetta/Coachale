@@ -14,7 +14,7 @@ import { nanoid } from 'nanoid';
 import multer from 'multer';
 import { generateSpeech } from '../../ai/tts-service';
 import { shouldRespondWithAudio } from '../../whatsapp/audio-response-utils';
-import { getAIProvider } from '../../ai/provider-factory';
+import { getAIProvider, getModelForProviderName } from '../../ai/provider-factory';
 import { getAudioDurationInSeconds } from 'get-audio-duration';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -1477,7 +1477,7 @@ router.post(
         aiProvider.client;
       
       const transcriptionResult = await model.generateContent({
-        model: 'gemini-2.5-flash',
+        model: getModelForProviderName(aiProvider.metadata.name),
         contents: [{
           role: 'user',
           parts: [

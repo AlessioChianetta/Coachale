@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { db } from '../db';
 import { videoMeetings, videoMeetingTranscripts, videoMeetingParticipants, humanSellers, salesScripts, humanSellerCoachingEvents, users, humanSellerScriptAssignments, humanSellerMeetingTraining, type HumanSellerMeetingTraining } from '@shared/schema';
 import { eq, and, isNull, isNotNull, desc } from 'drizzle-orm';
-import { getAIProvider } from '../ai/provider-factory';
+import { getAIProvider, getModelForProviderName } from '../ai/provider-factory';
 import { addWAVHeaders, base64ToBuffer, bufferToBase64 } from '../ai/audio-converter';
 import { SalesManagerAgent, type SalesManagerAnalysis, type ArchetypeState, type ConversationMessage, type BusinessContext } from '../ai/sales-manager-agent';
 import { parseScriptContentToStructure } from '../ai/sales-script-structure-parser';
@@ -749,7 +749,7 @@ async function performTranscription(
   console.log(`🎯 [Trascrizione] Inviando richiesta a Gemini con prompt italiano...`);
 
   const response = await cachedProvider.client.generateContent({
-    model: 'gemini-2.5-flash',
+    model: getModelForProviderName(cachedProvider.metadata?.name || 'Vertex AI'),
     contents: [
       {
         role: 'user',
@@ -874,7 +874,7 @@ async function analyzeSentiment(
     }
 
     const response = await cachedProvider.client.generateContent({
-      model: 'gemini-2.5-flash',
+      model: getModelForProviderName(cachedProvider.metadata?.name || 'Vertex AI'),
       contents: [
         {
           role: 'user',
@@ -944,7 +944,7 @@ Keep it under 50 words. Be specific and practical.
 Format: Just the suggestion text, no prefixes.`;
 
     const response = await cachedProvider.client.generateContent({
-      model: 'gemini-2.5-flash',
+      model: getModelForProviderName(cachedProvider.metadata?.name || 'Vertex AI'),
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.7,
@@ -995,7 +995,7 @@ If no objection detected, respond with:
 Response (JSON only):`;
 
     const response = await cachedProvider.client.generateContent({
-      model: 'gemini-2.5-flash',
+      model: getModelForProviderName(cachedProvider.metadata?.name || 'Vertex AI'),
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.1,

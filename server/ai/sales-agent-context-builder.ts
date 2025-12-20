@@ -7,7 +7,7 @@
 import { db } from "../db";
 import { users, consultations, exercises, exerciseAssignments, libraryDocuments, clientLibraryProgress, userFinanceSettings } from "../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { getAIProvider } from "./provider-factory";
+import { getAIProvider, getModelForProviderName } from "./provider-factory";
 import { retryWithBackoff, AiRetryContext } from "./retry-manager";
 
 export interface ExtractedSalesContext {
@@ -249,7 +249,7 @@ Ricorda: rispondi SOLO con il JSON richiesto, nient'altro.`;
       console.log(`[MagicButton] Calling AI (attempt ${attemptCtx.attempt})...`);
       
       const response = await client.generateContent({
-        model: "gemini-2.5-flash",
+        model: getModelForProviderName(providerMetadata.name),
         contents: [
           {
             role: "user",

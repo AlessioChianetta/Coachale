@@ -2,7 +2,7 @@ import { db } from "./db";
 import { objectionTracking, clientObjectionProfile } from "../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson } from "./ai/provider-factory";
+import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL } from "./ai/provider-factory";
 
 export type ObjectionType = "price" | "time" | "trust" | "competitor" | "value" | "other";
 
@@ -91,7 +91,7 @@ Rispondi in formato JSON con questa struttura:
       
       const ai = new GoogleGenAI({ apiKey: provider.apiKey! });
       response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: GEMINI_3_MODEL,
         config: {
           responseMimeType: "application/json",
         },

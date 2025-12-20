@@ -10,7 +10,7 @@ import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { enhanceEmailTypography } from "../services/email-html-wrapper";
-import { getAIProvider, type GeminiClient } from "./provider-factory";
+import { getAIProvider, getModelForProviderName, type GeminiClient } from "./provider-factory";
 
 export interface EmailGeneratorInput {
   clientId: string;
@@ -542,7 +542,7 @@ ${userMessage}`;
 
       // Call Gemini API using the provider client
       const result = await client.generateContent({
-        model: "gemini-2.5-flash",
+        model: getModelForProviderName(providerMetadata.name),
         contents: [{ role: "user", parts: [{ text: modifiedUserMessage }] }],
         generationConfig,
       });

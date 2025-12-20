@@ -18,6 +18,41 @@ import path from "path";
 import os from "os";
 
 /**
+ * Gemini Model Configuration
+ * - Gemini 3 Flash Preview: Available only on Google AI Studio (API key)
+ * - Gemini 2.5 Flash: Legacy model for Vertex AI and Live API
+ * NOTE: Gemini 3 does NOT support Live API or Vertex AI yet
+ */
+export const GEMINI_3_MODEL = "gemini-3-flash-preview";
+export const GEMINI_LEGACY_MODEL = "gemini-2.5-flash";
+
+/**
+ * Get the appropriate model based on provider type
+ * @param providerType - 'studio' for Google AI Studio, 'vertex' for Vertex AI
+ * @returns The model name to use
+ */
+export function getModelForProvider(providerType: 'studio' | 'vertex' | 'google' | 'superadmin' | 'client' | 'admin'): string {
+  // Google AI Studio supports Gemini 3
+  if (providerType === 'studio' || providerType === 'google') {
+    return GEMINI_3_MODEL;
+  }
+  // Vertex AI (all tiers) uses legacy model
+  return GEMINI_LEGACY_MODEL;
+}
+
+/**
+ * Get model based on provider metadata name
+ * @param providerName - Provider name from metadata (e.g., 'Google AI Studio', 'Vertex AI (tuo)')
+ * @returns The model name to use
+ */
+export function getModelForProviderName(providerName: string): string {
+  if (providerName === 'Google AI Studio' || providerName.toLowerCase().includes('studio')) {
+    return GEMINI_3_MODEL;
+  }
+  return GEMINI_LEGACY_MODEL;
+}
+
+/**
  * Cache for SuperAdmin Gemini keys (avoids repeated DB queries)
  */
 let superAdminGeminiKeysCache: { keys: string[]; enabled: boolean; fetchedAt: number } | null = null;

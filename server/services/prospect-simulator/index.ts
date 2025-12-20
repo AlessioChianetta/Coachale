@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import type { ProspectPersona } from '@shared/prospect-personas';
-import { getAIProvider, type GeminiClient } from '../../ai/provider-factory';
+import { getAIProvider, getModelForProviderName, type GeminiClient } from '../../ai/provider-factory';
 
 type ResponseSpeed = 'fast' | 'normal' | 'slow' | 'disabled';
 type TestMode = 'discovery' | 'demo' | 'discovery_demo';
@@ -847,7 +847,7 @@ LA TUA RISPOSTA:`;
         }
 
         const response = await this.aiClient!.generateContent({
-          model: 'gemini-2.5-flash',
+          model: getModelForProviderName(this.aiProviderMetadata?.name || 'Vertex AI'),
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
         });
 

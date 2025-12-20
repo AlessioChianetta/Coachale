@@ -10,7 +10,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { getAIProvider, GeminiClient } from "./provider-factory";
+import { getAIProvider, getModelForProviderName, GeminiClient } from "./provider-factory";
 
 export interface DiscoveryRec {
   motivazioneCall?: string;
@@ -249,7 +249,7 @@ export async function generateDiscoveryRecWithProvider(
     const startTime = Date.now();
 
     const response = await client.generateContent({
-      model: "gemini-2.5-flash",
+      model: getModelForProviderName(providerMetadata.name),
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.1,

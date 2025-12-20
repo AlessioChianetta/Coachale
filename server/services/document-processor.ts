@@ -19,6 +19,7 @@ import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import officeparser from 'officeparser';
 import { VertexAI } from '@google-cloud/vertexai';
+import { GEMINI_3_MODEL } from '../ai/provider-factory';
 
 /**
  * Structured data for tabular files (CSV/Excel)
@@ -517,7 +518,7 @@ export async function transcribeAudioWithGemini(
           const genAI = new GoogleGenAI({ apiKey });
           
           const response = await genAI.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: GEMINI_3_MODEL,
             contents: [{
               role: 'user',
               parts: [

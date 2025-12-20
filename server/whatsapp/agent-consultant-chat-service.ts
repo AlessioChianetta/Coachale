@@ -5,7 +5,7 @@
  */
 
 import { storage } from '../storage';
-import { getAIProvider } from '../ai/provider-factory';
+import { getAIProvider, getModelForProviderName } from '../ai/provider-factory';
 import { db } from '../db';
 import * as schema from '@shared/schema';
 import { eq, and, asc } from 'drizzle-orm';
@@ -497,7 +497,7 @@ Confermi definitivamente la cancellazione?"
     console.log(`📊 Input - History: ${geminiMessages.length} messages, New message: "${messageContent.substring(0, 50)}..."`);
 
     const streamResult = await aiProvider.client.generateContentStream({
-      model: 'gemini-2.5-flash',
+      model: getModelForProviderName(aiProvider.metadata.name),
       contents: [
         ...geminiMessages,
         {
@@ -575,7 +575,7 @@ export async function generateConversationTitle(
     // Generate title
     console.log('🤖 Generating title...');
     const response = await aiProvider.client.generateContent({
-      model: 'gemini-2.5-flash',
+      model: getModelForProviderName(aiProvider.metadata.name),
       contents: [
         {
           role: 'user',

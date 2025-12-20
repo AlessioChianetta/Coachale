@@ -107,7 +107,7 @@ import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
 import { scheduleMessageProcessing } from "./whatsapp/message-processor";
 import { processConsultantAgentMessage, generateConversationTitle } from './whatsapp/agent-consultant-chat-service';
 import { generateSpeech } from './ai/tts-service';
-import { getAIProvider } from './ai/provider-factory';
+import { getAIProvider, getModelForProviderName } from './ai/provider-factory';
 import { shouldRespondWithAudio } from './whatsapp/audio-response-utils';
 import multer from 'multer';
 import { nanoid } from "nanoid";
@@ -6688,7 +6688,7 @@ Rispondi in italiano, in modo conciso e pratico. Fornisci suggerimenti actionabl
 Se non conosci una risposta specifica, suggerisci dove trovare più informazioni nella piattaforma.`;
 
       const result = await aiProvider.client.generateContent({
-        model: 'gemini-2.5-flash',
+        model: getModelForProviderName(aiProvider.metadata.name),
         contents: [
           { role: 'user', parts: [{ text: question }] }
         ],
@@ -12238,7 +12238,7 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           aiProvider.client;
 
         const transcriptionResult = await model.generateContent({
-          model: 'gemini-2.5-flash',
+          model: getModelForProviderName(aiProvider.metadata.name),
           contents: [{
             role: 'user',
             parts: [

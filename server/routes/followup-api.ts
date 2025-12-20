@@ -8,7 +8,7 @@ import { db } from "../db";
 import * as schema from "../../shared/schema";
 import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
-import { getAIProvider } from "../ai/provider-factory";
+import { getAIProvider, getModelForProviderName } from "../ai/provider-factory";
 
 const router = Router();
 
@@ -308,7 +308,7 @@ Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
     const userPrompt = `Crea una regola di follow-up basata su questa descrizione: "${description}"`;
 
     const result = await aiProvider.client.generateContent({
-      model: "gemini-2.5-flash",
+      model: getModelForProviderName(aiProvider.metadata.name),
       contents: [
         { role: "user", parts: [{ text: userPrompt }] }
       ],

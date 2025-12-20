@@ -7,7 +7,7 @@ import { getDiscoveryScript as getDiscoveryScriptB2C, getDemoScript as getDemoSc
 import { AuthRequest, requireRole } from '../middleware/auth';
 import { parseTextToBlocks } from '../../shared/script-parser';
 import type { ScriptBlockStructure } from '../../shared/script-blocks';
-import { getAIProvider } from '../ai/provider-factory';
+import { getAIProvider, getModelForProviderName } from '../ai/provider-factory';
 import { randomBytes } from 'crypto';
 
 const router = Router();
@@ -548,7 +548,7 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
             console.log(`   📏 Lunghezza prompt: ${phasePrompt.length} caratteri`);
 
             const result = await aiProvider.client.generateContent({
-              model: 'gemini-2.5-flash',
+              model: getModelForProviderName(aiProvider.metadata.name),
               contents: [{ role: 'user', parts: [{ text: phasePrompt }] }],
               generationConfig: {
                 temperature: 0.5,

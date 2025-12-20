@@ -11,7 +11,7 @@
 import { db } from "../db";
 import { conversationStates, followupAiEvaluationLog } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
-import { getAIProvider } from "./provider-factory";
+import { getAIProvider, getModelForProviderName } from "./provider-factory";
 import { getAgentProfile, buildAgentPersonalityPrompt } from "./agent-profiles";
 // Le regole di sistema NON vengono più usate - l'AI decide tutto
 // import { evaluateSystemRules, RuleEvaluationContext } from "./system-rules-config";
@@ -185,7 +185,7 @@ export async function evaluateFollowup(
     console.log(`🚀 [FOLLOWUP-ENGINE] Using ${aiProviderResult.metadata.name} for evaluation`);
 
     const response = await aiProviderResult.client.generateContent({
-      model: "gemini-2.5-flash",
+      model: getModelForProviderName(aiProviderResult.metadata.name),
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         responseMimeType: "application/json",
@@ -673,7 +673,7 @@ RISPONDI SOLO IN JSON:
 
       // Usa direttamente il client già configurato con il formato corretto
       const aiResponse = await aiProvider.client.generateContent({
-        model: "gemini-2.5-flash",
+        model: getModelForProviderName(aiProvider.metadata.name),
         contents: [{ role: "user", parts: [{ text: prompt }] }],
       });
       const responseText = aiResponse.response?.text() || "";
@@ -937,7 +937,7 @@ export async function evaluateConversationsBatch(
           const prompt = buildBatchPrompt(batch);
 
           const response = await aiProviderResult.client.generateContent({
-            model: "gemini-2.5-flash",
+            model: getModelForProviderName(aiProviderResult.metadata.name),
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
               responseMimeType: "application/json",
