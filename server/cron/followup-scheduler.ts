@@ -43,6 +43,7 @@ let processingJob: cron.ScheduledTask | null = null;
 let coldLeadsJob: cron.ScheduledTask | null = null;
 let ghostLeadsJob: cron.ScheduledTask | null = null;
 let engagedColdLeadsJob: cron.ScheduledTask | null = null;
+let dailyResetJob: cron.ScheduledTask | null = null;
 let isEvaluationRunning = false;
 let isProcessingRunning = false;
 let isColdLeadsRunning = false;
@@ -459,12 +460,34 @@ export function initFollowupScheduler(): void {
     timezone: TIMEZONE
   });
 
+  // DAILY RESET - Reset dailyFreeformCount at midnight (00:00)
+  dailyResetJob = cron.schedule('0 0 * * *', async () => {
+    console.log('🌙 [FOLLOWUP-SCHEDULER] Daily reset triggered - resetting dailyFreeformCount for all conversations');
+    try {
+      const result = await db.update(conversationStates)
+        .set({
+          dailyFreeformCount: 0,
+          lastFreeformResetAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ conversationId: conversationStates.conversationId });
+      
+      console.log(`✅ [DAILY-RESET] Reset dailyFreeformCount for ${result.length} conversations`);
+    } catch (error) {
+      console.error('❌ [FOLLOWUP-SCHEDULER] Error in daily reset:', error);
+    }
+  }, {
+    scheduled: true,
+    timezone: TIMEZONE
+  });
+
   console.log('✅ [FOLLOWUP-SCHEDULER] Scheduler initialized successfully');
   console.log(`   🔥 HOT/WARM: ${EVALUATION_INTERVAL} (every 5 minutes)`);
   console.log(`   ❄️  COLD: ${COLD_LEADS_INTERVAL} (every 2 hours)`);
   console.log(`   👻 GHOST: ${GHOST_LEADS_INTERVAL} (daily at 10:00)`);
   console.log(`   🔥❄️ ENGAGED COLD: ${ENGAGED_COLD_LEADS_INTERVAL} (every 30 minutes)`);
   console.log(`   📋 Processing: ${PROCESSING_INTERVAL} (every minute)`);
+  console.log(`   🌙 Daily reset: 0 0 * * * (midnight)`);
 }
 
 export function stopFollowupScheduler(): void {
@@ -498,6 +521,12 @@ export function stopFollowupScheduler(): void {
     engagedColdLeadsJob.stop();
     engagedColdLeadsJob = null;
     console.log('   ✅ ENGAGED COLD leads job stopped');
+  }
+  
+  if (dailyResetJob) {
+    dailyResetJob.stop();
+    dailyResetJob = null;
+    console.log('   ✅ Daily reset job stopped');
   }
   
   console.log('✅ [FOLLOWUP-SCHEDULER] Scheduler stopped');

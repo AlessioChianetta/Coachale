@@ -346,6 +346,23 @@ Primo template disponibile: ${firstTemplateId || "NESSUNO"}
 
 ---
 
+## ⚠️ FINESTRA 24H WHATSAPP (REGOLA CRITICA!)
+
+**Stato attuale:** ${canSendFreeform ? "✅ FINESTRA APERTA - Puoi inviare messaggi liberi (freeform)" : "❌ FINESTRA CHIUSA - DEVI usare un template approvato"}
+
+${canSendFreeform 
+  ? `Il lead ha risposto nelle ultime 24 ore (${Math.round(context.hoursSinceLastInbound)}h fa).
+→ Puoi inviare messaggi liberi (suggestedMessage) O usare template
+→ Se decision="send_now", puoi includere suggestedMessage`
+  : `Il lead NON ha risposto nelle ultime 24 ore (${context.leadNeverResponded ? "mai risposto" : Math.round(context.hoursSinceLastInbound) + "h fa"}).
+→ DEVI OBBLIGATORIAMENTE specificare suggestedTemplateId
+→ NON puoi usare suggestedMessage (sarà ignorato)
+→ Se nessun template disponibile, usa decision="skip"`}
+
+**Regola WhatsApp:** Messaggi liberi SOLO dentro finestra 24h. Fuori finestra = SOLO template approvati.
+
+---
+
 ## ⚠️ MATRICE DECISIONALE OBBLIGATORIA - SEGUI IN ORDINE ⚠️
 
 Applica la PRIMA regola che corrisponde alla situazione:
