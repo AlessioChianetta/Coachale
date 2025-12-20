@@ -5,10 +5,11 @@ import { db } from "../../db";
 import {
   whatsappAgentKnowledgeItems,
   consultantWhatsappConfig,
+  consultantKnowledgeDocuments,
   insertWhatsappAgentKnowledgeItemSchema,
   updateWhatsappAgentKnowledgeItemSchema,
 } from "../../../shared/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, notInArray, desc, isNotNull } from "drizzle-orm";
 import { extractTextFromFile, getKnowledgeItemType } from "../../services/document-processor";
 import fs from "fs/promises";
 import path from "path";
@@ -413,6 +414,221 @@ router.delete(
       res.status(500).json({
         success: false,
         error: error.message || "Failed to delete knowledge item",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/whatsapp/agents/:agentId/import-candidates
+ * List documents from consultant's KB that can be imported (not already imported)
+ */
+router.get(
+  "/whatsapp/agents/:agentId/import-candidates",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { agentId } = req.params;
+      const consultantId = req.user!.id;
+
+      // Verify agent config belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Agent configuration not found",
+        });
+      }
+
+      // Get already imported document IDs for this agent
+      const alreadyImported = await db
+        .select({ sourceDocId: whatsappAgentKnowledgeItems.sourceConsultantDocId })
+        .from(whatsappAgentKnowledgeItems)
+        .where(
+          and(
+            eq(whatsappAgentKnowledgeItems.agentConfigId, agentId),
+            isNotNull(whatsappAgentKnowledgeItems.sourceConsultantDocId)
+          )
+        );
+
+      const importedDocIds = alreadyImported
+        .map(item => item.sourceDocId)
+        .filter((id): id is string => id !== null);
+
+      // Fetch consultant's KB documents that are indexed and not already imported
+      let query = db
+        .select({
+          id: consultantKnowledgeDocuments.id,
+          title: consultantKnowledgeDocuments.title,
+          fileType: consultantKnowledgeDocuments.fileType,
+          fileName: consultantKnowledgeDocuments.fileName,
+          fileSize: consultantKnowledgeDocuments.fileSize,
+          createdAt: consultantKnowledgeDocuments.createdAt,
+          category: consultantKnowledgeDocuments.category,
+        })
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.consultantId, consultantId),
+            eq(consultantKnowledgeDocuments.status, "indexed")
+          )
+        )
+        .orderBy(desc(consultantKnowledgeDocuments.createdAt));
+
+      const candidates = await query;
+
+      // Filter out already imported documents
+      const filteredCandidates = importedDocIds.length > 0
+        ? candidates.filter(doc => !importedDocIds.includes(doc.id))
+        : candidates;
+
+      console.log(`📋 [IMPORT CANDIDATES] Found ${filteredCandidates.length} documents for agent ${agentId}`);
+
+      res.json({
+        success: true,
+        data: filteredCandidates,
+        count: filteredCandidates.length,
+        alreadyImportedCount: importedDocIds.length,
+      });
+    } catch (error: any) {
+      console.error("❌ [IMPORT CANDIDATES] Error fetching candidates:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch import candidates",
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/whatsapp/agents/:agentId/import-from-kb
+ * Import selected documents from consultant's KB into agent's knowledge base
+ */
+router.post(
+  "/whatsapp/agents/:agentId/import-from-kb",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const { agentId } = req.params;
+      const { documentIds } = req.body as { documentIds: string[] };
+      const consultantId = req.user!.id;
+
+      if (!documentIds || !Array.isArray(documentIds) || documentIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "documentIds array is required and must not be empty",
+        });
+      }
+
+      // Verify agent config belongs to consultant
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, agentId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({
+          success: false,
+          error: "Agent configuration not found",
+        });
+      }
+
+      // Fetch the source documents
+      const sourceDocuments = await db
+        .select()
+        .from(consultantKnowledgeDocuments)
+        .where(
+          and(
+            eq(consultantKnowledgeDocuments.consultantId, consultantId),
+            eq(consultantKnowledgeDocuments.status, "indexed")
+          )
+        );
+
+      // Filter to only requested documents
+      const docsToImport = sourceDocuments.filter(doc => documentIds.includes(doc.id));
+
+      if (docsToImport.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "No valid documents found to import",
+        });
+      }
+
+      // Get max order value for this agent
+      const [maxOrderResult] = await db
+        .select({
+          maxOrder: whatsappAgentKnowledgeItems.order,
+        })
+        .from(whatsappAgentKnowledgeItems)
+        .where(eq(whatsappAgentKnowledgeItems.agentConfigId, agentId))
+        .orderBy(desc(whatsappAgentKnowledgeItems.order))
+        .limit(1);
+
+      let nextOrder = (maxOrderResult?.maxOrder || 0) + 1;
+
+      // Map consultant KB file type to agent knowledge type
+      const mapFileType = (fileType: string): "text" | "pdf" | "docx" | "txt" => {
+        if (fileType === "pdf") return "pdf";
+        if (fileType === "docx") return "docx";
+        if (fileType === "txt") return "txt";
+        // For other types like md, csv, xlsx, etc., treat as text
+        return "text";
+      };
+
+      // Import each document
+      const importedItems = [];
+      for (const doc of docsToImport) {
+        const itemId = crypto.randomUUID();
+        
+        const [newItem] = await db
+          .insert(whatsappAgentKnowledgeItems)
+          .values({
+            id: itemId,
+            agentConfigId: agentId,
+            title: doc.title,
+            type: mapFileType(doc.fileType),
+            content: doc.extractedContent || "",
+            filePath: doc.filePath,
+            fileName: doc.fileName,
+            fileSize: doc.fileSize,
+            order: nextOrder++,
+            sourceConsultantDocId: doc.id,
+          })
+          .returning();
+
+        importedItems.push(newItem);
+        console.log(`✅ [IMPORT FROM KB] Imported "${doc.title}" -> agent ${agentId}`);
+      }
+
+      res.status(201).json({
+        success: true,
+        data: importedItems,
+        message: `Successfully imported ${importedItems.length} document(s)`,
+        importedCount: importedItems.length,
+      });
+    } catch (error: any) {
+      console.error("❌ [IMPORT FROM KB] Error importing documents:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to import documents",
       });
     }
   }

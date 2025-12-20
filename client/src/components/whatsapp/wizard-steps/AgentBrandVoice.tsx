@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Building2, 
   User, 
@@ -26,13 +29,25 @@ import {
   Save,
   Trash2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Download,
+  Library
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDropzone } from "react-dropzone";
 import { useToast } from "@/hooks/use-toast";
 import { getAuthHeaders } from "@/lib/auth";
 import type { WhatsappAgentKnowledgeItem } from "@shared/schema";
+
+interface ImportCandidate {
+  id: string;
+  title: string;
+  fileType: string;
+  fileName: string;
+  fileSize: number;
+  createdAt: string | null;
+  category: string;
+}
 
 interface AgentBrandVoiceProps {
   formData: any;
@@ -74,6 +89,12 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [knowledgeDrafts, setKnowledgeDrafts] = useState<KnowledgeItemDraft[]>([]);
   const [isLoadingKnowledge, setIsLoadingKnowledge] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importCandidates, setImportCandidates] = useState<ImportCandidate[]>([]);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const handleAddValue = () => {
     if (valueInput.trim()) {
@@ -480,6 +501,112 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
           variant: "destructive",
         });
       }
+    }
+  };
+
+  const handleOpenImportDialog = async () => {
+    if (!agentId) {
+      toast({
+        title: "Errore",
+        description: "Devi salvare prima la configurazione dell'agente",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsImportDialogOpen(true);
+    setIsLoadingCandidates(true);
+    setSelectedDocIds([]);
+
+    try {
+      const response = await fetch(`/api/whatsapp/agents/${agentId}/import-candidates`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setImportCandidates(data.data || []);
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Errore",
+          description: error.error || "Impossibile caricare i documenti",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching import candidates:", error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante il caricamento",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingCandidates(false);
+    }
+  };
+
+  const handleToggleDocSelection = (docId: string) => {
+    setSelectedDocIds(prev => 
+      prev.includes(docId) 
+        ? prev.filter(id => id !== docId)
+        : [...prev, docId]
+    );
+  };
+
+  const handleSelectAllDocs = () => {
+    if (selectedDocIds.length === importCandidates.length) {
+      setSelectedDocIds([]);
+    } else {
+      setSelectedDocIds(importCandidates.map(doc => doc.id));
+    }
+  };
+
+  const handleImportSelected = async () => {
+    if (!agentId || selectedDocIds.length === 0) return;
+
+    setIsImporting(true);
+
+    try {
+      const response = await fetch(`/api/whatsapp/agents/${agentId}/import-from-kb`, {
+        method: "POST",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ documentIds: selectedDocIds }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        setKnowledgeItems(prev => [...prev, ...(data.data || [])]);
+        
+        toast({
+          title: "✓ Importazione completata",
+          description: `${data.importedCount} documento/i importato/i con successo`,
+        });
+        
+        setIsImportDialogOpen(false);
+        setSelectedDocIds([]);
+        setImportCandidates([]);
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Errore",
+          description: error.error || "Impossibile importare i documenti",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error importing documents:", error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'importazione",
+        variant: "destructive",
+      });
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -1135,21 +1262,180 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
               ))}
 
               {/* Manual Add Button (for advanced users) */}
-              <Button
-                type="button"
-                onClick={handleAddKnowledgeDraft}
-                variant="ghost"
-                size="sm"
-                className="w-full text-muted-foreground"
-                disabled={!agentId}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Aggiungi Manualmente
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={handleAddKnowledgeDraft}
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 text-muted-foreground"
+                  disabled={!agentId}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Aggiungi Manualmente
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleOpenImportDialog}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 border-primary/30 hover:border-primary/50 hover:bg-primary/5"
+                  disabled={!agentId}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  📥 Importa da Knowledge Base
+                </Button>
+              </div>
             </CardContent>
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Library className="h-5 w-5 text-primary" />
+              Importa dalla Knowledge Base
+            </DialogTitle>
+            <DialogDescription>
+              Seleziona i documenti dalla tua Knowledge Base da importare in questo agente.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingCandidates ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : importCandidates.length === 0 ? (
+            <div className="text-center py-12">
+              <Library className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                Nessun documento disponibile per l'importazione.
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                I documenti già importati o non ancora indicizzati non vengono mostrati.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="select-all"
+                    checked={selectedDocIds.length === importCandidates.length && importCandidates.length > 0}
+                    onCheckedChange={handleSelectAllDocs}
+                  />
+                  <Label htmlFor="select-all" className="text-sm cursor-pointer">
+                    Seleziona tutti ({importCandidates.length})
+                  </Label>
+                </div>
+                <Badge variant="secondary" className="text-xs">
+                  {selectedDocIds.length} selezionato/i
+                </Badge>
+              </div>
+
+              <ScrollArea className="h-[400px] pr-4">
+                <div className="space-y-2">
+                  {importCandidates.map((doc) => {
+                    const isSelected = selectedDocIds.includes(doc.id);
+
+                    const getBadgeColor = (type: string) => {
+                      switch (type) {
+                        case 'pdf': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+                        case 'docx': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+                        case 'txt': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+                        default: return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
+                      }
+                    };
+
+                    const formatFileSize = (bytes?: number | null) => {
+                      if (!bytes) return null;
+                      if (bytes < 1024) return `${bytes} B`;
+                      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+                    };
+
+                    const formatDate = (date?: string | null) => {
+                      if (!date) return null;
+                      const d = new Date(date);
+                      return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+                    };
+
+                    return (
+                      <div
+                        key={doc.id}
+                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                          isSelected 
+                            ? 'bg-primary/10 border-primary/50' 
+                            : 'bg-card/50 border-border hover:bg-card/70'
+                        }`}
+                        onClick={() => handleToggleDocSelection(doc.id)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => handleToggleDocSelection(doc.id)}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                              <span className="font-medium truncate">{doc.title}</span>
+                              <Badge variant="secondary" className={`text-xs ${getBadgeColor(doc.fileType)}`}>
+                                {doc.fileType.toUpperCase()}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                              {doc.fileName && (
+                                <span className="truncate max-w-[200px]">📎 {doc.fileName}</span>
+                              )}
+                              {formatFileSize(doc.fileSize) && (
+                                <span>• {formatFileSize(doc.fileSize)}</span>
+                              )}
+                              {formatDate(doc.createdAt) && (
+                                <span>• {formatDate(doc.createdAt)}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsImportDialogOpen(false)}
+              disabled={isImporting}
+            >
+              Annulla
+            </Button>
+            <Button
+              type="button"
+              onClick={handleImportSelected}
+              disabled={selectedDocIds.length === 0 || isImporting}
+            >
+              {isImporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importazione...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Importa {selectedDocIds.length > 0 ? `(${selectedDocIds.length})` : ''}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
