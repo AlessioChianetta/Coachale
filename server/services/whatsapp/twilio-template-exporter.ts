@@ -103,7 +103,26 @@ export async function exportTemplateToTwilio(
     .where(eq(whatsappTemplateVariables.templateVersionId, activeVersion.id))
     .orderBy(whatsappTemplateVariables.position);
 
-  // 4. Convert bodyText from {nome_lead} to {{1}} format
+  // 4. Validate that all variables in bodyText are mapped
+  const variableRegex = /\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+  const variablesInText: string[] = [];
+  let match;
+  while ((match = variableRegex.exec(activeVersion.bodyText)) !== null) {
+    variablesInText.push(match[1]);
+  }
+  
+  const mappedKeys = variables.map((v) => v.variableKey);
+  const unmappedVariables = variablesInText.filter((v) => !mappedKeys.includes(v));
+  
+  if (unmappedVariables.length > 0) {
+    throw new Error(
+      `Variabili non mappate nel template: ${unmappedVariables.join(", ")}. ` +
+      `Aggiungi queste variabili al template prima di esportare su Twilio. ` +
+      `WhatsApp richiede che ogni variabile {nome} sia definita e convertita in {{1}}, {{2}}, ecc.`
+    );
+  }
+
+  // 5. Convert bodyText from {nome_lead} to {{1}} format
   const variableMappings = variables.map((v) => ({
     variableKey: v.variableKey,
     position: v.position,
@@ -114,7 +133,7 @@ export async function exportTemplateToTwilio(
     variableMappings
   );
 
-  // 5. Create Twilio variables object: { "1": "Nome Lead", "2": "Nome Consulente" }
+  // 6. Create Twilio variables object: { "1": "Nome Lead", "2": "Nome Consulente" }
   const twilioVariables: Record<string, string> = {};
   variables.forEach((v) => {
     twilioVariables[v.position.toString()] = v.variableName;
