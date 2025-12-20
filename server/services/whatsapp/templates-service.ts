@@ -30,6 +30,7 @@ export interface TemplateListItem {
     id: string;
     versionNumber: number;
     bodyText: string;
+    twilioContentSid: string | null;
     twilioStatus: string;
     variableCount: number;
   };
@@ -210,6 +211,7 @@ export async function listTemplates(
         id: whatsappTemplateVersions.id,
         versionNumber: whatsappTemplateVersions.versionNumber,
         bodyText: whatsappTemplateVersions.bodyText,
+        twilioContentSid: whatsappTemplateVersions.twilioContentSid,
         twilioStatus: whatsappTemplateVersions.twilioStatus,
       })
       .from(whatsappTemplateVersions)
@@ -248,6 +250,7 @@ export async function listTemplates(
         id: activeVersion.id,
         versionNumber: activeVersion.versionNumber,
         bodyText: activeVersion.bodyText,
+        twilioContentSid: activeVersion.twilioContentSid,
         twilioStatus: activeVersion.twilioStatus,
         variableCount,
       } : undefined,
