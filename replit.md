@@ -50,6 +50,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Client Documents Page**: Clients can view all AI-accessible documents at `/client/documents`
 ## Advanced Consultation Management System
 - **AI-powered Email Automation**: Generates personalized motivational emails via Google Gemini, requiring consultant approval.
+  - **File Search Integration in Emails**: `generateMotivationalEmail` and `generateConsultationSummaryEmail` (in `server/ai/email-template-generator.ts`) automatically switch to Google AI Studio when File Search stores are available, enabling semantic retrieval with Gemini 3 Flash Preview + thinkingConfig. Falls back to normal 3-tier provider system if Google AI Studio is unavailable.
 - **AI-Powered Client State Tracking**: Analyzes system context to generate current and ideal client states.
 ## AI System Prompt Architecture
 - All AI endpoints **MUST** use `buildSystemPrompt()` from `server/ai-prompts.ts` as `systemInstruction` for Gemini to ensure comprehensive context.
