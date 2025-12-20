@@ -205,11 +205,12 @@ export async function exportTemplateToTwilio(
     try {
       console.log(`📤 [TWILIO EXPORT] Submitting template for WhatsApp approval...`);
       
+      // Use approvalRequests (not approvalCreate) with channel parameter
       const approval = await twilioClient.content.v1
         .contents(content.sid)
-        .approvalCreate
+        .approvalRequests
         .create({
-          name: sanitizedName,
+          name: friendlyName, // Use full friendlyName including version suffix to avoid collisions
           category: "UTILITY",
         });
 
