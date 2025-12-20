@@ -21,7 +21,7 @@ import { eq, isNull, and, desc, asc, sql, inArray } from "drizzle-orm";
 import { buildUserContext, detectIntent } from "../ai-context-builder";
 import { buildSystemPrompt } from "../ai-prompts";
 import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, getModelWithThinking } from "../ai/provider-factory";
+import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_LEGACY_MODEL, getModelWithThinking, getSuperAdminGeminiKeys } from "../ai/provider-factory";
 import { sendWhatsAppMessage } from "./twilio-client";
 import { nanoid } from "nanoid";
 import { handleIncomingMedia } from "./media-handler";
@@ -3411,22 +3411,44 @@ const MAX_FAILURES_BEFORE_SKIP = 3; // Skip key if it has failed this many times
  * Select AI provider for WhatsApp (Vertex AI or Google AI Studio)
  * Returns either Vertex AI credentials or API key
  * 
- * NEW UNIFIED APPROACH:
- * 1. Check SuperAdmin Vertex (if consultant has access via useSuperadminVertex + consultantVertexAccess)
- * 2. Fallback to consultant's own vertexAiSettings
- * 3. Fallback to Google AI Studio API keys
+ * UPDATED APPROACH - Gemini 3 Priority:
+ * 1. Check SuperAdmin Gemini Keys (Google AI Studio with Gemini 3) - PREFERRED
+ * 2. Fallback to SuperAdmin Vertex AI (if consultant has access)
+ * 3. Fallback to consultant's own vertexAiSettings
+ * 4. Fallback to consultant's Google AI Studio API keys
  */
 async function selectWhatsAppAIProvider(conversation: any): Promise<
   | { type: 'vertex'; projectId: string; location: string; credentials: any }
   | { type: 'studio'; apiKey: string; keyId: string }
 > {
-  // 1. Check if consultant can use SuperAdmin Vertex
+  // 1. FIRST PRIORITY: Check SuperAdmin Gemini Keys (Google AI Studio with Gemini 3)
   const [consultant] = await db
-    .select({ useSuperadminVertex: users.useSuperadminVertex })
+    .select({ 
+      useSuperadminGemini: users.useSuperadminGemini,
+      useSuperadminVertex: users.useSuperadminVertex 
+    })
     .from(users)
     .where(eq(users.id, conversation.consultantId))
     .limit(1);
 
+  // Check if consultant can use SuperAdmin Gemini (default true)
+  if (consultant?.useSuperadminGemini !== false) {
+    const superAdminKeys = await getSuperAdminGeminiKeys();
+    if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+      // Select a random key for load balancing
+      const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+      const apiKey = superAdminKeys.keys[index];
+      console.log(`✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)`);
+      console.log(`   🔑 Key: ${index + 1}/${superAdminKeys.keys.length}`);
+      return {
+        type: 'studio',
+        apiKey,
+        keyId: `superadmin-gemini-${index}`
+      };
+    }
+  }
+
+  // 2. SECOND PRIORITY: Check SuperAdmin Vertex AI
   if (consultant?.useSuperadminVertex) {
     // Check consultant_vertex_access (default = true if no record exists)
     const [accessRecord] = await db
@@ -3466,7 +3488,7 @@ async function selectWhatsAppAIProvider(conversation: any): Promise<
     }
   }
 
-  // 2. Fallback: Check consultant's own vertexAiSettings
+  // 3. Fallback: Check consultant's own vertexAiSettings
   const [consultantVertexSettings] = await db
     .select()
     .from(vertexAiSettings)
