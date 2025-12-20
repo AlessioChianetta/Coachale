@@ -350,47 +350,6 @@ export interface ActivityLogFilters {
   dateTo?: string;
 }
 
-export interface ActivityLogEvent {
-  id: string;
-  type: string;
-  status: string;
-  conversationId: string;
-  agentId: string;
-  agentName?: string;
-  leadName?: string;
-  phoneNumber?: string;
-  temperatureLevel?: string;
-  currentState?: string;
-  decision?: string;
-  reasoning?: string;
-  window24hExpiresAt?: string;
-  consecutiveNoReplyCount?: number;
-  lastAiEvaluationAt?: string;
-  createdAt: string;
-}
-
-export interface ActivityLogConversation {
-  conversationId: string;
-  leadName?: string;
-  leadPhone?: string;
-  agentName?: string;
-  agentId?: string;
-  currentStatus: string;
-  temperatureLevel: string;
-  currentState?: string;
-  window24hExpiresAt?: string;
-  consecutiveNoReplyCount: number;
-  lastAiEvaluationAt?: string;
-  nextScheduledCheck?: string;
-  events: ActivityLogEvent[];
-}
-
-export interface ActivityLogResponse {
-  timeline: ActivityLogConversation[];
-  allEvents: ActivityLogEvent[];
-  total: number;
-}
-
 export function useActivityLog(filters: ActivityLogFilters = {}) {
   const params = new URLSearchParams();
   if (filters.filter) params.set("filter", filters.filter);
@@ -400,7 +359,7 @@ export function useActivityLog(filters: ActivityLogFilters = {}) {
   if (filters.dateTo) params.set("dateTo", filters.dateTo);
   params.set("limit", "50");
 
-  return useQuery<ActivityLogResponse>({
+  return useQuery({
     queryKey: ["activity-log", filters],
     queryFn: async () => {
       const res = await fetch(`/api/followup/activity-log?${params.toString()}`, {

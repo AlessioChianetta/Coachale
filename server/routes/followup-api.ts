@@ -9,8 +9,6 @@ import * as schema from "../../shared/schema";
 import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
 import { getAIProvider } from "../ai/provider-factory";
-import { evaluateWithHumanLikeAI, ConversationContext, enrichMessages, logHumanLikeDecision } from "../ai/human-like-decision-engine";
-import { getLastMessages, getAvailableTemplates } from "../cron/followup-scheduler";
 
 const router = Router();
 
@@ -1119,8 +1117,6 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         leadLastName: schema.proactiveLeads.lastName,
         currentState: schema.conversationStates.currentState,
         temperatureLevel: schema.conversationStates.temperatureLevel,
-        consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
-        lastAiEvaluationAt: schema.conversationStates.lastAiEvaluationAt,
       })
       .from(schema.followupAiEvaluationLog)
       .innerJoin(
@@ -1198,8 +1194,6 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         templateTwilioStatus: schema.whatsappTemplateVersions.twilioStatus,
         temperatureLevel: schema.conversationStates.temperatureLevel,
         currentState: schema.conversationStates.currentState,
-        consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
-        lastAiEvaluationAt: schema.conversationStates.lastAiEvaluationAt,
       })
       .from(schema.scheduledFollowupMessages)
       .innerJoin(
@@ -1286,8 +1280,6 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         matchedRuleReason: log.matchedRuleReason,
         currentState: log.currentState,
         temperatureLevel: log.temperatureLevel || 'warm',
-        consecutiveNoReplyCount: log.consecutiveNoReplyCount || 0,
-        lastAiEvaluationAt: log.lastAiEvaluationAt,
         window24hExpiresAt: log.window24hExpiresAt,
         canSendFreeform: log.canSendFreeform,
         status: log.decision === 'stop' ? 'stopped' :
@@ -1334,8 +1326,6 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         aiSelectedTemplateReasoning: msg.aiSelectedTemplateReasoning,
         temperatureLevel: msg.temperatureLevel || 'warm',
         currentState: msg.currentState,
-        consecutiveNoReplyCount: msg.consecutiveNoReplyCount || 0,
-        lastAiEvaluationAt: msg.lastAiEvaluationAt,
       });
     }
 
@@ -1363,27 +1353,6 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
       filteredEvents = filteredEvents.filter(e => e.type === 'message_scheduled');
     }
 
-    // Helper function to calculate next scheduled check based on temperature
-    const calculateNextScheduledCheck = (lastEvalAt: Date | null, temperature: string): Date | null => {
-      if (!lastEvalAt) return null;
-      const lastEval = new Date(lastEvalAt);
-      switch (temperature) {
-        case 'hot':
-        case 'warm':
-          return new Date(lastEval.getTime() + 5 * 60 * 1000); // Every 5 minutes
-        case 'cold':
-          return new Date(lastEval.getTime() + 2 * 60 * 60 * 1000); // Every 2 hours
-        case 'ghost':
-          // Daily at 10:00, calculate next occurrence
-          const next = new Date(lastEval);
-          next.setHours(10, 0, 0, 0);
-          if (next <= new Date()) next.setDate(next.getDate() + 1);
-          return next;
-        default:
-          return new Date(lastEval.getTime() + 5 * 60 * 1000);
-      }
-    };
-
     // Group by conversation for timeline view
     const groupedByConversation: Record<string, any> = {};
     for (const event of filteredEvents.slice(0, limit)) {
@@ -1391,81 +1360,16 @@ router.get("/activity-log", authenticateToken, requireRole("consultant"), async 
         groupedByConversation[event.conversationId] = {
           conversationId: event.conversationId,
           leadName: event.leadName,
-          leadPhone: event.phoneNumber,
           agentName: event.agentName,
           agentId: event.agentId,
           currentStatus: event.status,
           temperatureLevel: event.temperatureLevel || 'warm',
           currentState: event.currentState,
           window24hExpiresAt: event.window24hExpiresAt,
-          consecutiveNoReplyCount: event.consecutiveNoReplyCount || 0,
-          lastAiEvaluationAt: event.lastAiEvaluationAt,
-          nextScheduledCheck: null,
           events: [],
         };
       }
-      
-      // Track the most recent lastAiEvaluationAt across all events
-      const group = groupedByConversation[event.conversationId];
-      if (event.lastAiEvaluationAt) {
-        const eventEvalTime = new Date(event.lastAiEvaluationAt).getTime();
-        const currentEvalTime = group.lastAiEvaluationAt 
-          ? new Date(group.lastAiEvaluationAt).getTime() 
-          : 0;
-        if (eventEvalTime > currentEvalTime) {
-          group.lastAiEvaluationAt = event.lastAiEvaluationAt;
-        }
-      }
-      
-      group.events.push(event);
-    }
-    
-    // ═══════════════════════════════════════════════════════════════════════════
-    // CRITICAL FIX: Fetch CURRENT conversationStates values for all grouped conversations
-    // The events contain historical temperature values from when the event occurred,
-    // but we need the CURRENT temperature (e.g., when a lead replies, webhook sets it to 'hot')
-    // ═══════════════════════════════════════════════════════════════════════════
-    const conversationIds = Object.keys(groupedByConversation);
-    if (conversationIds.length > 0) {
-      const currentStates = await db
-        .select({
-          conversationId: schema.conversationStates.conversationId,
-          temperatureLevel: schema.conversationStates.temperatureLevel,
-          consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
-          currentState: schema.conversationStates.currentState,
-          lastAiEvaluationAt: schema.conversationStates.lastAiEvaluationAt,
-        })
-        .from(schema.conversationStates)
-        .where(inArray(schema.conversationStates.conversationId, conversationIds));
-      
-      // Update grouped data with CURRENT values from database
-      for (const state of currentStates) {
-        const group = groupedByConversation[state.conversationId];
-        if (group) {
-          group.temperatureLevel = state.temperatureLevel || 'warm';
-          group.consecutiveNoReplyCount = state.consecutiveNoReplyCount || 0;
-          group.currentState = state.currentState;
-          // Use the most recent lastAiEvaluationAt (either from events or current state)
-          if (state.lastAiEvaluationAt) {
-            const stateEvalTime = new Date(state.lastAiEvaluationAt).getTime();
-            const groupEvalTime = group.lastAiEvaluationAt 
-              ? new Date(group.lastAiEvaluationAt).getTime() 
-              : 0;
-            if (stateEvalTime > groupEvalTime) {
-              group.lastAiEvaluationAt = state.lastAiEvaluationAt;
-            }
-          }
-        }
-      }
-    }
-    
-    // After updating with current state, compute nextScheduledCheck using ACTUAL temperature
-    for (const conversationId of Object.keys(groupedByConversation)) {
-      const group = groupedByConversation[conversationId];
-      group.nextScheduledCheck = calculateNextScheduledCheck(
-        group.lastAiEvaluationAt,
-        group.temperatureLevel || 'warm'
-      );
+      groupedByConversation[event.conversationId].events.push(event);
     }
 
     res.json({
@@ -1907,13 +1811,6 @@ router.get("/ai-preferences", authenticateToken, requireRole("consultant"), asyn
           allowAiToSuggestTemplates: true,
           allowAiToWriteFreeformMessages: true,
           logAiReasoning: true,
-          maxNoReplyBeforeDormancy: 3,
-          dormancyDurationDays: 90,
-          finalAttemptAfterDormancy: true,
-          maxWarmFollowups: 2,
-          warmFollowupDelayHours: 4,
-          engagedGhostThresholdDays: 14,
-          prioritizeEngagedLeads: true,
           isActive: true,
         },
         isDefault: true,
@@ -2533,456 +2430,6 @@ router.get("/pending-queue", authenticateToken, requireRole("consultant"), async
     res.status(500).json({
       success: false,
       message: error.message || "Errore nel recupero della coda"
-    });
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// LIVE TEST COCKPIT ENDPOINTS
-// ═══════════════════════════════════════════════════════════════════════════
-
-router.get("/conversations-for-test", authenticateToken, requireRole("consultant"), async (req, res) => {
-  try {
-    const consultantId = req.user!.id;
-
-    const conversations = await db
-      .select({
-        id: schema.whatsappConversations.id,
-        phoneNumber: schema.whatsappConversations.phoneNumber,
-        proactiveLeadId: schema.whatsappConversations.proactiveLeadId,
-        lastMessageAt: schema.whatsappConversations.lastMessageAt,
-        agentName: schema.consultantWhatsappConfig.agentName,
-        currentState: schema.conversationStates.currentState,
-        followupCount: schema.conversationStates.followupCount,
-        consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
-        temperatureLevel: schema.conversationStates.temperatureLevel,
-      })
-      .from(schema.whatsappConversations)
-      .innerJoin(
-        schema.consultantWhatsappConfig,
-        eq(schema.consultantWhatsappConfig.id, schema.whatsappConversations.agentConfigId)
-      )
-      .leftJoin(
-        schema.conversationStates,
-        eq(schema.conversationStates.conversationId, schema.whatsappConversations.id)
-      )
-      .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
-      .orderBy(desc(schema.whatsappConversations.lastMessageAt))
-      .limit(50);
-
-    const leadIds = conversations.filter(c => c.proactiveLeadId).map(c => c.proactiveLeadId!);
-    const leads = leadIds.length > 0 ? await db
-      .select({
-        id: schema.proactiveLeads.id,
-        firstName: schema.proactiveLeads.firstName,
-        lastName: schema.proactiveLeads.lastName,
-      })
-      .from(schema.proactiveLeads)
-      .where(inArray(schema.proactiveLeads.id, leadIds)) : [];
-
-    const leadMap = new Map(leads.map(l => [l.id, `${l.firstName || ''} ${l.lastName || ''}`.trim()]));
-
-    const result = conversations.map(conv => ({
-      id: conv.id,
-      phoneNumber: conv.phoneNumber,
-      leadName: conv.proactiveLeadId ? (leadMap.get(conv.proactiveLeadId) || conv.phoneNumber) : conv.phoneNumber,
-      agentName: conv.agentName || 'Agente',
-      currentState: conv.currentState || 'new',
-      lastMessageAt: conv.lastMessageAt?.toISOString() || null,
-      followupCount: conv.followupCount || 0,
-      consecutiveNoReplyCount: conv.consecutiveNoReplyCount || 0,
-      temperatureLevel: conv.temperatureLevel || null,
-    }));
-
-    res.json(result);
-  } catch (error: any) {
-    console.error("❌ [CONVERSATIONS-FOR-TEST] Error:", error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.get("/conversation-details/:id", authenticateToken, requireRole("consultant"), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const consultantId = req.user!.id;
-
-    const [result] = await db
-      .select({
-        id: schema.whatsappConversations.id,
-        phoneNumber: schema.whatsappConversations.phoneNumber,
-        proactiveLeadId: schema.whatsappConversations.proactiveLeadId,
-        lastMessageAt: schema.whatsappConversations.lastMessageAt,
-        window24hExpiresAt: schema.whatsappConversations.window24hExpiresAt,
-        agentName: schema.consultantWhatsappConfig.agentName,
-        currentState: schema.conversationStates.currentState,
-        followupCount: schema.conversationStates.followupCount,
-        consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
-        temperatureLevel: schema.conversationStates.temperatureLevel,
-        lastFollowupAt: schema.conversationStates.lastFollowupAt,
-        dormantUntil: schema.conversationStates.dormantUntil,
-        permanentlyExcluded: schema.conversationStates.permanentlyExcluded,
-        engagementScore: schema.conversationStates.engagementScore,
-      })
-      .from(schema.whatsappConversations)
-      .innerJoin(
-        schema.consultantWhatsappConfig,
-        eq(schema.consultantWhatsappConfig.id, schema.whatsappConversations.agentConfigId)
-      )
-      .leftJoin(
-        schema.conversationStates,
-        eq(schema.conversationStates.conversationId, schema.whatsappConversations.id)
-      )
-      .where(and(
-        eq(schema.whatsappConversations.id, id),
-        eq(schema.consultantWhatsappConfig.consultantId, consultantId)
-      ))
-      .limit(1);
-
-    if (!result) {
-      return res.status(404).json({ message: "Conversazione non trovata" });
-    }
-
-    let leadName = result.phoneNumber;
-    if (result.proactiveLeadId) {
-      const [lead] = await db
-        .select({ firstName: schema.proactiveLeads.firstName, lastName: schema.proactiveLeads.lastName })
-        .from(schema.proactiveLeads)
-        .where(eq(schema.proactiveLeads.id, result.proactiveLeadId))
-        .limit(1);
-      if (lead) {
-        leadName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim() || result.phoneNumber;
-      }
-    }
-
-    const now = new Date();
-    const canSendFreeform = result.window24hExpiresAt ? new Date(result.window24hExpiresAt) > now : false;
-
-    res.json({
-      id: result.id,
-      phoneNumber: result.phoneNumber,
-      leadName,
-      agentName: result.agentName || 'Agente',
-      currentState: result.currentState || 'new',
-      followupCount: result.followupCount || 0,
-      consecutiveNoReplyCount: result.consecutiveNoReplyCount || 0,
-      temperatureLevel: result.temperatureLevel || null,
-      lastMessageAt: result.lastMessageAt?.toISOString() || null,
-      lastFollowupAt: result.lastFollowupAt?.toISOString() || null,
-      dormantUntil: result.dormantUntil?.toISOString() || null,
-      permanentlyExcluded: result.permanentlyExcluded || false,
-      engagementScore: result.engagementScore || null,
-      window24hExpiresAt: result.window24hExpiresAt?.toISOString() || null,
-      canSendFreeform,
-    });
-  } catch (error: any) {
-    console.error("❌ [CONVERSATION-DETAILS] Error:", error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-router.post("/evaluate-now", authenticateToken, requireRole("consultant"), async (req, res) => {
-  try {
-    const { conversationId, timeOverrideHours } = req.body;
-    const consultantId = req.user!.id;
-
-    if (!conversationId) {
-      return res.status(400).json({ message: "conversationId è obbligatorio" });
-    }
-
-    const [conversation] = await db
-      .select({
-        id: schema.whatsappConversations.id,
-        phoneNumber: schema.whatsappConversations.phoneNumber,
-        agentConfigId: schema.whatsappConversations.agentConfigId,
-        lastMessageAt: schema.whatsappConversations.lastMessageAt,
-        window24hExpiresAt: schema.whatsappConversations.window24hExpiresAt,
-        agentName: schema.consultantWhatsappConfig.agentName,
-        currentState: schema.conversationStates.currentState,
-        followupCount: schema.conversationStates.followupCount,
-        consecutiveNoReplyCount: schema.conversationStates.consecutiveNoReplyCount,
-        temperatureLevel: schema.conversationStates.temperatureLevel,
-      })
-      .from(schema.whatsappConversations)
-      .innerJoin(
-        schema.consultantWhatsappConfig,
-        eq(schema.consultantWhatsappConfig.id, schema.whatsappConversations.agentConfigId)
-      )
-      .leftJoin(
-        schema.conversationStates,
-        eq(schema.conversationStates.conversationId, schema.whatsappConversations.id)
-      )
-      .where(and(
-        eq(schema.whatsappConversations.id, conversationId),
-        eq(schema.consultantWhatsappConfig.consultantId, consultantId)
-      ))
-      .limit(1);
-
-    if (!conversation) {
-      return res.status(404).json({ message: "Conversazione non trovata" });
-    }
-
-    const now = new Date();
-    let hoursSinceLastMessage = 0;
-    
-    if (conversation.lastMessageAt) {
-      const lastMsg = new Date(conversation.lastMessageAt);
-      hoursSinceLastMessage = (now.getTime() - lastMsg.getTime()) / (1000 * 60 * 60);
-    }
-
-    if (timeOverrideHours !== undefined && !isNaN(timeOverrideHours)) {
-      hoursSinceLastMessage = timeOverrideHours;
-    }
-
-    const canSendFreeform = conversation.window24hExpiresAt 
-      ? new Date(conversation.window24hExpiresAt) > now 
-      : false;
-
-    const consecutiveNoReply = conversation.consecutiveNoReplyCount || 0;
-    const followupCount = conversation.followupCount || 0;
-    const currentState = conversation.currentState || 'new';
-
-    // Build conversation context for AI evaluation
-    const lastMessages = await getLastMessages(conversationId, 15);
-    const templates = await getAvailableTemplates(consultantId, conversation.agentConfigId);
-    
-    // Enrich messages with type detection
-    const enrichedMessages = enrichMessages(lastMessages.map(m => ({
-      id: m.timestamp,
-      role: m.role === 'lead' ? 'lead' : 'agent',
-      content: m.content,
-      timestamp: m.timestamp,
-      isTemplate: m.messageType === 'template',
-    })));
-
-    // Calculate timing for lead responses
-    let lastLeadResponseTime: Date | null = null;
-    for (const msg of lastMessages) {
-      if (msg.role === 'lead') {
-        lastLeadResponseTime = new Date(msg.timestamp);
-        break;
-      }
-    }
-    
-    const hoursSinceLastLeadResponse = lastLeadResponseTime 
-      ? (now.getTime() - lastLeadResponseTime.getTime()) / (1000 * 60 * 60)
-      : null;
-
-    // Apply time override if provided
-    const effectiveHoursSinceLastMessage = timeOverrideHours !== undefined && !isNaN(timeOverrideHours) 
-      ? timeOverrideHours 
-      : hoursSinceLastMessage;
-
-    // Build context for AI
-    const context: ConversationContext = {
-      conversationId,
-      leadPhone: conversation.phoneNumber,
-      currentState: currentState,
-      agentType: 'setter',
-      channel: 'whatsapp',
-      hoursSinceLastMessage: effectiveHoursSinceLastMessage,
-      hoursSinceLastLeadResponse: timeOverrideHours !== undefined ? timeOverrideHours : hoursSinceLastLeadResponse,
-      daysSilent: Math.floor(effectiveHoursSinceLastMessage / 24),
-      messages: enrichedMessages,
-      totalMessages: lastMessages.length,
-      messagesFromLead: lastMessages.filter(m => m.role === 'lead').length,
-      messagesFromAgent: lastMessages.filter(m => m.role !== 'lead').length,
-      templatessSent: lastMessages.filter(m => m.messageType === 'template').length,
-      followupCount: followupCount,
-      maxFollowupsAllowed: 5,
-      signals: {
-        hasAskedPrice: false,
-        hasMentionedUrgency: false,
-        hasSaidNoExplicitly: false,
-        discoveryCompleted: false,
-        demoPresented: false,
-        leadNeverResponded: lastMessages.filter(m => m.role === 'lead').length === 0,
-      },
-      engagementScore: 50,
-      conversionProbability: 0.3,
-      temperatureLevel: (conversation.temperatureLevel as any) || 'warm',
-      availableTemplates: templates.map(t => ({
-        id: t.id,
-        name: t.name,
-        useCase: t.useCase,
-        bodyPreview: t.bodyText?.substring(0, 100) || '',
-      })),
-      previousEvaluations: [],
-      window24hExpiresAt: conversation.window24hExpiresAt ? new Date(conversation.window24hExpiresAt) : null,
-      canSendFreeformNow: canSendFreeform,
-    };
-
-    // Call REAL AI evaluation
-    console.log(`🧠 [EVALUATE-NOW] Calling evaluateWithHumanLikeAI for conversation ${conversationId}`);
-    const startTime = Date.now();
-    const aiDecision = await evaluateWithHumanLikeAI(context, consultantId);
-    const latencyMs = Date.now() - startTime;
-
-    // Log the decision
-    await logHumanLikeDecision(conversationId, context, aiDecision, "gemini-2.5-flash", latencyMs);
-
-    // If decision is send_now, send message IMMEDIATELY via Twilio
-    let messageSent = false;
-    let twilioSid: string | null = null;
-    let twilioError: string | null = null;
-    let scheduledMessageId: string | null = null;
-
-    if (aiDecision.decision === 'send_now' && aiDecision.suggestedMessage) {
-      console.log(`🚀 [EVALUATE-NOW] Decision is SEND_NOW - sending message LIVE via Twilio`);
-      
-      // 1. Insert scheduled message record first
-      const [scheduledRecord] = await db.insert(schema.scheduledFollowupMessages).values({
-        conversationId,
-        templateId: aiDecision.suggestedTemplateId || null,
-        messageText: aiDecision.suggestedMessage,
-        scheduledFor: new Date(),
-        status: 'processing',
-        createdAt: new Date(),
-      }).returning();
-      
-      scheduledMessageId = scheduledRecord.id;
-      console.log(`📋 [EVALUATE-NOW] Created scheduled record: ${scheduledMessageId}`);
-      
-      // 2. Fetch agent config to check isDryRun
-      const [agentConfig] = await db
-        .select({ isDryRun: schema.consultantWhatsappConfig.isDryRun })
-        .from(schema.consultantWhatsappConfig)
-        .where(eq(schema.consultantWhatsappConfig.id, conversation.agentConfigId!))
-        .limit(1);
-      
-      const isDryRun = agentConfig?.isDryRun ?? true;
-      
-      // 3. Save message to whatsappMessages table
-      const [savedMessage] = await db
-        .insert(schema.whatsappMessages)
-        .values({
-          conversationId,
-          messageText: aiDecision.suggestedMessage,
-          direction: "outbound",
-          sender: "ai",
-          templateId: aiDecision.suggestedTemplateId || null,
-          metadata: {
-            evaluateNowLiveSend: true,
-            aiDecision: aiDecision.decision,
-            confidenceScore: aiDecision.confidenceScore,
-            scheduledMessageId,
-          },
-        })
-        .returning();
-      
-      console.log(`💾 [EVALUATE-NOW] Saved message to DB: ${savedMessage.id}`);
-      
-      // 4. Send via Twilio (LIVE!)
-      const { sendWhatsAppMessage } = await import("../whatsapp/twilio-client");
-      
-      if (!isDryRun) {
-        try {
-          twilioSid = await sendWhatsAppMessage(
-            consultantId,
-            conversation.phoneNumber,
-            aiDecision.suggestedMessage,
-            savedMessage.id,
-            { 
-              conversationId,
-              agentConfigId: conversation.agentConfigId!,
-            }
-          );
-          messageSent = true;
-          console.log(`✅ [EVALUATE-NOW] Message sent LIVE via Twilio! SID: ${twilioSid}`);
-          
-          // 5. Update scheduled message status to 'sent'
-          await db
-            .update(schema.scheduledFollowupMessages)
-            .set({
-              status: 'sent',
-              sentAt: new Date(),
-            })
-            .where(eq(schema.scheduledFollowupMessages.id, scheduledMessageId));
-          
-          // 6. Update conversation state counters
-          await db
-            .update(schema.conversationStates)
-            .set({
-              followupCount: sql`COALESCE(followup_count, 0) + 1`,
-              lastFollowupAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .where(eq(schema.conversationStates.conversationId, conversationId));
-          
-          // 7. Update conversation lastMessageAt
-          await db
-            .update(schema.whatsappConversations)
-            .set({
-              lastMessageAt: new Date(),
-              lastMessageFrom: 'ai',
-              updatedAt: new Date(),
-            })
-            .where(eq(schema.whatsappConversations.id, conversationId));
-          
-        } catch (error: any) {
-          twilioError = error.message || 'Unknown Twilio error';
-          console.error(`❌ [EVALUATE-NOW] Twilio error:`, twilioError);
-          
-          // Update scheduled message status to 'failed'
-          await db
-            .update(schema.scheduledFollowupMessages)
-            .set({
-              status: 'failed',
-              errorMessage: twilioError,
-            })
-            .where(eq(schema.scheduledFollowupMessages.id, scheduledMessageId));
-        }
-      } else {
-        // DRY RUN mode - simulate success
-        messageSent = true;
-        twilioSid = `DRY_RUN_${Date.now()}`;
-        console.log(`🧪 [EVALUATE-NOW] DRY RUN mode - message logged but NOT sent via Twilio`);
-        
-        await db
-          .update(schema.scheduledFollowupMessages)
-          .set({
-            status: 'sent',
-            sentAt: new Date(),
-          })
-          .where(eq(schema.scheduledFollowupMessages.id, scheduledMessageId));
-      }
-    } else if (aiDecision.decision === 'send_now' && !aiDecision.suggestedMessage) {
-      console.log(`⚠️ [EVALUATE-NOW] Decision is send_now but no suggestedMessage provided`);
-    }
-
-    res.json({
-      success: true,
-      decision: aiDecision.decision,
-      reasoning: aiDecision.reasoning,
-      confidenceScore: aiDecision.confidenceScore,
-      recommendedAction: aiDecision.decision === 'send_now' ? 'invia_messaggio' : 
-                         aiDecision.decision === 'schedule' ? 'programma_invio' :
-                         aiDecision.decision === 'stop' ? 'stop_followup' : 'attendere',
-      templateId: aiDecision.suggestedTemplateId,
-      templateName: aiDecision.suggestedTemplateId ? templates.find(t => t.id === aiDecision.suggestedTemplateId)?.name : undefined,
-      messagePreview: aiDecision.suggestedMessage,
-      internalThinking: aiDecision.internalThinking,
-      // NEW: Live send confirmation
-      liveSend: aiDecision.decision === 'send_now' ? {
-        messageSent,
-        twilioSid,
-        twilioError,
-        scheduledMessageId,
-      } : undefined,
-      context: {
-        hoursSinceLastMessage: effectiveHoursSinceLastMessage.toFixed(1),
-        canSendFreeform,
-        consecutiveNoReply,
-        followupCount,
-        currentState,
-        temperatureLevel: conversation.temperatureLevel,
-      }
-    });
-
-  } catch (error: any) {
-    console.error("❌ [EVALUATE-NOW] Error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Errore durante la valutazione"
     });
   }
 });

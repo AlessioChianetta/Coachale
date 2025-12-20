@@ -18,7 +18,6 @@ import {
   whatsappTemplateAssignments,
   whatsappTemplateVersions,
   consultantWhatsappConfig,
-  consultantAiPreferences,
   users,
   proactiveLeads
 } from '../../shared/schema';
@@ -42,92 +41,15 @@ let evaluationJob: cron.ScheduledTask | null = null;
 let processingJob: cron.ScheduledTask | null = null;
 let coldLeadsJob: cron.ScheduledTask | null = null;
 let ghostLeadsJob: cron.ScheduledTask | null = null;
-let engagedColdLeadsJob: cron.ScheduledTask | null = null;
-let dailyResetJob: cron.ScheduledTask | null = null;
 let isEvaluationRunning = false;
 let isProcessingRunning = false;
 let isColdLeadsRunning = false;
 let isGhostLeadsRunning = false;
-let isEngagedColdLeadsRunning = false;
-
-// ═══════════════════════════════════════════════════════════════════════════
-// In-Memory Evaluation Locks (prevents race conditions in parallel evaluations)
-// ═══════════════════════════════════════════════════════════════════════════
-const evaluationLocks = new Map<string, { timestamp: number; caller: string; cycleId: string }>();
-const EVALUATION_LOCK_TIMEOUT_MS = 60000; // 1 minute timeout
-
-// Track evaluation calls for debugging multiple evaluations
-let globalEvalCounter = 0;
-const recentEvalCalls = new Map<string, { count: number; timestamps: number[]; callers: string[] }>();
-
-function trackEvaluationCall(conversationId: string, caller: string): void {
-  globalEvalCounter++;
-  const now = Date.now();
-  const existing = recentEvalCalls.get(conversationId) || { count: 0, timestamps: [], callers: [] };
-  
-  // Keep only last 5 minutes of data
-  const fiveMinutesAgo = now - 5 * 60 * 1000;
-  const recentTimestamps = existing.timestamps.filter(t => t > fiveMinutesAgo);
-  const recentCallers = existing.callers.slice(-10);
-  
-  recentTimestamps.push(now);
-  recentCallers.push(`${caller}@${new Date(now).toISOString()}`);
-  
-  recentEvalCalls.set(conversationId, {
-    count: existing.count + 1,
-    timestamps: recentTimestamps,
-    callers: recentCallers
-  });
-  
-  // Alert if more than 2 evaluations in 5 minutes for same conversation
-  if (recentTimestamps.length > 2) {
-    console.warn(`⚠️ [EVAL-TRACKER] MULTIPLE EVALUATIONS DETECTED for ${conversationId}:`);
-    console.warn(`   Total: ${recentTimestamps.length} in last 5 minutes`);
-    console.warn(`   Callers: ${recentCallers.join(' → ')}`);
-    console.warn(`   Stack: ${new Error().stack?.split('\n').slice(2, 6).join('\n')}`);
-  }
-}
-
-function cleanupEvaluationTracking(conversationId: string): void {
-  // Remove tracking for completed evaluations after 10 minutes
-  const entry = recentEvalCalls.get(conversationId);
-  if (entry) {
-    const now = Date.now();
-    const tenMinutesAgo = now - 10 * 60 * 1000;
-    const recentTimestamps = entry.timestamps.filter(t => t > tenMinutesAgo);
-    
-    if (recentTimestamps.length === 0) {
-      recentEvalCalls.delete(conversationId);
-    } else {
-      entry.timestamps = recentTimestamps;
-    }
-  }
-}
-
-// Periodic cleanup of stale tracking data (every 10 minutes)
-setInterval(() => {
-  const now = Date.now();
-  const tenMinutesAgo = now - 10 * 60 * 1000;
-  
-  for (const [convId, entry] of recentEvalCalls.entries()) {
-    const recentTimestamps = entry.timestamps.filter(t => t > tenMinutesAgo);
-    if (recentTimestamps.length === 0) {
-      recentEvalCalls.delete(convId);
-    } else {
-      entry.timestamps = recentTimestamps;
-    }
-  }
-  
-  if (recentEvalCalls.size > 0) {
-    console.log(`🧹 [EVAL-TRACKER] Cleanup: ${recentEvalCalls.size} active tracking entries`);
-  }
-}, 10 * 60 * 1000);
 
 const EVALUATION_INTERVAL = '*/5 * * * *'; // Every 5 minutes - HOT/WARM leads
 const PROCESSING_INTERVAL = '* * * * *';   // Every minute
 const COLD_LEADS_INTERVAL = '0 */2 * * *'; // Every 2 hours - COLD leads
 const GHOST_LEADS_INTERVAL = '0 10 * * *'; // Daily at 10:00 - GHOST leads
-const ENGAGED_COLD_LEADS_INTERVAL = '*/30 * * * *'; // Every 30 minutes - engaged leads that went cold
 const TIMEZONE = 'Europe/Rome';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -217,82 +139,6 @@ function recordMessageSent(consultantId: string): void {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Consultant AI Preferences Cache
-// ═══════════════════════════════════════════════════════════════════════════
-
-interface ConsultantRetryConfig {
-  maxNoReplyBeforeDormancy: number;
-  dormancyDurationDays: number;
-  finalAttemptAfterDormancy: boolean;
-  maxWarmFollowups: number;
-  warmFollowupDelayHours: number;
-  engagedGhostThresholdDays: number;
-  prioritizeEngagedLeads: boolean;
-}
-
-const DEFAULT_RETRY_CONFIG: ConsultantRetryConfig = {
-  maxNoReplyBeforeDormancy: 3,
-  dormancyDurationDays: 90,
-  finalAttemptAfterDormancy: true,
-  maxWarmFollowups: 2,
-  warmFollowupDelayHours: 4,
-  engagedGhostThresholdDays: 14,
-  prioritizeEngagedLeads: true,
-};
-
-// Cache preferences per consultant for 5 minutes
-const preferencesCache = new Map<string, { config: ConsultantRetryConfig; expiresAt: number }>();
-const PREFERENCES_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Get consultant's retry configuration from database or use defaults
- */
-async function getConsultantRetryConfig(consultantId: string): Promise<ConsultantRetryConfig> {
-  // Check cache first
-  const cached = preferencesCache.get(consultantId);
-  if (cached && Date.now() < cached.expiresAt) {
-    return cached.config;
-  }
-  
-  try {
-    const [prefs] = await db
-      .select({
-        maxNoReplyBeforeDormancy: consultantAiPreferences.maxNoReplyBeforeDormancy,
-        dormancyDurationDays: consultantAiPreferences.dormancyDurationDays,
-        finalAttemptAfterDormancy: consultantAiPreferences.finalAttemptAfterDormancy,
-        maxWarmFollowups: consultantAiPreferences.maxWarmFollowups,
-        warmFollowupDelayHours: consultantAiPreferences.warmFollowupDelayHours,
-        engagedGhostThresholdDays: consultantAiPreferences.engagedGhostThresholdDays,
-        prioritizeEngagedLeads: consultantAiPreferences.prioritizeEngagedLeads,
-      })
-      .from(consultantAiPreferences)
-      .where(eq(consultantAiPreferences.consultantId, consultantId))
-      .limit(1);
-    
-    const config: ConsultantRetryConfig = {
-      maxNoReplyBeforeDormancy: prefs?.maxNoReplyBeforeDormancy ?? DEFAULT_RETRY_CONFIG.maxNoReplyBeforeDormancy,
-      dormancyDurationDays: prefs?.dormancyDurationDays ?? DEFAULT_RETRY_CONFIG.dormancyDurationDays,
-      finalAttemptAfterDormancy: prefs?.finalAttemptAfterDormancy ?? DEFAULT_RETRY_CONFIG.finalAttemptAfterDormancy,
-      maxWarmFollowups: prefs?.maxWarmFollowups ?? DEFAULT_RETRY_CONFIG.maxWarmFollowups,
-      warmFollowupDelayHours: prefs?.warmFollowupDelayHours ?? DEFAULT_RETRY_CONFIG.warmFollowupDelayHours,
-      engagedGhostThresholdDays: prefs?.engagedGhostThresholdDays ?? DEFAULT_RETRY_CONFIG.engagedGhostThresholdDays,
-      prioritizeEngagedLeads: prefs?.prioritizeEngagedLeads ?? DEFAULT_RETRY_CONFIG.prioritizeEngagedLeads,
-    };
-    
-    // Cache the result
-    preferencesCache.set(consultantId, {
-      config,
-      expiresAt: Date.now() + PREFERENCES_CACHE_TTL_MS,
-    });
-    
-    return config;
-  } catch (error) {
-    console.error(`[RETRY-CONFIG] Error fetching preferences for consultant ${consultantId}:`, error);
-    return DEFAULT_RETRY_CONFIG;
-  }
-}
-
 /**
  * Ottiene informazioni sul rate limit per un consulente
  * @param consultantId - ID del consulente
@@ -376,15 +222,11 @@ export type TemperatureLevel = "hot" | "warm" | "cold" | "ghost";
  * @param hoursSinceLastInbound - Ore trascorse dall'ultimo messaggio del lead
  * @returns TemperatureLevel - hot, warm, cold, o ghost
  */
-export function calculateTemperature(hoursSinceLastInbound: number, hasEverReplied: boolean = false, engagedGhostThresholdDays: number = 14): TemperatureLevel {
+export function calculateTemperature(hoursSinceLastInbound: number): TemperatureLevel {
   if (hoursSinceLastInbound < 2) return "hot";        // < 2 ore: lead molto attivo
   if (hoursSinceLastInbound < 24) return "warm";      // < 24 ore: ancora dentro finestra WhatsApp
-  
-  // Lead engaged (ha risposto almeno 1 volta) ha threshold più alto per diventare ghost
-  const ghostThresholdHours = hasEverReplied ? (engagedGhostThresholdDays * 24) : 168; // 14 giorni vs 7 giorni
-  
-  if (hoursSinceLastInbound < ghostThresholdHours) return "cold";
-  return "ghost";
+  if (hoursSinceLastInbound < 168) return "cold";     // < 7 giorni: lead freddo
+  return "ghost";                                      // > 7 giorni: fantasma
 }
 
 export function initFollowupScheduler(): void {
@@ -447,47 +289,11 @@ export function initFollowupScheduler(): void {
     timezone: TIMEZONE
   });
 
-  // ENGAGED COLD leads evaluation - every 30 minutes (high priority leads that went cold)
-  engagedColdLeadsJob = cron.schedule(ENGAGED_COLD_LEADS_INTERVAL, async () => {
-    console.log('⏰ [FOLLOWUP-SCHEDULER] ENGAGED COLD leads evaluation cycle triggered');
-    try {
-      await runEngagedColdLeadsEvaluation();
-    } catch (error) {
-      console.error('❌ [FOLLOWUP-SCHEDULER] Error in ENGAGED COLD leads evaluation cycle:', error);
-    }
-  }, {
-    scheduled: true,
-    timezone: TIMEZONE
-  });
-
-  // DAILY RESET - Reset dailyFreeformCount at midnight (00:00)
-  dailyResetJob = cron.schedule('0 0 * * *', async () => {
-    console.log('🌙 [FOLLOWUP-SCHEDULER] Daily reset triggered - resetting dailyFreeformCount for all conversations');
-    try {
-      const result = await db.update(conversationStates)
-        .set({
-          dailyFreeformCount: 0,
-          lastFreeformResetAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning({ conversationId: conversationStates.conversationId });
-      
-      console.log(`✅ [DAILY-RESET] Reset dailyFreeformCount for ${result.length} conversations`);
-    } catch (error) {
-      console.error('❌ [FOLLOWUP-SCHEDULER] Error in daily reset:', error);
-    }
-  }, {
-    scheduled: true,
-    timezone: TIMEZONE
-  });
-
   console.log('✅ [FOLLOWUP-SCHEDULER] Scheduler initialized successfully');
   console.log(`   🔥 HOT/WARM: ${EVALUATION_INTERVAL} (every 5 minutes)`);
   console.log(`   ❄️  COLD: ${COLD_LEADS_INTERVAL} (every 2 hours)`);
   console.log(`   👻 GHOST: ${GHOST_LEADS_INTERVAL} (daily at 10:00)`);
-  console.log(`   🔥❄️ ENGAGED COLD: ${ENGAGED_COLD_LEADS_INTERVAL} (every 30 minutes)`);
   console.log(`   📋 Processing: ${PROCESSING_INTERVAL} (every minute)`);
-  console.log(`   🌙 Daily reset: 0 0 * * * (midnight)`);
 }
 
 export function stopFollowupScheduler(): void {
@@ -515,18 +321,6 @@ export function stopFollowupScheduler(): void {
     ghostLeadsJob.stop();
     ghostLeadsJob = null;
     console.log('   ✅ GHOST leads job stopped');
-  }
-  
-  if (engagedColdLeadsJob) {
-    engagedColdLeadsJob.stop();
-    engagedColdLeadsJob = null;
-    console.log('   ✅ ENGAGED COLD leads job stopped');
-  }
-  
-  if (dailyResetJob) {
-    dailyResetJob.stop();
-    dailyResetJob = null;
-    console.log('   ✅ Daily reset job stopped');
   }
   
   console.log('✅ [FOLLOWUP-SCHEDULER] Scheduler stopped');
@@ -575,58 +369,8 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
     let temperatureUpdates = 0;
 
     for (const conversation of candidateConversations) {
-      const lockKey = conversation.conversationId;
       try {
         metrics.processed++;
-        
-        console.log(`📋 [EVAL-STEP 1] ${conversation.conversationId}: Checking lock status`);
-        // LOCK CHECK: Prevent parallel evaluations of the same conversation
-        const existingLock = evaluationLocks.get(lockKey);
-        const now = Date.now();
-        if (existingLock && (now - existingLock.timestamp) < EVALUATION_LOCK_TIMEOUT_MS) {
-          console.log(`📋 [EVAL-STEP 1] ${conversation.conversationId}: FAILED - Lock held by ${existingLock.caller} (cycle: ${existingLock.cycleId}, started ${((now - existingLock.timestamp)/1000).toFixed(1)}s ago)`);
-          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress`);
-          skipped++;
-          metrics.skipped++;
-          continue;
-        }
-        console.log(`📋 [EVAL-STEP 1] ${conversation.conversationId}: PASSED - No lock held`);
-        
-        // SMART WAIT CHECK: Skip if nextEvaluationAt is in the future
-        console.log(`📋 [EVAL-STEP 1.5] ${conversation.conversationId}: Checking smart wait (nextEvaluationAt: ${conversation.nextEvaluationAt || 'not set'})`);
-        if (conversation.nextEvaluationAt) {
-          const nowCheck = new Date();
-          if (nowCheck < new Date(conversation.nextEvaluationAt)) {
-            const hoursUntilNextEval = (new Date(conversation.nextEvaluationAt).getTime() - nowCheck.getTime()) / (1000 * 60 * 60);
-            console.log(`📋 [EVAL-STEP 1.5] ${conversation.conversationId}: SKIPPED - Smart wait active, next eval in ${hoursUntilNextEval.toFixed(1)}h (type: ${conversation.waitType || 'unknown'})`);
-            skipped++;
-            metrics.skipped++;
-            continue;
-          }
-        }
-        console.log(`📋 [EVAL-STEP 1.5] ${conversation.conversationId}: PASSED - No smart wait or wait expired`);
-        
-        console.log(`📋 [EVAL-STEP 2] ${conversation.conversationId}: Checking debounce (last eval: ${conversation.lastAiEvaluationAt || 'never'})`);
-        // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
-        const DEBOUNCE_MINUTES = 5;
-        if (conversation.lastAiEvaluationAt) {
-          const minutesSinceLastEval = (Date.now() - new Date(conversation.lastAiEvaluationAt).getTime()) / (1000 * 60);
-          if (minutesSinceLastEval < DEBOUNCE_MINUTES) {
-            console.log(`📋 [EVAL-STEP 2] ${conversation.conversationId}: FAILED - Debounce active (${minutesSinceLastEval.toFixed(1)} min ago)`);
-            console.log(`⏭️ [DEBOUNCE] ${conversation.conversationId}: SKIPPED - Evaluated ${minutesSinceLastEval.toFixed(1)} min ago (debounce: ${DEBOUNCE_MINUTES} min)`);
-            skipped++;
-            metrics.skipped++;
-            continue;
-          }
-        }
-        console.log(`📋 [EVAL-STEP 2] ${conversation.conversationId}: PASSED - Debounce cleared`);
-        
-        // Track this evaluation call for debugging
-        trackEvaluationCall(lockKey, `${filterLabel}-cycle-${cycleId}`);
-        
-        // Set lock before evaluation
-        evaluationLocks.set(lockKey, { timestamp: Date.now(), caller: `${filterLabel}-cycle`, cycleId });
-        console.log(`📋 [EVAL-STEP 3] ${conversation.conversationId}: Lock acquired (caller: ${filterLabel}-cycle-${cycleId}), checking temperature (hours since inbound: ${conversation.hoursSinceLastInbound.toFixed(1)})`);
         
         // Calculate and update temperature if changed
         const newTemperature = calculateTemperature(conversation.hoursSinceLastInbound);
@@ -638,47 +382,34 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
             })
             .where(eq(conversationStates.conversationId, conversation.conversationId));
           
-          console.log(`📋 [EVAL-STEP 3] ${conversation.conversationId}: Temperature CHANGED: ${conversation.temperatureLevel || 'N/A'} → ${newTemperature}`);
           console.log(`🌡️ [TEMPERATURE] Conversazione ${conversation.conversationId}: ${conversation.temperatureLevel || 'N/A'} → ${newTemperature}`);
           temperatureUpdates++;
           
           // Update the candidate object for accurate processing
           conversation.temperatureLevel = newTemperature;
-        } else {
-          console.log(`📋 [EVAL-STEP 3] ${conversation.conversationId}: Temperature unchanged (${conversation.temperatureLevel})`);
         }
 
-        console.log(`📋 [EVAL-STEP 4] ${conversation.conversationId}: Calling AI evaluation...`);
         const result = await evaluateConversation(conversation);
-        console.log(`📋 [EVAL-STEP 5] ${conversation.conversationId}: AI decision = ${result}`);
         processed++;
         
         switch (result) {
           case 'scheduled':
             scheduled++;
             metrics.success++;
-            console.log(`📋 [EVAL-STEP 6] ${conversation.conversationId}: Result processed → SCHEDULED`);
             break;
           case 'skipped':
             skipped++;
             metrics.skipped++;
-            console.log(`📋 [EVAL-STEP 6] ${conversation.conversationId}: Result processed → SKIPPED`);
             break;
           case 'stopped':
             stopped++;
             metrics.success++;
-            console.log(`📋 [EVAL-STEP 6] ${conversation.conversationId}: Result processed → STOPPED`);
             break;
         }
       } catch (error) {
         errors++;
         metrics.errors++;
-        console.error(`📋 [EVAL-STEP ERROR] ${conversation.conversationId}: Exception caught`);
         console.error(`❌ [FOLLOWUP-SCHEDULER] Error evaluating conversation ${conversation.conversationId}:`, error);
-      } finally {
-        // Release lock after evaluation completes
-        evaluationLocks.delete(lockKey);
-        console.log(`📋 [EVAL-STEP 7] ${conversation.conversationId}: Lock released, evaluation complete`);
       }
     }
 
@@ -731,47 +462,9 @@ export async function runColdLeadsEvaluation(): Promise<void> {
     let processed = 0;
     let scheduled = 0;
     let temperatureUpdates = 0;
-    let skipped = 0;
 
-    const coldCycleId = `cold_${Date.now()}`;
     for (const conversation of candidateConversations) {
-      const lockKey = conversation.conversationId;
       try {
-        // LOCK CHECK: Prevent parallel evaluations of the same conversation
-        const existingLock = evaluationLocks.get(lockKey);
-        const now = Date.now();
-        if (existingLock && (now - existingLock.timestamp) < EVALUATION_LOCK_TIMEOUT_MS) {
-          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress by ${existingLock.caller} (cycle: ${existingLock.cycleId}, started ${((now - existingLock.timestamp)/1000).toFixed(1)}s ago)`);
-          skipped++;
-          continue;
-        }
-        
-        // SMART WAIT CHECK: Skip if nextEvaluationAt is in the future
-        if (conversation.nextEvaluationAt) {
-          const nowCheck = new Date();
-          if (nowCheck < new Date(conversation.nextEvaluationAt)) {
-            const hoursUntilNextEval = (new Date(conversation.nextEvaluationAt).getTime() - nowCheck.getTime()) / (1000 * 60 * 60);
-            console.log(`⏭️ [SMART-WAIT] Cold ${conversation.conversationId}: SKIPPED - Next eval in ${hoursUntilNextEval.toFixed(1)}h (type: ${conversation.waitType || 'unknown'})`);
-            skipped++;
-            continue;
-          }
-        }
-        
-        // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
-        const DEBOUNCE_MINUTES = 5;
-        if (conversation.lastAiEvaluationAt) {
-          const minutesSinceLastEval = (Date.now() - new Date(conversation.lastAiEvaluationAt).getTime()) / (1000 * 60);
-          if (minutesSinceLastEval < DEBOUNCE_MINUTES) {
-            console.log(`⏭️ [DEBOUNCE] ${conversation.conversationId}: SKIPPED - Evaluated ${minutesSinceLastEval.toFixed(1)} min ago`);
-            skipped++;
-            continue;
-          }
-        }
-        
-        // Track and set lock before evaluation
-        trackEvaluationCall(lockKey, "cold-leads-cycle");
-        evaluationLocks.set(lockKey, { timestamp: Date.now(), caller: "cold-leads-cycle", cycleId: coldCycleId });
-        
         // Calculate and update temperature if changed
         const newTemperature = calculateTemperature(conversation.hoursSinceLastInbound);
         if (conversation.temperatureLevel !== newTemperature) {
@@ -792,15 +485,12 @@ export async function runColdLeadsEvaluation(): Promise<void> {
         if (result === 'scheduled') scheduled++;
       } catch (error) {
         console.error(`❌ [FOLLOWUP-SCHEDULER] Error evaluating cold conversation ${conversation.conversationId}:`, error);
-      } finally {
-        // Release lock after evaluation completes
-        evaluationLocks.delete(lockKey);
       }
     }
 
     const duration = Date.now() - startTime;
     console.log(`📈 [FOLLOWUP-SCHEDULER] COLD leads evaluation completed in ${duration}ms`);
-    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}, Temp updates: ${temperatureUpdates}, Skipped (debounce/lock): ${skipped}`);
+    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}, Temp updates: ${temperatureUpdates}`);
     
   } finally {
     isColdLeadsRunning = false;
@@ -833,155 +523,24 @@ export async function runGhostLeadsEvaluation(): Promise<void> {
 
     let processed = 0;
     let scheduled = 0;
-    let skipped = 0;
 
-    const ghostCycleId = `ghost_${Date.now()}`;
     for (const conversation of candidateConversations) {
-      const lockKey = conversation.conversationId;
       try {
-        // LOCK CHECK: Prevent parallel evaluations of the same conversation
-        const existingLock = evaluationLocks.get(lockKey);
-        const now = Date.now();
-        if (existingLock && (now - existingLock.timestamp) < EVALUATION_LOCK_TIMEOUT_MS) {
-          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress by ${existingLock.caller} (cycle: ${existingLock.cycleId}, started ${((now - existingLock.timestamp)/1000).toFixed(1)}s ago)`);
-          skipped++;
-          continue;
-        }
-        
-        // SMART WAIT CHECK: Skip if nextEvaluationAt is in the future
-        if (conversation.nextEvaluationAt) {
-          const nowCheck = new Date();
-          if (nowCheck < new Date(conversation.nextEvaluationAt)) {
-            const hoursUntilNextEval = (new Date(conversation.nextEvaluationAt).getTime() - nowCheck.getTime()) / (1000 * 60 * 60);
-            console.log(`⏭️ [SMART-WAIT] Ghost ${conversation.conversationId}: SKIPPED - Next eval in ${hoursUntilNextEval.toFixed(1)}h (type: ${conversation.waitType || 'unknown'})`);
-            skipped++;
-            continue;
-          }
-        }
-        
-        // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
-        const DEBOUNCE_MINUTES = 5;
-        if (conversation.lastAiEvaluationAt) {
-          const minutesSinceLastEval = (Date.now() - new Date(conversation.lastAiEvaluationAt).getTime()) / (1000 * 60);
-          if (minutesSinceLastEval < DEBOUNCE_MINUTES) {
-            console.log(`⏭️ [DEBOUNCE] ${conversation.conversationId}: SKIPPED - Evaluated ${minutesSinceLastEval.toFixed(1)} min ago`);
-            skipped++;
-            continue;
-          }
-        }
-        
-        // Track and set lock before evaluation
-        trackEvaluationCall(lockKey, "ghost-leads-cycle");
-        evaluationLocks.set(lockKey, { timestamp: Date.now(), caller: "ghost-leads-cycle", cycleId: ghostCycleId });
-        
         // For ghost leads, we primarily want to mark them or attempt reactivation
         const result = await evaluateConversation(conversation);
         processed++;
         if (result === 'scheduled') scheduled++;
       } catch (error) {
         console.error(`❌ [FOLLOWUP-SCHEDULER] Error evaluating ghost conversation ${conversation.conversationId}:`, error);
-      } finally {
-        // Release lock after evaluation completes
-        evaluationLocks.delete(lockKey);
       }
     }
 
     const duration = Date.now() - startTime;
     console.log(`📈 [FOLLOWUP-SCHEDULER] GHOST leads evaluation completed in ${duration}ms`);
-    console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}, Skipped (debounce/lock): ${skipped}`);
-    
-  } finally {
-    isGhostLeadsRunning = false;
-  }
-}
-
-/**
- * Run evaluation for ENGAGED COLD leads only (every 30 minutes)
- * These are leads that responded at least once but are now cold - they deserve more attention
- */
-export async function runEngagedColdLeadsEvaluation(): Promise<void> {
-  if (isEngagedColdLeadsRunning) {
-    console.log('⚠️ [FOLLOWUP-SCHEDULER] Engaged cold leads evaluation already running, skipping...');
-    return;
-  }
-
-  isEngagedColdLeadsRunning = true;
-  const startTime = Date.now();
-  
-  try {
-    console.log('🔥❄️ [FOLLOWUP-SCHEDULER] Starting ENGAGED COLD leads evaluation cycle...');
-    
-    // Find cold leads that have ever replied (high priority)
-    const candidateConversations = await findEngagedColdCandidates();
-    
-    console.log(`📊 [FOLLOWUP-SCHEDULER] Found ${candidateConversations.length} ENGAGED COLD candidate conversations`);
-    
-    if (candidateConversations.length === 0) {
-      console.log('💤 [FOLLOWUP-SCHEDULER] No ENGAGED COLD conversations to evaluate');
-      return;
-    }
-
-    let processed = 0;
-    let scheduled = 0;
-    let skipped = 0;
-
-    const engagedColdCycleId = `engaged_cold_${Date.now()}`;
-    for (const conversation of candidateConversations) {
-      const lockKey = conversation.conversationId;
-      try {
-        // LOCK CHECK: Prevent parallel evaluations of the same conversation
-        const existingLock = evaluationLocks.get(lockKey);
-        const now = Date.now();
-        if (existingLock && (now - existingLock.timestamp) < EVALUATION_LOCK_TIMEOUT_MS) {
-          console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress by ${existingLock.caller} (cycle: ${existingLock.cycleId}, started ${((now - existingLock.timestamp)/1000).toFixed(1)}s ago)`);
-          skipped++;
-          continue;
-        }
-        
-        // SMART WAIT CHECK: Skip if nextEvaluationAt is in the future
-        if (conversation.nextEvaluationAt) {
-          const nowCheck = new Date();
-          if (nowCheck < new Date(conversation.nextEvaluationAt)) {
-            const hoursUntilNextEval = (new Date(conversation.nextEvaluationAt).getTime() - nowCheck.getTime()) / (1000 * 60 * 60);
-            console.log(`⏭️ [SMART-WAIT] EngagedCold ${conversation.conversationId}: SKIPPED - Next eval in ${hoursUntilNextEval.toFixed(1)}h (type: ${conversation.waitType || 'unknown'})`);
-            skipped++;
-            continue;
-          }
-        }
-        
-        // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
-        const DEBOUNCE_MINUTES = 5;
-        if (conversation.lastAiEvaluationAt) {
-          const minutesSinceLastEval = (Date.now() - new Date(conversation.lastAiEvaluationAt).getTime()) / (1000 * 60);
-          if (minutesSinceLastEval < DEBOUNCE_MINUTES) {
-            console.log(`⏭️ [DEBOUNCE] ${conversation.conversationId}: SKIPPED - Evaluated ${minutesSinceLastEval.toFixed(1)} min ago`);
-            skipped++;
-            continue;
-          }
-        }
-        
-        // Track and set lock before evaluation
-        trackEvaluationCall(lockKey, "engaged-cold-cycle");
-        evaluationLocks.set(lockKey, { timestamp: Date.now(), caller: "engaged-cold-cycle", cycleId: engagedColdCycleId });
-        
-        const result = await evaluateConversation(conversation);
-        processed++;
-        if (result === 'scheduled') scheduled++;
-      } catch (error) {
-        console.error(`❌ [FOLLOWUP-SCHEDULER] Error evaluating engaged cold conversation ${conversation.conversationId}:`, error);
-      } finally {
-        // Release lock after evaluation completes
-        evaluationLocks.delete(lockKey);
-      }
-    }
-
-    const duration = Date.now() - startTime;
-    console.log(`📈 [FOLLOWUP-SCHEDULER] ENGAGED COLD leads evaluation completed in ${duration}ms`);
-    console.log(`   ⏭️ Skipped (debounce/lock): ${skipped}`);
     console.log(`   📊 Processed: ${processed}, Scheduled: ${scheduled}`);
     
   } finally {
-    isEngagedColdLeadsRunning = false;
+    isGhostLeadsRunning = false;
   }
 }
 
@@ -1096,30 +655,7 @@ export async function processScheduledMessages(messageIds?: string[]): Promise<v
           continue;
         }
 
-        // ATOMIC CLAIM: Mark as 'sending' before sending to prevent race conditions
-        // This prevents duplicate sends if the scheduler runs twice before completion
-        const claimedResult = await db
-          .update(scheduledFollowupMessages)
-          .set({
-            status: 'sending',
-            lastAttemptAt: new Date()
-          })
-          .where(
-            and(
-              eq(scheduledFollowupMessages.id, message.id),
-              eq(scheduledFollowupMessages.status, 'pending')
-            )
-          )
-          .returning();
-        
-        if (claimedResult.length === 0) {
-          console.log(`⏭️ [FOLLOWUP-SCHEDULER] Message ${message.id} already claimed by another process`);
-          metrics.skipped++;
-          continue;
-        }
-
-        // Use the claimed result which has updated status, not the stale message object
-        await sendFollowupMessage(claimedResult[0]);
+        await sendFollowupMessage(message);
         
         if (consultantId) {
           recordMessageSent(consultantId);
@@ -1186,7 +722,6 @@ export async function processScheduledMessages(messageIds?: string[]): Promise<v
           await db
             .update(scheduledFollowupMessages)
             .set({
-              status: 'pending', // Reset to pending so it can be picked up again
               attemptCount,
               lastAttemptAt: new Date(),
               errorMessage: error.message,
@@ -1271,15 +806,6 @@ interface CandidateConversation {
   dormantUntil: Date | null;
   permanentlyExcluded: boolean;
   dormantReason: string | null;
-  // NEW: Engaged lead priority fields
-  hasEverReplied?: boolean;
-  warmFollowupCount?: number;
-  lastWarmFollowupAt?: Date | null;
-  // NEW: Debounce field to prevent duplicate AI evaluations
-  lastAiEvaluationAt?: Date | null;
-  // NEW: Smart Wait State fields - prevent excessive AI evaluations
-  nextEvaluationAt?: Date | null;
-  waitType?: string | null;
 }
 
 /**
@@ -1550,15 +1076,6 @@ export async function findCandidateConversations(
       nextFollowupScheduledAt: conversationStates.nextFollowupScheduledAt,
       lastFollowupAt: conversationStates.lastFollowupAt,
       temperatureLevel: conversationStates.temperatureLevel,
-      // NEW: Engaged lead priority fields
-      hasEverReplied: conversationStates.hasEverReplied,
-      warmFollowupCount: conversationStates.warmFollowupCount,
-      lastWarmFollowupAt: conversationStates.lastWarmFollowupAt,
-      // NEW: Debounce field
-      lastAiEvaluationAt: conversationStates.lastAiEvaluationAt,
-      // NEW: Smart Wait State fields
-      nextEvaluationAt: conversationStates.nextEvaluationAt,
-      waitType: conversationStates.waitType,
       // NEW: Intelligent retry logic fields
       consecutiveNoReplyCount: conversationStates.consecutiveNoReplyCount,
       lastReplyAt: conversationStates.lastReplyAt,
@@ -1658,11 +1175,10 @@ export async function findCandidateConversations(
       continue;
     }
     
-    // 3. Check if reached consecutive no-reply threshold (trigger dormancy)
-    // Note: actual threshold is loaded from consultant preferences in evaluateConversation
+    // 3. Check if reached 3 consecutive no-reply attempts (trigger dormancy)
     if (state.consecutiveNoReplyCount >= 3 && !state.dormantUntil) {
-      console.log(`⏸️ [CANDIDATE] ${state.conversationId}: High consecutive no-reply count (${state.consecutiveNoReplyCount}), will check dormancy threshold`);
-      // This will be handled in evaluateConversation with consultant-specific threshold
+      console.log(`⏸️ [CANDIDATE] ${state.conversationId}: Reached 3 consecutive no-reply, should enter dormancy`);
+      // This will be handled in evaluateConversation
     }
     
     // LEGACY CHECK RIMOSSO: ora usa solo la logica intelligente (consecutiveNoReplyCount + dormancy)
@@ -1725,54 +1241,26 @@ export async function findCandidateConversations(
       dormantUntil: state.dormantUntil ? new Date(state.dormantUntil) : null,
       permanentlyExcluded: state.permanentlyExcluded,
       dormantReason: state.dormantReason,
-      // NEW: Engaged lead priority fields
-      hasEverReplied: state.hasEverReplied,
-      warmFollowupCount: state.warmFollowupCount,
-      lastWarmFollowupAt: state.lastWarmFollowupAt ? new Date(state.lastWarmFollowupAt) : null,
-      // NEW: Debounce field
-      lastAiEvaluationAt: state.lastAiEvaluationAt ? new Date(state.lastAiEvaluationAt) : null,
     });
   }
 
   return candidates;
 }
 
-async function findEngagedColdCandidates(): Promise<CandidateConversation[]> {
-  console.log('🔍 [FOLLOWUP-SCHEDULER] Finding engaged cold candidates (hasEverReplied=true, temp=cold)...');
-  
-  // Use findCandidateConversations but filter for hasEverReplied=true after
-  const coldCandidates = await findCandidateConversations(undefined, ['cold']);
-  
-  // Filter only those that have ever replied
-  const engagedColdCandidates = coldCandidates.filter(c => c.hasEverReplied === true);
-  
-  console.log(`🔥❄️ [FOLLOWUP-SCHEDULER] Filtered to ${engagedColdCandidates.length} engaged cold leads (from ${coldCandidates.length} total cold)`);
-  
-  return engagedColdCandidates;
-}
-
 async function evaluateConversation(
   candidate: CandidateConversation
 ): Promise<'scheduled' | 'skipped' | 'stopped'> {
-  console.log(`🧠 [AI-STEP 1] ${candidate.conversationId}: Loading retry configuration`);
-  // Load consultant's retry configuration from database
-  const retryConfig = await getConsultantRetryConfig(candidate.consultantId);
-  console.log(`🧠 [AI-STEP 1] ${candidate.conversationId}: Config loaded (maxNoReply: ${retryConfig.maxNoReplyBeforeDormancy}, dormancy: ${retryConfig.dormancyDurationDays}d)`);
-  
   console.log(`🔍 [FOLLOWUP-SCHEDULER] Evaluating conversation ${candidate.conversationId}`);
   console.log(`   State: ${candidate.currentState}, Days silent: ${candidate.daysSilent}, Hours silent: ${candidate.hoursSilent.toFixed(1)}`);
-  console.log(`   📊 Follow-ups: ${candidate.followupCount} total | 🆕 Consecutive no-reply: ${candidate.consecutiveNoReplyCount}/${retryConfig.maxNoReplyBeforeDormancy} → Dormancy`);
+  console.log(`   📊 Follow-ups: ${candidate.followupCount} total | 🆕 Consecutive no-reply: ${candidate.consecutiveNoReplyCount}/3 → Dormancy`);
   console.log(`   😴 Status: ${candidate.permanentlyExcluded ? '🚫 PERMANENTLY EXCLUDED' : candidate.dormantUntil && new Date(candidate.dormantUntil) > new Date() ? `DORMANT until ${candidate.dormantUntil.toISOString()}` : 'ACTIVE'}`);
   
   // ═══════════════════════════════════════════════════════════════════════════
-  // NEW INTELLIGENT RETRY LOGIC (uses consultant's configurable preferences)
+  // NEW INTELLIGENT RETRY LOGIC
   // ═══════════════════════════════════════════════════════════════════════════
-  
-  console.log(`🧠 [AI-STEP 2] ${candidate.conversationId}: Checking exclusion/dormancy status`);
   
   // 1. Check if permanently excluded
   if (candidate.permanentlyExcluded) {
-    console.log(`🧠 [AI-STEP 2] ${candidate.conversationId}: BLOCKED - Permanently excluded`);
     console.log(`🚫 [INTELLIGENT-RETRY] Lead permanently excluded: ${candidate.dormantReason || 'No reason provided'}`);
     return 'stopped';
   }
@@ -1781,23 +1269,19 @@ async function evaluateConversation(
   const now = new Date();
   if (candidate.dormantUntil && candidate.dormantUntil > now) {
     const daysLeft = Math.ceil((candidate.dormantUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    console.log(`🧠 [AI-STEP 2] ${candidate.conversationId}: BLOCKED - In dormancy (${daysLeft} days left)`);
     console.log(`😴 [INTELLIGENT-RETRY] Lead still dormant for ${daysLeft} more days. Reason: ${candidate.dormantReason}`);
     return 'skipped';
   }
-  console.log(`🧠 [AI-STEP 2] ${candidate.conversationId}: PASSED - No exclusion or active dormancy`);
-
   
   // 3. Check if dormancy just ended (was dormant, now it's time to try once more)
-  const maxNoReply = retryConfig.maxNoReplyBeforeDormancy;
-  if (candidate.dormantUntil && candidate.dormantUntil <= now && candidate.consecutiveNoReplyCount >= maxNoReply) {
-    // Check if this is the final attempt after dormancy (consecutiveNoReplyCount >= maxNoReply+1 means we already tried once after dormancy)
-    if (candidate.consecutiveNoReplyCount >= maxNoReply + 1) {
+  if (candidate.dormantUntil && candidate.dormantUntil <= now && candidate.consecutiveNoReplyCount >= 3) {
+    // Check if this is the final attempt after dormancy (consecutiveNoReplyCount >= 4 means we already tried once after dormancy)
+    if (candidate.consecutiveNoReplyCount >= 4) {
       console.log(`🚫 [INTELLIGENT-RETRY] Final attempt after dormancy already sent. Lead did not reply. PERMANENT EXCLUSION.`);
       
       await updateConversationState(candidate.conversationId, {
         permanentlyExcluded: true,
-        dormantReason: `Nessuna risposta dopo tentativo finale post-dormienza (${candidate.consecutiveNoReplyCount}+ tentativi totali)`,
+        dormantReason: 'Nessuna risposta dopo tentativo finale post-dormienza (4+ tentativi totali)',
         lastAiEvaluationAt: new Date(),
         aiRecommendation: `[INTELLIGENT-RETRY] Esclusione permanente: nessuna risposta dopo il tentativo finale post-dormienza`,
       } as any);
@@ -1806,33 +1290,33 @@ async function evaluateConversation(
       return 'stopped';
     }
     
-    console.log(`⏰ [INTELLIGENT-RETRY] Dormancy period ended! This is the FINAL attempt after ${retryConfig.dormancyDurationDays}-day break.`);
-    // Allow one more attempt, consecutiveNoReplyCount will increment
+    console.log(`⏰ [INTELLIGENT-RETRY] Dormancy period ended! This is the FINAL attempt after 3-month break.`);
+    // Allow one more attempt, consecutiveNoReplyCount will increment to 4
     // Next evaluation will trigger permanent exclusion if no reply
   }
   
-  // 4. Check if reached consecutive no-replies threshold (should enter dormancy)
-  if (candidate.consecutiveNoReplyCount >= maxNoReply && !candidate.dormantUntil) {
-    console.log(`⏸️ [INTELLIGENT-RETRY] Reached ${maxNoReply} consecutive no-reply attempts. Entering ${retryConfig.dormancyDurationDays}-day dormancy.`);
+  // 4. Check if reached 3 consecutive no-replies (should enter dormancy)
+  if (candidate.consecutiveNoReplyCount >= 3 && !candidate.dormantUntil) {
+    console.log(`⏸️ [INTELLIGENT-RETRY] Reached 3 consecutive no-reply attempts. Entering 3-month dormancy.`);
     
     const dormantUntilDate = new Date();
-    dormantUntilDate.setDate(dormantUntilDate.getDate() + retryConfig.dormancyDurationDays);
+    dormantUntilDate.setMonth(dormantUntilDate.getMonth() + 3); // 3 months dormancy
     
     await updateConversationState(candidate.conversationId, {
       currentState: 'ghost',
       previousState: candidate.currentState,
       lastAiEvaluationAt: new Date(),
-      aiRecommendation: `[INTELLIGENT-RETRY] ${maxNoReply} tentativi senza risposta. Dormienza attivata fino a ${dormantUntilDate.toLocaleDateString('it-IT')}`,
+      aiRecommendation: `[INTELLIGENT-RETRY] 3 tentativi senza risposta. Dormienza attivata fino a ${dormantUntilDate.toLocaleDateString('it-IT')}`,
       dormantUntil: dormantUntilDate,
-      dormantReason: `Nessuna risposta dopo ${maxNoReply} tentativi consecutivi`,
+      dormantReason: 'Nessuna risposta dopo 3 tentativi consecutivi',
     } as any);
     
     console.log(`😴 [INTELLIGENT-RETRY] Lead ${candidate.conversationId} now dormant until ${dormantUntilDate.toISOString()}`);
     return 'stopped';
   }
   
-  // Uses consultant's configurable preferences:
-  // maxNoReply tentativi senza risposta → dormienza N giorni → 1 tentativo finale → esclusione permanente
+  // LEGACY SAFETY NET RIMOSSO: ora usa solo la logica intelligente
+  // La logica è: 3 tentativi senza risposta → dormienza 3 mesi → 1 tentativo finale → esclusione permanente
   
   // Bug 3 Fix: Safety check for applicableRules that could be undefined
   const applicableRules = candidate.applicableRules;
@@ -1935,11 +1419,6 @@ async function evaluateConversation(
         0, 0
       );
       
-      await updateConversationState(candidate.conversationId, {
-        lastAiEvaluationAt: new Date(),
-        aiRecommendation: reasoningMessage,
-      });
-      
       return 'skipped';
     }
     
@@ -1994,10 +1473,8 @@ async function evaluateConversation(
     console.log(`🤖 [FOLLOWUP-SCHEDULER] Using AI decision for rule: "${aiDecisionRule.name}"`);
   }
 
-  console.log(`🧠 [AI-STEP 3] ${candidate.conversationId}: Loading conversation context (messages + templates)`);
   const lastMessages = await getLastMessages(candidate.conversationId, 10);
   const availableTemplates = await getAvailableTemplates(candidate.consultantId, candidate.agentConfigId);
-  console.log(`🧠 [AI-STEP 3] ${candidate.conversationId}: Loaded ${lastMessages.length} messages, ${availableTemplates.length} templates available`);
 
   // FIX: Use the LAST message (most recent) not the first one
   const lastMessage = lastMessages.length > 0 ? lastMessages[lastMessages.length - 1] : null;
@@ -2006,7 +1483,6 @@ async function evaluateConversation(
       ? (lastMessage.role === 'lead' ? 'inbound' : 'outbound')
       : null;
 
-  console.log(`🧠 [AI-STEP 4] ${candidate.conversationId}: Building AI prompt context`);
   const context: FollowupContext = {
     conversationId: candidate.conversationId,
     leadName: candidate.leadName,
@@ -2028,14 +1504,9 @@ async function evaluateConversation(
     secondsSilent: candidate.secondsSilent,
     leadNeverResponded: candidate.leadNeverResponded,
   };
-  console.log(`🧠 [AI-STEP 4] ${candidate.conversationId}: Context built (state: ${context.currentState}, engagement: ${context.engagementScore}, silent: ${context.hoursSilent.toFixed(1)}h)`);
 
-  console.log(`🧠 [AI-STEP 5] ${candidate.conversationId}: Calling Gemini API for evaluation...`);
   const decision = await evaluateFollowup(context, candidate.consultantId);
-  console.log(`🧠 [AI-STEP 5] ${candidate.conversationId}: AI decision received: ${decision.decision} (confidence: ${(decision.confidenceScore * 100).toFixed(0)}%)`);
 
-
-  console.log(`🧠 [AI-STEP 6] ${candidate.conversationId}: Processing AI response and applying updates`);
   // TASK 8: Apply AI-suggested updates to conversationStates
   // BUG 4 FIX: aiUpdates is already a local const, validated with range checks
   const aiUpdates: Record<string, any> = {};
@@ -2081,9 +1552,6 @@ async function evaluateConversation(
       console.log(`   • ${update}`);
     }
     await updateConversationState(candidate.conversationId, aiUpdates);
-    console.log(`🧠 [AI-STEP 6] ${candidate.conversationId}: Applied ${appliedUpdates.length} state updates`);
-  } else {
-    console.log(`🧠 [AI-STEP 6] ${candidate.conversationId}: No state updates needed`);
   }
 
   // TASK 3b: Check if last outbound was template and block freeform if lead hasn't responded AFTER template
@@ -2097,28 +1565,12 @@ async function evaluateConversation(
     }
   }
 
-  console.log(`🧠 [AI-STEP 7] ${candidate.conversationId}: Saving decision to database`);
   await logFollowupDecision(
     candidate.conversationId,
     context,
     decision,
     'gemini-2.5-flash'
   );
-  console.log(`🧠 [AI-STEP 7] ${candidate.conversationId}: Decision logged (${decision.decision})`);
-
-  // SMART WAIT: Set nextEvaluationAt based on AI decision to prevent excessive evaluations
-  if (decision.waitHours && decision.waitHours > 0) {
-    const nextEvalTime = new Date(Date.now() + decision.waitHours * 60 * 60 * 1000);
-    await db.update(conversationStates)
-      .set({
-        nextEvaluationAt: nextEvalTime,
-        waitType: decision.waitType || null,
-        waitReason: decision.waitReason || decision.reasoning?.substring(0, 500) || null,
-        updatedAt: new Date(),
-      })
-      .where(eq(conversationStates.conversationId, candidate.conversationId));
-    console.log(`⏰ [SMART-WAIT] Set nextEvaluationAt to ${nextEvalTime.toISOString()} (${decision.waitHours}h), type: ${decision.waitType}`);
-  }
 
   if (decision.decision === 'send_now' || decision.decision === 'schedule') {
     const scheduledFor = calculateScheduledTime(decision);
@@ -2146,11 +1598,6 @@ async function evaluateConversation(
         'system-validation',
         0, 0
       );
-      
-      await updateConversationState(candidate.conversationId, {
-        lastAiEvaluationAt: new Date(),
-        aiRecommendation: aiDecisionReasoningMessage,
-      });
       
       return 'skipped';
     }
@@ -2461,7 +1908,7 @@ async function checkHasInboundAfterLastOutbound(conversationId: string): Promise
  * BUG 2 FIX: Use twilioSid matching instead of sentAt (which can be null)
  * Each message is classified as 'template', 'freeform', or 'inbound'
  */
-export async function getLastMessages(
+async function getLastMessages(
   conversationId: string, 
   limit: number = 10
 ): Promise<Array<{ role: string; content: string; timestamp: string; messageType: 'template' | 'freeform' | 'inbound' }>> {
@@ -2727,7 +2174,7 @@ RISPONDI CON SOLO IL TESTO DEL MESSAGGIO (niente JSON, niente formattazione, sol
   }
 }
 
-export async function getAvailableTemplates(
+async function getAvailableTemplates(
   consultantId: string,
   agentConfigId: string | null
 ): Promise<Array<{ id: string; name: string; useCase: string; bodyText: string; twilioStatus: string }>> {
@@ -3449,15 +2896,14 @@ async function sendFollowupMessage(
   const nextCheckDate = new Date();
   nextCheckDate.setHours(nextCheckDate.getHours() + cooldownHours);
   
-  // FIX: Cap consecutiveNoReplyCount to max 3 to prevent values like 4/3
   await updateConversationState(message.conversationId, {
     followupCount: sql`followup_count + 1` as any,
-    consecutiveNoReplyCount: sql`LEAST(COALESCE(consecutive_no_reply_count, 0) + 1, 3)` as any,
+    consecutiveNoReplyCount: sql`consecutive_no_reply_count + 1` as any,
     lastFollowupAt: new Date(),
     nextFollowupScheduledAt: nextCheckDate,
   });
   
-  console.log(`📊 [FOLLOWUP-SCHEDULER] Updated state: followupCount+1, consecutiveNoReplyCount+1 (capped at 3), nextCheck=${nextCheckDate.toISOString()} (cooldown: ${cooldownHours}h)`);
+  console.log(`📊 [FOLLOWUP-SCHEDULER] Updated state: followupCount+1, consecutiveNoReplyCount+1, nextCheck=${nextCheckDate.toISOString()} (cooldown: ${cooldownHours}h)`);
 }
 
 export function isSchedulerRunning(): boolean {

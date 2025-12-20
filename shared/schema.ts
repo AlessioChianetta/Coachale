@@ -5302,20 +5302,6 @@ export const conversationStates = pgTable("conversation_states", {
   // Temperature segmentation for scalability (hot=<2h, warm=<24h, cold=<7d, ghost=>7d)
   temperatureLevel: text("temperature_level").$type<"hot" | "warm" | "cold" | "ghost">().default("warm"),
 
-  // === ENGAGED LEAD TRACKING (NEW) ===
-  hasEverReplied: boolean("has_ever_replied").default(false).notNull(), // Lead ha mai risposto almeno 1 volta
-  warmFollowupCount: integer("warm_followup_count").default(0).notNull(), // Contatore warm follow-up inviati dentro finestra 24h
-  lastWarmFollowupAt: timestamp("last_warm_followup_at"), // Ultimo warm follow-up inviato
-
-  // === DAILY FREEFORM LIMIT (NEW) - Prevents excessive freeform messages ===
-  dailyFreeformCount: integer("daily_freeform_count").default(0).notNull(), // Contatore messaggi freeform inviati oggi
-  lastFreeformResetAt: timestamp("last_freeform_reset_at"), // Ultimo reset del contatore (a mezzanotte)
-
-  // === SMART WAIT STATE (NEW) - Prevents excessive AI evaluations ===
-  nextEvaluationAt: timestamp("next_evaluation_at"), // "Do not evaluate until this time"
-  waitType: text("wait_type").$type<"wait_reply" | "silence" | "nurturing" | "scheduled">(), // Type of wait
-  waitReason: text("wait_reason"), // Human readable reason for waiting
-
   stateChangedAt: timestamp("state_changed_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
@@ -5536,18 +5522,6 @@ export const consultantAiPreferences = pgTable("consultant_ai_preferences", {
   allowAiToSuggestTemplates: boolean("allow_ai_to_suggest_templates").default(true).notNull(),
   allowAiToWriteFreeformMessages: boolean("allow_ai_to_write_freeform_messages").default(true).notNull(),
   logAiReasoning: boolean("log_ai_reasoning").default(true).notNull(),
-
-  // === INTELLIGENT RETRY CONFIGURATION ===
-  maxNoReplyBeforeDormancy: integer("max_no_reply_before_dormancy").default(3).notNull(), // 2-5: dopo quanti messaggi ignorati il lead entra in dormienza
-  dormancyDurationDays: integer("dormancy_duration_days").default(90).notNull(), // 14-180: durata dormienza in giorni
-  finalAttemptAfterDormancy: boolean("final_attempt_after_dormancy").default(true).notNull(), // se tentare ultimo contatto dopo dormienza
-
-  // === WARM FOLLOW-UP CONFIGURATION (NEW) ===
-  maxWarmFollowups: integer("max_warm_followups").default(2).notNull(), // 1-5: massimo warm follow-up dentro finestra 24h
-  warmFollowupDelayHours: integer("warm_followup_delay_hours").default(4).notNull(), // 2-12: ore tra un warm follow-up e l'altro
-  engagedColdCheckIntervalMinutes: integer("engaged_cold_check_interval_minutes").default(30).notNull(), // 15-60: frequenza check per lead che hanno risposto
-  engagedGhostThresholdDays: integer("engaged_ghost_threshold_days").default(14).notNull(), // 7-30: giorni prima che lead engaged diventi ghost (vs 7 per non-engaged)
-  prioritizeEngagedLeads: boolean("prioritize_engaged_leads").default(true).notNull(), // se dare priorità ai lead che hanno risposto almeno 1 volta
 
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),

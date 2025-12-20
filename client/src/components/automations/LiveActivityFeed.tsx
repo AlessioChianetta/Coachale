@@ -1,42 +1,36 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable";
 import {
   Activity,
   User,
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Send,
   XCircle,
   Clock,
   AlertTriangle,
   CheckCircle,
   MessageSquare,
+  ExternalLink,
   RefreshCw,
   Brain,
   Loader2,
   Zap,
   Search,
   Calendar,
-  Filter,
-  FileText,
-  RotateCcw,
+  Filter
 } from "lucide-react";
 import { Link } from "wouter";
-import { useSendMessageNow, useFollowupAgents, useActivityLog, usePendingQueue, type ActivityLogFilters } from "@/hooks/useFollowupApi";
+import { useSendMessageNow, useFollowupAgents, useActivityLog, usePendingQueue, type ActivityLogFilters, type PendingQueueItem } from "@/hooks/useFollowupApi";
 import { getAuthHeaders } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -71,16 +65,19 @@ interface TimelineEvent {
 interface ConversationTimeline {
   conversationId: string;
   leadName: string;
-  leadPhone?: string;
   agentName: string;
   agentId?: string;
   currentStatus: string;
   temperatureLevel?: 'hot' | 'warm' | 'cold' | 'ghost';
   currentState?: string;
   window24hExpiresAt?: string;
-  consecutiveNoReplyCount?: number;
-  nextScheduledCheck?: string;
   events: TimelineEvent[];
+}
+
+interface ActivityLogResponse {
+  timeline: ConversationTimeline[];
+  allEvents: TimelineEvent[];
+  total: number;
 }
 
 function getStatusConfig(status: string) {
@@ -90,130 +87,119 @@ function getStatusConfig(status: string) {
     case 'stopped':
       return { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Stop' };
     case 'waiting':
-      return { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'Attesa' };
+      return { color: 'bg-yellow-100 text-yellow-700', icon: Clock, label: 'In Attesa' };
     case 'error':
       return { color: 'bg-orange-100 text-orange-700', icon: AlertTriangle, label: 'Errore' };
     case 'scheduled':
-      return { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Prog.' };
+      return { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'Programmato' };
     default:
       return { color: 'bg-gray-100 text-gray-700', icon: Activity, label: status };
   }
 }
 
-function getTemperatureEmoji(temperature?: string) {
+function getTemperatureConfig(temperature?: string) {
   switch (temperature) {
-    case 'hot': return '🔥';
-    case 'warm': return '🟡';
-    case 'cold': return '❄️';
-    case 'ghost': return '👻';
-    default: return '🟡';
+    case 'hot':
+      return { emoji: '🔥', label: 'Hot', color: 'bg-red-100 text-red-700 border-red-300' };
+    case 'warm':
+      return { emoji: '🟡', label: 'Warm', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
+    case 'cold':
+      return { emoji: '❄️', label: 'Cold', color: 'bg-blue-100 text-blue-700 border-blue-300' };
+    case 'ghost':
+      return { emoji: '👻', label: 'Ghost', color: 'bg-gray-100 text-gray-500 border-gray-300' };
+    default:
+      return { emoji: '🟡', label: 'Warm', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
+  }
+}
+
+function getTemplateStatusConfig(twilioStatus?: string | null, hasTemplate?: boolean) {
+  if (!hasTemplate) {
+    return { icon: '❌', label: 'Nessun template', color: 'text-gray-500', tooltip: 'Messaggio AI senza template' };
+  }
+  switch (twilioStatus) {
+    case 'approved':
+      return { icon: '✅', label: 'Approvato', color: 'text-green-600', tooltip: 'Template approvato da WhatsApp' };
+    case 'pending':
+      return { icon: '⏳', label: 'In attesa', color: 'text-yellow-600', tooltip: 'Template in attesa di approvazione WhatsApp' };
+    case 'rejected':
+      return { icon: '🚫', label: 'Rifiutato', color: 'text-red-600', tooltip: 'Template rifiutato da WhatsApp' };
+    case 'not_synced':
+      return { icon: '🔄', label: 'Non sincronizzato', color: 'text-blue-500', tooltip: 'Template non ancora sincronizzato con Twilio' };
+    default:
+      return { icon: '❓', label: 'Sconosciuto', color: 'text-gray-500', tooltip: 'Stato template sconosciuto' };
   }
 }
 
 function formatCountdown(expiresAt?: string): { text: string; isExpired: boolean; isUrgent: boolean } | null {
   if (!expiresAt) return null;
+
   const now = new Date();
   const expires = new Date(expiresAt);
   const diffMs = expires.getTime() - now.getTime();
-  if (diffMs <= 0) return { text: 'Scad.', isExpired: true, isUrgent: false };
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  const isUrgent = hours < 2;
-  if (hours > 0) return { text: `${hours}h`, isExpired: false, isUrgent };
-  return { text: `${minutes}m`, isExpired: false, isUrgent };
-}
 
-function formatAiCheckCountdown(nextCheck?: string): { text: string; isPast: boolean; isImminent: boolean } | null {
-  if (!nextCheck) return null;
-  const now = new Date();
-  const checkTime = new Date(nextCheck);
-  const diffMs = checkTime.getTime() - now.getTime();
   if (diffMs <= 0) {
-    const pastMs = Math.abs(diffMs);
-    const pastMinutes = Math.floor(pastMs / (1000 * 60));
-    if (pastMinutes < 2) return { text: 'analisi...', isPast: true, isImminent: false };
-    if (pastMinutes < 60) return { text: `${pastMinutes}m fa`, isPast: true, isImminent: false };
-    const pastHours = Math.floor(pastMinutes / 60);
-    return { text: `${pastHours}h fa`, isPast: true, isImminent: false };
+    return { text: 'Scaduta', isExpired: true, isUrgent: false };
   }
+
   const hours = Math.floor(diffMs / (1000 * 60 * 60));
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  const isImminent = diffMs < 60 * 60 * 1000;
-  if (hours > 0) return { text: `tra ${hours}h ${minutes}m`, isPast: false, isImminent };
-  return { text: `tra ${minutes}m`, isPast: false, isImminent };
-}
 
-function getAiStatusInfo(
-  conversation: ConversationTimeline,
-  aiCountdown: { text: string; isPast: boolean; isImminent: boolean } | null
-): { text: string; color: string; icon: 'brain' | 'stop' | 'pause' | 'clock' } | null {
-  const noReplyCount = conversation.consecutiveNoReplyCount || 0;
-  const countdown = formatCountdown(conversation.window24hExpiresAt);
-  const isWindowExpired = countdown?.isExpired;
-  
-  if (noReplyCount >= 3) {
-    return { text: 'Fermato (max tentativi)', color: 'border-red-300 bg-red-50 text-red-700', icon: 'stop' };
-  }
-  
-  if (conversation.currentStatus === 'stopped') {
-    return { text: 'Stop manuale', color: 'border-red-300 bg-red-50 text-red-700', icon: 'stop' };
-  }
-  
-  if (isWindowExpired) {
-    return { text: 'Solo template', color: 'border-orange-300 bg-orange-50 text-orange-700', icon: 'pause' };
-  }
-  
-  if (!aiCountdown) {
-    return { text: 'In attesa', color: 'border-gray-300 bg-gray-50 text-gray-700', icon: 'clock' };
-  }
-  
-  if (aiCountdown.isPast) {
-    return { 
-      text: aiCountdown.text, 
-      color: 'border-purple-300 bg-purple-50 text-purple-700 animate-pulse', 
-      icon: 'brain' 
-    };
-  }
-  
-  return { 
-    text: aiCountdown.text, 
-    color: aiCountdown.isImminent ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-gray-300 bg-gray-50 text-gray-700', 
-    icon: 'clock' 
-  };
-}
+  const isUrgent = hours < 2;
 
-function getEventLabel(type: string, decision?: string): string {
-  switch (type) {
-    case 'message_sent': return 'Inviato';
-    case 'message_failed': return 'Fallito';
-    case 'message_scheduled': return 'Programmato';
-    case 'message_cancelled': return 'Annullato';
-    case 'ai_evaluation':
-      if (decision === 'stop') return 'AI: Stop';
-      if (decision === 'skip') return 'AI: Attendi';
-      if (decision === 'send_now') return 'AI: Invia';
-      return 'AI Eval';
-    default: return type;
+  if (hours > 0) {
+    return { text: `${hours}h ${minutes}m`, isExpired: false, isUrgent };
   }
+  return { text: `${minutes}m`, isExpired: false, isUrgent };
 }
 
 function getEventIcon(type: string) {
   switch (type) {
-    case 'message_sent': return <Send className="h-4 w-4 text-green-600" />;
-    case 'message_failed': return <AlertTriangle className="h-4 w-4 text-red-600" />;
-    case 'message_scheduled': return <Clock className="h-4 w-4 text-blue-600" />;
-    case 'ai_evaluation': return <Brain className="h-4 w-4 text-purple-600" />;
-    default: return <Activity className="h-4 w-4 text-gray-600" />;
+    case 'message_sent':
+      return <Send className="h-4 w-4 text-green-600" />;
+    case 'message_failed':
+      return <AlertTriangle className="h-4 w-4 text-red-600" />;
+    case 'message_scheduled':
+      return <Clock className="h-4 w-4 text-blue-600" />;
+    case 'ai_evaluation':
+      return <Brain className="h-4 w-4 text-purple-600" />;
+    default:
+      return <Activity className="h-4 w-4 text-gray-600" />;
   }
 }
 
-function SendNowButton({ messageId, canSendFreeform, hasApprovedTemplate }: {
+function getEventLabel(type: string, decision?: string) {
+  switch (type) {
+    case 'message_sent':
+      return 'Messaggio INVIATO';
+    case 'message_failed':
+      return 'Messaggio FALLITO';
+    case 'message_scheduled':
+      return 'Messaggio programmato';
+    case 'message_cancelled':
+      return 'Messaggio annullato';
+    case 'ai_evaluation':
+      if (decision === 'stop') return 'Valutazione AI: STOP';
+      if (decision === 'skip') return 'Valutazione AI: ATTENDI';
+      if (decision === 'send_now') return 'Valutazione AI: INVIA';
+      return 'Valutazione AI';
+    default:
+      return type;
+  }
+}
+
+function SendNowButton({
+  messageId,
+  canSendFreeform,
+  hasApprovedTemplate
+}: {
   messageId: string;
   canSendFreeform?: boolean;
   hasApprovedTemplate?: boolean;
 }) {
   const { toast } = useToast();
   const sendNow = useSendMessageNow();
+
+  // Can send if: inside 24h window (canSendFreeform) OR has an approved template
   const canSend = canSendFreeform || hasApprovedTemplate;
 
   const handleSendNow = async (e: React.MouseEvent) => {
@@ -221,32 +207,49 @@ function SendNowButton({ messageId, canSendFreeform, hasApprovedTemplate }: {
     if (!canSend) return;
     try {
       const result = await sendNow.mutateAsync(messageId);
-      toast({ title: "Inviato", description: result.message || "Messaggio inviato!" });
+      toast({
+        title: "Messaggio inviato",
+        description: result.message || "Il messaggio è stato inviato con successo!",
+      });
     } catch (error: any) {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante l'invio del messaggio",
+        variant: "destructive",
+      });
     }
   };
+
+  const isDisabled = sendNow.isPending || !canSend;
+  const tooltipText = !canSend
+    ? "Fuori finestra 24h e nessun template approvato"
+    : hasApprovedTemplate && !canSendFreeform
+      ? "Invia subito (con template approvato)"
+      : "Invia subito";
 
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSendNow}
-            disabled={sendNow.isPending || !canSend}
-            className={`h-7 px-2 text-xs ${canSend ? 'text-green-600 hover:bg-green-50' : 'text-gray-400'}`}
-          >
-            {sendNow.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-            <span className="ml-1">Invia ora</span>
-          </Button>
+          <span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSendNow}
+              disabled={isDisabled}
+              className={`gap-1 ${!canSend ? 'opacity-50 cursor-not-allowed' : 'text-blue-600 border-blue-300 hover:bg-blue-50'}`}
+            >
+              {sendNow.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Zap className="h-3 w-3" />
+              )}
+              Invia Ora
+            </Button>
+          </span>
         </TooltipTrigger>
         <TooltipContent>
-          <p className="text-xs">
-            {!canSend ? "Fuori finestra 24h e template non approvato" :
-              canSendFreeform ? "Finestra 24h attiva" : "Template approvato"}
-          </p>
+          <p>{tooltipText}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -255,469 +258,558 @@ function SendNowButton({ messageId, canSendFreeform, hasApprovedTemplate }: {
 
 function RetryButton({ messageId }: { messageId: string }) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [isRetrying, setIsRetrying] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleRetry = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsRetrying(true);
     try {
-      const res = await fetch(`/api/followup/messages/${messageId}/retry`, {
+      const response = await fetch(`/api/followup/messages/${messageId}/retry`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
       });
-      if (!res.ok) throw new Error((await res.json()).message || 'Errore');
-      toast({ title: "Ritentato", description: "Messaggio reinviato!" });
-      queryClient.invalidateQueries({ queryKey: ['/api/followup/activity-log'] });
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: "Ritentativo schedulato",
+          description: "Il messaggio verrà rinviato a breve",
+        });
+        queryClient.invalidateQueries({ queryKey: ['activity-log'] });
+      } else {
+        throw new Error(result.message);
+      }
     } catch (error: any) {
-      toast({ title: "Errore", description: error.message, variant: "destructive" });
+      toast({
+        title: "Errore",
+        description: error.message || "Errore durante il ritentativo",
+        variant: "destructive",
+      });
     } finally {
       setIsRetrying(false);
     }
   };
 
   return (
-    <Button variant="ghost" size="sm" onClick={handleRetry} disabled={isRetrying} className="h-7 px-2 text-xs text-orange-600 hover:bg-orange-50">
-      {isRetrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-      <span className="ml-1">Riprova</span>
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleRetry}
+      disabled={isRetrying}
+      className="gap-1 text-orange-600 border-orange-300 hover:bg-orange-50"
+    >
+      {isRetrying ? (
+        <Loader2 className="h-3 w-3 animate-spin" />
+      ) : (
+        <RefreshCw className="h-3 w-3" />
+      )}
+      Riprova
     </Button>
   );
 }
 
 function SimulateAiButton({ conversationId }: { conversationId: string }) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [isSimulating, setIsSimulating] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleSimulate = async (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsSimulating(true);
     try {
-      const res = await fetch(`/api/followup/simulate-ai/${conversationId}`, {
+      const response = await fetch(`/api/followup/conversations/${conversationId}/simulate-ai-followup`, {
         method: 'POST',
-        headers: getAuthHeaders(),
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        }
       });
-      if (!res.ok) throw new Error((await res.json()).message || 'Errore');
-      const data = await res.json();
-      toast({
-        title: `AI: ${data.decision}`,
-        description: data.reasoning?.substring(0, 100) + (data.reasoning?.length > 100 ? '...' : ''),
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/followup/activity-log'] });
+      const result = await response.json();
+      if (result.success) {
+        toast({
+          title: `📤 ${result.message}`,
+          description: result.messagePreview ? `"${result.messagePreview}..."` : undefined,
+        });
+
+        if (result.dormancyTriggered) {
+          toast({
+            title: "😴 Lead in Dormienza",
+            description: "Troppi tentativi senza risposta. Il lead è stato messo in pausa per 3 mesi.",
+            variant: "destructive",
+          });
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['activity-log'] });
+        queryClient.invalidateQueries({ queryKey: ['followup-conversations'] });
+      } else {
+        throw new Error(result.message);
+      }
     } catch (error: any) {
-      toast({ title: "Errore simulazione", description: error.message, variant: "destructive" });
+      toast({
+        title: "Errore Simulazione",
+        description: error.message || "Errore durante la simulazione AI",
+        variant: "destructive",
+      });
     } finally {
       setIsSimulating(false);
     }
   };
 
   return (
-    <Button variant="ghost" size="sm" onClick={handleSimulate} disabled={isSimulating} className="h-7 px-2 text-xs text-purple-600 hover:bg-purple-50">
-      {isSimulating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-      <span className="ml-1">Simula AI</span>
-    </Button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSimulate}
+            disabled={isSimulating}
+            className="gap-1 text-purple-600 border-purple-300 hover:bg-purple-50"
+          >
+            {isSimulating ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Brain className="h-3 w-3" />
+            )}
+            Simula AI
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Forza valutazione AI e aggiorna contatori (per test)</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PENDING QUEUE PANEL - Shows upcoming follow-ups grouped by agent
+// ═══════════════════════════════════════════════════════════════════════════
+
+
 
 function PendingQueuePanel() {
   const { data, isLoading, error } = usePendingQueue();
 
-  if (isLoading) return (
-    <div className="p-3 border-b">
-      <div className="animate-pulse h-4 bg-muted rounded w-3/4"></div>
-    </div>
-  );
-
-  if (error || !data || data.agents.length === 0) return null;
-
-  return (
-    <div className="p-3 border-b bg-muted/30">
-      <div className="flex items-center gap-2 text-sm">
-        <Clock className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">Prossimi Controlli</span>
-        <Badge variant="secondary" className="ml-auto">{data.totalPending} attivi</Badge>
-        {data.totalDormant > 0 && <Badge variant="outline" className="text-orange-600">{data.totalDormant} pausa</Badge>}
-      </div>
-    </div>
-  );
-}
-
-function LeadListItem({ 
-  conversation, 
-  isSelected, 
-  onSelect 
-}: { 
-  conversation: ConversationTimeline; 
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  const statusConfig = getStatusConfig(conversation.currentStatus);
-  const countdown = formatCountdown(conversation.window24hExpiresAt);
-  const noReplyCount = conversation.consecutiveNoReplyCount || 0;
-  const latestEvent = conversation.events[0];
-
-  return (
-    <div
-      onClick={onSelect}
-      className={`p-3 border-b cursor-pointer transition-colors ${
-        isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-muted/50'
-      }`}
-    >
-      <div className="flex items-start gap-2">
-        <span className="text-lg">{getTemperatureEmoji(conversation.temperatureLevel)}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-medium text-sm truncate">{conversation.leadName}</span>
-            {noReplyCount > 0 && (
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                noReplyCount >= 3 ? 'bg-red-100 text-red-700' : noReplyCount >= 2 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
-              }`}>
-                {noReplyCount}/3
-              </span>
-            )}
-          </div>
-          {conversation.leadPhone && (
-            <div className="text-xs text-muted-foreground truncate">{conversation.leadPhone}</div>
-          )}
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            <Badge className={`${statusConfig.color} text-[10px] px-1.5 py-0`}>
-              {statusConfig.label}
-            </Badge>
-            {countdown && (
-              <span className={`text-[10px] px-1 py-0.5 rounded ${
-                countdown.isExpired ? 'bg-red-100 text-red-700' : countdown.isUrgent ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
-              }`}>
-                {countdown.text}
-              </span>
-            )}
-            {latestEvent?.templateId && (
-              <span className={`text-[9px] px-1 py-0.5 rounded ${
-                latestEvent.templateTwilioStatus === 'approved' ? 'bg-green-50 text-green-700 border border-green-200' :
-                latestEvent.templateTwilioStatus === 'pending' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
-                'bg-gray-50 text-gray-600 border border-gray-200'
-              }`}>
-                TPL
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="text-right text-xs text-muted-foreground">
-          {latestEvent && format(new Date(latestEvent.timestamp), "dd/MM", { locale: it })}
-          <div>{latestEvent && format(new Date(latestEvent.timestamp), "HH:mm", { locale: it })}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EventDetailCard({ event, isLast }: { event: TimelineEvent; isLast?: boolean }) {
-  const statusConfig = getStatusConfig(event.status);
-  const [isExpanded, setIsExpanded] = useState(false);
-  
-  const getEventColor = (type: string) => {
-    switch (type) {
-      case 'message_sent': return 'border-green-400 bg-green-50';
-      case 'message_failed': return 'border-red-400 bg-red-50';
-      case 'message_scheduled': return 'border-blue-400 bg-blue-50';
-      case 'message_cancelled': return 'border-gray-400 bg-gray-50';
-      case 'ai_evaluation': return 'border-purple-400 bg-purple-50';
-      default: return 'border-gray-300 bg-gray-50';
-    }
-  };
-
-  const hasExpandableContent = event.reasoning || event.aiSelectedTemplateReasoning || event.messagePreview;
-
-  return (
-    <div className="relative pl-6">
-      {/* Timeline line */}
-      {!isLast && (
-        <div className="absolute left-[11px] top-8 bottom-0 w-0.5 bg-border" />
-      )}
-      
-      {/* Timeline dot */}
-      <div className={`absolute left-0 top-2 w-6 h-6 rounded-full flex items-center justify-center border-2 bg-background ${
-        event.type === 'message_sent' ? 'border-green-500' :
-        event.type === 'message_failed' ? 'border-red-500' :
-        event.type === 'message_scheduled' ? 'border-blue-500' :
-        event.type === 'ai_evaluation' ? 'border-purple-500' :
-        'border-gray-400'
-      }`}>
-        {getEventIcon(event.type)}
-      </div>
-
-      <div className={`ml-4 mb-4 rounded-lg border-l-3 p-3 ${getEventColor(event.type)}`}>
-        {/* Header row */}
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm">{getEventLabel(event.type, event.decision)}</span>
-            <Badge className={`${statusConfig.color} text-[10px] px-1.5 py-0`}>
-              {statusConfig.label}
-            </Badge>
-            {event.confidenceScore !== undefined && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white/50">
-                {Math.round(event.confidenceScore * 100)}%
-              </Badge>
-            )}
-          </div>
-          <span className="text-xs text-muted-foreground whitespace-nowrap">
-            {format(new Date(event.timestamp), "dd MMM HH:mm", { locale: it })}
-          </span>
-        </div>
-
-        {/* Template info - compact */}
-        {event.templateId && (
-          <div className="flex items-center gap-2 text-xs mb-2 bg-white/50 rounded px-2 py-1">
-            <FileText className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <span className="truncate">{event.templateName || event.templateId}</span>
-            <Badge className={`text-[9px] px-1 py-0 flex-shrink-0 ${
-              event.templateTwilioStatus === 'approved' ? 'bg-green-100 text-green-700' :
-              event.templateTwilioStatus === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-              event.templateTwilioStatus === 'rejected' ? 'bg-red-100 text-red-700' :
-              'bg-gray-100 text-gray-600'
-            }`}>
-              {event.templateTwilioStatus === 'approved' ? 'OK' :
-               event.templateTwilioStatus === 'pending' ? 'Attesa' :
-               event.templateTwilioStatus === 'rejected' ? 'No' : '?'}
-            </Badge>
-          </div>
-        )}
-
-        {/* Freeform indicator */}
-        {!event.templateId && event.canSendFreeform && (
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] mb-2">
-            <Brain className="h-2.5 w-2.5" />
-            Finestra 24h attiva
-          </div>
-        )}
-
-        {/* Error message - always visible */}
-        {event.errorMessage && (
-          <div className="text-xs bg-red-100 text-red-700 p-2 rounded mb-2">
-            <strong>Errore:</strong> {event.errorMessage}
-          </div>
-        )}
-
-        {/* Expandable content */}
-        {hasExpandableContent && (
-          <>
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-xs text-primary hover:underline flex items-center gap-1 mb-1"
-            >
-              {isExpanded ? (
-                <>
-                  <ChevronLeft className="h-3 w-3 rotate-90" />
-                  Nascondi dettagli
-                </>
-              ) : (
-                <>
-                  <ChevronRight className="h-3 w-3 rotate-90" />
-                  Mostra dettagli
-                </>
-              )}
-            </button>
-
-            {isExpanded && (
-              <div className="space-y-2 mt-2 pt-2 border-t border-current/10">
-                {event.reasoning && (
-                  <div>
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                      Ragionamento AI
-                    </div>
-                    <div className="text-xs bg-white/70 p-2 rounded whitespace-pre-wrap leading-relaxed">
-                      {event.reasoning}
-                    </div>
-                  </div>
-                )}
-
-                {event.aiSelectedTemplateReasoning && (
-                  <div>
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                      Scelta Template
-                    </div>
-                    <div className="text-xs bg-blue-100/70 p-2 rounded whitespace-pre-wrap leading-relaxed text-blue-900">
-                      {event.aiSelectedTemplateReasoning}
-                    </div>
-                  </div>
-                )}
-
-                {event.messagePreview && (
-                  <div>
-                    <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">
-                      Messaggio
-                    </div>
-                    <div className="text-xs bg-green-100/70 p-2 rounded border-l-2 border-green-500 whitespace-pre-wrap leading-relaxed">
-                      {event.messagePreview}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Actions */}
-        {(event.type === 'message_scheduled' && event.status === 'scheduled') || event.type === 'message_failed' ? (
-          <div className="flex gap-2 mt-2 pt-2 border-t border-current/10">
-            {event.type === 'message_scheduled' && event.status === 'scheduled' && (
-              <SendNowButton
-                messageId={event.id.replace('msg-', '')}
-                canSendFreeform={event.canSendFreeform}
-                hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
-              />
-            )}
-            {event.type === 'message_failed' && (
-              <RetryButton messageId={event.id.replace('msg-', '')} />
-            )}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function DetailPanel({ conversation }: { conversation: ConversationTimeline | null }) {
-  const [aiCountdown, setAiCountdown] = useState<{ text: string; isPast: boolean; isImminent: boolean } | null>(null);
-
-  useEffect(() => {
-    if (!conversation?.nextScheduledCheck) {
-      setAiCountdown(null);
-      return;
-    }
-
-    const updateCountdown = () => {
-      setAiCountdown(formatAiCheckCountdown(conversation.nextScheduledCheck));
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 30000);
-    return () => clearInterval(interval);
-  }, [conversation?.nextScheduledCheck]);
-
-  if (!conversation) {
+  if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center text-muted-foreground">
-        <div className="text-center">
-          <Activity className="h-12 w-12 mx-auto mb-3 opacity-50" />
-          <p>Seleziona un lead per vedere i dettagli</p>
-        </div>
-      </div>
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Prossimi Controlli
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  const totalEvents = conversation.events.length;
+  if (error) {
+    return (
+      <Card className="mb-4 border-red-200">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2 text-red-600">
+            <AlertTriangle className="h-4 w-4" />
+            Errore Prossimi Controlli
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-red-500">{(error as Error).message}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  if (data.agents.length === 0) {
+    return (
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Prossimi Controlli
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Nessun follow-up in coda</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Clock className="h-4 w-4" />
+          Prossimi Controlli
+          <Badge variant="secondary" className="ml-auto">
+            {data.totalPending} attivi
+          </Badge>
+          {data.totalDormant > 0 && (
+            <Badge variant="outline" className="text-orange-600">
+              {data.totalDormant} in pausa
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {data.agents.map((agent) => (
+          <div key={agent.agentId} className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Activity className="h-3 w-3 text-primary" />
+              {agent.agentName}
+              <Badge variant="outline" className="text-xs">
+                {agent.pending.length}
+              </Badge>
+            </div>
+            <div className="ml-5 space-y-1">
+              {agent.pending.slice(0, 5).map((item) => (
+                <PendingQueueRow key={item.conversationId} item={item} />
+              ))}
+              {agent.pending.length > 5 && (
+                <p className="text-xs text-muted-foreground">
+                  +{agent.pending.length - 5} altri...
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PendingQueueRow({ item }: { item: PendingQueueItem }) {
+  const formatNextCheck = (dateStr: string | null) => {
+    if (!dateStr) return "Non schedulato";
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+
+    if (diffMins < 0) return "Scaduto";
+    if (diffMins < 60) return `tra ${diffMins}m`;
+    if (diffHours < 24) return `tra ${diffHours}h`;
+    return format(date, "dd MMM HH:mm", { locale: it });
+  };
+
+  // Describe what will happen next
+  const getNextAction = () => {
+    if (item.isDormant) {
+      return `Risveglio: ${item.dormantUntil ? format(new Date(item.dormantUntil), "dd MMM yyyy", { locale: it }) : '3 mesi'}`;
+    }
+    if (item.consecutiveNoReply >= 2) {
+      return "⚠️ Prossimo: ultimo tentativo prima di dormienza";
+    }
+    if (item.consecutiveNoReply === 1) {
+      return `📤 Prossimo: follow-up #${item.followupCount + 1} (tentativo 2/3)`;
+    }
+    return `📤 Prossimo: follow-up #${item.followupCount + 1}`;
+  };
+
+  return (
+    <div className={`flex flex-col gap-1 text-xs p-2 rounded ${item.isDormant ? 'bg-orange-50 border border-orange-200' :
+      item.isOverdue ? 'bg-red-50 border border-red-200' :
+        'bg-muted/50'
+      }`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <User className="h-3 w-3 flex-shrink-0" />
+          <span className="truncate font-medium">{item.leadName}</span>
+          <span className="text-muted-foreground">({item.consecutiveNoReply}/3)</span>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {item.isDormant ? (
+            <Badge variant="outline" className="text-orange-600 text-[10px]">
+              😴 Pausa
+            </Badge>
+          ) : item.isOverdue ? (
+            <Badge variant="destructive" className="text-[10px]">
+              ⚠️ Scaduto
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="text-[10px]">
+              {formatNextCheck(item.nextCheckAt)}
+            </Badge>
+          )}
+        </div>
+      </div>
+      <div className="text-[10px] text-muted-foreground pl-5">
+        {getNextAction()}
+      </div>
+    </div>
+  );
+}
+
+function ConversationCard({ conversation }: { conversation: ConversationTimeline }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [showFullReasoning, setShowFullReasoning] = useState<Record<string, boolean>>({});
+  const [showFullMessagePreview, setShowFullMessagePreview] = useState<Record<string, boolean>>({});
+  const statusConfig = getStatusConfig(conversation.currentStatus);
+  const StatusIcon = statusConfig.icon;
+  const tempConfig = getTemperatureConfig(conversation.temperatureLevel);
   const countdown = formatCountdown(conversation.window24hExpiresAt);
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b bg-gradient-to-r from-muted/50 to-muted/30">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="text-3xl">{getTemperatureEmoji(conversation.temperatureLevel)}</div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold truncate">{conversation.leadName}</h2>
-            {conversation.leadPhone && (
-              <p className="text-sm text-muted-foreground">{conversation.leadPhone}</p>
-            )}
-          </div>
-        </div>
-        
-        {/* Status badges */}
-        <div className="flex items-center gap-2 flex-wrap mb-3">
-          <Badge className={`${getStatusConfig(conversation.currentStatus).color} font-medium`}>
-            {getStatusConfig(conversation.currentStatus).label}
-          </Badge>
-          {countdown && (
-            <Badge variant="outline" className={`text-xs ${
-              countdown.isExpired ? 'border-red-300 bg-red-50 text-red-700' : 
-              countdown.isUrgent ? 'border-orange-300 bg-orange-50 text-orange-700' : 
-              'border-green-300 bg-green-50 text-green-700'
-            }`}>
-              <Clock className="h-3 w-3 mr-1" />
-              24h: {countdown.text}
-            </Badge>
-          )}
-          {conversation.consecutiveNoReplyCount !== undefined && conversation.consecutiveNoReplyCount > 0 && (
-            <Badge variant="outline" className={`text-xs ${
-              conversation.consecutiveNoReplyCount >= 3 ? 'border-red-300 bg-red-50 text-red-700' : 'border-orange-300 bg-orange-50 text-orange-700'
-            }`}>
-              {conversation.consecutiveNoReplyCount}/3 no reply
-            </Badge>
-          )}
-          {(() => {
-            const aiStatus = getAiStatusInfo(conversation, aiCountdown);
-            if (!aiStatus) return null;
-            const IconComponent = aiStatus.icon === 'stop' ? XCircle : 
-                                  aiStatus.icon === 'pause' ? AlertTriangle : 
-                                  aiStatus.icon === 'brain' ? Brain : Clock;
-            return (
-              <Badge variant="outline" className={`text-xs ${aiStatus.color}`}>
-                <IconComponent className="h-3 w-3 mr-1" />
-                AI: {aiStatus.text}
-              </Badge>
-            );
-          })()}
-          <Badge variant="outline" className="text-xs">
-            via {conversation.agentName}
-          </Badge>
-        </div>
-        
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
-            <Button variant="default" size="sm" className="gap-1.5">
-              <MessageSquare className="h-4 w-4" /> Apri Chat
-            </Button>
-          </Link>
-          <SimulateAiButton conversationId={conversation.conversationId} />
-        </div>
-      </div>
-
-      {/* Timeline header */}
-      <div className="px-4 py-2 border-b bg-muted/20 flex items-center justify-between">
-        <h3 className="font-semibold text-sm flex items-center gap-2">
-          <Activity className="h-4 w-4" />
-          Cronologia Completa
-        </h3>
-        <Badge variant="secondary" className="text-xs">
-          {totalEvents} eventi
-        </Badge>
-      </div>
-
-      {/* Full timeline - no pagination */}
-      <ScrollArea className="flex-1">
-        <div className="p-4">
-          {conversation.events.map((event, index) => (
-            <EventDetailCard 
-              key={event.id} 
-              event={event} 
-              isLast={index === conversation.events.length - 1}
-            />
-          ))}
-          
-          {totalEvents === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Nessun evento ancora</p>
+    <Card className="overflow-hidden">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded-full">
+                  <User className="h-5 w-5 text-gray-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                    {conversation.leadName}
+                    <Badge variant="outline" className="text-xs font-normal">
+                      via {conversation.agentName}
+                    </Badge>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className={`text-xs font-normal border ${tempConfig.color}`}>
+                            {tempConfig.emoji} {tempConfig.label}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Temperatura lead: {tempConfig.label}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </CardTitle>
+                  <CardDescription className="text-xs flex items-center gap-2 flex-wrap">
+                    {conversation.events.length} eventi recenti
+                    {countdown && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${countdown.isExpired
+                              ? 'bg-red-100 text-red-700'
+                              : countdown.isUrgent
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-green-100 text-green-700'
+                              }`}>
+                              <Clock className="h-3 w-3" />
+                              {countdown.isExpired ? '24h scaduta' : `24h: ${countdown.text}`}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{countdown.isExpired
+                              ? 'Finestra 24h scaduta - serve template approvato'
+                              : `Finestra 24h scade tra ${countdown.text}`}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className={`${statusConfig.color} flex items-center gap-1`}>
+                  <StatusIcon className="h-3 w-3" />
+                  {statusConfig.label}
+                </Badge>
+                {isOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
             </div>
-          )}
-        </div>
-      </ScrollArea>
-    </div>
+          </CardHeader>
+        </CollapsibleTrigger>
+
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            <div className="border-l-2 border-gray-200 dark:border-gray-700 ml-4 pl-4 space-y-3">
+              {conversation.events.slice(0, 10).map((event) => (
+                <div key={event.id} className="relative">
+                  <div className="absolute -left-[21px] w-3 h-3 rounded-full bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-600" />
+
+                  <div className="flex items-start gap-2">
+                    {getEventIcon(event.type)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium">
+                          {getEventLabel(event.type, event.decision)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(event.timestamp), "dd MMM HH:mm", { locale: it })}
+                        </span>
+                      </div>
+
+                      {event.matchedRuleId && (
+                        <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                          Regola: {event.matchedRuleId}
+                          {event.matchedRuleReason && ` - ${event.matchedRuleReason}`}
+                        </p>
+                      )}
+
+                      {event.reasoning && (
+                        <div className="mt-0.5">
+                          <p className={`text-xs text-muted-foreground ${showFullReasoning[event.id] ? '' : 'line-clamp-2'}`}>
+                            {event.reasoning}
+                          </p>
+                          {event.reasoning.length > 100 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowFullReasoning(prev => ({ ...prev, [event.id]: !prev[event.id] }));
+                              }}
+                              className="text-xs text-blue-600 hover:underline mt-0.5"
+                            >
+                              {showFullReasoning[event.id] ? 'Mostra meno' : 'Mostra tutto'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {event.messagePreview && (
+                        <div className="mt-1.5 p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <MessageSquare className="h-3 w-3" />
+                              {event.templateName ? `Template: ${event.templateName}` : 'Messaggio AI'}
+                            </p>
+                            {(() => {
+                              const templateStatus = getTemplateStatusConfig(event.templateTwilioStatus, !!event.templateId);
+                              return (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className={`text-xs flex items-center gap-1 ${templateStatus.color}`}>
+                                        <span>{templateStatus.icon}</span>
+                                        <span className="hidden sm:inline">{templateStatus.label}</span>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{templateStatus.tooltip}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              );
+                            })()}
+                          </div>
+                          <p className={`text-xs italic ${showFullMessagePreview[event.id] ? '' : 'line-clamp-3'}`}>"{event.messagePreview}"</p>
+                          {event.messagePreview.length > 150 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowFullMessagePreview(prev => ({ ...prev, [event.id]: !prev[event.id] }));
+                              }}
+                              className="text-xs text-blue-600 hover:underline mt-1"
+                            >
+                              {showFullMessagePreview[event.id] ? 'Mostra meno' : 'Mostra tutto'}
+                            </button>
+                          )}
+                          {event.aiSelectedTemplateReasoning && (
+                            <p className="text-xs text-purple-600 dark:text-purple-400 mt-1.5 flex items-center gap-1">
+                              <Brain className="h-3 w-3" />
+                              <span className="font-medium">AI:</span> {event.aiSelectedTemplateReasoning}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {event.errorMessage && (
+                        <div className="mt-0.5">
+                          <p className="text-xs text-red-600">
+                            Errore: {event.errorMessage}
+                          </p>
+                          {event.type === 'message_failed' && (
+                            <div className="mt-1.5">
+                              <RetryButton messageId={event.id.replace('msg-', '')} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {event.confidenceScore !== undefined && (
+                        <span className="text-xs text-muted-foreground">
+                          Confidenza: {Math.round(event.confidenceScore * 100)}%
+                        </span>
+                      )}
+
+                      {event.type === 'message_scheduled' && event.status === 'scheduled' && (
+                        <div className="mt-2">
+                          <SendNowButton
+                            messageId={event.id.replace('msg-', '')}
+                            canSendFreeform={event.canSendFreeform}
+                            hasApprovedTemplate={event.templateTwilioStatus === 'approved'}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-2 mt-4 pt-3 border-t flex-wrap">
+              <Link href={`/consultant/whatsapp-conversations?conversation=${conversation.conversationId}`}>
+                <Button variant="outline" size="sm" className="gap-1">
+                  <MessageSquare className="h-3 w-3" />
+                  Vedi Chat
+                </Button>
+              </Link>
+              <SimulateAiButton conversationId={conversation.conversationId} />
+              {conversation.currentStatus === 'scheduled' && conversation.events.some(e => e.type === 'message_scheduled') && (() => {
+                const scheduledEvent = conversation.events.find(e => e.type === 'message_scheduled');
+                return scheduledEvent ? (
+                  <SendNowButton
+                    messageId={scheduledEvent.id.replace('msg-', '')}
+                    canSendFreeform={scheduledEvent.canSendFreeform}
+                    hasApprovedTemplate={scheduledEvent.templateTwilioStatus === 'approved'}
+                  />
+                ) : null;
+              })()}
+              {conversation.currentStatus === 'error' && conversation.events.some(e => e.type === 'message_failed') && (
+                <RetryButton
+                  messageId={conversation.events.find(e => e.type === 'message_failed')!.id.replace('msg-', '')}
+                />
+              )}
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 }
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-2 p-3">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="flex items-center gap-3 p-3 border rounded">
-          <Skeleton className="h-8 w-8 rounded-full" />
-          <div className="flex-1">
-            <Skeleton className="h-4 w-24 mb-1" />
-            <Skeleton className="h-3 w-32" />
-          </div>
-        </div>
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <Card key={i}>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+              <Skeleton className="h-5 w-16" />
+            </div>
+          </CardHeader>
+        </Card>
       ))}
     </div>
   );
@@ -730,7 +822,6 @@ export function LiveActivityFeed() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
   const filters: ActivityLogFilters = useMemo(() => ({
     filter: filter !== 'all' ? filter : undefined,
@@ -752,33 +843,16 @@ export function LiveActivityFeed() {
   };
 
   const hasActiveFilters = agentId || search || dateFrom || dateTo;
-  const timeline = data?.timeline || [];
-  const selectedConversation = timeline.find((c: ConversationTimeline) => c.conversationId === selectedConversationId) || null;
-
-  useEffect(() => {
-    if (timeline.length > 0 && !selectedConversationId) {
-      setSelectedConversationId(timeline[0].conversationId);
-    }
-  }, [timeline, selectedConversationId]);
-
-  useEffect(() => {
-    if (selectedConversationId && timeline.length > 0) {
-      const exists = timeline.some((c: ConversationTimeline) => c.conversationId === selectedConversationId);
-      if (!exists) {
-        setSelectedConversationId(timeline[0]?.conversationId || null);
-      }
-    }
-  }, [timeline, selectedConversationId]);
 
   return (
-    <div className="h-[calc(100vh-180px)] flex flex-col">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList>
             <TabsTrigger value="all" className="text-xs">Tutti</TabsTrigger>
             <TabsTrigger value="sent" className="text-xs">Inviati</TabsTrigger>
-            <TabsTrigger value="scheduled" className="text-xs">Prog.</TabsTrigger>
-            <TabsTrigger value="stopped" className="text-xs">Stop</TabsTrigger>
+            <TabsTrigger value="scheduled" className="text-xs">Programmati</TabsTrigger>
+            <TabsTrigger value="stopped" className="text-xs">Bloccati</TabsTrigger>
             <TabsTrigger value="errors" className="text-xs">Errori</TabsTrigger>
           </TabsList>
         </Tabs>
@@ -792,106 +866,133 @@ export function LiveActivityFeed() {
           >
             <Filter className="h-3 w-3" />
             Filtri
-            {hasActiveFilters && <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 text-[10px] rounded-full">!</Badge>}
+            {hasActiveFilters && (
+              <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 text-[10px] rounded-full">
+                !
+              </Badge>
+            )}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-1"
+          >
             <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
+            Aggiorna
           </Button>
         </div>
       </div>
 
       {showAdvancedFilters && (
-        <Card className="p-4 mb-4">
+        <Card className="p-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Search className="h-3 w-3" /> Cerca
+                <Search className="h-3 w-3" /> Cerca lead
               </label>
-              <Input placeholder="Nome o telefono..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 text-sm" />
+              <Input
+                placeholder="Nome o telefono..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 text-sm"
+              />
             </div>
+
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                 <User className="h-3 w-3" /> Agente
               </label>
               <Select value={agentId} onValueChange={setAgentId}>
-                <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Tutti" /></SelectTrigger>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Tutti gli agenti" />
+                </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tutti</SelectItem>
+                  <SelectItem value="">Tutti gli agenti</SelectItem>
                   {agents?.map((agent: { id: string; agentName: string }) => (
-                    <SelectItem key={agent.id} value={agent.id}>{agent.agentName}</SelectItem>
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.agentName}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Calendar className="h-3 w-3" /> Da
+                <Calendar className="h-3 w-3" /> Da data
               </label>
-              <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 text-sm" />
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="h-8 text-sm"
+              />
             </div>
+
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                <Calendar className="h-3 w-3" /> A
+                <Calendar className="h-3 w-3" /> A data
               </label>
-              <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 text-sm" />
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="h-8 text-sm"
+              />
             </div>
           </div>
+
           {hasActiveFilters && (
             <div className="mt-3 pt-3 border-t flex justify-end">
-              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs">Rimuovi filtri</Button>
+              <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs">
+                Rimuovi tutti i filtri
+              </Button>
             </div>
           )}
         </Card>
       )}
 
+      {isLoading && <LoadingSkeleton />}
+
       {error && (
-        <Card className="border-red-200 bg-red-50 mb-4">
-          <CardContent className="p-4 text-center text-red-600">Errore nel caricamento</CardContent>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4 text-center text-red-600">
+            Errore nel caricamento del log attività
+          </CardContent>
         </Card>
       )}
 
-      {!isLoading && !error && timeline.length === 0 && (
-        <Card className="flex-1">
-          <CardContent className="py-8 text-center">
-            <Activity className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-            <p className="text-muted-foreground text-sm">
-              {hasActiveFilters ? "Nessuna attività con questi filtri." : "Nessuna attività. Le attività appariranno con le valutazioni AI."}
+      {!isLoading && !error && data?.timeline?.length === 0 && (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+            <p className="text-muted-foreground">
+              {hasActiveFilters
+                ? "Nessuna attività trovata con i filtri selezionati. Prova a modificare i criteri di ricerca."
+                : "Nessuna attività trovata. Le attività appariranno quando il sistema valuterà le conversazioni."
+              }
             </p>
           </CardContent>
         </Card>
       )}
 
-      {(isLoading || (!error && timeline.length > 0)) && (
-        <Card className="flex-1 overflow-hidden">
-          <ResizablePanelGroup direction="horizontal">
-            <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
-              <div className="h-full flex flex-col border-r">
-                <PendingQueuePanel />
-                <div className="px-3 py-2 border-b text-xs text-muted-foreground">
-                  {timeline.length} conversazioni ({data?.total || 0} eventi)
-                </div>
-                {isLoading ? (
-                  <LoadingSkeleton />
-                ) : (
-                  <ScrollArea className="flex-1">
-                    {timeline.map((conversation: ConversationTimeline) => (
-                      <LeadListItem
-                        key={conversation.conversationId}
-                        conversation={conversation}
-                        isSelected={selectedConversationId === conversation.conversationId}
-                        onSelect={() => setSelectedConversationId(conversation.conversationId)}
-                      />
-                    ))}
-                  </ScrollArea>
-                )}
-              </div>
-            </ResizablePanel>
-            <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={65}>
-              <DetailPanel conversation={selectedConversation} />
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        </Card>
+      {!isLoading && !error && data?.timeline && data.timeline.length > 0 && (
+        <div className="space-y-3">
+          {/* Pending Queue Panel shows upcoming follow-ups */}
+          <PendingQueuePanel />
+
+          {data.timeline.map((conversation: ConversationTimeline) => (
+            <ConversationCard key={conversation.conversationId} conversation={conversation} />
+          ))}
+        </div>
+      )}
+
+      {data?.total && data.total > 0 && (
+        <p className="text-xs text-center text-muted-foreground">
+          Mostrando {data.timeline?.length || 0} conversazioni ({data.total} eventi totali)
+        </p>
       )}
     </div>
   );

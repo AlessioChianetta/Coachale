@@ -1,4 +1,0 @@
-ALTER TABLE conversation_states 
-ADD COLUMN IF NOT EXISTS next_evaluation_at TIMESTAMP,
-ADD COLUMN IF NOT EXISTS wait_type VARCHAR(50),
-ADD COLUMN IF NOT EXISTS wait_reason TEXT;

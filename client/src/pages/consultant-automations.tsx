@@ -49,8 +49,7 @@ import {
   Loader2,
   PauseCircle,
   Ban,
-  Calendar,
-  FlaskConical
+  Calendar
 } from "lucide-react";
 import { NavigationTabs } from "@/components/ui/navigation-tabs";
 import { PipelineKanban } from "@/components/automations/PipelineKanban";
@@ -60,7 +59,6 @@ import { AutomationDashboard } from "@/components/automations/AutomationDashboar
 import { DecisionFlowDiagram } from "@/components/automations/DecisionFlowDiagram";
 import { LiveActivityFeed } from "@/components/automations/LiveActivityFeed";
 import { AIPreferencesEditor } from "@/components/automations/AIPreferencesEditor";
-import { LiveTestCockpit } from "@/components/automations/LiveTestCockpit";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -1155,10 +1153,6 @@ export default function ConsultantAutomationsPage() {
                   <Users className="h-4 w-4" />
                   <span className="hidden sm:inline">Stato Follow-up</span>
                 </TabsTrigger>
-                <TabsTrigger value="test-live" className="flex items-center gap-2 px-4 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <FlaskConical className="h-4 w-4" />
-                  <span className="hidden sm:inline">Test Live</span>
-                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="monitoraggio">
@@ -1196,10 +1190,6 @@ export default function ConsultantAutomationsPage() {
 
               <TabsContent value="stato-followup">
                 <LeadStatusDashboard />
-              </TabsContent>
-
-              <TabsContent value="test-live">
-                <LiveTestCockpit />
               </TabsContent>
             </Tabs>
           </div>
