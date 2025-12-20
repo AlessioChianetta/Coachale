@@ -5307,6 +5307,10 @@ export const conversationStates = pgTable("conversation_states", {
   warmFollowupCount: integer("warm_followup_count").default(0).notNull(), // Contatore warm follow-up inviati dentro finestra 24h
   lastWarmFollowupAt: timestamp("last_warm_followup_at"), // Ultimo warm follow-up inviato
 
+  // === DAILY FREEFORM LIMIT (NEW) - Prevents excessive freeform messages ===
+  dailyFreeformCount: integer("daily_freeform_count").default(0).notNull(), // Contatore messaggi freeform inviati oggi
+  lastFreeformResetAt: timestamp("last_freeform_reset_at"), // Ultimo reset del contatore (a mezzanotte)
+
   // === SMART WAIT STATE (NEW) - Prevents excessive AI evaluations ===
   nextEvaluationAt: timestamp("next_evaluation_at"), // "Do not evaluate until this time"
   waitType: text("wait_type").$type<"wait_reply" | "silence" | "nurturing" | "scheduled">(), // Type of wait

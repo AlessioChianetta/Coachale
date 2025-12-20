@@ -305,8 +305,8 @@ export async function evaluateFollowup(
 
 function buildFollowupPrompt(context: FollowupContext): string {
   const templatesInfo = context.availableTemplates.length > 0
-    ? context.availableTemplates.map(t => `- ID: ${t.id}, Nome: "${t.name}", Uso: ${t.useCase}, Testo: "${t.bodyText.substring(0, 100)}..."`).join('\n')
-    : "Nessun template disponibile";
+    ? context.availableTemplates.map(t => `- ID: ${t.id}, Nome: "${t.name}", Uso: ${t.useCase}`).join('\n')
+    : "NESSUN TEMPLATE DISPONIBILE";
 
   const messagesHistory = context.lastMessages.length > 0
     ? context.lastMessages.map(m => {
@@ -317,221 +317,112 @@ function buildFollowupPrompt(context: FollowupContext): string {
     }).join('\n')
     : "Nessun messaggio precedente";
 
-  // Calcola se siamo nella finestra 24h per messaggi liberi
   const canSendFreeform = !context.leadNeverResponded && context.hoursSinceLastInbound < 24;
-  const window24hStatus = context.leadNeverResponded
-    ? "❌ FUORI FINESTRA - Il lead non ha mai risposto, DEVI usare un Template approvato"
-    : context.hoursSinceLastInbound < 24
-      ? `✅ NELLA FINESTRA 24H - Puoi inviare messaggi liberi (il lead ha risposto ${context.hoursSinceLastInbound.toFixed(1)}h fa)`
-      : `⚠️ FUORI FINESTRA 24H - Ultima risposta ${context.hoursSinceLastInbound.toFixed(1)}h fa, DEVI usare un Template approvato`;
+  const lastMsgIsOurs = context.lastMessageDirection === 'outbound';
+  const minutesSinceLastMsg = context.minutesSilent;
+  const hoursSinceLastMsg = context.hoursSilent;
+  
+  const firstTemplateId = context.availableTemplates.length > 0 ? context.availableTemplates[0].id : null;
 
-  // Get agent profile for personality
-  const agentProfilePrompt = buildAgentPersonalityPrompt(context.agentType);
+  return `# SISTEMA FOLLOW-UP - MATRICE DECISIONALE
 
-  return `# SISTEMA AI DIRECTOR - VALUTAZIONE FOLLOW-UP INTELLIGENTE
-
-${agentProfilePrompt}
-
----
-
-Analizza questa conversazione WhatsApp e decidi COSA FARE con questo lead.
-Agisci come un "AI Director" che gestisce relazioni nel lungo periodo (annuale).
-
-**PRINCIPI FONDAMENTALI:**
-- NON tempestare il lead con messaggi frequenti - ogni messaggio DEVE portare valore
-- Se la conversazione ha raggiunto il suo obiettivo, VAI IN SILENZIO
-- Programma check di cortesia a lungo termine invece di follow-up ravvicinati
-- Rispetta i limiti del tuo profilo agente
-
----
-
-## CONTESTO CONVERSAZIONE
-
-- **ID Conversazione:** ${context.conversationId}
-- **Nome Lead:** ${context.leadName || "Non specificato"}
-- **Stato Attuale:** ${context.currentState}
-- **Tempo trascorso:** ${context.daysSilent} giorni, ${context.hoursSilent % 24} ore, ${context.minutesSilent % 60} minuti
-- **Il lead ha mai risposto:** ${context.leadNeverResponded ? "❌ NO (mai risposto)" : "✅ Sì"}
-- **Follow-up già inviati:** ${context.followupCount} di ${context.maxFollowupsAllowed} massimi
-- **Canale:** ${context.channel}
-- **Tipo Agente:** ${context.agentType}
-
----
-
-## ⚠️ FINESTRA 24H WHATSAPP (IMPORTANTE!)
-
-${window24hStatus}
-
-**Regola WhatsApp:** Puoi inviare messaggi liberi SOLO se il lead ha risposto nelle ultime 24 ore.
-Altrimenti DEVI selezionare un template dalla lista sotto.
-
----
-
-## SEGNALI RILEVATI DAL LEAD
-
-- **Ha chiesto il prezzo:** ${context.signals.hasAskedPrice ? "✅ Sì (segnale positivo!)" : "❌ No"}
-- **Ha menzionato urgenza:** ${context.signals.hasMentionedUrgency ? "✅ Sì (lead caldo!)" : "❌ No"}
-- **Ha detto NO esplicitamente:** ${context.signals.hasSaidNoExplicitly ? "⚠️ SÌ! Rispetta la sua scelta!" : "❌ No"}
-- **Discovery completata:** ${context.signals.discoveryCompleted ? "✅ Sì" : "❌ No"}
-- **Demo presentata:** ${context.signals.demoPresented ? "✅ Sì" : "❌ No"}
-
----
-
-## METRICHE
-
-- **Engagement Score:** ${context.engagementScore}/100
-- **Probabilità Conversione:** ${(context.conversionProbability * 100).toFixed(0)}%
-
----
+## DATI CONVERSAZIONE
+- ID: ${context.conversationId}
+- Lead: ${context.leadName || "N/A"}
+- Stato: ${context.currentState}
+- Tempo silenzio: ${Math.floor(hoursSinceLastMsg)}h ${Math.round(minutesSinceLastMsg % 60)}min
+- Lead ha mai risposto: ${context.leadNeverResponded ? "NO" : "SÌ"}
+- Ultimo messaggio: ${lastMsgIsOurs ? "NOSTRO (outbound)" : "LEAD (inbound)"}
+- Follow-up inviati: ${context.followupCount}/${context.maxFollowupsAllowed}
+- Finestra 24h: ${canSendFreeform ? "ATTIVA" : "CHIUSA"}
+- Ha detto NO: ${context.signals.hasSaidNoExplicitly ? "SÌ" : "NO"}
 
 ## STORICO MESSAGGI
-
 ${messagesHistory}
 
----
-
-## VALUTAZIONI PRECEDENTI
-
-${context.previousEvaluations && context.previousEvaluations.length > 0
-      ? context.previousEvaluations.map(e => `[${e.timestamp}] Decisione: ${e.decision} (${Math.round(e.confidenceScore * 100)}%) - ${e.reasoning.substring(0, 150)}...`).join('\n')
-      : "Nessuna valutazione precedente"}
-
----
-
 ## TEMPLATE DISPONIBILI
-
 ${templatesInfo}
+Primo template disponibile: ${firstTemplateId || "NESSUNO"}
 
 ---
 
-## TIPO DI CONVERSAZIONE
+## ⚠️ MATRICE DECISIONALE OBBLIGATORIA - SEGUI IN ORDINE ⚠️
 
-Analizza i messaggi e determina il tipo di conversazione:
-- **VENDITA**: Il lead è interessato a comprare qualcosa
-- **ASSISTENZA**: Il lead ha bisogno di supporto tecnico o aiuto  
-- **INFO**: Il lead chiede informazioni generali
-- **PRENOTAZIONE**: Il lead vuole prenotare un appuntamento
-- **ALTRO**: Conversazione generica o sociale
+Applica la PRIMA regola che corrisponde alla situazione:
 
-Considera il tipo di conversazione per determinare l'azione appropriata.
+### REGOLA 1: Rifiuto esplicito
+SE lead ha detto "no" esplicitamente (hasSaidNoExplicitly=true)
+→ decision="stop", waitHours=8760, waitType="silence", waitReason="Lead ha rifiutato esplicitamente"
 
----
+### REGOLA 2: Lead mai risposto + primo contatto
+SE leadNeverResponded=true E followupCount=0
+→ decision="schedule", urgency="tomorrow", suggestedTemplateId="${firstTemplateId}", waitHours=24, waitType="scheduled", waitReason="Primo follow-up dopo 24h"
 
-## LINEE GUIDA DI VALUTAZIONE
+### REGOLA 3: Lead mai risposto + troppi tentativi
+SE leadNeverResponded=true E followupCount>=3
+→ decision="nurturing", scheduledDays=30, waitHours=720, waitType="nurturing", waitReason="Troppi tentativi senza risposta, nurturing 30gg"
 
-### Criteri di decisione:
+### REGOLA 4: Messaggio recente (<30 min)
+SE ultimo msg è NOSTRO E minutesSinceLastMsg < 30
+→ decision="skip", waitHours=2, waitType="wait_reply", waitReason="Messaggio inviato ${Math.round(minutesSinceLastMsg)} minuti fa, troppo recente"
 
-**Lead senza risposta:**
-- Se followupCount = 0 e c'è già un messaggio nella chat → il lead ha già ricevuto il primo contatto
-- Attendere 24-48h dopo il primo messaggio prima di un follow-up
-- Dopo 2-3 tentativi senza risposta, considerare di fermarsi
+### REGOLA 5: Aspettiamo risposta (30min - 6h, finestra attiva)
+SE ultimo msg è NOSTRO E minutesSinceLastMsg >= 30 E hoursSinceLastMsg < 6 E finestra24h ATTIVA
+→ decision="skip", waitHours=4, waitType="wait_reply", waitReason="Aspettiamo risposta lead, passate ${Math.round(hoursSinceLastMsg)}h"
 
-**Lead che ha risposto ma ora è silenzioso:**
-- Valutare il livello di interesse mostrato nelle risposte
-- Lead interessato → insistere con follow-up
-- Lead freddo → limitare i follow-up
+### REGOLA 6: Possiamo ricontattare (>6h, finestra attiva)
+SE ultimo msg è NOSTRO E hoursSinceLastMsg >= 6 E finestra24h ATTIVA
+→ decision="send_now", useFreeform=true, waitHours=0
 
-**Ultimo messaggio outbound:**
-- Se l'ultimo messaggio è nostro, attendere risposta del lead
-- Intervallo minimo consigliato: qualche ora
+### REGOLA 7: Fuori finestra (>6h, finestra chiusa)
+SE ultimo msg è NOSTRO E hoursSinceLastMsg >= 6 E finestra24h CHIUSA
+→ decision="schedule", urgency="tomorrow", suggestedTemplateId="${firstTemplateId}", waitHours=24, waitType="scheduled", waitReason="Fuori finestra 24h, ricontatto con template domani"
 
-**Rifiuto esplicito:**
-- Se il lead ha detto "no" o simili → decisione = "stop"
+### REGOLA 8: Lead silenzioso dopo risposta (>24h)
+SE lead ha risposto in passato (leadNeverResponded=false) E hoursSinceLastMsg > 24
+→ decision="schedule", urgency="tomorrow", suggestedTemplateId="${canSendFreeform ? 'null' : firstTemplateId}", waitHours=24, waitType="scheduled"
 
-**Limite follow-up raggiunto:**
-- Massimo tentativi: ${context.maxFollowupsAllowed}
-
----
-
-## COSA DEVI DECIDERE
-
-Rispondi con UNA delle seguenti azioni:
-
-### AZIONI IMMEDIATE
-1. **send_now** - Invia SUBITO (il lead è caldo, c'è urgenza)
-2. **schedule** - PROGRAMMA per dopo con urgency specifica
-
-### AZIONI DI PAUSA STRATEGICA  
-3. **silence** - VAI IN SILENZIO TEMPORANEO (la conversazione è completa, il lead ha ottenuto ciò che cercava)
-4. **nurturing** - PASSA A MODALITÀ NURTURING (check periodici ogni settimane/mesi)
-5. **skip** - NON fare nulla ora (il lead sta già rispondendo, non serve follow-up)
-6. **stop** - FERMATI DEFINITIVAMENTE (il lead ha detto no esplicitamente)
-
-### URGENCY OPTIONS
-- "now" → invia subito
-- "hours" → tra alcune ore (usa scheduledHour)
-- "tomorrow" → domani
-- "days" → tra X giorni (usa scheduledDays)
-- "weeks" → tra 1-2 settimane (scheduledDays = 7 o 14)
-- "months" → tra 1+ mesi (scheduledDays = 30, 60, 90)
-- "never" → mai più
-
-⚠️ **PRINCIPIO CHIAVE:**
-- Se il lead ha già tutte le informazioni necessarie → **silence** + programma check tra 2 settimane
-- Se non risponde da 3+ tentativi → **nurturing** con scheduledDays = 30-90
-- Ogni messaggio DEVE portare valore nuovo, altrimenti → **silence**
+### REGOLA 9: Limite follow-up raggiunto
+SE followupCount >= maxFollowupsAllowed (${context.maxFollowupsAllowed})
+→ decision="nurturing", scheduledDays=30, waitHours=720, waitType="nurturing", waitReason="Raggiunto limite follow-up"
 
 ---
 
-## RILEVAMENTO CONVERSAZIONE COMPLETATA
-
-Prima di decidere, analizza se la conversazione ha raggiunto il suo obiettivo naturale:
-
-✅ **SEGNALI DI COMPLETAMENTO:**
-- Il lead ha ottenuto le informazioni che cercava
-- È stata fissata una call/appuntamento
-- Il problema è stato risolto (per supporto)
-- Il lead ha detto "grazie, ho capito tutto" o simili
-- Il lead ha preso una decisione (positiva o negativa)
-
-⚠️ **SE LA CONVERSAZIONE È COMPLETA:**
-- Imposta isConversationComplete = true
-- Usa decision = "silence" o "nurturing"
-- Programma un check di cortesia tra 2-4 settimane (non un follow-up aggressivo!)
+## VALORI ATTUALI PER LA DECISIONE
+- minutesSinceLastMsg: ${Math.round(minutesSinceLastMsg)}
+- hoursSinceLastMsg: ${Math.round(hoursSinceLastMsg * 10) / 10}
+- lastMsgIsOurs: ${lastMsgIsOurs}
+- leadNeverResponded: ${context.leadNeverResponded}
+- followupCount: ${context.followupCount}
+- canSendFreeform (finestra24h attiva): ${canSendFreeform}
+- hasSaidNoExplicitly: ${context.signals.hasSaidNoExplicitly}
 
 ---
 
-## FORMATO RISPOSTA (JSON)
+## FORMATO RISPOSTA JSON
 
 {
-  "decision": "send_now" | "schedule" | "silence" | "nurturing" | "skip" | "stop",
-  "urgency": "now" | "hours" | "tomorrow" | "days" | "weeks" | "months" | "never",
-  "scheduledHour": 9-18,
-  "scheduledMinute": 0-59,
-  "scheduledDays": numero di giorni (es: 7 = 1 settimana, 14 = 2 settimane, 30 = 1 mese, 90 = 3 mesi),
-  "suggestedTemplateId": "ID template o null",
-  "suggestedMessage": "messaggio libero solo se in finestra 24h",
-  "reasoning": "Tempo dall'ultimo messaggio: X ore. [Analisi oggettiva]",
-  "confidenceScore": 0.0-1.0,
-  "isConversationComplete": true/false,
-  "completionReason": "motivo per cui la conversazione è completa (se applicabile)",
-  "silenceReason": "motivo per cui hai scelto di stare in silenzio (se applicabile)",
-  "longTermScheduleType": "nurturing" | "reactivation" | null,
-  "updatedEngagementScore": 0-100 o null,
-  "updatedConversionProbability": 0-1 o null,
-  "stateTransition": "nuovo stato o null",
-  "waitHours": number (OBBLIGATORIO per skip/silence/nurturing - indica dopo quante ore rivalutare),
-  "waitType": "wait_reply" | "silence" | "nurturing" | "scheduled" | null,
-  "waitReason": "motivo leggibile del perché stiamo aspettando"
+  "decision": "send_now" | "schedule" | "skip" | "stop" | "nurturing",
+  "urgency": "now" | "tomorrow" | "days" | "weeks",
+  "scheduledDays": number,
+  "suggestedTemplateId": "ID template" | null,
+  "suggestedMessage": "solo se finestra24h attiva",
+  "reasoning": "Regola X applicata: [descrizione]. Tempo silenzio: Xh Xmin",
+  "confidenceScore": 0.9,
+  "waitHours": number (OBBLIGATORIO se decision != "send_now"),
+  "waitType": "wait_reply" | "scheduled" | "nurturing" | "silence",
+  "waitReason": "descrizione breve",
+  "isConversationComplete": false,
+  "updatedEngagementScore": null,
+  "updatedConversionProbability": null,
+  "stateTransition": null
 }
 
-### LINEE GUIDA PER waitHours (IMPORTANTE per evitare valutazioni eccessive!)
-
-Quando decidi di NON inviare un messaggio, DEVI specificare waitHours per indicare dopo quanto rivalutare:
-
-- **skip** (l'ultimo messaggio è nostro, aspettiamo risposta): waitHours = 4-6, waitType = "wait_reply"
-- **skip** (il lead ha appena risposto, dobbiamo elaborare): waitHours = 2-4, waitType = "wait_reply"
-- **silence** (conversazione completata): waitHours = 168-336 (1-2 settimane), waitType = "silence"
-- **nurturing** (lungo termine): waitHours = 336-720 (2-4 settimane), waitType = "nurturing"
-- **schedule** (ha tempo specifico): waitHours = ore fino a scheduledAt, waitType = "scheduled"
-- **stop** (mai più): waitHours = 8760 (1 anno), waitType = "silence"
-
-⚠️ RICORDA: 
-- Se fuori finestra 24h, DEVI specificare suggestedTemplateId
-- Se conversazione completata, imposta isConversationComplete = true
-- Il reasoning DEVE iniziare con "Tempo dall'ultimo messaggio: X ore"
-- Rispetta i limiti del tuo profilo agente
-- SEMPRE specificare waitHours quando decision != "send_now"`;
+⚠️ REGOLE OBBLIGATORIE:
+1. waitHours è SEMPRE obbligatorio se decision != "send_now"
+2. Se finestra24h CHIUSA, DEVI specificare suggestedTemplateId
+3. Il reasoning DEVE indicare quale REGOLA hai applicato
+4. Applica SEMPRE la PRIMA regola che corrisponde`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
