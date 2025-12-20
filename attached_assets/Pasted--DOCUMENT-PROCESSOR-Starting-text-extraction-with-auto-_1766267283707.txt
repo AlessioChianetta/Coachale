@@ -1,0 +1,36 @@
+📚 [DOCUMENT PROCESSOR] Starting text extraction with auto-detection
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 File: ed7fc23e-0f5e-4969-b42c-7032dc953bd2.pdf
+📋 MIME Type (from browser): application/pdf
+📊 File size: 115.15 KB
+📄 [PDF] Extracting text from: uploads/ed7fc23e-0f5e-4969-b42c-7032dc953bd2.pdf
+✅ [PDF] Extracted 11544 characters from undefined pages
+✅ [DOCUMENT PROCESSOR] Extraction successful
+📊 Total characters extracted: 11544
+📊 Estimated tokens: ~2886
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [KNOWLEDGE ITEMS] Created item: "Obiezioni (1)" (type: pdf)
+9:47:54 PM [express] POST /api/whatsapp/agent-config/760bb513-098f-4722-b02a-a700160c2fc3/knowledge …
+
+════════════════════════════════════════════════════════════
+📱 [FileSync] Syncing WhatsApp Agent Knowledge for agent "Marco setter" (760bb513)
+════════════════════════════════════════════════════════════
+
+🔧 [FileSync] Creating new FileSearchStore for WhatsApp agent "Marco setter"
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+⚠️ [FileSearch] SuperAdmin key does not support File Search API, falling back to env key
+❌ [FileSearch] No Gemini API key available for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+🔑 [FileSearch] Using SuperAdmin Gemini key for operation
+🔍 [FileSearch] Creating store for whatsapp_agent 760bb513-098f-4722-b02a-a700160c2fc3: "WhatsApp Agent: Marco setter"
+❌ [FileSearch] Failed to create store: TypeError: Cannot read properties of undefined (reading 'create')
+    at FileSearchService.createStore (/home/runner/workspace/server/ai/file-search-service.ts:254:51)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Function.syncWhatsappAgentKnowledge (/home/runner/workspace/server/services/file-search-sync-service.ts:2946:24)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:174:20)
+[FileSync] Failed to create FileSearchStore: Cannot read properties of undefined (reading 'create')
+9:47:56 PM [express] POST /api/file-search/sync-whatsapp/760bb513-098f-4722-b02a-a700160c2fc3 200 in…
+⏰ [FOLLOWUP-SCHEDULER] Processing cycle triggered
+📤 [FOLLOWUP-SCHEDULER] Processing scheduled messages...
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📬 [FOLLOWUP-SCHEDULER] Found 0 pending messages to send

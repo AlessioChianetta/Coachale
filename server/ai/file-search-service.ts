@@ -76,13 +76,14 @@ export class FileSearchService {
   private envClient: GoogleGenAI | null = null;
   private envApiKey: string | null = null;
 
-  constructor() {
-    this.envApiKey = process.env.GEMINI_API_KEY || null;
-    if (this.envApiKey) {
-      this.envClient = new GoogleGenAI({ apiKey: this.envApiKey });
-      const keyPreview = this.envApiKey.substring(0, 10) + '...' + this.envApiKey.substring(this.envApiKey.length - 4);
-      console.log(`🔑 [FileSearch] Environment fallback initialized: ${keyPreview}`);
-    } else {
+      constructor() {
+      this.envApiKey = process.env.GEMINI_API_KEY || null;
+      if (this.envApiKey) {
+        // MODIFICA QUI: Aggiungi apiVersion: 'v1beta'
+        this.envClient = new GoogleGenAI({ apiKey: this.envApiKey, apiVersion: 'v1beta' });
+        const keyPreview = this.envApiKey.substring(0, 10) + '...' + this.envApiKey.substring(this.envApiKey.length - 4);
+        console.log(`🔑 [FileSearch] Environment fallback initialized: ${keyPreview}`);
+      } else {
       console.log(`ℹ️ [FileSearch] No GEMINI_API_KEY in env - will use 3-tier key system`);
     }
   }
@@ -119,7 +120,8 @@ export class FileSearchService {
         if (superAdminKeys && superAdminKeys.keys.length > 0) {
           const index = Math.floor(Math.random() * superAdminKeys.keys.length);
           const apiKey = superAdminKeys.keys[index];
-          const testClient = new GoogleGenAI({ apiKey });
+          // MODIFICA QUI: Aggiungi apiVersion: 'v1beta'
+          const testClient = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
           
           if (testClient.fileSearchStores) {
             console.log(`✅ [FileSearch] Using SuperAdmin Gemini key for user ${userId} (${index + 1}/${superAdminKeys.keys.length})`);
@@ -136,7 +138,8 @@ export class FileSearchService {
         const currentIndex = user.geminiApiKeyIndex || 0;
         const validIndex = currentIndex % apiKeys.length;
         const apiKey = apiKeys[validIndex];
-        const testClient = new GoogleGenAI({ apiKey });
+        // MODIFICA QUI: Aggiungi apiVersion: 'v1beta'
+        const testClient = new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
         
         if (testClient.fileSearchStores) {
           console.log(`✅ [FileSearch] Using user's own Gemini key for user ${userId}`);
@@ -220,7 +223,8 @@ export class FileSearchService {
     if (superAdminKeys && superAdminKeys.keys.length > 0) {
       const apiKey = superAdminKeys.keys[0];
       console.log(`🔑 [FileSearch] Using SuperAdmin Gemini key for operation`);
-      return new GoogleGenAI({ apiKey });
+      // MODIFICA QUI: Aggiungi apiVersion: 'v1beta'
+      return new GoogleGenAI({ apiKey, apiVersion: 'v1beta' });
     }
     
     // Finally try environment variable
