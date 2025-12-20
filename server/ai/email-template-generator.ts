@@ -10,7 +10,8 @@ import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { enhanceEmailTypography } from "../services/email-html-wrapper";
-import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL, type GeminiClient } from "./provider-factory";
+import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL, getGoogleAIStudioClientForFileSearch, type GeminiClient } from "./provider-factory";
+import { type AiProviderMetadata } from "./retry-manager";
 import { fileSearchService } from "./file-search-service";
 
 export interface EmailGeneratorInput {
@@ -642,23 +643,46 @@ export async function generateMotivationalEmail(
       }
     }
 
-    // Get AI provider using 3-tier priority system
-    const { client: aiClient, metadata: providerMetadata, cleanup } = await getAIProvider(input.clientId, input.consultantId);
-    console.log(`✅ AI provider selected successfully: ${providerMetadata.name}`);
-
-    // 🔍 FILE SEARCH: Get store names for client's documents (for personalized emails)
+    // 🔍 FILE SEARCH: Check for stores BEFORE selecting provider
+    // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
     const fileSearchStoreNames = await fileSearchService.getStoreNamesForClient(
       input.clientId,
       input.consultantId
     );
-    const hasFileSearch = fileSearchStoreNames.length > 0;
-    const fileSearchTool = hasFileSearch 
-      ? fileSearchService.buildFileSearchTool(fileSearchStoreNames) 
-      : null;
+    const hasFileSearchStores = fileSearchStoreNames.length > 0;
+
+    // Get AI provider - Use Google AI Studio if File Search stores exist, otherwise 3-tier system
+    let aiClient: GeminiClient;
+    let providerMetadata: AiProviderMetadata;
+    let cleanup: (() => void) | undefined;
+    let fileSearchTool: any = null; // Only set if we successfully switch to Google AI Studio
     
-    if (hasFileSearch) {
-      console.log(`🔍 [FILE SEARCH] Enabled with ${fileSearchStoreNames.length} stores for motivational email`);
+    if (hasFileSearchStores) {
+      // 🔍 FILE SEARCH MODE: Force Google AI Studio (Vertex AI doesn't support File Search)
+      console.log(`🔍 [FILE SEARCH MODE] Switching to Google AI Studio (required for File Search)`);
+      const fileSearchProvider = await getGoogleAIStudioClientForFileSearch(input.consultantId);
+      if (fileSearchProvider) {
+        aiClient = fileSearchProvider.client;
+        providerMetadata = fileSearchProvider.metadata;
+        // Build File Search tool ONLY after confirming Google AI Studio is active
+        fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
+        console.log(`✅ AI provider selected: ${providerMetadata.name} (File Search enabled with ${fileSearchStoreNames.length} stores)`);
+      } else {
+        // Fallback to normal provider if Google AI Studio not available - NO File Search tool
+        console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider (File Search disabled)`);
+        const result = await getAIProvider(input.clientId, input.consultantId);
+        aiClient = result.client;
+        providerMetadata = result.metadata;
+        cleanup = result.cleanup;
+        console.log(`✅ AI provider selected (fallback): ${providerMetadata.name}`);
+      }
     } else {
+      // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
+      const result = await getAIProvider(input.clientId, input.consultantId);
+      aiClient = result.client;
+      providerMetadata = result.metadata;
+      cleanup = result.cleanup;
+      console.log(`✅ AI provider selected: ${providerMetadata.name}`);
       console.log(`📚 [FILE SEARCH] No stores available - using context injection only`);
     }
 
@@ -1436,23 +1460,46 @@ export async function generateConsultationSummaryEmail(
   try {
     console.log(`📋 [CONSULTATION SUMMARY] Generating summary email for consultation ${input.consultationId}`);
 
-    // Get AI provider using 3-tier priority system
-    const { client: aiClient, metadata: providerMetadata, cleanup } = await getAIProvider(input.clientId, input.consultantId);
-    console.log(`✅ AI provider selected successfully: ${providerMetadata.name}`);
-
-    // 🔍 FILE SEARCH: Get store names for client's documents
+    // 🔍 FILE SEARCH: Check for stores BEFORE selecting provider
+    // File Search ONLY works with Google AI Studio (@google/genai), NOT Vertex AI
     const fileSearchStoreNames = await fileSearchService.getStoreNamesForClient(
       input.clientId,
       input.consultantId
     );
-    const hasFileSearch = fileSearchStoreNames.length > 0;
-    const fileSearchTool = hasFileSearch 
-      ? fileSearchService.buildFileSearchTool(fileSearchStoreNames) 
-      : null;
+    const hasFileSearchStores = fileSearchStoreNames.length > 0;
+
+    // Get AI provider - Use Google AI Studio if File Search stores exist, otherwise 3-tier system
+    let aiClient: GeminiClient;
+    let providerMetadata: AiProviderMetadata;
+    let cleanup: (() => void) | undefined;
+    let fileSearchTool: any = null; // Only set if we successfully switch to Google AI Studio
     
-    if (hasFileSearch) {
-      console.log(`🔍 [FILE SEARCH] Enabled with ${fileSearchStoreNames.length} stores for consultation summary`);
+    if (hasFileSearchStores) {
+      // 🔍 FILE SEARCH MODE: Force Google AI Studio (Vertex AI doesn't support File Search)
+      console.log(`🔍 [FILE SEARCH MODE] Switching to Google AI Studio (required for File Search)`);
+      const fileSearchProvider = await getGoogleAIStudioClientForFileSearch(input.consultantId);
+      if (fileSearchProvider) {
+        aiClient = fileSearchProvider.client;
+        providerMetadata = fileSearchProvider.metadata;
+        // Build File Search tool ONLY after confirming Google AI Studio is active
+        fileSearchTool = fileSearchService.buildFileSearchTool(fileSearchStoreNames);
+        console.log(`✅ AI provider selected: ${providerMetadata.name} (File Search enabled with ${fileSearchStoreNames.length} stores)`);
+      } else {
+        // Fallback to normal provider if Google AI Studio not available - NO File Search tool
+        console.log(`⚠️ File Search stores found but Google AI Studio not available, falling back to normal provider (File Search disabled)`);
+        const result = await getAIProvider(input.clientId, input.consultantId);
+        aiClient = result.client;
+        providerMetadata = result.metadata;
+        cleanup = result.cleanup;
+        console.log(`✅ AI provider selected (fallback): ${providerMetadata.name}`);
+      }
     } else {
+      // Normal 3-tier priority system (Vertex AI client -> Vertex AI admin -> Google AI Studio)
+      const result = await getAIProvider(input.clientId, input.consultantId);
+      aiClient = result.client;
+      providerMetadata = result.metadata;
+      cleanup = result.cleanup;
+      console.log(`✅ AI provider selected: ${providerMetadata.name}`);
       console.log(`📚 [FILE SEARCH] No stores available - using context injection only`);
     }
 
