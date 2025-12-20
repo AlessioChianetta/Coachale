@@ -76,14 +76,24 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - 3-tier status system (VALIDATED, VAGUE, MISSING) with sticky validation logic and manual validation via UI. AI skips already-validated items.
 ## Gemini Model Configuration
 - **Dynamic Model Selection**: Model is selected based on provider type:
-  - **Google AI Studio**: Uses `gemini-3-flash-preview` with `thinking_level: "low"` (experimental)
+  - **Google AI Studio**: Uses `gemini-3-flash-preview` with `thinkingConfig: { thinkingLevel: "low" }` inside `config` object
   - **Vertex AI**: Uses `gemini-2.5-flash` (stable, as Gemini 3 may not be enabled in all Vertex AI projects)
-- **Configuration Flag**: `USE_GEMINI_3_FOR_STUDIO` in `ai-service.ts` controls Gemini 3 for Google AI Studio
-- **Model Selection Function**: `getTextChatModel(providerName)` returns appropriate model based on provider
-- **Live API Model**: `gemini-live-2.5-flash-native-audio` (GA - December 12, 2025)
+- **Model Selection Functions** (in `server/ai/provider-factory.ts`):
+  - `getModelWithThinking(providerName)`: **RECOMMENDED** - Returns `{ model, useThinking, thinkingLevel }` for full Gemini 3 support
+  - `getTextChatModel(providerName)`: Returns model name and useThinking flag
+  - `getModelForProviderName(providerName)`: Legacy, returns model name only
+- **ThinkingConfig Pattern**: 
+  - **Google AI Studio (@google/genai)**: `config: { thinkingConfig: { thinkingLevel } }` (inside config)
+  - **Vertex AI adapter**: `generationConfig: { thinkingConfig: { thinkingLevel } }` (inside generationConfig)
+- **Live API Model**: `gemini-live-2.5-flash-native-audio` (GA - December 12, 2025) - Gemini 3 NOT supported
 - **Platform**: Vertex AI or Google AI Studio (determined by 3-tier priority system)
 - **Features**: Native audio (30 HD voices, 24 languages), Affective Dialog, improved barge-in, robust function calling, session resumption, proactive audio (preview).
 - **Post-Resume Silence**: AI audio output is suppressed after WebSocket reconnection until the user speaks first to prevent erroneous responses.
+- **Exclusions** (intentionally use legacy models for speed/specific use):
+  - `server/ai/sales-manager-agent.ts`: Uses `gemini-2.5-flash-lite`
+  - `server/ai/step-advancement-agent.ts`: Uses `gemini-2.5-flash-lite`
+  - `server/ai/gemini-training-analyzer.ts`: Uses `gemini-2.5-pro`
+  - `server/ai/gemini-live-ws-service.ts`: Live API (Gemini 3 not supported)
 ## Video Copilot Turn-Taking System
 - Prevents API bombardment during video meetings via intelligent turn-taking using a state machine and `SpeakerTurnBuffer`. Triggers transcription on silence detection and finalizes turns on speaker change. Reduces API calls through client-side VAD.
 ## WebRTC/WebSocket Resilience System
