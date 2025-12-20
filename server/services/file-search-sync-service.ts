@@ -3183,11 +3183,26 @@ export class FileSearchSyncService {
     agentsProcessed: number;
     errors: string[];
   }> {
+    // Only sync active agents with complete configuration
     const agentConfigs = await db.query.consultantWhatsappConfig.findMany({
-      where: eq(consultantWhatsappConfig.consultantId, consultantId),
+      where: and(
+        eq(consultantWhatsappConfig.consultantId, consultantId),
+        eq(consultantWhatsappConfig.isActive, true)
+      ),
     });
 
     if (agentConfigs.length === 0) {
+      console.log(`📱 [FileSync] No active WhatsApp agents found for consultant ${consultantId.substring(0, 8)}`);
+      return { total: 0, synced: 0, failed: 0, agentsProcessed: 0, errors: [] };
+    }
+
+    // Filter agents that have complete configuration (accountSid and authToken)
+    const validAgentConfigs = agentConfigs.filter(config => 
+      config.accountSid && config.authToken
+    );
+
+    if (validAgentConfigs.length === 0) {
+      console.log(`📱 [FileSync] No WhatsApp agents with complete config for consultant ${consultantId.substring(0, 8)}`);
       return { total: 0, synced: 0, failed: 0, agentsProcessed: 0, errors: [] };
     }
 
@@ -3196,9 +3211,10 @@ export class FileSearchSyncService {
     let totalItems = 0;
     const allErrors: string[] = [];
 
-    console.log(`📱 [FileSync] Syncing ${agentConfigs.length} WhatsApp agents for consultant ${consultantId.substring(0, 8)}`);
+    console.log(`📱 [FileSync] Syncing ${validAgentConfigs.length} active WhatsApp agents for consultant ${consultantId.substring(0, 8)}`);
 
-    for (const agentConfig of agentConfigs) {
+    for (const agentConfig of validAgentConfigs) {
+      console.log(`   📱 Processing agent: ${agentConfig.agentName || 'Unnamed'} (${agentConfig.id.substring(0, 8)}...)`);
       const result = await this.syncWhatsappAgentKnowledge(agentConfig.id);
       totalItems += result.total;
       totalSynced += result.synced;
@@ -3210,7 +3226,7 @@ export class FileSearchSyncService {
       total: totalItems,
       synced: totalSynced,
       failed: totalFailed,
-      agentsProcessed: agentConfigs.length,
+      agentsProcessed: validAgentConfigs.length,
       errors: allErrors,
     };
   }
