@@ -1097,11 +1097,64 @@ export async function getAIProvider(
     };
   }
 
-  // TIER 0: Try SuperAdmin Vertex AI
-  // This is the highest priority - if consultant has opted in and has access, use SuperAdmin's Vertex
+  // TIER 0: Try SuperAdmin Gemini Keys (Google AI Studio with Gemini 3)
+  // This is the HIGHEST priority - enables Gemini 3 Flash Preview with thinking capabilities
   if (consultantId) {
     try {
-      console.log(`🔍 TIER 0: Checking SuperAdmin Vertex AI eligibility...`);
+      console.log(`🔍 TIER 0: Checking SuperAdmin Gemini Keys (Google AI Studio)...`);
+
+      // Determine the consultant to check
+      let consultantToCheck = consultantId;
+      if (clientId !== consultantId) {
+        console.log(`📋 User ${clientId} is a client, checking their consultant ${consultantId}'s settings`);
+      }
+
+      // Check if consultant can use SuperAdmin Gemini (default true)
+      const [consultantSettings] = await db
+        .select({ useSuperadminGemini: users.useSuperadminGemini })
+        .from(users)
+        .where(eq(users.id, consultantToCheck))
+        .limit(1);
+
+      if (consultantSettings?.useSuperadminGemini !== false) {
+        const superAdminKeys = await getSuperAdminGeminiKeys();
+        if (superAdminKeys && superAdminKeys.enabled && superAdminKeys.keys.length > 0) {
+          // Select a random key for load balancing
+          const index = Math.floor(Math.random() * superAdminKeys.keys.length);
+          const apiKey = superAdminKeys.keys[index];
+          
+          console.log(`✅ TIER 0: Using SuperAdmin Google AI Studio (Gemini 3)`);
+          console.log(`   🔑 Key: ${index + 1}/${superAdminKeys.keys.length}`);
+          
+          const ai = new GoogleGenAI({ apiKey });
+          const client = new GeminiClientAdapter(ai);
+          
+          return {
+            client,
+            metadata: {
+              name: "Google AI Studio (SuperAdmin Gemini 3)",
+            },
+            source: "google" as const,
+          };
+        } else {
+          console.log(`⚠️ TIER 0: No SuperAdmin Gemini Keys available, falling back to TIER 0.5`);
+        }
+      } else {
+        console.log(`⚠️ TIER 0: Consultant ${consultantToCheck} opted out of SuperAdmin Gemini, falling back to TIER 0.5`);
+      }
+    } catch (error: any) {
+      console.error(`❌ TIER 0 Error:`, error.message);
+      // Continue to TIER 0.5
+    }
+  } else {
+    console.log(`⚠️ TIER 0: Skipped (no consultantId provided)`);
+  }
+
+  // TIER 0.5: Try SuperAdmin Vertex AI
+  // Fallback if SuperAdmin Gemini Keys not available
+  if (consultantId) {
+    try {
+      console.log(`🔍 TIER 0.5: Checking SuperAdmin Vertex AI eligibility...`);
 
       // Determine the consultant to check for SuperAdmin Vertex access
       // If clientId !== consultantId, user is a client - need to get their consultant's settings
@@ -1120,7 +1173,7 @@ export async function getAIProvider(
       if (canUse) {
         const result = await createSuperadminVertexClient();
         if (result) {
-          console.log(`✅ TIER 0: Successfully created SuperAdmin Vertex AI client`);
+          console.log(`✅ TIER 0.5: Successfully created SuperAdmin Vertex AI client`);
 
           return {
             client: result.client,
@@ -1129,17 +1182,17 @@ export async function getAIProvider(
             source: "superadmin",
           };
         } else {
-          console.log(`⚠️ TIER 0: SuperAdmin Vertex AI config not available, falling back to TIER 1`);
+          console.log(`⚠️ TIER 0.5: SuperAdmin Vertex AI config not available, falling back to TIER 1`);
         }
       } else {
-        console.log(`⚠️ TIER 0: Consultant ${consultantToCheck} cannot use SuperAdmin Vertex, falling back to TIER 1`);
+        console.log(`⚠️ TIER 0.5: Consultant ${consultantToCheck} cannot use SuperAdmin Vertex, falling back to TIER 1`);
       }
     } catch (error: any) {
-      console.error(`❌ TIER 0 Error:`, error.message);
+      console.error(`❌ TIER 0.5 Error:`, error.message);
       // Continue to TIER 1
     }
   } else {
-    console.log(`⚠️ TIER 0: Skipped (no consultantId provided)`);
+    console.log(`⚠️ TIER 0.5: Skipped (no consultantId provided)`);
   }
 
   // TIER 1: Try client-managed Vertex AI (userId = clientId, managedBy = 'self')
