@@ -5634,6 +5634,7 @@ export const fileSearchSettings = pgTable("file_search_settings", {
   autoSyncClientKnowledge: boolean("auto_sync_client_knowledge").default(false).notNull(),
   autoSyncExerciseResponses: boolean("auto_sync_exercise_responses").default(false).notNull(),
   autoSyncFinancial: boolean("auto_sync_financial").default(false).notNull(),
+  autoSyncWhatsappAgents: boolean("auto_sync_whatsapp_agents").default(false).notNull(),
   scheduledSyncEnabled: boolean("scheduled_sync_enabled").default(false).notNull(),
   scheduledSyncHour: integer("scheduled_sync_hour").default(3).notNull(),
   lastScheduledSync: timestamp("last_scheduled_sync"),

@@ -2262,7 +2262,12 @@ export class FileSearchSyncService {
       consultationNotes: { total: number; indexed: number; missing: Array<{ id: string; date: Date; summary: string }> };
       knowledgeDocs: { total: number; indexed: number; missing: Array<{ id: string; title: string }> };
     }>;
-    summary: { totalMissing: number; consultantMissing: number; clientsMissing: number; healthScore: number };
+    whatsappAgents: Array<{
+      agentId: string;
+      agentName: string;
+      knowledgeItems: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
+    }>;
+    summary: { totalMissing: number; consultantMissing: number; clientsMissing: number; whatsappAgentsMissing: number; healthScore: number };
     recommendations: string[];
   }> {
     console.log(`\n${'═'.repeat(60)}`);
@@ -2272,17 +2277,27 @@ export class FileSearchSyncService {
     // FAST APPROACH: Count from DB and compare with file_search_documents table
     // Instead of calling API for each document, just use SQL counts
     
+    console.log(`📊 [Audit] Step 1: Fetching library documents...`);
     // Count items in source tables
-    const libraryDocs = await db.select({ id: libraryDocuments.id, title: libraryDocuments.title, type: libraryDocuments.type })
+    const libraryDocs = await db.select({ id: libraryDocuments.id, title: libraryDocuments.title, contentType: libraryDocuments.contentType })
       .from(libraryDocuments).where(eq(libraryDocuments.createdBy, consultantId));
+    console.log(`📊 [Audit] Found ${libraryDocs.length} library docs`);
+    
+    console.log(`📊 [Audit] Step 2: Fetching knowledge documents...`);
     const knowledgeDocs = await db.select({ id: consultantKnowledgeDocuments.id, title: consultantKnowledgeDocuments.title })
       .from(consultantKnowledgeDocuments).where(eq(consultantKnowledgeDocuments.consultantId, consultantId));
+    console.log(`📊 [Audit] Found ${knowledgeDocs.length} knowledge docs`);
+    
+    console.log(`📊 [Audit] Step 3: Fetching exercises...`);
     const allExercises = await db.select({ id: exercises.id, title: exercises.title })
       .from(exercises).where(eq(exercises.createdBy, consultantId));
+    console.log(`📊 [Audit] Found ${allExercises.length} exercises`);
     
+    console.log(`📊 [Audit] Step 4: Fetching university years...`);
     // University lessons via join - get all years for consultant first, then get lessons
     const consultantYears = await db.select({ id: universityYears.id })
       .from(universityYears).where(eq(universityYears.createdBy, consultantId));
+    console.log(`📊 [Audit] Found ${consultantYears.length} university years`);
     const yearIds = consultantYears.map(y => y.id);
     
     let universityLessonsList: { id: string; title: string }[] = [];
@@ -2304,17 +2319,26 @@ export class FileSearchSyncService {
     }
 
     // Get indexed documents from file_search_documents for this consultant
-    const indexedDocsRaw = await db.select({
-      sourceType: fileSearchDocuments.sourceType,
-      sourceId: fileSearchDocuments.sourceId,
-    })
-      .from(fileSearchDocuments)
-      .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
-      .where(and(
-        eq(fileSearchStores.ownerId, consultantId),
-        eq(fileSearchDocuments.status, 'indexed')
-      ));
-    const indexedDocs = indexedDocsRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
+    // First get the consultant's store(s)
+    const consultantStores = await db.select({ id: fileSearchStores.id })
+      .from(fileSearchStores)
+      .where(eq(fileSearchStores.ownerId, consultantId));
+    
+    const storeIds = consultantStores.map(s => s.id);
+    
+    let indexedDocs: { sourceType: string | null; sourceId: string | null }[] = [];
+    if (storeIds.length > 0) {
+      const indexedDocsRaw = await db.select({
+        sourceType: fileSearchDocuments.sourceType,
+        sourceId: fileSearchDocuments.sourceId,
+      })
+        .from(fileSearchDocuments)
+        .where(and(
+          inArray(fileSearchDocuments.storeId, storeIds),
+          eq(fileSearchDocuments.status, 'indexed')
+        ));
+      indexedDocs = indexedDocsRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
+    }
 
     const indexedLibraryIds = new Set(indexedDocs.filter(d => d.sourceType === 'library').map(d => d.sourceId));
     const indexedKnowledgeIds = new Set(indexedDocs.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
@@ -2322,7 +2346,7 @@ export class FileSearchSyncService {
     const indexedUniversityIds = new Set(indexedDocs.filter(d => d.sourceType === 'university_lesson').map(d => d.sourceId));
 
     // Calculate missing
-    const libraryMissing = libraryDocs.filter(d => !indexedLibraryIds.has(d.id)).map(d => ({ id: d.id, title: d.title, type: d.type || 'document' }));
+    const libraryMissing = libraryDocs.filter(d => !indexedLibraryIds.has(d.id)).map(d => ({ id: d.id, title: d.title, type: d.contentType || 'document' }));
     const knowledgeMissing = knowledgeDocs.filter(d => !indexedKnowledgeIds.has(d.id)).map(d => ({ id: d.id, title: d.title }));
     const exercisesMissing = allExercises.filter(d => !indexedExerciseIds.has(d.id)).map(d => ({ id: d.id, title: d.title }));
     const universityMissing = universityLessonsList.filter(d => !indexedUniversityIds.has(d.id)).map(d => ({ id: d.id, title: d.title, lessonTitle: d.title }));
@@ -2361,13 +2385,12 @@ export class FileSearchSyncService {
       const clientKnowledge = await db.select({ id: clientKnowledgeDocuments.id, title: clientKnowledgeDocuments.title })
         .from(clientKnowledgeDocuments).where(eq(clientKnowledgeDocuments.clientId, client.id));
 
-      // Get indexed for this client
+      // Get indexed for this client - use simple query without innerJoin
       const clientIndexedRaw = await db.select({
         sourceType: fileSearchDocuments.sourceType,
         sourceId: fileSearchDocuments.sourceId,
       })
         .from(fileSearchDocuments)
-        .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
         .where(and(eq(fileSearchDocuments.clientId, client.id), eq(fileSearchDocuments.status, 'indexed')));
       const clientIndexed = clientIndexedRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
 
@@ -2394,12 +2417,77 @@ export class FileSearchSyncService {
       }
     }
 
+    // Audit WhatsApp Agents
+    const whatsappAgentsAudit: Array<{
+      agentId: string;
+      agentName: string;
+      knowledgeItems: { total: number; indexed: number; missing: Array<{ id: string; title: string; type: string }> };
+    }> = [];
+    let totalWhatsappAgentsMissing = 0;
+
+    const whatsappAgents = await db.select({ id: consultantWhatsappConfig.id, agentName: consultantWhatsappConfig.agentName })
+      .from(consultantWhatsappConfig).where(eq(consultantWhatsappConfig.consultantId, consultantId));
+
+    for (const agent of whatsappAgents) {
+      const agentKnowledge = await db.select({ 
+        id: whatsappAgentKnowledgeItems.id, 
+        title: whatsappAgentKnowledgeItems.title,
+        type: whatsappAgentKnowledgeItems.type 
+      })
+        .from(whatsappAgentKnowledgeItems)
+        .where(eq(whatsappAgentKnowledgeItems.agentConfigId, agent.id));
+
+      // Get agent's file search store
+      const agentStores = await db.select({ id: fileSearchStores.id })
+        .from(fileSearchStores)
+        .where(and(
+          eq(fileSearchStores.ownerId, agent.id),
+          eq(fileSearchStores.ownerType, 'whatsapp_agent')
+        ));
+      const agentStoreIds = agentStores.map(s => s.id);
+
+      let agentIndexedDocs: { sourceType: string | null; sourceId: string | null }[] = [];
+      if (agentStoreIds.length > 0) {
+        const agentIndexedRaw = await db.select({
+          sourceType: fileSearchDocuments.sourceType,
+          sourceId: fileSearchDocuments.sourceId,
+        })
+          .from(fileSearchDocuments)
+          .where(and(
+            inArray(fileSearchDocuments.storeId, agentStoreIds),
+            eq(fileSearchDocuments.status, 'indexed')
+          ));
+        agentIndexedDocs = agentIndexedRaw.map(r => ({ sourceType: r.sourceType, sourceId: r.sourceId }));
+      }
+
+      const indexedKnowledgeIds = new Set(agentIndexedDocs.filter(d => d.sourceType === 'knowledge_base').map(d => d.sourceId));
+      const knowledgeMissing = agentKnowledge.filter(k => !indexedKnowledgeIds.has(k.id)).map(k => ({ 
+        id: k.id, 
+        title: k.title, 
+        type: k.type || 'document' 
+      }));
+
+      if (agentKnowledge.length > 0) {
+        whatsappAgentsAudit.push({
+          agentId: agent.id,
+          agentName: agent.agentName || 'Agente WhatsApp',
+          knowledgeItems: {
+            total: agentKnowledge.length,
+            indexed: agentKnowledge.length - knowledgeMissing.length,
+            missing: knowledgeMissing
+          }
+        });
+        totalWhatsappAgentsMissing += knowledgeMissing.length;
+      }
+    }
+
     const consultantMissing = libraryResult.missing.length + knowledgeBaseResult.missing.length + 
                               exercisesResult.missing.length + universityResult.missing.length;
-    const totalMissing = consultantMissing + totalClientsMissing;
+    const totalMissing = consultantMissing + totalClientsMissing + totalWhatsappAgentsMissing;
 
     const totalDocs = libraryResult.total + knowledgeBaseResult.total + exercisesResult.total + universityResult.total +
-                      clientsAudit.reduce((sum, c) => sum + c.exerciseResponses.total + c.consultationNotes.total + c.knowledgeDocs.total, 0);
+                      clientsAudit.reduce((sum, c) => sum + c.exerciseResponses.total + c.consultationNotes.total + c.knowledgeDocs.total, 0) +
+                      whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.total, 0);
     const totalIndexed = (libraryResult.total - libraryResult.missing.length) + 
                          (knowledgeBaseResult.total - knowledgeBaseResult.missing.length) +
                          (exercisesResult.total - exercisesResult.missing.length) + 
@@ -2407,7 +2495,8 @@ export class FileSearchSyncService {
                          clientsAudit.reduce((sum, c) => 
                            sum + (c.exerciseResponses.total - c.exerciseResponses.missing.length) + 
                            (c.consultationNotes.total - c.consultationNotes.missing.length) + 
-                           (c.knowledgeDocs.total - c.knowledgeDocs.missing.length), 0);
+                           (c.knowledgeDocs.total - c.knowledgeDocs.missing.length), 0) +
+                         whatsappAgentsAudit.reduce((sum, a) => sum + a.knowledgeItems.indexed, 0);
 
     const healthScore = totalDocs > 0 ? Math.round((totalIndexed / totalDocs) * 100) : 100;
 
@@ -2427,6 +2516,9 @@ export class FileSearchSyncService {
     if (totalClientsMissing > 0) {
       recommendations.push(`Sincronizza ${totalClientsMissing} documenti privati dei clienti mancanti`);
     }
+    if (totalWhatsappAgentsMissing > 0) {
+      recommendations.push(`Sincronizza ${totalWhatsappAgentsMissing} documenti knowledge degli agenti WhatsApp mancanti`);
+    }
 
     if (healthScore === 100) {
       recommendations.push('✅ Tutti i contenuti sono indicizzati correttamente');
@@ -2445,6 +2537,7 @@ export class FileSearchSyncService {
     console.log(`   🏋️ Exercises: ${exercisesResult.total - exercisesResult.missing.length}/${exercisesResult.total} indexed`);
     console.log(`   🎓 University: ${universityResult.total - universityResult.missing.length}/${universityResult.total} indexed`);
     console.log(`   👥 Clients: ${clientsAudit.length} with data, ${totalClientsMissing} missing`);
+    console.log(`   📱 WhatsApp Agents: ${whatsappAgentsAudit.length} agents, ${totalWhatsappAgentsMissing} missing`);
     console.log(`   🏥 Health Score: ${healthScore}%`);
     console.log(`${'═'.repeat(60)}\n`);
 
@@ -2456,10 +2549,12 @@ export class FileSearchSyncService {
         university: universityResult,
       },
       clients: clientsAudit,
+      whatsappAgents: whatsappAgentsAudit,
       summary: {
         totalMissing,
         consultantMissing,
         clientsMissing: totalClientsMissing,
+        whatsappAgentsMissing: totalWhatsappAgentsMissing,
         healthScore,
       },
       recommendations,
@@ -3005,7 +3100,7 @@ export class FileSearchSyncService {
           continue;
         }
 
-        // Upload to FileSearch store
+        // Upload to FileSearch store - use knowledge_base sourceType, differentiate via metadata
         const uploadResult = await fileSearchService.uploadDocumentFromContent({
           content: `# ${item.title}\n\n${content}`,
           displayName: item.title,
@@ -3016,6 +3111,7 @@ export class FileSearchSyncService {
           customMetadata: {
             docType: item.type,
             category: 'whatsapp_agent_knowledge',
+            agentConfigId: agentConfigId,
           },
         });
 
@@ -3054,6 +3150,111 @@ export class FileSearchSyncService {
         failed: 1,
         errors: [error.message],
       };
+    }
+  }
+
+  /**
+   * Sync a single WhatsApp knowledge item to FileSearchStore
+   * 
+   * @param itemId - The knowledge item ID
+   * @param agentConfigId - The WhatsApp agent configuration ID
+   * @returns Sync result
+   */
+  static async syncSingleWhatsappKnowledgeItem(itemId: string, agentConfigId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get the item
+      const item = await db.query.whatsappAgentKnowledgeItems.findFirst({
+        where: and(
+          eq(whatsappAgentKnowledgeItems.id, itemId),
+          eq(whatsappAgentKnowledgeItems.agentConfigId, agentConfigId),
+        ),
+      });
+
+      if (!item) {
+        return { success: false, error: 'Knowledge item not found' };
+      }
+
+      // Get the agent config
+      const agentConfig = await db.query.consultantWhatsappConfig.findFirst({
+        where: eq(consultantWhatsappConfig.id, agentConfigId),
+      });
+
+      if (!agentConfig) {
+        return { success: false, error: 'Agent config not found' };
+      }
+
+      const consultantId = agentConfig.consultantId;
+
+      // Check if already indexed
+      const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', item.id);
+      if (isAlreadyIndexed) {
+        return { success: true };
+      }
+
+      // Get or create FileSearchStore for this WhatsApp agent
+      let agentStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, agentConfigId),
+          eq(fileSearchStores.ownerType, 'whatsapp_agent'),
+        ),
+      });
+
+      if (!agentStore) {
+        const result = await fileSearchService.createStore({
+          displayName: `WhatsApp Agent: ${agentConfig.agentName}`,
+          ownerId: agentConfigId,
+          ownerType: 'whatsapp_agent',
+          description: `Knowledge base per l'agente WhatsApp "${agentConfig.agentName}"`,
+          userId: consultantId,
+        });
+
+        if (!result.success || !result.storeId) {
+          return { success: false, error: result.error || 'Failed to create store' };
+        }
+
+        agentStore = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, result.storeId),
+        });
+
+        if (!agentStore) {
+          return { success: false, error: 'Store created but not found' };
+        }
+      }
+
+      // Build content
+      let content = item.content;
+      if (!content && item.filePath) {
+        try {
+          const extractedText = await extractTextFromFile(item.filePath, item.type);
+          content = extractedText || '';
+        } catch (err: any) {
+          content = `[Documento: ${item.title}]\nTipo: ${item.type}\nFile: ${item.fileName || 'N/A'}`;
+        }
+      }
+
+      if (!content || content.trim().length === 0) {
+        return { success: false, error: 'Empty content' };
+      }
+
+      // Upload to FileSearch store - use knowledge_base sourceType, differentiate via metadata
+      const uploadResult = await fileSearchService.uploadDocumentFromContent({
+        content: `# ${item.title}\n\n${content}`,
+        displayName: item.title,
+        storeId: agentStore.id,
+        sourceType: 'knowledge_base',
+        sourceId: item.id,
+        userId: consultantId,
+        customMetadata: {
+          docType: item.type,
+          category: 'whatsapp_agent_knowledge',
+          agentConfigId: agentConfigId,
+        },
+      });
+
+      return { success: uploadResult.success, error: uploadResult.error };
+    } catch (error: any) {
+      console.error('[FileSync] Error syncing single WhatsApp knowledge item:', error);
+      return { success: false, error: error.message };
     }
   }
 

@@ -1,1 +1,0 @@
-12/12/2025 20:21:27 UNIT:[Unit1.pas] ERROR:Control '' has no parent window

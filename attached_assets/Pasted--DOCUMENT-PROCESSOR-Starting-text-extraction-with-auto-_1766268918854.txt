@@ -1,0 +1,32 @@
+📚 [DOCUMENT PROCESSOR] Starting text extraction with auto-detection
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📁 File: d2298967-0fd0-44f1-a400-46ba3c5e7519.pdf
+📋 MIME Type (from browser): application/pdf
+📊 File size: 115.15 KB
+📄 [PDF] Extracting text from: uploads/d2298967-0fd0-44f1-a400-46ba3c5e7519.pdf
+✅ [PDF] Extracted 11544 characters from undefined pages
+✅ [DOCUMENT PROCESSOR] Extraction successful
+📊 Total characters extracted: 11544
+📊 Estimated tokens: ~2886
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ [KNOWLEDGE ITEMS] Created item: "Obiezioni (1)" (type: pdf)
+10:15:21 PM [express] POST /api/whatsapp/agent-config/760bb513-098f-4722-b02a-a700160c2fc3/knowledge …
+
+════════════════════════════════════════════════════════════
+📱 [FileSync] Syncing WhatsApp Agent Knowledge for agent "Marco setter" (760bb513)
+════════════════════════════════════════════════════════════
+
+🔧 [FileSync] Creating new FileSearchStore for WhatsApp agent "Marco setter"
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+⚠️ [FileSearch] SuperAdmin key does not support File Search API, falling back to env key
+❌ [FileSearch] No Gemini API key available for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b
+⚠️ [FileSearch] SuperAdmin key 1 does not support File Search API, trying next...
+⚠️ [FileSearch] No SuperAdmin key supports File Search API, falling back to env key
+[FileSync] WhatsApp agent knowledge sync error: Error: File Search Service: No Gemini API key configured with File Search support. Set GEMINI_API_KEY environment variable (Google AI Studio key) or configure SuperAdmin/User keys with File Search access.
+    at FileSearchService.ensureClientAsync (/home/runner/workspace/server/ai/file-search-service.ts:252:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async FileSearchService.createStore (/home/runner/workspace/server/ai/file-search-service.ts:266:20)
+    at async Function.syncWhatsappAgentKnowledge (/home/runner/workspace/server/services/file-search-sync-service.ts:3031:24)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:174:20)
+10:15:23 PM [express] POST /api/file-search/sync-whatsapp/760bb513-098f-4722-b02a-a700160c2fc3 200 in…

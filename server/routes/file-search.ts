@@ -406,6 +406,9 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       .from(fileSearchStores)
       .where(inArray(fileSearchStores.ownerId, allOwnerIds));
     
+    console.log(`📊 [FileSearch Analytics] Found ${stores.length} stores for consultant ${consultantId}`);
+    console.log(`📊 [FileSearch Analytics] Owner IDs searched: [${allOwnerIds.slice(0, 5).join(', ')}...]`);
+    
     // Get store IDs for counting documents
     const storeIds = stores.map(s => s.id);
     const totalDocuments = storeIds.length > 0 
@@ -436,13 +439,17 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
       .innerJoin(fileSearchStores, eq(fileSearchDocuments.storeId, fileSearchStores.id))
       .where(inArray(fileSearchStores.ownerId, allOwnerIds))
       .orderBy(desc(fileSearchDocuments.uploadedAt))
-      .limit(1000);
+      .limit(5000);
+    
+    console.log(`📊 [FileSearch Analytics] Total documents fetched: ${documents.length}`);
     
     // Build hierarchical data structure
     // Consultant docs = docs in consultant's store (storeOwnerId = consultantId)
     const consultantDocs = documents.filter(d => d.storeOwnerId === consultantId);
     // Client docs = docs in client stores (storeOwnerId = clientId)
     const clientDocs = documents.filter(d => d.storeOwnerId !== consultantId);
+    
+    console.log(`📊 [FileSearch Analytics] Consultant docs: ${consultantDocs.length}, Client docs: ${clientDocs.length}`);
     
     // Build client info map
     const clientInfoMap: Record<string, { name: string; email: string }> = {};
@@ -459,14 +466,14 @@ router.get('/analytics', authenticateToken, requireRole('consultant'), async (re
         library: consultantDocs.filter(d => d.sourceType === 'library'),
         knowledgeBase: consultantDocs.filter(d => d.sourceType === 'knowledge_base'),
         exercises: consultantDocs.filter(d => d.sourceType === 'exercise'),
-        university: consultantDocs.filter(d => d.sourceType === 'university'),
-        other: consultantDocs.filter(d => !['library', 'knowledge_base', 'exercise', 'university'].includes(d.sourceType)),
+        university: consultantDocs.filter(d => d.sourceType === 'university' || d.sourceType === 'university_lesson'),
+        other: consultantDocs.filter(d => !['library', 'knowledge_base', 'exercise', 'university', 'university_lesson'].includes(d.sourceType)),
       },
       totals: {
         library: consultantDocs.filter(d => d.sourceType === 'library').length,
         knowledgeBase: consultantDocs.filter(d => d.sourceType === 'knowledge_base').length,
         exercises: consultantDocs.filter(d => d.sourceType === 'exercise').length,
-        university: consultantDocs.filter(d => d.sourceType === 'university').length,
+        university: consultantDocs.filter(d => d.sourceType === 'university' || d.sourceType === 'university_lesson').length,
       },
     };
     
@@ -658,6 +665,16 @@ router.post('/sync-single', authenticateToken, requireRole('consultant'), async 
           return res.status(400).json({ error: 'clientId is required for client_knowledge' });
         }
         result = await fileSearchSyncService.syncClientKnowledgeDocument(id, clientId, consultantId);
+        break;
+      case 'whatsapp_agent':
+        result = await fileSearchSyncService.syncWhatsappAgentKnowledge(id);
+        break;
+      case 'whatsapp_knowledge':
+        const { agentId } = req.body;
+        if (!agentId) {
+          return res.status(400).json({ error: 'agentId is required for whatsapp_knowledge' });
+        }
+        result = await fileSearchSyncService.syncSingleWhatsappKnowledgeItem(id, agentId);
         break;
       default:
         return res.status(400).json({ error: `Unknown type: ${type}` });

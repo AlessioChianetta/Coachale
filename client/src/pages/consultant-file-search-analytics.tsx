@@ -625,6 +625,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
 
   const [openAuditCategories, setOpenAuditCategories] = useState<Record<string, boolean>>({});
   const [openAuditClients, setOpenAuditClients] = useState<Record<string, boolean>>({});
+  const [openAuditAgents, setOpenAuditAgents] = useState<Record<string, boolean>>({});
   
   const toggleAuditCategory = (key: string) => {
     setOpenAuditCategories(prev => ({ ...prev, [key]: !prev[key] }));
@@ -632,6 +633,10 @@ export default function ConsultantFileSearchAnalyticsPage() {
   
   const toggleAuditClient = (clientId: string) => {
     setOpenAuditClients(prev => ({ ...prev, [clientId]: !prev[clientId] }));
+  };
+
+  const toggleAuditAgent = (agentId: string) => {
+    setOpenAuditAgents(prev => ({ ...prev, [agentId]: !prev[agentId] }));
   };
 
   const isLoading = settingsLoading || analyticsLoading || auditLoading;
@@ -896,11 +901,11 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           </div>
                           <div>
                             <p className="font-medium text-purple-900">Library</p>
-                            <p className="text-sm text-purple-600">{auditData?.summary.library.indexed || 0} documenti indicizzati</p>
+                            <p className="text-sm text-purple-600">{auditData?.consultant?.library?.indexed || 0} documenti indicizzati</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-purple-700">~{((auditData?.summary.library.indexed || 0) * 8500).toLocaleString()}</p>
+                          <p className="font-bold text-purple-700">~{((auditData?.consultant?.library?.indexed || 0) * 8500).toLocaleString()}</p>
                           <p className="text-xs text-purple-500">token risparmiati</p>
                         </div>
                       </div>
@@ -912,11 +917,11 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           </div>
                           <div>
                             <p className="font-medium text-amber-900">Knowledge Base</p>
-                            <p className="text-sm text-amber-600">{auditData?.summary.knowledgeBase.indexed || 0} documenti indicizzati</p>
+                            <p className="text-sm text-amber-600">{auditData?.consultant?.knowledgeBase?.indexed || 0} documenti indicizzati</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-amber-700">~{((auditData?.summary.knowledgeBase.indexed || 0) * 6000).toLocaleString()}</p>
+                          <p className="font-bold text-amber-700">~{((auditData?.consultant?.knowledgeBase?.indexed || 0) * 6000).toLocaleString()}</p>
                           <p className="text-xs text-amber-500">token risparmiati</p>
                         </div>
                       </div>
@@ -928,18 +933,18 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           </div>
                           <div>
                             <p className="font-medium text-blue-900">Exercises</p>
-                            <p className="text-sm text-blue-600">{auditData?.summary.exercises.indexed || 0} esercizi indicizzati</p>
+                            <p className="text-sm text-blue-600">{auditData?.consultant?.exercises?.indexed || 0} esercizi indicizzati</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-blue-700">~{((auditData?.summary.exercises.indexed || 0) * 3500).toLocaleString()}</p>
+                          <p className="font-bold text-blue-700">~{((auditData?.consultant?.exercises?.indexed || 0) * 3500).toLocaleString()}</p>
                           <p className="text-xs text-blue-500">token risparmiati</p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card className={auditData?.healthScore && auditData.healthScore < 80 ? "border-amber-300" : "border-emerald-300"}>
+                  <Card className={auditData?.summary?.healthScore && auditData.summary.healthScore < 80 ? "border-amber-300" : "border-emerald-300"}>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
                         <Activity className="h-5 w-5 text-emerald-600" />
@@ -951,12 +956,12 @@ export default function ConsultantFileSearchAnalyticsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="text-center p-4">
-                        <p className={`text-5xl font-bold ${getHealthScoreColor(auditData?.healthScore || 0)}`}>
-                          {auditData?.healthScore || 0}%
+                        <p className={`text-5xl font-bold ${getHealthScoreColor(auditData?.summary?.healthScore || 0)}`}>
+                          {auditData?.summary?.healthScore || 0}%
                         </p>
                         <p className="text-sm text-gray-500 mt-1">Health Score</p>
                         <Progress 
-                          value={auditData?.healthScore || 0} 
+                          value={auditData?.summary?.healthScore || 0} 
                           className="mt-3 h-3"
                         />
                       </div>
@@ -964,20 +969,20 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Library</span>
-                          <span className={auditData?.summary.library.missing.length ? "text-amber-600" : "text-emerald-600"}>
-                            {auditData?.summary.library.indexed || 0}/{auditData?.summary.library.total || 0}
+                          <span className={auditData?.consultant?.library?.missing?.length ? "text-amber-600" : "text-emerald-600"}>
+                            {auditData?.consultant?.library?.indexed || 0}/{auditData?.consultant?.library?.total || 0}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Knowledge Base</span>
-                          <span className={auditData?.summary.knowledgeBase.missing.length ? "text-amber-600" : "text-emerald-600"}>
-                            {auditData?.summary.knowledgeBase.indexed || 0}/{auditData?.summary.knowledgeBase.total || 0}
+                          <span className={auditData?.consultant?.knowledgeBase?.missing?.length ? "text-amber-600" : "text-emerald-600"}>
+                            {auditData?.consultant?.knowledgeBase?.indexed || 0}/{auditData?.consultant?.knowledgeBase?.total || 0}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Exercises</span>
-                          <span className={auditData?.summary.exercises.missing.length ? "text-amber-600" : "text-emerald-600"}>
-                            {auditData?.summary.exercises.indexed || 0}/{auditData?.summary.exercises.total || 0}
+                          <span className={auditData?.consultant?.exercises?.missing?.length ? "text-amber-600" : "text-emerald-600"}>
+                            {auditData?.consultant?.exercises?.indexed || 0}/{auditData?.consultant?.exercises?.total || 0}
                           </span>
                         </div>
                       </div>
@@ -1013,7 +1018,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                         </Button>
                       )}
 
-                      {totalMissing === 0 && auditData?.healthScore === 100 && (
+                      {totalMissing === 0 && auditData?.summary?.healthScore === 100 && (
                         <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                           <div className="flex items-center gap-2">
                             <CheckCircle2 className="h-5 w-5 text-emerald-600" />
@@ -1931,6 +1936,18 @@ export default function ConsultantFileSearchAnalyticsPage() {
                             disabled={updateSettingsMutation.isPending}
                           />
                         </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <Label>Agenti WhatsApp</Label>
+                            <p className="text-sm text-gray-500">Sincronizza automaticamente la knowledge base degli agenti WhatsApp</p>
+                          </div>
+                          <Switch
+                            checked={settings?.autoSyncWhatsappAgents ?? false}
+                            onCheckedChange={(checked) => handleToggle('autoSyncWhatsappAgents', checked)}
+                            disabled={updateSettingsMutation.isPending}
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -2102,7 +2119,7 @@ export default function ConsultantFileSearchAnalyticsPage() {
                       />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
                         <p className="text-2xl font-bold text-amber-700">
                           {auditData?.summary?.totalMissing || 0}
@@ -2120,6 +2137,12 @@ export default function ConsultantFileSearchAnalyticsPage() {
                           {auditData?.summary?.clientsMissing || 0}
                         </p>
                         <p className="text-sm text-purple-600">Store Privati Clienti</p>
+                      </div>
+                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                        <p className="text-2xl font-bold text-green-700">
+                          {auditData?.summary?.whatsappAgentsMissing || 0}
+                        </p>
+                        <p className="text-sm text-green-600">Agenti WhatsApp</p>
                       </div>
                     </div>
 
@@ -2465,6 +2488,92 @@ export default function ConsultantFileSearchAnalyticsPage() {
                                   <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                                   Tutti i dati di questo cliente sono indicizzati
                                 </p>
+                              )}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        );
+                      })
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5 text-green-600" />
+                      Agenti WhatsApp - Elementi Mancanti
+                    </CardTitle>
+                    <CardDescription>
+                      Knowledge base degli agenti WhatsApp non ancora indicizzata
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {(!auditData?.whatsappAgents || auditData.whatsappAgents.length === 0) ? (
+                      <p className="text-sm text-gray-500 p-4 bg-gray-50 rounded-lg text-center">
+                        Nessun agente WhatsApp con knowledge base da sincronizzare
+                      </p>
+                    ) : (
+                      auditData.whatsappAgents.map(agent => {
+                        const agentMissing = agent.knowledgeItems?.missing?.length || 0;
+                        return (
+                          <Collapsible key={agent.agentId} open={openAuditAgents[agent.agentId]} onOpenChange={() => toggleAuditAgent(agent.agentId)}>
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full p-3 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors">
+                              {openAuditAgents[agent.agentId] ? <ChevronDown className="h-4 w-4 text-green-600" /> : <ChevronRight className="h-4 w-4 text-green-600" />}
+                              <MessageSquare className="h-4 w-4 text-green-600" />
+                              <span className="font-medium text-green-900">{agent.agentName}</span>
+                              <Badge className={`ml-auto ${agentMissing > 0 ? 'bg-amber-200 text-amber-800' : 'bg-emerald-200 text-emerald-800'}`}>
+                                {agentMissing} mancanti
+                              </Badge>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 ml-6 space-y-2">
+                              {agentMissing === 0 ? (
+                                <p className="text-sm text-gray-500 p-3 bg-emerald-50 rounded-lg flex items-center gap-2">
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                  Tutta la knowledge base di questo agente e indicizzata
+                                </p>
+                              ) : (
+                                <>
+                                  <div className="flex justify-end mb-2">
+                                    <Button 
+                                      size="sm" 
+                                      variant="default"
+                                      onClick={() => syncSingleMutation.mutate({ type: 'whatsapp_agent', id: agent.agentId })}
+                                      disabled={syncSingleMutation.isPending}
+                                      className="bg-green-600 hover:bg-green-700"
+                                    >
+                                      {syncSingleMutation.isPending ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      ) : (
+                                        <RefreshCw className="h-3 w-3 mr-1" />
+                                      )}
+                                      Sincronizza Tutto Agente
+                                    </Button>
+                                  </div>
+                                  {agent.knowledgeItems.missing.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                                      <div className="flex items-center gap-2">
+                                        <FileText className="h-3 w-3 text-gray-400" />
+                                        <span className="text-sm">{item.title}</span>
+                                        <Badge variant="outline" className="text-xs">{item.type}</Badge>
+                                      </div>
+                                      <Button 
+                                        size="sm" 
+                                        variant="outline"
+                                        onClick={() => syncSingleMutation.mutate({ type: 'whatsapp_knowledge', id: item.id, agentId: agent.agentId })}
+                                        disabled={syncSingleMutation.isPending}
+                                      >
+                                        {syncSingleMutation.isPending ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <>
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Sync
+                                          </>
+                                        )}
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </>
                               )}
                             </CollapsibleContent>
                           </Collapsible>
