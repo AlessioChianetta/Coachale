@@ -993,18 +993,29 @@ Per favore riprova o aggiungili manualmente dal tuo Google Calendar. 🙏`;
           console.log(`\n🤖 Starting AI response stream...`);
           let chunkCount = 0;
           
-          for await (const chunk of agentService.processConsultantAgentMessage(
+          for await (const event of agentService.processConsultantAgentMessage(
             conversation.consultantId,
             conversation.id,
             message,
             pendingModification,
             bookingContextForAI
           )) {
-            fullResponse += chunk;
-            chunkCount++;
-            // Only emit text chunks if sendText is true (honor audioResponseMode)
-            if (responseDecision.sendText) {
-              res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
+            // Handle different event types from the generator
+            if (event.type === 'promptBreakdown') {
+              // Send prompt breakdown info to client (always, for debugging/analytics)
+              res.write(`data: ${JSON.stringify({ type: 'promptBreakdown', data: event.data })}\n\n`);
+              console.log(`📋 [PROMPT BREAKDOWN] Sent to client - ${event.data.systemPromptLength} chars, ${event.data.hasFileSearch ? 'File Search ACTIVE' : 'No File Search'}`);
+            } else if (event.type === 'chunk') {
+              fullResponse += event.content;
+              chunkCount++;
+              // Only emit text chunks if sendText is true (honor audioResponseMode)
+              if (responseDecision.sendText) {
+                res.write(`data: ${JSON.stringify({ type: 'chunk', content: event.content })}\n\n`);
+              }
+            } else if (event.type === 'citations') {
+              // Send citations info to client
+              res.write(`data: ${JSON.stringify({ type: 'citations', data: event.data })}\n\n`);
+              console.log(`📚 [CITATIONS] Sent ${event.data.length} File Search citations to client`);
             }
           }
           

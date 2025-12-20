@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { WhatsAppMessageBubble } from "@/components/whatsapp/WhatsAppMessageBubble";
 import { PublicAgentMessage } from "@/components/whatsapp/PublicAgentMessage";
 import { TypingIndicator } from "@/components/whatsapp/TypingIndicator";
+import { PromptBreakdownViewer, type PromptBreakdownData, type CitationData } from "@/components/whatsapp/PromptBreakdownViewer";
 import { useToast } from "@/hooks/use-toast";
 import { Bot, Send, Loader2, Lock, AlertCircle, MessageCircle, Info, Building2, User, Mic, Camera, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,10 @@ export default function PublicAgentShare() {
   const [streamingMessage, setStreamingMessage] = useState<StreamingMessage | null>(null);
   const [optimisticMessage, setOptimisticMessage] = useState<Message | null>(null);
   const [showInfoSheet, setShowInfoSheet] = useState(false);
+  
+  // Prompt breakdown state for AI transparency
+  const [promptBreakdown, setPromptBreakdown] = useState<PromptBreakdownData | null>(null);
+  const [citations, setCitations] = useState<CitationData[]>([]);
   
   // Audio recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -278,7 +283,11 @@ export default function PublicAgentShare() {
             try {
               const data = JSON.parse(line.slice(6));
               
-              if (data.type === 'chunk') {
+              if (data.type === 'promptBreakdown') {
+                // Store prompt breakdown metadata for AI transparency
+                setPromptBreakdown(data.data);
+                setCitations([]); // Reset citations for new message
+              } else if (data.type === 'chunk') {
                 // NON rimuovere optimisticMessage qui - lascialo visibile finché il refetch non completa
                 // La rimozione avviene in onSuccess o quando il messaggio reale arriva
                 
@@ -287,6 +296,17 @@ export default function PublicAgentShare() {
                   ...prev,
                   content: accumulatedContent,
                 } : null);
+                
+                // Auto-scroll during streaming
+                if (scrollAreaRef.current) {
+                  const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+                  if (scrollContainer) {
+                    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                  }
+                }
+              } else if (data.type === 'citations') {
+                // Store File Search citations for display
+                setCitations(data.data);
               } else if (data.type === 'done') {
                 // FIX FLASH: Non pulire streamingMessage subito
                 // Aspetta che il refetch completi prima di rimuovere lo streaming
@@ -924,6 +944,15 @@ export default function PublicAgentShare() {
             {/* Typing indicator - shown when waiting for agent response */}
             {(sendMessageMutation.isPending || isStreaming) && !streamingMessage?.content && !isUploadingAudio && (
               <TypingIndicator />
+            )}
+            
+            {/* Prompt Breakdown Viewer - AI transparency */}
+            {isStreaming && promptBreakdown && (
+              <PromptBreakdownViewer 
+                breakdown={promptBreakdown} 
+                citations={citations}
+                className="max-w-md"
+              />
             )}
             
             {/* Streaming message with animation */}

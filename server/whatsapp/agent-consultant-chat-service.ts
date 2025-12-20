@@ -260,7 +260,7 @@ ${customInstructions}
  * @param messageContent - Content of the message from consultant
  * @param pendingModification - Context for pending booking modifications
  * @param bookingContext - Context for available slots and existing appointment
- * @returns AsyncGenerator yielding text chunks from AI
+ * @returns AsyncGenerator yielding structured events (chunks, promptBreakdown, citations)
  */
 export interface PendingModificationContext {
   intent: 'MODIFY' | 'CANCEL';
@@ -282,13 +282,40 @@ export interface BookingContext {
   timezone?: string;
 }
 
+export interface PromptBreakdownData {
+  systemPromptLength: number;
+  systemPromptTokens: number;
+  hasFileSearch: boolean;
+  fileSearchStoreName?: string;
+  fileSearchDocumentCount?: number;
+  knowledgeBaseItemCount: number;
+  sections: {
+    name: string;
+    chars: number;
+  }[];
+  model: string;
+  thinkingEnabled: boolean;
+  thinkingLevel?: string;
+}
+
+export interface CitationData {
+  sourceTitle: string;
+  sourceId?: string;
+  content: string;
+}
+
+export type AgentStreamEvent = 
+  | { type: 'chunk'; content: string }
+  | { type: 'promptBreakdown'; data: PromptBreakdownData }
+  | { type: 'citations'; data: CitationData[] };
+
 export async function* processConsultantAgentMessage(
   consultantId: string,
   conversationId: string,
   messageContent: string,
   pendingModification?: PendingModificationContext,
   bookingContext?: BookingContext
-): AsyncGenerator<string, void, unknown> {
+): AsyncGenerator<AgentStreamEvent, void, unknown> {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🤖 [CONSULTANT-AGENT CHAT] Processing message');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -496,11 +523,17 @@ Confermi definitivamente la cancellazione?"
 
     // Step 6.5: Check for File Search Store (agent-specific or consultant fallback)
     let fileSearchTool: any = null;
+    let fileSearchInfo: { storeName?: string; documentCount?: number; hasFileSearch: boolean } = { hasFileSearch: false };
     try {
       // First try agent-specific store
       const agentStore = await fileSearchSyncService.getWhatsappAgentStore(agentConfig.id);
       if (agentStore && agentStore.documentCount > 0) {
         fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
+        fileSearchInfo = { 
+          hasFileSearch: true, 
+          storeName: agentStore.displayName, 
+          documentCount: agentStore.documentCount 
+        };
         console.log(`🔍 [FILE SEARCH] Agent has FileSearchStore: ${agentStore.displayName}`);
         console.log(`   📦 Store: ${agentStore.googleStoreName}`);
         console.log(`   📄 Documents: ${agentStore.documentCount}`);
@@ -509,6 +542,11 @@ Confermi definitivamente la cancellazione?"
         const consultantStore = await fileSearchSyncService.getConsultantStore(consultantId);
         if (consultantStore && consultantStore.documentCount > 0) {
           fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
+          fileSearchInfo = { 
+            hasFileSearch: true, 
+            storeName: consultantStore.displayName, 
+            documentCount: consultantStore.documentCount 
+          };
           console.log(`🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: ${consultantStore.displayName}`);
           console.log(`   📦 Store: ${consultantStore.googleStoreName}`);
           console.log(`   📄 Documents: ${consultantStore.documentCount}`);
@@ -528,6 +566,50 @@ Confermi definitivamente la cancellazione?"
 
     const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
     console.log(`   🧠 [AI] Using model: ${model}, thinking: ${useThinking ? `enabled (${thinkingLevel})` : 'disabled'}`);
+
+    // Count knowledge base items from the loaded items
+    const knowledgeItems = await db
+      .select()
+      .from(schema.whatsappAgentKnowledgeItems)
+      .where(eq(schema.whatsappAgentKnowledgeItems.agentConfigId, agentConfig.id));
+    
+    // Detect system prompt sections
+    const promptSections: { name: string; chars: number }[] = [];
+    const sectionPatterns = [
+      { name: 'Identità e Ruolo', pattern: /🎯 IL TUO RUOLO E IDENTITÀ[\s\S]*?(?=━━━|$)/i },
+      { name: 'Authority & Posizionamento', pattern: /🎯 AUTHORITY & POSIZIONAMENTO[\s\S]*?(?=━━━|$)/i },
+      { name: 'Chi Aiutiamo', pattern: /👥 CHI AIUTIAMO E COSA FACCIAMO[\s\S]*?(?=━━━|$)/i },
+      { name: 'Software e Pubblicazioni', pattern: /🚀 SOFTWARE E PUBBLICAZIONI[\s\S]*?(?=━━━|$)/i },
+      { name: 'Credenziali & Risultati', pattern: /🏆 CREDENZIALI & RISULTATI[\s\S]*?(?=━━━|$)/i },
+      { name: 'Servizi e Garanzie', pattern: /💼 SERVIZI E GARANZIE[\s\S]*?(?=━━━|$)/i },
+      { name: 'Profilo Consulente', pattern: /👤 PROFILO CONSULENTE[\s\S]*?(?=━━━|$)/i },
+      { name: 'Knowledge Base', pattern: /📚 KNOWLEDGE BASE AZIENDALE[\s\S]*?(?=━━━|$)/i },
+      { name: 'Istruzioni Personalizzate', pattern: /📝 ISTRUZIONI PERSONALIZZATE[\s\S]*?(?=━━━|$)/i },
+      { name: 'Prenotazione Appuntamento', pattern: /📅 PRENOTAZIONE APPUNTAMENTO[\s\S]*?(?=━━━|$)/i },
+    ];
+    
+    for (const { name, pattern } of sectionPatterns) {
+      const match = systemPrompt.match(pattern);
+      if (match) {
+        promptSections.push({ name, chars: match[0].length });
+      }
+    }
+    
+    // Yield prompt breakdown FIRST (before streaming starts)
+    const promptBreakdown: PromptBreakdownData = {
+      systemPromptLength: systemPrompt.length,
+      systemPromptTokens: Math.ceil(systemPrompt.length / 4),
+      hasFileSearch: fileSearchInfo.hasFileSearch,
+      fileSearchStoreName: fileSearchInfo.storeName,
+      fileSearchDocumentCount: fileSearchInfo.documentCount,
+      knowledgeBaseItemCount: knowledgeItems.length,
+      sections: promptSections,
+      model,
+      thinkingEnabled: useThinking,
+      thinkingLevel: useThinking ? thinkingLevel : undefined,
+    };
+    
+    yield { type: 'promptBreakdown', data: promptBreakdown };
 
     const streamResult = await aiProvider.client.generateContentStream({
       model,
@@ -554,13 +636,16 @@ Confermi definitivamente la cancellazione?"
     // Step 8: Stream response chunks
     let chunkCount = 0;
     let totalChars = 0;
+    let lastChunkWithMetadata: any = null;
 
     for await (const chunk of streamResult) {
       if (chunk.text) {
         chunkCount++;
         totalChars += chunk.text.length;
-        yield chunk.text;
+        yield { type: 'chunk', content: chunk.text };
       }
+      // Store last chunk for citation extraction
+      lastChunkWithMetadata = chunk;
     }
 
     console.log(`\n✅ [SUCCESS] Streaming complete`);
@@ -568,6 +653,26 @@ Confermi definitivamente la cancellazione?"
     console.log(`   Total characters: ${totalChars}`);
     console.log(`   Estimated tokens: ~${Math.ceil(totalChars / 4)}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    
+    // Extract and yield citations if File Search was used
+    if (fileSearchInfo.hasFileSearch && lastChunkWithMetadata) {
+      try {
+        const citations = fileSearchService.parseCitations(lastChunkWithMetadata);
+        if (citations.length > 0) {
+          console.log(`📚 [CITATIONS] Found ${citations.length} File Search citations`);
+          yield { 
+            type: 'citations', 
+            data: citations.map(c => ({
+              sourceTitle: c.sourceTitle,
+              sourceId: c.sourceId,
+              content: c.content || ''
+            }))
+          };
+        }
+      } catch (citationError: any) {
+        console.warn(`⚠️ [CITATIONS] Error extracting citations: ${citationError.message}`);
+      }
+    }
 
     // Cleanup if needed
     if (aiProvider.cleanup) {

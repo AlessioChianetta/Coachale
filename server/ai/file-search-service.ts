@@ -203,15 +203,46 @@ export class FileSearchService {
   }
 
   /**
+   * Get a client using the 3-tier priority system (async version for operations)
+   * Priority: SuperAdmin keys → User keys → Environment variable
+   */
+  private async ensureClientAsync(userId?: string): Promise<GoogleGenAI> {
+    // If userId is provided, try to get a client for that user (uses 3-tier system)
+    if (userId) {
+      const client = await this.getClientForUser(userId);
+      if (client) {
+        return client;
+      }
+    }
+    
+    // Try SuperAdmin keys as fallback
+    const superAdminKeys = await getSuperAdminGeminiKeys();
+    if (superAdminKeys && superAdminKeys.keys.length > 0) {
+      const apiKey = superAdminKeys.keys[0];
+      console.log(`🔑 [FileSearch] Using SuperAdmin Gemini key for operation`);
+      return new GoogleGenAI({ apiKey });
+    }
+    
+    // Finally try environment variable
+    if (this.envClient) {
+      return this.envClient;
+    }
+    
+    throw new Error('File Search Service: No Gemini API key configured. Set GEMINI_API_KEY environment variable or configure SuperAdmin/User keys.');
+  }
+
+  /**
    * Create a new FileSearchStore for an owner (consultant, client, or system)
+   * @param params.userId - Optional userId to use for 3-tier API key resolution
    */
   async createStore(params: {
     displayName: string;
     ownerId: string;
     ownerType: 'consultant' | 'client' | 'system' | 'whatsapp_agent';
     description?: string;
+    userId?: string;
   }): Promise<{ success: boolean; storeId?: string; storeName?: string; error?: string }> {
-    const client = this.ensureClient();
+    const client = await this.ensureClientAsync(params.userId);
     
     try {
       console.log(`🔍 [FileSearch] Creating store for ${params.ownerType} ${params.ownerId}: "${params.displayName}"`);
@@ -254,6 +285,7 @@ export class FileSearchService {
 
   /**
    * Upload a file directly to a FileSearchStore
+   * @param params.userId - Optional userId for 3-tier API key resolution
    */
   async uploadDocument(params: {
     filePath: string;
@@ -261,6 +293,7 @@ export class FileSearchService {
     storeId: string;
     sourceType: 'library' | 'knowledge_base' | 'manual';
     sourceId?: string;
+    userId?: string;
     chunkingConfig?: ChunkingConfig;
     customMetadata?: {
       docType?: string;
@@ -272,7 +305,7 @@ export class FileSearchService {
       tags?: string[];
     };
   }): Promise<FileSearchUploadResult> {
-    const client = this.ensureClient();
+    const client = await this.ensureClientAsync(params.userId);
     
     try {
       const store = await db.query.fileSearchStores.findFirst({

@@ -2948,6 +2948,7 @@ export class FileSearchSyncService {
           ownerId: agentConfigId,
           ownerType: 'whatsapp_agent',
           description: `Knowledge base per l'agente WhatsApp "${agentConfig.agentName}"`,
+          userId: consultantId, // Use consultant's keys or SuperAdmin fallback
         });
 
         if (!result.success || !result.storeId) {
