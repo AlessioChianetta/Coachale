@@ -196,26 +196,32 @@ export default function PublicAgentShare() {
   
   const rawMessages: Message[] = conversationResponse?.messages || [];
   
-  // FIX DUPLICAZIONE: Filtra il messaggio ottimistico una volta che arriva dal server
-  // Usa l'ID ottimistico per identificare quando il messaggio reale è arrivato
-  const [confirmedOptimisticId, setConfirmedOptimisticId] = useState<string | null>(null);
-  
+  // Filtra i messaggi per evitare duplicati: se c'è un optimistic, nascondi il messaggio reale corrispondente
   const messages = useMemo(() => {
-    // Se c'è un optimisticMessage attivo, controlla se il suo contenuto è già nei messaggi reali
-    if (optimisticMessage) {
-      const optimisticContent = optimisticMessage.content.trim();
-      const hasMatchingMessage = rawMessages.some(msg => 
-        msg.role === 'user' && msg.content.trim() === optimisticContent
-      );
-      
-      // Se troviamo un messaggio corrispondente, rimuovi l'optimistic
-      if (hasMatchingMessage) {
-        // Scheduliamo la rimozione dell'optimistic per il prossimo ciclo
-        setTimeout(() => setOptimisticMessage(null), 0);
-      }
-    }
+    if (!optimisticMessage) return rawMessages;
     
-    return rawMessages;
+    // Filtra via il messaggio reale che corrisponde all'optimistic (evita duplicato)
+    const optimisticContent = optimisticMessage.content.trim();
+    return rawMessages.filter(msg => {
+      if (msg.role !== 'user') return true;
+      // Nascondi solo l'ultimo messaggio user che corrisponde all'optimistic
+      return msg.content.trim() !== optimisticContent;
+    });
+  }, [rawMessages, optimisticMessage]);
+  
+  // useEffect per rimuovere optimisticMessage quando il messaggio reale arriva
+  useEffect(() => {
+    if (!optimisticMessage) return;
+    
+    const optimisticContent = optimisticMessage.content.trim();
+    const hasMatchingMessage = rawMessages.some(msg => 
+      msg.role === 'user' && msg.content.trim() === optimisticContent
+    );
+    
+    // Se il messaggio reale è arrivato, rimuovi l'optimistic
+    if (hasMatchingMessage) {
+      setOptimisticMessage(null);
+    }
   }, [rawMessages, optimisticMessage]);
   
   // Send message mutation
@@ -273,9 +279,8 @@ export default function PublicAgentShare() {
               const data = JSON.parse(line.slice(6));
               
               if (data.type === 'chunk') {
-                // FIX DOPPI MESSAGGI: Rimuovi subito l'optimistic message al primo chunk
-                // Questo previene la duplicazione visiva del messaggio utente
-                setOptimisticMessage(null);
+                // NON rimuovere optimisticMessage qui - lascialo visibile finché il refetch non completa
+                // La rimozione avviene in onSuccess o quando il messaggio reale arriva
                 
                 accumulatedContent += data.content;
                 setStreamingMessage(prev => prev ? {
@@ -781,7 +786,7 @@ export default function PublicAgentShare() {
       )}
       
       {/* Chat area - struttura migliorata per input sempre visibile */}
-      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Messages - solo questa area scorre */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4 pb-2">
           <div className="max-w-4xl mx-auto space-y-4">
