@@ -1132,7 +1132,7 @@ export async function getAIProvider(
           return {
             client,
             metadata: {
-              name: "Google AI Studio (SuperAdmin Gemini 3)",
+              name: "Google AI Studio" as const,
             },
             source: "google" as const,
           };
