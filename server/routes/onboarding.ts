@@ -24,7 +24,7 @@ import {
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import { VertexAI } from '@google-cloud/vertexai';
 import { getCalendarClient } from '../google-calendar-service';
-import { getAIProvider } from '../ai/provider-factory';
+import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 import nodemailer from 'nodemailer';
 import { decryptForConsultant } from '../encryption';
 import { upload } from '../middleware/upload';
@@ -1279,9 +1279,19 @@ ${text}
 
 TESTO MIGLIORATO (rispondi SOLO con il testo migliorato, senza introduzioni o commenti):`;
     
+    const { model: improveModel, useThinking: improveUseThinking, thinkingLevel: improveThinkingLevel } = getModelWithThinking(providerResult.metadata?.name || 'Vertex AI');
+    console.log(`🧠 [ONBOARDING] Improve text using model: ${improveModel} with thinking: ${improveUseThinking ? improveThinkingLevel : 'disabled'}`);
+    
     const result = await providerResult.client.generateContent({
-      model: 'gemini-2.5-flash',
+      model: improveModel,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      ...(improveUseThinking && {
+        config: {
+          thinkingConfig: {
+            thinkingLevel: improveThinkingLevel
+          }
+        }
+      })
     });
     const improvedText = result.response.text() || text;
     
@@ -1428,11 +1438,21 @@ REGOLE OBBLIGATORIE:
 
 RISPOSTA (array JSON):`;
 
-    const result = await providerResult.client.generateContent({
-      model: 'gemini-2.5-flash',
+    const { model: ideasModel, useThinking: ideasUseThinking, thinkingLevel: ideasThinkingLevel } = getModelWithThinking(providerResult.metadata?.name || 'Vertex AI');
+    console.log(`🧠 [ONBOARDING] Generate ideas using model: ${ideasModel} with thinking: ${ideasUseThinking ? ideasThinkingLevel : 'disabled'}`);
+
+    const ideasResult = await providerResult.client.generateContent({
+      model: ideasModel,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      ...(ideasUseThinking && {
+        config: {
+          thinkingConfig: {
+            thinkingLevel: ideasThinkingLevel
+          }
+        }
+      })
     });
-    const responseText = result.response.text() || '';
+    const responseText = ideasResult.response.text() || '';
     
     let ideas;
     try {

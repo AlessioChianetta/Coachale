@@ -2,7 +2,7 @@ import { db } from "./db";
 import { objectionTracking, clientObjectionProfile } from "../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { GoogleGenAI } from "@google/genai";
-import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL } from "./ai/provider-factory";
+import { createVertexGeminiClient, parseServiceAccountJson, GEMINI_3_MODEL, GEMINI_3_THINKING_LEVEL } from "./ai/provider-factory";
 
 export type ObjectionType = "price" | "time" | "trust" | "competitor" | "value" | "other";
 
@@ -90,10 +90,14 @@ Rispondi in formato JSON con questa struttura:
       }
       
       const ai = new GoogleGenAI({ apiKey: provider.apiKey! });
+      console.log(`🧠 [OBJECTION-DETECTOR] Using model: ${GEMINI_3_MODEL} with thinking: ${GEMINI_3_THINKING_LEVEL}`);
       response = await ai.models.generateContent({
         model: GEMINI_3_MODEL,
         config: {
           responseMimeType: "application/json",
+          thinkingConfig: {
+            thinkingLevel: GEMINI_3_THINKING_LEVEL
+          }
         },
         contents: [
           {
