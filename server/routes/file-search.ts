@@ -224,11 +224,12 @@ router.post('/initialize', authenticateToken, requireRole('consultant'), async (
       });
     }
     
-    // Check if GEMINI_API_KEY is configured
-    if (!process.env.GEMINI_API_KEY) {
+    // Verify Gemini API key is available (from database: SuperAdmin or User keys)
+    const geminiClient = await fileSearchService.getClientForUser(consultantId);
+    if (!geminiClient) {
       return res.status(400).json({
         success: false,
-        error: 'GEMINI_API_KEY non configurata. File Search richiede Google AI Studio.',
+        error: 'Chiave API Gemini non configurata. Configura le chiavi in Impostazioni > API Keys (SuperAdmin o chiavi personali con supporto File Search).',
       });
     }
     

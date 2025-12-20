@@ -2803,7 +2803,7 @@ export class FileSearchSyncService {
       // Get client's finance settings
       const [financeConfig] = await db.select()
         .from(userFinanceSettings)
-        .where(eq(userFinanceSettings.userId, clientId));
+        .where(eq(userFinanceSettings.clientId, clientId));
 
       if (!financeConfig || !financeConfig.isEnabled || !financeConfig.percorsoCapitaleEmail) {
         return { success: false, error: 'Finance settings not configured for this client' };
