@@ -8,8 +8,12 @@ import {
   consultantKnowledgeDocuments,
   insertWhatsappAgentKnowledgeItemSchema,
   updateWhatsappAgentKnowledgeItemSchema,
+  fileSearchStores,
+  fileSearchDocuments,
+  whatsappConversations,
+  whatsappMessages,
 } from "../../../shared/schema";
-import { eq, and, asc, notInArray, desc, isNotNull } from "drizzle-orm";
+import { eq, and, asc, notInArray, desc, isNotNull, inArray, sql } from "drizzle-orm";
 import { extractTextFromFile, getKnowledgeItemType } from "../../services/document-processor";
 import fs from "fs/promises";
 import path from "path";
@@ -630,6 +634,156 @@ router.post(
         success: false,
         error: error.message || "Failed to import documents",
       });
+    }
+  }
+);
+
+/**
+ * GET /api/whatsapp/agents/:configId/stats
+ * Returns statistics for a WhatsApp agent including token usage and knowledge base info
+ */
+router.get(
+  "/whatsapp/agents/:configId/stats",
+  authenticateToken,
+  requireRole("consultant"),
+  async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+      const { configId } = req.params;
+
+      // Verify the agent belongs to this consultant
+      const [agentConfig] = await db
+        .select()
+        .from(consultantWhatsappConfig)
+        .where(
+          and(
+            eq(consultantWhatsappConfig.id, configId),
+            eq(consultantWhatsappConfig.consultantId, consultantId)
+          )
+        )
+        .limit(1);
+
+      if (!agentConfig) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+
+      // Get knowledge items for this agent
+      const knowledgeItems = await db
+        .select()
+        .from(whatsappAgentKnowledgeItems)
+        .where(eq(whatsappAgentKnowledgeItems.agentConfigId, configId));
+
+      // Count by type and estimate tokens
+      const estimateTokens = (text: string) => Math.ceil((text || "").length / 4);
+
+      const knowledgeStats = {
+        total: knowledgeItems.length,
+        active: knowledgeItems.length, // All items are considered active (no isActive field in schema)
+        byType: {} as Record<string, { count: number; tokens: number }>,
+        totalTokens: 0,
+      };
+
+      for (const item of knowledgeItems) {
+        const type = item.type || "text";
+        if (!knowledgeStats.byType[type]) {
+          knowledgeStats.byType[type] = { count: 0, tokens: 0 };
+        }
+        knowledgeStats.byType[type].count++;
+        const tokens = estimateTokens(item.content || "");
+        knowledgeStats.byType[type].tokens += tokens;
+        knowledgeStats.totalTokens += tokens;
+      }
+
+      // Get FileSearch documents for this agent
+      const [consultantStore] = await db
+        .select()
+        .from(fileSearchStores)
+        .where(
+          and(
+            eq(fileSearchStores.ownerId, consultantId),
+            eq(fileSearchStores.ownerType, "consultant"),
+            eq(fileSearchStores.isActive, true)
+          )
+        )
+        .limit(1);
+
+      let fileSearchStats = {
+        synced: 0,
+        pending: 0,
+        failed: 0,
+        totalTokens: 0,
+      };
+
+      if (consultantStore) {
+        // Get FileSearch documents that belong to this agent's knowledge items
+        const knowledgeItemIds = knowledgeItems.map((i) => i.id);
+        if (knowledgeItemIds.length > 0) {
+          const fsDocuments = await db
+            .select()
+            .from(fileSearchDocuments)
+            .where(
+              and(
+                eq(fileSearchDocuments.storeId, consultantStore.id),
+                eq(fileSearchDocuments.sourceType, "whatsapp_agent_knowledge"),
+                inArray(fileSearchDocuments.sourceId, knowledgeItemIds)
+              )
+            );
+
+          for (const doc of fsDocuments) {
+            if (doc.status === "indexed") fileSearchStats.synced++;
+            else if (doc.status === "pending" || doc.status === "processing")
+              fileSearchStats.pending++;
+            else if (doc.status === "failed") fileSearchStats.failed++;
+            fileSearchStats.totalTokens += doc.contentSize
+              ? Math.ceil(doc.contentSize / 4)
+              : 0;
+          }
+        }
+      }
+
+      // Get conversation stats for this agent
+      const conversations = await db
+        .select()
+        .from(whatsappConversations)
+        .where(eq(whatsappConversations.agentConfigId, configId));
+
+      const conversationStats = {
+        total: conversations.length,
+        active: conversations.filter((c) => c.isActive).length,
+        leads: conversations.filter((c) => c.isLead).length,
+        proactiveLeads: conversations.filter((c) => c.isProactiveLead).length,
+        converted: conversations.filter((c) => c.leadConvertedAt !== null).length,
+      };
+
+      // Get message count for this agent's conversations
+      let messageTotal = 0;
+      if (conversations.length > 0) {
+        const conversationIds = conversations.map((c) => c.id);
+        const messages = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(whatsappMessages)
+          .where(inArray(whatsappMessages.conversationId, conversationIds));
+        messageTotal = Number(messages[0]?.count) || 0;
+      }
+
+      const messageStats = {
+        total: messageTotal,
+      };
+
+      console.log(`📊 [WhatsApp Stats] Agent ${configId}: ${knowledgeStats.total} knowledge items, ${messageTotal} messages`);
+
+      res.json({
+        agentId: configId,
+        agentName: agentConfig.agentName,
+        isActive: agentConfig.isActive,
+        knowledge: knowledgeStats,
+        fileSearch: fileSearchStats,
+        conversations: conversationStats,
+        messages: messageStats,
+      });
+    } catch (error: any) {
+      console.error("[WhatsApp Stats] Error:", error);
+      res.status(500).json({ error: error.message });
     }
   }
 );
