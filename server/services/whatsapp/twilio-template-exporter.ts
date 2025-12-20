@@ -205,20 +205,21 @@ export async function exportTemplateToTwilio(
     try {
       console.log(`📤 [TWILIO EXPORT] Submitting template for WhatsApp approval...`);
       
-      // Use approvalRequests('whatsapp') - must pass channel as argument
+      // Use approvalCreate.create() - SDK v1 method for WhatsApp approval
       const approval = await twilioClient.content.v1
         .contents(content.sid)
-        .approvalRequests("whatsapp")
+        .approvalCreate
         .create({
           name: friendlyName, // Use full friendlyName including version suffix to avoid collisions
           category: "UTILITY",
         });
 
       console.log(`✅ [TWILIO EXPORT] Approval request submitted!`);
-      console.log(`   WhatsApp Status: ${approval.whatsapp?.status || 'pending'}`);
+      console.log(`   Approval Status: ${approval.status || 'pending'}`);
+      console.log(`   Template Name: ${approval.name}`);
       
-      // Map Twilio approval status to our status
-      const twilioStatus = approval.whatsapp?.status?.toLowerCase();
+      // Map Twilio approval status to our status (SDK returns status directly)
+      const twilioStatus = approval.status?.toLowerCase();
       if (twilioStatus === 'approved') {
         approvalStatus = 'approved';
       } else if (twilioStatus === 'rejected') {
