@@ -888,11 +888,15 @@ async function processPendingMessages(phoneNumber: string, consultantId: string)
           lastWarmFollowupAt: null,
           lastAiEvaluationAt: new Date(),
           nextFollowupScheduledAt: null,
+          // Reset smart wait fields when lead replies - allows immediate re-evaluation
+          nextEvaluationAt: null,
+          waitType: null,
+          waitReason: null,
           updatedAt: new Date(),
         })
         .where(eq(conversationStates.conversationId, conversation.id));
       
-      console.log(`🔄 [INTELLIGENT-RESET] Lead responded via polling! Reset: consecutiveNoReplyCount=0, hasEverReplied=true, temperatureLevel=HOT, lastAiEvaluationAt=NOW, nextFollowupScheduledAt=NULL for ${conversation.id}`);
+      console.log(`🔄 [INTELLIGENT-RESET] Lead responded via polling! Reset: consecutiveNoReplyCount=0, hasEverReplied=true, temperatureLevel=HOT, lastAiEvaluationAt=NOW, nextFollowupScheduledAt=NULL, nextEvaluationAt=NULL for ${conversation.id}`);
     }
 
     // Detect if client sent audio message (for Mirror mode TTS response)

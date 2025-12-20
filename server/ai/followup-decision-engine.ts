@@ -92,6 +92,10 @@ export interface FollowupDecision {
   completionReason?: string;         // Why AI thinks conversation is complete
   silenceReason?: string;            // Why AI chose to go silent
   longTermScheduleType?: "nurturing" | "reactivation" | "seasonal";
+  // Smart Wait State fields - tells scheduler when to re-evaluate
+  waitHours?: number;  // How many hours to wait before re-evaluating
+  waitType?: "wait_reply" | "silence" | "nurturing" | "scheduled";
+  waitReason?: string; // Human readable reason why we're waiting
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -284,6 +288,10 @@ export async function evaluateFollowup(
       updatedConversionProbability: result.updatedConversionProbability || undefined,
       stateTransition: result.stateTransition || undefined,
       allowFreeformMessage, // NUOVO: indica se possiamo usare messaggi liberi
+      // Smart Wait State fields
+      waitHours: result.waitHours || undefined,
+      waitType: result.waitType || undefined,
+      waitReason: result.waitReason || undefined,
     };
   } catch (error) {
     console.error("❌ [FOLLOWUP-ENGINE] Error evaluating follow-up:", error);
@@ -501,14 +509,29 @@ Prima di decidere, analizza se la conversazione ha raggiunto il suo obiettivo na
   "longTermScheduleType": "nurturing" | "reactivation" | null,
   "updatedEngagementScore": 0-100 o null,
   "updatedConversionProbability": 0-1 o null,
-  "stateTransition": "nuovo stato o null"
+  "stateTransition": "nuovo stato o null",
+  "waitHours": number (OBBLIGATORIO per skip/silence/nurturing - indica dopo quante ore rivalutare),
+  "waitType": "wait_reply" | "silence" | "nurturing" | "scheduled" | null,
+  "waitReason": "motivo leggibile del perché stiamo aspettando"
 }
+
+### LINEE GUIDA PER waitHours (IMPORTANTE per evitare valutazioni eccessive!)
+
+Quando decidi di NON inviare un messaggio, DEVI specificare waitHours per indicare dopo quanto rivalutare:
+
+- **skip** (l'ultimo messaggio è nostro, aspettiamo risposta): waitHours = 4-6, waitType = "wait_reply"
+- **skip** (il lead ha appena risposto, dobbiamo elaborare): waitHours = 2-4, waitType = "wait_reply"
+- **silence** (conversazione completata): waitHours = 168-336 (1-2 settimane), waitType = "silence"
+- **nurturing** (lungo termine): waitHours = 336-720 (2-4 settimane), waitType = "nurturing"
+- **schedule** (ha tempo specifico): waitHours = ore fino a scheduledAt, waitType = "scheduled"
+- **stop** (mai più): waitHours = 8760 (1 anno), waitType = "silence"
 
 ⚠️ RICORDA: 
 - Se fuori finestra 24h, DEVI specificare suggestedTemplateId
 - Se conversazione completata, imposta isConversationComplete = true
 - Il reasoning DEVE iniziare con "Tempo dall'ultimo messaggio: X ore"
-- Rispetta i limiti del tuo profilo agente`;
+- Rispetta i limiti del tuo profilo agente
+- SEMPRE specificare waitHours quando decision != "send_now"`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

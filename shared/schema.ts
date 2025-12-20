@@ -5307,6 +5307,11 @@ export const conversationStates = pgTable("conversation_states", {
   warmFollowupCount: integer("warm_followup_count").default(0).notNull(), // Contatore warm follow-up inviati dentro finestra 24h
   lastWarmFollowupAt: timestamp("last_warm_followup_at"), // Ultimo warm follow-up inviato
 
+  // === SMART WAIT STATE (NEW) - Prevents excessive AI evaluations ===
+  nextEvaluationAt: timestamp("next_evaluation_at"), // "Do not evaluate until this time"
+  waitType: text("wait_type").$type<"wait_reply" | "silence" | "nurturing" | "scheduled">(), // Type of wait
+  waitReason: text("wait_reason"), // Human readable reason for waiting
+
   stateChangedAt: timestamp("state_changed_at").default(sql`now()`),
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),

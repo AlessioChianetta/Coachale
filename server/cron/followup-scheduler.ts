@@ -563,6 +563,20 @@ export async function runFollowupEvaluation(temperatureFilter?: TemperatureLevel
         }
         console.log(`📋 [EVAL-STEP 1] ${conversation.conversationId}: PASSED - No lock held`);
         
+        // SMART WAIT CHECK: Skip if nextEvaluationAt is in the future
+        console.log(`📋 [EVAL-STEP 1.5] ${conversation.conversationId}: Checking smart wait (nextEvaluationAt: ${conversation.nextEvaluationAt || 'not set'})`);
+        if (conversation.nextEvaluationAt) {
+          const nowCheck = new Date();
+          if (nowCheck < new Date(conversation.nextEvaluationAt)) {
+            const hoursUntilNextEval = (new Date(conversation.nextEvaluationAt).getTime() - nowCheck.getTime()) / (1000 * 60 * 60);
+            console.log(`📋 [EVAL-STEP 1.5] ${conversation.conversationId}: SKIPPED - Smart wait active, next eval in ${hoursUntilNextEval.toFixed(1)}h (type: ${conversation.waitType || 'unknown'})`);
+            skipped++;
+            metrics.skipped++;
+            continue;
+          }
+        }
+        console.log(`📋 [EVAL-STEP 1.5] ${conversation.conversationId}: PASSED - No smart wait or wait expired`);
+        
         console.log(`📋 [EVAL-STEP 2] ${conversation.conversationId}: Checking debounce (last eval: ${conversation.lastAiEvaluationAt || 'never'})`);
         // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
         const DEBOUNCE_MINUTES = 5;
@@ -703,6 +717,17 @@ export async function runColdLeadsEvaluation(): Promise<void> {
           continue;
         }
         
+        // SMART WAIT CHECK: Skip if nextEvaluationAt is in the future
+        if (conversation.nextEvaluationAt) {
+          const nowCheck = new Date();
+          if (nowCheck < new Date(conversation.nextEvaluationAt)) {
+            const hoursUntilNextEval = (new Date(conversation.nextEvaluationAt).getTime() - nowCheck.getTime()) / (1000 * 60 * 60);
+            console.log(`⏭️ [SMART-WAIT] Cold ${conversation.conversationId}: SKIPPED - Next eval in ${hoursUntilNextEval.toFixed(1)}h (type: ${conversation.waitType || 'unknown'})`);
+            skipped++;
+            continue;
+          }
+        }
+        
         // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
         const DEBOUNCE_MINUTES = 5;
         if (conversation.lastAiEvaluationAt) {
@@ -794,6 +819,17 @@ export async function runGhostLeadsEvaluation(): Promise<void> {
           continue;
         }
         
+        // SMART WAIT CHECK: Skip if nextEvaluationAt is in the future
+        if (conversation.nextEvaluationAt) {
+          const nowCheck = new Date();
+          if (nowCheck < new Date(conversation.nextEvaluationAt)) {
+            const hoursUntilNextEval = (new Date(conversation.nextEvaluationAt).getTime() - nowCheck.getTime()) / (1000 * 60 * 60);
+            console.log(`⏭️ [SMART-WAIT] Ghost ${conversation.conversationId}: SKIPPED - Next eval in ${hoursUntilNextEval.toFixed(1)}h (type: ${conversation.waitType || 'unknown'})`);
+            skipped++;
+            continue;
+          }
+        }
+        
         // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
         const DEBOUNCE_MINUTES = 5;
         if (conversation.lastAiEvaluationAt) {
@@ -871,6 +907,17 @@ export async function runEngagedColdLeadsEvaluation(): Promise<void> {
           console.log(`🔒 [LOCK] ${lockKey}: SKIPPED - Evaluation already in progress by ${existingLock.caller} (cycle: ${existingLock.cycleId}, started ${((now - existingLock.timestamp)/1000).toFixed(1)}s ago)`);
           skipped++;
           continue;
+        }
+        
+        // SMART WAIT CHECK: Skip if nextEvaluationAt is in the future
+        if (conversation.nextEvaluationAt) {
+          const nowCheck = new Date();
+          if (nowCheck < new Date(conversation.nextEvaluationAt)) {
+            const hoursUntilNextEval = (new Date(conversation.nextEvaluationAt).getTime() - nowCheck.getTime()) / (1000 * 60 * 60);
+            console.log(`⏭️ [SMART-WAIT] EngagedCold ${conversation.conversationId}: SKIPPED - Next eval in ${hoursUntilNextEval.toFixed(1)}h (type: ${conversation.waitType || 'unknown'})`);
+            skipped++;
+            continue;
+          }
         }
         
         // DEBOUNCE: Skip if conversation was evaluated recently (within 5 minutes)
@@ -1201,6 +1248,9 @@ interface CandidateConversation {
   lastWarmFollowupAt?: Date | null;
   // NEW: Debounce field to prevent duplicate AI evaluations
   lastAiEvaluationAt?: Date | null;
+  // NEW: Smart Wait State fields - prevent excessive AI evaluations
+  nextEvaluationAt?: Date | null;
+  waitType?: string | null;
 }
 
 /**
@@ -1477,6 +1527,9 @@ export async function findCandidateConversations(
       lastWarmFollowupAt: conversationStates.lastWarmFollowupAt,
       // NEW: Debounce field
       lastAiEvaluationAt: conversationStates.lastAiEvaluationAt,
+      // NEW: Smart Wait State fields
+      nextEvaluationAt: conversationStates.nextEvaluationAt,
+      waitType: conversationStates.waitType,
       // NEW: Intelligent retry logic fields
       consecutiveNoReplyCount: conversationStates.consecutiveNoReplyCount,
       lastReplyAt: conversationStates.lastReplyAt,
@@ -2023,6 +2076,20 @@ async function evaluateConversation(
     'gemini-2.5-flash'
   );
   console.log(`🧠 [AI-STEP 7] ${candidate.conversationId}: Decision logged (${decision.decision})`);
+
+  // SMART WAIT: Set nextEvaluationAt based on AI decision to prevent excessive evaluations
+  if (decision.waitHours && decision.waitHours > 0) {
+    const nextEvalTime = new Date(Date.now() + decision.waitHours * 60 * 60 * 1000);
+    await db.update(conversationStates)
+      .set({
+        nextEvaluationAt: nextEvalTime,
+        waitType: decision.waitType || null,
+        waitReason: decision.waitReason || decision.reasoning?.substring(0, 500) || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(conversationStates.conversationId, candidate.conversationId));
+    console.log(`⏰ [SMART-WAIT] Set nextEvaluationAt to ${nextEvalTime.toISOString()} (${decision.waitHours}h), type: ${decision.waitType}`);
+  }
 
   if (decision.decision === 'send_now' || decision.decision === 'schedule') {
     const scheduledFor = calculateScheduledTime(decision);
