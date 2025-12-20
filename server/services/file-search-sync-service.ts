@@ -3073,6 +3073,23 @@ export class FileSearchSyncService {
   }
 
   /**
+   * Get FileSearchStore for a consultant (if exists)
+   * Used as fallback when WhatsApp agent doesn't have a dedicated store
+   * 
+   * @param consultantId - The consultant's user ID
+   * @returns Store info or null if not found
+   */
+  static async getConsultantStore(consultantId: string): Promise<typeof fileSearchStores.$inferSelect | null> {
+    return await db.query.fileSearchStores.findFirst({
+      where: and(
+        eq(fileSearchStores.ownerId, consultantId),
+        eq(fileSearchStores.ownerType, 'consultant'),
+        eq(fileSearchStores.isActive, true),
+      ),
+    });
+  }
+
+  /**
    * Run a Post-Import Audit for a client's private data
    * 
    * @param clientId - The client's user ID

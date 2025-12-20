@@ -1,0 +1,111 @@
+🔍 [PARTICIPANT TYPE] unknown
+✅ [CONFIG] Using agent from conversation: Marco setter (760bb513-098f-4722-b02a-a700160c2fc3)
+🎯 [AGENT TYPE] Agent type: proactive_setter, isProactive: true
+✅ AI is ENABLED and within working hours for consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - proceeding with AI response
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔑 [STEP 3] Selecting AI Provider (Vertex AI / Google AI Studio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🆔 Conversation ID: 73e9812e-ec3e-4e96-88d6-910c16e7b849
+👤 User Type: LEAD
+✅ [SuperAdmin Gemini] Loaded 1 API keys from config
+✅ Using SuperAdmin Google AI Studio for WhatsApp (Gemini 3)
+   🔑 Key: 1/1
+✅ Selected AI Provider: studio
+   🔐 API Key: AIzaSyAzZA...CL20
+   🆔 Key ID: superadm...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔑 [API KEY] Extracted from Google AI Studio provider (key: superadm...)
+💾 [STEP 4] Saving 1 inbound message(s) to database
+✅ [STEP 4] Saved inbound message b8ebc56f-25d2-4398-84f3-87e766a0c947: "non lo so..."
+💬 [AUDIO DETECTION] Client sent text message - No audio TTS needed unless always_audio mode
+📸 [STEP 5] Building media context (1 messages)
+🧪 [TEST MODE] Override attivo: lead
+🧪 [TEST MODE] Simulando lead
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🤖 [STEP 6] Building AI System Prompt
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Participant Type: UNKNOWN
+💬 Message: "non lo so"
+
+🔍 Detecting intent for lead message...
+✅ Intent detected: general
+
+🚨 Detecting objections in message...
+🔄 [OBJECTION] Attempt 1/3
+🔑 [OBJECTION] Using current API key: superadm...
+🤖 [OBJECTION] Calling detectObjection() with provider: studio
+🧠 [OBJECTION-DETECTOR] Using model: gemini-3-flash-preview with thinking: low
+6:03:39 PM [express] GET /api/whatsapp/conversations 200 in 510ms :: {"conversations":[{"id":"73e981…
+6:03:41 PM [express] GET /api/whatsapp/conversations/73e9812e-ec3e-4e96-88d6-910c16e7b849/messages 2…
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+⚠️ [OBJECTION] ✅ SUCCESS - Objection detected: trust (confidence: 0.7)
+⏱️  [TIMING] Objection detection: 3952ms
+👤 Fetching/creating lead profile...
+✅ Lead profile: neutral (difficulty: 5/10)
+📋 Fetching recent objections...
+✅ Found 0 recent objection(s)
+📅 [APPOINTMENT CONTEXT] Checking for existing saved slots...
+💾 [APPOINTMENT CONTEXT] Retrieved 15 saved slots from database
+📅 [APPOINTMENT CONTEXT] Context maintained - AI can continue appointment flow
+✅ [APPOINTMENT CONTEXT] Final state: 15 slots available for AI prompt
+🔍 [PROACTIVE CHECK] conversation.isProactiveLead=true, conversation.proactiveLeadId=caec2dc0-10c0-4ec3-aa2c-ee81da8c8689
+🎯 [PROACTIVE LEAD] Found lead data: rosso mio
+📋 Lead Info: {"email":"mario.rossi@test.com","fonte":"hubdigital-test","uncino":"abbiamo visto che ti sei iscritto ai nostri contenuti per capire come raggiungere dai 100.000 ai 500.000 nei prossimi 2-4 anni","country":"Italia","desideri":"v","dateAdded":"2025-12-20T01:38:24.044Z","obiettivi":"raggiungere dai 100.000 ai 500.000 di patrimonio nei prossimi 2-4 anni","companyName":"Test SRL","ghlContactId":"contact_test456","ghlLocationId":"loc_test123"}
+🎯 Ideal State: più tranquillità e la tua libertà finanziaria
+📝 [PROMPT DEBUG] Building prompt with isProactiveAgent=true, isProactiveLead=true
+📚 [KNOWLEDGE BASE] Loaded 1 knowledge items for agent 760bb513-098f-4722-b02a-a700160c2fc3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [TEMPLATE ENGINE] Checking agent instructions...
+   agentInstructionsEnabled: false
+   agentInstructions length: 0 chars
+   selectedTemplate: null
+❌ [TEMPLATE ENGINE] Using LEGACY HARDCODED prompt
+   Reason: enabled=false, hasInstructions=false
+📚 [STEP 7] Checking for reset request and fetching message history
+📚 [STEP 7] Found 6 historical messages
+🧠 [STEP 8] Calling Gemini AI (model selection based on provider)
+
+📊 [GEMINI TOKENS] Stima PRIMA della chiamata:
+   📝 System Prompt: ~10,510 tokens (42,038 chars)
+   💬 User Message: ~3 tokens (9 chars)
+   📜 History: ~360 tokens (1,438 chars)
+   🔢 TOTALE INPUT: ~10,873 tokens
+
+ℹ️ [FILE SEARCH] No FileSearchStore for this WhatsApp agent
+🔄 [RETRY] Attempt 1/3
+   🧠 [AI] Google AI Studio - Using model: gemini-3-flash-preview, thinking: enabled (low)
+✅ [RETRY] Success on attempt 1!
+⏱️  [TIMING] Gemini API call: 1596ms
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 [DEBUG] Analyzing Gemini Response Object
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 Response object keys: [
+  'sdkHttpResponse',
+  'candidates',
+  'modelVersion',
+  'responseId',
+  'usageMetadata'
+]
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+✅ response.text is a property - using it...
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+📝 Extracted text length: 331
+📝 Extracted text preview: Tranquillo, ci sta assolutamente. Spesso sappiamo che qualcosa non va come vorremmo, ma non è facile mettere a fuoco il punto esatto. 😊
+
+Per aiutarti a fare chiarezza, di cosa ti occupi esattamente? 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+there are non-text parts thoughtSignature in the response, returning concatenation of all text parts. Please refer to the non text parts for a full response from model.
+
+📊 [GEMINI TOKENS] Utilizzo DOPO la risposta:
+   ✅ Response: ~83 tokens (331 chars)
+   🔢 TOTALE (input + output): ~10,956 tokens
+   ⏱️  Tempo di risposta: 1596ms
+   💰 Costo stimato: $0.021912 (input + output)

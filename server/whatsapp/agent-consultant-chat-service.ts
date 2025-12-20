@@ -10,6 +10,8 @@ import { db } from '../db';
 import * as schema from '@shared/schema';
 import { eq, and, asc } from 'drizzle-orm';
 import { getMandatoryBookingBlock } from './instruction-blocks';
+import { fileSearchSyncService } from '../services/file-search-sync-service';
+import { fileSearchService } from '../ai/file-search-service';
 
 /**
  * Build system prompt for WhatsApp agent based on consultant configuration
@@ -492,6 +494,34 @@ Confermi definitivamente la cancellazione?"
     const aiProvider = await getAIProvider(consultantId, consultantId);
     console.log(`✅ AI Provider obtained: ${aiProvider.source} (${aiProvider.metadata.provider})`);
 
+    // Step 6.5: Check for File Search Store (agent-specific or consultant fallback)
+    let fileSearchTool: any = null;
+    try {
+      // First try agent-specific store
+      const agentStore = await fileSearchSyncService.getWhatsappAgentStore(agentConfig.id);
+      if (agentStore && agentStore.documentCount > 0) {
+        fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
+        console.log(`🔍 [FILE SEARCH] Agent has FileSearchStore: ${agentStore.displayName}`);
+        console.log(`   📦 Store: ${agentStore.googleStoreName}`);
+        console.log(`   📄 Documents: ${agentStore.documentCount}`);
+      } else {
+        // Fallback to consultant's store
+        const consultantStore = await fileSearchSyncService.getConsultantStore(consultantId);
+        if (consultantStore && consultantStore.documentCount > 0) {
+          fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
+          console.log(`🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: ${consultantStore.displayName}`);
+          console.log(`   📦 Store: ${consultantStore.googleStoreName}`);
+          console.log(`   📄 Documents: ${consultantStore.documentCount}`);
+        } else if (consultantStore) {
+          console.log(`ℹ️ [FILE SEARCH] Consultant store exists but has no documents`);
+        } else {
+          console.log(`ℹ️ [FILE SEARCH] No FileSearchStore available (no agent or consultant store)`);
+        }
+      }
+    } catch (fsError: any) {
+      console.warn(`⚠️ [FILE SEARCH] Error checking stores: ${fsError.message}`);
+    }
+
     // Step 7: Generate streaming AI response
     console.log('\n🤖 [STEP 7] Generating AI response (streaming)...');
     console.log(`📊 Input - History: ${geminiMessages.length} messages, New message: "${messageContent.substring(0, 50)}..."`);
@@ -516,6 +546,7 @@ Confermi definitivamente la cancellazione?"
         maxOutputTokens: 2048,
         ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       },
+      ...(fileSearchTool && { tools: [fileSearchTool] }),
     });
 
     console.log('✅ Stream initialized, yielding chunks...');

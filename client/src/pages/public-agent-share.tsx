@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { WhatsAppMessageBubble } from "@/components/whatsapp/WhatsAppMessageBubble";
 import { TypingIndicator } from "@/components/whatsapp/TypingIndicator";
 import { useToast } from "@/hooks/use-toast";
-import { Bot, Send, Loader2, Lock, AlertCircle, MessageCircle, Info, Building2, User, Mic, Camera, X } from "lucide-react";
+import { Bot, Send, Loader2, Lock, AlertCircle, MessageCircle, Info, Building2, User, Mic, Camera, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ShareMetadata {
@@ -627,56 +628,78 @@ export default function PublicAgentShare() {
     );
   }
   
-  // Password gate
+  // Password gate with modern styling
   if (showPasswordGate) {
     return (
       <div className={cn(
         "flex items-center justify-center p-4",
-        embedMode ? "h-screen min-h-[100dvh] bg-background" : "min-h-screen bg-background"
+        embedMode ? "h-screen min-h-[100dvh] bg-background" : "min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50"
       )}>
-        <Card className="max-w-md w-full">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Lock className="h-5 w-5 text-primary" />
-              <CardTitle>Accesso richiesto</CardTitle>
-            </div>
-            <CardDescription>
-              Inserisci la password per chattare con {metadata.agentName}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={validateMutation.isPending}
-                  autoFocus
-                />
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={validateMutation.isPending || !password.trim()}
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="max-w-md w-full shadow-xl border-0">
+            <CardHeader className="text-center pb-4">
+              <motion.div 
+                className="mx-auto mb-4 relative"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               >
-                {validateMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Verifica in corso...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-4 w-4 mr-2" />
-                    Accedi
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-4 rounded-full shadow-lg">
+                  <Lock className="h-8 w-8 text-white" />
+                </div>
+                <motion.div
+                  className="absolute -top-1 -right-1"
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Sparkles className="h-4 w-4 text-yellow-400 drop-shadow-md" />
+                </motion.div>
+              </motion.div>
+              <CardTitle className="text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Accesso richiesto
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Inserisci la password per chattare con {metadata.agentName}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={validateMutation.isPending}
+                    autoFocus
+                    className="rounded-xl h-12 text-base focus-visible:ring-blue-300"
+                  />
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl text-base font-medium" 
+                  disabled={validateMutation.isPending || !password.trim()}
+                >
+                  {validateMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Verifica in corso...
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-5 w-5 mr-2" />
+                      Accedi
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     );
   }
@@ -687,27 +710,43 @@ export default function PublicAgentShare() {
       "flex flex-col bg-background",
       embedMode ? "h-screen min-h-[100dvh]" : "min-h-screen min-h-[100dvh]"
     )}>
-      {/* Header - minimal WhatsApp style */}
+      {/* Header - modern gradient style */}
       {!embedMode && (
-        <div className="border-b bg-card">
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="border-b bg-card shadow-sm"
+        >
           <div className="px-4 py-3 flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-2 rounded-full">
-              <Bot className="h-5 w-5 text-white" />
+            <div className="relative">
+              <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-2.5 rounded-full shadow-lg">
+                <Bot className="h-5 w-5 text-white" />
+              </div>
+              <motion.div
+                className="absolute -top-0.5 -right-0.5"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-yellow-400 drop-shadow-sm" />
+              </motion.div>
             </div>
             <div className="flex-1">
               <h1 className="font-semibold text-base">{metadata.agentName}</h1>
-              <p className="text-xs text-muted-foreground">Assistente AI</p>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                <p className="text-xs text-muted-foreground">Online • Assistente AI</p>
+              </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setShowInfoSheet(true)}
-              className="h-9 w-9 rounded-full"
+              className="h-9 w-9 rounded-full hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50"
             >
               <Info className="h-5 w-5 text-muted-foreground" />
             </Button>
           </div>
-        </div>
+        </motion.div>
       )}
       
       {/* Chat area - struttura migliorata per input sempre visibile */}
@@ -715,64 +754,124 @@ export default function PublicAgentShare() {
         {/* Messages - solo questa area scorre */}
         <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 p-4 pb-2">
           <div className="max-w-4xl mx-auto space-y-4">
-            {/* Welcome message */}
+            {/* Welcome message with modern animation */}
             {messages.length === 0 && !optimisticMessage && !streamingMessage && (
-              <div className="text-center py-8 space-y-2">
-                <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground/50" />
-                <h3 className="font-medium text-muted-foreground">
-                  Inizia una conversazione
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Scrivi un messaggio per parlare con {metadata.agentName}
-                </p>
-              </div>
-            )}
-            
-            {/* Message list - filtra messaggi di sistema */}
-            {messages
-              .filter(msg => !isSystemMessage(msg.content))
-              .map((message) => {
-                const direction = message.role === 'user' ? 'outbound' : 'inbound';
-                
-                return (
-                  <div key={message.id} className="flex flex-col gap-1">
-                    <WhatsAppMessageBubble
-                      message={{
-                        id: message.id,
-                        text: message.content,
-                        sender: message.role === 'user' ? 'client' : 'ai',
-                        direction,
-                        createdAt: new Date(message.createdAt),
-                      }}
-                    />
-                    {message.audioUrl && (
-                      <div className={direction === 'inbound' ? 'flex justify-start ml-12' : 'flex justify-end mr-12'}>
-                        <audio
-                          controls
-                          className="w-64 h-10"
-                          preload="metadata"
-                        >
-                          <source src={message.audioUrl} type={message.role === 'user' ? 'audio/webm' : 'audio/wav'} />
-                          Il tuo browser non supporta l'elemento audio.
-                        </audio>
-                      </div>
-                    )}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-center py-12 space-y-4"
+              >
+                <motion.div 
+                  className="relative inline-block"
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-5 rounded-full shadow-lg mx-auto">
+                    <MessageCircle className="h-10 w-10 text-white" />
                   </div>
-                );
-              })}
-            
-            {/* Optimistic message */}
-            {optimisticMessage && (
-              <WhatsAppMessageBubble
-                message={{
-                  id: optimisticMessage.id,
-                  text: optimisticMessage.content,
-                  sender: 'client',
-                  direction: 'outbound',
-                  createdAt: optimisticMessage.createdAt,
-                }}
-              />
+                  <motion.div
+                    className="absolute -top-1 -right-1"
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Sparkles className="h-5 w-5 text-yellow-400 drop-shadow-md" />
+                  </motion.div>
+                </motion.div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Inizia una conversazione
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                    Scrivi un messaggio per parlare con {metadata.agentName}
+                  </p>
+                </div>
+                <motion.div 
+                  className="flex justify-center gap-2 pt-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100">
+                    💬 Chat
+                  </Badge>
+                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 hover:bg-purple-100">
+                    🎙️ Audio
+                  </Badge>
+                </motion.div>
+              </motion.div>
             )}
+            
+            {/* Message list with animations - filtra messaggi di sistema */}
+            <AnimatePresence mode="popLayout">
+              {messages
+                .filter(msg => !isSystemMessage(msg.content))
+                .map((message, index) => {
+                  const direction = message.role === 'user' ? 'outbound' : 'inbound';
+                  
+                  return (
+                    <motion.div 
+                      key={message.id} 
+                      className="flex flex-col gap-1"
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ 
+                        duration: 0.3, 
+                        delay: index * 0.02,
+                        ease: "easeOut"
+                      }}
+                    >
+                      <WhatsAppMessageBubble
+                        message={{
+                          id: message.id,
+                          text: message.content,
+                          sender: message.role === 'user' ? 'client' : 'ai',
+                          direction,
+                          createdAt: new Date(message.createdAt),
+                        }}
+                      />
+                      {message.audioUrl && (
+                        <motion.div 
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className={direction === 'inbound' ? 'flex justify-start ml-12' : 'flex justify-end mr-12'}
+                        >
+                          <audio
+                            controls
+                            className="w-64 h-10 rounded-lg"
+                            preload="metadata"
+                          >
+                            <source src={message.audioUrl} type={message.role === 'user' ? 'audio/webm' : 'audio/wav'} />
+                            Il tuo browser non supporta l'elemento audio.
+                          </audio>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  );
+                })}
+            </AnimatePresence>
+            
+            {/* Optimistic message with animation */}
+            <AnimatePresence>
+              {optimisticMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <WhatsAppMessageBubble
+                    message={{
+                      id: optimisticMessage.id,
+                      text: optimisticMessage.content,
+                      sender: 'client',
+                      direction: 'outbound',
+                      createdAt: optimisticMessage.createdAt,
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
             
             {/* Uploading audio preview */}
             {isUploadingAudio && uploadingAudioPreview && (
@@ -791,28 +890,44 @@ export default function PublicAgentShare() {
               <TypingIndicator />
             )}
             
-            {/* Streaming message */}
-            {streamingMessage?.content && (
-              <WhatsAppMessageBubble
-                message={{
-                  id: streamingMessage.id,
-                  text: streamingMessage.content,
-                  sender: 'ai',
-                  direction: 'inbound',
-                  createdAt: streamingMessage.createdAt,
-                }}
-              />
-            )}
+            {/* Streaming message with animation */}
+            <AnimatePresence>
+              {streamingMessage?.content && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <WhatsAppMessageBubble
+                    message={{
+                      id: streamingMessage.id,
+                      text: streamingMessage.content,
+                      sender: 'ai',
+                      direction: 'inbound',
+                      createdAt: streamingMessage.createdAt,
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </ScrollArea>
         
-        {/* Input area - SEMPRE FISSO in basso, stile WhatsApp */}
-        <div className="flex-shrink-0 border-t bg-card p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-lg sticky bottom-0">
+        {/* Input area - modern gradient style */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex-shrink-0 border-t bg-card/95 backdrop-blur-sm p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-lg sticky bottom-0"
+        >
           {isRecording ? (
-            // Recording UI
+            // Recording UI with gradient
             <div className="flex items-center gap-3 bg-red-50 rounded-3xl px-4 py-3 max-w-4xl mx-auto">
               <div className="flex items-center gap-2 flex-1">
-                <div className="h-3 w-3 bg-red-500 rounded-full animate-pulse" />
+                <motion.div 
+                  className="h-3 w-3 bg-red-500 rounded-full"
+                  animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
                 <span className="text-red-600 font-medium">{formatRecordingTime(recordingTime)}</span>
                 <span className="text-gray-500 text-sm ml-2">Registrazione in corso...</span>
               </div>
@@ -827,13 +942,13 @@ export default function PublicAgentShare() {
               <Button
                 onClick={stopRecording}
                 size="icon"
-                className="h-12 w-12 rounded-full bg-gradient-to-r from-green-500 to-emerald-500"
+                className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
               >
                 <Send className="h-5 w-5" />
               </Button>
             </div>
           ) : (
-            // Normal input UI
+            // Normal input UI with gradient styling
             <div className="flex gap-2 items-end max-w-4xl mx-auto">
               <input
                 ref={fileInputRef}
@@ -849,23 +964,23 @@ export default function PublicAgentShare() {
                 size="icon"
                 variant="ghost"
                 disabled={isBusy || sendMessageMutation.isPending}
-                className="h-10 w-10 rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                className="h-10 w-10 rounded-full text-gray-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 disabled:opacity-50"
               >
                 <Camera className="h-5 w-5" />
               </Button>
               
               <div className={cn(
-                "flex-1 rounded-3xl px-4 py-2 flex items-center gap-2 transition-colors",
+                "flex-1 rounded-3xl px-4 py-2 flex items-center gap-2 transition-all duration-200 border",
                 isBusy || sendMessageMutation.isPending 
-                  ? "bg-gray-200" 
-                  : "bg-gray-100"
+                  ? "bg-gray-100 border-gray-200" 
+                  : "bg-gray-50 border-gray-200 focus-within:border-blue-300 focus-within:ring-2 focus-within:ring-blue-100"
               )}>
                 <Input
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  placeholder={isBusy || sendMessageMutation.isPending ? "Attendere..." : "Messaggio..."}
+                  placeholder={isBusy || sendMessageMutation.isPending ? "Attendere..." : "Scrivi un messaggio..."}
                   disabled={isBusy || sendMessageMutation.isPending}
-                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-gray-500 p-0 h-auto min-h-[28px] disabled:cursor-not-allowed"
+                  className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base placeholder:text-gray-400 p-0 h-auto min-h-[28px] disabled:cursor-not-allowed"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey && !isBusy && !sendMessageMutation.isPending) {
                       e.preventDefault();
@@ -876,46 +991,87 @@ export default function PublicAgentShare() {
               </div>
               
               {messageInput.trim() ? (
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={isBusy || sendMessageMutation.isPending}
-                  size="icon"
-                  className="rounded-full h-12 w-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70"
-                >
-                  {isBusy || sendMessageMutation.isPending ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Send className="h-5 w-5" />
-                  )}
-                </Button>
+                // Send button with gradient
+                <motion.div className="relative" whileTap={{ scale: 0.95 }}>
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={isBusy || sendMessageMutation.isPending}
+                    size="icon"
+                    className="rounded-full h-12 w-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-70"
+                  >
+                    {isBusy || sendMessageMutation.isPending ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Send className="h-5 w-5" />
+                    )}
+                  </Button>
+                </motion.div>
               ) : (
-                <Button
-                  onClick={startRecording}
-                  disabled={isBusy || sendMessageMutation.isPending}
-                  size="icon"
-                  className="rounded-full h-12 w-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-70"
-                >
-                  <Mic className="h-5 w-5" />
-                </Button>
+                // Mic button with pulsing ring animation when idle
+                <div className="relative">
+                  {/* Pulsing ring effect */}
+                  {!isBusy && !sendMessageMutation.isPending && (
+                    <motion.div
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
+                      animate={{
+                        scale: [1, 1.15, 1],
+                        opacity: [0.5, 0.2, 0.5],
+                      }}
+                      transition={{
+                        duration: 2.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    />
+                  )}
+                  <motion.div whileTap={{ scale: 0.95 }}>
+                    <Button
+                      onClick={startRecording}
+                      disabled={isBusy || sendMessageMutation.isPending}
+                      size="icon"
+                      className="relative rounded-full h-12 w-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg transition-all duration-200 hover:shadow-xl disabled:opacity-70"
+                    >
+                      <Mic className="h-5 w-5" />
+                    </Button>
+                  </motion.div>
+                </div>
               )}
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
       
-      {/* Info Sheet - WhatsApp style profile */}
+      {/* Info Sheet - modern profile with gradient */}
       <Sheet open={showInfoSheet} onOpenChange={setShowInfoSheet}>
         <SheetContent side="bottom" className="h-[85vh]">
           <SheetHeader className="text-left pb-6">
-            <div className="flex flex-col items-center gap-4 pb-4">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-6 rounded-full">
-                <Bot className="h-12 w-12 text-white" />
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center gap-4 pb-4"
+            >
+              <div className="relative">
+                <div className="bg-gradient-to-br from-blue-500 to-purple-500 p-6 rounded-full shadow-xl">
+                  <Bot className="h-12 w-12 text-white" />
+                </div>
+                <motion.div
+                  className="absolute -top-1 -right-1"
+                  animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Sparkles className="h-5 w-5 text-yellow-400 drop-shadow-md" />
+                </motion.div>
               </div>
               <div className="text-center">
-                <SheetTitle className="text-xl">{metadata.agentName}</SheetTitle>
-                <SheetDescription>Assistente AI</SheetDescription>
+                <SheetTitle className="text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  {metadata.agentName}
+                </SheetTitle>
+                <SheetDescription className="flex items-center justify-center gap-1.5 mt-1">
+                  <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+                  Assistente AI
+                </SheetDescription>
               </div>
-            </div>
+            </motion.div>
           </SheetHeader>
           
           <ScrollArea className="h-full pb-6">

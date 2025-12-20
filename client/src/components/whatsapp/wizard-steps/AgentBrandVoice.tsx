@@ -95,6 +95,7 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isSyncingFileSearch, setIsSyncingFileSearch] = useState(false);
 
   const handleAddValue = () => {
     if (valueInput.trim()) {
@@ -502,6 +503,41 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
         });
       }
     }
+
+    // After all files are processed, trigger File Search sync with overlay
+    const successfulUploads = files.filter(f => {
+      const found = uploadingFiles.find(uf => uf.file === f);
+      return found?.status === "success" || !found?.status;
+    });
+
+    if (successfulUploads.length > 0) {
+      setIsSyncingFileSearch(true);
+      try {
+        const syncResponse = await fetch(`/api/file-search/sync-whatsapp/${agentId}`, {
+          method: "POST",
+          headers: getAuthHeaders(),
+        });
+        
+        if (syncResponse.ok) {
+          const syncData = await syncResponse.json();
+          toast({
+            title: "✓ Sincronizzazione AI completata",
+            description: `${syncData.synced || 0} documento/i sincronizzati per la ricerca AI`,
+          });
+        } else {
+          console.warn("File Search sync failed, AI may not use documents immediately");
+        }
+      } catch (syncError) {
+        console.warn("File Search sync error:", syncError);
+        toast({
+          title: "Attenzione",
+          description: "Sincronizzazione AI fallita. Riprova più tardi.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSyncingFileSearch(false);
+      }
+    }
   };
 
   const handleOpenImportDialog = async () => {
@@ -584,12 +620,35 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
         
         toast({
           title: "✓ Importazione completata",
-          description: `${data.importedCount} documento/i importato/i con successo`,
+          description: `${data.importedCount} documento/i importato/i. Sincronizzazione AI in corso...`,
         });
         
         setIsImportDialogOpen(false);
         setSelectedDocIds([]);
         setImportCandidates([]);
+        
+        // Start File Search sync in background
+        setIsSyncingFileSearch(true);
+        try {
+          const syncResponse = await fetch(`/api/file-search/sync-whatsapp/${agentId}`, {
+            method: "POST",
+            headers: getAuthHeaders(),
+          });
+          
+          if (syncResponse.ok) {
+            const syncData = await syncResponse.json();
+            toast({
+              title: "✓ Sincronizzazione AI completata",
+              description: `${syncData.synced || 0} documento/i sincronizzati per la ricerca AI`,
+            });
+          } else {
+            console.warn("File Search sync failed, AI may not use documents immediately");
+          }
+        } catch (syncError) {
+          console.warn("File Search sync error:", syncError);
+        } finally {
+          setIsSyncingFileSearch(false);
+        }
       } else {
         const error = await response.json();
         toast({
@@ -611,7 +670,23 @@ export default function AgentBrandVoice({ formData, onChange, errors, agentId }:
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* File Search Sync Overlay */}
+      {isSyncingFileSearch && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-card border rounded-xl p-8 shadow-xl max-w-md text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Sincronizzazione AI in corso</h3>
+              <p className="text-sm text-muted-foreground">
+                Stiamo indicizzando i documenti per la ricerca intelligente. 
+                Attendi qualche secondo...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-2">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Building2 className="h-6 w-6 text-primary" />

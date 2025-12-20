@@ -1619,21 +1619,32 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     console.log(`   🔢 TOTALE INPUT: ~${estimatedTotalInput.toLocaleString()} tokens\n`);
 
     // Check if agent has File Search Store for RAG-powered responses
+    // Priority: 1) Agent-specific store, 2) Consultant store (fallback)
     let fileSearchTool: any = null;
     try {
+      // First try agent-specific store
       const agentStore = await fileSearchSyncService.getWhatsappAgentStore(consultantConfig.id);
       if (agentStore && agentStore.documentCount > 0) {
         fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
         console.log(`🔍 [FILE SEARCH] WhatsApp agent has FileSearchStore: ${agentStore.displayName}`);
         console.log(`   📦 Store: ${agentStore.googleStoreName}`);
         console.log(`   📄 Documents: ${agentStore.documentCount}`);
-      } else if (agentStore) {
-        console.log(`ℹ️ [FILE SEARCH] WhatsApp agent store exists but has no documents`);
       } else {
-        console.log(`ℹ️ [FILE SEARCH] No FileSearchStore for this WhatsApp agent`);
+        // Fallback to consultant's store
+        const consultantStore = await fileSearchSyncService.getConsultantStore(consultantConfig.consultantId);
+        if (consultantStore && consultantStore.documentCount > 0) {
+          fileSearchTool = fileSearchService.buildFileSearchTool([consultantStore.googleStoreName]);
+          console.log(`🔍 [FILE SEARCH] Using consultant's FileSearchStore as fallback: ${consultantStore.displayName}`);
+          console.log(`   📦 Store: ${consultantStore.googleStoreName}`);
+          console.log(`   📄 Documents: ${consultantStore.documentCount}`);
+        } else if (consultantStore) {
+          console.log(`ℹ️ [FILE SEARCH] Consultant store exists but has no documents`);
+        } else {
+          console.log(`ℹ️ [FILE SEARCH] No FileSearchStore available (no agent or consultant store)`);
+        }
       }
     } catch (fsError: any) {
-      console.warn(`⚠️ [FILE SEARCH] Error checking agent store: ${fsError.message}`);
+      console.warn(`⚠️ [FILE SEARCH] Error checking stores: ${fsError.message}`);
     }
 
     // Retry logic with exponential backoff and API key rotation
