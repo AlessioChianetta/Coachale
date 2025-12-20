@@ -53,6 +53,38 @@ export function getModelForProviderName(providerName: string): string {
 }
 
 /**
+ * Thinking level for Gemini 3 Flash Preview
+ * Options: "minimal" | "low" | "medium" | "high"
+ */
+export const GEMINI_3_THINKING_LEVEL: "minimal" | "low" | "medium" | "high" = "low";
+
+/**
+ * Get model with thinking configuration based on provider name
+ * This is the recommended function to use for Gemini 3 support with thinking mode
+ * @param providerName - Provider name from metadata (e.g., 'Google AI Studio', 'Vertex AI (tuo)')
+ * @returns Object with model name, useThinking flag, and thinkingLevel
+ */
+export function getModelWithThinking(providerName: string): { 
+  model: string; 
+  useThinking: boolean; 
+  thinkingLevel: "minimal" | "low" | "medium" | "high";
+} {
+  const isGoogleAIStudio = providerName === 'Google AI Studio' || providerName.toLowerCase().includes('studio');
+  if (isGoogleAIStudio) {
+    return { 
+      model: GEMINI_3_MODEL, 
+      useThinking: true, 
+      thinkingLevel: GEMINI_3_THINKING_LEVEL 
+    };
+  }
+  return { 
+    model: GEMINI_LEGACY_MODEL, 
+    useThinking: false, 
+    thinkingLevel: GEMINI_3_THINKING_LEVEL 
+  };
+}
+
+/**
  * Cache for SuperAdmin Gemini keys (avoids repeated DB queries)
  */
 let superAdminGeminiKeysCache: { keys: string[]; enabled: boolean; fetchedAt: number } | null = null;

@@ -7,7 +7,7 @@
 import { db } from "../db";
 import { users, consultations, exercises, exerciseAssignments, libraryDocuments, clientLibraryProgress, userFinanceSettings } from "../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { getAIProvider, getModelForProviderName } from "./provider-factory";
+import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL } from "./provider-factory";
 import { retryWithBackoff, AiRetryContext } from "./retry-manager";
 
 export interface ExtractedSalesContext {
@@ -244,12 +244,15 @@ Ricorda: rispondi SOLO con il JSON richiesto, nient'altro.`;
     emit: () => {}, // No-op for non-streaming calls
   };
 
+  const { model, useThinking, thinkingLevel } = getModelWithThinking(providerResult.metadata.name);
+  console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+
   const result = await retryWithBackoff(
     async (attemptCtx) => {
       console.log(`[MagicButton] Calling AI (attempt ${attemptCtx.attempt})...`);
       
       const response = await client.generateContent({
-        model: getModelForProviderName(providerMetadata.name),
+        model,
         contents: [
           {
             role: "user",
@@ -261,6 +264,11 @@ Ricorda: rispondi SOLO con il JSON richiesto, nient'altro.`;
           temperature: 0.3, // Low temperature for more consistent JSON output
           maxOutputTokens: 8192, // Increased to prevent truncation
         },
+        ...(useThinking && {
+          thinkingConfig: {
+            thinkingLevel: thinkingLevel
+          }
+        }),
       });
 
       return response.response.text();

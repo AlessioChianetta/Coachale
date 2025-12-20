@@ -10,7 +10,7 @@ import { db } from "../db";
 import { users } from "../../shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { enhanceEmailTypography } from "../services/email-html-wrapper";
-import { getAIProvider, getModelForProviderName, type GeminiClient } from "./provider-factory";
+import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL, type GeminiClient } from "./provider-factory";
 import { fileSearchService } from "./file-search-service";
 
 export interface EmailGeneratorInput {
@@ -518,9 +518,11 @@ async function generateEmailWithRetry(
   }
 ): Promise<{ subject: string; body: string; preview: string }> {
 
-  const modelName = options?.providerName 
-    ? getModelForProviderName(options.providerName) 
-    : "gemini-2.5-flash"; // Fallback to legacy model
+  const { model: modelName, useThinking, thinkingLevel } = options?.providerName 
+    ? getModelWithThinking(options.providerName) 
+    : { model: "gemini-2.5-flash", useThinking: false, thinkingLevel: GEMINI_3_THINKING_LEVEL };
+
+  console.log(`[AI] Using model: ${modelName} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -556,6 +558,11 @@ ${userMessage}`;
         contents: [{ role: "user", parts: [{ text: modifiedUserMessage }] }],
         generationConfig,
         ...(options?.tools && options.tools.length > 0 ? { tools: options.tools } : {}),
+        ...(useThinking && {
+          thinkingConfig: {
+            thinkingLevel: thinkingLevel
+          }
+        }),
       });
 
       const responseText = result.response.text();

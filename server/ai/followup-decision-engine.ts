@@ -11,7 +11,7 @@
 import { db } from "../db";
 import { conversationStates, followupAiEvaluationLog } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
-import { getAIProvider, getModelForProviderName } from "./provider-factory";
+import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL } from "./provider-factory";
 import { getAgentProfile, buildAgentPersonalityPrompt } from "./agent-profiles";
 // Le regole di sistema NON vengono più usate - l'AI decide tutto
 // import { evaluateSystemRules, RuleEvaluationContext } from "./system-rules-config";
@@ -182,14 +182,21 @@ export async function evaluateFollowup(
 
     // Get AI provider using the unified provider factory
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProviderResult.metadata.name);
     console.log(`🚀 [FOLLOWUP-ENGINE] Using ${aiProviderResult.metadata.name} for evaluation`);
+    console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
 
     const response = await aiProviderResult.client.generateContent({
-      model: getModelForProviderName(aiProviderResult.metadata.name),
+      model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         responseMimeType: "application/json",
       },
+      ...(useThinking && {
+        thinkingConfig: {
+          thinkingLevel: thinkingLevel
+        }
+      }),
     });
 
     const resultText = response.response.text();
@@ -671,10 +678,18 @@ RISPONDI SOLO IN JSON:
 
       console.log(`🤖 [TEMPLATE-AI] Using AI provider: ${aiProvider.metadata?.name || aiProvider.source}`);
 
+      const { model: templateModel, useThinking: templateUseThinking, thinkingLevel: templateThinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+      console.log(`[AI] Using model: ${templateModel} with thinking: ${templateUseThinking ? templateThinkingLevel : 'disabled'}`);
+
       // Usa direttamente il client già configurato con il formato corretto
       const aiResponse = await aiProvider.client.generateContent({
-        model: getModelForProviderName(aiProvider.metadata.name),
+        model: templateModel,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
+        ...(templateUseThinking && {
+          thinkingConfig: {
+            thinkingLevel: templateThinkingLevel
+          }
+        }),
       });
       const responseText = aiResponse.response?.text() || "";
 
@@ -923,7 +938,9 @@ export async function evaluateConversationsBatch(
 
   try {
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    const { model: batchModel, useThinking: batchUseThinking, thinkingLevel: batchThinkingLevel } = getModelWithThinking(aiProviderResult.metadata.name);
     console.log(`🚀 [FOLLOWUP-ENGINE-BATCH] Using ${aiProviderResult.metadata.name} for batch evaluation`);
+    console.log(`[AI] Using model: ${batchModel} with thinking: ${batchUseThinking ? batchThinkingLevel : 'disabled'}`);
 
     for (const [groupKey, groupConversations] of groups) {
       console.log(`📦 [FOLLOWUP-ENGINE-BATCH] Processing group "${groupKey}" with ${groupConversations.length} conversations`);
@@ -937,11 +954,16 @@ export async function evaluateConversationsBatch(
           const prompt = buildBatchPrompt(batch);
 
           const response = await aiProviderResult.client.generateContent({
-            model: getModelForProviderName(aiProviderResult.metadata.name),
+            model: batchModel,
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
               responseMimeType: "application/json",
             },
+            ...(batchUseThinking && {
+              thinkingConfig: {
+                thinkingLevel: batchThinkingLevel
+              }
+            }),
           });
 
           const resultText = response.response.text();

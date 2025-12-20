@@ -18,7 +18,7 @@
 import { db } from "../db";
 import { conversationStates, followupAiEvaluationLog, whatsappMessages, consultantAiPreferences } from "../../shared/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { getAIProvider, getModelForProviderName } from "./provider-factory";
+import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL } from "./provider-factory";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONSULTANT AI PREFERENCES
@@ -523,15 +523,22 @@ export async function evaluateWithHumanLikeAI(
     
     // Ottieni AI provider
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProviderResult.metadata.name);
     console.log(`🚀 [HUMAN-AI] Using ${aiProviderResult.metadata.name} for evaluation`);
+    console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
     
     const response = await aiProviderResult.client.generateContent({
-      model: getModelForProviderName(aiProviderResult.metadata.name),
+      model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.7, // Un po' di variabilità per decisioni più "umane"
       },
+      ...(useThinking && {
+        thinkingConfig: {
+          thinkingLevel: thinkingLevel
+        }
+      }),
     });
 
     const resultText = response.response.text();

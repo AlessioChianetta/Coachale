@@ -10,7 +10,7 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { getAIProvider, getModelForProviderName, GeminiClient } from "./provider-factory";
+import { getAIProvider, getModelWithThinking, GEMINI_3_THINKING_LEVEL, GeminiClient } from "./provider-factory";
 
 export interface DiscoveryRec {
   motivazioneCall?: string;
@@ -244,17 +244,25 @@ export async function generateDiscoveryRecWithProvider(
 
     console.log(`✅ [DiscoveryRecGenerator] Using provider: ${providerResult.source}`);
 
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(providerResult.metadata.name);
+    console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+
     const prompt = DISCOVERY_REC_PROMPT.replace("{{TRANSCRIPT}}", transcript);
 
     const startTime = Date.now();
 
     const response = await client.generateContent({
-      model: getModelForProviderName(providerMetadata.name),
+      model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 20000,
-      }
+      },
+      ...(useThinking && {
+        thinkingConfig: {
+          thinkingLevel: thinkingLevel
+        }
+      }),
     });
 
     const elapsedMs = Date.now() - startTime;
