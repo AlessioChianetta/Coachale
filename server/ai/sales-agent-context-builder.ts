@@ -263,12 +263,8 @@ Ricorda: rispondi SOLO con il JSON richiesto, nient'altro.`;
           systemInstruction: systemPrompt,
           temperature: 0.3, // Low temperature for more consistent JSON output
           maxOutputTokens: 8192, // Increased to prevent truncation
+          ...(useThinking && { thinkingConfig: { thinkingLevel } }),
         },
-        ...(useThinking && {
-          thinkingConfig: {
-            thinkingLevel: thinkingLevel
-          }
-        }),
       });
 
       return response.response.text();

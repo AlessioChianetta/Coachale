@@ -553,16 +553,16 @@ ${userMessage}`;
       }
 
       // Call Gemini API using the provider client
+      // Add thinkingConfig inside generationConfig if enabled
+      if (useThinking) {
+        generationConfig.thinkingConfig = { thinkingLevel };
+      }
+      
       const result = await client.generateContent({
         model: modelName,
         contents: [{ role: "user", parts: [{ text: modifiedUserMessage }] }],
         generationConfig,
         ...(options?.tools && options.tools.length > 0 ? { tools: options.tools } : {}),
-        ...(useThinking && {
-          thinkingConfig: {
-            thinkingLevel: thinkingLevel
-          }
-        }),
       });
 
       const responseText = result.response.text();

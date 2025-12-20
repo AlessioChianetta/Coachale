@@ -971,6 +971,10 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
       async (ctx: OperationAttemptContext) => {
         return await ai.models.generateContent({
           model: clientModel,
+          contents: geminiMessages.map(msg => ({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts: [{ text: msg.content }],
+          })),
           config: {
             systemInstruction: systemPrompt,
             ...(clientUseThinking && {
@@ -979,10 +983,6 @@ export async function sendChatMessage(request: ChatRequest): Promise<ChatRespons
               }
             }),
           },
-          contents: geminiMessages.map(msg => ({
-            role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content }],
-          })),
           ...(fileSearchTool && { tools: [fileSearchTool] }),
         });
       },

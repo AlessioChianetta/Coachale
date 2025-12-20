@@ -349,7 +349,9 @@ export async function extractBookingDataFromConversation(
     const response = await aiClient.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      ...(useThinking && { generationConfig: { thinkingConfig: { thinkingLevel } } }),
+      generationConfig: {
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
+      },
     });
 
     let responseText = "";

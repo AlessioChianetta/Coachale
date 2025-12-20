@@ -6699,12 +6699,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           systemInstruction: systemPrompt,
           maxOutputTokens: 1024,
           temperature: 0.7,
+          ...(useThinking && { thinkingConfig: { thinkingLevel } }),
         },
-        ...(useThinking && {
-          thinkingConfig: {
-            thinkingLevel: thinkingLevel
-          }
-        })
       });
 
       const response = result.response.text();
@@ -12264,13 +12260,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           }],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 500
+            maxOutputTokens: 500,
+            ...(useThinking && { thinkingConfig: { thinkingLevel } }),
           },
-          ...(useThinking && {
-            thinkingConfig: {
-              thinkingLevel: thinkingLevel
-            }
-          })
         });
 
         const transcription = transcriptionResult.response.text();

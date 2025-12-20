@@ -1285,13 +1285,9 @@ TESTO MIGLIORATO (rispondi SOLO con il testo migliorato, senza introduzioni o co
     const result = await providerResult.client.generateContent({
       model: improveModel,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      ...(improveUseThinking && {
-        config: {
-          thinkingConfig: {
-            thinkingLevel: improveThinkingLevel
-          }
-        }
-      })
+      generationConfig: {
+        ...(improveUseThinking && { thinkingConfig: { thinkingLevel: improveThinkingLevel } })
+      }
     });
     const improvedText = result.response.text() || text;
     
@@ -1444,13 +1440,9 @@ RISPOSTA (array JSON):`;
     const ideasResult = await providerResult.client.generateContent({
       model: ideasModel,
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      ...(ideasUseThinking && {
-        config: {
-          thinkingConfig: {
-            thinkingLevel: ideasThinkingLevel
-          }
-        }
-      })
+      generationConfig: {
+        ...(ideasUseThinking && { thinkingConfig: { thinkingLevel: ideasThinkingLevel } })
+      }
     });
     const responseText = ideasResult.response.text() || '';
     

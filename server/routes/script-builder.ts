@@ -557,12 +557,8 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
                 temperature: 0.5,
                 maxOutputTokens: 20384,
                 responseMimeType: 'application/json',
+                ...(useThinking && { thinkingConfig: { thinkingLevel } }),
               },
-              ...(useThinking && {
-                thinkingConfig: {
-                  thinkingLevel: thinkingLevel
-                }
-              })
             });
             
             const responseText = result.response.text();

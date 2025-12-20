@@ -761,11 +761,9 @@ GENERA ORA il template ADATTATO. Restituisci SOLO le istruzioni complete, senza 
             parts: [{ text: systemPrompt }]
           }
         ],
-        ...(useThinking && {
-          thinkingConfig: {
-            thinkingLevel: thinkingLevel
-          }
-        })
+        generationConfig: {
+          ...(useThinking && { thinkingConfig: { thinkingLevel } })
+        }
       });
 
       let generatedInstructions = result.response.text();
@@ -1016,11 +1014,9 @@ Restituisci SOLO le istruzioni migliorate, senza commenti o spiegazioni aggiunti
         parts: [{ text: systemPrompt }]
       }
     ],
-    ...(useThinking && {
-      thinkingConfig: {
-        thinkingLevel: thinkingLevel
-      }
-    })
+    generationConfig: {
+      ...(useThinking && { thinkingConfig: { thinkingLevel } })
+    }
   });
 
   let enhancedInstructions = result.response.text();

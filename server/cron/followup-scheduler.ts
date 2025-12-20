@@ -2161,11 +2161,9 @@ RISPONDI CON SOLO IL TESTO DEL MESSAGGIO (niente JSON, niente formattazione, sol
     const response = await aiProviderResult.client.generateContent({
       model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      ...(useThinking && {
-        thinkingConfig: {
-          thinkingLevel: thinkingLevel
-        }
-      })
+      generationConfig: {
+        ...(useThinking && { thinkingConfig: { thinkingLevel } })
+      }
     });
     
     const messageText = response.response.text();
@@ -2523,12 +2521,8 @@ Genera il messaggio di follow-up:`;
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 200,
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       },
-      ...(useThinking && {
-        thinkingConfig: {
-          thinkingLevel: thinkingLevel
-        }
-      })
     });
     
     const responseText = result.response?.text?.() || 

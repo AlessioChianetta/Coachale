@@ -191,12 +191,8 @@ export async function evaluateFollowup(
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         responseMimeType: "application/json",
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       },
-      ...(useThinking && {
-        thinkingConfig: {
-          thinkingLevel: thinkingLevel
-        }
-      }),
     });
 
     const resultText = response.response.text();
@@ -685,11 +681,9 @@ RISPONDI SOLO IN JSON:
       const aiResponse = await aiProvider.client.generateContent({
         model: templateModel,
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        ...(templateUseThinking && {
-          thinkingConfig: {
-            thinkingLevel: templateThinkingLevel
-          }
-        }),
+        generationConfig: {
+          ...(templateUseThinking && { thinkingConfig: { thinkingLevel: templateThinkingLevel } }),
+        },
       });
       const responseText = aiResponse.response?.text() || "";
 
@@ -958,12 +952,8 @@ export async function evaluateConversationsBatch(
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
               responseMimeType: "application/json",
+              ...(batchUseThinking && { thinkingConfig: { thinkingLevel: batchThinkingLevel } }),
             },
-            ...(batchUseThinking && {
-              thinkingConfig: {
-                thinkingLevel: batchThinkingLevel
-              }
-            }),
           });
 
           const resultText = response.response.text();

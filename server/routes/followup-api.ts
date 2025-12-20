@@ -319,12 +319,8 @@ Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
         systemInstruction: systemPrompt,
         temperature: 0.3,
         maxOutputTokens: 1024,
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       },
-      ...(useThinking && {
-        thinkingConfig: {
-          thinkingLevel: thinkingLevel
-        }
-      })
     });
 
     const responseText = result.response.text();

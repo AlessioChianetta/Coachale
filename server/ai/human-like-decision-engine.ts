@@ -533,12 +533,8 @@ export async function evaluateWithHumanLikeAI(
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.7, // Un po' di variabilità per decisioni più "umane"
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       },
-      ...(useThinking && {
-        thinkingConfig: {
-          thinkingLevel: thinkingLevel
-        }
-      }),
     });
 
     const resultText = response.response.text();

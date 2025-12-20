@@ -257,12 +257,8 @@ export async function generateDiscoveryRecWithProvider(
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 20000,
+        ...(useThinking && { thinkingConfig: { thinkingLevel } }),
       },
-      ...(useThinking && {
-        thinkingConfig: {
-          thinkingLevel: thinkingLevel
-        }
-      }),
     });
 
     const elapsedMs = Date.now() - startTime;

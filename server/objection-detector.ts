@@ -93,18 +93,18 @@ Rispondi in formato JSON con questa struttura:
       console.log(`🧠 [OBJECTION-DETECTOR] Using model: ${GEMINI_3_MODEL} with thinking: ${GEMINI_3_THINKING_LEVEL}`);
       response = await ai.models.generateContent({
         model: GEMINI_3_MODEL,
-        config: {
-          responseMimeType: "application/json",
-          thinkingConfig: {
-            thinkingLevel: GEMINI_3_THINKING_LEVEL
-          }
-        },
         contents: [
           {
             role: "user",
             parts: [{ text: prompt }],
           },
         ],
+        config: {
+          responseMimeType: "application/json",
+          thinkingConfig: {
+            thinkingLevel: GEMINI_3_THINKING_LEVEL
+          }
+        },
       });
     }
 

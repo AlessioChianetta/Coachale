@@ -1495,13 +1495,9 @@ router.post(
         }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 500
+          maxOutputTokens: 500,
+          ...(useThinking && { thinkingConfig: { thinkingLevel } }),
         },
-        ...(useThinking && {
-          thinkingConfig: {
-            thinkingLevel: thinkingLevel
-          }
-        })
       });
       
       const transcription = transcriptionResult.response.text();

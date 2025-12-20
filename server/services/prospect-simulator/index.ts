@@ -852,11 +852,9 @@ LA TUA RISPOSTA:`;
         const response = await this.aiClient!.generateContent({
           model,
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          ...(useThinking && {
-            thinkingConfig: {
-              thinkingLevel: thinkingLevel
-            }
-          })
+          generationConfig: {
+            ...(useThinking && { thinkingConfig: { thinkingLevel } })
+          }
         });
 
         prospectResponse = response.response.text() || '';

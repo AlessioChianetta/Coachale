@@ -1681,10 +1681,6 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
 
           response = await ai.models.generateContent({
             model: studioModel,
-            config: {
-              systemInstruction: systemPrompt,
-              ...(studioUseThinking && { thinkingConfig: { thinkingLevel: studioThinkingLevel } }),
-            },
             contents: [
               ...geminiMessages,
               {
@@ -1692,6 +1688,10 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
                 parts: [{ text: userMessage }],
               },
             ],
+            config: {
+              systemInstruction: systemPrompt,
+              ...(studioUseThinking && { thinkingConfig: { thinkingLevel: studioThinkingLevel } }),
+            },
           });
         }
 
