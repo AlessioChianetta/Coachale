@@ -1,0 +1,45 @@
+════════════════════════════════════════════════════════════
+
+10:49:28 PM [express] GET /api/file-search/audit 200 in 13894ms :: {"consultant":{"library":{"total":…
+🔄 [WHATSAPP POLLING] Starting poll cycle...
+📊 [WHATSAPP POLLING] Polling 8 consultant(s) sequentially...
+⚠️ [WHATSAPP POLLING] Skipping consultant 42105c6d-d065-4f4e-b5b2-290742b4dd1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 611b2437-3b3f-4063-ad89-2164943abf1d - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 0c73bbe5-51e1-4108-866b-6be7a52fce3b - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant c2146759-f08a-430a-afdf-701bbc674300 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+⚠️ [WHATSAPP POLLING] Skipping consultant 7cdfb7ae-d06b-40f6-9840-91f72772a390 - incomplete config
+🔖 [WATERMARK] Agent Marco setter (760bb513-098f-4722-b02a-a700160c2fc3) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Marco setter
+📌 [WATERMARK] Latest on Twilio (2025-12-14T18:11:36.000Z) is older than watermark - keeping current
+🔖 [WATERMARK] Agent Receptionist Principale (fe95f393-b8c9-4fc0-80d7-2035dcba305a) - last processed: 2025-12-14T18:11:36.000Z
+✅ [WHATSAPP POLLING] No new messages for agent Receptionist Principale
+✅ [WHATSAPP POLLING] Poll cycle complete
+✅ [FileSearch] Using SuperAdmin Gemini key for user 0c73bbe5-51e1-4108-866b-6be7a52fce3b (1/1)
+🔍 [FileSearch] Creating store for whatsapp_agent 760bb513-098f-4722-b02a-a700160c2fc3: "WhatsApp Agent: Marco setter"
+❌ [FileSearch] Failed to create store: error: new row for relation "file_search_stores" violates check constraint "file_search_stores_owner_type_check"
+    at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/node_modules/src/node-postgres/session.ts:104:19)
+    at async FileSearchService.createStore (/home/runner/workspace/server/ai/file-search-service.ts:278:25)
+    at async Function.syncSingleWhatsappKnowledgeItem (/home/runner/workspace/server/services/file-search-sync-service.ts:3203:24)
+    at async <anonymous> (/home/runner/workspace/server/routes/file-search.ts:677:18) {
+  length: 553,
+  severity: 'ERROR',
+  code: '23514',
+  detail: `Failing row contains (121de692-57ad-40b3-a146-58e7ea324ddd, fileSearchStores/whatsapp-agent-marco-setter-sddtrp3xasbw, WhatsApp Agent: Marco setter, Knowledge base per l'agente WhatsApp "Marco setter", 760bb513-098f-4722-b02a-a700160c2fc3, whatsapp_agent, 0, t, 2025-12-20 22:49:36.444581, 2025-12-20 22:49:36.444581).`,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: 'public',
+  table: 'file_search_stores',
+  column: undefined,
+  dataType: undefined,
+  constraint: 'file_search_stores_owner_type_check',
+  file: 'execMain.c',
+  line: '2033',
+  routine: 'ExecConstraints'
+}
+10:49:36 PM [express] POST /api/file-search/sync-single 500 in 1866ms :: {"success":false,"error":"ne…
