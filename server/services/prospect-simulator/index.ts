@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import type { ProspectPersona } from '@shared/prospect-personas';
-import { getAIProvider, getModelForProviderName, type GeminiClient } from '../../ai/provider-factory';
+import { getAIProvider, getModelWithThinking, type GeminiClient } from '../../ai/provider-factory';
 
 type ResponseSpeed = 'fast' | 'normal' | 'slow' | 'disabled';
 type TestMode = 'discovery' | 'demo' | 'discovery_demo';
@@ -846,9 +846,17 @@ LA TUA RISPOSTA:`;
           await new Promise(resolve => setTimeout(resolve, 500)); // Piccola pausa prima di riprovare
         }
 
+        const { model, useThinking, thinkingLevel } = getModelWithThinking(this.aiProviderMetadata?.name || 'Vertex AI');
+        console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+        
         const response = await this.aiClient!.generateContent({
-          model: getModelForProviderName(this.aiProviderMetadata?.name || 'Vertex AI'),
+          model,
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          ...(useThinking && {
+            thinkingConfig: {
+              thinkingLevel: thinkingLevel
+            }
+          })
         });
 
         prospectResponse = response.response.text() || '';

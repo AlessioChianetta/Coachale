@@ -107,7 +107,7 @@ import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
 import { scheduleMessageProcessing } from "./whatsapp/message-processor";
 import { processConsultantAgentMessage, generateConversationTitle } from './whatsapp/agent-consultant-chat-service';
 import { generateSpeech } from './ai/tts-service';
-import { getAIProvider, getModelForProviderName } from './ai/provider-factory';
+import { getAIProvider, getModelWithThinking } from './ai/provider-factory';
 import { shouldRespondWithAudio } from './whatsapp/audio-response-utils';
 import multer from 'multer';
 import { nanoid } from "nanoid";
@@ -6687,8 +6687,11 @@ Il tuo ruolo è aiutare i consulenti finanziari a:
 Rispondi in italiano, in modo conciso e pratico. Fornisci suggerimenti actionable.
 Se non conosci una risposta specifica, suggerisci dove trovare più informazioni nella piattaforma.`;
 
+      const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+      console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+      
       const result = await aiProvider.client.generateContent({
-        model: getModelForProviderName(aiProvider.metadata.name),
+        model,
         contents: [
           { role: 'user', parts: [{ text: question }] }
         ],
@@ -6696,7 +6699,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           systemInstruction: systemPrompt,
           maxOutputTokens: 1024,
           temperature: 0.7,
-        }
+        },
+        ...(useThinking && {
+          thinkingConfig: {
+            thinkingLevel: thinkingLevel
+          }
+        })
       });
 
       const response = result.response.text();
@@ -12237,8 +12245,11 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           { generateContent: aiProvider.client.generateContent.bind(aiProvider.client) } : 
           aiProvider.client;
 
+        const { model: modelName, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+        console.log(`[AI] Using model: ${modelName} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+        
         const transcriptionResult = await model.generateContent({
-          model: getModelForProviderName(aiProvider.metadata.name),
+          model: modelName,
           contents: [{
             role: 'user',
             parts: [
@@ -12254,7 +12265,12 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           generationConfig: {
             temperature: 0.3,
             maxOutputTokens: 500
-          }
+          },
+          ...(useThinking && {
+            thinkingConfig: {
+              thinkingLevel: thinkingLevel
+            }
+          })
         });
 
         const transcription = transcriptionResult.response.text();

@@ -8,7 +8,7 @@ import { db } from "../db";
 import * as schema from "../../shared/schema";
 import { eq, and, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { authenticateToken, requireRole } from "../middleware/auth";
-import { getAIProvider, getModelForProviderName } from "../ai/provider-factory";
+import { getAIProvider, getModelWithThinking } from "../ai/provider-factory";
 
 const router = Router();
 
@@ -307,8 +307,11 @@ Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
 
     const userPrompt = `Crea una regola di follow-up basata su questa descrizione: "${description}"`;
 
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+    console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+    
     const result = await aiProvider.client.generateContent({
-      model: getModelForProviderName(aiProvider.metadata.name),
+      model,
       contents: [
         { role: "user", parts: [{ text: userPrompt }] }
       ],
@@ -316,7 +319,12 @@ Rispondi SOLO con un JSON valido, senza markdown o spiegazioni:
         systemInstruction: systemPrompt,
         temperature: 0.3,
         maxOutputTokens: 1024,
-      }
+      },
+      ...(useThinking && {
+        thinkingConfig: {
+          thinkingLevel: thinkingLevel
+        }
+      })
     });
 
     const responseText = result.response.text();

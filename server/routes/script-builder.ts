@@ -7,7 +7,7 @@ import { getDiscoveryScript as getDiscoveryScriptB2C, getDemoScript as getDemoSc
 import { AuthRequest, requireRole } from '../middleware/auth';
 import { parseTextToBlocks } from '../../shared/script-parser';
 import type { ScriptBlockStructure } from '../../shared/script-blocks';
-import { getAIProvider, getModelForProviderName } from '../ai/provider-factory';
+import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 import { randomBytes } from 'crypto';
 
 const router = Router();
@@ -547,14 +547,22 @@ Rispondi SOLO con il JSON, nessun testo prima o dopo.`;
             console.log(`   🤖 Invio richiesta AI per FASE #${phase.number}...`);
             console.log(`   📏 Lunghezza prompt: ${phasePrompt.length} caratteri`);
 
+            const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+            console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+            
             const result = await aiProvider.client.generateContent({
-              model: getModelForProviderName(aiProvider.metadata.name),
+              model,
               contents: [{ role: 'user', parts: [{ text: phasePrompt }] }],
               generationConfig: {
                 temperature: 0.5,
                 maxOutputTokens: 20384,
                 responseMimeType: 'application/json',
               },
+              ...(useThinking && {
+                thinkingConfig: {
+                  thinkingLevel: thinkingLevel
+                }
+              })
             });
             
             const responseText = result.response.text();

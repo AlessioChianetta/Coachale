@@ -14,7 +14,7 @@ import { nanoid } from 'nanoid';
 import multer from 'multer';
 import { generateSpeech } from '../../ai/tts-service';
 import { shouldRespondWithAudio } from '../../whatsapp/audio-response-utils';
-import { getAIProvider, getModelForProviderName } from '../../ai/provider-factory';
+import { getAIProvider, getModelWithThinking } from '../../ai/provider-factory';
 import { getAudioDurationInSeconds } from 'get-audio-duration';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -1476,8 +1476,11 @@ router.post(
         { generateContent: aiProvider.client.generateContent.bind(aiProvider.client) } : 
         aiProvider.client;
       
+      const { model: modelName, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+      console.log(`[AI] Using model: ${modelName} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+      
       const transcriptionResult = await model.generateContent({
-        model: getModelForProviderName(aiProvider.metadata.name),
+        model: modelName,
         contents: [{
           role: 'user',
           parts: [
@@ -1493,7 +1496,12 @@ router.post(
         generationConfig: {
           temperature: 0.3,
           maxOutputTokens: 500
-        }
+        },
+        ...(useThinking && {
+          thinkingConfig: {
+            thinkingLevel: thinkingLevel
+          }
+        })
       });
       
       const transcription = transcriptionResult.response.text();

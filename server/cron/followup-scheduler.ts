@@ -33,7 +33,7 @@ import {
   type TemplateForSelection,
   createStudioProvider
 } from '../ai/followup-decision-engine';
-import { getAIProvider, getModelForProviderName } from '../ai/provider-factory';
+import { getAIProvider, getModelWithThinking } from '../ai/provider-factory';
 import { sendWhatsAppMessage, fetchMultipleTwilioTemplateBodies, fetchTwilioTemplateBody } from '../whatsapp/twilio-client';
 import { decryptForConsultant } from '../encryption';
 
@@ -1565,11 +1565,12 @@ async function evaluateConversation(
     }
   }
 
+  const { model: decisionModelName } = getModelWithThinking(aiProviderResult.metadata.name);
   await logFollowupDecision(
     candidate.conversationId,
     context,
     decision,
-    getModelForProviderName(aiProviderResult.metadata.name)
+    decisionModelName
   );
 
   if (decision.decision === 'send_now' || decision.decision === 'schedule') {
@@ -2154,9 +2155,17 @@ RISPONDI CON SOLO IL TESTO DEL MESSAGGIO (niente JSON, niente formattazione, sol
     const aiProviderResult = await getAIProvider(consultantId, consultantId);
     console.log(`🚀 [FOLLOWUP-SCHEDULER] Using ${aiProviderResult.metadata.name} for freeform message generation`);
     
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProviderResult.metadata.name);
+    console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+    
     const response = await aiProviderResult.client.generateContent({
-      model: getModelForProviderName(aiProviderResult.metadata.name),
+      model,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
+      ...(useThinking && {
+        thinkingConfig: {
+          thinkingLevel: thinkingLevel
+        }
+      })
     });
     
     const messageText = response.response.text();
@@ -2504,14 +2513,22 @@ ${reasoning ? `CONTESTO DECISIONE: ${reasoning}` : ''}
 Genera il messaggio di follow-up:`;
 
   try {
+    const { model, useThinking, thinkingLevel } = getModelWithThinking(aiProvider.metadata.name);
+    console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+    
     const result = await aiProvider.client.generateContent({
-      model: getModelForProviderName(aiProvider.metadata.name),
+      model,
       systemInstruction: systemPrompt,
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 200,
       },
+      ...(useThinking && {
+        thinkingConfig: {
+          thinkingLevel: thinkingLevel
+        }
+      })
     });
     
     const responseText = result.response?.text?.() || 

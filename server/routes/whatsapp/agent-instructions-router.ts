@@ -470,7 +470,7 @@ router.post(
       console.log(`   - Is Proactive Agent: ${isProactiveAgent ? 'YES' : 'NO'}`);
       console.log(`   - Base Template: ${baseTemplate ? `YES (${baseTemplate.length} chars)` : 'NO - will use default template'}`);
 
-      const { getAIProvider, getModelForProviderName } = await import("../../ai/provider-factory");
+      const { getAIProvider, getModelWithThinking } = await import("../../ai/provider-factory");
       const providerResult = await getAIProvider(consultantId, consultantId);
 
       if (!providerResult || !providerResult.client) {
@@ -750,14 +750,22 @@ ISTRUZIONI DI ADATTAMENTO
 
 GENERA ORA il template ADATTATO. Restituisci SOLO le istruzioni complete, senza commenti.`;
 
+      const { model, useThinking, thinkingLevel } = getModelWithThinking(providerResult.metadata.name);
+      console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+      
       const result = await providerResult.client.generateContent({
-        model: getModelForProviderName(providerResult.metadata.name),
+        model,
         contents: [
           {
             role: "user",
             parts: [{ text: systemPrompt }]
           }
         ],
+        ...(useThinking && {
+          thinkingConfig: {
+            thinkingLevel: thinkingLevel
+          }
+        })
       });
 
       let generatedInstructions = result.response.text();
@@ -859,7 +867,7 @@ async function enhanceInstructionsWithAI(
   }
 
   // Import AI provider (already uses Vertex AI as default with Gemini fallback)
-  const { getAIProvider, getModelForProviderName } = await import("../../ai/provider-factory");
+  const { getAIProvider, getModelWithThinking } = await import("../../ai/provider-factory");
   
   // Get AI provider (Vertex AI first, then fallback to Gemini)
   const providerResult = await getAIProvider(consultantId, consultantId);
@@ -997,14 +1005,22 @@ NON INVENTARE MAI variabili diverse (es: \${nomeConsulente}, \${nomeBusiness}, e
 Restituisci SOLO le istruzioni migliorate, senza commenti o spiegazioni aggiuntive.`;
 
   // Call AI for enhancement using GeminiClient interface
+  const { model, useThinking, thinkingLevel } = getModelWithThinking(providerResult.metadata.name);
+  console.log(`[AI] Using model: ${model} with thinking: ${useThinking ? thinkingLevel : 'disabled'}`);
+  
   const result = await providerResult.client.generateContent({
-    model: getModelForProviderName(providerResult.metadata.name),
+    model,
     contents: [
       {
         role: "user",
         parts: [{ text: systemPrompt }]
       }
     ],
+    ...(useThinking && {
+      thinkingConfig: {
+        thinkingLevel: thinkingLevel
+      }
+    })
   });
 
   let enhancedInstructions = result.response.text();
