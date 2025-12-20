@@ -5547,7 +5547,7 @@ export const fileSearchStores = pgTable("file_search_stores", {
   displayName: text("display_name").notNull(),
   description: text("description"),
   ownerId: varchar("owner_id").notNull(),
-  ownerType: text("owner_type").$type<"consultant" | "client" | "system">().notNull(),
+  ownerType: text("owner_type").$type<"consultant" | "client" | "system" | "whatsapp_agent">().notNull(),
   documentCount: integer("document_count").default(0).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").default(sql`now()`),

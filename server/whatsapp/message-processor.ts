@@ -40,6 +40,8 @@ import {
   UPSELLING_BLOCK
 } from "./instruction-blocks";
 import { generateSpeech } from "../ai/tts-service";
+import { fileSearchService } from "../ai/file-search-service";
+import { fileSearchSyncService } from "../services/file-search-sync-service";
 import { shouldRespondWithAudio } from "./audio-response-utils";
 import { shouldAnalyzeForBooking, isActionAlreadyCompleted, LastCompletedAction, ActionDetails } from "../booking/booking-intent-detector";
 import * as fs from "fs";
@@ -1616,6 +1618,24 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
     console.log(`   📜 History: ~${estimatedHistoryTokens.toLocaleString()} tokens (${historyChars.toLocaleString()} chars)`);
     console.log(`   🔢 TOTALE INPUT: ~${estimatedTotalInput.toLocaleString()} tokens\n`);
 
+    // Check if agent has File Search Store for RAG-powered responses
+    let fileSearchTool: any = null;
+    try {
+      const agentStore = await fileSearchSyncService.getWhatsappAgentStore(consultantConfig.id);
+      if (agentStore && agentStore.documentCount > 0) {
+        fileSearchTool = fileSearchService.buildFileSearchTool([agentStore.googleStoreName]);
+        console.log(`🔍 [FILE SEARCH] WhatsApp agent has FileSearchStore: ${agentStore.displayName}`);
+        console.log(`   📦 Store: ${agentStore.googleStoreName}`);
+        console.log(`   📄 Documents: ${agentStore.documentCount}`);
+      } else if (agentStore) {
+        console.log(`ℹ️ [FILE SEARCH] WhatsApp agent store exists but has no documents`);
+      } else {
+        console.log(`ℹ️ [FILE SEARCH] No FileSearchStore for this WhatsApp agent`);
+      }
+    } catch (fsError: any) {
+      console.warn(`⚠️ [FILE SEARCH] Error checking agent store: ${fsError.message}`);
+    }
+
     // Retry logic with exponential backoff and API key rotation
     const maxRetries = 3;
     let lastError: any;
@@ -1671,6 +1691,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
               systemInstruction: systemPrompt,
               ...(vertexUseThinking && { thinkingConfig: { thinkingLevel: vertexThinkingLevel } }),
             },
+            ...(fileSearchTool && { tools: [fileSearchTool] }),
           });
         } else {
           // For Google AI Studio, use @google/genai with API key
@@ -1691,6 +1712,7 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
             config: {
               systemInstruction: systemPrompt,
               ...(studioUseThinking && { thinkingConfig: { thinkingLevel: studioThinkingLevel } }),
+              ...(fileSearchTool && { tools: [fileSearchTool] }),
             },
           });
         }

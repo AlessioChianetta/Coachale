@@ -43,7 +43,7 @@ export interface FileSearchStoreInfo {
   documentCount: number;
   createdAt: Date;
   ownerId: string;
-  ownerType: 'consultant' | 'client' | 'system';
+  ownerType: 'consultant' | 'client' | 'system' | 'whatsapp_agent';
 }
 
 export interface FileSearchDocumentInfo {
@@ -208,7 +208,7 @@ export class FileSearchService {
   async createStore(params: {
     displayName: string;
     ownerId: string;
-    ownerType: 'consultant' | 'client' | 'system';
+    ownerType: 'consultant' | 'client' | 'system' | 'whatsapp_agent';
     description?: string;
   }): Promise<{ success: boolean; storeId?: string; storeName?: string; error?: string }> {
     const client = this.ensureClient();

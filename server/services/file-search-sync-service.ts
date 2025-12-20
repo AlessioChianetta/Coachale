@@ -26,6 +26,8 @@ import {
   consultations,
   users,
   userFinanceSettings,
+  whatsappAgentKnowledgeItems,
+  consultantWhatsappConfig,
 } from "../../shared/schema";
 import { PercorsoCapitaleClient } from "../percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
@@ -2890,6 +2892,184 @@ export class FileSearchSyncService {
       console.error('[FileSync] Error resyncing client financial data:', error);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Sync WhatsApp Agent Knowledge Base to FileSearchStore
+   * Creates a dedicated store for each agent and syncs all knowledge items
+   * 
+   * @param agentConfigId - The WhatsApp agent configuration ID
+   * @returns Sync results with counts and errors
+   */
+  static async syncWhatsappAgentKnowledge(agentConfigId: string): Promise<{
+    total: number;
+    synced: number;
+    failed: number;
+    errors: string[];
+  }> {
+    try {
+      // Get the agent config to find the consultant
+      const agentConfig = await db.query.consultantWhatsappConfig.findFirst({
+        where: eq(consultantWhatsappConfig.id, agentConfigId),
+      });
+
+      if (!agentConfig) {
+        console.error(`[FileSync] WhatsApp agent config not found: ${agentConfigId}`);
+        return { total: 0, synced: 0, failed: 1, errors: ['Agent config not found'] };
+      }
+
+      const consultantId = agentConfig.consultantId;
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`📱 [FileSync] Syncing WhatsApp Agent Knowledge for agent "${agentConfig.agentName}" (${agentConfigId.substring(0, 8)})`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      // Get all knowledge items for this agent
+      const knowledgeItems = await db.query.whatsappAgentKnowledgeItems.findMany({
+        where: eq(whatsappAgentKnowledgeItems.agentConfigId, agentConfigId),
+      });
+
+      if (knowledgeItems.length === 0) {
+        console.log(`ℹ️ [FileSync] No knowledge items found for agent ${agentConfigId.substring(0, 8)}`);
+        return { total: 0, synced: 0, failed: 0, errors: [] };
+      }
+
+      // Get or create FileSearchStore for this WhatsApp agent
+      let agentStore = await db.query.fileSearchStores.findFirst({
+        where: and(
+          eq(fileSearchStores.ownerId, agentConfigId),
+          eq(fileSearchStores.ownerType, 'whatsapp_agent'),
+        ),
+      });
+
+      if (!agentStore) {
+        console.log(`🔧 [FileSync] Creating new FileSearchStore for WhatsApp agent "${agentConfig.agentName}"`);
+        const result = await fileSearchService.createStore({
+          displayName: `WhatsApp Agent: ${agentConfig.agentName}`,
+          ownerId: agentConfigId,
+          ownerType: 'whatsapp_agent',
+          description: `Knowledge base per l'agente WhatsApp "${agentConfig.agentName}"`,
+        });
+
+        if (!result.success || !result.storeId) {
+          console.error(`[FileSync] Failed to create FileSearchStore: ${result.error}`);
+          return { total: knowledgeItems.length, synced: 0, failed: knowledgeItems.length, errors: [result.error || 'Failed to create store'] };
+        }
+
+        agentStore = await db.query.fileSearchStores.findFirst({
+          where: eq(fileSearchStores.id, result.storeId),
+        });
+
+        if (!agentStore) {
+          return { total: knowledgeItems.length, synced: 0, failed: knowledgeItems.length, errors: ['Store created but not found'] };
+        }
+      }
+
+      let synced = 0;
+      let failed = 0;
+      const errors: string[] = [];
+      let processed = 0;
+
+      console.log(`🔄 [FileSync] Syncing ${knowledgeItems.length} knowledge items for agent "${agentConfig.agentName}"`);
+      syncProgressEmitter.emitStart(consultantId, 'knowledge_base', knowledgeItems.length);
+
+      for (const item of knowledgeItems) {
+        processed++;
+
+        // Check if already indexed
+        const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('knowledge_base', item.id);
+        if (isAlreadyIndexed) {
+          console.log(`📌 [FileSync] WhatsApp knowledge item already indexed: ${item.title}`);
+          synced++;
+          syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', item.title, processed, knowledgeItems.length);
+          continue;
+        }
+
+        // Build content based on type
+        let content = item.content;
+        if (!content && item.filePath) {
+          // If content is empty but we have a file, try to extract text
+          try {
+            const extractedText = await extractTextFromFile(item.filePath, item.type);
+            content = extractedText || '';
+          } catch (err: any) {
+            console.warn(`⚠️ [FileSync] Could not extract text from ${item.fileName}: ${err.message}`);
+            content = `[Documento: ${item.title}]\nTipo: ${item.type}\nFile: ${item.fileName || 'N/A'}`;
+          }
+        }
+
+        if (!content || content.trim().length === 0) {
+          console.warn(`⚠️ [FileSync] Skipping empty knowledge item: ${item.title}`);
+          failed++;
+          errors.push(`${item.title}: Empty content`);
+          continue;
+        }
+
+        // Upload to FileSearch store
+        const uploadResult = await fileSearchService.uploadDocumentFromContent({
+          content: `# ${item.title}\n\n${content}`,
+          displayName: item.title,
+          storeId: agentStore.id,
+          sourceType: 'knowledge_base',
+          sourceId: item.id,
+          userId: consultantId,
+          customMetadata: {
+            docType: item.type,
+            category: 'whatsapp_agent_knowledge',
+          },
+        });
+
+        if (uploadResult.success) {
+          synced++;
+          console.log(`✅ [FileSync] Synced WhatsApp knowledge item: ${item.title}`);
+          syncProgressEmitter.emitItemProgress(consultantId, 'knowledge_base', item.title, processed, knowledgeItems.length);
+        } else {
+          failed++;
+          errors.push(`${item.title}: ${uploadResult.error}`);
+          console.error(`❌ [FileSync] Failed to sync WhatsApp knowledge item "${item.title}": ${uploadResult.error}`);
+          syncProgressEmitter.emitError(consultantId, 'knowledge_base', `${item.title}: ${uploadResult.error}`);
+        }
+      }
+
+      console.log(`\n${'═'.repeat(60)}`);
+      console.log(`✅ [FileSync] WhatsApp Agent Knowledge Sync Complete`);
+      console.log(`   Agent: ${agentConfig.agentName}`);
+      console.log(`   Synced: ${synced}/${knowledgeItems.length}`);
+      console.log(`   Failed: ${failed}`);
+      console.log(`${'═'.repeat(60)}\n`);
+
+      syncProgressEmitter.emitComplete(consultantId, 'knowledge_base', knowledgeItems.length);
+
+      return {
+        total: knowledgeItems.length,
+        synced,
+        failed,
+        errors,
+      };
+    } catch (error: any) {
+      console.error('[FileSync] WhatsApp agent knowledge sync error:', error);
+      return {
+        total: 0,
+        synced: 0,
+        failed: 1,
+        errors: [error.message],
+      };
+    }
+  }
+
+  /**
+   * Get FileSearchStore for a WhatsApp agent (if exists)
+   * 
+   * @param agentConfigId - The WhatsApp agent configuration ID
+   * @returns Store info or null if not found
+   */
+  static async getWhatsappAgentStore(agentConfigId: string): Promise<typeof fileSearchStores.$inferSelect | null> {
+    return await db.query.fileSearchStores.findFirst({
+      where: and(
+        eq(fileSearchStores.ownerId, agentConfigId),
+        eq(fileSearchStores.ownerType, 'whatsapp_agent'),
+        eq(fileSearchStores.isActive, true),
+      ),
+    });
   }
 
   /**

@@ -3,7 +3,7 @@ import { authenticateToken, requireRole, type AuthRequest } from '../middleware/
 import { fileSearchService } from '../ai/file-search-service';
 import { fileSearchSyncService } from '../services/file-search-sync-service';
 import { db } from '../db';
-import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users } from '../../shared/schema';
+import { fileSearchSettings, fileSearchUsageLogs, fileSearchStores, fileSearchDocuments, users, consultantWhatsappConfig } from '../../shared/schema';
 import { eq, desc, sql, and, gte, isNull, isNotNull, inArray } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -143,6 +143,43 @@ router.post('/sync-university', authenticateToken, requireRole('consultant'), as
     res.json(result);
   } catch (error: any) {
     console.error('[FileSearch API] Error syncing university:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/sync-whatsapp/:agentConfigId
+ * Trigger sync of WhatsApp agent knowledge base to FileSearchStore
+ */
+router.post('/sync-whatsapp/:agentConfigId', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { agentConfigId } = req.params;
+
+    // Verify the agent belongs to the authenticated consultant
+    const agentConfig = await db.query.consultantWhatsappConfig.findFirst({
+      where: and(
+        eq(consultantWhatsappConfig.id, agentConfigId),
+        eq(consultantWhatsappConfig.consultantId, userId),
+      ),
+    });
+
+    if (!agentConfig) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'WhatsApp agent not found or unauthorized' 
+      });
+    }
+
+    const result = await fileSearchSyncService.syncWhatsappAgentKnowledge(agentConfigId);
+    res.json({
+      success: true,
+      agentName: agentConfig.agentName,
+      ...result,
+      message: `Sincronizzazione WhatsApp Agent completata. ${result.synced}/${result.total} documenti sincronizzati.`,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error syncing WhatsApp agent knowledge:', error);
     res.status(500).json({ error: error.message });
   }
 });
