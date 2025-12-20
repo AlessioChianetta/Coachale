@@ -101,6 +101,7 @@ import onboardingRouter from "./routes/onboarding";
 import followupApiRouter from "./routes/followup-api";
 import fileSearchRouter from "./routes/file-search";
 import { fileSearchSyncService } from "./services/file-search-sync-service";
+import { FileSearchService } from "./ai/file-search-service";
 import { generateConsultationSummaryEmail } from "./ai/email-template-generator";
 import { handleWebhook } from "./whatsapp/webhook-handler";
 import { sendWhatsAppMessage } from "./whatsapp/twilio-client";
@@ -8882,7 +8883,8 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
         professionalRole,
         customBusinessHeader,
         integrationMode,
-        isProactiveAgent
+        isProactiveAgent,
+        isActive
       } = req.body;
 
       // Verify agent belongs to consultant
@@ -8902,6 +8904,54 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
           success: false,
           message: "Configuration not found or access denied" 
         });
+      }
+
+      // If agent is being deactivated, cleanup FileSearch documents
+      if (existingConfig.isActive && isActive === false) {
+        try {
+          const fileSearchServiceInstance = new FileSearchService();
+          // Get all knowledge items for this agent
+          const agentKnowledgeItems = await db.query.whatsappAgentKnowledgeItems.findMany({
+            where: eq(schema.whatsappAgentKnowledgeItems.agentConfigId, agentId),
+          });
+          const itemIds = agentKnowledgeItems.map(item => item.id);
+          
+          // Get consultant's store
+          const [store] = await db
+            .select()
+            .from(schema.fileSearchStores)
+            .where(and(
+              eq(schema.fileSearchStores.ownerId, consultantId),
+              eq(schema.fileSearchStores.ownerType, 'consultant'),
+              eq(schema.fileSearchStores.isActive, true)
+            ))
+            .limit(1);
+          
+          if (store && itemIds.length > 0) {
+            console.log(`🧹 [WhatsApp] Agent deactivated, cleaning up ${itemIds.length} FileSearch documents...`);
+            
+            // Delete each item's FileSearch document
+            for (const itemId of itemIds) {
+              const [doc] = await db
+                .select()
+                .from(schema.fileSearchDocuments)
+                .where(and(
+                  eq(schema.fileSearchDocuments.storeId, store.id),
+                  eq(schema.fileSearchDocuments.sourceType, 'whatsapp_agent_knowledge'),
+                  eq(schema.fileSearchDocuments.sourceId, itemId)
+                ))
+                .limit(1);
+              
+              if (doc) {
+                await fileSearchServiceInstance.deleteDocument(doc.id);
+              }
+            }
+            console.log(`✅ [WhatsApp] Agent FileSearch cleanup completed`);
+          }
+        } catch (cleanupError) {
+          console.error(`⚠️ [WhatsApp] FileSearch cleanup failed:`, cleanupError);
+          // Don't fail the deactivation if cleanup fails
+        }
       }
 
       // Build update data object
@@ -8964,6 +9014,9 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
       // Integration Mode and Proactive Agent Configuration
       if (integrationMode !== undefined) updateData.integrationMode = integrationMode;
       if (isProactiveAgent !== undefined) updateData.isProactiveAgent = isProactiveAgent;
+      
+      // Active Status
+      if (isActive !== undefined) updateData.isActive = isActive;
 
       // Handle useCentralCredentials - copy Twilio credentials from users table
       const { useCentralCredentials } = req.body;

@@ -53,6 +53,14 @@ import { promisify } from "util";
 const execAsync = promisify(exec);
 
 /**
+ * TASK 4: Token estimation helper function
+ * Estimates tokens based on character count (4 chars ≈ 1 token)
+ */
+function estimateTokenCount(text: string): number {
+  return Math.ceil((text || '').length / 4);
+}
+
+/**
  * TASK 2: Detect explicit rejection phrases in lead messages
  * Detects Italian and English rejection patterns to update hasSaidNoExplicitly flag
  */
@@ -1838,6 +1846,55 @@ riscontrato che il Suo tasso di risparmio mensile ammonta al 25%..."
       console.error('   Stack:', debugError.stack);
     }
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    // TASK 4: Detailed Token Breakdown Logging with FileSearch support
+    const agentName = consultantConfig?.agentName || 'Unknown Agent';
+    const systemPromptTokens = estimateTokenCount(systemPrompt);
+    const conversationTokens = estimateTokenCount(JSON.stringify(geminiMessages));
+    const userMessageTokens = estimateTokenCount(userMessage);
+
+    // FileSearch tokens (if available from groundingMetadata)
+    let fileSearchTokens = 0;
+    let fileSearchDetails: { type: string; count: number; tokens: number }[] = [];
+
+    // Check for grounding metadata in response (both Vertex AI and Google AI Studio structures)
+    const candidates = response?.candidates || response?.response?.candidates;
+    if (candidates?.[0]?.groundingMetadata?.groundingChunks) {
+      const chunks = candidates[0].groundingMetadata.groundingChunks;
+      fileSearchTokens = chunks.reduce((acc: number, chunk: any) => 
+        acc + estimateTokenCount(chunk.retrievedContext?.text || ''), 0);
+
+      // Group by source type
+      const typeGroups: Record<string, { count: number; tokens: number }> = {};
+      for (const chunk of chunks) {
+        const uri = chunk.retrievedContext?.uri || '';
+        const sourceType = uri.includes('.pdf') ? 'PDF'
+          : uri.includes('.docx') ? 'DOCX'
+          : uri.includes('.doc') ? 'DOC'
+          : uri.includes('.txt') ? 'TXT'
+          : uri.includes('.xlsx') ? 'XLSX'
+          : uri.includes('.csv') ? 'CSV'
+          : 'Other';
+        if (!typeGroups[sourceType]) typeGroups[sourceType] = { count: 0, tokens: 0 };
+        typeGroups[sourceType].count++;
+        typeGroups[sourceType].tokens += estimateTokenCount(chunk.retrievedContext?.text || '');
+      }
+      fileSearchDetails = Object.entries(typeGroups).map(([type, data]) => ({ type, ...data }));
+    }
+
+    const totalInputTokens = systemPromptTokens + conversationTokens + userMessageTokens + fileSearchTokens;
+
+    console.log(`\n📊 [WHATSAPP AI] Token Breakdown for agent "${agentName}":`);
+    console.log(`   ├── System Prompt: ${systemPromptTokens.toLocaleString()} tokens`);
+    console.log(`   ├── Conversation History: ${conversationTokens.toLocaleString()} tokens`);
+    console.log(`   ├── User Message: ${userMessageTokens.toLocaleString()} tokens`);
+    if (fileSearchTokens > 0) {
+      console.log(`   ├── FileSearch Retrieved: ${fileSearchTokens.toLocaleString()} tokens`);
+      for (const detail of fileSearchDetails) {
+        console.log(`   │   ├── ${detail.type} (${detail.count} docs): ${detail.tokens.toLocaleString()} tokens`);
+      }
+    }
+    console.log(`   └── TOTAL INPUT: ${totalInputTokens.toLocaleString()} tokens`);
 
     // Try to extract text with proper error handling
     let aiResponse: string;

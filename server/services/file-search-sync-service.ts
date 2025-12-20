@@ -32,7 +32,7 @@ import {
 } from "../../shared/schema";
 import { PercorsoCapitaleClient } from "../percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
-import { fileSearchService } from "../ai/file-search-service";
+import { fileSearchService, FileSearchService } from "../ai/file-search-service";
 import { eq, and, desc, isNotNull, inArray } from "drizzle-orm";
 import { scrapeGoogleDoc } from "../web-scraper";
 import { extractTextFromFile } from "./document-processor";
@@ -3140,6 +3140,36 @@ export class FileSearchSyncService {
           errors.push(`${item.title}: ${uploadResult.error}`);
           console.error(`❌ [FileSync] Failed to sync WhatsApp knowledge item "${item.title}": ${uploadResult.error}`);
           syncProgressEmitter.emitError(consultantId, 'knowledge_base', `${item.title}: ${uploadResult.error}`);
+        }
+      }
+
+      // RECONCILIATION: Remove orphaned documents
+      // Get all active knowledge item IDs for this agent
+      const activeItemIds = knowledgeItems
+        .filter(item => item.isActive !== false)
+        .map(item => item.id);
+
+      // Get the consultant's FileSearchStore
+      const [consultantStore] = await db
+        .select()
+        .from(fileSearchStores)
+        .where(and(
+          eq(fileSearchStores.ownerId, agentConfig.consultantId),
+          eq(fileSearchStores.ownerType, 'consultant'),
+          eq(fileSearchStores.isActive, true)
+        ))
+        .limit(1);
+
+      if (consultantStore) {
+        const fileSearchServiceInstance = new FileSearchService();
+        const reconcileResult = await fileSearchServiceInstance.reconcileBySourceType(
+          consultantStore.id,
+          'whatsapp_agent_knowledge',
+          activeItemIds
+        );
+        
+        if (reconcileResult.removed > 0) {
+          console.log(`🧹 [FileSync] Reconciled ${reconcileResult.removed} orphaned WhatsApp knowledge documents`);
         }
       }
 
