@@ -316,6 +316,7 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
       autoSyncExerciseResponses,
       autoSyncFinancial,
       autoSyncClientKnowledge,
+      autoSyncWhatsappAgents,
       scheduledSyncEnabled,
       scheduledSyncHour
     } = req.body;
@@ -333,6 +334,7 @@ router.patch('/settings', authenticateToken, requireRole('consultant'), async (r
     if (typeof autoSyncExerciseResponses === 'boolean') updateData.autoSyncExerciseResponses = autoSyncExerciseResponses;
     if (typeof autoSyncFinancial === 'boolean') updateData.autoSyncFinancial = autoSyncFinancial;
     if (typeof autoSyncClientKnowledge === 'boolean') updateData.autoSyncClientKnowledge = autoSyncClientKnowledge;
+    if (typeof autoSyncWhatsappAgents === 'boolean') updateData.autoSyncWhatsappAgents = autoSyncWhatsappAgents;
     if (typeof scheduledSyncEnabled === 'boolean') updateData.scheduledSyncEnabled = scheduledSyncEnabled;
     if (typeof scheduledSyncHour === 'number' && scheduledSyncHour >= 0 && scheduledSyncHour <= 23) {
       updateData.scheduledSyncHour = scheduledSyncHour;

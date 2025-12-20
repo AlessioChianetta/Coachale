@@ -28,6 +28,7 @@ import {
   userFinanceSettings,
   whatsappAgentKnowledgeItems,
   consultantWhatsappConfig,
+  fileSearchSettings,
 } from "../../shared/schema";
 import { PercorsoCapitaleClient } from "../percorso-capitale-client";
 import { PercorsoCapitaleDataProcessor } from "../percorso-capitale-processor";
@@ -1216,7 +1217,7 @@ export class FileSearchSyncService {
   }
 
   /**
-   * Sync ALL content for a consultant (library + knowledge base + exercises + university + consultations + client private data)
+   * Sync ALL content for a consultant (library + knowledge base + exercises + university + consultations + whatsapp agents + client private data)
    */
   static async syncAllContentForConsultant(consultantId: string): Promise<{
     library: { total: number; synced: number; failed: number; errors: string[] };
@@ -1224,6 +1225,7 @@ export class FileSearchSyncService {
     exercises: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
     university: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
     consultations: { total: number; synced: number; failed: number; skipped: number; errors: string[] };
+    whatsappAgents: { total: number; synced: number; failed: number; agentsProcessed: number; errors: string[] };
     clientPrivateData?: {
       clientsProcessed: number;
       exerciseResponses: { total: number; synced: number; failed: number };
@@ -1235,12 +1237,24 @@ export class FileSearchSyncService {
     console.log(`🔄 [FileSync] Starting FULL content sync for consultant ${consultantId}`);
     console.log(`${'═'.repeat(70)}\n`);
 
+    // Get file search settings to check autoSyncWhatsappAgents
+    const [settings] = await db.select().from(fileSearchSettings).where(eq(fileSearchSettings.consultantId, consultantId)).limit(1);
+
     // Sync consultant's global resources
     const libraryResult = await this.syncAllLibraryDocuments(consultantId);
     const knowledgeResult = await this.syncAllConsultantKnowledgeDocuments(consultantId);
     const exercisesResult = await this.syncAllExercises(consultantId);
     const universityResult = await this.syncAllUniversityLessons(consultantId);
     const consultationsResult = await this.syncAllConsultations(consultantId);
+
+    // Sync WhatsApp agent knowledge if enabled
+    let whatsappAgentsResult = { total: 0, synced: 0, failed: 0, agentsProcessed: 0, errors: [] as string[] };
+    if (settings?.autoSyncWhatsappAgents) {
+      console.log(`\n${'─'.repeat(70)}`);
+      console.log(`📱 [FileSync] Syncing WHATSAPP AGENT knowledge...`);
+      console.log(`${'─'.repeat(70)}`);
+      whatsappAgentsResult = await this.syncAllWhatsappAgentKnowledge(consultantId);
+    }
 
     // Sync client private data (exercise responses, client knowledge, client consultations)
     console.log(`\n${'─'.repeat(70)}`);
@@ -1282,7 +1296,7 @@ export class FileSearchSyncService {
     }
 
     const totalSynced = libraryResult.synced + knowledgeResult.synced + exercisesResult.synced + 
-      universityResult.synced + consultationsResult.synced + 
+      universityResult.synced + consultationsResult.synced + whatsappAgentsResult.synced +
       totalExerciseResponses.synced + totalClientKnowledge.synced + totalClientConsultations.synced;
     
     console.log(`\n${'═'.repeat(70)}`);
@@ -1292,6 +1306,7 @@ export class FileSearchSyncService {
     console.log(`   🏋️ Exercises: ${exercisesResult.synced}/${exercisesResult.total} synced`);
     console.log(`   🎓 University: ${universityResult.synced}/${universityResult.total} synced`);
     console.log(`   📞 Consultations: ${consultationsResult.synced}/${consultationsResult.total} synced`);
+    console.log(`   📱 WhatsApp Agents: ${whatsappAgentsResult.synced}/${whatsappAgentsResult.total} synced (${whatsappAgentsResult.agentsProcessed} agents)`);
     console.log(`   🔐 Client Private Data (${clientsProcessed} clients):`);
     console.log(`      📝 Exercise Responses: ${totalExerciseResponses.synced}/${totalExerciseResponses.total} synced`);
     console.log(`      📚 Client Knowledge: ${totalClientKnowledge.synced}/${totalClientKnowledge.total} synced`);
@@ -1306,6 +1321,7 @@ export class FileSearchSyncService {
       exercises: exercisesResult,
       university: universityResult,
       consultations: consultationsResult,
+      whatsappAgents: whatsappAgentsResult,
       clientPrivateData: {
         clientsProcessed,
         exerciseResponses: totalExerciseResponses,
@@ -3151,6 +3167,52 @@ export class FileSearchSyncService {
         errors: [error.message],
       };
     }
+  }
+
+  /**
+   * Sync ALL WhatsApp agent knowledge for a consultant
+   * Iterates through all WhatsApp agents and syncs their knowledge items
+   * 
+   * @param consultantId - The consultant's user ID
+   * @returns Aggregate sync results across all agents
+   */
+  static async syncAllWhatsappAgentKnowledge(consultantId: string): Promise<{
+    total: number;
+    synced: number;
+    failed: number;
+    agentsProcessed: number;
+    errors: string[];
+  }> {
+    const agentConfigs = await db.query.consultantWhatsappConfig.findMany({
+      where: eq(consultantWhatsappConfig.consultantId, consultantId),
+    });
+
+    if (agentConfigs.length === 0) {
+      return { total: 0, synced: 0, failed: 0, agentsProcessed: 0, errors: [] };
+    }
+
+    let totalSynced = 0;
+    let totalFailed = 0;
+    let totalItems = 0;
+    const allErrors: string[] = [];
+
+    console.log(`📱 [FileSync] Syncing ${agentConfigs.length} WhatsApp agents for consultant ${consultantId.substring(0, 8)}`);
+
+    for (const agentConfig of agentConfigs) {
+      const result = await this.syncWhatsappAgentKnowledge(agentConfig.id);
+      totalItems += result.total;
+      totalSynced += result.synced;
+      totalFailed += result.failed;
+      allErrors.push(...result.errors);
+    }
+
+    return {
+      total: totalItems,
+      synced: totalSynced,
+      failed: totalFailed,
+      agentsProcessed: agentConfigs.length,
+      errors: allErrors,
+    };
   }
 
   /**
