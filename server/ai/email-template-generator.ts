@@ -11,6 +11,7 @@ import { users } from "../../shared/schema";
 import { eq, sql } from "drizzle-orm";
 import { enhanceEmailTypography } from "../services/email-html-wrapper";
 import { getAIProvider, getModelForProviderName, type GeminiClient } from "./provider-factory";
+import { fileSearchService } from "./file-search-service";
 
 export interface EmailGeneratorInput {
   clientId: string;
@@ -503,18 +504,27 @@ function tryExtractPartialJson(jsonText: string, parseError: any): any {
 /**
  * Generate email with retry mechanism
  * Retries with clearer prompts if JSON parsing fails
+ * @param options.tools - Optional tools array (e.g., FileSearch tool)
  */
 async function generateEmailWithRetry(
   systemPrompt: string,
   userMessage: string,
   clientName: string,
   client: GeminiClient,
-  maxAttempts: number = 3
+  maxAttempts: number = 3,
+  options?: {
+    providerName?: string;
+    tools?: any[];
+  }
 ): Promise<{ subject: string; body: string; preview: string }> {
+
+  const modelName = options?.providerName 
+    ? getModelForProviderName(options.providerName) 
+    : "gemini-2.5-flash"; // Fallback to legacy model
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      console.log(`🔄 Generation attempt ${attempt}/${maxAttempts}`);
+      console.log(`🔄 Generation attempt ${attempt}/${maxAttempts} (model: ${modelName})`);
 
       // Modify prompt on retry attempts to emphasize format compliance
       let modifiedUserMessage = userMessage;
@@ -542,9 +552,10 @@ ${userMessage}`;
 
       // Call Gemini API using the provider client
       const result = await client.generateContent({
-        model: getModelForProviderName(providerMetadata.name),
+        model: modelName,
         contents: [{ role: "user", parts: [{ text: modifiedUserMessage }] }],
         generationConfig,
+        ...(options?.tools && options.tools.length > 0 ? { tools: options.tools } : {}),
       });
 
       const responseText = result.response.text();
@@ -625,8 +636,8 @@ export async function generateMotivationalEmail(
     }
 
     // Get AI provider using 3-tier priority system
-    const { client: aiClient, cleanup } = await getAIProvider(input.clientId, input.consultantId);
-    console.log(`✅ AI provider selected successfully`);
+    const { client: aiClient, metadata: providerMetadata, cleanup } = await getAIProvider(input.clientId, input.consultantId);
+    console.log(`✅ AI provider selected successfully: ${providerMetadata.name}`);
 
 // Get full user context
 console.log(`🔍 Building full user context for client ${input.clientId}...`);
@@ -1225,7 +1236,8 @@ Genera l'email ORA:`;
       userMessage,
       input.clientName,
       aiClient,
-      3 // Max 3 attempts
+      3, // Max 3 attempts
+      { providerName: providerMetadata.name }
     );
 
     console.log(`✅ Email generation complete`);
@@ -1399,8 +1411,24 @@ export async function generateConsultationSummaryEmail(
     console.log(`📋 [CONSULTATION SUMMARY] Generating summary email for consultation ${input.consultationId}`);
 
     // Get AI provider using 3-tier priority system
-    const { client: aiClient, cleanup } = await getAIProvider(input.clientId, input.consultantId);
-    console.log(`✅ AI provider selected successfully`);
+    const { client: aiClient, metadata: providerMetadata, cleanup } = await getAIProvider(input.clientId, input.consultantId);
+    console.log(`✅ AI provider selected successfully: ${providerMetadata.name}`);
+
+    // 🔍 FILE SEARCH: Get store names for client's documents
+    const fileSearchStoreNames = await fileSearchService.getStoreNamesForClient(
+      input.clientId,
+      input.consultantId
+    );
+    const hasFileSearch = fileSearchStoreNames.length > 0;
+    const fileSearchTool = hasFileSearch 
+      ? fileSearchService.buildFileSearchTool(fileSearchStoreNames) 
+      : null;
+    
+    if (hasFileSearch) {
+      console.log(`🔍 [FILE SEARCH] Enabled with ${fileSearchStoreNames.length} stores for consultation summary`);
+    } else {
+      console.log(`📚 [FILE SEARCH] No stores available - using context injection only`);
+    }
 
     // Build user context for better personalization
     console.log(`🔍 Building user context for client ${input.clientId}...`);
@@ -1677,13 +1705,17 @@ Genera l'email ORA:`;
 
     console.log(`🚀 Starting consultation summary generation with retry mechanism...`);
 
-    // Use retry mechanism with aiClient (Vertex AI or fallback)
+    // Use retry mechanism with aiClient (Vertex AI or fallback) + File Search if available
     const emailData = await generateEmailWithRetry(
       systemPrompt,
       userMessage,
       input.clientName,
       aiClient,
-      3 // Max 3 attempts
+      3, // Max 3 attempts
+      {
+        providerName: providerMetadata.name,
+        tools: fileSearchTool ? [fileSearchTool] : undefined,
+      }
     );
 
     console.log(`✅ Consultation summary email generated successfully`);
@@ -1736,8 +1768,8 @@ export async function generateSystemUpdateEmail(
     console.log(`📢 [SYSTEM UPDATE EMAIL] Starting generation for ${input.clientName}...`);
 
     // Get AI provider using 3-tier priority system
-    const { client: aiClient, cleanup } = await getAIProvider(input.clientId, input.consultantId);
-    console.log(`✅ AI provider selected successfully`);
+    const { client: aiClient, metadata: providerMetadata, cleanup } = await getAIProvider(input.clientId, input.consultantId);
+    console.log(`✅ AI provider selected successfully: ${providerMetadata.name}`);
 
     // Build context section if available
     const contextSection = input.clientContext ? `
@@ -1858,7 +1890,8 @@ Genera l'email ORA:`;
       userMessage,
       input.clientName,
       aiClient,
-      3 // Max 3 attempts
+      3, // Max 3 attempts
+      { providerName: providerMetadata.name }
     );
 
     console.log(`✅ System update email generated successfully`);
