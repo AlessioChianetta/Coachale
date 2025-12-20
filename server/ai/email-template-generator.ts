@@ -639,6 +639,22 @@ export async function generateMotivationalEmail(
     const { client: aiClient, metadata: providerMetadata, cleanup } = await getAIProvider(input.clientId, input.consultantId);
     console.log(`✅ AI provider selected successfully: ${providerMetadata.name}`);
 
+    // 🔍 FILE SEARCH: Get store names for client's documents (for personalized emails)
+    const fileSearchStoreNames = await fileSearchService.getStoreNamesForClient(
+      input.clientId,
+      input.consultantId
+    );
+    const hasFileSearch = fileSearchStoreNames.length > 0;
+    const fileSearchTool = hasFileSearch 
+      ? fileSearchService.buildFileSearchTool(fileSearchStoreNames) 
+      : null;
+    
+    if (hasFileSearch) {
+      console.log(`🔍 [FILE SEARCH] Enabled with ${fileSearchStoreNames.length} stores for motivational email`);
+    } else {
+      console.log(`📚 [FILE SEARCH] No stores available - using context injection only`);
+    }
+
 // Get full user context
 console.log(`🔍 Building full user context for client ${input.clientId}...`);
 const userContext = await buildUserContext(input.clientId);
@@ -1229,7 +1245,7 @@ Prime 50-60 parole dell'email (testo plain senza HTML, SENZA il blocco [ACTIONS]
 Genera l'email ORA:`;
 }
 
-    // Use retry mechanism to generate email with robust error handling
+    // Use retry mechanism to generate email with robust error handling + File Search if available
     console.log(`🚀 Starting email generation with retry mechanism...`);
     const emailData = await generateEmailWithRetry(
       systemPrompt,
@@ -1237,7 +1253,10 @@ Genera l'email ORA:`;
       input.clientName,
       aiClient,
       3, // Max 3 attempts
-      { providerName: providerMetadata.name }
+      {
+        providerName: providerMetadata.name,
+        tools: fileSearchTool ? [fileSearchTool] : undefined,
+      }
     );
 
     console.log(`✅ Email generation complete`);
