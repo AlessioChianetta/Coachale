@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -193,7 +193,34 @@ export default function PublicAgentShare() {
     refetchInterval: isStreaming ? false : 10000, // Poll every 10s when not streaming
   });
   
-  const messages: Message[] = conversationResponse?.messages || [];
+  const rawMessages: Message[] = conversationResponse?.messages || [];
+  
+  // FIX DUPLICAZIONE: Filtra i messaggi che corrispondono all'optimisticMessage
+  // per evitare di mostrare duplicati durante la transizione optimistic -> reale
+  const messages = useMemo(() => {
+    if (!optimisticMessage) return rawMessages;
+    
+    // Filtra eventuali messaggi che hanno lo stesso contenuto dell'optimistic
+    // e sono stati creati negli ultimi 30 secondi (per evitare falsi positivi)
+    const optimisticContent = optimisticMessage.content.trim();
+    const optimisticTime = optimisticMessage.createdAt.getTime();
+    const threshold = 30000; // 30 secondi
+    
+    return rawMessages.filter(msg => {
+      // Se non è un messaggio utente, non filtrare
+      if (msg.role !== 'user') return true;
+      
+      // Se il contenuto non corrisponde, non filtrare
+      if (msg.content.trim() !== optimisticContent) return true;
+      
+      // Se è troppo vecchio, non filtrare (non è il duplicato dell'optimistic)
+      const msgTime = new Date(msg.createdAt).getTime();
+      if (Math.abs(msgTime - optimisticTime) > threshold) return true;
+      
+      // Questo è probabilmente il duplicato, filtralo
+      return false;
+    });
+  }, [rawMessages, optimisticMessage]);
   
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -260,12 +287,17 @@ export default function PublicAgentShare() {
                   content: accumulatedContent,
                 } : null);
               } else if (data.type === 'done') {
+                // FIX FLASH: Non pulire streamingMessage subito
+                // Aspetta che il refetch completi prima di rimuovere lo streaming
                 setIsStreaming(false);
-                setStreamingMessage(null);
-                // Refetch conversation to get final message
-                queryClient.invalidateQueries({
+                
+                // Prima fai il refetch, POI pulisci streamingMessage
+                await queryClient.invalidateQueries({
                   queryKey: ['/public/whatsapp/shares', slug, 'conversation', visitorId],
                 });
+                
+                // Solo dopo che i messaggi sono arrivati, pulisci streaming
+                setStreamingMessage(null);
               } else if (data.type === 'error') {
                 throw new Error(data.error);
               }
