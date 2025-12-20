@@ -79,6 +79,14 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
 - **Dynamic Model Selection**: Model is selected based on provider type:
   - **Google AI Studio**: Uses `gemini-3-flash-preview` with `thinkingConfig: { thinkingLevel: "low" }` inside `config` object
   - **Vertex AI**: Uses `gemini-2.5-flash` (stable, as Gemini 3 may not be enabled in all Vertex AI projects)
+- **AI Provider Priority** (in `server/ai/provider-factory.ts` - `getAIProvider` function):
+  - **TIER 0**: SuperAdmin Gemini Keys (Google AI Studio with Gemini 3) - HIGHEST PRIORITY
+  - **TIER 0.5**: SuperAdmin Vertex AI (if consultant opted in via `useSuperadminVertex`)
+  - **TIER 1**: Client-managed Vertex AI
+  - **TIER 2**: Consultant-managed Vertex AI
+  - **TIER 3**: Google AI Studio (consultant's own keys)
+- **WhatsApp Provider Priority** (in `server/whatsapp/message-processor.ts` - `selectWhatsAppAIProvider`):
+  - Same priority order as above, prioritizing SuperAdmin Gemini Keys for Gemini 3 capabilities
 - **Model Selection Functions** (in `server/ai/provider-factory.ts`):
   - `getModelWithThinking(providerName)`: **RECOMMENDED** - Returns `{ model, useThinking, thinkingLevel }` for full Gemini 3 support
   - `getTextChatModel(providerName)`: Returns model name and useThinking flag
@@ -87,7 +95,7 @@ User requested "obsessive-compulsive" attention to detail when verifying what wo
   - **Google AI Studio (@google/genai)**: `config: { thinkingConfig: { thinkingLevel } }` (inside config)
   - **Vertex AI adapter**: `generationConfig: { thinkingConfig: { thinkingLevel } }` (inside generationConfig)
 - **Live API Model**: `gemini-live-2.5-flash-native-audio` (GA - December 12, 2025) - Gemini 3 NOT supported
-- **Platform**: Vertex AI or Google AI Studio (determined by 3-tier priority system)
+- **Platform**: Vertex AI or Google AI Studio (determined by tier priority system - SuperAdmin Gemini Keys preferred)
 - **Features**: Native audio (30 HD voices, 24 languages), Affective Dialog, improved barge-in, robust function calling, session resumption, proactive audio (preview).
 - **Post-Resume Silence**: AI audio output is suppressed after WebSocket reconnection until the user speaks first to prevent erroneous responses.
 - **Exclusions** (intentionally use legacy models for speed/specific use):
