@@ -9776,6 +9776,45 @@ Se non conosci una risposta specifica, suggerisci dove trovare più informazioni
   // Each agent can have its own Google Calendar for appointments
   // ============================================================================
 
+  // GET /api/whatsapp/agents/calendar-status - Get all agents with their calendar status (dashboard)
+  app.get("/api/whatsapp/agents/calendar-status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
+    try {
+      const consultantId = req.user!.id;
+
+      // Get all agents for this consultant with calendar fields
+      const agents = await db
+        .select({
+          id: schema.consultantWhatsappConfig.id,
+          agentName: schema.consultantWhatsappConfig.agentName,
+          agentType: schema.consultantWhatsappConfig.agentType,
+          isActive: schema.consultantWhatsappConfig.isActive,
+          googleCalendarEmail: schema.consultantWhatsappConfig.googleCalendarEmail,
+          googleAccessToken: schema.consultantWhatsappConfig.googleAccessToken,
+          googleRefreshToken: schema.consultantWhatsappConfig.googleRefreshToken,
+          calendarConnectedAt: schema.consultantWhatsappConfig.calendarConnectedAt,
+        })
+        .from(schema.consultantWhatsappConfig)
+        .where(eq(schema.consultantWhatsappConfig.consultantId, consultantId))
+        .orderBy(schema.consultantWhatsappConfig.agentName);
+
+      // Map to dashboard format
+      const agentsWithCalendarStatus = agents.map(agent => ({
+        id: agent.id,
+        agentName: agent.agentName,
+        agentType: agent.agentType,
+        isActive: agent.isActive,
+        calendarConnected: !!(agent.googleAccessToken && agent.googleRefreshToken),
+        calendarEmail: agent.googleCalendarEmail,
+        calendarConnectedAt: agent.calendarConnectedAt,
+      }));
+
+      res.json(agentsWithCalendarStatus);
+    } catch (error: any) {
+      console.error("❌ Error fetching agents calendar status:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // GET /api/whatsapp/agents/:agentId/calendar/status - Check if agent has calendar connected
   app.get("/api/whatsapp/agents/:agentId/calendar/status", authenticateToken, requireRole("consultant"), async (req: AuthRequest, res) => {
     try {

@@ -557,6 +557,28 @@ export default function ConsultantApiKeysUnified() {
     },
   });
 
+  // Agents Calendar Status query for dashboard
+  interface AgentCalendarStatus {
+    id: string;
+    agentName: string;
+    agentType: string;
+    isActive: boolean;
+    calendarConnected: boolean;
+    calendarEmail: string | null;
+    calendarConnectedAt: string | null;
+  }
+
+  const { data: agentsCalendarStatus, isLoading: isLoadingAgentsCalendar } = useQuery<AgentCalendarStatus[]>({
+    queryKey: ["/api/whatsapp/agents/calendar-status"],
+    queryFn: async () => {
+      const response = await fetch("/api/whatsapp/agents/calendar-status", {
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) throw new Error("Failed to fetch agents calendar status");
+      return response.json();
+    },
+  });
+
   // TURN Config for Video Meetings query
   const { data: turnConfigData, isLoading: isLoadingTurnConfig } = useQuery({
     queryKey: ["/api/consultant/turn-config"],
@@ -2790,22 +2812,9 @@ export default function ConsultantApiKeysUnified() {
                 </Card>
               </TabsContent>
 
-              {/* Calendar Tab Content - Unified View */}
+              {/* Calendar Tab Content - Agents Dashboard */}
               <TabsContent value="calendar" className="space-y-6">
-                {/* Agent Calendar Info Banner */}
-                <Alert className="bg-blue-50 border-blue-200">
-                  <Calendar className="h-4 w-4 text-blue-600" />
-                  <AlertDescription className="text-sm text-blue-800">
-                    <strong>Novità: Calendari per Agente</strong>
-                    <p className="mt-1">
-                      Ora puoi collegare un calendario Google dedicato a ciascun agente WhatsApp. 
-                      Vai nella sezione <strong>"Disponibilità & Automazioni"</strong> dell'agente per configurare il suo calendario.
-                      Se un agente non ha un calendario dedicato, userà il calendario qui sotto come fallback.
-                    </p>
-                  </AlertDescription>
-                </Alert>
-
-                {/* Section 1: Connection Status Header */}
+                {/* Header */}
                 <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -2814,234 +2823,137 @@ export default function ConsultantApiKeysUnified() {
                           <Calendar className="h-6 w-6 text-cyan-600" />
                         </div>
                         <div>
-                          <CardTitle>Calendario di Fallback</CardTitle>
+                          <CardTitle>Calendari Agenti WhatsApp</CardTitle>
                           <CardDescription>
-                            Calendario usato per gli agenti che non hanno un calendario dedicato
+                            Ogni agente WhatsApp ha il proprio calendario Google dedicato per gestire gli appuntamenti
                           </CardDescription>
                         </div>
                       </div>
-                      {calendarSettings?.googleCalendarConnected && !calendarSettings?.oauthNeedsReconnection && (
-                        <Badge variant="default" className="bg-green-500">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Connesso
-                        </Badge>
-                      )}
-                      {calendarSettings?.oauthNeedsReconnection && (
-                        <Badge variant="destructive" className="bg-red-500">
-                          <XCircle className="h-3 w-3 mr-1" />
-                          Riconnessione necessaria
-                        </Badge>
-                      )}
-                      {!calendarSettings?.googleCalendarConnected && !calendarSettings?.oauthNeedsReconnection && (
-                        <Badge variant="secondary">
-                          <XCircle className="h-3 w-3 mr-1" />
-                          Non connesso
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {agentsCalendarStatus && (
+                          <>
+                            <Badge variant="default" className="bg-green-500">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              {agentsCalendarStatus.filter(a => a.calendarConnected).length} Collegati
+                            </Badge>
+                            <Badge variant="secondary">
+                              <XCircle className="h-3 w-3 mr-1" />
+                              {agentsCalendarStatus.filter(a => !a.calendarConnected).length} Non collegati
+                            </Badge>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    {/* Check if global OAuth is configured */}
-                    {!calendarGlobalOAuth?.globalOAuthConfigured ? (
-                      <Alert className="bg-yellow-50 border-yellow-200">
-                        <AlertCircle className="h-4 w-4 text-yellow-600" />
-                        <AlertDescription className="text-sm text-yellow-800">
-                          <strong>Configurazione in attesa</strong>
-                          <p className="mt-2">
-                            L'amministratore non ha ancora configurato le credenziali Google OAuth.
-                            Contatta il tuo amministratore per abilitare la connessione a Google Calendar.
-                          </p>
-                        </AlertDescription>
-                      </Alert>
-                    ) : (
-                      <>
-                        {/* Connection Status Messages */}
-                        {calendarSettings?.oauthNeedsReconnection && (
-                          <Alert className="bg-red-50 border-red-200">
-                            <XCircle className="h-4 w-4 text-red-600" />
-                            <AlertDescription className="text-sm text-red-800">
-                              <strong>Riconnessione necessaria</strong>
-                              <p className="mt-1">
-                                {calendarSettings.oauthError || 'Il token OAuth è scaduto o revocato. Clicca "Connetti" per ripristinare la connessione.'}
-                              </p>
-                            </AlertDescription>
-                          </Alert>
-                        )}
-
-                        {calendarSettings?.googleCalendarConnected && !calendarSettings?.oauthNeedsReconnection && (
-                          <Alert className="bg-green-50 border-green-200">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            <AlertDescription className="text-sm text-green-800">
-                              <strong>Google Calendar connesso!</strong>
-                              <p className="mt-1">
-                                I tuoi appuntamenti vengono sincronizzati automaticamente.
-                                {calendarSettings.googleCalendarEmail && (
-                                  <span className="block mt-1 text-green-700">
-                                    Account: <strong>{calendarSettings.googleCalendarEmail}</strong>
-                                  </span>
-                                )}
-                              </p>
-                            </AlertDescription>
-                          </Alert>
-                        )}
-
-                        {!calendarSettings?.googleCalendarConnected && (
-                          <Alert className="bg-blue-50 border-blue-200">
-                            <Calendar className="h-4 w-4 text-blue-600" />
-                            <AlertDescription className="text-sm text-blue-800">
-                              <strong>Collega il tuo Google Calendar</strong>
-                              <p className="mt-1">
-                                Clicca il pulsante qui sotto per autorizzare l'accesso al tuo calendario.
-                                Questo permetterà di sincronizzare automaticamente gli appuntamenti.
-                              </p>
-                            </AlertDescription>
-                          </Alert>
-                        )}
-
-                        {/* Buttons */}
-                        <div className="flex flex-wrap gap-3">
-                          <Button
-                            onClick={async () => {
-                              try {
-                                const response = await fetch("/api/calendar-settings/oauth/start", {
-                                  headers: getAuthHeaders(),
-                                });
-
-                                if (!response.ok) {
-                                  const error = await response.json();
-                                  throw new Error(error.message || "Errore durante l'avvio dell'autenticazione");
-                                }
-
-                                const { authUrl } = await response.json();
-                                window.open(authUrl, "_blank");
-
-                                toast({
-                                  title: "Autenticazione avviata",
-                                  description: "Completa l'autorizzazione nella finestra aperta, poi torna qui e aggiorna la pagina.",
-                                });
-                              } catch (error: any) {
-                                toast({
-                                  title: "Errore",
-                                  description: error.message,
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
-                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
-                          >
-                            <Calendar className="h-4 w-4 mr-2" />
-                            {calendarSettings?.googleCalendarConnected ? "Riconnetti Google Calendar" : "Connetti Google Calendar"}
-                          </Button>
-
-                          {calendarSettings?.googleCalendarConnected && (
-                            <Button
-                              onClick={async () => {
-                                try {
-                                  toast({
-                                    title: "Test in corso...",
-                                    description: "Verifico la connessione a Google Calendar",
-                                  });
-                                  
-                                  const response = await fetch("/api/calendar-settings/test-connection", {
-                                    method: "POST",
-                                    headers: getAuthHeaders(),
-                                  });
-
-                                  const result = await response.json();
-
-                                  if (result.success) {
-                                    queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings"] });
-                                    queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings/connection-status"] });
-                                    toast({
-                                      title: "Connessione OK!",
-                                      description: `${result.message} Eventi trovati: ${result.eventsFound}${result.calendarEmail ? ` - Account: ${result.calendarEmail}` : ''}`,
-                                    });
-                                  } else {
-                                    toast({
-                                      title: "Errore Connessione",
-                                      description: result.message,
-                                      variant: "destructive",
-                                    });
-                                  }
-                                } catch (error: any) {
-                                  toast({
-                                    title: "Errore",
-                                    description: error.message,
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                              variant="outline"
-                              className="text-green-600 hover:bg-green-50 border-green-300"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Test Connessione
-                            </Button>
-                          )}
-
-                          {calendarSettings?.googleCalendarConnected && (
-                            <Button
-                              onClick={async () => {
-                                if (!confirm("Vuoi disconnettere Google Calendar? Gli appuntamenti non saranno più sincronizzati.")) return;
-
-                                try {
-                                  const response = await fetch("/api/calendar-settings/disconnect", {
-                                    method: "POST",
-                                    headers: getAuthHeaders(),
-                                  });
-
-                                  if (!response.ok) throw new Error("Errore durante la disconnessione");
-
-                                  queryClient.invalidateQueries({ queryKey: ["/api/calendar-settings"] });
-                                  toast({
-                                    title: "Disconnesso",
-                                    description: "Google Calendar disconnesso con successo",
-                                  });
-                                } catch (error: any) {
-                                  toast({
-                                    title: "Errore",
-                                    description: error.message,
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                              variant="outline"
-                              className="text-red-600 hover:bg-red-50"
-                            >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Disconnetti
-                            </Button>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
                 </Card>
 
-                {/* Section 2: Calendar View */}
-                {calendarSettings?.googleCalendarConnected ? (
-                  <CalendarView />
-                ) : (
-                  <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
-                    <CardContent className="py-12 text-center">
-                      <CalendarDays className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-600 mb-2">Calendario non disponibile</h3>
-                      <p className="text-muted-foreground">
-                        Connetti il tuo Google Calendar nella sezione sopra per visualizzare i tuoi appuntamenti qui.
+                {/* Check if global OAuth is configured */}
+                {!calendarGlobalOAuth?.globalOAuthConfigured ? (
+                  <Alert className="bg-yellow-50 border-yellow-200">
+                    <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    <AlertDescription className="text-sm text-yellow-800">
+                      <strong>Configurazione in attesa</strong>
+                      <p className="mt-2">
+                        L'amministratore non ha ancora configurato le credenziali Google OAuth.
+                        Contatta il tuo amministratore per abilitare la connessione a Google Calendar.
                       </p>
-                    </CardContent>
-                  </Card>
-                )}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <>
+                    {/* Agents Grid */}
+                    {isLoadingAgentsCalendar ? (
+                      <div className="flex justify-center items-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                        <span className="ml-3 text-gray-500">Caricamento agenti...</span>
+                      </div>
+                    ) : agentsCalendarStatus && agentsCalendarStatus.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {agentsCalendarStatus.map((agent) => (
+                          <Card 
+                            key={agent.id} 
+                            className={`border-2 transition-all hover:shadow-lg ${
+                              agent.calendarConnected 
+                                ? "border-green-200 bg-green-50/50" 
+                                : "border-gray-200 bg-white"
+                            }`}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                  <div className={`p-2 rounded-lg ${agent.calendarConnected ? "bg-green-100" : "bg-gray-100"}`}>
+                                    <Calendar className={`h-5 w-5 ${agent.calendarConnected ? "text-green-600" : "text-gray-400"}`} />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-semibold text-gray-900">{agent.agentName}</h3>
+                                    <p className="text-xs text-gray-500 capitalize">
+                                      {agent.agentType?.replace(/_/g, " ") || "Agente"}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge 
+                                  variant={agent.isActive ? "default" : "secondary"}
+                                  className={agent.isActive ? "bg-blue-500 text-xs" : "text-xs"}
+                                >
+                                  {agent.isActive ? "Attivo" : "Inattivo"}
+                                </Badge>
+                              </div>
 
-                {/* Section 3: Availability Settings */}
-                <div className="pt-4">
-                  <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-cyan-600" />
-                    Configurazione Disponibilità
-                  </h2>
-                  <CalendarSettingsContent />
-                </div>
+                              {/* Calendar Status */}
+                              <div className="mb-4">
+                                {agent.calendarConnected ? (
+                                  <div className="flex items-center gap-2 p-2 bg-green-100 rounded-lg">
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium text-green-700">Calendario Collegato</p>
+                                      <p className="text-xs text-green-600 truncate">{agent.calendarEmail}</p>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                                    <XCircle className="h-4 w-4 text-gray-400" />
+                                    <p className="text-xs text-gray-500">Nessun calendario collegato</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Action Button */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => {
+                                  window.location.href = `/consultant/whatsapp?edit=${agent.id}&step=1`;
+                                }}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                {agent.calendarConnected ? "Gestisci Calendario" : "Collega Calendario"}
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <Card className="border-0 shadow-xl bg-white/70 backdrop-blur-sm">
+                        <CardContent className="py-12 text-center">
+                          <CalendarDays className="h-16 w-16 mx-auto text-gray-300 mb-4" />
+                          <h3 className="text-lg font-semibold text-gray-600 mb-2">Nessun agente WhatsApp</h3>
+                          <p className="text-muted-foreground mb-4">
+                            Crea un agente WhatsApp per poter configurare il suo calendario.
+                          </p>
+                          <Button
+                            onClick={() => {
+                              window.location.href = "/consultant/whatsapp";
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Crea Agente WhatsApp
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
+                )}
               </TabsContent>
 
               {/* Lead Import Tab Content */}
