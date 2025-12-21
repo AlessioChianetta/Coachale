@@ -738,6 +738,283 @@ export class FileSearchService {
   }
 
   /**
+   * Delete a document by its source type and source ID
+   * Useful when deleting the original source (e.g., KB document, lesson) and need to remove from FileSearch
+   * 
+   * @param sourceType - The type of source (e.g., 'library', 'knowledge_base', 'university_lesson')
+   * @param sourceId - The ID of the source document
+   * @returns Result with success status and optional error
+   */
+  async deleteDocumentBySource(
+    sourceType: string,
+    sourceId: string
+  ): Promise<{ success: boolean; deleted: number; errors: string[] }> {
+    try {
+      const docs = await db
+        .select()
+        .from(fileSearchDocuments)
+        .where(and(
+          eq(fileSearchDocuments.sourceType, sourceType as any),
+          eq(fileSearchDocuments.sourceId, sourceId)
+        ));
+
+      if (docs.length === 0) {
+        console.log(`ℹ️ [FileSearch] No documents found for sourceType=${sourceType}, sourceId=${sourceId}`);
+        return { success: true, deleted: 0, errors: [] };
+      }
+
+      console.log(`🗑️ [FileSearch] Deleting ${docs.length} document(s) for sourceType=${sourceType}, sourceId=${sourceId}`);
+
+      let deleted = 0;
+      const errors: string[] = [];
+
+      for (const doc of docs) {
+        const result = await this.deleteDocument(doc.id);
+        if (result.success) {
+          deleted++;
+        } else {
+          errors.push(`Failed to delete ${doc.id}: ${result.error}`);
+        }
+      }
+
+      console.log(`🗑️ [FileSearch] Deleted ${deleted}/${docs.length} documents by source`);
+      return { success: errors.length === 0, deleted, errors };
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] Delete by source failed:`, error);
+      return { success: false, deleted: 0, errors: [error.message] };
+    }
+  }
+
+  /**
+   * List documents directly from Google FileSearch API
+   * This allows verifying what actually exists on Google vs local DB
+   * 
+   * @param storeName - The Google store name (e.g., 'consultant_xyz_store')
+   * @param userId - User ID to get API client
+   * @returns List of documents from Google API
+   */
+  async listDocumentsFromGoogle(
+    storeName: string,
+    userId: string
+  ): Promise<{ success: boolean; documents: Array<{ name: string; displayName?: string; createTime?: string }>; error?: string }> {
+    try {
+      const ai = await this.getClientForUser(userId);
+      if (!ai) {
+        return { success: false, documents: [], error: 'No AI client available' };
+      }
+
+      const fullStoreName = `fileSearchStores/${storeName}`;
+      const documents: Array<{ name: string; displayName?: string; createTime?: string }> = [];
+
+      try {
+        const response = await ai.fileSearchStores.documents.list({ parent: fullStoreName });
+        
+        if (response && Array.isArray(response)) {
+          for (const doc of response) {
+            documents.push({
+              name: doc.name || '',
+              displayName: doc.displayName,
+              createTime: doc.createTime,
+            });
+          }
+        }
+      } catch (listError: any) {
+        if (listError.message?.includes('not found')) {
+          console.log(`⚠️ [FileSearch] Store ${storeName} not found on Google`);
+          return { success: true, documents: [] };
+        }
+        throw listError;
+      }
+
+      console.log(`📋 [FileSearch] Listed ${documents.length} documents from Google store: ${storeName}`);
+      return { success: true, documents };
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] List from Google failed:`, error);
+      return { success: false, documents: [], error: error.message };
+    }
+  }
+
+  /**
+   * Audit a FileSearchStore comparing local DB vs Google API
+   * Identifies discrepancies: documents only in DB, only on Google, or in both
+   * 
+   * @param storeId - The local store ID
+   * @param requestingUserId - Optional userId to use for API key resolution (useful when consultant audits client's store)
+   * @returns Audit results with categorized documents
+   */
+  async auditStoreVsGoogle(storeId: string, requestingUserId?: string): Promise<{
+    success: boolean;
+    storeName: string;
+    dbDocuments: number;
+    googleDocuments: number;
+    onlyInDb: Array<{ id: string; fileName: string; googleFileId: string; sourceType: string }>;
+    onlyOnGoogle: Array<{ name: string; displayName?: string }>;
+    inBoth: number;
+    error?: string;
+  }> {
+    try {
+      const store = await db.query.fileSearchStores.findFirst({
+        where: eq(fileSearchStores.id, storeId),
+      });
+
+      if (!store) {
+        return {
+          success: false,
+          storeName: '',
+          dbDocuments: 0,
+          googleDocuments: 0,
+          onlyInDb: [],
+          onlyOnGoogle: [],
+          inBoth: 0,
+          error: 'Store not found',
+        };
+      }
+
+      // Get documents from local DB
+      const dbDocs = await db
+        .select()
+        .from(fileSearchDocuments)
+        .where(eq(fileSearchDocuments.storeId, storeId));
+
+      // Get documents from Google - use requesting user's keys if available (for consultant auditing client stores)
+      const apiUserId = requestingUserId || store.ownerId;
+      const googleResult = await this.listDocumentsFromGoogle(store.googleStoreName, apiUserId);
+      if (!googleResult.success) {
+        return {
+          success: false,
+          storeName: store.googleStoreName,
+          dbDocuments: dbDocs.length,
+          googleDocuments: 0,
+          onlyInDb: [],
+          onlyOnGoogle: [],
+          inBoth: 0,
+          error: googleResult.error,
+        };
+      }
+
+      // Create sets for comparison
+      const dbGoogleFileIds = new Set(dbDocs.map(d => d.googleFileId));
+      const googleFileNames = new Set(googleResult.documents.map(d => {
+        // Extract file ID from full name: fileSearchStores/xxx/documents/FILE_ID
+        const parts = d.name.split('/');
+        return parts[parts.length - 1];
+      }));
+
+      // Find documents only in DB
+      const onlyInDb = dbDocs
+        .filter(d => !googleFileNames.has(d.googleFileId))
+        .map(d => ({
+          id: d.id,
+          fileName: d.fileName,
+          googleFileId: d.googleFileId,
+          sourceType: d.sourceType,
+        }));
+
+      // Find documents only on Google
+      const onlyOnGoogle = googleResult.documents.filter(d => {
+        const parts = d.name.split('/');
+        const fileId = parts[parts.length - 1];
+        return !dbGoogleFileIds.has(fileId);
+      });
+
+      // Count documents in both
+      const inBoth = dbDocs.length - onlyInDb.length;
+
+      console.log(`📊 [FileSearch] Audit complete for store ${store.googleStoreName}:`);
+      console.log(`   DB: ${dbDocs.length}, Google: ${googleResult.documents.length}`);
+      console.log(`   Only in DB: ${onlyInDb.length}, Only on Google: ${onlyOnGoogle.length}, In both: ${inBoth}`);
+
+      return {
+        success: true,
+        storeName: store.googleStoreName,
+        dbDocuments: dbDocs.length,
+        googleDocuments: googleResult.documents.length,
+        onlyInDb,
+        onlyOnGoogle,
+        inBoth,
+      };
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] Audit failed:`, error);
+      return {
+        success: false,
+        storeName: '',
+        dbDocuments: 0,
+        googleDocuments: 0,
+        onlyInDb: [],
+        onlyOnGoogle: [],
+        inBoth: 0,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Cleanup orphaned documents that exist on Google but not in local DB
+   * This removes documents from Google that shouldn't be there
+   * 
+   * @param storeId - The local store ID
+   * @param requestingUserId - Optional userId to use for API key resolution (useful when consultant cleans client's store)
+   * @returns Cleanup results
+   */
+  async cleanupOrphansOnGoogle(storeId: string, requestingUserId?: string): Promise<{
+    success: boolean;
+    removed: number;
+    errors: string[];
+  }> {
+    try {
+      const audit = await this.auditStoreVsGoogle(storeId, requestingUserId);
+      if (!audit.success) {
+        return { success: false, removed: 0, errors: [audit.error || 'Audit failed'] };
+      }
+
+      if (audit.onlyOnGoogle.length === 0) {
+        console.log(`✅ [FileSearch] No orphaned documents on Google for store ${audit.storeName}`);
+        return { success: true, removed: 0, errors: [] };
+      }
+
+      console.log(`🧹 [FileSearch] Cleaning up ${audit.onlyOnGoogle.length} orphaned documents from Google`);
+
+      const store = await db.query.fileSearchStores.findFirst({
+        where: eq(fileSearchStores.id, storeId),
+      });
+
+      if (!store) {
+        return { success: false, removed: 0, errors: ['Store not found'] };
+      }
+
+      // Use requesting user's keys if available (for consultant cleaning client stores)
+      const apiUserId = requestingUserId || store.ownerId;
+      const ai = await this.getClientForUser(apiUserId);
+      if (!ai) {
+        return { success: false, removed: 0, errors: ['No AI client available'] };
+      }
+
+      let removed = 0;
+      const errors: string[] = [];
+
+      for (const doc of audit.onlyOnGoogle) {
+        try {
+          await ai.fileSearchStores.documents.delete({ name: doc.name, config: { force: true } });
+          removed++;
+          console.log(`🗑️ [FileSearch] Deleted orphan from Google: ${doc.name}`);
+        } catch (deleteError: any) {
+          if (!deleteError.message?.includes('not found')) {
+            errors.push(`Failed to delete ${doc.name}: ${deleteError.message}`);
+          } else {
+            removed++; // Already gone, count as success
+          }
+        }
+      }
+
+      console.log(`🧹 [FileSearch] Cleanup complete: ${removed}/${audit.onlyOnGoogle.length} removed`);
+      return { success: errors.length === 0, removed, errors };
+    } catch (error: any) {
+      console.error(`❌ [FileSearch] Cleanup failed:`, error);
+      return { success: false, removed: 0, errors: [error.message] };
+    }
+  }
+
+  /**
    * Get store by ID
    */
   async getStore(storeId: string): Promise<FileSearchStoreInfo | null> {

@@ -204,6 +204,205 @@ router.post('/sync-all', authenticateToken, requireRole('consultant'), async (re
 });
 
 /**
+ * GET /api/file-search/stores/:storeId/audit
+ * Audit a FileSearchStore - compare local DB vs Google API
+ * Returns discrepancies: documents only in DB, only on Google, or in both
+ */
+router.get('/stores/:storeId/audit', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { storeId } = req.params;
+
+    // Get store and verify access
+    const store = await db.query.fileSearchStores.findFirst({
+      where: eq(fileSearchStores.id, storeId),
+    });
+
+    if (!store) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Store non trovato' 
+      });
+    }
+
+    // Authorization: consultant can access their own stores, WhatsApp agent stores, OR stores of their clients
+    const isOwnStore = store.ownerId === userId && (store.ownerType === 'consultant' || store.ownerType === 'whatsapp_agent');
+    
+    // Check if store belongs to a client of this consultant
+    let isClientStore = false;
+    if (!isOwnStore && store.ownerType === 'client') {
+      const [clientUser] = await db.select().from(users).where(eq(users.id, store.ownerId)).limit(1);
+      if (clientUser && clientUser.consultantId === userId) {
+        isClientStore = true;
+      }
+    }
+
+    if (!isOwnStore && !isClientStore) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Non autorizzato ad accedere a questo store' 
+      });
+    }
+
+    // Pass the requesting consultant's userId for API key resolution
+    const result = await fileSearchService.auditStoreVsGoogle(storeId, userId);
+    res.json({
+      success: result.success,
+      ...result,
+      message: result.success 
+        ? `Audit completato. DB: ${result.dbDocuments}, Google: ${result.googleDocuments}. Orfani DB: ${result.onlyInDb.length}, Orfani Google: ${result.onlyOnGoogle.length}`
+        : result.error,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error auditing store:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/stores/:storeId/cleanup
+ * Cleanup orphaned documents from Google that don't exist in local DB
+ */
+router.post('/stores/:storeId/cleanup', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { storeId } = req.params;
+
+    // Get store and verify access
+    const store = await db.query.fileSearchStores.findFirst({
+      where: eq(fileSearchStores.id, storeId),
+    });
+
+    if (!store) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Store non trovato' 
+      });
+    }
+
+    // Authorization: consultant can access their own stores, WhatsApp agent stores, OR stores of their clients
+    const isOwnStore = store.ownerId === userId && (store.ownerType === 'consultant' || store.ownerType === 'whatsapp_agent');
+    
+    // Check if store belongs to a client of this consultant
+    let isClientStore = false;
+    if (!isOwnStore && store.ownerType === 'client') {
+      const [clientUser] = await db.select().from(users).where(eq(users.id, store.ownerId)).limit(1);
+      if (clientUser && clientUser.consultantId === userId) {
+        isClientStore = true;
+      }
+    }
+
+    if (!isOwnStore && !isClientStore) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Non autorizzato ad accedere a questo store' 
+      });
+    }
+
+    // Pass the requesting consultant's userId for API key resolution
+    const result = await fileSearchService.cleanupOrphansOnGoogle(storeId, userId);
+    res.json({
+      success: result.success,
+      removed: result.removed,
+      errors: result.errors,
+      message: result.success 
+        ? `Pulizia completata. ${result.removed} documenti orfani rimossi da Google.`
+        : `Pulizia parziale. ${result.removed} rimossi, ${result.errors.length} errori.`,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error cleaning up store:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/file-search/stores/:storeId/cleanup-db
+ * Cleanup documents from DB that don't exist on Google
+ */
+router.post('/stores/:storeId/cleanup-db', authenticateToken, requireRole('consultant'), async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user!.id;
+    const { storeId } = req.params;
+
+    // Get store and verify access
+    const store = await db.query.fileSearchStores.findFirst({
+      where: eq(fileSearchStores.id, storeId),
+    });
+
+    if (!store) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Store non trovato' 
+      });
+    }
+
+    // Authorization: consultant can access their own stores, WhatsApp agent stores, OR stores of their clients
+    const isOwnStore = store.ownerId === userId && (store.ownerType === 'consultant' || store.ownerType === 'whatsapp_agent');
+    
+    // Check if store belongs to a client of this consultant
+    let isClientStore = false;
+    if (!isOwnStore && store.ownerType === 'client') {
+      const [clientUser] = await db.select().from(users).where(eq(users.id, store.ownerId)).limit(1);
+      if (clientUser && clientUser.consultantId === userId) {
+        isClientStore = true;
+      }
+    }
+
+    if (!isOwnStore && !isClientStore) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Non autorizzato ad accedere a questo store' 
+      });
+    }
+
+    // Get audit first - pass userId for API key resolution
+    const audit = await fileSearchService.auditStoreVsGoogle(storeId, userId);
+    if (!audit.success) {
+      return res.status(500).json({ success: false, error: audit.error });
+    }
+
+    if (audit.onlyInDb.length === 0) {
+      return res.json({
+        success: true,
+        removed: 0,
+        message: 'Nessun documento orfano nel DB da rimuovere.',
+      });
+    }
+
+    // Delete orphaned DB records (they're not on Google anyway)
+    let removed = 0;
+    const errors: string[] = [];
+
+    for (const doc of audit.onlyInDb) {
+      try {
+        await db.delete(fileSearchDocuments).where(eq(fileSearchDocuments.id, doc.id));
+        removed++;
+        console.log(`🗑️ [FileSearch] Deleted orphan from DB: ${doc.id} (${doc.fileName})`);
+      } catch (deleteError: any) {
+        errors.push(`Failed to delete ${doc.id}: ${deleteError.message}`);
+      }
+    }
+
+    // Update store document count
+    await db.update(fileSearchStores)
+      .set({ documentCount: Math.max(0, (store.documentCount || 0) - removed) })
+      .where(eq(fileSearchStores.id, storeId));
+
+    res.json({
+      success: errors.length === 0,
+      removed,
+      errors,
+      message: errors.length === 0 
+        ? `Pulizia DB completata. ${removed} documenti orfani rimossi.`
+        : `Pulizia parziale. ${removed} rimossi, ${errors.length} errori.`,
+    });
+  } catch (error: any) {
+    console.error('[FileSearch API] Error cleaning up DB:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/file-search/initialize
  * Quick endpoint to create an empty FileSearchStore for a consultant
  * Use this before syncing documents to test File Search functionality
