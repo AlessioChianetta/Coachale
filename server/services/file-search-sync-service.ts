@@ -713,12 +713,18 @@ export class FileSearchSyncService {
       console.log(`${'═'.repeat(60)}\n`);
       syncProgressEmitter.emitStart(consultantId, 'exercises', allExercises.length);
 
+      // Emit progress every N items to avoid SSE overload for large exercise sets
+      const PROGRESS_INTERVAL = Math.max(5, Math.floor(allExercises.length / 30)); // Max ~30 progress events
+      
       for (const exercise of allExercises) {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('exercise', exercise.id);
         if (isAlreadyIndexed) {
           skipped++;
           processed++;
-          syncProgressEmitter.emitItemProgress(consultantId, 'exercises', exercise.title, processed, allExercises.length);
+          // Emit progress only every N items
+          if (processed % PROGRESS_INTERVAL === 0 || processed === allExercises.length) {
+            syncProgressEmitter.emitItemProgress(consultantId, 'exercises', exercise.title, processed, allExercises.length);
+          }
           continue;
         }
 
@@ -726,7 +732,9 @@ export class FileSearchSyncService {
         processed++;
         if (result.success) {
           synced++;
-          syncProgressEmitter.emitItemProgress(consultantId, 'exercises', exercise.title, processed, allExercises.length);
+          if (processed % PROGRESS_INTERVAL === 0 || processed === allExercises.length) {
+            syncProgressEmitter.emitItemProgress(consultantId, 'exercises', exercise.title, processed, allExercises.length);
+          }
         } else {
           failed++;
           errors.push(`${exercise.title}: ${result.error}`);
@@ -979,12 +987,18 @@ export class FileSearchSyncService {
       console.log(`${'═'.repeat(60)}\n`);
       syncProgressEmitter.emitStart(consultantId, 'university', allLessons.length);
 
+      // Emit progress every N items to avoid SSE overload (1097 lessons is a lot!)
+      const PROGRESS_INTERVAL = Math.max(10, Math.floor(allLessons.length / 50)); // Max ~50 progress events
+      
       for (const lesson of allLessons) {
         const isAlreadyIndexed = await fileSearchService.isDocumentIndexed('university_lesson', lesson.id);
         if (isAlreadyIndexed) {
           skipped++;
           processed++;
-          syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processed, allLessons.length);
+          // Emit progress only every N items to reduce SSE load
+          if (processed % PROGRESS_INTERVAL === 0 || processed === allLessons.length) {
+            syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processed, allLessons.length);
+          }
           continue;
         }
 
@@ -992,7 +1006,10 @@ export class FileSearchSyncService {
         processed++;
         if (result.success) {
           synced++;
-          syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processed, allLessons.length);
+          // Emit progress only every N items
+          if (processed % PROGRESS_INTERVAL === 0 || processed === allLessons.length) {
+            syncProgressEmitter.emitItemProgress(consultantId, 'university', lesson.title, processed, allLessons.length);
+          }
         } else {
           failed++;
           errors.push(`${lesson.title}: ${result.error}`);

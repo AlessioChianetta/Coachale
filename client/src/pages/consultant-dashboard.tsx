@@ -234,9 +234,9 @@ export default function ConsultantDashboard() {
       });
     });
 
-    highPriorityClients?.slice(0, 2).forEach((client: any) => {
+    highPriorityClients?.filter((c: any) => c?.id).slice(0, 2).forEach((client: any, index: number) => {
       items.push({
-        id: `lead-${client.id}`,
+        id: `lead-${client.id || `fallback-${index}`}`,
         type: "lead",
         title: "Cliente prioritario",
         description: `${client.firstName} ${client.lastName} richiede attenzione`,
